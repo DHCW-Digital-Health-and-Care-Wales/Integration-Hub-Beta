@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, Mock, call
 from azure.servicebus import ServiceBusMessage
 
-from MessageSenderClient import MessageSenderClient
+from dhcw.msgbus.MessageSenderClient import MessageSenderClient
 
 
 class TestMessageSenderClient(unittest.TestCase):

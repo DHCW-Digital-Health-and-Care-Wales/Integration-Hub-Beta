@@ -2,6 +2,4 @@
 azure-servicebus==7.14.2
 azure-identity==1.21.0
 
-
-# Environment configuration
-python-dotenv==1.1.0
+setuptools==80.0.0
