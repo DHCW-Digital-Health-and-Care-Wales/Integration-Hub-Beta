@@ -1,0 +1,268 @@
+<?xml version="1.0"?>
+<!--Created with Liquid XML Studio 7.1.0.1135 (http://www.liquid-technologies.com)-->
+<xs:schema xmlns:ns0="http://PAS_Demographics.PropertySchema.PropertySchema" xmlns:b="http://schemas.microsoft.com/BizTalk/2003" xmlns="http://PAS_Demographics" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://PAS_Demographics" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:annotation id="Version">
+		<xs:documentation>File: XSD_Master Date Created: 6-June-2011 Date Amended: 12-Sep-2018 Version: 1.23 Comment: Additional Fields Added for ABMU and NEAST in Referral/ADT/Outpatient Data Packets Comment: Annotations added for Biztalk Comment: Correction for DATONSYS -&gt; should have been DATE_RECEIVED	Comment: Correction for TRANSFER_NO missing on IPT transactions	Comment: Added Transfer Block for Resequencing	Comment: Added Admitted Consultant Elements	Comment: Added SystemID	Comment: Added Extras for Jayex Terminals	Comment: Added 2 fields one for NickE and one for EDCIMS in UPDATE_DATE block Corrected Minor Caps Errors	Comment: Added Extras for WCP, Trusts and Theatre, UPI and Provider Code	Comment: Added MSH_TIMESTAMP for message generation - Theatre Block Removed and Encoding - Update Transfer Block bounds for Fiorano defaulting to 1 instead on Unlimited when there is no maxoccurs entry, Modified Definition of Schema Block for OPADDONS Comment: Added All Extra Fields up to AFAIK WPAS 20.1.5, New RecTypes WAI/WAA/WAD CAI/CAA/CAD WardAttenders and DayCare</xs:documentation>
+	</xs:annotation>
+	<xs:annotation>
+		<xs:appinfo>
+			<b:imports xmlns:b="http://schemas.microsoft.com/BizTalk/2003">
+				<b:namespace prefix="ns0" uri="http://PAS_Demographics.PropertySchema.PropertySchema" location=".\propertyschema.xsd"/>
+			</b:imports>
+		</xs:appinfo>
+	</xs:annotation>
+	<xs:element name="MAINDATA">
+		<xs:annotation>
+			<xs:appinfo>
+				<b:properties>
+					<b:property name="ns0:MSG_ID" xpath="/*[local-name()='MAINDATA' and namespace-uri()='http://PAS_Demographics']/*[local-name()='TRANSACTION' and namespace-uri()='http://PAS_Demographics']/*[local-name()='MSG_ID' and namespace-uri()='http://PAS_Demographics']"/>
+				</b:properties>
+			</xs:appinfo>
+			<xs:documentation>Fields used in the Payload - Functionality (Where name is not self explanatory)		TRANSACTION_ID : Unique message identifier	MSG_ID : Message Payload Type - MPI/MPA/MPR/OP../IP../EM../RF../HC../CA../WA..	UNIT_NUMBER : Hospital Identifier	NHS_NUMBER : Nhs Number	CONS : Current Consultant Code	SPEC : Current Specialty Code	WARD : Current Ward Code	UPDATE_DATE : Date Demographics last modified	TRT_DATE : Treatment Date	TRT_TIME : Treatment Time	DIS_DATE : Discharge Date	DIS_TIME : Discharge Time	LINKID : Unique Identifier to Bind Referrals / Multiple Outpatient Attendances / Single Admission	UNIQUE_ID : Unique Identifier for every attendance / treatment record	TRT_TYPE : Treatment Type Code (AC/AT/AD/AL/OT/OA/OR/ET/EA/ED/HC)	ADM_CONS : Admitting Consultant	ADM_SPEC : Admitting Specialty	ADM_WARD : Admitting Ward	NEW_UNIT_NUMBER : Number Patient being renumbered TO	OLD_UNIT_NUMBER : Number Patient being renumbered FROM	SYSTEM_ID: System ID of Sending System from NWIS Master Assigning Authority File	MSH_TIMESTAMP : TimeStamp when the Packet was Created	UPDATE_DATE for Demographics holds when the patient was registered or the demographics were last changed, for all other records the field holds when the record was touched/updated in the system</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="TRANSACTION">
+					<xs:complexType>
+						<xs:all>
+							<xs:element minOccurs="1" name="TRANSACTION_ID" type="xs:string"/>
+							<xs:element minOccurs="1" name="MSG_ID" type="xs:string"/>
+							<xs:element minOccurs="0" name="UNIT_NUMBER" type="xs:string"/>
+							<xs:element minOccurs="0" name="NHS_NUMBER" type="xs:string"/>
+							<xs:element minOccurs="0" name="SURNAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="FORENAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="TITLE" type="xs:string"/>
+							<xs:element minOccurs="0" name="BIRTHDATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="DEATHDATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="SEX" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADDRESS_1" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADDRESS_2" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADDRESS_3" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADDRESS_4" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADDRESS_5" type="xs:string"/>
+							<xs:element minOccurs="0" name="POSTCODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="TELEPHONE_DAY" type="xs:string"/>
+							<xs:element minOccurs="0" name="TELEPHONE_NIGHT" type="xs:string"/>
+							<xs:element minOccurs="0" name="OVERSEAS_STATUS" type="xs:string"/>
+							<xs:element minOccurs="0" name="MARITAL_STATUS" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISABLED_STATUS" type="xs:string"/>
+							<xs:element minOccurs="0" name="ETHNIC_ORIGIN" type="xs:string"/>
+							<xs:element minOccurs="0" name="RELIGION_STATUS" type="xs:string"/>
+							<xs:element minOccurs="0" name="REGISTERED_GP" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_PRACTICE" type="xs:string"/>
+							<xs:element minOccurs="0" name="NHS_CERTIFICATION" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_SURNAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_INITS" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_ADDR1" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_ADDR2" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_ADDR3" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_ADDR4" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_POSTCODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_TELEPHONE" type="xs:string"/>
+							<xs:element minOccurs="0" name="GP_FAX" type="xs:string"/>
+							<xs:element minOccurs="0" name="MOBILE" type="xs:string"/>
+							<xs:element minOccurs="0" name="EMAIL" type="xs:string"/>
+							<xs:element minOccurs="0" name="DHA_CODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="PAT_TEL_NIGHT" type="xs:string"/>
+							<xs:element minOccurs="0" name="PAT_TEL_DAY" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_REL" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_ADDR1" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_ADDR2" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_ADDR3" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_ADDR4" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_POSTCODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_REL" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_ADDR1" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_ADDR2" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_ADDR3" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_ADDR4" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_POSTCODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_TEL_DAY" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_TEL_NIGHT" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_TEL_DAY" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_TEL_NIGHT" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEXT_KIN_REL_CODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_KIN_REL_CODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="MAIDEN_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="ALIAS_FORENAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="ALIAS_SURNAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="REQUESTED_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="OCCUPATION" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_1" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_2" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_3" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_4" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_5" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONTACT_ADDRESS_6" type="xs:string"/>
+							<xs:element minOccurs="0" name="EVENT_CODES" type="xs:string"/>
+							<xs:element minOccurs="0" name="KEY_NOTE_TYPES" type="xs:string"/>
+							<xs:element minOccurs="0" name="EVENT_DESCS" type="xs:string"/>
+							<xs:element minOccurs="0" name="EVENT_VALUES" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_ALIAS" type="xs:string"/>
+							<xs:element minOccurs="0" name="GENDER" type="xs:string"/>
+							<xs:element minOccurs="0" name="PREFERRED_LANGUAGE" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPDATE_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="EDCIMS_NO" type="xs:string"/>
+							<xs:element minOccurs="1" name="USER_ID" type="xs:string"/>
+							<xs:element minOccurs="1" name="SYSTEM_ID" type="xs:string"/>
+							<xs:element minOccurs="0" name="EPISODE_NO" type="xs:string"/>
+							<xs:element minOccurs="0" name="SOURCE_ADMISSION" type="xs:string"/>
+							<xs:element minOccurs="0" name="SOURCE_ADMISSION_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONS" type="xs:string"/>
+							<xs:element minOccurs="0" name="SPEC" type="xs:string"/>
+							<xs:element minOccurs="0" name="WARD" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRT_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRT_TIME" type="xs:string"/>
+							<xs:element minOccurs="0" name="DIS_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="DIS_TIME" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRT_TYPE" type="xs:string"/>
+							<xs:element minOccurs="0" name="LINK_ID" type="xs:string"/>
+							<xs:element minOccurs="0" name="UNIQUE_ID" type="xs:string"/>
+							<xs:element minOccurs="0" name="OUTCOME" type="xs:string"/>
+							<xs:element minOccurs="0" name="ARRIVAL_TIME" type="xs:string"/>
+							<xs:element minOccurs="0" name="CLINIC_CODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="CLINIC_DESCRIPTION" type="xs:string"/>
+							<xs:element minOccurs="0" name="DATE_ON_LIST" type="xs:string"/>
+							<xs:element minOccurs="0" name="DATE_RECEIVED" type="xs:string"/>
+							<xs:element minOccurs="0" name="CATEGORY" type="xs:string"/>
+							<xs:element minOccurs="0" name="URGENCY" type="xs:string"/>
+							<xs:element minOccurs="0" name="REMOVAL_REASON" type="xs:string"/>
+							<xs:element minOccurs="0" name="REMOVAL_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="OPERATION_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="CANCEL_REASON" type="xs:string"/>
+							<xs:element minOccurs="0" name="LIST_OUTCOME" type="xs:string"/>
+							<xs:element minOccurs="0" name="INT_MAN" type="xs:string"/>
+							<xs:element minOccurs="0" name="COMMENTS" type="xs:string"/>
+							<xs:element minOccurs="0" name="NOTES" type="xs:string"/>
+							<xs:element minOccurs="0" name="CLINICAL_CONDITION" type="xs:string"/>
+							<xs:element minOccurs="0" name="CANCEL_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="ANAESTHETIC_TYPE" type="xs:string"/>
+							<xs:element minOccurs="0" name="TCI_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONS_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="SPEC_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONS_GMC" type="xs:string"/>
+							<xs:element minOccurs="0" name="WARD_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="CURLOC_PROVIDER_CODE" type="xs:string"/>
+							<xs:element minOccurs="0" name="SPELL_NO" type="xs:string"/>
+							<xs:element minOccurs="0" name="BOOKED_WARD" type="xs:string"/>
+							<xs:element minOccurs="0" name="REFERRING_GP" type="xs:string"/>
+							<xs:element minOccurs="0" name="REFERRING_PRAC" type="xs:string"/>
+							<xs:element minOccurs="0" name="WLIST" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_CONS" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_SPEC" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_WARD" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_CONS_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_SPEC_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_CONS_GMC" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_WARD_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_CONS_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_SPEC_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_CONS_GMC" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_WARD_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_WARD" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_CONS" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_SPEC" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRANSFER_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRANSFER_TIME" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRANSFER_NO" type="xs:string"/>
+							<xs:element minOccurs="0" name="TRANSFERS">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element minOccurs="0" maxOccurs="unbounded" name="TRANSFER">
+											<xs:complexType>
+												<xs:all>
+													<xs:element minOccurs="0" name="TRANSFER_SEQ" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_DATE" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_TIME" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_CONS" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_CONS_NAME" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_SPEC" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_SPEC_NAME" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_WARD" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_WARD_NAME" type="xs:string"/>
+													<xs:element minOccurs="0" name="TRANSFER_CONS_GMC" type="xs:string"/>
+												</xs:all>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element minOccurs="0" name="ADM_CONS" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_SPEC" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_CONS_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_SPEC_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_CONS_GMC" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_WARD" type="xs:string"/>
+							<xs:element minOccurs="0" name="ADM_WARD_NAME" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISDEST" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISDEST_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISLOCATION" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISLOCATION_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISMETHOD" type="xs:string"/>
+							<xs:element minOccurs="0" name="DISMETHOD_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="OUTCOME_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="OPADDONS">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element minOccurs="0" maxOccurs="unbounded" name="OPADDON">
+											<xs:complexType>
+												<xs:all>
+													<xs:element minOccurs="0" name="OPADDONS_SEQ" type="xs:string"/>
+													<xs:element minOccurs="0" name="OPADDONS_WHAT" type="xs:string"/>
+													<xs:element minOccurs="0" name="OPADDONS_WHAT_NAME" type="xs:string"/>
+												</xs:all>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element minOccurs="0" name="UPI" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_EVENT" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_SOURCE" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_EVENT_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_SOURCE_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_EVENT_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="UPI_STOP_DATE" type="xs:string"/>
+						    <xs:element minOccurs="0" name="CURRENT_HEALTH_RISK_FACTOR" type="xs:string"/>
+							<xs:element minOccurs="0" name="HIGH_SENSITIVE" type="xs:string"/>
+							<xs:element minOccurs="0" name="PIFU_DATE" type="xs:string"/>
+							<xs:element minOccurs="0" name="PREF_CONSULT_METHOD" type="xs:string"/>
+							<xs:element minOccurs="0" name="CONSULT_METHOD" type="xs:string"/>
+							<xs:element minOccurs="0" name="VIRTUAL_TYPE" type="xs:string"/>
+							<xs:element minOccurs="0" name="VIRTUAL_CONTACT_DETAILS" type="xs:string"/>
+							<xs:element minOccurs="0" name="UNSUCCESS_ATTEMPT_ONE" type="xs:string"/>
+							<xs:element minOccurs="0" name="UNSUCCESS_ATTEMPT_TWO" type="xs:string"/>
+							<xs:element minOccurs="0" name="OTHER_INFO" type="xs:string"/>
+							<xs:element minOccurs="0" name="HOSPITAL" type="xs:string"/>
+							<xs:element minOccurs="0" name="HOSPITAL_DESC" type="xs:string"/>
+							<xs:element minOccurs="0" name="ACT_REQ_OPTIONS">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element minOccurs="0" maxOccurs="unbounded" name="TEST">
+											<xs:complexType>
+												<xs:all>
+													<xs:element minOccurs="0" name="REQ_SEQ" type="xs:string"/>
+													<xs:element minOccurs="0" name="REQ_CODE" type="xs:string"/>
+													<xs:element minOccurs="0" name="REQ_DESC" type="xs:string"/>
+												</xs:all>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element minOccurs="0" name="OP_DOCUMENT" type="xs:string"/>
+							<xs:element minOccurs="0" name="ELEC_REPRO_SET" type="xs:string"/>
+							<xs:element minOccurs="0" name="ELEC_REPRO_LEVEL" type="xs:string"/>
+							<xs:element minOccurs="0" name="ELEC_REPRO_SET_BY" type="xs:string"/>
+							<xs:element minOccurs="0" name="ELEC_REPRO_TARGET" type="xs:string"/>
+							<xs:element minOccurs="0" name="NEW_UNIT_NUMBER" type="xs:string"/>
+							<xs:element minOccurs="0" name="OLD_UNIT_NUMBER" type="xs:string"/>
+						</xs:all>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

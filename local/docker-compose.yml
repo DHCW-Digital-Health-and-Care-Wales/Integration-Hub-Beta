@@ -1,0 +1,115 @@
+name: integration-hub
+services:
+  emulator:
+    container_name: "servicebus-emulator"
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - "${CONFIG_PATH}:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    ports:
+      - "5672:5672"
+    environment:
+      SQL_SERVER: sqledge
+      ACCEPT_EULA: ${ACCEPT_EULA}
+    env_file:
+      - ./.secrets
+    depends_on:
+      - sqledge
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "sb-emulator"
+  sqledge:
+    container_name: "sqledge"
+    image: "mcr.microsoft.com/azure-sql-edge:latest"
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "sqledge"
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+    env_file:
+      - ./.secrets
+
+  sqlserver:
+    container_name: sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+      MSSQL_PID: Express
+    env_file:
+      - ./.secrets
+    volumes:
+      - ./sql-scripts:/var/opt/mssql/scripts
+    entrypoint: ["/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh"]
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "sqlserver"
+
+  wpas-validator:
+    container_name: wpas-validator
+    build:
+      context: ../wpas-validator
+      dockerfile: ./Dockerfile
+    restart: always
+    env_file:
+      - ../wpas-validator/.env
+      - ../wpas-validator/.secrets
+    depends_on:
+      - emulator
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "wpas-validator"
+
+  wpas-hl7-translator:
+    container_name: wpas-hl7-translator
+    build:
+      context: ../wpas-hl7-translator
+      dockerfile: ./Dockerfile
+    restart: always
+    env_file:
+      - ../wpas-hl7-translator/.env
+    depends_on:
+      - emulator
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "wpas-hl7-translator"
+
+  hl7-sender:
+    container_name: hl7-sender
+    build:
+      context: ../hl7-sender
+      dockerfile: ./Dockerfile
+    restart: always
+    env_file:
+      - ../hl7-sender/.env
+    depends_on:
+      - emulator
+      - hl7-mock-receiver
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "hl7-sender"
+
+  hl7-mock-receiver:
+    container_name: hl7-mock-receiver
+    build:
+      context: ../hl7-mock-receiver
+      dockerfile: ./Dockerfile
+    restart: always
+    env_file:
+      - ../hl7-mock-receiver/.env
+    depends_on:
+      - emulator
+    networks:
+      integration-hub-poc:
+        aliases:
+          - "hl7-mock-receiver"
+networks:
+  integration-hub-poc:
+
