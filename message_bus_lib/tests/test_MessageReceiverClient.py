@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, Mock, call
-from dhcw.msgbus.MessageReceiverClient import MessageReceiverClient
+from dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
 from azure.servicebus import ServiceBusMessage
 
 class TestMessageReceiverClient(unittest.TestCase):

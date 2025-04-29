@@ -1,8 +1,9 @@
 import logging
 from azure.servicebus import ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusReceiveMode
 from azure.identity import DefaultAzureCredential
-from message_sender_client import MessageSenderClient
-from message_receiver_client import MessageReceiverClient
+from dhcw_nhs_wales.inthub.msgbus.ConnectionConfig import ConnectionConfig
+from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
+from dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 
@@ -11,7 +12,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class ServiceBusClientFactory:
-    def __init__(self, config):
+    def __init__(self, config: ConnectionConfig):
         self.config = config
         self.servicebus_client = self._build_service_bus_client()
 

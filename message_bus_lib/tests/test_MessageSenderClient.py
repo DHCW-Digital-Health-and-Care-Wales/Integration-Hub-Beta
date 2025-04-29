@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, Mock, call
 from azure.servicebus import ServiceBusMessage
 
-from dhcw.msgbus.MessageSenderClient import MessageSenderClient
+from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
 
 
 class TestMessageSenderClient(unittest.TestCase):
@@ -15,7 +15,6 @@ class TestMessageSenderClient(unittest.TestCase):
     def test_send_message_sends_message_to_service_bus(self):
         # Arrange
         message = "Test Message"
-        binary_message = BinaryData.from_string(message)
 
         # Act
         self.message_sender_client.send_message(message)
@@ -35,9 +34,3 @@ class TestMessageSenderClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class BinaryData:
-    @staticmethod
-    def from_string(data: str):
-        return data
