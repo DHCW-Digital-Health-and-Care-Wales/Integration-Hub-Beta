@@ -1,0 +1,50 @@
+name: integration-hub
+services:
+  sb-emulator:
+    container_name: "sb-emulator"
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - "./ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    ports:
+      - "5672:5672"
+    environment:
+      SQL_SERVER: sqledge
+      ACCEPT_EULA: ${ACCEPT_EULA}
+    env_file:
+      - ./.secrets
+    depends_on:
+      - sqledge
+    networks:
+      integration-hub:
+        aliases:
+          - "sb-emulator"
+  sqledge:
+    container_name: "sqledge"
+    image: "mcr.microsoft.com/azure-sql-edge:latest"
+    networks:
+      integration-hub:
+        aliases:
+          - "sqledge"
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+    env_file:
+      - ./.secrets
+
+  phw-hl7-server:
+    container_name: phw-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./phw-hl7-server.env
+    depends_on:
+      - sb-emulator
+    networks:
+      integration-hub:
+        aliases:
+          - "phw-hl7-server"  
+
+networks:
+  integration-hub:
+
