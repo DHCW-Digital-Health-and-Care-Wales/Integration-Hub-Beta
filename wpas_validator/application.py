@@ -1,7 +1,7 @@
 import signal
 
-from dhcw_nhs_wales.inthub.msgbus.ServiceBusClientFactory import ServiceBusClientFactory
-from dhcw_nhs_wales.inthub.msgbus.ConnectionConfig import ConnectionConfig
+from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.ServiceBusClientFactory import ServiceBusClientFactory
+from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.ConnectionConfig import ConnectionConfig
 from dhcw_nhs_wales.inthub.wpas_validator.WpasMessageValidator import WpasMessageValidatorConfig, WpasMessageValidator
 from dhcw_nhs_wales.inthub.wpas_validator.xmlvalidator import XmlValidator
 
@@ -18,8 +18,8 @@ class Application:
     def Main( self ): 
         app_config = WpasMessageValidatorConfig.readEnv()
         msgbus_config = ConnectionConfig(connection_string= app_config.CONNECTION_STRING, service_bus_namespace= app_config.SERVICE_BUS_NAMESPACE)
-        factory = ServiceBusClientFactory(msgbus_config);
-        receiver = factory.create_message_receiver_client(app_config.INGRESS_QUEUE_NAME);
+        factory = ServiceBusClientFactory(msgbus_config)
+        receiver = factory.create_message_receiver_client(app_config.INGRESS_QUEUE_NAME)
         sender = factory.create_message_sender_client(app_config.VALIDATED_WPAS_EGRESS_TOPIC_NAME)
         xml_validator = XmlValidator()
         message_validator = WpasMessageValidator(app_config, receiver= receiver, validator= xml_validator, sender= sender)

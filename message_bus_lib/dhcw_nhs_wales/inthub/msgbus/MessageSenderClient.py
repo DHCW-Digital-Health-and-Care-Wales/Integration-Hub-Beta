@@ -12,11 +12,11 @@ class MessageSenderClient:
         self.topic_name = topic_name
 
     def send_message(self, message_data: bytes, custom_properties: Optional[Dict[str, str]] = None):
-        message = ServiceBusMessage(body=message_data)
-
-        if custom_properties:
-            for key, value in custom_properties.items():
-                message.application_properties[key] = value
+        
+        message = ServiceBusMessage(
+            body=message_data,
+            application_properties=custom_properties or {}
+        )
 
         self.sender.send_messages(message)
         logger.debug("Message sent successfully to topic: %s", self.topic_name)

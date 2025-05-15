@@ -1,8 +1,8 @@
 from azure.servicebus import ServiceBusMessage
 from dataclasses import dataclass
 import os
-from dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
-from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
+from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
+from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
 from dhcw_nhs_wales.inthub.wpas_validator.xmlvalidator import XmlValidator
 
 @dataclass
