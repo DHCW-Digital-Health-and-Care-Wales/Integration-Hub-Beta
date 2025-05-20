@@ -47,4 +47,3 @@ services:
 
 networks:
   integration-hub:
-
