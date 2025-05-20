@@ -8,14 +8,17 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Add certificates for proxied networks
-COPY ./ca-certs /opt/ca-certs
+COPY --from=ca-certs . /opt/ca-certs
+
+WORKDIR /build
 
 # Install pip requirements
-COPY docker-pip-install.sh requirements.txt .
-#RUN python -m pip install --no-cache-dir -r requirements.txt
-RUN bash docker-pip-install.sh
+COPY docker-pip-install.sh requirements.txt ./
+COPY --from=shared_libs . /shared_libs
+RUN ./docker-pip-install.sh
 
 WORKDIR /app
+
 COPY . /app
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder

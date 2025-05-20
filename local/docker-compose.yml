@@ -36,6 +36,9 @@ services:
     build:
       context: ../hl7_server
       dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
     env_file:
       - ./phw-hl7-server.env
     ports:

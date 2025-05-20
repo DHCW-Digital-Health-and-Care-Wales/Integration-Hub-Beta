@@ -5,6 +5,7 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 
+from message_bus_lib.message_sender_client import MessageSenderClient
 from .hl7_ack_builder import HL7AckBuilder
 
 # Configure logging
@@ -12,12 +13,19 @@ logger = logging.getLogger(__name__)
 
 
 class GenericHandler(AbstractHandler):
+
+    def __init__(self, msg, sender_client: MessageSenderClient):
+        super(GenericHandler, self).__init__(msg)
+        self.sender_client = sender_client
+
     def reply(self) -> str:
         try:
             msg = parse_message(self.incoming_message, find_groups=False)
             message_control_id = msg.msh.msh_10.value
             message_type = msg.msh.msh_9.to_er7()
             logger.info("Received message type: %s, Control ID: %s", message_type, message_control_id)
+
+            self._send_to_service_bus(message_control_id)
 
             ack_message = self.create_ack(message_control_id, msg)
             logger.info("ACK generated successfully")
@@ -33,3 +41,11 @@ class GenericHandler(AbstractHandler):
         ack_builder = HL7AckBuilder()
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
+    
+    def _send_to_service_bus(self, message_control_id: str) -> bool:
+        try:
+            self.sender_client.send_text_message(self.incoming_message)
+            logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
+        except Exception as e:
+            logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
+            raise
