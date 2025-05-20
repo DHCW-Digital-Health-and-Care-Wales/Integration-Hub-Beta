@@ -1,6 +1,7 @@
 import logging
-from azure.servicebus import ServiceBusMessage
 from typing import Callable
+
+from azure.servicebus import ServiceBusMessage
 
 logger = logging.getLogger("MessageReceiverClient")
 logger.setLevel(logging.DEBUG)

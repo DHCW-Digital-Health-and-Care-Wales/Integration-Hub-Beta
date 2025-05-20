@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
+
 from dhcw_nhs_wales.inthub.wpas_validator.WpasMessageValidator import WpasMessageValidator
 
 

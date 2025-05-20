@@ -1,9 +1,10 @@
 import logging
-from azure.servicebus import ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusReceiveMode
+
 from azure.identity import DefaultAzureCredential
+from azure.servicebus import ServiceBusClient, ServiceBusReceiveMode, ServiceBusReceiver, ServiceBusSender
 from dhcw_nhs_wales.inthub.msgbus.ConnectionConfig import ConnectionConfig
-from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
 from dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
+from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 

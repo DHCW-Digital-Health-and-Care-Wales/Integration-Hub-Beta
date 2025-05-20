@@ -1,8 +1,8 @@
 import signal
 
-from dhcw_nhs_wales_inthub.msgbus.ServiceBusClientFactory import ServiceBusClientFactory
 from dhcw_nhs_wales_inthub.msgbus.ConnectionConfig import ConnectionConfig
-from dhcw_nhs_wales_inthub.wpas_validator.WpasMessageValidator import WpasMessageValidatorConfig, WpasMessageValidator
+from dhcw_nhs_wales_inthub.msgbus.ServiceBusClientFactory import ServiceBusClientFactory
+from dhcw_nhs_wales_inthub.wpas_validator.WpasMessageValidator import WpasMessageValidator, WpasMessageValidatorConfig
 from dhcw_nhs_wales_inthub.wpas_validator.xmlvalidator import XmlValidator
 
 
