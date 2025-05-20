@@ -7,18 +7,18 @@ from dhcw_nhs_wales_inthub.wpas_validator.xmlvalidator import XmlValidator
 
 
 class Application:
-    def __init__(self):
+    def __init__(self) -> None:
         self.terminated = False
         signal.signal(signal.SIGINT, lambda signal, frame: self._signal_handler())
 
-    def _signal_handler(self):
+    def _signal_handler(self) -> None:
         print("Received terminate signal")
         self.terminated = True
 
-    def Main(self):
+    def Main(self) -> None:
         app_config = WpasMessageValidatorConfig.readEnv()
         msgbus_config = ConnectionConfig(
-            connection_string=app_config.CONNECTION_STRING, service_bus_namespace=app_config.SERVICE_BUS_NAMESPACE
+            connection_string = app_config.CONNECTION_STRING, service_bus_namespace=app_config.SERVICE_BUS_NAMESPACE
         )
         factory = ServiceBusClientFactory(msgbus_config)
         receiver = factory.create_message_receiver_client(app_config.INGRESS_QUEUE_NAME)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-import xmlschema
+from xmlschema import XMLSchema
 
 
 @dataclass(frozen=True)
@@ -11,14 +11,11 @@ class ValidationResult:
 
 
 class XmlValidator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.schema_path = Path(__file__).parent / "WPAS_Schema.xsd"
-        self.get_validator()
-
-    def get_validator(self):
-        self.schema = xmlschema.XMLSchema(self.schema_path)
+        self.schema = XMLSchema(self.schema_path)
 
     def validate(self, xml: str) -> ValidationResult:
-        errors = list(map(lambda e: e.reason, self.schema.iter_errors(xml)))
+        errors = list(map(lambda e: e.reason or "", self.schema.iter_errors(xml)))
         is_valid = len(errors) <= 0
-        return ValidationResult(is_valid=is_valid, errors=errors)
+        return ValidationResult(is_valid=is_valid, errors = errors)

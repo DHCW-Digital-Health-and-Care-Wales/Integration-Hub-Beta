@@ -1,36 +1,36 @@
 import unittest
 from pathlib import Path
 
-from dhcw_nhs_wales.inthub.wpas_validator.xmlvalidator import XmlValidator
+from dhcw_nhs_wales_inthub.wpas_validator.xmlvalidator import XmlValidator
 
 
 class TestXmlValidator(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.validator = XmlValidator()
         return super().setUp()
 
-    def test_valid_utf16_xml(self):
+    def test_valid_utf16_xml(self) -> None:
         xml = self.read_xml("wpas_valid_utf16.xml")
 
         result = self.validator.validate(xml)
 
         self.assertTrue(result.is_valid)
 
-    def test_valid_utf8_xml(self):
+    def test_valid_utf8_xml(self) -> None:
         xml = self.read_xml("wpas_valid_utf8.xml")
 
         result = self.validator.validate(xml)
 
         self.assertTrue(result.is_valid)
 
-    def test_invalid_xml(self):
+    def test_invalid_xml(self) -> None:
         xml = self.read_xml("wpas_invalid.xml")
 
         result = self.validator.validate(xml)
 
         self.assertFalse(result.is_valid)
 
-    def read_xml(self, filename):
+    def read_xml(self, filename:str ) -> str:
         path = Path(__file__).parent / filename
         xml = ""
         encoding = "utf-16" if "utf16" in filename else "utf-8"

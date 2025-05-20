@@ -2,4 +2,6 @@ xmlschema==4.0.1
 pathlib==1.0.1
 azure-servicebus==7.14.2
 azure-identity==1.21.0
+ruff==0.11.10
+mypy==1.15.0
 

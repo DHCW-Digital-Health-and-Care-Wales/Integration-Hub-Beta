@@ -2,9 +2,10 @@ import logging
 
 from azure.identity import DefaultAzureCredential
 from azure.servicebus import ServiceBusClient, ServiceBusReceiveMode, ServiceBusReceiver, ServiceBusSender
-from dhcw_nhs_wales.inthub.msgbus.ConnectionConfig import ConnectionConfig
-from dhcw_nhs_wales.inthub.msgbus.MessageReceiverClient import MessageReceiverClient
-from dhcw_nhs_wales.inthub.msgbus.MessageSenderClient import MessageSenderClient
+
+from dhcw_nhs_wales_inthub.msgbus.ConnectionConfig import ConnectionConfig
+from dhcw_nhs_wales_inthub.msgbus.MessageReceiverClient import MessageReceiverClient
+from dhcw_nhs_wales_inthub.msgbus.MessageSenderClient import MessageSenderClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 
@@ -19,9 +20,9 @@ class ServiceBusClientFactory:
 
     def _build_service_bus_client(self) -> ServiceBusClient:
         if self.config.is_using_connection_string():
-            return ServiceBusClient.from_connection_string(self.config.connection_string())
+            return ServiceBusClient.from_connection_string(str(self.config.connection_string))
         else:
-            fully_qualified_namespace = self.config.service_bus_namespace() + SERVICEBUS_NAMESPACE_SUFFIX
+            fully_qualified_namespace = self.config.service_bus_namespace + SERVICEBUS_NAMESPACE_SUFFIX
             credential = DefaultAzureCredential()
             return ServiceBusClient(fully_qualified_namespace, credential)
 

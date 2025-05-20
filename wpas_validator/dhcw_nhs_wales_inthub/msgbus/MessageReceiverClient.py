@@ -1,17 +1,15 @@
 import logging
 from typing import Callable
 
-from azure.servicebus import ServiceBusMessage
+from azure.servicebus import ServiceBusMessage, ServiceBusReceiver
 
 logger = logging.getLogger("MessageReceiverClient")
-logger.setLevel(logging.DEBUG)
-
 
 class MessageReceiverClient:
-    def __init__(self, receiver):
+    def __init__(self, receiver: ServiceBusReceiver) -> None:
         self.receiver = receiver
 
-    def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], dict]):
+    def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], dict]) -> None:
         messages = self.receiver.receive_messages(max_message_count=num_of_messages, max_wait_time=5)
 
         for msg in messages:
@@ -35,6 +33,6 @@ class MessageReceiverClient:
                 logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
                 self.receiver.abandon_message(msg)
 
-    def close(self):
+    def close(self) -> None:
         self.receiver.close()
         logger.debug("ServiceBusReceiverClient closed.")
