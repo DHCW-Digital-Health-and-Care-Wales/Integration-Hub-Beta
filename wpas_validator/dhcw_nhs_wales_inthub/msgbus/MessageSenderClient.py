@@ -22,7 +22,7 @@ class MessageSenderClient:
         logger.debug("Message sent successfully to topic: %s", self.topic_name)
 
     def send_text_message(self, message_text: str, custom_properties: Optional[Dict[str, str]] = None):
-        self.send_message(message_text.encode('utf-8'), custom_properties)
+        self.send_message(message_text.encode("utf-8"), custom_properties)
 
     def close(self):
         self.sender.close()

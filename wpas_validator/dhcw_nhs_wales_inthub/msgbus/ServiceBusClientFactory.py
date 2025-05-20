@@ -30,7 +30,6 @@ class ServiceBusClientFactory:
 
     def create_message_receiver_client(self, queue_name: str) -> MessageReceiverClient:
         receiver: ServiceBusReceiver = self.servicebus_client.get_queue_receiver(
-            queue_name=queue_name,
-            receive_mode=ServiceBusReceiveMode.PEEK_LOCK
+            queue_name=queue_name, receive_mode=ServiceBusReceiveMode.PEEK_LOCK
         )
         return MessageReceiverClient(receiver)
