@@ -174,4 +174,4 @@ cython_debug/
 .pypirc
 .secrets
 tmp
-ca-certs
+.DS_Store

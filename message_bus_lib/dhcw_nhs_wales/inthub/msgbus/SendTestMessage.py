@@ -1,5 +1,6 @@
 from ConnectionConfig import ConnectionConfig
 from ServiceBusClientFactory import ServiceBusClientFactory
+from ServiceBusConfig import ServiceBusConfig
 
 def get_sample_hl7_message() -> str:
     return r"""MSH|^~\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20240515104523||ADT^A01|MSG00001|P|2.5.1|
@@ -9,16 +10,28 @@ NK1|1|DOE^JANE|SPOUSE||02920123457|
 PV1|1|O|WARD1^ROOM1^BED1|||||123456^SMITH^JOHN|||||||||||VIS00001|||||||||||||||||||||||||20240515104500|"""
 
 def main():
-    connection_config = ConnectionConfig(
-        connection_string="Endpoint=sb://127.0.0.1;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-        service_bus_namespace=""
-    )
+
+    connection_string = ServiceBusConfig.get_connection_string()
+    namespace = ServiceBusConfig.get_namespace()
+    queue_name = ServiceBusConfig.get_queue_name()
+
+    if connection_string:
+        connection_config = ConnectionConfig(
+            connection_string=connection_string,
+            service_bus_namespace=""
+        )
+    elif namespace:
+        connection_config = ConnectionConfig(
+            connection_string="",
+            service_bus_namespace=namespace
+        )
+    else:
+        raise ValueError("Either QUEUE_CONNECTION_STRING or SERVICE_BUS_NAMESPACE must be set")
 
     client_factory = ServiceBusClientFactory(connection_config)
 
     try:
-        #sender = client_factory.create_message_sender_client("dhcw-integration-hub-poc-docker-ingress")
-        sender = client_factory.create_message_sender_client("local-inthub-phw-ingress")
+        sender = client_factory.create_message_sender_client(queue_name)
 
         custom_properties = {
             "MessageType": "HL7v2",
@@ -38,6 +51,7 @@ def main():
 
     except Exception as e:
         print(f"Error sending message: {str(e)}")
+        raise
 
     finally:
         if 'sender' in locals():
