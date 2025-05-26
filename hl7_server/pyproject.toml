@@ -19,6 +19,7 @@ dev = [
 [tool.mypy]
 python_version = "3.13"
 disallow_untyped_defs = true
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 120

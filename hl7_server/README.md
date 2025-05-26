@@ -25,6 +25,6 @@ Run code quality checks:
 
 ```
 pipx run ruff check
-pipx run bandit application.py
-pipx run mypy application.py
+pipx run bandit application.py hl7server/*.py
+pipx run mypy application.py hl7server/*.py
 ```
