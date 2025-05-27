@@ -1,6 +1,12 @@
+import logging
+from os import getenv
+
 from hl7server.Hl7Server import Hl7Server
 
-hl7Server = Hl7Server()
+logging.basicConfig(level=getenv("LOG_LEVEL", "INFO"))
 
-print("HL7 Server - start")
+host = getenv("HOST", "localhost")
+port = int(getenv("PORT", "2575"))
+
+hl7Server = Hl7Server(host, port)
 hl7Server.run()

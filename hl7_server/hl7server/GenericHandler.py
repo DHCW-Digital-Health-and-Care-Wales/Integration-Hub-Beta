@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from hl7apy.mllp import AbstractHandler
@@ -11,9 +12,10 @@ def print_message(message: str) -> None:
 class GenericHandler(AbstractHandler):
     def reply(self) -> str:
         msg = parse_message(self.incoming_message)
-        mgs_control_id = msg.msh.msh_10.value
+        msg_control_id = msg.msh.msh_10.value
+        logging.info(f"Received message with control id: {msg_control_id}")
 
-        res = self.ack(mgs_control_id)
+        res = self.ack(msg_control_id)
         return res
 
     def ack(self, message_control_id: str) -> str:
