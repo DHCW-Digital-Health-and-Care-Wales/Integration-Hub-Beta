@@ -24,6 +24,13 @@ Run unit tests:
 Running the HL7 MLLP Server
     Step1 : Add desired HOST and PORT in Environment variable 
     Step 2: On hl7_server_application.py , use "if __name__ == '__main__'" to start application.
+     or From Terminal
+       set PORT=5656
+       set HOST=localhost
+        python hl7_server\hl7server\hl7_server_application.py
+
+
+
 Run code quality checks:
 
 ```

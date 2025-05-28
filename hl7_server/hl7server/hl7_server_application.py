@@ -3,7 +3,7 @@ import signal
 import logging
 import os
 from hl7apy.mllp import MLLPServer
-from hl7_server.dhcw_nhs_wale.generic_handler import GenericHandler
+from hl7_server.hl7server.generic_handler import GenericHandler
 
 # Configure logging
 log_level_str = os.environ.get('LOG_LEVEL', 'INFO').upper()

@@ -4,14 +4,14 @@ import os
 import signal
 import socket
 
-from hl7_server.dhcw_nhs_wale.hl7_server_application import Hl7ServerApplication
+from hl7_server.hl7server.hl7_server_application import Hl7ServerApplication
 
 
 
 class TestHl7ServerApplication(unittest.TestCase):
 
-    @patch.dict(os.environ, {"REMOTE_HOST": "127.0.0.1", "REMOTE_PORT": "2576"})
-    @patch("hl7_server.dhcw_nhs_wale.hl7_server_application.MLLPServer")
+    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
+    @patch("hl7_server.hl7server.hl7_server_application.MLLPServer")
     def test_server_initialization_and_shutdown(self, mock_mllp_server):
         mock_server_instance = MagicMock()
         mock_mllp_server.return_value = mock_server_instance
@@ -26,7 +26,8 @@ class TestHl7ServerApplication(unittest.TestCase):
 
         self.assertTrue(mock_server_instance.server_close.called)
 
-    @patch("hl7_server.dhcw_nhs_wale.hl7_server_application.MLLPServer")
+    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
+    @patch("hl7_server.hl7server.hl7_server_application.MLLPServer")
     def test_signal_handler_shutdown(self, mock_mllp_server):
         app = Hl7ServerApplication()
         mock_server_instance = MagicMock()
@@ -37,7 +38,8 @@ class TestHl7ServerApplication(unittest.TestCase):
         self.assertTrue(app.terminated)
         mock_server_instance.shutdown.assert_called_once()
 
-    @patch("hl7_server.dhcw_nhs_wale.hl7_server_application.MLLPServer")
+    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
+    @patch("hl7_server.hl7server.hl7_server_application.MLLPServer")
     def test_server_exception_handling(self, mock_mllp_server):
         mock_server_instance = MagicMock()
         mock_server_instance.serve_forever.side_effect = Exception("Test exception")
