@@ -6,15 +6,17 @@ from hl7apy.mllp import MLLPServer
 from hl7_server.dhcw_nhs_wale.generic_handler import GenericHandler
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+log_level_str = os.environ.get('LOG_LEVEL', 'INFO').upper()
+log_level = getattr(logging, log_level_str, logging.INFO)
+logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
 
 class Hl7ServerApplication:
 
     def __init__(self):
-        self.REMOTE_HOST = os.environ.get('REMOTE_HOST', '0.0.0.0')  # Default to all interfaces
-        self.REMOTE_PORT = int(os.environ.get('REMOTE_PORT', 2575))  # Default HL7 MLLP port
+        self.HOST = os.environ.get('HOST')  # Default to all interfaces
+        self.PORT = int(os.environ.get('PORT'))  # Default HL7 MLLP port
 
         self.terminated = False
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -31,11 +33,12 @@ class Hl7ServerApplication:
 
     def start_server(self) -> None:
 
-        logger.info(f"MLLP Server listening on {self.REMOTE_HOST}:{self.REMOTE_PORT}")
-        handlers = {"ADT^A31^ADT_A05": (GenericHandler,)}
+        logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT}")
+        handlers = {"ADT^A31^ADT_A05": (GenericHandler,),
+                    "ADT^A28^ADT_A05": (GenericHandler,)}
 
         try:
-            self._server = MLLPServer(self.REMOTE_HOST, self.REMOTE_PORT, handlers)
+            self._server = MLLPServer(self.HOST, self.PORT, handlers)
             self._server.socket.settimeout(10.0)  # Short timeout for graceful shutdown checking
 
             # Main server loop
