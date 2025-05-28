@@ -1,0 +1,39 @@
+[project]
+name = "hl7-server"
+version = "0.1.0"
+description = "HL7v2 server"
+
+dependencies = [
+  "python==3.13",
+  "azure-servicebus==7.14.2",
+  "azure-identity==1.21.0",
+  "hl7apy==1.3.5",
+]
+
+[dependency-groups]
+dev = [
+  "ruff==0.11.11",
+  "bandit==1.8.3",
+]
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",  # Enforces style guide rules (Pycodestyle errors).
+  "F",  # Detects various errors in Python code (Pyflakes errors).
+  "W",  # Enforces style guide warnings (Pycodestyle warnings).
+  "A",  # Detects shadowing of Python built-in functions (Flake8-builtins).
+  "PLC",  # Enforces coding conventions (Pylint convention messages).
+  "PLE",  # Detects errors in Python code (Pylint error messages).
+  "PLW",  # Detects potential issues in Python code (Pylint warning messages).
+  "I"  # Sorts and organizes imports (Import-related rules).
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]  # Stops asserts in tests being flagged.
