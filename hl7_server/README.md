@@ -4,6 +4,11 @@ Configurable HL7 MLLP server.
 
 ## Development
 
+### Dependencies
+
+- python3
+- pipx - to run code quality checks ([Ruff](https://github.com/astral-sh/ruff), [Bandit](https://github.com/PyCQA/bandit))
+
 Create virtual environment and start using it:
 
 ```python3 -m venv venv```
@@ -19,3 +24,10 @@ Run unit tests:
 Running the HL7 MLLP Server
     Step1 : Add desired HOST and PORT in Environment variable 
     Step 2: On hl7_server_application.py , use "if __name__ == '__main__'" to start application.
+Run code quality checks:
+
+```
+pipx run ruff check
+pipx run bandit application.py
+pipx run mypy application.py
+```
