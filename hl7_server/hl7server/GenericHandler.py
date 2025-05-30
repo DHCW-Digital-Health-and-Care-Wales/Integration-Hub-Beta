@@ -3,7 +3,7 @@ from datetime import datetime
 
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
-from .ServiceBusMessageSender import ServiceBusMessageSender
+from messaging.ServiceBusMessageSender import ServiceBusMessageSender
 
 
 class GenericHandler(AbstractHandler):

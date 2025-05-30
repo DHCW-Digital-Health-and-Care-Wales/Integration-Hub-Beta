@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Optional
 import os
 
-
 @dataclass
 class ServiceBusConfig:
     queue_name: str

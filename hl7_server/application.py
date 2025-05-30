@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from hl7server.Hl7Server import Hl7Server
 
-load_dotenv()
+load_dotenv(".env")
 
 logging.basicConfig(level=getenv("LOG_LEVEL", "INFO"))
 

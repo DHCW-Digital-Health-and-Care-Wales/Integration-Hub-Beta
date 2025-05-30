@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from hl7server.ServiceBusConfig import ServiceBusConfig
-from hl7server.ServiceBusMessageSender import ServiceBusMessageSender
+from messaging.ServiceBusConfig import ServiceBusConfig
+from messaging.ServiceBusMessageSender import ServiceBusMessageSender
 from azure.servicebus import ServiceBusMessage
 
 
@@ -44,7 +44,7 @@ class TestServiceBusConfig:
 
 
 class TestServiceBusMessageSender:
-    @patch('hl7server.ServiceBusMessageSender.ServiceBusClient')
+    @patch('messaging.ServiceBusMessageSender.ServiceBusClient')
     def test_send_message_local(self, mock_service_bus_client, mock_env_local):
         # Setup mocks
         mock_sender = MagicMock()
@@ -73,8 +73,8 @@ class TestServiceBusMessageSender:
         body_content = b''.join(sent_message.body)
         assert body_content.decode() == "test message"
 
-    @patch('hl7server.ServiceBusMessageSender.ServiceBusClient')
-    @patch('hl7server.ServiceBusMessageSender.DefaultAzureCredential')
+    @patch('messaging.ServiceBusMessageSender.ServiceBusClient')
+    @patch('messaging.ServiceBusMessageSender.DefaultAzureCredential')
     def test_send_message_cloud(self, mock_credential, mock_service_bus_client, mock_env_cloud):
         
         # Setup mocks
