@@ -6,13 +6,23 @@ HL7 Transformer Service
 
 Create virtual environment and start using it:
 
-```python3 -m venv venv```
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 
 Install dependencies:
 
 ```pip install -r requirements```
 
+Run code quality checks:
+
+```
+pipx run ruff check
+pipx run bandit *.py tests/**/*.py
+pipx run mypy --ignore-missing-imports *.py
+```
+
 Run unit tests:
 
-```PYTHONPATH=.. python -m unittest discover tests```
-
+```python -m unittest discover tests```
