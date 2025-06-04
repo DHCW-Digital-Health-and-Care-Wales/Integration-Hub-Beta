@@ -2,7 +2,8 @@ import unittest
 from unittest.mock import MagicMock
 from azure.servicebus import ServiceBusMessage
 
-from dhcw_nhs_wales.inthub.msgbus.message_receiver_client import MessageReceiverClient
+from message_bus_lib.message_receiver_client import MessageReceiverClient
+from message_bus_lib.processing_result import ProcessingResult
 
 
 def create_message(message_id):
@@ -23,7 +24,7 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.receive_messages.return_value = [message]
 
         def processor(msg):
-            return {"success": True}
+            return ProcessingResult.successful()
 
         # Act
         self.message_receiver_client.receive_messages(1, processor)
@@ -40,8 +41,8 @@ class TestMessageReceiverClient(unittest.TestCase):
 
         def processor(msg):
             if msg.message_id == "123":
-                return {"success": True}
-            return {"success": False, "retry": False, "error_reason": "Processing Error"}
+                return ProcessingResult.successful()
+            return ProcessingResult.failed(error_reason= "Processing Error")
 
         # Act
         self.message_receiver_client.receive_messages(2, processor)
@@ -61,7 +62,7 @@ class TestMessageReceiverClient(unittest.TestCase):
 
         def processor(msg):
             if msg.message_id == "123":
-                return {"success": False, "retry": False, "error_reason": "Processing Error"}
+                return ProcessingResult.failed(error_reason= "Processing Error")
 
         # Act
         self.message_receiver_client.receive_messages(1, processor)
@@ -79,7 +80,7 @@ class TestMessageReceiverClient(unittest.TestCase):
 
         def processor(msg):
             if msg.message_id == "123":
-                return {"success": False, "retry": True, "error_reason": "Pipe Parsing Error"}
+                return ProcessingResult.failed(error_reason= "Pipe Parsing Error", retry= False)
 
         # Act
         self.message_receiver_client.receive_messages(1, processor)

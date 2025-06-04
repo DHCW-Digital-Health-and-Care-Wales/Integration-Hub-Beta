@@ -6,11 +6,11 @@ import configparser
 from azure.servicebus import ServiceBusMessage
 from hl7apy.parser import parse_message
 from app_config import AppConfig
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.connection_config import ConnectionConfig
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.message_receiver_client import MessageReceiverClient
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.message_sender_client import MessageSenderClient
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.servicebus_client_factory import ServiceBusClientFactory
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.processing_result import ProcessingResult
+from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_receiver_client import MessageReceiverClient
+from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from message_bus_lib.processing_result import ProcessingResult
 from datetime_transformer import transform_datetime
 
 logging.basicConfig(

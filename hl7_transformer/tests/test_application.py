@@ -5,7 +5,7 @@ from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
 from application import _process_message
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.processing_result import ProcessingResult
+from message_bus_lib.processing_result import ProcessingResult
 
 
 def _setup(created_datetime: str):
