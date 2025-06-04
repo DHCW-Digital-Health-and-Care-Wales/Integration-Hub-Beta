@@ -2,7 +2,7 @@ import logging
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiver
 from typing import Callable
 
-from message_bus_lib.dhcw_nhs_wales.inthub.msgbus.processing_result import ProcessingResult
+from message_bus_lib.processing_result import ProcessingResult
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MessageReceiverClient:
                     logger.error("Message processing failed, message abandoned: %s", msg.message_id)
 
                 else:
-                    reason = result.get("error_reason", "Unknown error")
+                    reason = result.error_reason
                     self.receiver.dead_letter_message(msg, reason=reason)
                     logger.error("Message processing failed, message dead lettered: %s", msg.message_id)
 

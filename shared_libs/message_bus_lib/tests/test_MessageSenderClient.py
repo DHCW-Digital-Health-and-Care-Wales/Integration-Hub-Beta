@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from dhcw_nhs_wales.inthub.msgbus.message_sender_client import MessageSenderClient
+from message_bus_lib.message_sender_client import MessageSenderClient
 
 
 class TestMessageSenderClient(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestMessageSenderClient(unittest.TestCase):
         self.message_sender_client.__exit__()
 
         # Assert
-        self.service_bus_sender_client.__exit__.assert_called_once()
+        self.service_bus_sender_client.close.assert_called_once()
 
 
 if __name__ == "__main__":

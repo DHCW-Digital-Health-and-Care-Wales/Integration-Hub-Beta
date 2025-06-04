@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class ProcessingResult:
     success: bool
     error_reason: str | None = None
-    retry: str | None = None
+    retry: bool | None = None
 
     @staticmethod
     def successful() -> ProcessingResult:
