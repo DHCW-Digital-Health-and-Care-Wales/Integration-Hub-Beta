@@ -43,7 +43,23 @@ services:
     networks:
       integration-hub:
         aliases:
-          - "phw-hl7-server"  
+          - "phw-hl7-server"
+
+  phw-hl7-transformer:
+    container_name: phw-hl7-transformer
+    build:
+      context: ../hl7_transformer
+      additional_contexts:
+      - ca-certs=../ca-certs
+      - shared_libs=../shared_libs
+    env_file:
+      - ../hl7_transformer/.env
+    depends_on:
+      - sb-emulator
+    networks:
+      integration-hub:
+        aliases:
+          - "phw-hl7-transformer"
 
 networks:
   integration-hub:
