@@ -1,8 +1,9 @@
 import logging
+
+from hl7apy.core import Message
+from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
-from hl7apy.exceptions import HL7apyException
-from hl7apy.core import Message
 
 from hl7_server.hl7server.hl7_ack_builder import HL7AckBuilder
 
@@ -10,8 +11,6 @@ from hl7_server.hl7server.hl7_ack_builder import HL7AckBuilder
 logger = logging.getLogger(__name__)
 
 
-class InvalidHL7FormatException(Exception):
-    pass
 
 class GenericHandler(AbstractHandler):
 
@@ -28,7 +27,7 @@ class GenericHandler(AbstractHandler):
         except HL7apyException as e:
             logger.error("HL7 parsing error: %s", e)
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error while processing message")
             raise
 

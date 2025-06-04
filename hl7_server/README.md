@@ -28,6 +28,8 @@ Running the HL7 MLLP Server
        set PORT=5656
        set HOST=localhost
         python hl7_server\hl7server\hl7_server_application.py
+To run unit test
+     python -m unittest discover -s hl7_server\tests
 
 
 

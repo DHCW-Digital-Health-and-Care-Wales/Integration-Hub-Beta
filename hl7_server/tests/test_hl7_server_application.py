@@ -1,11 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock, call
 import os
 import signal
 import socket
+import unittest
+from unittest.mock import MagicMock, patch
 
 from hl7_server.hl7server.hl7_server_application import Hl7ServerApplication
-
 
 
 class TestHl7ServerApplication(unittest.TestCase):

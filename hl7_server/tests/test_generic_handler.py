@@ -1,10 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock,ANY
-from hl7_server.hl7server.generic_handler import GenericHandler, InvalidHL7FormatException
+from unittest.mock import ANY, MagicMock, patch
+
+from hl7_server.hl7server.generic_handler import GenericHandler
 
 # Sample valid HL7 message (pipe & hat, type A28)
 VALID_A28_MESSAGE = (
-    "MSH|^~\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
+    "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
     "PID|1||123456^^^Hospital^MR||Doe^John\r"
 )
 

@@ -1,8 +1,10 @@
-import socket
-import signal
 import logging
 import os
+import signal
+import socket
+
 from hl7apy.mllp import MLLPServer
+
 from hl7_server.hl7server.generic_handler import GenericHandler
 
 # Configure logging
@@ -14,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class Hl7ServerApplication:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.HOST = os.environ.get('HOST')  # Default to all interfaces
         self.PORT = int(os.environ.get('PORT'))  # Default HL7 MLLP port
 
@@ -24,7 +26,7 @@ class Hl7ServerApplication:
 
         self._server = None
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame)-> None:
         logger.info("Shutdown signal received (signal %s).", signum)
         self.terminated = True
         if self._server:

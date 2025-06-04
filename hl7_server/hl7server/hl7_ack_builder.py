@@ -1,6 +1,8 @@
-from hl7apy.core import Message, Segment
-from hl7apy.consts import VALIDATION_LEVEL
 from datetime import datetime
+
+from hl7apy.consts import VALIDATION_LEVEL
+from hl7apy.core import Message, Segment
+
 from hl7_server.hl7server.hl7_constant import Hl7Constants
 
 
@@ -9,7 +11,6 @@ class HL7AckBuilder:
     def build_ack(self, message_control_id: str, original_msg: Message) -> Message:
         ack = Message("ACK", validation_level=VALIDATION_LEVEL.STRICT)
 
-        message_type = original_msg.msh.msh_9.message_code.value
 
         # Build MSH segment
         ack.msh.msh_1 = Hl7Constants.FIELD_SEPARATOR
