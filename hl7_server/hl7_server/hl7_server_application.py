@@ -6,7 +6,7 @@ from typing import Any
 
 from hl7apy.mllp import MLLPServer
 
-from hl7_server.hl7server.generic_handler import GenericHandler
+from .generic_handler import GenericHandler
 
 # Configure logging
 log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -53,8 +53,3 @@ class Hl7ServerApplication:
             if self._server:
                 self._server.server_close()
             logger.info("HL7 MLLP server shut down.")
-
-
-if __name__ == "__main__":
-    app = Hl7ServerApplication()
-    app.start_server()

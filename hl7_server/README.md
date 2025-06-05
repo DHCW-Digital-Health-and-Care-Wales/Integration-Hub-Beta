@@ -1,6 +1,6 @@
 # HL7 MLLP server
 
-Configurable HL7 MLLP server.
+Configurable HL7 MLLP server built with hl7apy package.
 
 ## Development
 
@@ -9,34 +9,50 @@ Configurable HL7 MLLP server.
 - python3
 - pipx - to run code quality checks ([Ruff](https://github.com/astral-sh/ruff), [Bandit](https://github.com/PyCQA/bandit))
 
-Create virtual environment and start using it:
+### Build / checks
 
-```python3 -m venv venv```
+In the [hl7_server](.) folder create virtual environment and start using it:
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 
 Install dependencies:
-
-```pip install -r requirements```
-
-Run unit tests:
-
-```python -m unittest discover tests```
-
-Running the HL7 MLLP Server
-    Step1 : Add desired HOST and PORT in Environment variable 
-    Step 2: On hl7_server_application.py , use "if __name__ == '__main__'" to start application.
-     or From Terminal
-       set PORT=5656
-       set HOST=localhost
-        python hl7_server\hl7server\hl7_server_application.py
-To run unit test
-     python -m unittest discover -s hl7_server\tests
-
-
+```
+pip install -r requirements
+```
 
 Run code quality checks:
-
 ```
 pipx run ruff check
-pipx run bandit application.py
-pipx run mypy application.py
+pipx run bandit hl7_server/**/*.py tests/**/*.py
+pipx run mypy --ignore-missing-imports hl7_server/**/*.py tests/**/*.py
 ```
+
+Run unit tests:
+```
+python -m unittest discover tests
+```
+
+## Running HL7 server
+
+You can run the HL7 server directly with python or build docker image and run it in the container.
+To define host and port the server should bind to use environment variables configuration.
+
+### Environment variables
+
+- **HOST** - default 127.0.0.1
+- **PORT** - default 2575
+- **LOG_LEVEL** - default 'INFO'
+
+### Running directly
+
+From the [hl7_server](.) folder run:
+```sh
+python application.py
+```
+
+### Runing in docker
+
+You can build the docker image with provided [Dockerfile](./Dockerfile) or you can run selected workflow
+using Docker compose configuration in [local](../local/README.md).
