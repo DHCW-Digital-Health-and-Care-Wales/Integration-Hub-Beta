@@ -38,6 +38,8 @@ services:
       dockerfile: ./Dockerfile
     env_file:
       - ./phw-hl7-server.env
+    ports:
+      - "2575:2575"
     depends_on:
       - sb-emulator
     networks:
