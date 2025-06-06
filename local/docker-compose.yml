@@ -36,8 +36,6 @@ services:
     build:
       context: ../hl7_server
       dockerfile: ./Dockerfile
-    ports:
-      - "2575:2575"
     env_file:
       - ./phw-hl7-server.env
     ports:
