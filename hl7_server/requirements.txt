@@ -3,3 +3,4 @@ azure-identity==1.21.0
 hl7apy==1.3.5
 python-dotenv==1.1.0
 pytest==8.3.5
+../shared_libs/message_bus_lib

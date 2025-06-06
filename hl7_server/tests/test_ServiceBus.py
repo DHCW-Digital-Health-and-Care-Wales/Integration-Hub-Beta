@@ -1,109 +1,121 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from messaging.ServiceBusConfig import ServiceBusConfig
-from messaging.ServiceBusMessageSender import ServiceBusMessageSender
-from azure.servicebus import ServiceBusMessage
+import os
 
 
-TEST_CONN_STRING = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testkey"
-
-@pytest.fixture
-def mock_env_local(monkeypatch):
-    monkeypatch.setenv("QUEUE_NAME", "test-queue")
-    monkeypatch.setenv("QUEUE_CONNECTION_STRING", TEST_CONN_STRING)
-
-@pytest.fixture
-def mock_env_cloud(monkeypatch):
-    monkeypatch.setenv("QUEUE_NAME", "test-queue")
-    monkeypatch.setenv("SERVICE_BUS_NAMESPACE", "test-namespace")
-
-class TestServiceBusConfig:
-    def test_local_config(self, mock_env_local):
-        config = ServiceBusConfig.from_env()
-        assert config.queue_name == "test-queue"
-        assert config.connection_string == TEST_CONN_STRING
-        assert config.namespace is None
-        assert config.is_local_setup() is True
-
-    def test_cloud_config(self, mock_env_cloud):
-        config = ServiceBusConfig.from_env()
-        assert config.queue_name == "test-queue"
-        assert config.connection_string is None
-        assert config.namespace == "test-namespace"
-        assert config.is_local_setup() is False
-
-    def test_missing_required_env(self, monkeypatch):
-        monkeypatch.delenv("QUEUE_NAME", raising=False)
-        with pytest.raises(ValueError, match="QUEUE_NAME environment variable is required"):
-            ServiceBusConfig.from_env()
-
-    def test_missing_connection_details(self, monkeypatch):
-        monkeypatch.setenv("QUEUE_NAME", "test-queue")
-        with pytest.raises(ValueError, match="Either QUEUE_CONNECTION_STRING or SERVICE_BUS_NAMESPACE must be provided"):
-            ServiceBusConfig.from_env()
-
-
-class TestServiceBusMessageSender:
-    @patch('messaging.ServiceBusMessageSender.ServiceBusClient')
-    def test_send_message_local(self, mock_service_bus_client, mock_env_local):
-        # Setup mocks
-        mock_sender = MagicMock()
-        mock_client_instance = MagicMock()
-        mock_client_instance.__enter__.return_value = mock_client_instance
-        mock_client_instance.__exit__.return_value = None
-        mock_client_instance.get_queue_sender.return_value.__enter__.return_value = mock_sender
-        mock_client_instance.get_queue_sender.return_value.__exit__.return_value = None
-        
-        mock_service_bus_client.from_connection_string.return_value = mock_client_instance
-        
-        # Create sender and send message
-        sender = ServiceBusMessageSender()
-        sender.send_message("test message")
-
-        # Assert
-        mock_service_bus_client.from_connection_string.assert_called_once_with(
-            conn_str=TEST_CONN_STRING
-        )
-        mock_client_instance.get_queue_sender.assert_called_once_with(queue_name="test-queue")
-        mock_sender.send_messages.assert_called_once()
-        
-        # Verify the message content
-        sent_message = mock_sender.send_messages.call_args[0][0]
-        assert isinstance(sent_message, ServiceBusMessage)
-        body_content = b''.join(sent_message.body)
-        assert body_content.decode() == "test message"
-
-    @patch('messaging.ServiceBusMessageSender.ServiceBusClient')
-    @patch('messaging.ServiceBusMessageSender.DefaultAzureCredential')
-    def test_send_message_cloud(self, mock_credential, mock_service_bus_client, mock_env_cloud):
+class TestGenericHandlerServiceBusIntegration:
+    
+    @patch.dict(os.environ, {
+        'QUEUE_CONNECTION_STRING': 'Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testkey',
+        'QUEUE_NAME': 'test-queue'
+    })
+    @patch('hl7_server.generic_handler.ServiceBusClientFactory')
+    @patch('hl7_server.generic_handler.parse_message')
+    def test_send_hl7_message_to_service_bus_with_connection_string(self, mock_parse, mock_factory_class):
+        from hl7_server.generic_handler import GenericHandler
         
         # Setup mocks
-        mock_sender = MagicMock()
-        mock_client_instance = MagicMock()
-        mock_client_instance.__enter__.return_value = mock_client_instance
-        mock_client_instance.__exit__.return_value = None
-        mock_client_instance.get_queue_sender.return_value.__enter__.return_value = mock_sender
-        mock_client_instance.get_queue_sender.return_value.__exit__.return_value = None
+        mock_factory = MagicMock()
+        mock_sender_client = MagicMock()
+        mock_factory_class.return_value = mock_factory
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
         
-        mock_service_bus_client.return_value = mock_client_instance
-        mock_credential_instance = MagicMock()
-        mock_credential.return_value = mock_credential_instance
+        # Mock HL7 message parsing
+        mock_msg = MagicMock()
+        mock_msg.msh.msh_10.value = "12345"
+        mock_msg.msh.msh_9.to_er7.return_value = "ADT^A01"
+        mock_parse.return_value = mock_msg
         
-        # Create sender and send message
-        sender = ServiceBusMessageSender()
-        sender.send_message("test message")
+        # Create handler
+        incoming_message = "MSH|^~\\&|SYSTEM|SENDER|RECEIVER|DESTINATION|20240101120000||ADT^A01|12345|P|2.5"
+        handler = GenericHandler(incoming_message)
+        
+        # Mock the ACK creation
+        with patch.object(handler, 'create_ack', return_value="ACK message"):
+            result = handler.reply()
+        
+        # Verify service bus integration with connection string
+        mock_factory_class.assert_called_once()
+        config = mock_factory_class.call_args[0][0]
+        assert config.connection_string == 'Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=testkey'
+        assert config.service_bus_namespace == ""
+        
+        mock_factory.create_queue_sender_client.assert_called_once_with("test-queue")
+        mock_sender_client.__enter__.assert_called_once()
+        mock_sender_client.__exit__.assert_called_once()
+        mock_sender_client.__enter__.return_value.send_text_message.assert_called_once_with(incoming_message)
 
-        # Assert
-        mock_credential.assert_called_once()
-        mock_service_bus_client.assert_called_once_with(
-            fully_qualified_namespace="test-namespace.servicebus.windows.net",
-            credential=mock_credential_instance
-        )
-        mock_client_instance.get_queue_sender.assert_called_once_with(queue_name="test-queue")
-        mock_sender.send_messages.assert_called_once()
+    @patch.dict(os.environ, {
+        'SERVICE_BUS_NAMESPACE': 'test-namespace',
+        'QUEUE_NAME': 'test-queue'
+    })
+    @patch('hl7_server.generic_handler.ServiceBusClientFactory')
+    @patch('hl7_server.generic_handler.parse_message')
+    def test_send_hl7_message_to_service_bus_with_namespace(self, mock_parse, mock_factory_class):
+        from hl7_server.generic_handler import GenericHandler
         
-        # Verify the message content
-        sent_message = mock_sender.send_messages.call_args[0][0]
-        assert isinstance(sent_message, ServiceBusMessage)
-        body_content = b''.join(sent_message.body)
-        assert body_content.decode() == "test message"    
+        # Setup mocks
+        mock_factory = MagicMock()
+        mock_sender_client = MagicMock()
+        mock_factory_class.return_value = mock_factory
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        
+        # Mock HL7 message parsing
+        mock_msg = MagicMock()
+        mock_msg.msh.msh_10.value = "67890"
+        mock_msg.msh.msh_9.to_er7.return_value = "ORU^R01"
+        mock_parse.return_value = mock_msg
+        
+        # Create handler
+        incoming_message = "MSH|^~\\&|LAB|SENDER|RECEIVER|DESTINATION|20240101130000||ORU^R01|67890|P|2.5"
+        handler = GenericHandler(incoming_message)
+        
+        # Mock the ACK creation
+        with patch.object(handler, 'create_ack', return_value="ACK message"):
+            result = handler.reply()
+        
+        # Verify service bus integration with namespace
+        mock_factory_class.assert_called_once()
+        config = mock_factory_class.call_args[0][0]
+        assert config.connection_string == ""
+        assert config.service_bus_namespace == "test-namespace"
+        
+        mock_factory.create_queue_sender_client.assert_called_once_with("test-queue")
+        mock_sender_client.__enter__.assert_called_once()
+        mock_sender_client.__exit__.assert_called_once()
+        mock_sender_client.__enter__.return_value.send_text_message.assert_called_once_with(incoming_message)
+
+    @patch.dict(os.environ, {
+        'QUEUE_CONNECTION_STRING': 'test-connection-string',
+        'QUEUE_NAME': 'test-queue'
+    })
+    @patch('hl7_server.generic_handler.ServiceBusClientFactory')
+    @patch('hl7_server.generic_handler.parse_message')
+    def test_service_bus_send_failure_raises_exception(self, mock_parse, mock_factory_class):
+        from hl7_server.generic_handler import GenericHandler
+        
+        # Setup mocks
+        mock_factory = MagicMock()
+        mock_sender_client = MagicMock()
+        mock_factory_class.return_value = mock_factory
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        
+        # Make the sender raise an exception
+        mock_sender_client.__enter__.return_value.send_text_message.side_effect = Exception("Service Bus error")
+        
+        # Mock HL7 message parsing
+        mock_msg = MagicMock()
+        mock_msg.msh.msh_10.value = "ERROR123"
+        mock_msg.msh.msh_9.to_er7.return_value = "ADT^A01"
+        mock_parse.return_value = mock_msg
+        
+        # Create handler with required message parameter
+        incoming_message = "test hl7 message"
+        handler = GenericHandler(incoming_message)
+        
+        # Verify service bus errors
+        with pytest.raises(Exception, match="Service Bus error"):
+            handler.reply()
+        
+        # Verify service bus was attempted
+        mock_sender_client.__enter__.return_value.send_text_message.assert_called_once_with(incoming_message)
