@@ -4,6 +4,7 @@ from azure.identity import DefaultAzureCredential
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.audit_service_client import AuditServiceClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 
@@ -35,3 +36,7 @@ class ServiceBusClientFactory:
             receive_mode=ServiceBusReceiveMode.PEEK_LOCK
         )
         return MessageReceiverClient(receiver)
+    
+    def create_audit_service_client(self, audit_queue_name: str, workflow_id: str, microservice_id: str) -> AuditServiceClient:
+        sender_client = self.create_queue_sender_client(audit_queue_name)
+        return AuditServiceClient(sender_client, workflow_id, microservice_id)
