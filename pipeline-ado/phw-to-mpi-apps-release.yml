@@ -16,13 +16,16 @@ variables:
   acrName: 'uksdhcwihsharedcr'
   azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
   azureLocation: "uks"
-  resourcePipelineName: 'PWH to MPI Apps - Build'
-  flowName: 'phw2mpi'
+  hl7ServerPipelineName: 'HL7 Server - Build'
+  hl7TransformerPipelineName: 'HL7 Transformer - Build'
 
 resources:
   pipelines:
-    - pipeline: 'PWH to MPI Apps - Build'
-      source: 'PWH to MPI Apps - Build'
+    - pipeline: 'HL7 Server - Build'
+      source: 'HL7 Server - Build'
+      trigger: none
+    - pipeline: 'HL7 Transformer - Build'
+      source: 'HL7 Transformer - Build'
       trigger: none 
 
 
@@ -36,15 +39,14 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7MLLPServerDev'
           displayName: 'Release App HL7MLLPServer - Dev'
-          appName: 'hl7server'
+          appName: 'phw-hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
-          resourcePipelineName: ${{ variables.resourcePipelineName }}
-          flowName: $(flowName)
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7TransformerDev
     displayName: 'Release App HL7Transformer - Dev'
@@ -53,15 +55,14 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7TransformerDev'
           displayName: 'Release App HL7Transformer - Dev'
-          appName: 'hl7trans'
+          appName: 'phw2mpi-hl7trans'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
-          resourcePipelineName: ${{ variables.resourcePipelineName }}
-          flowName: $(flowName)
+          resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
 
   - stage: ReleaseHL7MLLPServerTest
     displayName: 'Release App HL7MLLPServer - Test'
@@ -71,15 +72,14 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7MLLPServerTest'
           displayName: 'Release App HL7MLLPServer - Test'
-          appName: 'hl7server'
+          appName: 'phw-hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
-          resourcePipelineName: ${{ variables.resourcePipelineName }}
-          flowName: $(flowName)
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7TransformerTest
     displayName: 'Release App HL7Transformer - Test'
@@ -89,12 +89,11 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7TransformerTest'
           displayName: 'Release App HL7Transformer - Test'
-          appName: 'hl7trans'
+          appName: 'phw2mpi-hl7trans'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
-          resourcePipelineName: ${{ variables.resourcePipelineName }}
-          flowName: $(flowName)
+          resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}

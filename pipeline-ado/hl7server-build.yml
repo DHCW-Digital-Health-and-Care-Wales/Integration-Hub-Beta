@@ -1,0 +1,47 @@
+# HL7 Server Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - hl7_server/*
+      - shared_libs/*
+      - pipeline-ado/templates/*
+
+pr: none
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+
+stages:
+  - stage: BuildAndPushHL7Server
+    displayName: 'Build and Push HL7 Server'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushHL7Server'
+          displayName: 'Build and Push HL7 Server'
+          appName: 'phw-hl7server'
+          dockerfilePath: 'hl7_server/Dockerfile'
+          buildContext: 'hl7_server'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}

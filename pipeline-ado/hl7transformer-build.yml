@@ -1,0 +1,48 @@
+# HL7 Transformer Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - hl7_transformer/*
+      - shared_libs/*
+      - pipeline-ado/templates/*
+
+pr: none
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+
+stages:
+  - stage: BuildAndPushHL7Transformer
+    displayName: 'Build and Push HL7 Transformer'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushHL7Transformer'
+          displayName: 'Build and Push HL7 Transformer'
+          appName: 'phw2mpi-hl7trans'
+          dockerfilePath: 'hl7_transformer/Dockerfile'
+          buildContext: 'hl7_transformer'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
