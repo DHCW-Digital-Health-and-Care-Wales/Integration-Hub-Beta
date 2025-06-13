@@ -1,0 +1,55 @@
+# Main pipeline file (azure-pipelines.yml)
+trigger: none
+pr: none
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'inegration-hub-azure-build-dev'
+
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+
+
+stages:
+
+  - stage: BuildAndPushAppHL7MLLPServer
+    displayName: 'Build and Push App HL7MLLPServer'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushAppHL7MLLPServer'
+          displayName: 'Build and Push App HL7MLLPServer'
+          appName: 'hl7mllpserver'
+          dockerfilePath: 'hl7_server/Dockerfile'
+          buildContext: 'hl7_server'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - stage: BuildAndPushAppHL7Transformer
+    displayName: 'Build and Push App HL7Transformer'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushAppHL7Transformer'
+          displayName: 'Build and Push App HL7Transformer'
+          appName: 'hl7transformer'
+          dockerfilePath: 'hl7_transformer/Dockerfile'
+          buildContext: 'hl7_transformer'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}

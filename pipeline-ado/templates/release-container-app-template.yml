@@ -1,0 +1,80 @@
+parameters:
+  azureServiceConnection: '' # Azure Service Connection name
+  appName: ''
+  resourceGroupName: ''
+  azureLocation: ''
+  environment: ''
+  acrName: ''
+  acrRepository: ''
+  jobName: ''
+  displayName: ''
+  POOL_NAME: '' # Pool name for the agent
+  resourcePipelineName: '' # Name of the pipeline that builds the image tag artifact
+  flowName: '' # Flow name for resource identification
+
+jobs:
+- job: ${{ parameters.jobName }}
+  displayName: ${{ parameters.displayName }}
+  pool:
+      ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
+        vmImage: 'ubuntu-latest'
+      ${{ else }}:
+        name: ${{ parameters.POOL_NAME }}
+
+  steps:
+    - checkout: self
+      displayName: 'Checkout Repository'
+
+    - download: ${{ parameters.resourcePipelineName }}
+      artifact: ${{ parameters.appName }}-metadata
+
+    - task: AzureCLI@2
+      displayName: 'Azure CLI Login'
+      inputs:
+        azureSubscription: ${{ parameters.azureServiceConnection }}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az --version
+
+    - task: AzureCLI@2
+      displayName: 'Update Image Tag'
+      inputs:
+        azureSubscription: ${{ parameters.azureServiceConnection }}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          set -e
+          # Build the app full name dynamically
+          IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/${{ parameters.appName }}-metadata/imageTag.txt")
+          echo "Image tag is: $IMAGE_TAG"
+
+          echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
+          az acr login --name ${{ parameters.acrName }}
+          az acr import \
+            --name ${{ parameters.acrName }} \
+            --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG \
+            --image ${{ parameters.appName }}:${{ parameters.flowName }}-${{ parameters.environment }} \
+            --force
+
+          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
+
+    - task: AzureCLI@2
+      displayName: 'Update Azure Container App'
+      inputs:
+        azureSubscription: ${{ parameters.azureServiceConnection }}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          set -e
+          # Build the app full name dynamically
+          appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.flowName }}-${{ parameters.appName }}-ca"
+
+          az containerapp update \
+            --name $appFullName \
+            --resource-group ${{ parameters.resourceGroupName }} \
+            --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.flowName }}-${{ parameters.environment }}
+
+          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.flowName }}-${{ parameters.environment }}"
+
+          

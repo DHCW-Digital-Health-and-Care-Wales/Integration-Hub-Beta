@@ -1,0 +1,100 @@
+# Main pipeline file (azure-pipelines.yml)
+trigger: none
+pr: none
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'inegration-hub-azure-build-dev'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  azureLocation: "uks"
+  resourcePipelineName: 'PWH to MPI Apps - Build'
+  flowName: 'phw2mpi'
+
+resources:
+  pipelines:
+    - pipeline: 'PWH to MPI Apps - Build'
+      source: 'PWH to MPI Apps - Build'
+      trigger: none 
+
+
+
+stages:
+
+  - stage: ReleaseHL7MLLPServerDev
+    displayName: 'Release App HL7MLLPServer - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7MLLPServerDev'
+          displayName: 'Release App HL7MLLPServer - Dev'
+          appName: 'hl7server'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.resourcePipelineName }}
+          flowName: $(flowName)
+
+  - stage: ReleaseHL7TransformerDev
+    displayName: 'Release App HL7Transformer - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7TransformerDev'
+          displayName: 'Release App HL7Transformer - Dev'
+          appName: 'hl7trans'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.resourcePipelineName }}
+          flowName: $(flowName)
+
+  - stage: ReleaseHL7MLLPServerTest
+    displayName: 'Release App HL7MLLPServer - Test'
+    dependsOn: ReleaseHL7MLLPServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7MLLPServerTest'
+          displayName: 'Release App HL7MLLPServer - Test'
+          appName: 'hl7server'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.resourcePipelineName }}
+          flowName: $(flowName)
+
+  - stage: ReleaseHL7TransformerTest
+    displayName: 'Release App HL7Transformer - Test'
+    dependsOn: ReleaseHL7TransformerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7TransformerTest'
+          displayName: 'Release App HL7Transformer - Test'
+          appName: 'hl7trans'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.resourcePipelineName }}
+          flowName: $(flowName)
