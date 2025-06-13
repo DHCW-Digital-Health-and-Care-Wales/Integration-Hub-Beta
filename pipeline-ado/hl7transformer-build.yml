@@ -39,7 +39,7 @@ stages:
         parameters:
           jobName: 'BuildPushHL7Transformer'
           displayName: 'Build and Push HL7 Transformer'
-          appName: 'phw2mpi-hl7trans'
+          appName: 'hl7transformer'
           dockerfilePath: 'hl7_transformer/Dockerfile'
           buildContext: 'hl7_transformer'
           acrName: $(acrName)

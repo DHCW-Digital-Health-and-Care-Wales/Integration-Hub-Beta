@@ -39,7 +39,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7MLLPServerDev'
           displayName: 'Release App HL7MLLPServer - Dev'
-          appName: 'phw-hl7server'
+          appName: 'hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -55,7 +55,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7TransformerDev'
           displayName: 'Release App HL7Transformer - Dev'
-          appName: 'phw2mpi-hl7trans'
+          appName: 'hl7transformer'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -72,7 +72,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7MLLPServerTest'
           displayName: 'Release App HL7MLLPServer - Test'
-          appName: 'phw-hl7server'
+          appName: 'hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -89,7 +89,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7TransformerTest'
           displayName: 'Release App HL7Transformer - Test'
-          appName: 'phw2mpi-hl7trans'
+          appName: 'hl7transformer'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'

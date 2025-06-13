@@ -38,7 +38,7 @@ stages:
         parameters:
           jobName: 'BuildPushHL7Server'
           displayName: 'Build and Push HL7 Server'
-          appName: 'phw-hl7server'
+          appName: 'hl7server'
           dockerfilePath: 'hl7_server/Dockerfile'
           buildContext: 'hl7_server'
           acrName: $(acrName)
