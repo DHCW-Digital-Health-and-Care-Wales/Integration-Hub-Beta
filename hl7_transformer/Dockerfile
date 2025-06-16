@@ -14,7 +14,7 @@ WORKDIR /build
 
 # Install pip requirements
 COPY docker-pip-install.sh requirements.txt ./
-COPY ./shared_libs /shared_libs
+COPY ../shared_libs /shared_libs
 RUN ./docker-pip-install.sh
 
 WORKDIR /app
