@@ -1,5 +1,4 @@
 import logging
-import os
 
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
@@ -18,35 +17,21 @@ logger = logging.getLogger(__name__)
 
 class GenericHandler(AbstractHandler):
 
-    def __init__(self, msg, sender_client: MessageSenderClient):
+    def __init__(self, msg, sender_client: MessageSenderClient, audit_client: AuditServiceClient):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
-
-    def _get_audit_client(self) -> AuditServiceClient:
-        # TODO: Do not setup connection in every request
-        connection_string = os.environ.get("SERVICE_BUS_CONNECTION_STRING")
-        service_bus_namespace = os.environ.get("SERVICE_BUS_NAMESPACE")
-        audit_queue_name = os.environ.get("AUDIT_QUEUE_NAME", "audit-queue")
-        workflow_id = os.environ.get("WORKFLOW_ID", "phw-2-npi")
-        microservice_id = os.environ.get("MICROSERVICE_ID", "phw_hl7_server")
-
-        client_config = ConnectionConfig(connection_string, service_bus_namespace)
-        factory = ServiceBusClientFactory(client_config)
-
-        return factory.create_audit_service_client(audit_queue_name, workflow_id, microservice_id)
+        self.audit_client = audit_client
 
     def reply(self) -> str:
-        audit_client = self._get_audit_client()
-
         try:
-            audit_client.log_message_received(self.incoming_message, "Message received successfully")
+            self.audit_client.log_message_received(self.incoming_message, "Message received successfully")
 
             msg = parse_message(self.incoming_message, find_groups=False)
             message_control_id = msg.msh.msh_10.value
             message_type = msg.msh.msh_9.to_er7()
             logger.info("Received message type: %s, Control ID: %s", message_type, message_control_id)
 
-            audit_client.log_validation_result(
+            self.audit_client.log_validation_result(
                 self.incoming_message,
                 f"Valid HL7 message - Type: {message_type}",
                 is_success=True
@@ -56,7 +41,7 @@ class GenericHandler(AbstractHandler):
 
             ack_message = self.create_ack(message_control_id, msg)
 
-            audit_client.log_message_processed(self.incoming_message, "ACK generated successfully")
+            self.audit_client.log_message_processed(self.incoming_message, "ACK generated successfully")
 
             logger.info("ACK generated successfully")
             return ack_message
@@ -64,20 +49,20 @@ class GenericHandler(AbstractHandler):
             error_msg = f"HL7 parsing error: {e}"
             logger.error(error_msg)
 
-            audit_client.log_validation_result(
+            self.audit_client.log_validation_result(
                 self.incoming_message,
                 error_msg,
                 is_success=False
             )
 
-            audit_client.log_message_failed(self.incoming_message, error_msg)
+            self.audit_client.log_message_failed(self.incoming_message, error_msg)
 
             raise
         except Exception:
             error_msg = f"Unexpected error while processing message: {e}"
             logger.exception(error_msg)
 
-            audit_client.log_message_failed(self.incoming_message, error_msg)
+            self.audit_client.log_message_failed(self.incoming_message, error_msg)
             raise
 
     def create_ack(self, message_control_id: str, msg: Message) -> str:

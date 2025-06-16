@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class Hl7ServerApplication:
     def __init__(self) -> None:
         self.sender_client = None
+        self.audit_client = None
         self._server_thread = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2575"))
@@ -41,10 +42,15 @@ class Hl7ServerApplication:
         factory = ServiceBusClientFactory(client_config)
     
         self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
+        self.audit_client = factory.create_audit_service_client(
+            app_config.audit_queue_name, 
+            app_config.workflow_id, 
+            app_config.microservice_id
+        )
     
         handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client),
-            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client),
+            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
+            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
             'ERR': (ErrorHandler,)
         }
          
@@ -64,6 +70,10 @@ class Hl7ServerApplication:
         if self.sender_client:
             self.sender_client.close()
             logger.info("Service Bus sender client shut down.")
+
+        if self.audit_client:
+            self.audit_client.close()
+            logger.info("Audit service client shut down.")
 
         if self._server:
             self._server.shutdown()
