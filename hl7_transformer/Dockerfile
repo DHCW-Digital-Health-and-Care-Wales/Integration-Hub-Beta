@@ -9,12 +9,12 @@ ENV PYTHONUNBUFFERED=1
 
 # Add certificates for proxied networks
 COPY ./ca-certs /opt/ca-certs
+COPY ./shared_libs /shared_libs
 
 WORKDIR /build
 
 # Install pip requirements
 COPY docker-pip-install.sh requirements.txt ./
-COPY ../shared_libs /shared_libs
 RUN ./docker-pip-install.sh
 
 WORKDIR /app
