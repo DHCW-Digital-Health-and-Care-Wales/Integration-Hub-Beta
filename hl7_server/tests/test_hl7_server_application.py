@@ -1,55 +1,59 @@
 import os
 import signal
-import socket
 import unittest
+from threading import Thread
 from unittest.mock import MagicMock, patch
 
 from hl7apy.mllp import MLLPServer
-
 from hl7_server.hl7_server_application import Hl7ServerApplication
 
-MLLP_ATTRIBUTE = "hl7_server.hl7_server_application.MLLPServer"
+ENV_VARS = {
+    "HOST": "127.0.0.1",
+    "PORT": "2576",
+    "EGRESS_QUEUE_NAME": "egress_queue",
+    "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost"
+}
 
 
+@patch.dict(os.environ, ENV_VARS)
+@patch("hl7_server.hl7_server_application.MLLPServer")
+@patch("hl7_server.hl7_server_application.ServiceBusClientFactory")
+@patch("hl7_server.hl7_server_application.threading.Thread")
 class TestHl7ServerApplication(unittest.TestCase):
-    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
-    @patch(MLLP_ATTRIBUTE)
-    def test_server_initialization_and_shutdown(self, mock_mllp_server: MLLPServer) -> None:
+    def setUp(self):
+        self.app = Hl7ServerApplication()
+
+    def _setup_mocks(self, mock_thread: Thread, mock_mllp_server: MLLPServer):
         mock_server_instance = MagicMock()
+        mock_thread_instance = MagicMock()
         mock_mllp_server.return_value = mock_server_instance
+        mock_thread.return_value = mock_thread_instance
+        return mock_server_instance, mock_thread_instance
 
-        # Simulate a timeout to exit serve_forever loop
-        mock_server_instance.serve_forever.side_effect = socket.timeout()
+    def _assert_shutdown(self, server, thread):
+        server.shutdown.assert_called_once()
+        server.server_close.assert_called_once()
+        thread.join.assert_called_once()
 
-        app = Hl7ServerApplication()
-        app.terminated = True  # Simulate shutdown trigger
-        app.start_server()
+    def test_server_initialization_and_shutdown(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
+        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+        self.app.start_server()
+        self.app.stop_server()
 
-        self.assertTrue(mock_server_instance.server_close.called)
+        self._assert_shutdown(server, thread)
 
-    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
-    @patch(MLLP_ATTRIBUTE)
-    def test_signal_handler_shutdown(self, mock_mllp_server: MLLPServer) -> None:
-        app = Hl7ServerApplication()
-        mock_server_instance = MagicMock()
-        app._server = mock_server_instance
+    def test_signal_handler_shutdown(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
+        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+        self.app.start_server()
+        self.app._signal_handler(signal.SIGINT, None)
 
-        app._signal_handler(signal.SIGINT, None)
+        self._assert_shutdown(server, thread)
 
-        self.assertTrue(app.terminated)
-        mock_server_instance.shutdown.assert_called_once()
+    def test_server_exception_handling(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
+        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+        thread.start.side_effect = RuntimeError("Simulated server error")
 
-    @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"})
-    @patch(MLLP_ATTRIBUTE)
-    def test_server_exception_handling(self, mock_mllp_server: MLLPServer) -> None:
-        mock_server_instance = MagicMock()
-        mock_server_instance.serve_forever.side_effect = Exception("Test exception")
-        mock_mllp_server.return_value = mock_server_instance
+        with self.assertRaises(RuntimeError):
+            self.app.start_server()
 
-        app = Hl7ServerApplication()
-        app.terminated = False
-
-        # Run the server and catch the exception to prevent crash
-        app.start_server()
-
-        self.assertTrue(mock_server_instance.server_close.called)
+        self._assert_shutdown(server, thread)

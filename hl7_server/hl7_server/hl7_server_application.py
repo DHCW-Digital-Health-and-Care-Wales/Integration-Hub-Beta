@@ -6,6 +6,9 @@ from typing import Any
 
 from hl7apy.mllp import MLLPServer
 
+from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from .app_config import AppConfig
 from .error_handler import ErrorHandler
 from .generic_handler import GenericHandler
 
@@ -18,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class Hl7ServerApplication:
     def __init__(self) -> None:
+        self.sender_client = None
         self._server_thread = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2575"))
@@ -32,9 +36,18 @@ class Hl7ServerApplication:
         self.stop_server()
 
     def start_server(self) -> None:
-        handlers = {"ADT^A31^ADT_A05": (GenericHandler,), "ADT^A28^ADT_A05": (GenericHandler,),
-                    'ERR': (ErrorHandler,)}
-
+        app_config = AppConfig.read_env_config()
+        client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
+        factory = ServiceBusClientFactory(client_config)
+    
+        self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
+    
+        handlers = {
+            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client),
+            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client),
+            'ERR': (ErrorHandler,)
+        }
+         
         try:
             self._server = MLLPServer(self.HOST, self.PORT, handlers)
             self._server_thread = threading.Thread(target=self._server.serve_forever)
@@ -42,11 +55,20 @@ class Hl7ServerApplication:
             logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT}")
         except Exception as e:
             logger.exception("Server encountered an unexpected error: %s", e)
+            self.stop_server()
+            raise
 
     def stop_server(self) -> None:
+        logger.info("Shutting down the server...")
+
+        if self.sender_client:
+            self.sender_client.close()
+            logger.info("Service Bus sender client shut down.")
+
         if self._server:
-            logger.info("Shutting down the server...")
             self._server.shutdown()
             self._server.server_close()
-            self._server_thread.join()
             logger.info("HL7 MLLP server shut down.")
+
+        if self._server_thread:
+            self._server_thread.join()
