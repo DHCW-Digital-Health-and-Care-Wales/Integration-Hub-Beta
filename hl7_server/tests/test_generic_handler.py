@@ -13,9 +13,11 @@ ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
 
 
 class TestGenericHandler(unittest.TestCase):
-    def test_valid_a28_message_returns_ack(self) -> None:
-        self.handler = GenericHandler(VALID_A28_MESSAGE)
+    def setUp(self):
+        self.mock_sender = MagicMock()
+        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender)
 
+    def test_valid_a28_message_returns_ack(self) -> None:
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
             mock_instance = mock_builder.return_value
             mock_ack_message = MagicMock()
@@ -27,9 +29,6 @@ class TestGenericHandler(unittest.TestCase):
             self.assertIn("ACK_CONTENT", result)
 
     def test_ack_message_created_correctly(self) -> None:
-        handler = GenericHandler(VALID_A28_MESSAGE)
-
-        # Mock HL7AckBuilder methods
         with patch(ACK_BUILDER_ATTRIBUTE) as MockAckBuilder:
             mock_builder_instance = MockAckBuilder.return_value
 
@@ -40,7 +39,7 @@ class TestGenericHandler(unittest.TestCase):
             )
             mock_builder_instance.build_ack.return_value = mock_ack_message
 
-            ack_response = handler.reply()
+            ack_response = self.handler.reply()
 
             self.assertIn("MSA|AA|123456", ack_response)
             self.assertIn("ACK^A28^ACK", ack_response)
@@ -49,6 +48,11 @@ class TestGenericHandler(unittest.TestCase):
 
             mock_builder_instance.build_ack.assert_called_once_with("202505052323364444", ANY)
             mock_ack_message.to_mllp.assert_called_once()
+
+    def test_message_sent_to_service_bus(self) -> None:
+        self.handler.reply()
+
+        self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE)
 
 
 if __name__ == "__main__":
