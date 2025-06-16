@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Add certificates for proxied networks
-COPY --from=ca-certs . /opt/ca-certs
+COPY ./ca-certs /opt/ca-certs
 
 WORKDIR /build
 
