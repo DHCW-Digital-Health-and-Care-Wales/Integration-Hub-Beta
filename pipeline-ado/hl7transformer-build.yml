@@ -9,6 +9,7 @@ trigger:
       - hl7_transformer/*
       - shared_libs/*
       - pipeline-ado/templates/*
+      - ca-cerst/*
 
 pr: none
 
@@ -41,7 +42,7 @@ stages:
           displayName: 'Build and Push HL7 Transformer'
           appName: 'hl7transformer'
           dockerfilePath: 'hl7_transformer/Dockerfile'
-          buildContext: 'hl7_transformer'
+          buildContext: '$(System.DefaultWorkingDirectory)'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}

@@ -8,13 +8,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Add certificates for proxied networks
-COPY ./ca-certs /opt/ca-certs
-COPY ./shared_libs /shared_libs
+COPY ca-certs /opt/ca-certs
+COPY shared_libs /shared_libs
 
 WORKDIR /build
 
 # Install pip requirements
-COPY docker-pip-install.sh requirements.txt ./
+COPY hl7_transformer/docker-pip-install.sh hl7_transformer/requirements.txt ./
 RUN ./docker-pip-install.sh
 
 WORKDIR /app

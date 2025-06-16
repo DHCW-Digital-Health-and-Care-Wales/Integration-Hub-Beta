@@ -8,6 +8,7 @@ trigger:
       - hl7_server/*
       - shared_libs/*
       - pipeline-ado/templates/*
+      - ca-cerst/*
 
 pr: none
 
