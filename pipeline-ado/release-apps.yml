@@ -32,13 +32,13 @@ resources:
 
 stages:
 
-  - stage: ReleaseHL7MLLPServerDev
-    displayName: 'Release App HL7MLLPServer - Dev'
+  - stage: ReleaseHL7ServerDev
+    displayName: 'Release App HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7MLLPServerDev'
-          displayName: 'Release App HL7MLLPServer - Dev'
+          jobName: 'ReleaseAppHL7ServerDev'
+          displayName: 'Release App HL7Server - Dev'
           appName: 'hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
@@ -64,14 +64,14 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
 
-  - stage: ReleaseHL7MLLPServerTest
-    displayName: 'Release App HL7MLLPServer - Test'
-    dependsOn: ReleaseHL7MLLPServerDev
+  - stage: ReleaseHL7ServerTest
+    displayName: 'Release App HL7Server - Test'
+    dependsOn: ReleaseHL7ServerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7MLLPServerTest'
-          displayName: 'Release App HL7MLLPServer - Test'
+          jobName: 'ReleaseAppHL7ServerTest'
+          displayName: 'Release App HL7Server - Test'
           appName: 'hl7server'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
