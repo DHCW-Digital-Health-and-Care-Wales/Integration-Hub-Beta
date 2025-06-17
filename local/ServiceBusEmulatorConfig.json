@@ -50,7 +50,7 @@
             "Name": "audit-queue",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT24H",
+              "DefaultMessageTimeToLive": "PT1H",
               "DuplicateDetectionHistoryTimeWindow": "PT20S",
               "ForwardDeadLetteredMessagesTo": "",
               "ForwardTo": "",
