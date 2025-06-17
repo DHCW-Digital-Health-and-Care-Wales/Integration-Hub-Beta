@@ -56,7 +56,7 @@ class GenericHandler(AbstractHandler):
             self.audit_client.log_message_failed(self.incoming_message, error_msg)
 
             raise
-        except Exception:
+        except Exception as e:
             error_msg = f"Unexpected error while processing message: {e}"
             logger.exception(error_msg)
 

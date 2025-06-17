@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from .audit_event import AuditEvent, AuditEventType
@@ -20,7 +20,7 @@ class AuditServiceClient:
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=AuditEventType.MESSAGE_RECEIVED,
-            timestamp=datetime.datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
             message_content=message_content,
             validation_result=validation_result,
         )
@@ -31,7 +31,7 @@ class AuditServiceClient:
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=AuditEventType.MESSAGE_PROCESSED,
-            timestamp=datetime.datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
             message_content=message_content,
             validation_result=validation_result
         )
@@ -43,7 +43,7 @@ class AuditServiceClient:
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=AuditEventType.MESSAGE_FAILED,
-            timestamp=datetime.datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
             message_content=message_content,
             validation_result=validation_result,
             error_details=error_details
@@ -57,7 +57,7 @@ class AuditServiceClient:
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=event_type,
-            timestamp=datetime.datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
             message_content=message_content,
             validation_result=validation_result,
         )
@@ -70,3 +70,7 @@ class AuditServiceClient:
             logger.debug(f"Audit event sent: {event.event_type.value}")
         except Exception as e:
             logger.error(f"Failed to send audit event: {e}")
+
+    def close(self) -> None:
+        if self.sender_client:
+            self.sender_client.close()

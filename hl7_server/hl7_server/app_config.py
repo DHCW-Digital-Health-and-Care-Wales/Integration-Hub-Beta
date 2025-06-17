@@ -19,9 +19,9 @@ class AppConfig:
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
-            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", default="audit-queue"),
-            workflow_id=_read_env("WORKFLOW_ID", default="phw-2-npi"),
-            microservice_id=_read_env("MICROSERVICE_ID", default="phw_hl7_server")
+            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
+            workflow_id=_read_env("WORKFLOW_ID", required=True),
+            microservice_id=_read_env("MICROSERVICE_ID", required=True)
         )
 
 
