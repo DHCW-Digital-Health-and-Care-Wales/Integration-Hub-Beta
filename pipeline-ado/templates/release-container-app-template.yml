@@ -25,7 +25,7 @@ jobs:
       displayName: 'Checkout Repository'
 
     - download: ${{ parameters.resourcePipelineName }}
-      artifact: ${{ parameters.appName }}-metadata
+      artifact: imageTag
 
     - task: AzureCLI@2
       displayName: 'Azure CLI Login'
@@ -45,7 +45,7 @@ jobs:
         inlineScript: |
           set -e
           # Build the app full name dynamically
-          IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/${{ parameters.appName }}-metadata/imageTag.txt")
+          IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/imageTag/imageTag.txt")
           echo "Image tag is: $IMAGE_TAG"
 
           echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"

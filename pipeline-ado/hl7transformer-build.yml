@@ -42,7 +42,8 @@ stages:
           displayName: 'Build and Push HL7 Transformer'
           appName: 'hl7transformer'
           dockerfilePath: 'hl7_transformer/Dockerfile'
-          buildContext: '$(System.DefaultWorkingDirectory)'
+          buildContext: 'hl7_transformer'
+          additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}

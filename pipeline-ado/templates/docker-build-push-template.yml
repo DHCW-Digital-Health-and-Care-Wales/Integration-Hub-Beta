@@ -7,6 +7,7 @@ parameters:
   POOL_NAME: ''
   dockerfilePath: ''
   buildContext: ''
+  additionalContexts: '' # Optional: Additional build contexts (e.g., "shared_libs=./shared_libs,ca-certs=./ca-certs")
   enableVulnerabilityScanning: true
   enableImageSigning: false
   retainImageCount: 50
@@ -100,20 +101,37 @@ jobs:
           echo "##[group]Build Docker Image"
           set -e
           
-          # Build with multiple tags and platforms
-          docker buildx build \
-            --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest \
-            --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId) \
-            --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION) \
-            --label "org.opencontainers.image.title=$(IMAGE_NAME)" \
-            --label "org.opencontainers.image.description=Built by Azure DevOps" \
-            --label "org.opencontainers.image.version=${SEMANTIC_VERSION:-v1.0.$(Build.BuildId)}" \
-            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --label "org.opencontainers.image.revision=$(Build.SourceVersion)" \
-            --label "org.opencontainers.image.source=$(Build.Repository.Uri)" \
-            --file ${{ parameters.dockerfilePath }} \
-            --push \
-            ${{ parameters.buildContext }}
+          # Prepare build command
+          BUILD_CMD="docker buildx build"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION)"
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.title=$(IMAGE_NAME)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.description=Built by Azure DevOps\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.version=${SEMANTIC_VERSION:-v1.0.$(Build.BuildId)}\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.revision=$(Build.SourceVersion)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.source=$(Build.Repository.Uri)\""
+          BUILD_CMD="$BUILD_CMD --file ${{ parameters.dockerfilePath }}"
+          
+          # Add additional contexts if provided
+          if [ -n "${{ parameters.additionalContexts }}" ]; then
+            echo "Adding additional build contexts: ${{ parameters.additionalContexts }}"
+            # Convert comma-separated contexts to --build-context flags
+            IFS=',' read -ra CONTEXTS <<< "${{ parameters.additionalContexts }}"
+            for context in "${CONTEXTS[@]}"; do
+              BUILD_CMD="$BUILD_CMD --build-context $context"
+            done
+          fi
+          
+          BUILD_CMD="$BUILD_CMD --push"
+          BUILD_CMD="$BUILD_CMD ${{ parameters.buildContext }}"
+          
+          echo "Executing build command:"
+          echo "$BUILD_CMD"
+          
+          # Execute the build
+          eval $BUILD_CMD
 
           echo "##[section]Image built and pushed successfully"
           echo "##[endgroup]"
@@ -192,11 +210,8 @@ jobs:
       - script: |
           echo "##[group]Generate Build Report"
           
-          # Create artifacts directory with app name
-          mkdir -p "$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}"
-          
           # Create build summary
-          cat > "$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}/build-summary.json" << EOF
+          cat > build-summary.json << EOF
           {
             "appName": "${{ parameters.appName }}",
             "buildId": "$(Build.BuildId)",
@@ -213,25 +228,31 @@ jobs:
           EOF
           
           echo "Build summary generated"
-          cat "$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}/build-summary.json"
+          cat build-summary.json
           echo "##[endgroup]"
         displayName: 'Generate Build Summary'
 
       - script: |
           echo "##[group]Generate Image Tag Artefact"
           
-          # Create image tag file in app-specific directory
-          cat > "$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}/imageTag.txt" << EOF
+          
+          cat > imageTag.txt << EOF
           $(FULL_SEMANTIC_VERSION)
           EOF
           
           echo "Image Tag Artefact generated"
-          cat "$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}/imageTag.txt"
+          cat imageTag.txt
           echo "##[endgroup]"
         displayName: 'Generate Image Tag Artefact'
       
       - task: PublishBuildArtifacts@1
-        displayName: 'Publish Build Artifacts'
+        displayName: 'Publish Report Artifacts'
         inputs:
-          pathToPublish: '$(Build.ArtifactStagingDirectory)/${{ parameters.appName }}'
-          artifactName: '${{ parameters.appName }}-metadata'
+          pathToPublish: 'build-summary.json'
+          artifactName: 'build-metadata'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Image Tag Artefact'
+        inputs:
+          pathToPublish: 'imageTag.txt'
+          artifactName: 'imageTag'

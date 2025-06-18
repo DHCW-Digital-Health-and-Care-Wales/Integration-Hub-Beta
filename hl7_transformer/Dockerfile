@@ -8,18 +8,18 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Add certificates for proxied networks
-COPY ca-certs /opt/ca-certs
-COPY shared_libs /shared_libs
+COPY --from=ca-certs . /opt/ca-certs
 
 WORKDIR /build
 
 # Install pip requirements
-COPY hl7_transformer/docker-pip-install.sh hl7_transformer/requirements.txt ./
+COPY docker-pip-install.sh requirements.txt ./
+COPY --from=shared_libs . /shared_libs
 RUN ./docker-pip-install.sh
 
 WORKDIR /app
 
-COPY hl7_transformer/ /app/
+COPY . /app
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
