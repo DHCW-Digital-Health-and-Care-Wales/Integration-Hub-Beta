@@ -8,7 +8,7 @@ trigger:
       - hl7_server/*
       - shared_libs/*
       - pipeline-ado/templates/*
-      - ca-cerst/*
+      - ca-certs/*
 
 pr: none
 
@@ -42,6 +42,7 @@ stages:
           appName: 'hl7server'
           dockerfilePath: 'hl7_server/Dockerfile'
           buildContext: 'hl7_server'
+          additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}

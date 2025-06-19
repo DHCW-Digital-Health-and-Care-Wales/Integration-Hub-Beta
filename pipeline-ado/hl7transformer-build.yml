@@ -3,13 +3,12 @@ trigger:
   branches:
     include:
       - main
-      - develop
   paths:
     include:
       - hl7_transformer/*
       - shared_libs/*
       - pipeline-ado/templates/*
-      - ca-cerst/*
+      - ca-certs/*
 
 pr: none
 
