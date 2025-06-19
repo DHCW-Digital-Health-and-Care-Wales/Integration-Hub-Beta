@@ -4,14 +4,14 @@ import signal
 import configparser
 
 from azure.servicebus import ServiceBusMessage
+from hl7.client import MLLPClient
 from hl7apy.parser import parse_message
-from app_config import AppConfig
+
+from hl7_sender.ack_processor import get_ack_result
+from hl7_sender.app_config import AppConfig
 from message_bus_lib.connection_config import ConnectionConfig
-from message_bus_lib.message_receiver_client import MessageReceiverClient
-from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
-from datetime_transformer import transform_datetime
 
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'ERROR').upper()
@@ -35,7 +35,6 @@ def shutdown_handler(signum, frame):
 signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
-
 def main():
     global PROCESSOR_RUNNING
 
@@ -43,37 +42,27 @@ def main():
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
 
-    receiver_client: MessageReceiverClient
-    with factory.create_queue_sender_client(app_config.egress_queue_name) as sender_client, \
-            factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client:
+    with factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client, \
+          MLLPClient(app_config.receiver_mllp_hostname, app_config.receiver_mllp_port) as mllp_client:
         logger.info("Processor started.")
 
         while PROCESSOR_RUNNING:
             receiver_client.receive_messages(MAX_BATCH_SIZE,
-                                             lambda message: _process_message(message, sender_client))
+                                             lambda message: _process_message(message, mllp_client))
 
-
-def _process_message(message: ServiceBusMessage, sender_client: MessageSenderClient) -> ProcessingResult:
+def _process_message(message: ServiceBusMessage, mllp_client: MLLPClient) -> ProcessingResult:
     message_body = b''.join(message.body).decode('utf-8')
-    logger.debug("Received message")
+    logger.info("Received message")
 
     hl7_msg = parse_message(message_body)
     msh_segment = hl7_msg.msh
-    logger.debug(f"Message ID: {msh_segment.msh_10.value}")
+    message_id = msh_segment.msh_10.value
+    logger.info(f"Message ID: {message_id}")
 
-    created_datetime = msh_segment.msh_7.value
+    ack_response = mllp_client.send_message(message_body).decode('utf-8')
 
-    try:
-        transformed_datetime = transform_datetime(created_datetime)
-        msh_segment.msh_7.value = transformed_datetime
-
-        updated_message = hl7_msg.to_er7()
-        sender_client.send_message(updated_message)
-
-        return ProcessingResult.successful()
-    except ValueError as e:
-        logger.error(f"Failed to process message: {e}")
-        return ProcessingResult.failed(str(e))
+    logger.info(f"Sent message: {message_id}")
+    return get_ack_result(ack_response)
 
 
 if __name__ == "__main__":

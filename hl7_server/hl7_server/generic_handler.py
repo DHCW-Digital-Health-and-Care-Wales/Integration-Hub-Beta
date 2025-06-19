@@ -4,8 +4,8 @@ from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
-
 from message_bus_lib.message_sender_client import MessageSenderClient
+
 from .hl7_ack_builder import HL7AckBuilder
 
 # Configure logging
@@ -41,7 +41,7 @@ class GenericHandler(AbstractHandler):
         ack_builder = HL7AckBuilder()
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
-    
+
     def _send_to_service_bus(self, message_control_id: str) -> bool:
         try:
             self.sender_client.send_text_message(self.incoming_message)

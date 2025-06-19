@@ -80,7 +80,7 @@ class TestMessageReceiverClient(unittest.TestCase):
 
         def processor(msg):
             if msg.message_id == "123":
-                return ProcessingResult.failed(error_reason= "Pipe Parsing Error", retry= False)
+                return ProcessingResult.failed(error_reason= "Pipe Parsing Error", retry= True)
 
         # Act
         self.message_receiver_client.receive_messages(1, processor)
@@ -104,10 +104,10 @@ class TestMessageReceiverClient(unittest.TestCase):
 
     def test_exit_service_bus_receiver_client_closed(self):
         # Act
-        self.service_bus_receiver_client.__exit__()
+        self.message_receiver_client.__exit__()
 
         # Assert
-        self.service_bus_receiver_client.__exit__.assert_called_once()
+        self.service_bus_receiver_client.close.assert_called_once()
 
 
 if __name__ == '__main__':
