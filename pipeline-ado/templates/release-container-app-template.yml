@@ -44,9 +44,12 @@ jobs:
         scriptLocation: 'inlineScript'
         inlineScript: |
           set -e
-          # Build the app full name dynamically
+          # Read the image tag and set it as a pipeline variable
           IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/imageTag/imageTag.txt")
           echo "Image tag is: $IMAGE_TAG"
+          
+          # Set the variable for use in subsequent steps
+          echo "##vso[task.setvariable variable=IMAGE_TAG]$IMAGE_TAG"
 
           echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
           az acr login --name ${{ parameters.acrName }}
@@ -68,10 +71,21 @@ jobs:
           set -e
           # Build the app full name dynamically
           appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca"
-
-          az containerapp update \
+          
+          # Use the IMAGE_TAG variable set in the previous step
+          echo "Using image tag: $(IMAGE_TAG)"
+          
+          # Create revision suffix from semantic version (replace dots and special chars with dashes)
+          REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//')
+          
+          echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
+          echo "Using revision suffix: $REVISION_SUFFIX (based on semantic version: $(IMAGE_TAG))"
+          
+          # Create a new revision by updating the container app with semantic version as suffix
+          az containerapp revision copy \
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
+            --revision-suffix $REVISION_SUFFIX \
             --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}
 
           echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
