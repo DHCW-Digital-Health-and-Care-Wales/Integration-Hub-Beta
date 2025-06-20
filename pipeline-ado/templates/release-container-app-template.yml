@@ -90,7 +90,7 @@ jobs:
           echo "Using revision suffix: $REVISION_SUFFIX (build: ${BUILD_ID}, time: ${TIMESTAMP})"
           
           # Create a new revision by updating the container app with semantic version as suffix
-          az containerapp revision copy \
+          az containerapp update \
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
             --revision-suffix $REVISION_SUFFIX \
