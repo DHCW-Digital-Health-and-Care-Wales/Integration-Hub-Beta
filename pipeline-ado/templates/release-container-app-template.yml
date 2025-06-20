@@ -96,6 +96,6 @@ jobs:
             --revision-suffix $REVISION_SUFFIX \
             --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$(IMAGE_TAG)
 
-          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
+          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$(IMAGE_TAG)"
 
           
