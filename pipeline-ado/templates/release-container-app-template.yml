@@ -89,8 +89,8 @@ jobs:
           echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
           echo "Using revision suffix: $REVISION_SUFFIX (build: ${BUILD_ID}, time: ${TIMESTAMP})"
           
-          # Create a new revision by updating the container app with semantic version as suffix
-          az containerapp update \
+          # Create a new revision by copying the current revision with new image
+          az containerapp revision copy \
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
             --revision-suffix $REVISION_SUFFIX \
