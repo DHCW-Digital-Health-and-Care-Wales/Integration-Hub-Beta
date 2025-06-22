@@ -26,7 +26,7 @@ jobs:
       DOCKER_REGISTRY: ${{ parameters.acrName }}.azurecr.io
       IMAGE_NAME: ${{ parameters.appName }}
       SHORT_SHA: $(Build.SourceVersion)
-      FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.${SHORT_SHA}.$(Build.BuildId)
+      FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.$(Build.BuildId)
       
     steps:
       - checkout: self
@@ -52,7 +52,7 @@ jobs:
           # Create semantic version based on date and build
           BUILD_DATE=$(date -u +"%Y%m%d")
           
-          # Truncate commit SHA to 8 characters
+          # Keep short commit for potential metadata use
           SHORT_COMMIT=$(echo "$(Build.SourceVersion)" | cut -c1-8)
           
           # Generate build metadata
@@ -60,7 +60,6 @@ jobs:
           
           echo "##vso[task.setvariable variable=SHORT_SHA]$SHORT_COMMIT"
           echo "Build date: ${BUILD_DATE}"
-          echo "Short commit: ${SHORT_COMMIT}"
           echo "buildId: $(Build.BuildId)"
           echo "##[endgroup]"
         displayName: 'Generate Image Metadata'
