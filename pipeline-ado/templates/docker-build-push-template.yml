@@ -103,7 +103,7 @@ jobs:
           # Prepare build command
           BUILD_CMD="docker buildx build"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest"
-          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)-$(SHORT_SHA)"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION)"
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.title=$(IMAGE_NAME)\""
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.description=Built by Azure DevOps\""
@@ -219,7 +219,7 @@ jobs:
             "registry": "$(DOCKER_REGISTRY)",
             "tags": [
               "latest",
-              "$(Build.BuildId)",
+              "$(Build.BuildId)-$(SHORT_SHA)",
               "$(FULL_SEMANTIC_VERSION)"
             ],
             "ImageSemanticVersion": "$(FULL_SEMANTIC_VERSION)"
