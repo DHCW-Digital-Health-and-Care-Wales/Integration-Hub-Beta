@@ -36,7 +36,3 @@ class ServiceBusClientFactory:
             receive_mode=ServiceBusReceiveMode.PEEK_LOCK
         )
         return MessageReceiverClient(receiver)
-    
-    def create_audit_service_client(self, audit_queue_name: str, workflow_id: str, microservice_id: str) -> AuditServiceClient:
-        sender_client = self.create_queue_sender_client(audit_queue_name)
-        return AuditServiceClient(sender_client, workflow_id, microservice_id)

@@ -14,6 +14,21 @@ class AuditServiceClient:
         self.sender_client = sender_client
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def _create_base_audit_event(self, event_type: AuditEventType, message_content: str) -> AuditEvent:
+        return AuditEvent(
+            workflow_id=self.workflow_id,
+            microservice_id=self.microservice_id,
+            event_type=event_type,
+            timestamp=datetime.now(timezone.utc),
+            message_content=message_content
+        )
     
     def log_message_received(self, message_content: str, validation_result: Optional[str] = None) -> None:
         event = AuditEvent(
