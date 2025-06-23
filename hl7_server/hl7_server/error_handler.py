@@ -1,6 +1,6 @@
 import logging
 
-from hl7apy.mllp import UnsupportedMessageType, AbstractErrorHandler
+from hl7apy.mllp import AbstractErrorHandler, UnsupportedMessageType
 
 logger = logging.getLogger(__name__)
 

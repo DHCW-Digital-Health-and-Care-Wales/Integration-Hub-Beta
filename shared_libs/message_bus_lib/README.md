@@ -13,7 +13,7 @@ Activate virtual enviornment:
 
 Install dependencies:
 
-```pip install -r requirements```
+```pip install -r requirements.txt```
 
 Run code quality checks:
 

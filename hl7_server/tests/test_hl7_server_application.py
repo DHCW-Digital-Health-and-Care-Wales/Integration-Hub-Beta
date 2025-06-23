@@ -5,6 +5,7 @@ from threading import Thread
 from unittest.mock import MagicMock, patch
 
 from hl7apy.mllp import MLLPServer
+
 from hl7_server.hl7_server_application import Hl7ServerApplication
 
 ENV_VARS = {

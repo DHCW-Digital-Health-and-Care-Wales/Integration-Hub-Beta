@@ -22,7 +22,7 @@ class MessageReceiverClient:
                     self.receiver.complete_message(msg)
                     logger.debug("Message processed and completed: %s", msg.message_id)
 
-                elif result.retry is False:
+                elif result.retry:
                     self.receiver.abandon_message(msg)
                     logger.error("Message processing failed, message abandoned: %s", msg.message_id)
 
@@ -38,6 +38,6 @@ class MessageReceiverClient:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self):
         self.receiver.close()
         logger.debug("ServiceBusReceiverClient closed.")

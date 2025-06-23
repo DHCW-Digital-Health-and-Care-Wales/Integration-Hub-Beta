@@ -33,7 +33,7 @@
             }
           },
           {
-            "Name": "local-inthub-phw-transformer-egress",
+            "Name": "local-inthub-phw-sender-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",

@@ -1,6 +1,6 @@
-# HL7 Transformer
+# HL7 Sender
 
-HL7 Transformer Service
+HL7 Sender Service
 
 ## Development
 
@@ -19,8 +19,8 @@ Run code quality checks:
 
 ```
 pipx run ruff check
-pipx run bandit hl7_transformer/**/*.py tests/**/*.py
-pipx run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
+pipx run bandit hl7_sender/**/*.py tests/**/*.py
+pipx run mypy --ignore-missing-imports hl7_sender/**/*.py tests/**/*.py
 ```
 
 Run unit tests:
