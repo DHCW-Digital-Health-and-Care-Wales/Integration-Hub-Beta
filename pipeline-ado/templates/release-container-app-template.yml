@@ -76,7 +76,6 @@ jobs:
           echo "Using image tag: $(IMAGE_TAG)"
           
           # Create revision suffix using the same value as IMAGE_TAG but with dashes
-          # Convert dots, underscores, and other special chars to dashes for Azure Container Apps compliance
           REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//' | sed 's/^-//')
           
           echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
