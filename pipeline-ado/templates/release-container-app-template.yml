@@ -75,19 +75,19 @@ jobs:
           # Use the IMAGE_TAG variable set in the previous step
           echo "Using image tag: $(IMAGE_TAG)"
           
-          # Create revision suffix from semantic version (replace dots and special chars with dashes)
-          REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//')
+          # Create revision suffix using the same value as IMAGE_TAG but with dashes
+          REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//' | sed 's/^-//')
           
           echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
-          echo "Using revision suffix: $REVISION_SUFFIX (based on semantic version: $(IMAGE_TAG))"
+          echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
           
           # Create a new revision by updating the container app with semantic version as suffix
-          az containerapp revision copy \
+          az containerapp update \
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
             --revision-suffix $REVISION_SUFFIX \
-            --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}
+            --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$(IMAGE_TAG)
 
-          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
+          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$(IMAGE_TAG)"
 
           

@@ -25,8 +25,7 @@ jobs:
     variables:
       DOCKER_REGISTRY: ${{ parameters.acrName }}.azurecr.io
       IMAGE_NAME: ${{ parameters.appName }}
-      SHORT_SHA: $(Build.SourceVersion)
-      FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.${SHORT_SHA}.$(Build.BuildId)
+      FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.$(Build.BuildId)
       
     steps:
       - checkout: self
@@ -52,7 +51,7 @@ jobs:
           # Create semantic version based on date and build
           BUILD_DATE=$(date -u +"%Y%m%d")
           
-          # Truncate commit SHA to 8 characters
+          # Short commit for metadata use
           SHORT_COMMIT=$(echo "$(Build.SourceVersion)" | cut -c1-8)
           
           # Generate build metadata
@@ -104,7 +103,7 @@ jobs:
           # Prepare build command
           BUILD_CMD="docker buildx build"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest"
-          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)-$(SHORT_SHA)"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION)"
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.title=$(IMAGE_NAME)\""
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.description=Built by Azure DevOps\""
@@ -220,7 +219,7 @@ jobs:
             "registry": "$(DOCKER_REGISTRY)",
             "tags": [
               "latest",
-              "$(Build.BuildId)",
+              "$(Build.BuildId)-$(SHORT_SHA)",
               "$(FULL_SEMANTIC_VERSION)"
             ],
             "ImageSemanticVersion": "$(FULL_SEMANTIC_VERSION)"
