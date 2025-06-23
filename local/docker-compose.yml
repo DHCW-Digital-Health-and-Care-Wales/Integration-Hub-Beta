@@ -65,6 +65,22 @@ services:
       integration-hub:
         aliases:
           - "phw-hl7-transformer"
+            
+  phw-hl7-sender:
+    container_name: phw-hl7-sender
+    build:
+      context: ../hl7_sender
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./phw-hl7-sender.env
+    depends_on:
+      - sb-emulator
+    networks:
+      integration-hub:
+        aliases:
+          - "phw-hl7-sender"
 
 networks:
   integration-hub:

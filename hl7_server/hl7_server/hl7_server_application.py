@@ -5,10 +5,10 @@ import threading
 from typing import Any
 
 from hl7apy.mllp import MLLPServer
-
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.audit_service_client import AuditServiceClient
+
 from .app_config import AppConfig
 from .error_handler import ErrorHandler
 from .generic_handler import GenericHandler
@@ -41,22 +41,22 @@ class Hl7ServerApplication:
         app_config = AppConfig.read_env_config()
         client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
         factory = ServiceBusClientFactory(client_config)
-    
+
         self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
-        
+
         audit_sender_client = factory.create_queue_sender_client(app_config.audit_queue_name)
         self.audit_client = AuditServiceClient(
             audit_sender_client,
-            app_config.workflow_id, 
+            app_config.workflow_id,
             app_config.microservice_id
         )
-    
+
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
             "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
             'ERR': (ErrorHandler, self.audit_client)
         }
-         
+
         try:
             self._server = MLLPServer(self.HOST, self.PORT, handlers)
             self._server_thread = threading.Thread(target=self._server.serve_forever)

@@ -1,0 +1,257 @@
+parameters:
+  jobName: '' 
+  displayName: ''
+  appName: ''
+  acrName: ''
+  azureServiceConnection: ''
+  POOL_NAME: ''
+  dockerfilePath: ''
+  buildContext: ''
+  additionalContexts: '' # Optional: Additional build contexts (e.g., "shared_libs=./shared_libs,ca-certs=./ca-certs")
+  enableVulnerabilityScanning: true
+  enableImageSigning: false
+  retainImageCount: 50
+  SEMANTIC_VERSION: ''
+
+jobs:
+  - job: ${{ parameters.jobName }}
+    displayName: ${{ parameters.displayName }}
+    pool:
+      ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
+        vmImage: 'ubuntu-latest'
+      ${{ else }}:
+        name: ${{ parameters.POOL_NAME }}
+    
+    variables:
+      DOCKER_REGISTRY: ${{ parameters.acrName }}.azurecr.io
+      IMAGE_NAME: ${{ parameters.appName }}
+      FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.$(Build.BuildId)
+      
+    steps:
+      - checkout: self
+        displayName: 'Checkout Repository'
+        fetchDepth: 1
+      
+      - script: |
+          echo "##[group]Validate Parameters"
+          if [[ ! "${{ parameters.appName }}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+            echo "##[error]Invalid app name format"
+            exit 1
+          fi
+          if [[ ! "${{ parameters.acrName }}" =~ ^[a-zA-Z0-9]*$ ]]; then
+            echo "##[error]Invalid ACR name format"
+            exit 1
+          fi
+          echo "##[endgroup]"
+        displayName: 'Validate Input Parameters'
+      
+      - script: |
+          echo "##[group]Generate Image Metadata"
+          
+          # Create semantic version based on date and build
+          BUILD_DATE=$(date -u +"%Y%m%d")
+          
+          # Short commit for metadata use
+          SHORT_COMMIT=$(echo "$(Build.SourceVersion)" | cut -c1-8)
+          
+          # Generate build metadata
+          BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "##vso[task.setvariable variable=SHORT_SHA]$SHORT_COMMIT"
+          echo "Build date: ${BUILD_DATE}"
+          echo "Short commit: ${SHORT_COMMIT}"
+          echo "buildId: $(Build.BuildId)"
+          echo "##[endgroup]"
+        displayName: 'Generate Image Metadata'
+      
+      - script: |
+          echo "##[group]Setup Docker Buildx"
+          # Create new builder instance
+          docker buildx create --name mybuilder --use --bootstrap
+          docker buildx inspect --bootstrap
+          echo "##[endgroup]"
+        displayName: 'Setup Docker Buildx'
+      
+      # Authenticate with Azure and ACR
+      - task: AzureCLI@2
+        displayName: 'Authenticate with Azure Container Registry'
+        inputs:
+          azureSubscription: ${{ parameters.azureServiceConnection }}
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          addSpnToEnvironment: true
+          inlineScript: |
+            echo "##[group]ACR Authentication"
+            set -e  # Exit on any error
+            
+            # Verify ACR exists and is accessible
+            az acr show --name ${{ parameters.acrName }} --query "name" -o tsv
+            
+            # Login to ACR
+            az acr login --name ${{ parameters.acrName }}
+            
+            # Verify authentication
+            docker images || echo "Docker authentication successful"
+            echo "##[endgroup]"
+    
+      
+      # Build image with enhanced security and metadata
+      - script: |
+          echo "##[group]Build Docker Image"
+          set -e
+          
+          # Prepare build command
+          BUILD_CMD="docker buildx build"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)-$(SHORT_SHA)"
+          BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION)"
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.title=$(IMAGE_NAME)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.description=Built by Azure DevOps\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.version=${SEMANTIC_VERSION:-v1.0.$(Build.BuildId)}\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.revision=$(Build.SourceVersion)\""
+          BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.source=$(Build.Repository.Uri)\""
+          BUILD_CMD="$BUILD_CMD --file ${{ parameters.dockerfilePath }}"
+          
+          # Add additional contexts if provided
+          if [ -n "${{ parameters.additionalContexts }}" ]; then
+            echo "Adding additional build contexts: ${{ parameters.additionalContexts }}"
+            # Convert comma-separated contexts to --build-context flags
+            IFS=',' read -ra CONTEXTS <<< "${{ parameters.additionalContexts }}"
+            for context in "${CONTEXTS[@]}"; do
+              BUILD_CMD="$BUILD_CMD --build-context $context"
+            done
+          fi
+          
+          BUILD_CMD="$BUILD_CMD --push"
+          BUILD_CMD="$BUILD_CMD ${{ parameters.buildContext }}"
+          
+          echo "Executing build command:"
+          echo "$BUILD_CMD"
+          
+          # Execute the build
+          eval $BUILD_CMD
+
+          echo "##[section]Image built and pushed successfully"
+          echo "##[endgroup]"
+        displayName: 'Build and Push Docker Image'
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+      
+      - ${{ if eq(parameters.enableVulnerabilityScanning, true) }}:
+        - task: AzureCLI@2
+          displayName: 'Container Image Verification'
+          continueOnError: true
+          inputs:
+            azureSubscription: ${{ parameters.azureServiceConnection }}
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              echo "##[group]Container Image Verification"
+              
+              SCAN_RESULT=$(az acr repository show-tags \
+                --name ${{ parameters.acrName }} \
+                --repository ${{ parameters.appName }} \
+                --query "[?contains(name, '$(Build.BuildId)')].name | [0]" -o tsv)
+              
+              if [ -n "$SCAN_RESULT" ]; then
+                echo "Image successfully pushed: $SCAN_RESULT"
+                echo "##[warning]Consider enabling Microsoft Defender for Containers for vulnerability scanning"
+                echo "##[warning]If enabled Defender will automatically scan this image in ACR after push."
+                echo "##[info]Scan results are available in Azure Portal > Defender for Cloud > Inventory > Container Registries."
+              fi
+              echo "##[endgroup]"
+      
+      # Optional: Image signing with Notation (requires setup)
+      - ${{ if eq(parameters.enableImageSigning, true) }}:
+        - script: |
+            echo "##[group]Sign Container Image"
+            echo "##[warning]Image signing requires Notation CLI and certificate setup"
+            # notation sign $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)
+            echo "##[endgroup]"
+          displayName: 'Sign Container Image'
+          continueOnError: true
+      
+      # Cleanup old images to manage storage costs
+      - task: AzureCLI@2
+        displayName: 'Cleanup Old Images'
+        continueOnError: true
+        inputs:
+          azureSubscription: ${{ parameters.azureServiceConnection }}
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "##[group]Image Cleanup"
+            
+            # Get list of tags sorted by creation date (newest first)
+            TAGS_TO_DELETE=$(az acr repository show-tags \
+              --name ${{ parameters.acrName }} \
+              --repository ${{ parameters.appName }} \
+              --orderby time_desc \
+              --query "[$(( ${{ parameters.retainImageCount }} )):].name" \
+              -o tsv)
+            
+            if [ -n "$TAGS_TO_DELETE" ]; then
+              echo "Deleting old image tags to retain only ${{ parameters.retainImageCount }} images..."
+              for tag in $TAGS_TO_DELETE; do
+                echo "Deleting tag: $tag"
+                az acr repository delete \
+                  --name ${{ parameters.acrName }} \
+                  --image ${{ parameters.appName }}:$tag \
+                  --yes || echo "Failed to delete $tag"
+              done
+            else
+              echo "No old images to cleanup"
+            fi
+            echo "##[endgroup]"
+      
+      # Generate and publish build artifacts/reports
+      - script: |
+          echo "##[group]Generate Build Report"
+          
+          # Create build summary
+          cat > build-summary.json << EOF
+          {
+            "appName": "${{ parameters.appName }}",
+            "buildId": "$(Build.BuildId)",
+            "sourceVersion": "$(Build.SourceVersion)",
+            "buildDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "registry": "$(DOCKER_REGISTRY)",
+            "tags": [
+              "latest",
+              "$(Build.BuildId)-$(SHORT_SHA)",
+              "$(FULL_SEMANTIC_VERSION)"
+            ],
+            "ImageSemanticVersion": "$(FULL_SEMANTIC_VERSION)"
+          }
+          EOF
+          
+          echo "Build summary generated"
+          cat build-summary.json
+          echo "##[endgroup]"
+        displayName: 'Generate Build Summary'
+
+      - script: |
+          echo "##[group]Generate Image Tag Artefact"
+          
+          
+          cat > imageTag.txt << EOF
+          $(FULL_SEMANTIC_VERSION)
+          EOF
+          
+          echo "Image Tag Artefact generated"
+          cat imageTag.txt
+          echo "##[endgroup]"
+        displayName: 'Generate Image Tag Artefact'
+      
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Report Artifacts'
+        inputs:
+          pathToPublish: 'build-summary.json'
+          artifactName: 'build-metadata'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Image Tag Artefact'
+        inputs:
+          pathToPublish: 'imageTag.txt'
+          artifactName: 'imageTag'

@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
-from hl7apy.mllp import UnsupportedMessageType, InvalidHL7Message
+
+from hl7apy.mllp import InvalidHL7Message, UnsupportedMessageType
 
 from hl7_server.error_handler import ErrorHandler
 
@@ -10,7 +11,7 @@ class TestErrorHandler(unittest.TestCase):
     @patch('hl7_server.error_handler.logger')
     def test_reply_with_unsupported_message_type(self, mock_logger):
         exception = UnsupportedMessageType("Unsupported type")
-        unsupported_message = "MSH|^~\&|GHH_ADT||||20080115153000||ADT^A01^ADT_A01|0123456789|P|2.5||||AL"
+        unsupported_message = r"MSH|^~\&|GHH_ADT||||20080115153000||ADT^A01^ADT_A01|0123456789|P|2.5||||AL"
         handler = ErrorHandler(exc=exception, message=unsupported_message)
 
         handler.reply()

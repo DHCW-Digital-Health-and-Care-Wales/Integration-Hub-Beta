@@ -14,5 +14,5 @@ class ProcessingResult:
         return ProcessingResult(success=True)
 
     @staticmethod
-    def failed(error_reason: str | None = None, retry: bool | None = None) -> ProcessingResult:
+    def failed(error_reason: str | None = None, retry: bool | None = False) -> ProcessingResult:
         return ProcessingResult(success=False, error_reason=error_reason, retry=retry)
