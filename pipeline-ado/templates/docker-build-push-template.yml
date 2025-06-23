@@ -25,7 +25,6 @@ jobs:
     variables:
       DOCKER_REGISTRY: ${{ parameters.acrName }}.azurecr.io
       IMAGE_NAME: ${{ parameters.appName }}
-      SHORT_SHA: $(Build.SourceVersion)
       FULL_SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}.$(Build.BuildId)
       
     steps:
@@ -52,7 +51,7 @@ jobs:
           # Create semantic version based on date and build
           BUILD_DATE=$(date -u +"%Y%m%d")
           
-          # Keep short commit for potential metadata use
+          # Short commit for potential metadata use
           SHORT_COMMIT=$(echo "$(Build.SourceVersion)" | cut -c1-8)
           
           # Generate build metadata
