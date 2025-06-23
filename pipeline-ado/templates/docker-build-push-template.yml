@@ -51,7 +51,7 @@ jobs:
           # Create semantic version based on date and build
           BUILD_DATE=$(date -u +"%Y%m%d")
           
-          # Short commit for potential metadata use
+          # Short commit for metadata use
           SHORT_COMMIT=$(echo "$(Build.SourceVersion)" | cut -c1-8)
           
           # Generate build metadata

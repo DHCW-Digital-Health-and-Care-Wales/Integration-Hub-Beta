@@ -82,7 +82,7 @@ jobs:
           echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
           echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
           
-          # Create a new revision by copying the current revision with new image
+          # Create a new revision by updating the container app with semantic version as suffix
           az containerapp update \
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
