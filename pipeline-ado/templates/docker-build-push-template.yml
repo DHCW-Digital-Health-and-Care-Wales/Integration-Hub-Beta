@@ -59,6 +59,7 @@ jobs:
           
           echo "##vso[task.setvariable variable=SHORT_SHA]$SHORT_COMMIT"
           echo "Build date: ${BUILD_DATE}"
+          echo "Short commit: ${SHORT_COMMIT}"
           echo "buildId: $(Build.BuildId)"
           echo "##[endgroup]"
         displayName: 'Generate Image Metadata'
