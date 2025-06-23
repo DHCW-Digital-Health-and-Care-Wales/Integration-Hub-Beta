@@ -15,12 +15,6 @@ class AuditServiceClient:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
     def _create_base_audit_event(self, event_type: AuditEventType, message_content: str) -> AuditEvent:
         return AuditEvent(
             workflow_id=self.workflow_id,
@@ -31,35 +25,40 @@ class AuditServiceClient:
         )
     
     def log_message_received(self, message_content: str, validation_result: Optional[str] = None) -> None:
-        event = AuditEvent(
-            workflow_id=self.workflow_id,
-            microservice_id=self.microservice_id,
-            event_type=AuditEventType.MESSAGE_RECEIVED,
-            timestamp=datetime.now(timezone.utc),
-            message_content=message_content,
-            validation_result=validation_result,
-        )
+        event = self._create_base_audit_event(AuditEventType.MESSAGE_RECEIVED, message_content)
+        if validation_result:
+            event = AuditEvent(
+                workflow_id=event.workflow_id,
+                microservice_id=event.microservice_id,
+                event_type=event.event_type,
+                timestamp=event.timestamp,
+                message_content=event.message_content,
+                validation_result=validation_result
+            )
         self._send_audit_event(event)
     
     def log_message_processed(self, message_content: str, validation_result: Optional[str] = None) -> None:
-        event = AuditEvent(
-            workflow_id=self.workflow_id,
-            microservice_id=self.microservice_id,
-            event_type=AuditEventType.MESSAGE_PROCESSED,
-            timestamp=datetime.now(timezone.utc),
-            message_content=message_content,
-            validation_result=validation_result
-        )
+        event = self._create_base_audit_event(AuditEventType.MESSAGE_PROCESSED, message_content)
+        if validation_result:
+            event = AuditEvent(
+                workflow_id=event.workflow_id,
+                microservice_id=event.microservice_id,
+                event_type=event.event_type,
+                timestamp=event.timestamp,
+                message_content=event.message_content,
+                validation_result=validation_result
+            )
         self._send_audit_event(event)
     
     def log_message_failed(self, message_content: str, error_details: str, 
                           validation_result: Optional[str] = None) -> None:
+        event = self._create_base_audit_event(AuditEventType.MESSAGE_FAILED, message_content)
         event = AuditEvent(
-            workflow_id=self.workflow_id,
-            microservice_id=self.microservice_id,
-            event_type=AuditEventType.MESSAGE_FAILED,
-            timestamp=datetime.now(timezone.utc),
-            message_content=message_content,
+            workflow_id=event.workflow_id,
+            microservice_id=event.microservice_id,
+            event_type=event.event_type,
+            timestamp=event.timestamp,
+            message_content=event.message_content,
             validation_result=validation_result,
             error_details=error_details
         )
@@ -68,13 +67,14 @@ class AuditServiceClient:
     def log_validation_result(self, message_content: str, validation_result: str, 
                             is_success: bool) -> None:
         event_type = AuditEventType.VALIDATION_SUCCESS if is_success else AuditEventType.VALIDATION_FAILED
+        event = self._create_base_audit_event(event_type, message_content)
         event = AuditEvent(
-            workflow_id=self.workflow_id,
-            microservice_id=self.microservice_id,
-            event_type=event_type,
-            timestamp=datetime.now(timezone.utc),
-            message_content=message_content,
-            validation_result=validation_result,
+            workflow_id=event.workflow_id,
+            microservice_id=event.microservice_id,
+            event_type=event.event_type,
+            timestamp=event.timestamp,
+            message_content=event.message_content,
+            validation_result=validation_result
         )
         self._send_audit_event(event)
     
@@ -89,3 +89,10 @@ class AuditServiceClient:
     def close(self) -> None:
         if self.sender_client:
             self.sender_client.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
+        logger.debug("AuditServiceClient closed.")
