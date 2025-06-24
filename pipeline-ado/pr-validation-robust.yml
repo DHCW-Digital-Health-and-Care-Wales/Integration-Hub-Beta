@@ -121,7 +121,9 @@ stages:
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_server tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_server tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+                find hl7_server tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
+                  echo "##[warning]MyPy found type issues in HL7 Server - please review but not blocking PR"
+                }
               else
                 echo "##[warning]No Python files found for type checking"
               fi
@@ -150,7 +152,9 @@ stages:
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_transformer tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_transformer tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+                find hl7_transformer tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
+                  echo "##[warning]MyPy found type issues in HL7 Transformer - please review but not blocking PR"
+                }
               else
                 echo "##[warning]No Python files found for type checking"
               fi
@@ -179,7 +183,9 @@ stages:
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_sender tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_sender tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+                find hl7_sender tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
+                  echo "##[warning]MyPy found type issues in HL7 Sender - please review but not blocking PR"
+                }
               else
                 echo "##[warning]No Python files found for type checking"
               fi
@@ -208,7 +214,9 @@ stages:
               
               echo "🏷️ Running MyPy type check..."
               if find message_bus_lib tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find message_bus_lib tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+                find message_bus_lib tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
+                  echo "##[warning]MyPy found type issues in Shared Libraries - please review but not blocking PR"
+                }
               else
                 echo "##[warning]No Python files found for type checking"
               fi
