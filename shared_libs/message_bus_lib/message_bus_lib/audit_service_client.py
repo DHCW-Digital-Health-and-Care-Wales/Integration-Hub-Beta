@@ -15,65 +15,55 @@ class AuditServiceClient:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
 
-    def _create_base_audit_event(self, event_type: AuditEventType, message_content: str) -> AuditEvent:
+    def _create_audit_event(
+        self,
+        event_type: AuditEventType,
+        message_content: str,
+        validation_result: Optional[str] = None,
+        error_details: Optional[str] = None
+    ) -> AuditEvent:
         return AuditEvent(
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=event_type,
             timestamp=datetime.now(timezone.utc),
-            message_content=message_content
+            message_content=message_content,
+            validation_result=validation_result,
+            error_details=error_details
         )
-    
+
     def log_message_received(self, message_content: str, validation_result: Optional[str] = None) -> None:
-        event = self._create_base_audit_event(AuditEventType.MESSAGE_RECEIVED, message_content)
-        if validation_result:
-            event = AuditEvent(
-                workflow_id=event.workflow_id,
-                microservice_id=event.microservice_id,
-                event_type=event.event_type,
-                timestamp=event.timestamp,
-                message_content=event.message_content,
-                validation_result=validation_result
-            )
+        event = self._create_audit_event(
+            AuditEventType.MESSAGE_RECEIVED,
+            message_content,
+            validation_result=validation_result
+        )
         self._send_audit_event(event)
-    
+
     def log_message_processed(self, message_content: str, validation_result: Optional[str] = None) -> None:
-        event = self._create_base_audit_event(AuditEventType.MESSAGE_PROCESSED, message_content)
-        if validation_result:
-            event = AuditEvent(
-                workflow_id=event.workflow_id,
-                microservice_id=event.microservice_id,
-                event_type=event.event_type,
-                timestamp=event.timestamp,
-                message_content=event.message_content,
-                validation_result=validation_result
-            )
+        event = self._create_audit_event(
+            AuditEventType.MESSAGE_PROCESSED,
+            message_content,
+            validation_result=validation_result
+        )
         self._send_audit_event(event)
-    
+
     def log_message_failed(self, message_content: str, error_details: str, 
-                          validation_result: Optional[str] = None) -> None:
-        event = self._create_base_audit_event(AuditEventType.MESSAGE_FAILED, message_content)
-        event = AuditEvent(
-            workflow_id=event.workflow_id,
-            microservice_id=event.microservice_id,
-            event_type=event.event_type,
-            timestamp=event.timestamp,
-            message_content=event.message_content,
+                           validation_result: Optional[str] = None) -> None:
+        event = self._create_audit_event(
+            AuditEventType.MESSAGE_FAILED,
+            message_content,
             validation_result=validation_result,
             error_details=error_details
         )
         self._send_audit_event(event)
-    
+
     def log_validation_result(self, message_content: str, validation_result: str, 
-                            is_success: bool) -> None:
+                              is_success: bool) -> None:
         event_type = AuditEventType.VALIDATION_SUCCESS if is_success else AuditEventType.VALIDATION_FAILED
-        event = self._create_base_audit_event(event_type, message_content)
-        event = AuditEvent(
-            workflow_id=event.workflow_id,
-            microservice_id=event.microservice_id,
-            event_type=event.event_type,
-            timestamp=event.timestamp,
-            message_content=event.message_content,
+        event = self._create_audit_event(
+            event_type,
+            message_content,
             validation_result=validation_result
         )
         self._send_audit_event(event)
