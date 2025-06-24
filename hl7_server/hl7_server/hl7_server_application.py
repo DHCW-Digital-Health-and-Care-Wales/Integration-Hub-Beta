@@ -24,14 +24,14 @@ class Hl7ServerApplication:
     def __init__(self) -> None:
         self.sender_client = None
         self.audit_client = None
-        self._server_thread = None
+        self._server_thread: threading.Thread | None = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2575"))
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-        self._server: MLLPServer = None
+        self._server: MLLPServer | None = None
 
     def _signal_handler(self, signum: Any, frame: Any) -> None:
         logger.info("Shutdown signal received (signal %s).", signum)

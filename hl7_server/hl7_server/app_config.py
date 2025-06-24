@@ -7,7 +7,7 @@ from dataclasses import dataclass
 @dataclass
 class AppConfig:
     connection_string: str | None
-    egress_queue_name: str | None
+    egress_queue_name: str
     service_bus_namespace: str | None
     audit_queue_name: str
     workflow_id: str
@@ -16,17 +16,22 @@ class AppConfig:
     @staticmethod
     def read_env_config() -> AppConfig:
         return AppConfig(
-            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING", required=False),
-            egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
-            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
-            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
-            workflow_id=_read_env("WORKFLOW_ID", required=True),
-            microservice_id=_read_env("MICROSERVICE_ID", required=True),
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            egress_queue_name=_read_required_env("EGRESS_QUEUE_NAME"),
+            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
+            audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
+            workflow_id=_read_required_env("WORKFLOW_ID"),
+            microservice_id=_read_required_env("MICROSERVICE_ID"),
         )
 
 
-def _read_env(name: str, required: bool = False) -> str | None:
+def _read_env(name: str) -> str | None:
+    return os.getenv(name)
+
+
+def _read_required_env(name: str) -> str:
     value = os.getenv(name)
-    if required and (value is None or value.strip() == ""):
+    if value is None or value.strip() == "":
         raise RuntimeError(f"Missing required configuration: {name}")
-    return value
+    else:
+        return value
