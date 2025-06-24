@@ -31,12 +31,6 @@ jobs:
       ${{ else }}:
         name: ${{ parameters.poolName }}
     
-    variables:
-      ${{ if eq(parameters.banditSourceDir, '') }}:
-        banditSource: ${{ split(parameters.appName, '/')[sub(length(split(parameters.appName, '/')), 1)] }}
-      ${{ else }}:
-        banditSource: ${{ parameters.banditSourceDir }}
-    
     steps:
       - checkout: self
         displayName: 'Checkout Repository'
@@ -77,6 +71,12 @@ jobs:
           echo "##[group]Validate ${{ parameters.appDisplayName }}"
           cd ${{ parameters.appName }}
           
+          # Derive bandit source directory
+          ${{ if eq(parameters.banditSourceDir, '') }}:
+            BANDIT_SOURCE=$(basename ${{ parameters.appName }})
+          ${{ else }}:
+            BANDIT_SOURCE="${{ parameters.banditSourceDir }}"
+          
           echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
           pip install -r requirements.txt
           echo ""
@@ -90,13 +90,13 @@ jobs:
           echo ""
           
           echo "🔒 Running Bandit security scan..."
-          pipx run bandit -r $(banditSource) tests --severity-level medium
+          pipx run bandit -r ${BANDIT_SOURCE} tests --severity-level medium
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🏷️ Running MyPy type check..."
-          pipx run mypy $(banditSource) tests --ignore-missing-imports || {
+          pipx run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports || {
             echo "##[warning]MyPy found type issues in ${{ parameters.appDisplayName }} - please review but not blocking build"
           }
           echo ""
