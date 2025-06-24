@@ -91,13 +91,9 @@ stages:
               pipx run bandit -r hl7_server tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
-              if find hl7_server tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_server tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
-                  echo "##[warning]MyPy found type issues in HL7 Server - please review but not blocking PR"
-                }
-              else
-                echo "##[warning]No Python files found for type checking"
-              fi
+              pipx run mypy hl7_server tests --ignore-missing-imports || {
+                echo "##[warning]MyPy found type issues in HL7 Server - please review but not blocking PR"
+              }
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -122,13 +118,9 @@ stages:
               pipx run bandit -r hl7_transformer tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
-              if find hl7_transformer tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_transformer tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
-                  echo "##[warning]MyPy found type issues in HL7 Transformer - please review but not blocking PR"
-                }
-              else
-                echo "##[warning]No Python files found for type checking"
-              fi
+              pipx run mypy hl7_transformer tests --ignore-missing-imports || {
+                echo "##[warning]MyPy found type issues in HL7 Transformer - please review but not blocking PR"
+              }
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -153,13 +145,9 @@ stages:
               pipx run bandit -r hl7_sender tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
-              if find hl7_sender tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find hl7_sender tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
-                  echo "##[warning]MyPy found type issues in HL7 Sender - please review but not blocking PR"
-                }
-              else
-                echo "##[warning]No Python files found for type checking"
-              fi
+              pipx run mypy hl7_sender tests --ignore-missing-imports || {
+                echo "##[warning]MyPy found type issues in HL7 Sender - please review but not blocking PR"
+              }
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -184,13 +172,9 @@ stages:
               pipx run bandit -r message_bus_lib tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
-              if find message_bus_lib tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
-                find message_bus_lib tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports || {
-                  echo "##[warning]MyPy found type issues in Shared Libraries - please review but not blocking PR"
-                }
-              else
-                echo "##[warning]No Python files found for type checking"
-              fi
+              pipx run mypy message_bus_lib tests --ignore-missing-imports || {
+                echo "##[warning]MyPy found type issues in Shared Libraries - please review but not blocking PR"
+              }
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
