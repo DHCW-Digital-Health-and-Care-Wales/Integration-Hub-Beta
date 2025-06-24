@@ -1,0 +1,111 @@
+# Code Quality and Testing Template
+# This template runs code quality checks, security scans, type checking, and unit tests
+# for Python applications in the Integration Hub project
+
+parameters:
+  - name: appName
+    type: string
+    displayName: 'Application Name/Directory (e.g., hl7_server, hl7_transformer)'
+  - name: appDisplayName
+    type: string
+    displayName: 'Application Display Name (e.g., HL7 Server, HL7 Transformer)'
+  - name: pythonVersion
+    type: string
+    default: '3.13'
+    displayName: 'Python Version'
+  - name: poolName
+    type: string
+    default: 'Azure Pipelines'
+    displayName: 'Agent Pool Name'
+  - name: banditSourceDir
+    type: string
+    displayName: 'Bandit source directory (defaults to last part of appName if not specified)'
+    default: ''
+
+jobs:
+  - job: CodeQuality_${{ replace(parameters.appName, '/', '_') }}
+    displayName: 'Code Quality & Tests - ${{ parameters.appDisplayName }}'
+    pool:
+      ${{ if eq(parameters.poolName, 'Azure Pipelines') }}:
+        vmImage: 'ubuntu-latest'
+      ${{ else }}:
+        name: ${{ parameters.poolName }}
+    
+    variables:
+      ${{ if eq(parameters.banditSourceDir, '') }}:
+        banditSource: ${{ split(parameters.appName, '/')[sub(length(split(parameters.appName, '/')), 1)] }}
+      ${{ else }}:
+        banditSource: ${{ parameters.banditSourceDir }}
+    
+    steps:
+      - checkout: self
+        displayName: 'Checkout Repository'
+        fetchDepth: 1
+
+      - task: UsePythonVersion@0
+        displayName: 'Use Python ${{ parameters.pythonVersion }}'
+        inputs:
+          versionSpec: '${{ parameters.pythonVersion }}'
+
+      - script: |
+          set -euo pipefail  # Bash strict mode
+          echo "##[group]Install pipx and tools"
+          python -m pip install --upgrade pip
+          python -m pip install pipx
+          pipx install ruff
+          pipx install bandit
+          pipx install mypy
+          echo "##[endgroup]"
+        displayName: 'Install Code Quality Tools'
+
+      - script: |
+          set -euo pipefail
+          echo "##[group]Install Shared Dependencies"
+          
+          # Install shared library only (apps will install their own dependencies)
+          echo "Installing shared library..."
+          pip install -e shared_libs/message_bus_lib/
+          
+          # Verify shared library installation
+          python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
+          
+          echo "##[endgroup]"
+        displayName: 'Install Shared Dependencies'
+
+      - script: |
+          set -euo pipefail
+          echo "##[group]Validate ${{ parameters.appDisplayName }}"
+          cd ${{ parameters.appName }}
+          
+          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
+          pip install -r requirements.txt
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🔍 Running Ruff check..."
+          pipx run ruff check --output-format=github .
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🔒 Running Bandit security scan..."
+          pipx run bandit -r $(banditSource) tests --severity-level medium
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🏷️ Running MyPy type check..."
+          pipx run mypy $(banditSource) tests --ignore-missing-imports || {
+            echo "##[warning]MyPy found type issues in ${{ parameters.appDisplayName }} - please review but not blocking build"
+          }
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🧪 Running unit tests..."
+          python -m unittest discover tests -v
+          
+          echo "✅ ${{ parameters.appDisplayName }} validation completed"
+          echo "##[endgroup]"
+        displayName: 'Validate ${{ parameters.appDisplayName }}'

@@ -32,8 +32,19 @@ variables:
   azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
 
 stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_server'
+          appDisplayName: 'HL7 Server'
+          pythonVersion: '3.13'
+          poolName: ${{ parameters.POOL_SELECTION }}
+
   - stage: BuildAndPushHL7Server
     displayName: 'Build and Push HL7 Server'
+    dependsOn: CodeQuality
     jobs:
       - template: templates/docker-build-push-template.yml
         parameters:

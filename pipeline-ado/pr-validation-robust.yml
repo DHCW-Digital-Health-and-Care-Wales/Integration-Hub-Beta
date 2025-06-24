@@ -1,5 +1,5 @@
-# Alternative PR Validation Pipeline with better error handling
-# This version uses bash strict mode and better error handling
+# PR Validation Pipeline using Templates
+# This pipeline validates code quality, security, and tests for all apps
 trigger: none
 
 pr:
@@ -32,206 +32,53 @@ stages:
   - stage: PRValidation
     displayName: 'PR Code Quality & Unit Tests'
     jobs:
-      - job: CodeQualityAndTests
-        displayName: 'Code Quality Checks & Unit Tests'
+      # HL7 Server validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_server'
+          appDisplayName: 'HL7 Server'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # HL7 Transformer validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_transformer'
+          appDisplayName: 'HL7 Transformer'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # HL7 Sender validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_sender'
+          appDisplayName: 'HL7 Sender'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # Shared Libraries validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/message_bus_lib'
+          appDisplayName: 'Shared Libraries'
+          banditSourceDir: 'message_bus_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # Final summary
+      - job: PRSummary
+        displayName: 'PR Validation Summary'
+        dependsOn: 
+          - CodeQuality_hl7_server
+          - CodeQuality_hl7_transformer
+          - CodeQuality_hl7_sender
+          - CodeQuality_shared_libs_message_bus_lib
         pool:
           ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
             vmImage: 'ubuntu-latest'
           ${{ else }}:
             name: ${{ parameters.POOL_SELECTION }}
-        
         steps:
-          - checkout: self
-            displayName: 'Checkout Repository'
-            fetchDepth: 1
-
-          - task: UsePythonVersion@0
-            displayName: 'Use Python $(pythonVersion)'
-            inputs:
-              versionSpec: '$(pythonVersion)'
-
-          - script: |
-              set -euo pipefail  # Bash strict mode
-              echo "##[group]Install pipx and tools"
-              python -m pip install --upgrade pip
-              python -m pip install pipx
-              pipx install ruff
-              pipx install bandit
-              pipx install mypy
-              echo "##[endgroup]"
-            displayName: 'Install Code Quality Tools'
-
-          - script: |
-              set -euo pipefail
-              echo "##[group]Install Shared Dependencies"
-              
-              # Install shared library only (apps will install their own dependencies)
-              echo "Installing shared library..."
-              pip install -e shared_libs/message_bus_lib/
-              
-              # Verify shared library installation
-              python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
-              
-              echo "##[endgroup]"
-            displayName: 'Install Shared Dependencies'
-
-          # HL7 Server validation
-          - script: |
-              set -euo pipefail
-              echo "##[group]Validate HL7 Server"
-              cd hl7_server
-              
-              echo "📦 Installing HL7 Server dependencies..."
-              pip install -r requirements.txt
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔍 Running Ruff check..."
-              pipx run ruff check --output-format=github .
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔒 Running Bandit security scan..."
-              pipx run bandit -r hl7_server tests --severity-level medium
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🏷️ Running MyPy type check..."
-              pipx run mypy hl7_server tests --ignore-missing-imports || {
-                echo "##[warning]MyPy found type issues in HL7 Server - please review but not blocking PR"
-              }
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🧪 Running unit tests..."
-              python -m unittest discover tests -v
-              
-              echo "✅ HL7 Server validation completed"
-              echo "##[endgroup]"
-            displayName: 'Validate HL7 Server'
-
-          # HL7 Transformer validation
-          - script: |
-              set -euo pipefail
-              echo "##[group]Validate HL7 Transformer"
-              cd hl7_transformer
-              
-              echo "📦 Installing HL7 Transformer dependencies..."
-              pip install -r requirements.txt
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔍 Running Ruff check..."
-              pipx run ruff check --output-format=github .
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔒 Running Bandit security scan..."
-              pipx run bandit -r hl7_transformer tests --severity-level medium
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🏷️ Running MyPy type check..."
-              pipx run mypy hl7_transformer tests --ignore-missing-imports || {
-                echo "##[warning]MyPy found type issues in HL7 Transformer - please review but not blocking PR"
-              }
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🧪 Running unit tests..."
-              python -m unittest discover tests -v
-              
-              echo "✅ HL7 Transformer validation completed"
-              echo "##[endgroup]"
-            displayName: 'Validate HL7 Transformer'
-
-          # HL7 Sender validation  
-          - script: |
-              set -euo pipefail
-              echo "##[group]Validate HL7 Sender"
-              cd hl7_sender
-              
-              echo "📦 Installing HL7 Sender dependencies..."
-              pip install -r requirements.txt
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔍 Running Ruff check..."
-              pipx run ruff check --output-format=github .
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔒 Running Bandit security scan..."
-              pipx run bandit -r hl7_sender tests --severity-level medium
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🏷️ Running MyPy type check..."
-              pipx run mypy hl7_sender tests --ignore-missing-imports || {
-                echo "##[warning]MyPy found type issues in HL7 Sender - please review but not blocking PR"
-              }
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🧪 Running unit tests..."
-              python -m unittest discover tests -v
-              
-              echo "✅ HL7 Sender validation completed"
-              echo "##[endgroup]"
-            displayName: 'Validate HL7 Sender'
-
-          # Shared Libraries validation
-          - script: |
-              set -euo pipefail
-              echo "##[group]Validate Shared Libraries"
-              cd shared_libs/message_bus_lib
-              
-              echo "📦 Installing Shared Libraries dependencies..."
-              pip install -r requirements.txt
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔍 Running Ruff check..."
-              pipx run ruff check --output-format=github .
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🔒 Running Bandit security scan..."
-              pipx run bandit -r message_bus_lib tests --severity-level medium
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🏷️ Running MyPy type check..."
-              pipx run mypy message_bus_lib tests --ignore-missing-imports || {
-                echo "##[warning]MyPy found type issues in Shared Libraries - please review but not blocking PR"
-              }
-              echo ""
-              echo "----------------------------------------"
-              echo ""
-              
-              echo "🧪 Running unit tests..."
-              python -m unittest discover tests -v
-              
-              echo "✅ Shared Libraries validation completed"
-              echo "##[endgroup]"
-            displayName: 'Validate Shared Libraries'
-
-          # Final summary
           - script: |
               echo "##[section]🎉 PR Validation Summary"
               echo "✅ Code quality checks completed for all apps"
