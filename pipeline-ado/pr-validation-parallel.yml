@@ -1,0 +1,97 @@
+# Fast PR Validation Pipeline with Parallel Execution
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - hl7_server/*
+      - hl7_transformer/*
+      - hl7_sender/*
+      - shared_libs/*
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+variables:
+  pythonVersion: '3.13'
+
+stages:
+  - stage: PRValidation
+    displayName: 'PR Code Quality & Unit Tests'
+    jobs:
+      # Parallel job for each app
+      - job: HL7Server
+        displayName: 'HL7 Server - Quality & Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        steps:
+          - template: templates/app-validation-template.yml
+            parameters:
+              appName: 'hl7_server'
+              displayName: 'HL7 Server'
+
+      - job: HL7Transformer
+        displayName: 'HL7 Transformer - Quality & Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        steps:
+          - template: templates/app-validation-template.yml
+            parameters:
+              appName: 'hl7_transformer'
+              displayName: 'HL7 Transformer'
+
+      - job: HL7Sender
+        displayName: 'HL7 Sender - Quality & Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        steps:
+          - template: templates/app-validation-template.yml
+            parameters:
+              appName: 'hl7_sender'
+              displayName: 'HL7 Sender'
+
+      - job: SharedLibs
+        displayName: 'Shared Libs - Quality & Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        steps:
+          - checkout: self
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '$(pythonVersion)'
+          - script: |
+              python -m pip install --upgrade pip
+              python -m pip install pipx
+              pipx install ruff bandit mypy
+              pip install -r shared_libs/message_bus_lib/requirements.txt
+            displayName: 'Install Dependencies'
+          - script: |
+              cd shared_libs/message_bus_lib
+              pipx run ruff check --output-format=github .
+              pipx run bandit -r message_bus_lib/**/*.py tests/**/*.py
+              pipx run mypy --ignore-missing-imports message_bus_lib/**/*.py tests/**/*.py
+              python -m unittest discover tests -v
+            displayName: 'Validate Shared Libs'

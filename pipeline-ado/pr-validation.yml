@@ -1,0 +1,189 @@
+# PR Validation Pipeline
+# Runs code quality checks and unit tests for all apps
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - hl7_server/*
+      - hl7_transformer/*
+      - hl7_sender/*
+      - shared_libs/*
+      - pipeline-ado/*
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+variables:
+  pythonVersion: '3.13'
+
+stages:
+  - stage: PRValidation
+    displayName: 'PR Code Quality & Unit Tests'
+    jobs:
+      - job: CodeQualityAndTests
+        displayName: 'Code Quality Checks & Unit Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
+            fetchDepth: 1
+
+          - task: UsePythonVersion@0
+            displayName: 'Use Python $(pythonVersion)'
+            inputs:
+              versionSpec: '$(pythonVersion)'
+
+          - script: |
+              echo "##[group]Install pipx and tools"
+              python -m pip install --upgrade pip
+              python -m pip install pipx
+              pipx install ruff
+              pipx install bandit
+              pipx install mypy
+              echo "##[endgroup]"
+            displayName: 'Install Code Quality Tools'
+
+          - script: |
+              echo "##[group]Install App Dependencies"
+              # Install shared library first
+              pip install -e shared_libs/message_bus_lib/
+              
+              # Install each app's dependencies
+              pip install -r hl7_server/requirements.txt
+              pip install -r hl7_transformer/requirements.txt
+              pip install -r hl7_sender/requirements.txt
+              echo "##[endgroup]"
+            displayName: 'Install Dependencies'
+
+          # Code Quality Checks
+          - script: |
+              echo "##[group]Ruff Check - HL7 Server"
+              cd hl7_server
+              pipx run ruff check --output-format=github .
+              echo "##[endgroup]"
+            displayName: 'Ruff Check - HL7 Server'
+
+          - script: |
+              echo "##[group]Ruff Check - HL7 Transformer"
+              cd hl7_transformer
+              pipx run ruff check --output-format=github .
+              echo "##[endgroup]"
+            displayName: 'Ruff Check - HL7 Transformer'
+
+          - script: |
+              echo "##[group]Ruff Check - HL7 Sender"
+              cd hl7_sender
+              pipx run ruff check --output-format=github .
+              echo "##[endgroup]"
+            displayName: 'Ruff Check - HL7 Sender'
+
+          - script: |
+              echo "##[group]Ruff Check - Shared Libs"
+              cd shared_libs/message_bus_lib
+              pipx run ruff check --output-format=github .
+              echo "##[endgroup]"
+            displayName: 'Ruff Check - Shared Libs'
+
+          # Security Checks
+          - script: |
+              echo "##[group]Security Scan - HL7 Server"
+              cd hl7_server
+              pipx run bandit -r hl7_server/**/*.py tests/**/*.py -f json -o bandit-report-server.json || true
+              pipx run bandit -r hl7_server/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Security Scan - HL7 Server'
+
+          - script: |
+              echo "##[group]Security Scan - HL7 Transformer"
+              cd hl7_transformer
+              pipx run bandit -r hl7_transformer/**/*.py tests/**/*.py -f json -o bandit-report-transformer.json || true
+              pipx run bandit -r hl7_transformer/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Security Scan - HL7 Transformer'
+
+          - script: |
+              echo "##[group]Security Scan - HL7 Sender"
+              cd hl7_sender
+              pipx run bandit -r hl7_sender/**/*.py tests/**/*.py -f json -o bandit-report-sender.json || true
+              pipx run bandit -r hl7_sender/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Security Scan - HL7 Sender'
+
+          # Type Checking
+          - script: |
+              echo "##[group]Type Check - HL7 Server"
+              cd hl7_server
+              pipx run mypy --ignore-missing-imports hl7_server/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Type Check - HL7 Server'
+
+          - script: |
+              echo "##[group]Type Check - HL7 Transformer"
+              cd hl7_transformer
+              pipx run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Type Check - HL7 Transformer'
+
+          - script: |
+              echo "##[group]Type Check - HL7 Sender"
+              cd hl7_sender
+              pipx run mypy --ignore-missing-imports hl7_sender/**/*.py tests/**/*.py
+              echo "##[endgroup]"
+            displayName: 'Type Check - HL7 Sender'
+
+          # Unit Tests
+          - script: |
+              echo "##[group]Unit Tests - HL7 Server"
+              cd hl7_server
+              python -m unittest discover tests -v
+              echo "##[endgroup]"
+            displayName: 'Unit Tests - HL7 Server'
+
+          - script: |
+              echo "##[group]Unit Tests - HL7 Transformer"
+              cd hl7_transformer
+              python -m unittest discover tests -v
+              echo "##[endgroup]"
+            displayName: 'Unit Tests - HL7 Transformer'
+
+          - script: |
+              echo "##[group]Unit Tests - HL7 Sender"
+              cd hl7_sender
+              python -m unittest discover tests -v
+              echo "##[endgroup]"
+            displayName: 'Unit Tests - HL7 Sender'
+
+          - script: |
+              echo "##[group]Unit Tests - Shared Libs"
+              cd shared_libs/message_bus_lib
+              python -m unittest discover tests -v
+              echo "##[endgroup]"
+            displayName: 'Unit Tests - Shared Libs'
+
+          # Summary
+          - script: |
+              echo "##[section]PR Validation Summary"
+              echo "✅ Code quality checks completed"
+              echo "✅ Security scans completed"
+              echo "✅ Type checking completed"
+              echo "✅ Unit tests completed"
+              echo ""
+              echo "All checks passed! PR is ready for review."
+            displayName: 'PR Validation Summary'

@@ -1,0 +1,52 @@
+# Template for app validation (used by parallel PR pipeline)
+parameters:
+  appName: ''
+  displayName: ''
+
+steps:
+  - checkout: self
+    displayName: 'Checkout Repository'
+
+  - task: UsePythonVersion@0
+    displayName: 'Use Python 3.13'
+    inputs:
+      versionSpec: '3.13'
+
+  - script: |
+      echo "##[group]Install Tools and Dependencies"
+      python -m pip install --upgrade pip
+      python -m pip install pipx
+      pipx install ruff
+      pipx install bandit
+      pipx install mypy
+      
+      # Install shared library first
+      pip install -e shared_libs/message_bus_lib/
+      
+      # Install app-specific dependencies
+      pip install -r ${{ parameters.appName }}/requirements.txt
+      echo "##[endgroup]"
+    displayName: 'Install Dependencies - ${{ parameters.displayName }}'
+
+  - script: |
+      echo "##[group]Code Quality Checks - ${{ parameters.displayName }}"
+      cd ${{ parameters.appName }}
+      
+      echo "🔍 Running Ruff check..."
+      pipx run ruff check --output-format=github .
+      
+      echo "🔒 Running Bandit security scan..."
+      pipx run bandit -r ${{ parameters.appName }}/**/*.py tests/**/*.py
+      
+      echo "🏷️ Running MyPy type check..."
+      pipx run mypy --ignore-missing-imports ${{ parameters.appName }}/**/*.py tests/**/*.py
+      
+      echo "##[endgroup]"
+    displayName: 'Code Quality Checks - ${{ parameters.displayName }}'
+
+  - script: |
+      echo "##[group]Unit Tests - ${{ parameters.displayName }}"
+      cd ${{ parameters.appName }}
+      python -m unittest discover tests -v
+      echo "##[endgroup]"
+    displayName: 'Unit Tests - ${{ parameters.displayName }}'
