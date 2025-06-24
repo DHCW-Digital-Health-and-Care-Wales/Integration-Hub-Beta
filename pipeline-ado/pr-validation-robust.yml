@@ -83,17 +83,29 @@ stages:
               
               echo "📦 Installing HL7 Server dependencies..."
               pip install -r requirements.txt
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔒 Running Bandit security scan..."
               pipx run bandit -r hl7_server tests --severity-level medium
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🏷️ Running MyPy type check..."
               pipx run mypy hl7_server tests --ignore-missing-imports || {
                 echo "##[warning]MyPy found type issues in HL7 Server - please review but not blocking PR"
               }
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -110,17 +122,29 @@ stages:
               
               echo "📦 Installing HL7 Transformer dependencies..."
               pip install -r requirements.txt
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔒 Running Bandit security scan..."
               pipx run bandit -r hl7_transformer tests --severity-level medium
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🏷️ Running MyPy type check..."
               pipx run mypy hl7_transformer tests --ignore-missing-imports || {
                 echo "##[warning]MyPy found type issues in HL7 Transformer - please review but not blocking PR"
               }
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -137,17 +161,29 @@ stages:
               
               echo "📦 Installing HL7 Sender dependencies..."
               pip install -r requirements.txt
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔒 Running Bandit security scan..."
               pipx run bandit -r hl7_sender tests --severity-level medium
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🏷️ Running MyPy type check..."
               pipx run mypy hl7_sender tests --ignore-missing-imports || {
                 echo "##[warning]MyPy found type issues in HL7 Sender - please review but not blocking PR"
               }
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
@@ -164,17 +200,29 @@ stages:
               
               echo "📦 Installing Shared Libraries dependencies..."
               pip install -r requirements.txt
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🔒 Running Bandit security scan..."
               pipx run bandit -r message_bus_lib tests --severity-level medium
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🏷️ Running MyPy type check..."
               pipx run mypy message_bus_lib tests --ignore-missing-imports || {
                 echo "##[warning]MyPy found type issues in Shared Libraries - please review but not blocking PR"
               }
+              echo ""
+              echo "----------------------------------------"
+              echo ""
               
               echo "🧪 Running unit tests..."
               python -m unittest discover tests -v
