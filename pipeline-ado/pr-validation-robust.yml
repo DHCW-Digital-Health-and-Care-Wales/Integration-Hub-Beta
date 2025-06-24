@@ -63,61 +63,32 @@ stages:
 
           - script: |
               set -euo pipefail
-              echo "##[group]Install App Dependencies"
+              echo "##[group]Install Shared Dependencies"
               
-              # Verify directories exist
-              for app in hl7_server hl7_transformer hl7_sender; do
-                if [[ ! -d "$app" ]]; then
-                  echo "##[error]Directory $app not found"
-                  exit 1
-                fi
-              done
-              
-              # Install shared library first (from root directory)
+              # Install shared library only (apps will install their own dependencies)
               echo "Installing shared library..."
               pip install -e shared_libs/message_bus_lib/
               
-              # Install each app's dependencies (from their respective directories)
-              echo "Installing hl7_server dependencies..."
-              cd hl7_server
-              pip install -r requirements.txt
-              cd ..
-              
-              echo "Installing hl7_transformer dependencies..."
-              cd hl7_transformer
-              pip install -r requirements.txt
-              cd ..
-              
-              echo "Installing hl7_sender dependencies..."
-              cd hl7_sender
-              pip install -r requirements.txt
-              cd ..
-              
-              # Verify critical imports work
-              python -c "import azure.servicebus; print('✅ azure-servicebus imported successfully')"
-              python -c "import hl7apy; print('✅ hl7apy imported successfully')"
+              # Verify shared library installation
               python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
               
-              echo "##[section]Installed packages:"
-              pip list | grep -E "(azure|hl7|message-bus)"
               echo "##[endgroup]"
-            displayName: 'Install Dependencies'
+            displayName: 'Install Shared Dependencies'
 
-          # Combined validation script for each app
+          # HL7 Server validation
           - script: |
               set -euo pipefail
               echo "##[group]Validate HL7 Server"
               cd hl7_server
               
+              echo "📦 Installing HL7 Server dependencies..."
+              pip install -r requirements.txt
+              
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
               
               echo "🔒 Running Bandit security scan..."
-              if [[ -d "hl7_server" && -d "tests" ]]; then
-                pipx run bandit -r hl7_server tests --severity-level medium
-              else
-                echo "##[warning]Skipping bandit - directories not found"
-              fi
+              pipx run bandit -r hl7_server tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_server tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
@@ -135,20 +106,20 @@ stages:
               echo "##[endgroup]"
             displayName: 'Validate HL7 Server'
 
+          # HL7 Transformer validation
           - script: |
               set -euo pipefail
               echo "##[group]Validate HL7 Transformer"
               cd hl7_transformer
               
+              echo "📦 Installing HL7 Transformer dependencies..."
+              pip install -r requirements.txt
+              
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
               
               echo "🔒 Running Bandit security scan..."
-              if [[ -d "hl7_transformer" && -d "tests" ]]; then
-                pipx run bandit -r hl7_transformer tests --severity-level medium
-              else
-                echo "##[warning]Skipping bandit - directories not found"
-              fi
+              pipx run bandit -r hl7_transformer tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_transformer tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
@@ -166,20 +137,20 @@ stages:
               echo "##[endgroup]"
             displayName: 'Validate HL7 Transformer'
 
+          # HL7 Sender validation  
           - script: |
               set -euo pipefail
               echo "##[group]Validate HL7 Sender"
               cd hl7_sender
               
+              echo "📦 Installing HL7 Sender dependencies..."
+              pip install -r requirements.txt
+              
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
               
               echo "🔒 Running Bandit security scan..."
-              if [[ -d "hl7_sender" && -d "tests" ]]; then
-                pipx run bandit -r hl7_sender tests --severity-level medium
-              else
-                echo "##[warning]Skipping bandit - directories not found"
-              fi
+              pipx run bandit -r hl7_sender tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
               if find hl7_sender tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
@@ -197,20 +168,20 @@ stages:
               echo "##[endgroup]"
             displayName: 'Validate HL7 Sender'
 
+          # Shared Libraries validation
           - script: |
               set -euo pipefail
               echo "##[group]Validate Shared Libraries"
               cd shared_libs/message_bus_lib
               
+              echo "📦 Installing Shared Libraries dependencies..."
+              pip install -r requirements.txt
+              
               echo "🔍 Running Ruff check..."
               pipx run ruff check --output-format=github .
               
               echo "🔒 Running Bandit security scan..."
-              if [[ -d "message_bus_lib" && -d "tests" ]]; then
-                pipx run bandit -r message_bus_lib tests --severity-level medium
-              else
-                echo "##[warning]Skipping bandit - directories not found"
-              fi
+              pipx run bandit -r message_bus_lib tests --severity-level medium
               
               echo "🏷️ Running MyPy type check..."
               if find message_bus_lib tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
