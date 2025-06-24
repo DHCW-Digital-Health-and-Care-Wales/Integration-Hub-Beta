@@ -72,10 +72,11 @@ jobs:
           cd ${{ parameters.appName }}
           
           # Derive bandit source directory
-          ${{ if eq(parameters.banditSourceDir, '') }}:
-            BANDIT_SOURCE=$(basename ${{ parameters.appName }})
-          ${{ else }}:
+          if [ "${{ parameters.banditSourceDir }}" = "" ]; then
+            BANDIT_SOURCE=$(basename "${{ parameters.appName }}")
+          else
             BANDIT_SOURCE="${{ parameters.banditSourceDir }}"
+          fi
           
           echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
           pip install -r requirements.txt
