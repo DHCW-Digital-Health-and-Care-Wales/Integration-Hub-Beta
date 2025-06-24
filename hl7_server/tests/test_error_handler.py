@@ -32,6 +32,14 @@ class TestErrorHandler(unittest.TestCase):
             "Invalid HL7 Message: %s", exception
         )
 
+    def test_pipeline_failure_simulation(self):
+        """
+        TEMPORARY TEST: This test is designed to fail to verify pipeline behavior.
+        Remove this test after confirming the pipeline correctly handles failures.
+        """
+        # This assertion will always fail to simulate a test failure
+        self.assertTrue(False, "Simulated test failure - pipeline should stop here")
+
 
 if __name__ == '__main__':
     unittest.main()
