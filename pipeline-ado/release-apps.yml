@@ -18,6 +18,7 @@ variables:
   azureLocation: "uks"
   hl7ServerPipelineName: 'HL7 Server - Build'
   hl7TransformerPipelineName: 'HL7 Transformer - Build'
+  hl7SenderPipelineName: 'HL7 Sender - Build'
 
 resources:
   pipelines:
@@ -26,6 +27,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Transformer - Build'
       source: 'HL7 Transformer - Build'
+      trigger: none 
+    - pipeline: 'HL7 Sender - Build'
+      source: 'HL7 Sender - Build'
       trigger: none 
 
 
@@ -64,6 +68,22 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
 
+  - stage: ReleaseHL7SenderDev
+    displayName: 'Release App HL7Sender - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7SenderDev'
+          displayName: 'Release App HL7Sender - Dev'
+          appName: 'hl7sender'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
   - stage: ReleaseHL7ServerTest
     displayName: 'Release App HL7Server - Test'
     dependsOn: ReleaseHL7ServerDev
@@ -97,3 +117,20 @@ stages:
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
+
+  - stage: ReleaseHL7SenderTest
+    displayName: 'Release App HL7Sender - Test'
+    dependsOn: ReleaseHL7SenderDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7SenderTest'
+          displayName: 'Release App HL7Sender - Test'
+          appName: 'hl7sender'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}

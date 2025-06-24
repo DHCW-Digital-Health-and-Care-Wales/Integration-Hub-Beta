@@ -68,6 +68,18 @@ jobs:
 
       - script: |
           set -euo pipefail
+          echo "##[group]Install ${{ parameters.appDisplayName }} Dependencies"
+          cd ${{ parameters.appName }}
+          
+          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
+          pip install -r requirements.txt
+          
+          echo "✅ Dependencies installed successfully"
+          echo "##[endgroup]"
+        displayName: 'Install ${{ parameters.appDisplayName }} Dependencies'
+
+      - script: |
+          set -euo pipefail
           echo "##[group]Validate ${{ parameters.appDisplayName }}"
           cd ${{ parameters.appName }}
           
@@ -77,12 +89,6 @@ jobs:
           else
             BANDIT_SOURCE="${{ parameters.banditSourceDir }}"
           fi
-          
-          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
-          pip install -r requirements.txt
-          echo ""
-          echo "----------------------------------------"
-          echo ""
           
           echo "🔍 Running Ruff check..."
           pipx run ruff check --output-format=github .
