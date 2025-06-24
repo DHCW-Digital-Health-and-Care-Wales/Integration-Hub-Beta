@@ -69,6 +69,15 @@ stages:
               pip install -r hl7_server/requirements.txt
               pip install -r hl7_transformer/requirements.txt
               pip install -r hl7_sender/requirements.txt
+              
+              # Install additional common dependencies that might be missing
+              pip install azure-servicebus==7.14.2
+              pip install azure-identity==1.21.0
+              pip install hl7apy==1.3.5
+              pip install hl7==0.4.5
+              
+              echo "##[section]Installed packages:"
+              pip list
               echo "##[endgroup]"
             displayName: 'Install Dependencies'
 
@@ -77,6 +86,10 @@ stages:
               echo "##[group]Ruff Check - HL7 Server"
               cd hl7_server
               pipx run ruff check --output-format=github .
+              if [ $? -ne 0 ]; then
+                echo "##[error]Ruff check failed for HL7 Server"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Ruff Check - HL7 Server'
 
@@ -84,6 +97,10 @@ stages:
               echo "##[group]Ruff Check - HL7 Transformer"
               cd hl7_transformer
               pipx run ruff check --output-format=github .
+              if [ $? -ne 0 ]; then
+                echo "##[error]Ruff check failed for HL7 Transformer"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Ruff Check - HL7 Transformer'
 
@@ -91,6 +108,10 @@ stages:
               echo "##[group]Ruff Check - HL7 Sender"
               cd hl7_sender
               pipx run ruff check --output-format=github .
+              if [ $? -ne 0 ]; then
+                echo "##[error]Ruff check failed for HL7 Sender"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Ruff Check - HL7 Sender'
 
@@ -98,6 +119,10 @@ stages:
               echo "##[group]Ruff Check - Shared Libs"
               cd shared_libs/message_bus_lib
               pipx run ruff check --output-format=github .
+              if [ $? -ne 0 ]; then
+                echo "##[error]Ruff check failed for Shared Libs"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Ruff Check - Shared Libs'
 
@@ -105,24 +130,49 @@ stages:
           - script: |
               echo "##[group]Security Scan - HL7 Server"
               cd hl7_server
-              pipx run bandit -r hl7_server/**/*.py tests/**/*.py -f json -o bandit-report-server.json || true
-              pipx run bandit -r hl7_server/**/*.py tests/**/*.py
+              # Use find to get actual Python files instead of globbing
+              PYTHON_FILES=$(find . -name "*.py" -path "./hl7_server/*" -o -path "./tests/*")
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run bandit -r ./hl7_server ./tests -f json -o bandit-report-server.json || true
+                pipx run bandit -r ./hl7_server ./tests
+                if [ $? -ne 0 ]; then
+                  echo "##[warning]Security issues found in HL7 Server - please review"
+                fi
+              else
+                echo "##[warning]No Python files found to scan in HL7 Server"
+              fi
               echo "##[endgroup]"
             displayName: 'Security Scan - HL7 Server'
 
           - script: |
               echo "##[group]Security Scan - HL7 Transformer"
               cd hl7_transformer
-              pipx run bandit -r hl7_transformer/**/*.py tests/**/*.py -f json -o bandit-report-transformer.json || true
-              pipx run bandit -r hl7_transformer/**/*.py tests/**/*.py
+              PYTHON_FILES=$(find . -name "*.py" -path "./hl7_transformer/*" -o -path "./tests/*")
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run bandit -r ./hl7_transformer ./tests -f json -o bandit-report-transformer.json || true
+                pipx run bandit -r ./hl7_transformer ./tests
+                if [ $? -ne 0 ]; then
+                  echo "##[warning]Security issues found in HL7 Transformer - please review"
+                fi
+              else
+                echo "##[warning]No Python files found to scan in HL7 Transformer"
+              fi
               echo "##[endgroup]"
             displayName: 'Security Scan - HL7 Transformer'
 
           - script: |
               echo "##[group]Security Scan - HL7 Sender"
               cd hl7_sender
-              pipx run bandit -r hl7_sender/**/*.py tests/**/*.py -f json -o bandit-report-sender.json || true
-              pipx run bandit -r hl7_sender/**/*.py tests/**/*.py
+              PYTHON_FILES=$(find . -name "*.py" -path "./hl7_sender/*" -o -path "./tests/*")
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run bandit -r ./hl7_sender ./tests -f json -o bandit-report-sender.json || true
+                pipx run bandit -r ./hl7_sender ./tests
+                if [ $? -ne 0 ]; then
+                  echo "##[warning]Security issues found in HL7 Sender - please review"
+                fi
+              else
+                echo "##[warning]No Python files found to scan in HL7 Sender"
+              fi
               echo "##[endgroup]"
             displayName: 'Security Scan - HL7 Sender'
 
@@ -130,21 +180,49 @@ stages:
           - script: |
               echo "##[group]Type Check - HL7 Server"
               cd hl7_server
-              pipx run mypy --ignore-missing-imports hl7_server/**/*.py tests/**/*.py
+              # Use find to locate Python files and pass them to mypy
+              PYTHON_FILES=$(find ./hl7_server ./tests -name "*.py" 2>/dev/null | tr '\n' ' ')
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run mypy --ignore-missing-imports $PYTHON_FILES
+                if [ $? -ne 0 ]; then
+                  echo "##[error]Type checking failed for HL7 Server"
+                  exit 1
+                fi
+              else
+                echo "##[warning]No Python files found for type checking in HL7 Server"
+              fi
               echo "##[endgroup]"
             displayName: 'Type Check - HL7 Server'
 
           - script: |
               echo "##[group]Type Check - HL7 Transformer"
               cd hl7_transformer
-              pipx run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
+              PYTHON_FILES=$(find ./hl7_transformer ./tests -name "*.py" 2>/dev/null | tr '\n' ' ')
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run mypy --ignore-missing-imports $PYTHON_FILES
+                if [ $? -ne 0 ]; then
+                  echo "##[error]Type checking failed for HL7 Transformer"
+                  exit 1
+                fi
+              else
+                echo "##[warning]No Python files found for type checking in HL7 Transformer"
+              fi
               echo "##[endgroup]"
             displayName: 'Type Check - HL7 Transformer'
 
           - script: |
               echo "##[group]Type Check - HL7 Sender"
               cd hl7_sender
-              pipx run mypy --ignore-missing-imports hl7_sender/**/*.py tests/**/*.py
+              PYTHON_FILES=$(find ./hl7_sender ./tests -name "*.py" 2>/dev/null | tr '\n' ' ')
+              if [ -n "$PYTHON_FILES" ]; then
+                pipx run mypy --ignore-missing-imports $PYTHON_FILES
+                if [ $? -ne 0 ]; then
+                  echo "##[error]Type checking failed for HL7 Sender"
+                  exit 1
+                fi
+              else
+                echo "##[warning]No Python files found for type checking in HL7 Sender"
+              fi
               echo "##[endgroup]"
             displayName: 'Type Check - HL7 Sender'
 
@@ -153,6 +231,10 @@ stages:
               echo "##[group]Unit Tests - HL7 Server"
               cd hl7_server
               python -m unittest discover tests -v
+              if [ $? -ne 0 ]; then
+                echo "##[error]Unit tests failed for HL7 Server"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Unit Tests - HL7 Server'
 
@@ -160,6 +242,10 @@ stages:
               echo "##[group]Unit Tests - HL7 Transformer"
               cd hl7_transformer
               python -m unittest discover tests -v
+              if [ $? -ne 0 ]; then
+                echo "##[error]Unit tests failed for HL7 Transformer"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Unit Tests - HL7 Transformer'
 
@@ -167,6 +253,10 @@ stages:
               echo "##[group]Unit Tests - HL7 Sender"
               cd hl7_sender
               python -m unittest discover tests -v
+              if [ $? -ne 0 ]; then
+                echo "##[error]Unit tests failed for HL7 Sender"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Unit Tests - HL7 Sender'
 
@@ -174,6 +264,10 @@ stages:
               echo "##[group]Unit Tests - Shared Libs"
               cd shared_libs/message_bus_lib
               python -m unittest discover tests -v
+              if [ $? -ne 0 ]; then
+                echo "##[error]Unit tests failed for Shared Libs"
+                exit 1
+              fi
               echo "##[endgroup]"
             displayName: 'Unit Tests - Shared Libs'
 

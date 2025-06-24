@@ -1,0 +1,219 @@
+# Alternative PR Validation Pipeline with better error handling
+# This version uses bash strict mode and better error handling
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - hl7_server/*
+      - hl7_transformer/*
+      - hl7_sender/*
+      - shared_libs/*
+      - pipeline-ado/*
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+variables:
+  pythonVersion: '3.13'
+
+stages:
+  - stage: PRValidation
+    displayName: 'PR Code Quality & Unit Tests'
+    jobs:
+      - job: CodeQualityAndTests
+        displayName: 'Code Quality Checks & Unit Tests'
+        pool:
+          ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
+            vmImage: 'ubuntu-latest'
+          ${{ else }}:
+            name: ${{ parameters.POOL_SELECTION }}
+        
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
+            fetchDepth: 1
+
+          - task: UsePythonVersion@0
+            displayName: 'Use Python $(pythonVersion)'
+            inputs:
+              versionSpec: '$(pythonVersion)'
+
+          - script: |
+              set -euo pipefail  # Bash strict mode
+              echo "##[group]Install pipx and tools"
+              python -m pip install --upgrade pip
+              python -m pip install pipx
+              pipx install ruff
+              pipx install bandit
+              pipx install mypy
+              echo "##[endgroup]"
+            displayName: 'Install Code Quality Tools'
+
+          - script: |
+              set -euo pipefail
+              echo "##[group]Install App Dependencies"
+              
+              # Verify directories exist
+              for app in hl7_server hl7_transformer hl7_sender; do
+                if [[ ! -d "$app" ]]; then
+                  echo "##[error]Directory $app not found"
+                  exit 1
+                fi
+              done
+              
+              # Install shared library first
+              pip install -e shared_libs/message_bus_lib/
+              
+              # Install each app's dependencies
+              pip install -r hl7_server/requirements.txt
+              pip install -r hl7_transformer/requirements.txt
+              pip install -r hl7_sender/requirements.txt
+              
+              # Verify installations
+              python -c "import azure.servicebus; print('✅ azure-servicebus imported successfully')"
+              python -c "import hl7apy; print('✅ hl7apy imported successfully')"
+              
+              echo "##[section]Installed packages:"
+              pip list | grep -E "(azure|hl7|message-bus)"
+              echo "##[endgroup]"
+            displayName: 'Install Dependencies'
+
+          # Combined validation script for each app
+          - script: |
+              set -euo pipefail
+              echo "##[group]Validate HL7 Server"
+              cd hl7_server
+              
+              echo "🔍 Running Ruff check..."
+              pipx run ruff check --output-format=github .
+              
+              echo "🔒 Running Bandit security scan..."
+              if [[ -d "hl7_server" && -d "tests" ]]; then
+                pipx run bandit -r hl7_server tests --severity-level medium
+              else
+                echo "##[warning]Skipping bandit - directories not found"
+              fi
+              
+              echo "🏷️ Running MyPy type check..."
+              if find hl7_server tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
+                find hl7_server tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+              else
+                echo "##[warning]No Python files found for type checking"
+              fi
+              
+              echo "🧪 Running unit tests..."
+              python -m unittest discover tests -v
+              
+              echo "✅ HL7 Server validation completed"
+              echo "##[endgroup]"
+            displayName: 'Validate HL7 Server'
+
+          - script: |
+              set -euo pipefail
+              echo "##[group]Validate HL7 Transformer"
+              cd hl7_transformer
+              
+              echo "🔍 Running Ruff check..."
+              pipx run ruff check --output-format=github .
+              
+              echo "🔒 Running Bandit security scan..."
+              if [[ -d "hl7_transformer" && -d "tests" ]]; then
+                pipx run bandit -r hl7_transformer tests --severity-level medium
+              else
+                echo "##[warning]Skipping bandit - directories not found"
+              fi
+              
+              echo "🏷️ Running MyPy type check..."
+              if find hl7_transformer tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
+                find hl7_transformer tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+              else
+                echo "##[warning]No Python files found for type checking"
+              fi
+              
+              echo "🧪 Running unit tests..."
+              python -m unittest discover tests -v
+              
+              echo "✅ HL7 Transformer validation completed"
+              echo "##[endgroup]"
+            displayName: 'Validate HL7 Transformer'
+
+          - script: |
+              set -euo pipefail
+              echo "##[group]Validate HL7 Sender"
+              cd hl7_sender
+              
+              echo "🔍 Running Ruff check..."
+              pipx run ruff check --output-format=github .
+              
+              echo "🔒 Running Bandit security scan..."
+              if [[ -d "hl7_sender" && -d "tests" ]]; then
+                pipx run bandit -r hl7_sender tests --severity-level medium
+              else
+                echo "##[warning]Skipping bandit - directories not found"
+              fi
+              
+              echo "🏷️ Running MyPy type check..."
+              if find hl7_sender tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
+                find hl7_sender tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+              else
+                echo "##[warning]No Python files found for type checking"
+              fi
+              
+              echo "🧪 Running unit tests..."
+              python -m unittest discover tests -v
+              
+              echo "✅ HL7 Sender validation completed"
+              echo "##[endgroup]"
+            displayName: 'Validate HL7 Sender'
+
+          - script: |
+              set -euo pipefail
+              echo "##[group]Validate Shared Libraries"
+              cd shared_libs/message_bus_lib
+              
+              echo "🔍 Running Ruff check..."
+              pipx run ruff check --output-format=github .
+              
+              echo "🔒 Running Bandit security scan..."
+              if [[ -d "message_bus_lib" && -d "tests" ]]; then
+                pipx run bandit -r message_bus_lib tests --severity-level medium
+              else
+                echo "##[warning]Skipping bandit - directories not found"
+              fi
+              
+              echo "🏷️ Running MyPy type check..."
+              if find message_bus_lib tests -name "*.py" -type f | head -1 > /dev/null 2>&1; then
+                find message_bus_lib tests -name "*.py" -type f | xargs pipx run mypy --ignore-missing-imports
+              else
+                echo "##[warning]No Python files found for type checking"
+              fi
+              
+              echo "🧪 Running unit tests..."
+              python -m unittest discover tests -v
+              
+              echo "✅ Shared Libraries validation completed"
+              echo "##[endgroup]"
+            displayName: 'Validate Shared Libraries'
+
+          # Final summary
+          - script: |
+              echo "##[section]🎉 PR Validation Summary"
+              echo "✅ Code quality checks completed for all apps"
+              echo "✅ Security scans completed for all apps"
+              echo "✅ Type checking completed for all apps"
+              echo "✅ Unit tests completed for all apps"
+              echo ""
+              echo "🚀 All checks passed! PR is ready for review."
+            displayName: 'PR Validation Summary'
