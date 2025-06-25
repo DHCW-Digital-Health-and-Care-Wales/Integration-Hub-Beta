@@ -21,7 +21,7 @@ class AppConfig:
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
-            microservice_id=_read_env("MICROSERVICE_ID", required=True)
+            microservice_id=_read_env("MICROSERVICE_ID", required=True),
         )
 
 

@@ -12,7 +12,7 @@ ENV_VARS = {
     "HOST": "127.0.0.1",
     "PORT": "2576",
     "EGRESS_QUEUE_NAME": "egress_queue",
-    "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost"
+    "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
 }
 
 
