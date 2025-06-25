@@ -26,7 +26,7 @@ class TestProcessMessage(unittest.TestCase):
         service_bus_message, hl7_message, hl7_string, mock_mllp_client = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
-        mock_mllp_client.send_message.return_value = hl7_ack_message.encode()
+        mock_mllp_client.send_message.return_value = hl7_ack_message
 
         # Act
         _process_message(service_bus_message, mock_mllp_client)
