@@ -75,6 +75,7 @@ class AuditServiceClient:
             logger.debug(f"Audit event sent: {event.event_type.value}")
         except Exception as e:
             logger.error(f"Failed to send audit event: {e}")
+            raise
 
     def close(self) -> None:
         if self.sender_client:
