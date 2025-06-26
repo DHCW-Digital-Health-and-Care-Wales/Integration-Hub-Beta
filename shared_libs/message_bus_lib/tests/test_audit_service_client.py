@@ -102,12 +102,15 @@ class TestAuditServiceClient(unittest.TestCase):
         self.assertEqual(sent_data["event_type"], "VALIDATION_FAILED")
         self.assertEqual(sent_data["validation_result"], validation_result)
 
-    def test_send_audit_event_handles_exception(self):
+    def test_send_audit_event_raises_exception(self):
         # Arrange
         self.sender_client.send_text_message.side_effect = Exception("Network error")
         
-        # Act & Assert - should not raise exception
-        self.audit_client.log_message_received("test message")
+        # Act & Assert
+        with self.assertRaises(Exception) as context:
+            self.audit_client.log_message_received("test message")
+        
+        self.assertEqual(str(context.exception), "Network error")
 
     def test_close(self):
         # Act
