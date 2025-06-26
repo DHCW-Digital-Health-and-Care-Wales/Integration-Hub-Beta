@@ -1,11 +1,11 @@
-# HL7 Transformer Build Pipeline
+# HL7 Sender Build Pipeline
 trigger:
   branches:
     include:
       - main
   paths:
     include:
-      - hl7_transformer/*
+      - hl7_sender/*
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
@@ -37,22 +37,22 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_transformer'
-          appDisplayName: 'HL7 Transformer'
+          appName: 'hl7_sender'
+          appDisplayName: 'HL7 Sender'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
 
-  - stage: BuildAndPushHL7Transformer
-    displayName: 'Build and Push HL7 Transformer'
+  - stage: BuildAndPushHL7Sender
+    displayName: 'Build and Push HL7 Sender'
     dependsOn: CodeQuality
     jobs:
       - template: templates/docker-build-push-template.yml
         parameters:
-          jobName: 'BuildPushHL7Transformer'
-          displayName: 'Build and Push HL7 Transformer'
-          appName: 'hl7transformer'
-          dockerfilePath: 'hl7_transformer/Dockerfile'
-          buildContext: 'hl7_transformer'
+          jobName: 'BuildPushHL7Sender'
+          displayName: 'Build and Push HL7 Sender'
+          appName: 'hl7sender'
+          dockerfilePath: 'hl7_sender/Dockerfile'
+          buildContext: 'hl7_sender'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
