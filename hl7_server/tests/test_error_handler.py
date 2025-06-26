@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from hl7apy.mllp import InvalidHL7Message, UnsupportedMessageType
 
@@ -22,9 +22,7 @@ class TestErrorHandler(unittest.TestCase):
 
         mock_logger.error.assert_called_once()
         mock_audit_client.log_message_failed.assert_called_once_with(
-            unsupported_message,
-            f"Unsupported Message Type: {exception}",
-            "Unsupported message type"
+            unsupported_message, f"Unsupported Message Type: {exception}", "Unsupported message type"
         )
 
     @patch("hl7_server.error_handler.logger")
@@ -42,9 +40,7 @@ class TestErrorHandler(unittest.TestCase):
 
         mock_logger.error.assert_called_once()
         mock_audit_client.log_message_failed.assert_called_once_with(
-            invalid_message,
-            f"Invalid HL7 Message: {exception}",
-            "Invalid HL7 message format"
+            invalid_message, f"Invalid HL7 Message: {exception}", "Invalid HL7 message format"
         )
 
 
