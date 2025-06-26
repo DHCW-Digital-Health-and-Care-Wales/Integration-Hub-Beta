@@ -13,6 +13,9 @@ ENV_VARS = {
     "PORT": "2576",
     "EGRESS_QUEUE_NAME": "egress_queue",
     "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
+    "AUDIT_QUEUE_NAME": "audit_queue",
+    "WORKFLOW_ID": "test-workflow",
+    "MICROSERVICE_ID": "test-service",
 }
 
 

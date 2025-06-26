@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class ErrorHandler(AbstractErrorHandler):
-    def __init__(self, msg, audit_client: AuditServiceClient):
-        super().__init__(msg)
+    def __init__(self, exc: Exception, msg, audit_client: AuditServiceClient):
+        super().__init__(exc, msg)
         self.audit_client = audit_client
 
     def reply(self):
