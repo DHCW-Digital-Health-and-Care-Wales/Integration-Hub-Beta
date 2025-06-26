@@ -15,7 +15,8 @@ ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
 class TestGenericHandler(unittest.TestCase):
     def setUp(self):
         self.mock_sender = MagicMock()
-        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender)
+        self.mock_audit_client = MagicMock()
+        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender, self.mock_audit_client)
 
     def test_valid_a28_message_returns_ack(self) -> None:
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:

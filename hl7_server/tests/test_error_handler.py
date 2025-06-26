@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from hl7apy.mllp import InvalidHL7Message, UnsupportedMessageType
 
@@ -11,21 +11,41 @@ class TestErrorHandler(unittest.TestCase):
     def test_reply_with_unsupported_message_type(self, mock_logger):
         exception = UnsupportedMessageType("Unsupported type")
         unsupported_message = r"MSH|^~\&|GHH_ADT||||20080115153000||ADT^A01^ADT_A01|0123456789|P|2.5||||AL"
-        handler = ErrorHandler(exc=exception, message=unsupported_message)
+        mock_audit_client = MagicMock()
+        
+        handler = ErrorHandler(unsupported_message, mock_audit_client)
+        handler.exc = exception
+        handler.incoming_message = unsupported_message
+        
+        with self.assertRaises(UnsupportedMessageType):
+            handler.reply()
 
-        handler.reply()
-
-        mock_logger.error.assert_called_once_with("Unsupported Message Type: %s", exception)
+        mock_logger.error.assert_called_once()
+        mock_audit_client.log_message_failed.assert_called_once_with(
+            unsupported_message, 
+            f"Unsupported Message Type: {exception}",
+            "Unsupported message type"
+        )
 
     @patch("hl7_server.error_handler.logger")
     def test_reply_with_invalid_hl7_message_exception(self, mock_logger):
         exception = InvalidHL7Message("invalid message")
         invalid_message = "<hello>"
-        handler = ErrorHandler(exc=exception, message=invalid_message)
+        mock_audit_client = MagicMock()
 
-        handler.reply()
+        handler = ErrorHandler(invalid_message, mock_audit_client)
+        handler.exc = exception
+        handler.incoming_message = invalid_message
 
-        mock_logger.error.assert_called_once_with("Invalid HL7 Message: %s", exception)
+        with self.assertRaises(InvalidHL7Message):
+            handler.reply()
+
+        mock_logger.error.assert_called_once()
+        mock_audit_client.log_message_failed.assert_called_once_with(
+            invalid_message,
+            f"Invalid HL7 Message: {exception}",
+            "Invalid HL7 message format"
+        )
 
 
 if __name__ == "__main__":
