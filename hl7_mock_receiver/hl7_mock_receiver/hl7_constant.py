@@ -1,0 +1,10 @@
+class Hl7Constants:
+    # HL7 Delimiters
+    FIELD_SEPARATOR = '|'
+    ENCODING_CHARACTERS = '^~\\&'
+    PROCESSING_ID_PRODUCTION = 'P'
+
+    ACK_MESSAGE_TYPE_FORMAT = 'ACK'
+    ACCEPT_ACK_CODE = 'AA'
+    ERROR_ACK_CODE = 'AE'
+
