@@ -8,16 +8,20 @@ from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .hl7_ack_builder import HL7AckBuilder
+from .hl7_validator import HL7Validator, ValidationException
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 
 class GenericHandler(AbstractHandler):
-    def __init__(self, msg: str, sender_client: MessageSenderClient, audit_client: AuditServiceClient):
+    def __init__(
+        self, msg: str, sender_client: MessageSenderClient, audit_client: AuditServiceClient, validator: HL7Validator
+    ):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
         self.audit_client = audit_client
+        self.validator = validator
 
     def reply(self) -> str:
         try:
@@ -28,6 +32,7 @@ class GenericHandler(AbstractHandler):
             message_type = msg.msh.msh_9.to_er7()
             logger.info("Received message type: %s, Control ID: %s", message_type, message_control_id)
 
+            self.validator.validate(msg)
             self.audit_client.log_validation_result(
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
@@ -45,10 +50,16 @@ class GenericHandler(AbstractHandler):
             logger.error(error_msg)
 
             self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
-
             self.audit_client.log_message_failed(self.incoming_message, error_msg)
 
             raise
+        except ValidationException as e:
+            error_msg = f"HL7 validation error: {e}"
+            logger.error(error_msg)
+
+            self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
+            self.audit_client.log_message_failed(self.incoming_message, error_msg)
+            raise e
         except Exception as e:
             error_msg = f"Unexpected error while processing message: {e}"
             logger.exception(error_msg)

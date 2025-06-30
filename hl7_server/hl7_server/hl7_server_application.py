@@ -9,6 +9,8 @@ from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
+from hl7_server.hl7_validator import HL7Validator
+
 from .app_config import AppConfig
 from .error_handler import ErrorHandler
 from .generic_handler import GenericHandler
@@ -46,10 +48,11 @@ class Hl7ServerApplication:
 
         audit_sender_client = factory.create_queue_sender_client(app_config.audit_queue_name)
         self.audit_client = AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id)
+        self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app)
 
         handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
-            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client),
+            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             "ERR": (ErrorHandler, self.audit_client),
         }
 
