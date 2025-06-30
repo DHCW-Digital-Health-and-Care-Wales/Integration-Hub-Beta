@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class GenericHandler(AbstractHandler):
-    def __init__(self, msg, sender_client: MessageSenderClient, audit_client: AuditServiceClient):
+    def __init__(self, msg: str, sender_client: MessageSenderClient, audit_client: AuditServiceClient):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
         self.audit_client = audit_client
@@ -61,7 +61,7 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str) -> bool:
+    def _send_to_service_bus(self, message_control_id: str) -> None:
         try:
             self.sender_client.send_text_message(self.incoming_message)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
