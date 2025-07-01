@@ -53,21 +53,17 @@ def main():
         factory.create_message_receiver_client(
             app_config.ingress_queue_name
         ) as receiver_client,
-    ):
-        audit_client = AuditServiceClient(
+        AuditServiceClient(
             audit_sender_client, app_config.workflow_id, app_config.microservice_id
-        )
-
+        ) as audit_client,
+    ):
         logger.info("Processor started.")
 
-        with audit_client:
-            while PROCESSOR_RUNNING:
-                receiver_client.receive_messages(
-                    MAX_BATCH_SIZE,
-                    lambda message: _process_message(
-                        message, sender_client, audit_client
-                    ),
-                )
+        while PROCESSOR_RUNNING:
+            receiver_client.receive_messages(
+                MAX_BATCH_SIZE,
+                lambda message: _process_message(message, sender_client, audit_client),
+            )
 
 
 def _process_message(
@@ -110,7 +106,7 @@ def _process_message(
             message_body, error_msg, "DateTime transformation failed"
         )
 
-        return ProcessingResult.failed(str(e))
+        return ProcessingResult.failed(str(e), retry=True)
 
     except Exception as e:
         error_msg = f"Unexpected error during message processing: {e}"
@@ -120,7 +116,7 @@ def _process_message(
             message_body, error_msg, "Unexpected processing error"
         )
 
-        return ProcessingResult.failed(str(e))
+        return ProcessingResult.failed(str(e), retry=True)
 
 
 if __name__ == "__main__":
