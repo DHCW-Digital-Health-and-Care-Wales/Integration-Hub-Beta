@@ -12,6 +12,9 @@ class TestAppConfig(unittest.TestCase):
                 "INGRESS_QUEUE_NAME": "queue",
                 "EGRESS_QUEUE_NAME": "topic",
                 "SERVICE_BUS_NAMESPACE": "namespace",
+                "AUDIT_QUEUE_NAME": "audit_queue",
+                "WORKFLOW_ID": "workflow_id",
+                "MICROSERVICE_ID": "microservice_id",
             }
             return values.get(name)
 
