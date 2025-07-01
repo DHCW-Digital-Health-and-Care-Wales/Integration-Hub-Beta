@@ -25,9 +25,7 @@ class TestProcessMessage(unittest.TestCase):
     def test_process_message_success(self, mock_transform_datetime, mock_parse_message):
         # Arrange
         created_datetime = "2025-05-22_10:30:00"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = (
-            _setup(created_datetime)
-        )
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime)
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
 
@@ -51,14 +49,10 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
-    def test_process_message_failure_due_to_transform(
-        self, mock_transform_datetime, mock_parse_message
-    ):
+    def test_process_message_failure_due_to_transform(self, mock_transform_datetime, mock_parse_message):
         # Arrange
         created_datetime = "invalid_datetime"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = (
-            _setup(created_datetime)
-        )
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime)
         mock_parse_message.return_value = hl7_message
         error_reason = "Invalid date"
         mock_transform_datetime.side_effect = ValueError(error_reason)

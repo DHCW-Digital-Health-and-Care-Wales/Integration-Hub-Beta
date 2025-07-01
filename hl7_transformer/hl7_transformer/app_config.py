@@ -17,9 +17,7 @@ class AppConfig:
     @staticmethod
     def read_env_config() -> AppConfig:
         return AppConfig(
-            connection_string=_read_env(
-                "SERVICE_BUS_CONNECTION_STRING", required=False
-            ),
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING", required=False),
             ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=True),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),

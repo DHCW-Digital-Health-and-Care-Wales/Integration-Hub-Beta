@@ -38,24 +38,14 @@ def main():
     global PROCESSOR_RUNNING
 
     app_config = AppConfig.read_env_config()
-    client_config = ConnectionConfig(
-        app_config.connection_string, app_config.service_bus_namespace
-    )
+    client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
 
     with (
-        factory.create_queue_sender_client(
-            app_config.egress_queue_name
-        ) as sender_client,
-        factory.create_queue_sender_client(
-            app_config.audit_queue_name
-        ) as audit_sender_client,
-        factory.create_message_receiver_client(
-            app_config.ingress_queue_name
-        ) as receiver_client,
-        AuditServiceClient(
-            audit_sender_client, app_config.workflow_id, app_config.microservice_id
-        ) as audit_client,
+        factory.create_queue_sender_client(app_config.egress_queue_name) as sender_client,
+        factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
+        factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
+        AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
     ):
         logger.info("Processor started.")
 
@@ -75,9 +65,7 @@ def _process_message(
     logger.debug("Received message")
 
     try:
-        audit_client.log_message_received(
-            message_body, "Message received for transformation"
-        )
+        audit_client.log_message_received(message_body, "Message received for transformation")
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
@@ -102,9 +90,7 @@ def _process_message(
         error_msg = f"Failed to transform datetime: {e}"
         logger.error(error_msg)
 
-        audit_client.log_message_failed(
-            message_body, error_msg, "DateTime transformation failed"
-        )
+        audit_client.log_message_failed(message_body, error_msg, "DateTime transformation failed")
 
         return ProcessingResult.failed(str(e), retry=True)
 
@@ -112,9 +98,7 @@ def _process_message(
         error_msg = f"Unexpected error during message processing: {e}"
         logger.error(error_msg)
 
-        audit_client.log_message_failed(
-            message_body, error_msg, "Unexpected processing error"
-        )
+        audit_client.log_message_failed(message_body, error_msg, "Unexpected processing error")
 
         return ProcessingResult.failed(str(e), retry=True)
 
