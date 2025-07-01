@@ -92,7 +92,7 @@ def _process_message(
 
         audit_client.log_message_failed(message_body, error_msg, "DateTime transformation failed")
 
-        return ProcessingResult.failed(str(e), retry=True)
+        return ProcessingResult.failed(str(e))
 
     except Exception as e:
         error_msg = f"Unexpected error during message processing: {e}"
