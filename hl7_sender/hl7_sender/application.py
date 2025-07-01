@@ -11,6 +11,7 @@ from hl7_sender.app_config import AppConfig
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
+from health_check_lib.health_check_server import TCPHealthCheckServer
 
 from hl7_sender.hl7_sender_client import HL7SenderClient
 
@@ -42,10 +43,13 @@ def main():
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
+    health_check_server = TCPHealthCheckServer()
 
     with factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client, \
             HL7SenderClient(app_config.receiver_mllp_hostname, app_config.receiver_mllp_port) as hl7_sender_client:
+
         logger.info("Processor started.")
+        health_check_server.start()
 
         while PROCESSOR_RUNNING:
             receiver_client.receive_messages(MAX_BATCH_SIZE,

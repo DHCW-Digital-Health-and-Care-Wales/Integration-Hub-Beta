@@ -1,4 +1,13 @@
 name: integration-hub
+
+x-healthcheck: &default-healthcheck
+  healthcheck:
+    test: ["CMD", "python", "-c", "import socket, sys; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 9000)); s.close()"]
+    interval: 10s
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+
 services:
   sb-emulator:
     container_name: "sb-emulator"
@@ -8,6 +17,7 @@ services:
       - "./ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
     ports:
       - "5672:5672"
+    restart: on-failure
     environment:
       SQL_SERVER: sqledge
       ACCEPT_EULA: "Y"
@@ -22,6 +32,7 @@ services:
   sqledge:
     container_name: "sqledge"
     image: "mcr.microsoft.com/azure-sql-edge:latest"
+    restart: on-failure
     networks:
       integration-hub:
         aliases:
@@ -43,6 +54,7 @@ services:
       - ./phw-hl7-server.env
     ports:
       - "2575:2575"
+    restart: on-failure
     depends_on:
       - sb-emulator
     networks:
@@ -61,6 +73,7 @@ services:
       - ./phw-hl7-transformer.env
     depends_on:
       - sb-emulator
+    restart: on-failure
     networks:
       integration-hub:
         aliases:
@@ -75,6 +88,10 @@ services:
         - shared_libs=../shared_libs
     env_file:
       - ./phw-hl7-sender.env
+    ports:
+      - "9000:9000"
+    <<: *default-healthcheck
+    restart: on-failure
     depends_on:
       - sb-emulator
     networks:
@@ -93,6 +110,7 @@ services:
       - ./phw-hl7-mock-receiver.env
     ports:
       - "2576:2576"
+    restart: on-failure
     depends_on:
       - sb-emulator
     networks:
