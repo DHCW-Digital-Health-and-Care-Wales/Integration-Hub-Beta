@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
-from hl7_transformer.application import _process_message
+from hl7_transformer.application import _process_message, main
 
 
 def _setup(created_datetime: str):
@@ -77,6 +77,28 @@ class TestProcessMessage(unittest.TestCase):
 
         self.assertFalse(result.success)
         self.assertEqual(result.error_reason, error_reason)
+
+    @patch("hl7_transformer.application.AuditServiceClient")
+    @patch("hl7_transformer.application.AppConfig")
+    @patch("hl7_transformer.application.ServiceBusClientFactory")
+    @patch("hl7_transformer.application.TCPHealthCheckServer")
+    def test_health_check_server_starts_and_stops(
+        self, mock_health_check, mock_factory, mock_app_config, mock_audit_client):
+        # Arrange
+        mock_health_server = MagicMock()
+        mock_health_check_ctx = MagicMock()
+        mock_health_check_ctx.__enter__.return_value = mock_health_server
+        mock_health_check.return_value = mock_health_check_ctx
+
+        # Set PROCESSOR_RUNNING to False to exit the loop immediately
+        with patch("hl7_transformer.application.PROCESSOR_RUNNING", False):
+            # Act
+            main()
+
+            # Assert
+            mock_health_check.assert_called_once()
+            mock_health_server.start.assert_called_once()
+            mock_health_check_ctx.__exit__.assert_called_once()
 
 
 if __name__ == "__main__":
