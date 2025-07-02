@@ -12,6 +12,14 @@ parameters:
   POOL_NAME: '' # Pool name for the agent
   resourcePipelineName: '' # Name of the pipeline that builds the image tag artifact
 
+variables:
+  ${{ if ne(parameters.appFunctionMidfix, '') }}:
+    appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca'
+    imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
+  ${{ else }}:
+    appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca'
+    imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.environment }}'
+
 jobs:
 - job: ${{ parameters.jobName }}
   displayName: ${{ parameters.displayName }}
@@ -55,11 +63,8 @@ jobs:
           echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
           az acr login --name ${{ parameters.acrName }}
           
-          # Build image tag with optional appFunctionMidfix
-          ${{ if ne(parameters.appFunctionMidfix, '') }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}"
-          ${{ else }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.environment }}"
+          # Use pre-computed image tag from template variables
+          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
           
           az acr import \
             --name ${{ parameters.acrName }} \
@@ -77,17 +82,9 @@ jobs:
         scriptLocation: 'inlineScript'
         inlineScript: |
           set -e
-          # Build the app full name dynamically with optional appFunctionMidfix
-          ${{ if ne(parameters.appFunctionMidfix, '') }}:
-            appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca"
-          ${{ else }}:
-            appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca"
-          
-          # Build image tag with optional appFunctionMidfix
-          ${{ if ne(parameters.appFunctionMidfix, '') }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}"
-          ${{ else }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.environment }}"
+          # Use pre-computed values from template variables
+          appFullName="$(appFullName)"
+          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
           
           # Use the IMAGE_TAG variable set in the previous step
           echo "Using image tag: $(IMAGE_TAG)"
