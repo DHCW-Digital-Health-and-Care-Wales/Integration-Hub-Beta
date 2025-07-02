@@ -88,7 +88,7 @@ jobs:
           
           # Run pip-audit - always warn, never fail build
           echo "📋 Running in warning mode - vulnerabilities will be reported but not fail build"
-          pipx run pip-audit --desc --format=text || {
+          pipx run pip-audit --desc || {
             echo "##[warning]pip-audit found vulnerabilities in ${{ parameters.appDisplayName }} dependencies"
             echo "##[warning]This is not blocking the build but should be addressed for security"
             echo "##[warning]Review and update vulnerable packages before production deployment"
