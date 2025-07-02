@@ -13,8 +13,6 @@ VALID_A28_MESSAGE = str.join(
     ],
 )
 
-ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
-
 
 class TestGenericHandler(unittest.TestCase):
     def test_with_valid_message(self) -> None:

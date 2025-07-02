@@ -7,13 +7,13 @@ class ValidationException(Exception):
 
 class HL7Validator:
     def __init__(self, hl7_version: str | None = None, sending_app: str | None = None) -> None:
-        self.hl_version = hl7_version or None
+        self.hl7_version = hl7_version or None
         self.sending_app = sending_app or None
 
     def validate(self, message: Message) -> None:
-        if self.hl_version:
+        if self.hl7_version:
             message_version: str = message.msh.msh_12.value
-            if self.hl_version != message_version:
+            if self.hl7_version != message_version:
                 raise ValidationException("Message has wrong version")
             # TODO logger/ audit
 
