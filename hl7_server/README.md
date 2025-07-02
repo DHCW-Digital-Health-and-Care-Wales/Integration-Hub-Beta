@@ -44,12 +44,20 @@ To define host and port the server should bind to use environment variables conf
 - **HOST** - default 127.0.0.1
 - **PORT** - default 2575
 - **LOG_LEVEL** - default 'INFO'
+- **SERVICE_BUS_CONNECTION_STRING** - service bus connection string (optional, required when SERVICE_BUS_NAMESPACE is empty)
+- **SERVICE_BUS_NAMESPACE** - service bus namespace (recommended, required when SERVICE_BUS_CONNECTION_STRING is empty)
+- **EGRESS_QUEUE_NAME** - service bus queue name to store received messages
+- **AUDIT_QUEUE_NAME** - service bus queue name for storing audit events
+- **WORKFLOW_ID** - workflow id (used for audit)
+- **MICROSERVICE_ID** - service id (used for audit)
+- **HL7_VERSION** - hl7v2 version, if provided will be used to validate MSH-12.1 field
+- **SENDING_APP** - sending application id, optional, if provided will be used to validate MSH-3.1 field
 
 ### Running directly
 
 From the [hl7_server](.) folder run:
 ```sh
-python application.py
+python -m hl7_server.application
 ```
 
 ### Runing in docker

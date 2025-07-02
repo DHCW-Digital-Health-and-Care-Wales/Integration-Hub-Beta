@@ -12,6 +12,8 @@ class AppConfig:
     audit_queue_name: str
     workflow_id: str
     microservice_id: str
+    hl7_version: str | None
+    sending_app: str | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -22,6 +24,8 @@ class AppConfig:
             audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
+            hl7_version=_read_env("HL7_VERSION"),
+            sending_app=_read_env("SENDING_APP"),
         )
 
 
