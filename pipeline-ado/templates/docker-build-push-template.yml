@@ -72,6 +72,26 @@ jobs:
           echo "##[endgroup]"
         displayName: 'Setup Docker Buildx'
       
+      # Install container security scanning tools
+      - ${{ if eq(parameters.enableVulnerabilityScanning, true) }}:
+        - script: |
+            echo "##[group]Install Container Security Tools"
+            
+            # Install Trivy for container vulnerability scanning
+            sudo apt-get update
+            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+            sudo apt-get update
+            sudo apt-get install -y trivy
+            
+            # Verify installation
+            trivy --version
+            
+            echo "✅ Container security tools installed"
+            echo "##[endgroup]"
+          displayName: 'Install Container Security Tools'
+      
       # Authenticate with Azure and ACR
       - task: AzureCLI@2
         displayName: 'Authenticate with Azure Container Registry'
@@ -140,14 +160,17 @@ jobs:
       
       - ${{ if eq(parameters.enableVulnerabilityScanning, true) }}:
         - task: AzureCLI@2
-          displayName: 'Container Image Verification'
+          displayName: 'Container Vulnerability Scanning'
           continueOnError: true
           inputs:
             azureSubscription: ${{ parameters.azureServiceConnection }}
             scriptType: 'bash'
             scriptLocation: 'inlineScript'
             inlineScript: |
-              echo "##[group]Container Image Verification"
+              echo "##[group]Container Vulnerability Scanning"
+              
+              # Verify image exists in registry
+              IMAGE_TAG="$(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)-$(SHORT_SHA)"
               
               SCAN_RESULT=$(az acr repository show-tags \
                 --name ${{ parameters.acrName }} \
@@ -155,10 +178,25 @@ jobs:
                 --query "[?contains(name, '$(Build.BuildId)')].name | [0]" -o tsv)
               
               if [ -n "$SCAN_RESULT" ]; then
-                echo "Image successfully pushed: $SCAN_RESULT"
-                echo "##[warning]Consider enabling Microsoft Defender for Containers for vulnerability scanning"
-                echo "##[warning]If enabled Defender will automatically scan this image in ACR after push."
-                echo "##[info]Scan results are available in Azure Portal > Defender for Cloud > Inventory > Container Registries."
+                echo "✅ Image successfully pushed: $SCAN_RESULT"
+                echo "🔍 Running Trivy container vulnerability scan..."
+                
+                # Run Trivy scan - always warn, never fail build
+                if command -v trivy &> /dev/null; then
+                  trivy image --exit-code 0 \
+                    --severity HIGH,CRITICAL \
+                    --format table \
+                    $IMAGE_TAG || {
+                    echo "##[warning]Vulnerabilities found in container image"
+                    echo "##[warning]Consider addressing these vulnerabilities before production deployment"
+                  }
+                else
+                  echo "##[warning]Trivy not available - skipping container vulnerability scan"
+                fi
+                
+                echo "##[section]Container security scan completed"
+              else
+                echo "##[warning]Image not found in registry - skipping vulnerability scan"
               fi
               echo "##[endgroup]"
       

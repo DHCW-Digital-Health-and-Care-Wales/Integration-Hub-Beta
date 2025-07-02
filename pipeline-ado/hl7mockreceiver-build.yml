@@ -1,11 +1,11 @@
-# HL7 Transformer Build Pipeline
+# HL7 Mock Receiver Build Pipeline
 trigger:
   branches:
     include:
       - main
   paths:
     include:
-      - hl7_transformer/*
+      - hl7_mock_receiver/*
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
@@ -37,23 +37,22 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_transformer'
-          appDisplayName: 'HL7 Transformer'
+          appName: 'hl7_mock_receiver'
+          appDisplayName: 'HL7 Mock Receiver'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
-          # failOnHighSeverityVulns: true  # Uncomment to fail build on vulnerabilities
 
-  - stage: BuildAndPushHL7Transformer
-    displayName: 'Build and Push HL7 Transformer'
+  - stage: BuildAndPushHL7MockReceiver
+    displayName: 'Build and Push HL7 Mock Receiver'
     dependsOn: CodeQuality
     jobs:
       - template: templates/docker-build-push-template.yml
         parameters:
-          jobName: 'BuildPushHL7Transformer'
-          displayName: 'Build and Push HL7 Transformer'
-          appName: 'hl7transformer'
-          dockerfilePath: 'hl7_transformer/Dockerfile'
-          buildContext: 'hl7_transformer'
+          jobName: 'BuildPushHL7MockReceiver'
+          displayName: 'Build and Push HL7 Mock Receiver'
+          appName: 'hl7mockreceiver'
+          dockerfilePath: 'hl7_mock_receiver/Dockerfile'
+          buildContext: 'hl7_mock_receiver'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

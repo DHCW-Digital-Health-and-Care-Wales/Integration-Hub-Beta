@@ -58,3 +58,4 @@ stages:
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+          enableVulnerabilityScanning: true
