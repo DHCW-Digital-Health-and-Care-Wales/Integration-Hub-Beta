@@ -12,6 +12,7 @@ pr:
       - hl7_server/*
       - hl7_transformer/*
       - hl7_sender/*
+      - hl7_mock_receiver/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -56,6 +57,14 @@ stages:
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}
 
+      # HL7 Mock Receiver validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_mock_receiver'
+          appDisplayName: 'HL7 Mock Receiver'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
       # Shared Libraries validation
       - template: templates/code-quality-template.yml
         parameters:
@@ -72,6 +81,7 @@ stages:
           - CodeQuality_hl7_server
           - CodeQuality_hl7_transformer
           - CodeQuality_hl7_sender
+          - CodeQuality_hl7_mock_receiver
           - CodeQuality_shared_libs_message_bus_lib
         pool:
           ${{ if eq(parameters.POOL_SELECTION, 'Azure Pipelines') }}:
