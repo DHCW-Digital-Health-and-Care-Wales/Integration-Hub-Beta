@@ -40,15 +40,15 @@ resources:
 
 stages:
 
-  - stage: ReleaseHL7ServerDev
-    displayName: 'Release App HL7Server - Dev'
+  - stage: ReleasePHWHL7ServerDev
+    displayName: 'Release App PHW HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7ServerDev'
-          displayName: 'Release App HL7Server - Dev'
+          jobName: 'ReleasePHWAppHL7ServerDev'
+          displayName: 'Release App PHW HL7Server - Dev'
           appName: 'hl7server'
-          flowName: ''
+          appFunctionMidfix: 'phw'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -65,7 +65,7 @@ stages:
           jobName: 'ReleaseAppHL7TransformerDev'
           displayName: 'Release App HL7Transformer - Dev'
           appName: 'hl7transformer'
-          flowName: ''
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -82,7 +82,7 @@ stages:
           jobName: 'ReleaseAppHL7SenderDev'
           displayName: 'Release App HL7Sender - Dev'
           appName: 'hl7sender'
-          flowName: ''
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -99,7 +99,7 @@ stages:
           jobName: 'ReleaseAppHL7MockReceiverDev'
           displayName: 'Release App HL7MockReceiver - Dev'
           appName: 'hl7mockreceiver'
-          flowName: ''
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -108,16 +108,16 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7MockReceiverPipelineName }}
 
-  - stage: ReleaseHL7ServerTest
-    displayName: 'Release App HL7Server - Test'
-    dependsOn: ReleaseHL7ServerDev
+  - stage: ReleasePHWHL7ServerTest
+    displayName: 'Release App PHW HL7Server - Test'
+    dependsOn: ReleasePHWHL7ServerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7ServerTest'
-          displayName: 'Release App HL7Server - Test'
+          jobName: 'ReleaseAppPHWHL7ServerTest'
+          displayName: 'Release App PHW HL7Server - Test'
           appName: 'hl7server'
-          flowName: ''
+          appFunctionMidfix: 'phw'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -135,7 +135,7 @@ stages:
           jobName: 'ReleaseAppHL7TransformerTest'
           displayName: 'Release App HL7Transformer - Test'
           appName: 'hl7transformer'
-          flowName: ''
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -153,7 +153,7 @@ stages:
           jobName: 'ReleaseAppHL7SenderTest'
           displayName: 'Release App HL7Sender - Test'
           appName: 'hl7sender'
-          flowName: ''
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'

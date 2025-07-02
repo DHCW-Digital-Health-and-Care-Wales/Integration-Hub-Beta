@@ -1,7 +1,7 @@
 parameters:
   azureServiceConnection: '' # Azure Service Connection name
   appName: ''
-  flowName: '' # Name of the flow to be used in the app
+  appFunctionMidfix: '' # Name of the app function midfix to be used in the app
   resourceGroupName: ''
   azureLocation: ''
   environment: ''
@@ -55,9 +55,9 @@ jobs:
           echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
           az acr login --name ${{ parameters.acrName }}
           
-          # Build image tag with optional flowName
-          ${{ if ne(parameters.flowName, '') }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.flowName }}-${{ parameters.environment }}"
+          # Build image tag with optional appFunctionMidfix
+          ${{ if ne(parameters.appFunctionMidfix, '') }}:
+            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}"
           ${{ else }}:
             IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.environment }}"
           
@@ -77,15 +77,15 @@ jobs:
         scriptLocation: 'inlineScript'
         inlineScript: |
           set -e
-          # Build the app full name dynamically with optional flowName
-          ${{ if ne(parameters.flowName, '') }}:
-            appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.flowName }}-${{ parameters.appName }}-ca"
+          # Build the app full name dynamically with optional appFunctionMidfix
+          ${{ if ne(parameters.appFunctionMidfix, '') }}:
+            appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca"
           ${{ else }}:
             appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca"
           
-          # Build image tag with optional flowName
-          ${{ if ne(parameters.flowName, '') }}:
-            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.flowName }}-${{ parameters.environment }}"
+          # Build image tag with optional appFunctionMidfix
+          ${{ if ne(parameters.appFunctionMidfix, '') }}:
+            IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}"
           ${{ else }}:
             IMAGE_TAG_WITH_FLOW="${{ parameters.appName }}:${{ parameters.environment }}"
           
