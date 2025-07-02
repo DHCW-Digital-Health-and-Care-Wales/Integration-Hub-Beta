@@ -12,14 +12,6 @@ parameters:
   POOL_NAME: '' # Pool name for the agent
   resourcePipelineName: '' # Name of the pipeline that builds the image tag artifact
 
-variables:
-  ${{ if ne(parameters.appFunctionMidfix, '') }}:
-    appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca'
-    imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
-  ${{ else }}:
-    appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca'
-    imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.environment }}'
-
 jobs:
 - job: ${{ parameters.jobName }}
   displayName: ${{ parameters.displayName }}
@@ -28,6 +20,13 @@ jobs:
         vmImage: 'ubuntu-latest'
       ${{ else }}:
         name: ${{ parameters.POOL_NAME }}
+  variables:
+    ${{ if ne(parameters.appFunctionMidfix, '') }}:
+      appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca'
+      imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
+    ${{ else }}:
+      appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca'
+      imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.environment }}'
 
   steps:
     - checkout: self
