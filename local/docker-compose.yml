@@ -54,6 +54,7 @@ services:
       - ./phw-hl7-server.env
     ports:
       - "2575:2575"
+    <<: *default-healthcheck
     restart: on-failure
     depends_on:
       - sb-emulator
