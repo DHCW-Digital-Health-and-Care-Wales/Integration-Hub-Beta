@@ -41,7 +41,6 @@ stages:
           appDisplayName: 'HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
-          # failOnHighSeverityVulns: true  # Uncomment to fail build on vulnerabilities
 
   - stage: BuildAndPushHL7Transformer
     displayName: 'Build and Push HL7 Transformer'
