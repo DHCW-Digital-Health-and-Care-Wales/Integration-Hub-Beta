@@ -71,6 +71,7 @@ services:
       - shared_libs=../shared_libs
     env_file:
       - ./phw-hl7-transformer.env
+    <<: *default-healthcheck
     depends_on:
       - sb-emulator
     restart: on-failure
@@ -88,8 +89,6 @@ services:
         - shared_libs=../shared_libs
     env_file:
       - ./phw-hl7-sender.env
-    ports:
-      - "9000:9000"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:

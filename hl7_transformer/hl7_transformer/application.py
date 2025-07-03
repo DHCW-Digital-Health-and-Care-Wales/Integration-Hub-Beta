@@ -11,6 +11,7 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.audit_service_client import AuditServiceClient
+from health_check_lib.health_check_server import TCPHealthCheckServer
 from .datetime_transformer import transform_datetime
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
@@ -46,8 +47,10 @@ def main():
         factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
         AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
+        TCPHealthCheckServer() as health_check_server,
     ):
         logger.info("Processor started.")
+        health_check_server.start()
 
         while PROCESSOR_RUNNING:
             receiver_client.receive_messages(
