@@ -1,6 +1,7 @@
 parameters:
   azureServiceConnection: '' # Azure Service Connection name
   appName: ''
+  appFunctionMidfix: '' # Name of the app function midfix to be used in the app
   resourceGroupName: ''
   azureLocation: ''
   environment: ''
@@ -19,6 +20,13 @@ jobs:
         vmImage: 'ubuntu-latest'
       ${{ else }}:
         name: ${{ parameters.POOL_NAME }}
+  variables:
+    ${{ if ne(parameters.appFunctionMidfix, '') }}:
+      appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca'
+      imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
+    ${{ else }}:
+      appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca'
+      imageTagWithFlow: '${{ parameters.appName }}:${{ parameters.environment }}'
 
   steps:
     - checkout: self
@@ -53,13 +61,17 @@ jobs:
 
           echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
           az acr login --name ${{ parameters.acrName }}
+          
+          # Use pre-computed image tag from template variables
+          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
+          
           az acr import \
             --name ${{ parameters.acrName }} \
             --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG \
-            --image ${{ parameters.appName }}:${{ parameters.environment }} \
+            --image $IMAGE_TAG_WITH_FLOW \
             --force
 
-          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
+          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
 
     - task: AzureCLI@2
       displayName: 'Update Azure Container App'
@@ -69,16 +81,19 @@ jobs:
         scriptLocation: 'inlineScript'
         inlineScript: |
           set -e
-          # Build the app full name dynamically
-          appFullName="${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appName }}-ca"
+          # Use pre-computed values from template variables
+          appFullName="$(appFullName)"
+          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
           
           # Use the IMAGE_TAG variable set in the previous step
           echo "Using image tag: $(IMAGE_TAG)"
+          echo "Using app full name: $appFullName"
+          echo "Using image with flow: $IMAGE_TAG_WITH_FLOW"
           
           # Create revision suffix using the same value as IMAGE_TAG but with dashes
           REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//' | sed 's/^-//')
           
-          echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}"
+          echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
           echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
           
           # Create a new revision by updating the container app with semantic version as suffix
@@ -86,8 +101,8 @@ jobs:
             --name $appFullName \
             --resource-group ${{ parameters.resourceGroupName }} \
             --revision-suffix $REVISION_SUFFIX \
-            --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:${{ parameters.environment }}
+            --image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
 
-          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$(IMAGE_TAG) retagged as ${{ parameters.appName }}:$(IMAGE_TAG)"
+          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
 
           
