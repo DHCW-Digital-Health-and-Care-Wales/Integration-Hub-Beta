@@ -8,5 +8,5 @@ def transform_datetime(date_time: str) -> str:
         datetime.strptime(date_time, required_format)
         return date_time
     except ValueError:
-        dt = datetime.strptime(date_time, "%Y-%m-%d_%H:%M:%S")
+        dt = datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
         return dt.strftime(required_format)
