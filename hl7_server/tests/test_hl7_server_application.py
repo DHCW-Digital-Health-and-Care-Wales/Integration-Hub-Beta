@@ -1,14 +1,14 @@
 import os
 import signal
 import unittest
-from threading import Thread
+from typing import Dict
 from unittest.mock import MagicMock, patch
 
 from hl7apy.mllp import MLLPServer
 
 from hl7_server.hl7_server_application import Hl7ServerApplication
 
-ENV_VARS = {
+ENV_VARS: Dict[str, str] = {
     "HOST": "127.0.0.1",
     "PORT": "2576",
     "EGRESS_QUEUE_NAME": "egress_queue",
@@ -20,44 +20,67 @@ ENV_VARS = {
 
 
 @patch.dict(os.environ, ENV_VARS)
+@patch("hl7_server.hl7_server_application.TCPHealthCheckServer")
 @patch("hl7_server.hl7_server_application.MLLPServer")
 @patch("hl7_server.hl7_server_application.ServiceBusClientFactory")
 @patch("hl7_server.hl7_server_application.threading.Thread")
 class TestHl7ServerApplication(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.app = Hl7ServerApplication()
 
-    def _setup_mocks(self, mock_thread: Thread, mock_mllp_server: MLLPServer):
+    def _setup_mocks(self, mock_thread: MagicMock, mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> tuple[
+        MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
+        mock_health_instance = MagicMock()
         mock_mllp_server.return_value = mock_server_instance
         mock_thread.return_value = mock_thread_instance
-        return mock_server_instance, mock_thread_instance
+        mock_health_check.return_value = mock_health_instance
+        return mock_server_instance, mock_thread_instance, mock_health_instance
 
-    def _assert_shutdown(self, server, thread):
+    def _assert_shutdown(self, server: MagicMock, thread: MagicMock, health_check: MagicMock) -> None:
         server.shutdown.assert_called_once()
         server.server_close.assert_called_once()
         thread.join.assert_called_once()
+        health_check.stop.assert_called_once()
 
-    def test_server_initialization_and_shutdown(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
-        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+    def test_server_initialization_and_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
+                                                mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+        server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
+
         self.app.start_server()
         self.app.stop_server()
 
-        self._assert_shutdown(server, thread)
+        self._assert_shutdown(server, thread, health_check)
 
-    def test_signal_handler_shutdown(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
-        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+    def test_signal_handler_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
+                                     mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+        server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
+
         self.app.start_server()
         self.app._signal_handler(signal.SIGINT, None)
 
-        self._assert_shutdown(server, thread)
+        self._assert_shutdown(server, thread, health_check)
 
-    def test_server_exception_handling(self, mock_thread: Thread, _, mock_mllp_server: MLLPServer) -> None:
-        server, thread = self._setup_mocks(mock_thread, mock_mllp_server)
+    def test_server_exception_handling(self, mock_thread: MagicMock, mock_factory: MagicMock,
+                                       mock_mllp_server: MLLPServer,
+                                       mock_health_check: MagicMock) -> None:
+        server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         thread.start.side_effect = RuntimeError("Simulated server error")
 
         with self.assertRaises(RuntimeError):
             self.app.start_server()
 
-        self._assert_shutdown(server, thread)
+        self._assert_shutdown(server, thread, health_check)
+
+    def test_health_check_initialization(self, mock_thread: MagicMock, mock_factory: MagicMock,
+                                         mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+        server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
+
+        self.app.start_server()
+
+        mock_health_check.assert_called_once_with()
+        health_check.start.assert_called_once()
+
+        self.app.stop_server()
+        self._assert_shutdown(server, thread, health_check)

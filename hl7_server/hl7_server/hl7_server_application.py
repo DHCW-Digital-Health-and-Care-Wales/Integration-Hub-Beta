@@ -4,6 +4,7 @@ import signal
 import threading
 from typing import Any
 
+from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.mllp import MLLPServer
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
@@ -27,6 +28,7 @@ class Hl7ServerApplication:
         self.sender_client = None
         self.audit_client = None
         self._server_thread: threading.Thread | None = None
+        self.health_check_server: TCPHealthCheckServer = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2575"))
 
@@ -45,10 +47,10 @@ class Hl7ServerApplication:
         factory = ServiceBusClientFactory(client_config)
 
         self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
-
         audit_sender_client = factory.create_queue_sender_client(app_config.audit_queue_name)
         self.audit_client = AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id)
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app)
+        self.health_check_server = TCPHealthCheckServer()
 
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
@@ -61,6 +63,7 @@ class Hl7ServerApplication:
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
             logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT}")
+            self.health_check_server.start()
         except Exception as e:
             logger.exception("Server encountered an unexpected error: %s", e)
             self.stop_server()
@@ -77,6 +80,10 @@ class Hl7ServerApplication:
             self.audit_client.close()
             logger.info("Audit service client shut down.")
 
+        if self.health_check_server:
+            self.health_check_server.stop()
+            logger.info("Health check server shut down.")
+
         if self._server:
             self._server.shutdown()
             self._server.server_close()
@@ -84,3 +91,5 @@ class Hl7ServerApplication:
 
         if self._server_thread:
             self._server_thread.join()
+
+        logger.info("Server shutdown complete.")

@@ -5,9 +5,9 @@ from hl7_transformer.datetime_transformer import transform_datetime
 
 class TestDatetimeTransformer(unittest.TestCase):
     def test_valid_date(self):
-        self.assertEqual(transform_datetime("2023-01-15_09:45:30"), "20230115094530")
-        self.assertEqual(transform_datetime("1999-12-31_23:59:59"), "19991231235959")
-        self.assertEqual(transform_datetime("2025-05-23_00:00:00"), "20250523000000")
+        self.assertEqual(transform_datetime("2023-01-15 09:45:30"), "20230115094530")
+        self.assertEqual(transform_datetime("1999-12-31 23:59:59"), "19991231235959")
+        self.assertEqual(transform_datetime("2025-05-23 00:00:00"), "20250523000000")
 
     def test_already_formatted_date(self):
         self.assertEqual(transform_datetime("20230115094530"), "20230115094530")
@@ -23,6 +23,8 @@ class TestDatetimeTransformer(unittest.TestCase):
             transform_datetime("2023-01-15T09:45:30")
         with self.assertRaises(ValueError):
             transform_datetime("2023A115094530")
+        with self.assertRaises(ValueError):
+            transform_datetime("2023-01-15_09:45:30")
 
     def test_empty_string(self):
         with self.assertRaises(ValueError):
@@ -30,7 +32,7 @@ class TestDatetimeTransformer(unittest.TestCase):
 
     def test_incorrect_datetime(self):
         with self.assertRaises(ValueError):
-            transform_datetime("2023-02-30_12:00:00")  # Invalid date
+            transform_datetime("2023-02-30 12:00:00")  # Invalid date
 
 
 if __name__ == "__main__":

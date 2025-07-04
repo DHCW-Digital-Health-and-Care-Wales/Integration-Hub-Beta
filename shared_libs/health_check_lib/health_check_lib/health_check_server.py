@@ -2,6 +2,8 @@ import socket
 import threading
 import logging
 
+logger = logging.getLogger(__name__)
+
 class TCPHealthCheckServer:
     def __init__(self, host='127.0.0.1', port=9000):
         self.host = host
@@ -33,4 +35,11 @@ class TCPHealthCheckServer:
             try:
                 self._server_socket.close()
             except Exception as e:
-                logging.warning(f"Failed to close socket: {e}")
+                logger.warning(f"Failed to close socket: {e}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.stop()
+        logger.debug("Health check server closed.")

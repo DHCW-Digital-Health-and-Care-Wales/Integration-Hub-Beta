@@ -44,12 +44,12 @@ def main():
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
-    health_check_server = TCPHealthCheckServer()
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
         factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
         HL7SenderClient(app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds) as hl7_sender_client,
+        TCPHealthCheckServer() as health_check_server,
         AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
     ):
 
@@ -78,21 +78,21 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
         logger.info(f"Sent message: {message_id}")
 
         return get_ack_result(ack_response)
-    
+
     except (TimeoutError, ConnectionError) as e:
         error_msg = f"Failed to send message {message_id}: {e}"
         logger.error(error_msg)
-        
+
         audit_client.log_message_failed(message_body, error_msg, "Message sending failed - connection/timeout error")
-        
+
         return ProcessingResult.failed(error_msg, retry=True)
-    
+
     except Exception as e:
         error_msg = f"Unexpected error while processing message: {e}"
         logger.error(error_msg)
-        
+
         audit_client.log_message_failed(message_body, error_msg, "Unexpected processing error")
-        
+
         return ProcessingResult.failed(error_msg, retry=True)
 
 if __name__ == "__main__":

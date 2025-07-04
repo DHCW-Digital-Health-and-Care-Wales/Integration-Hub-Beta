@@ -49,6 +49,7 @@ jobs:
           pipx install ruff
           pipx install bandit
           pipx install mypy
+          pipx install pip-audit
           echo "##[endgroup]"
         displayName: 'Install Code Quality Tools'
 
@@ -80,6 +81,19 @@ jobs:
 
       - script: |
           set -euo pipefail
+          echo "##[group]Dependency Security Scan - ${{ parameters.appDisplayName }}"
+          cd ${{ parameters.appName }}
+          
+          echo "🔐 Running pip-audit for dependency vulnerability scanning..."
+          pipx run pip-audit --desc
+          
+          echo "✅ Dependency scan completed"
+          echo "##[endgroup]"
+        displayName: 'Dependency Security Scan - ${{ parameters.appDisplayName }}'
+        continueOnError: true
+
+      - script: |
+          set -euo pipefail  # Bash strict mode back to normal
           echo "##[group]Validate ${{ parameters.appDisplayName }}"
           cd ${{ parameters.appName }}
           
@@ -103,9 +117,7 @@ jobs:
           echo ""
           
           echo "🏷️ Running MyPy type check..."
-          pipx run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports || {
-            echo "##[warning]MyPy found type issues in ${{ parameters.appDisplayName }} - please review but not blocking build"
-          }
+          pipx run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports
           echo ""
           echo "----------------------------------------"
           echo ""
@@ -116,3 +128,4 @@ jobs:
           echo "✅ ${{ parameters.appDisplayName }} validation completed"
           echo "##[endgroup]"
         displayName: 'Validate ${{ parameters.appDisplayName }}'
+        continueOnError: true

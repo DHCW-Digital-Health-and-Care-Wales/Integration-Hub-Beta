@@ -19,6 +19,7 @@ variables:
   hl7ServerPipelineName: 'HL7 Server - Build'
   hl7TransformerPipelineName: 'HL7 Transformer - Build'
   hl7SenderPipelineName: 'HL7 Sender - Build'
+  hl7MockReceiverPipelineName: 'HL7 Mock Receiver - Build'
 
 resources:
   pipelines:
@@ -31,19 +32,23 @@ resources:
     - pipeline: 'HL7 Sender - Build'
       source: 'HL7 Sender - Build'
       trigger: none 
+    - pipeline: 'HL7 Mock Receiver - Build'
+      source: 'HL7 Mock Receiver - Build'
+      trigger: none 
 
 
 
 stages:
 
-  - stage: ReleaseHL7ServerDev
-    displayName: 'Release App HL7Server - Dev'
+  - stage: ReleasePHWHL7ServerDev
+    displayName: 'Release App PHW HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7ServerDev'
-          displayName: 'Release App HL7Server - Dev'
+          jobName: 'ReleasePHWAppHL7ServerDev'
+          displayName: 'Release App PHW HL7Server - Dev'
           appName: 'hl7server'
+          appFunctionMidfix: 'phw'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -60,6 +65,7 @@ stages:
           jobName: 'ReleaseAppHL7TransformerDev'
           displayName: 'Release App HL7Transformer - Dev'
           appName: 'hl7transformer'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -76,6 +82,7 @@ stages:
           jobName: 'ReleaseAppHL7SenderDev'
           displayName: 'Release App HL7Sender - Dev'
           appName: 'hl7sender'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -84,15 +91,33 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
-  - stage: ReleaseHL7ServerTest
-    displayName: 'Release App HL7Server - Test'
-    dependsOn: ReleaseHL7ServerDev
+  - stage: ReleaseHL7MockReceiverDev
+    displayName: 'Release App HL7MockReceiver - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7ServerTest'
-          displayName: 'Release App HL7Server - Test'
+          jobName: 'ReleaseAppHL7MockReceiverDev'
+          displayName: 'Release App HL7MockReceiver - Dev'
+          appName: 'hl7mockreceiver'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7MockReceiverPipelineName }}
+
+  - stage: ReleasePHWHL7ServerTest
+    displayName: 'Release App PHW HL7Server - Test'
+    dependsOn: ReleasePHWHL7ServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppPHWHL7ServerTest'
+          displayName: 'Release App PHW HL7Server - Test'
           appName: 'hl7server'
+          appFunctionMidfix: 'phw'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -110,6 +135,7 @@ stages:
           jobName: 'ReleaseAppHL7TransformerTest'
           displayName: 'Release App HL7Transformer - Test'
           appName: 'hl7transformer'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -127,6 +153,7 @@ stages:
           jobName: 'ReleaseAppHL7SenderTest'
           displayName: 'Release App HL7Sender - Test'
           appName: 'hl7sender'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
