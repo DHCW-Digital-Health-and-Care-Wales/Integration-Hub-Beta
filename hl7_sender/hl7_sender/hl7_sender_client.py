@@ -1,10 +1,12 @@
 import logging
 import socket
+import time
 
 from hl7.client import MLLPClient
 
 logger = logging.getLogger(__name__)
 
+ACK_TIMEOUT_SECONDS = 30
 
 def is_socket_closed(sock: socket.socket) -> bool:
     try:
@@ -24,18 +26,26 @@ def is_socket_closed(sock: socket.socket) -> bool:
 
 class HL7SenderClient:
 
-    def __init__(self, receiver_mllp_hostname: str, receiver_mllp_port: int):
+    def __init__(self, receiver_mllp_hostname: str, receiver_mllp_port: int, ack_timeout_seconds: int):
         self.mllp_client = MLLPClient(receiver_mllp_hostname, receiver_mllp_port)
         self.receiver_mllp_hostname = receiver_mllp_hostname
         self.receiver_mllp_port = receiver_mllp_port
+        self.ack_timeout_seconds = ack_timeout_seconds
 
     def send_message(self, message: str) -> str:
         if is_socket_closed(self.mllp_client.socket):
             self.mllp_client.close()
             self.mllp_client = MLLPClient(self.receiver_mllp_hostname, self.receiver_mllp_port)
 
-        ack_response = self.mllp_client.send_message(message).decode('utf-8')
-        return ack_response
+        self.mllp_client.socket.settimeout(self.ack_timeout_seconds)
+
+        try:
+            ack_response = self.mllp_client.send_message(message).decode('utf-8')
+            return ack_response
+        except socket.timeout:
+            raise TimeoutError(f"No ACK received within {self.ack_timeout_seconds} seconds")
+        except Exception as e:
+            raise ConnectionError(f"Connection error while sending message: {e}")
 
     def __enter__(self):
         return self
