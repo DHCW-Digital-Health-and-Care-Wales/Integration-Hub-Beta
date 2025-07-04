@@ -1,6 +1,5 @@
 import logging
 import socket
-import time
 
 from hl7.client import MLLPClient
 
