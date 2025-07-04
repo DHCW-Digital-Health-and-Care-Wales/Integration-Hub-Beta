@@ -59,12 +59,14 @@ class TestProcessMessage(unittest.TestCase):
         self.assertTrue(result.retry)
         self.assertIn("No ACK received", result.error_reason)
 
+    @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")
     @patch("hl7_sender.application.AppConfig")
     @patch("hl7_sender.application.TCPHealthCheckServer")
     @patch("hl7_sender.application.HL7SenderClient")
+    @patch("hl7_sender.application.AuditServiceClient")
     def test_health_check_server_starts_and_stops(
-        self, mock_hl7_sender, mock_health_check, mock_app_config, mock_factory):
+        self, mock_audit_client, mock_hl7_sender, mock_health_check, mock_app_config, mock_factory, mock_connection_config):
         # Arrange
         mock_health_server = MagicMock()
         mock_health_check_ctx = MagicMock()
@@ -80,7 +82,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_health_check.assert_called_once()
             mock_health_server.start.assert_called_once()
             mock_health_check_ctx.__exit__.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main()
