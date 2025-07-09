@@ -21,11 +21,17 @@ RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted
 WORKDIR /build
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
 COPY --from=shared_libs . /shared_libs
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies with uv
-RUN uv sync --frozen --no-dev
+RUN SSL_CERT_FILE=/opt/ca-certs/cacerts.pem \
+    REQUESTS_CA_BUNDLE=/opt/ca-certs/cacerts.pem \
+    CURL_CA_BUNDLE=/opt/ca-certs/cacerts.pem \
+    uv sync --frozen --no-dev \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org
 
 WORKDIR /app
 
