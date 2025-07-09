@@ -50,7 +50,7 @@ class Hl7ServerApplication:
         audit_sender_client = factory.create_queue_sender_client(app_config.audit_queue_name)
         self.audit_client = AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id)
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app)
-        self.health_check_server = TCPHealthCheckServer()
+        self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),

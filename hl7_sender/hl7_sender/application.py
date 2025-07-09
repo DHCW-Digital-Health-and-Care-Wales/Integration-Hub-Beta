@@ -47,7 +47,7 @@ def main():
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
         HL7SenderClient(app_config.receiver_mllp_hostname, app_config.receiver_mllp_port) as hl7_sender_client,
-        TCPHealthCheckServer() as health_check_server
+        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server
     ):
 
         logger.info("Processor started.")

@@ -13,6 +13,8 @@ class AppConfig:
     audit_queue_name: str | None
     workflow_id: str | None
     microservice_id: str | None
+    health_check_hostname: str | None
+    health_check_port: int | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -24,6 +26,8 @@ class AppConfig:
             audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
             microservice_id=_read_env("MICROSERVICE_ID", required=True),
+            health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
+            health_check_port=_read_int_env("HEALTH_CHECK_PORT", required=False),
         )
 
 
@@ -32,3 +36,11 @@ def _read_env(name: str, required: bool = False) -> str | None:
     if required and (value is None or value.strip() == ""):
         raise RuntimeError(f"Missing required configuration: {name}")
     return value
+
+def _read_int_env(name: str, required: bool = False) -> int | None:
+    value = os.getenv(name)
+    if value is None:
+        if required:
+            raise RuntimeError(f"Missing required configuration: {name}")
+        return None
+    return int(value)
