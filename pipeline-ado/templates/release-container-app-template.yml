@@ -114,6 +114,9 @@ jobs:
             echo "##vso[task.logissue type=warning]Please ensure the container app is created before running this pipeline, or this step will be skipped."
             echo "Container app $appFullName does not exist yet. This is expected for first-time deployments."
             echo "The image has been tagged and is ready for deployment when the container app is created."
+            
+            # Set task result to warning to make it visually apparent in the pipeline
+            echo "##vso[task.complete result=SucceededWithIssues]Container app not found - task completed with warnings"
           fi
 
           
