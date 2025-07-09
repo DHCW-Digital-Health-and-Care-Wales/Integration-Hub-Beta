@@ -5,8 +5,6 @@ from hl7.client import MLLPClient
 
 logger = logging.getLogger(__name__)
 
-ACK_TIMEOUT_SECONDS = 30
-
 def is_socket_closed(sock: socket.socket) -> bool:
     try:
         # this will try to read bytes without blocking and also without removing them from buffer (peek only)
