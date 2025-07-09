@@ -1,0 +1,25 @@
+[build-system]  
+requires = ["setuptools>=61.0"]  
+build-backend = "setuptools.build_meta"  
+
+[project]  
+name = "message-bus-lib"  
+version = "0.1.0"  
+description = "Azure Service Bus helper library"  
+authors = [{name = "DHCW"}]  
+requires-python = ">=3.13"  
+readme = "README.md"  
+license = {text = "MIT"}  
+classifiers = [  
+    "Programming Language :: Python :: 3",  
+    "Operating System :: OS Independent",  
+]  
+dependencies = [  
+    "azure-servicebus==7.14.2",  
+    "azure-identity==1.21.0",  
+    "setuptools==80.0.0",  
+]  
+
+[tool.setuptools.packages.find]  
+where = ["."]  
+include = ["message_bus_lib*"]  
