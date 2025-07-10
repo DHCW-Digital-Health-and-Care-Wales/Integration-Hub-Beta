@@ -1,5 +1,5 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
-FROM python:3.13-slim
+FROM python:3.13-slim-bookworm
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,8 +14,8 @@ ENV SSL_CERT_FILE=/opt/ca-certs/cacerts.pem
 ENV REQUESTS_CA_BUNDLE=/opt/ca-certs/cacerts.pem
 ENV CURL_CA_BUNDLE=/opt/ca-certs/cacerts.pem
 
-# Install uv with trusted hosts
-RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org uv
+# Install uv by copying from image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
