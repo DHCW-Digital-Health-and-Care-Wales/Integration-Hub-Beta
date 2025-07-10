@@ -77,6 +77,10 @@ class TestProcessMessage(unittest.TestCase):
             None, None, None, None, None,
             health_check_hostname="localhost",
             health_check_port=9000,
+            audit_queue_name="test_audit_queue",
+            workflow_id="test_workflow_id",
+            microservice_id="test_microservice_id",
+            ack_timeout_seconds=30
         )
         # Set PROCESSOR_RUNNING to False to exit the loop immediately
         with patch("hl7_sender.application.PROCESSOR_RUNNING", False):
