@@ -69,7 +69,7 @@ class ChemocareHandler(GenericHandler):
                 msg = parse_message(self.incoming_message, find_groups=False)
                 message_control_id = msg.msh.msh_10.value
                 return self.create_failure_ack(message_control_id, msg, error_msg)
-            except:
+            except Exception:
                 # If we can't parse at all, re-raise the original exception
                 raise e
 
@@ -85,7 +85,7 @@ class ChemocareHandler(GenericHandler):
                 msg = parse_message(self.incoming_message, find_groups=False)
                 message_control_id = msg.msh.msh_10.value
                 return self.create_failure_ack(message_control_id, msg, error_msg)
-            except:
+            except Exception:
                 # If parsing fails, re-raise validation exception
                 raise e
 
@@ -98,13 +98,11 @@ class ChemocareHandler(GenericHandler):
             raise
 
     def create_successful_ack(self, message_control_id: str, msg: Message) -> str:
-        """Creates a successful ACK response."""
         ack_builder = HL7AckBuilder()
         ack_msg = ack_builder.build_ack(message_control_id, msg, Hl7Constants.ACK_CODE_ACCEPT)
         return ack_msg.to_mllp()
 
     def create_failure_ack(self, message_control_id: str, msg: Message, error_msg: str) -> str:
-        """Creates a failure ACK response."""
         ack_builder = HL7AckBuilder()
         ack_msg = ack_builder.build_ack(message_control_id, msg, Hl7Constants.ACK_CODE_REJECT, error_msg)
         return ack_msg.to_mllp()

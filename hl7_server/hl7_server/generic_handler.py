@@ -7,6 +7,7 @@ from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
+from .chemocare_handler import ChemocareHandler
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_constant import Hl7Constants
 from .hl7_validator import HL7Validator, ValidationException
@@ -94,13 +95,9 @@ class GenericHandler(AbstractHandler):
             raise
 
     def _is_chemocare_message(self, authority_code: str) -> bool:
-        """Check if the authority code belongs to a Chemocare system."""
         return authority_code in Hl7Constants.CHEMOCARE_AUTHORITY_CODES
 
     def _delegate_to_chemocare_handler(self) -> str:
-        """Delegate processing to ChemocareHandler for Chemocare messages."""
-        from .chemocare_handler import ChemocareHandler
-
         chemocare_handler = ChemocareHandler(
             self.incoming_message, self.sender_client, self.audit_client, self.validator
         )
