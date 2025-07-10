@@ -8,8 +8,8 @@ from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .hl7_ack_builder import HL7AckBuilder
-from .hl7_validator import HL7Validator, ValidationException
 from .hl7_constant import Hl7Constants
+from .hl7_validator import HL7Validator, ValidationException
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,7 +32,12 @@ class GenericHandler(AbstractHandler):
             message_control_id = msg.msh.msh_10.value
             message_type = msg.msh.msh_9.to_er7()
             authority_code = msg.msh.msh_3.value
-            logger.info("Received message type: %s, Control ID: %s, Authority: %s", message_type, message_control_id, authority_code)
+            logger.info(
+                "Received message type: %s, Control ID: %s, Authority: %s",
+                message_type,
+                message_control_id,
+                authority_code,
+            )
 
             # Check if this is a Chemocare message and delegate if so
             if self._is_chemocare_message(authority_code):
@@ -95,11 +100,8 @@ class GenericHandler(AbstractHandler):
     def _delegate_to_chemocare_handler(self) -> str:
         """Delegate processing to ChemocareHandler for Chemocare messages."""
         from .chemocare_handler import ChemocareHandler
-        
+
         chemocare_handler = ChemocareHandler(
-            self.incoming_message, 
-            self.sender_client, 
-            self.audit_client, 
-            self.validator
+            self.incoming_message, self.sender_client, self.audit_client, self.validator
         )
         return chemocare_handler.reply()
