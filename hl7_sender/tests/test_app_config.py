@@ -13,7 +13,11 @@ class TestAppConfig(unittest.TestCase):
                 "INGRESS_QUEUE_NAME": "ingress_queue",
                 "SERVICE_BUS_NAMESPACE": "namespace",
                 "RECEIVER_MLLP_HOST": "localhost",
-                "RECEIVER_MLLP_PORT": "1234"
+                "RECEIVER_MLLP_PORT": "1234",
+                "AUDIT_QUEUE_NAME": "audit-queue",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "ACK_TIMEOUT_SECONDS": "30"
             }
             return values.get(name)
 
@@ -25,6 +29,10 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.service_bus_namespace, "namespace")
         self.assertEqual(config.receiver_mllp_hostname, "localhost")
         self.assertEqual(config.receiver_mllp_port, 1234)
+        self.assertEqual(config.audit_queue_name, "audit-queue")
+        self.assertEqual(config.workflow_id, "test-workflow")
+        self.assertEqual(config.microservice_id, "test-microservice")
+        self.assertEqual(config.ack_timeout_seconds, 30)
 
     @patch("hl7_sender.app_config.os.getenv")
     def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv):
