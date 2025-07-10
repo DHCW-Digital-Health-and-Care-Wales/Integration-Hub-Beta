@@ -32,10 +32,23 @@ pipx run bandit hl7_server/**/*.py tests/**/*.py
 pipx run mypy --ignore-missing-imports hl7_server/**/*.py tests/**/*.py
 ```
 
+or if using uv:
+
+```
+uv run ruff check
+uv run bandit hl7_server/**/*.py tests/**/*.py
+```
+
 Run unit tests:
 
 ```
 python -m unittest discover tests
+```
+
+or using uv:
+
+```
+uv run -m unittest discover tests
 ```
 
 ## Running HL7 server
