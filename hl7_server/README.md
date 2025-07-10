@@ -8,21 +8,24 @@ Configurable HL7 MLLP server built with hl7apy package.
 
 - python3
 - pipx - to run code quality checks ([Ruff](https://github.com/astral-sh/ruff), [Bandit](https://github.com/PyCQA/bandit))
+- uv
 
 ### Build / checks
 
-In the [hl7_server](.) folder create virtual environment and start using it:
+In the [hl7_server](.) folder create a virtual environment
+
 ```
-python3 -m venv venv
-source venv/bin/activate
+uv venv
 ```
 
 Install dependencies:
+
 ```
-pip install -r requirements.txt
+uv sync
 ```
 
 Run code quality checks:
+
 ```
 pipx run ruff check
 pipx run bandit hl7_server/**/*.py tests/**/*.py
@@ -30,6 +33,7 @@ pipx run mypy --ignore-missing-imports hl7_server/**/*.py tests/**/*.py
 ```
 
 Run unit tests:
+
 ```
 python -m unittest discover tests
 ```
@@ -56,6 +60,7 @@ To define host and port the server should bind to use environment variables conf
 ### Running directly
 
 From the [hl7_server](.) folder run:
+
 ```sh
 python -m hl7_server.application
 ```
