@@ -57,6 +57,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseParisHL7ServerDev
+    displayName: 'Release App Paris HL7Server - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7ServerDev'
+          displayName: 'Release App Paris HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7TransformerDev
     displayName: 'Release App HL7Transformer - Dev'
     jobs:
@@ -118,6 +135,23 @@ stages:
           displayName: 'Release App PHW HL7Server - Test'
           appName: 'hl7server'
           appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseParisHL7ServerTest
+    displayName: 'Release App Paris HL7Server - Test'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7ServerTest'
+          displayName: 'Release App Paris HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
