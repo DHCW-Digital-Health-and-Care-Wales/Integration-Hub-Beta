@@ -8,6 +8,7 @@ from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.mllp import MLLPServer
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from hl7_server.hl7_validator import HL7Validator
@@ -25,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 class Hl7ServerApplication:
     def __init__(self) -> None:
-        self.sender_client = None
-        self.audit_client = None
+        self.sender_client: MessageSenderClient = None
+        self.audit_client: AuditServiceClient = None
         self._server_thread: threading.Thread | None = None
         self.health_check_server: TCPHealthCheckServer = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")

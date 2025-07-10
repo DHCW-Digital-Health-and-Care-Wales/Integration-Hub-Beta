@@ -113,8 +113,13 @@ class TestAuditServiceClient(unittest.TestCase):
         self.assertEqual(str(context.exception), "Network error")
 
     def test_close(self):
+        # Arrange
+        exc_type = ValueError
+        exc_value = ValueError("test error")
+        exc_traceback = None
+
         # Act
-        self.audit_client.close()
+        self.audit_client.__exit__(exc_type, exc_value, exc_traceback)
         
         # Assert
         self.sender_client.close.assert_called_once()
