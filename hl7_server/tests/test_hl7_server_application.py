@@ -16,6 +16,8 @@ ENV_VARS: Dict[str, str] = {
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
+    "HEALTH_CHECK_HOST": "127.0.0.1",
+    "HEALTH_CHECK_PORT": "9000",
 }
 
 
@@ -79,7 +81,7 @@ class TestHl7ServerApplication(unittest.TestCase):
 
         self.app.start_server()
 
-        mock_health_check.assert_called_once_with()
+        mock_health_check.assert_called_once_with("127.0.0.1", 9000)
         health_check.start.assert_called_once()
 
         self.app.stop_server()

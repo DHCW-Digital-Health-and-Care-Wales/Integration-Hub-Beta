@@ -14,6 +14,8 @@ class AppConfig:
     microservice_id: str
     hl7_version: str | None
     sending_app: str | None
+    health_check_hostname: str | None
+    health_check_port: int | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -26,6 +28,8 @@ class AppConfig:
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             hl7_version=_read_env("HL7_VERSION"),
             sending_app=_read_env("SENDING_APP"),
+            health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
+            health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
         )
 
 
@@ -39,3 +43,9 @@ def _read_required_env(name: str) -> str:
         raise RuntimeError(f"Missing required configuration: {name}")
     else:
         return value
+
+def _read_int_env(name: str) -> int | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return int(value)

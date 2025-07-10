@@ -11,6 +11,8 @@ class AppConfig:
     service_bus_namespace: str | None
     receiver_mllp_hostname: str | None
     receiver_mllp_port: int | None
+    health_check_hostname: str | None
+    health_check_port: int | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -19,7 +21,9 @@ class AppConfig:
             ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=True),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             receiver_mllp_hostname=_read_env("RECEIVER_MLLP_HOST", required=True),
-            receiver_mllp_port=_read_int_env("RECEIVER_MLLP_PORT", required=True)
+            receiver_mllp_port=_read_int_env("RECEIVER_MLLP_PORT", required=True),
+            health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
+            health_check_port=_read_int_env("HEALTH_CHECK_PORT", required=False)
         )
 
 
