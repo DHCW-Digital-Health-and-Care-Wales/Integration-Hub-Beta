@@ -21,7 +21,7 @@ python3 generate_secrets.py > .secrets
 
 - Amend queues, topics and subscriptions configuration when needed in [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json).
 
-- provide custom CA certificates if needed (required in some proxied corporate networks): merge them in a single pem file and add in every service  under `./ca-certs/cacerts.pem` path.
+- provide custom CA certificates if needed (required in some proxied corporate networks): merge them in a single pem file and add in every service  under `./ca-certs/cacerts.crt` path.
 
 ## Startup
 
