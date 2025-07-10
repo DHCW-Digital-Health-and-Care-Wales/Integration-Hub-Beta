@@ -9,6 +9,7 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
+from .hl7_constant import Hl7Constants
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -30,8 +31,15 @@ class GenericHandler(AbstractHandler):
             msg = parse_message(self.incoming_message, find_groups=False)
             message_control_id = msg.msh.msh_10.value
             message_type = msg.msh.msh_9.to_er7()
-            logger.info("Received message type: %s, Control ID: %s", message_type, message_control_id)
+            authority_code = msg.msh.msh_3.value
+            logger.info("Received message type: %s, Control ID: %s, Authority: %s", message_type, message_control_id, authority_code)
 
+            # Check if this is a Chemocare message and delegate if so
+            if self._is_chemocare_message(authority_code):
+                logger.info("Delegating to ChemocareHandler for authority code: %s", authority_code)
+                return self._delegate_to_chemocare_handler()
+
+            # Continue with standard PHW/generic processing
             self.validator.validate(msg)
             self.audit_client.log_validation_result(
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
@@ -79,3 +87,19 @@ class GenericHandler(AbstractHandler):
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
+
+    def _is_chemocare_message(self, authority_code: str) -> bool:
+        """Check if the authority code belongs to a Chemocare system."""
+        return authority_code in Hl7Constants.CHEMOCARE_AUTHORITY_CODES
+
+    def _delegate_to_chemocare_handler(self) -> str:
+        """Delegate processing to ChemocareHandler for Chemocare messages."""
+        from .chemocare_handler import ChemocareHandler
+        
+        chemocare_handler = ChemocareHandler(
+            self.incoming_message, 
+            self.sender_client, 
+            self.audit_client, 
+            self.validator
+        )
+        return chemocare_handler.reply()
