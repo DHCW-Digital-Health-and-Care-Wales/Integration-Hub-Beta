@@ -103,12 +103,16 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.abandon_message.assert_called_once()
 
     def test_exit_service_bus_receiver_client_closed(self):
+        # Arrange
+        exc_type = ValueError
+        exc_value = ValueError("test error")
+        exc_traceback = None
+
         # Act
-        self.message_receiver_client.__exit__()
+        self.message_receiver_client.__exit__(exc_type, exc_value, exc_traceback)
 
         # Assert
         self.service_bus_receiver_client.close.assert_called_once()
-
 
 if __name__ == '__main__':
     unittest.main()

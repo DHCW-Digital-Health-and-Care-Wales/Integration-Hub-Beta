@@ -35,9 +35,12 @@ class MessageReceiverClient:
                 logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
                 self.receiver.abandon_message(msg)
 
+    def close(self):
+        self.receiver.close()
+        logger.debug("ServiceBusReceiverClient closed.")
+
     def __enter__(self):
         return self
 
-    def __exit__(self):
-        self.receiver.close()
-        logger.debug("ServiceBusReceiverClient closed.")
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close()

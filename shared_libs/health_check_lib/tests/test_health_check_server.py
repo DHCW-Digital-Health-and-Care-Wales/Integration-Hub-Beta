@@ -29,6 +29,21 @@ class TestTCPHealthCheckServer(unittest.TestCase):
             # Try to connect after server has stopped
             socket.create_connection(("127.0.0.1", self.actual_port), timeout=1)
 
+    def test_default_parameters_constructor(self):
+        server = TCPHealthCheckServer()
+
+        self.assertEqual(server.host, "127.0.0.1")
+        self.assertEqual(server.port, 9000)
+
+    def test_custom_parameters_constructor(self):
+        host = "localhost"
+        port = 9876
+        server = TCPHealthCheckServer(host=host, port=port)
+
+        self.assertEqual(server.host, host)
+        self.assertEqual(server.port, port)
+
+
 
 if __name__ == '__main__':
     unittest.main()

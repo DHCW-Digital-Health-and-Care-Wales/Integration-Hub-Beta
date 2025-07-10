@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TCPHealthCheckServer:
-    def __init__(self, host: str | None, port: int | None):
+    def __init__(self, host: str | None = None, port: int | None = None):
         self.host = host or "127.0.0.1"
         self.port = port or 9000
         self._server_socket = None

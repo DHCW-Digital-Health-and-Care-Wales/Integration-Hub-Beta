@@ -80,10 +80,10 @@ class AuditServiceClient:
     def close(self) -> None:
         if self.sender_client:
             self.sender_client.close()
+            logger.debug("AuditServiceClient closed.")
 
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
-        logger.debug("AuditServiceClient closed.")
