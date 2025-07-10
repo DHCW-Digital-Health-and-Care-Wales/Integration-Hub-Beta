@@ -11,6 +11,8 @@ class AppConfig:
     service_bus_namespace: str | None
     receiver_mllp_hostname: str | None
     receiver_mllp_port: int | None
+    health_check_hostname: str | None
+    health_check_port: int | None
     audit_queue_name: str | None
     workflow_id: str | None
     microservice_id: str | None
@@ -24,6 +26,8 @@ class AppConfig:
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             receiver_mllp_hostname=_read_env("RECEIVER_MLLP_HOST", required=True),
             receiver_mllp_port=_read_int_env("RECEIVER_MLLP_PORT", required=True),
+            health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
+            health_check_port=_read_int_env("HEALTH_CHECK_PORT", required=False),
             audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
             microservice_id=_read_env("MICROSERVICE_ID", required=True),

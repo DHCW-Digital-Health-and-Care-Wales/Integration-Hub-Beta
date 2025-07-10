@@ -47,9 +47,9 @@ def main():
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
-        factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
         HL7SenderClient(app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds) as hl7_sender_client,
-        TCPHealthCheckServer() as health_check_server,
+        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
+        factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
         AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
     ):
 
