@@ -96,12 +96,12 @@ class TestChemocareHandler(unittest.TestCase):
             self.mock_audit_client.log_message_received.assert_called_once_with(
                 VALID_CHEMOCARE_A31_MESSAGE, "Chemocare message received"
             )
-
-            validation_call = self.mock_audit_client.log_validation_result.call_args
-            self.assertIn("processed without validation", validation_call[0][1])
-
-            processing_call = self.mock_audit_client.log_message_processed.call_args
-            self.assertEqual(processing_call[0][1], "Successfully processed Chemocare message")
+            self.mock_audit_client.log_validation_result.assert_called_once_with(
+                VALID_CHEMOCARE_A31_MESSAGE, ANY, is_success=True
+            )
+            self.mock_audit_client.log_message_processed.assert_called_once_with(
+                VALID_CHEMOCARE_A31_MESSAGE, "Successfully processed Chemocare message"
+            )
 
     @patch("hl7_server.chemocare_handler.logger")
     def test_service_bus_failure_handling(self, mock_logger: MagicMock) -> None:

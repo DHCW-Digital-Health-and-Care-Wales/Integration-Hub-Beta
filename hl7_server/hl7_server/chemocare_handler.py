@@ -6,7 +6,7 @@ from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .base_handler import BaseHandler
-from .hl7_validator import HL7Validator, ValidationException
+from .hl7_validator import HL7Validator
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,6 @@ class ChemocareHandler(BaseHandler):
                 is_success=True,
             )
 
-            # Send to service bus for all messages
             self._send_to_service_bus(message_control_id)
 
             ack_message = self.create_ack(message_control_id, msg)
