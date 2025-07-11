@@ -18,9 +18,6 @@ dev = [
   "bandit==1.8.3",
 ]
 
-[tool.uv]
-index-url = "https://pypi.org/simple"
-
 [tool.uv.sources]
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
