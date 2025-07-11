@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import ANY, MagicMock, patch
 
 from hl7_server.chemocare_handler import ChemocareHandler
-from hl7_server.hl7_validator import ValidationException
 
 # Sample valid Chemocare HL7 v2.4 A31 message from South_East_Wales_Chemocare
 VALID_CHEMOCARE_A31_MESSAGE = (
@@ -58,30 +57,27 @@ class TestChemocareHandler(unittest.TestCase):
                 self.mock_sender.reset_mock()
                 self.mock_audit_client.reset_mock()
 
-    @patch("hl7_server.chemocare_handler.ChemocareValidator")
     @patch("hl7_server.chemocare_handler.logger")
-    def test_invalid_message_throw_validation_error(
-        self, mock_logger: MagicMock, mock_chemocare_validator_class: MagicMock
-    ) -> None:
-        mock_logger.reset_mock()
-        self.mock_audit_client.reset_mock()
-        self.mock_sender.reset_mock()
-
-        mock_validator_instance = mock_chemocare_validator_class.return_value
-        validation_exception = ValidationException("Invalid HL7 message")
-        mock_validator_instance.validate.side_effect = validation_exception
-
+    def test_chemocare_messages_processed_without_validation(self, mock_logger: MagicMock) -> None:
+        """Test that Chemocare messages are processed without any validation"""
         handler = ChemocareHandler(
             INVALID_VERSION_MESSAGE, self.mock_sender, self.mock_audit_client, self.mock_validator
         )
 
-        with self.assertRaises(ValidationException):
-            handler.reply()
+        with patch(ACK_BUILDER_ATTRIBUTE) as MockAckBuilder:
+            mock_builder_instance = MockAckBuilder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bACK_CONTENT\x1c\r"
+            mock_builder_instance.build_ack.return_value = mock_ack_message
 
-        mock_logger.error.assert_called_once_with(f"Chemocare validation error: {validation_exception}")
-        self.mock_audit_client.log_message_failed.assert_called_once_with(
-            INVALID_VERSION_MESSAGE, f"Chemocare validation error: {validation_exception}"
-        )
+            # Should not raise any validation errors
+            result = handler.reply()
+
+            self.assertIn("ACK_CONTENT", result)
+            self.mock_sender.send_text_message.assert_called_once_with(INVALID_VERSION_MESSAGE)
+            self.mock_audit_client.log_message_received.assert_called_once()
+            self.mock_audit_client.log_validation_result.assert_called_once()
+            self.mock_audit_client.log_message_processed.assert_called_once()
 
     @patch("hl7_server.chemocare_handler.logger")
     def test_successful_message_processing_audit_trail(self, mock_logger: MagicMock) -> None:
@@ -102,10 +98,10 @@ class TestChemocareHandler(unittest.TestCase):
             )
 
             validation_call = self.mock_audit_client.log_validation_result.call_args
-            self.assertIn("South_East_Wales_Chemocare", validation_call[0][1])
+            self.assertIn("processed without validation", validation_call[0][1])
 
             processing_call = self.mock_audit_client.log_message_processed.call_args
-            self.assertIn("South_East_Wales_Chemocare", processing_call[0][1])
+            self.assertEqual(processing_call[0][1], "Successfully processed Chemocare message")
 
     @patch("hl7_server.chemocare_handler.logger")
     def test_service_bus_failure_handling(self, mock_logger: MagicMock) -> None:
