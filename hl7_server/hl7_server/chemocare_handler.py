@@ -24,8 +24,8 @@ class ChemocareHandler(BaseHandler):
             self.audit_client.log_message_received(self.incoming_message, "Chemocare message received")
 
             msg = parse_message(self.incoming_message, find_groups=False)
-            message_control_id = msg.msh.msh_10.value if msg.msh.msh_10 else "UNKNOWN"
-            message_type = msg.msh.msh_9.to_er7() if msg.msh.msh_9 else "UNKNOWN"
+            message_control_id = msg.msh.msh_10.value
+            message_type = msg.msh.msh_9.to_er7()
             logger.info("Received Chemocare message type: %s, Control ID: %s", message_type, message_control_id)
 
             self.audit_client.log_validation_result(
@@ -42,7 +42,6 @@ class ChemocareHandler(BaseHandler):
 
             logger.info("Chemocare message processed successfully")
             return ack_message
-
         except HL7apyException as e:
             error_msg = f"HL7 parsing error in Chemocare message: {e}"
             logger.error(error_msg)

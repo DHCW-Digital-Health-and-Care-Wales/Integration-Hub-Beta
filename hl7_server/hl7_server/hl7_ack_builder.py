@@ -7,10 +7,7 @@ from .hl7_constant import Hl7Constants
 
 
 class HL7AckBuilder:
-    def build_ack(self, message_control_id: str, original_msg: Message, ack_code: str | None = None, error_text: str | None = None) -> Message:
-        if ack_code is None:
-            ack_code = Hl7Constants.ACK_CODE_ACCEPT
-            
+    def build_ack(self, message_control_id: str, original_msg: Message) -> Message:
         ack = Message("ACK", validation_level=VALIDATION_LEVEL.STRICT)
 
         # Build MSH segment
@@ -30,10 +27,8 @@ class HL7AckBuilder:
 
         # Build MSA segment
         msa = Segment("MSA", validation_level=VALIDATION_LEVEL.STRICT)
-        msa.msa_1 = ack_code
+        msa.msa_1 = Hl7Constants.ACK_CODE_ACCEPT
         msa.msa_2 = message_control_id
-        if error_text:
-            msa.msa_3 = error_text
         ack.add(msa)
 
         return ack

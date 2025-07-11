@@ -29,9 +29,7 @@ class BaseHandler(AbstractHandler):
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
 
-    def create_ack(
-        self, message_control_id: str, msg: Message, ack_code: str | None = None, error_text: str | None = None
-    ) -> str:
+    def create_ack(self, message_control_id: str, msg: Message) -> str:
         ack_builder = HL7AckBuilder()
-        ack_msg = ack_builder.build_ack(message_control_id, msg, ack_code, error_text)
+        ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()

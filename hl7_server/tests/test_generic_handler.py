@@ -70,7 +70,7 @@ class TestGenericHandler(unittest.TestCase):
             self.assertTrue(ack_response.startswith("\x0b"))
             self.assertTrue(ack_response.endswith("\x1c\r"))
 
-            mock_builder_instance.build_ack.assert_called_once_with("202505052323364444", ANY, None, None)
+            mock_builder_instance.build_ack.assert_called_once_with("202505052323364444", ANY)
             mock_ack_message.to_mllp.assert_called_once()
 
     @patch("hl7_server.generic_handler.logger")

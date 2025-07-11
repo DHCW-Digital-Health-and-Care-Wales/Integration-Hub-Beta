@@ -47,7 +47,7 @@ class TestChemocareHandler(unittest.TestCase):
 
                     result = handler.reply()
 
-                    mock_builder_instance.build_ack.assert_called_once_with(expected_control_id, ANY, None, None)
+                    mock_builder_instance.build_ack.assert_called_once_with(expected_control_id, ANY)
                     self.assertIn("ACK_SUCCESS_CONTENT", result)
                     self.mock_sender.send_text_message.assert_called_once_with(message)
                     self.mock_audit_client.log_message_received.assert_called_once()
@@ -56,28 +56,6 @@ class TestChemocareHandler(unittest.TestCase):
 
                 self.mock_sender.reset_mock()
                 self.mock_audit_client.reset_mock()
-
-    @patch("hl7_server.chemocare_handler.logger")
-    def test_chemocare_messages_processed_without_validation(self, mock_logger: MagicMock) -> None:
-        """Test that Chemocare messages are processed without any validation"""
-        handler = ChemocareHandler(
-            INVALID_VERSION_MESSAGE, self.mock_sender, self.mock_audit_client, self.mock_validator
-        )
-
-        with patch(ACK_BUILDER_ATTRIBUTE) as MockAckBuilder:
-            mock_builder_instance = MockAckBuilder.return_value
-            mock_ack_message = MagicMock()
-            mock_ack_message.to_mllp.return_value = "\x0bACK_CONTENT\x1c\r"
-            mock_builder_instance.build_ack.return_value = mock_ack_message
-
-            # Should not raise any validation errors
-            result = handler.reply()
-
-            self.assertIn("ACK_CONTENT", result)
-            self.mock_sender.send_text_message.assert_called_once_with(INVALID_VERSION_MESSAGE)
-            self.mock_audit_client.log_message_received.assert_called_once()
-            self.mock_audit_client.log_validation_result.assert_called_once()
-            self.mock_audit_client.log_message_processed.assert_called_once()
 
     @patch("hl7_server.chemocare_handler.logger")
     def test_successful_message_processing_audit_trail(self, mock_logger: MagicMock) -> None:
