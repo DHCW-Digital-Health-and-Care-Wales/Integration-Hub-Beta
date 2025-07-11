@@ -28,6 +28,9 @@ COPY --from=shared_libs . /shared_libs
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
+# Install the project's dependencies using the lockfile and settings
+RUN uv --native-tls sync --locked --no-install-project --no-dev
+
 # Copy the rest of the project source code and install it
 COPY hl7_mock_receiver/ /app/hl7_mock_receiver/
 RUN uv --native-tls sync --locked --no-dev
