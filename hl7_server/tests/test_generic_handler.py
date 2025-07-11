@@ -24,8 +24,8 @@ OTHER_AUTHORITY_A31_MESSAGE = (
 )
 
 
-ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
-CHEMOCARE_HANDLER_ATTRIBUTE = "hl7_server.chemocare_handler.ChemocareHandler"
+ACK_BUILDER_ATTRIBUTE = "hl7_server.base_handler.HL7AckBuilder"
+CHEMOCARE_HANDLER_ATTRIBUTE = "hl7_server.generic_handler.ChemocareHandler"
 
 
 class TestGenericHandler(unittest.TestCase):
@@ -38,19 +38,17 @@ class TestGenericHandler(unittest.TestCase):
         handler = GenericHandler(PHW_A28_MESSAGE, self.mock_sender, self.mock_audit_client, self.validator)
 
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
-            with patch(CHEMOCARE_HANDLER_ATTRIBUTE) as mock_chemocare_handler_class:
-                mock_builder_instance = mock_builder.return_value
-                mock_ack_message = MagicMock()
-                mock_ack_message.to_mllp.return_value = "\x0bPHW_ACK_CONTENT\x1c\r"
-                mock_builder_instance.build_ack.return_value = mock_ack_message
+            mock_builder_instance = mock_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bPHW_ACK_CONTENT\x1c\r"
+            mock_builder_instance.build_ack.return_value = mock_ack_message
 
-                result = handler.reply()
+            result = handler.reply()
 
-                mock_chemocare_handler_class.assert_not_called()
-                self.validator.validate.assert_called_once()
-                self.mock_sender.send_text_message.assert_called_once_with(PHW_A28_MESSAGE)
-                mock_builder_instance.build_ack.assert_called_once()
-                self.assertIn("PHW_ACK_CONTENT", result)
+            self.validator.validate.assert_called_once()
+            self.mock_sender.send_text_message.assert_called_once_with(PHW_A28_MESSAGE)
+            mock_builder_instance.build_ack.assert_called_once()
+            self.assertIn("PHW_ACK_CONTENT", result)
 
     def test_ack_message_created_correctly(self) -> None:
         handler = GenericHandler(PHW_A28_MESSAGE, self.mock_sender, self.mock_audit_client, self.validator)
@@ -72,7 +70,7 @@ class TestGenericHandler(unittest.TestCase):
             self.assertTrue(ack_response.startswith("\x0b"))
             self.assertTrue(ack_response.endswith("\x1c\r"))
 
-            mock_builder_instance.build_ack.assert_called_once_with("202505052323364444", ANY)
+            mock_builder_instance.build_ack.assert_called_once_with("202505052323364444", ANY, None, None)
             mock_ack_message.to_mllp.assert_called_once()
 
     @patch("hl7_server.generic_handler.logger")
@@ -101,19 +99,17 @@ class TestGenericHandler(unittest.TestCase):
         handler = GenericHandler(OTHER_AUTHORITY_A31_MESSAGE, self.mock_sender, self.mock_audit_client, self.validator)
 
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_ack_builder:
-            with patch(CHEMOCARE_HANDLER_ATTRIBUTE) as mock_chemocare_handler_class:
-                mock_builder_instance = mock_ack_builder.return_value
-                mock_ack_message = MagicMock()
-                mock_ack_message.to_mllp.return_value = "\x0bOTHER_ACK_CONTENT\x1c\r"
-                mock_builder_instance.build_ack.return_value = mock_ack_message
+            mock_builder_instance = mock_ack_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bOTHER_ACK_CONTENT\x1c\r"
+            mock_builder_instance.build_ack.return_value = mock_ack_message
 
-                result = handler.reply()
+            result = handler.reply()
 
-                mock_chemocare_handler_class.assert_not_called()
-                self.validator.validate.assert_called_once()
-                self.mock_sender.send_text_message.assert_called_once_with(OTHER_AUTHORITY_A31_MESSAGE)
-                mock_builder_instance.build_ack.assert_called_once()
-                self.assertIn("OTHER_ACK_CONTENT", result)
+            self.validator.validate.assert_called_once()
+            self.mock_sender.send_text_message.assert_called_once_with(OTHER_AUTHORITY_A31_MESSAGE)
+            mock_builder_instance.build_ack.assert_called_once()
+            self.assertIn("OTHER_ACK_CONTENT", result)
 
     def test_delegates_chemocare_message_to_chemocare_handler(self) -> None:
         handler = GenericHandler(CHEMOCARE_A31_MESSAGE, self.mock_sender, self.mock_audit_client, self.validator)

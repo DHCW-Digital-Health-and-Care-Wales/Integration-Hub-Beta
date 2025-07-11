@@ -1,27 +1,23 @@
 import logging
 
-from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
+from .base_handler import BaseHandler
 from .chemocare_validator import ChemocareValidator
-from .generic_handler import GenericHandler
-from .hl7_ack_builder import HL7AckBuilder
-from .hl7_constant import Hl7Constants
 from .hl7_validator import HL7Validator, ValidationException
 
 logger = logging.getLogger(__name__)
 
 
-class ChemocareHandler(GenericHandler):
+class ChemocareHandler(BaseHandler):
     """Handles HL7 messages from Chemocare systems with specific validation and response logic."""
 
     def __init__(
         self, msg: str, sender_client: MessageSenderClient, audit_client: AuditServiceClient, validator: HL7Validator
     ):
-        # Initialize parent with the provided validator
         super().__init__(msg, sender_client, audit_client, validator)
         self.chemocare_validator = ChemocareValidator()
 
@@ -47,8 +43,7 @@ class ChemocareHandler(GenericHandler):
             # Send to service bus for valid messages
             self._send_to_service_bus(message_control_id)
 
-            # Create successful ACK
-            ack_message = self.create_successful_ack(message_control_id, msg)
+            ack_message = self.create_ack(message_control_id, msg)
 
             self.audit_client.log_message_processed(
                 self.incoming_message, f"Successfully processed Chemocare message from {health_board_name}"
@@ -63,15 +58,7 @@ class ChemocareHandler(GenericHandler):
 
             self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
             self.audit_client.log_message_failed(self.incoming_message, error_msg)
-
-            # Try to create failure ACK if we can parse enough to get control ID
-            try:
-                msg = parse_message(self.incoming_message, find_groups=False)
-                message_control_id = msg.msh.msh_10.value
-                return self.create_failure_ack(message_control_id, msg, error_msg)
-            except Exception:
-                # If we can't parse at all, re-raise the original exception
-                raise e
+            raise
 
         except ValidationException as e:
             error_msg = f"Chemocare validation error: {e}"
@@ -79,30 +66,11 @@ class ChemocareHandler(GenericHandler):
 
             self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
             self.audit_client.log_message_failed(self.incoming_message, error_msg)
-
-            # Create failure ACK for validation errors
-            try:
-                msg = parse_message(self.incoming_message, find_groups=False)
-                message_control_id = msg.msh.msh_10.value
-                return self.create_failure_ack(message_control_id, msg, error_msg)
-            except Exception:
-                # If parsing fails, re-raise validation exception
-                raise e
+            raise e
 
         except Exception as e:
             error_msg = f"Unexpected error while processing Chemocare message: {e}"
             logger.exception(error_msg)
 
             self.audit_client.log_message_failed(self.incoming_message, error_msg)
-            # Re-raise exception to be consistent with parent GenericHandler
             raise
-
-    def create_successful_ack(self, message_control_id: str, msg: Message) -> str:
-        ack_builder = HL7AckBuilder()
-        ack_msg = ack_builder.build_ack(message_control_id, msg, Hl7Constants.ACK_CODE_ACCEPT)
-        return ack_msg.to_mllp()
-
-    def create_failure_ack(self, message_control_id: str, msg: Message, error_msg: str) -> str:
-        ack_builder = HL7AckBuilder()
-        ack_msg = ack_builder.build_ack(message_control_id, msg, Hl7Constants.ACK_CODE_REJECT, error_msg)
-        return ack_msg.to_mllp()

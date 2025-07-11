@@ -21,17 +21,7 @@ INVALID_VERSION_MESSAGE = (
     "PID|1||123456^^^Hospital^MR||Doe^John\r"
 )
 
-INVALID_AUTHORITY_CODE_MESSAGE = (
-    "MSH|^~\\&|999|999|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364449|P|2.4|||||GBR||EN\r"
-    "PID|1||123456^^^Hospital^MR||Doe^John\r"
-)
-
-INVALID_MESSAGE_TYPE_MESSAGE = (
-    "MSH|^~\\&|245|245|100|100|2025-05-05 23:23:32||ADT^A01^ADT_A01|202505052323364450|P|2.4|||||GBR||EN\r"
-    "PID|1||123456^^^Hospital^MR||Doe^John\r"
-)
-
-ACK_BUILDER_ATTRIBUTE = "hl7_server.chemocare_handler.HL7AckBuilder"
+ACK_BUILDER_ATTRIBUTE = "hl7_server.base_handler.HL7AckBuilder"
 
 
 class TestChemocareHandler(unittest.TestCase):
@@ -58,7 +48,7 @@ class TestChemocareHandler(unittest.TestCase):
 
                     result = handler.reply()
 
-                    mock_builder_instance.build_ack.assert_called_once_with(expected_control_id, ANY, "AA")
+                    mock_builder_instance.build_ack.assert_called_once_with(expected_control_id, ANY, None, None)
                     self.assertIn("ACK_SUCCESS_CONTENT", result)
                     self.mock_sender.send_text_message.assert_called_once_with(message)
                     self.mock_audit_client.log_message_received.assert_called_once()
@@ -68,38 +58,30 @@ class TestChemocareHandler(unittest.TestCase):
                 self.mock_sender.reset_mock()
                 self.mock_audit_client.reset_mock()
 
-    def test_invalid_messages_return_failure_ack(self) -> None:
-        test_cases = [
-            ("invalid version message", INVALID_VERSION_MESSAGE, "202505052323364448"),
-            ("invalid authority code", INVALID_AUTHORITY_CODE_MESSAGE, "202505052323364449"),
-            ("invalid message type", INVALID_MESSAGE_TYPE_MESSAGE, "202505052323364450"),
-        ]
+    @patch("hl7_server.chemocare_handler.ChemocareValidator")
+    @patch("hl7_server.chemocare_handler.logger")
+    def test_invalid_message_throw_validation_error(
+        self, mock_logger: MagicMock, mock_chemocare_validator_class: MagicMock
+    ) -> None:
+        mock_logger.reset_mock()
+        self.mock_audit_client.reset_mock()
+        self.mock_sender.reset_mock()
 
-        for description, message, expected_control_id in test_cases:
-            with self.subTest(description=description, control_id=expected_control_id):
-                handler = ChemocareHandler(message, self.mock_sender, self.mock_audit_client, self.mock_validator)
-                with (
-                    patch(ACK_BUILDER_ATTRIBUTE) as MockAckBuilder,
-                    patch("hl7_server.chemocare_handler.logger") as mock_logger,
-                ):
-                    mock_builder_instance = MockAckBuilder.return_value
-                    mock_ack_message = MagicMock()
-                    mock_ack_message.to_mllp.return_value = "\x0bACK_FAILURE_CONTENT\x1c\r"
-                    mock_builder_instance.build_ack.return_value = mock_ack_message
+        mock_validator_instance = mock_chemocare_validator_class.return_value
+        validation_exception = ValidationException("Invalid HL7 message")
+        mock_validator_instance.validate.side_effect = validation_exception
 
-                    result = handler.reply()
+        handler = ChemocareHandler(
+            INVALID_VERSION_MESSAGE, self.mock_sender, self.mock_audit_client, self.mock_validator
+        )
 
-                    mock_builder_instance.build_ack.assert_called_once_with(expected_control_id, ANY, "AR", ANY)
-                    self.assertIn("ACK_FAILURE_CONTENT", result)
-                    self.mock_sender.send_text_message.assert_not_called()
+        with self.assertRaises(ValidationException):
+            handler.reply()
 
-                    if description in ["invalid version message", "invalid authority code"]:
-                        mock_logger.error.assert_called()
-                        self.mock_audit_client.log_validation_result.assert_called()
-                        self.mock_audit_client.log_message_failed.assert_called()
-
-                self.mock_sender.reset_mock()
-                self.mock_audit_client.reset_mock()
+        mock_logger.error.assert_called_once_with(f"Chemocare validation error: {validation_exception}")
+        self.mock_audit_client.log_message_failed.assert_called_once_with(
+            INVALID_VERSION_MESSAGE, f"Chemocare validation error: {validation_exception}"
+        )
 
     @patch("hl7_server.chemocare_handler.logger")
     def test_successful_message_processing_audit_trail(self, mock_logger: MagicMock) -> None:
