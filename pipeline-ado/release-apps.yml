@@ -4,224 +4,224 @@ pr: none
 
 parameters:
   - name: POOL_SELECTION
-    displayName: "Select Agent Pool"
+    displayName: 'Select Agent Pool'
     type: string
-    default: "Azure Pipelines"
+    default: 'Azure Pipelines'
     values:
-      - "Azure Pipelines"
-      - "integration-hub-azure-build"
-      - "inegration-hub-azure-build-dev"
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'inegration-hub-azure-build-dev'
 
 variables:
-  acrName: "uksdhcwihsharedcr"
-  azureServiceConnection: "Azure - NHSWales-DHCW-IntegrationHub-Subscription"
-  azureLocation: "uks"
-  hl7ServerPipelineName: "HL7 Server - Build"
-  hl7TransformerPipelineName: "HL7 Transformer - Build"
-  hl7SenderPipelineName: "HL7 Sender - Build"
-  hl7MockReceiverPipelineName: "HL7 Mock Receiver - Build"
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  azureLocation: 'uks'
+  hl7ServerPipelineName: 'HL7 Server - Build'
+  hl7TransformerPipelineName: 'HL7 Transformer - Build'
+  hl7SenderPipelineName: 'HL7 Sender - Build'
+  hl7MockReceiverPipelineName: 'HL7 Mock Receiver - Build'
 
 resources:
   pipelines:
-    - pipeline: "HL7 Server - Build"
-      source: "HL7 Server - Build"
+    - pipeline: 'HL7 Server - Build'
+      source: 'HL7 Server - Build'
       trigger: none
-    - pipeline: "HL7 Transformer - Build"
-      source: "HL7 Transformer - Build"
+    - pipeline: 'HL7 Transformer - Build'
+      source: 'HL7 Transformer - Build'
       trigger: none
-    - pipeline: "HL7 Sender - Build"
-      source: "HL7 Sender - Build"
+    - pipeline: 'HL7 Sender - Build'
+      source: 'HL7 Sender - Build'
       trigger: none
-    - pipeline: "HL7 Mock Receiver - Build"
-      source: "HL7 Mock Receiver - Build"
+    - pipeline: 'HL7 Mock Receiver - Build'
+      source: 'HL7 Mock Receiver - Build'
       trigger: none
 
 stages:
   - stage: ReleasePHWHL7ServerDev
-    displayName: "Release App PHW HL7Server - Dev"
+    displayName: 'Release App PHW HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleasePHWAppHL7ServerDev"
-          displayName: "Release App PHW HL7Server - Dev"
-          appName: "hl7server"
-          appFunctionMidfix: "phw"
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleasePHWAppHL7ServerDev'
+          displayName: 'Release App PHW HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerDev
-    displayName: "Release App Paris HL7Server - Dev"
+    displayName: 'Release App Paris HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseParisAppHL7ServerDev"
-          displayName: "Release App Paris HL7Server - Dev"
-          appName: "hl7server"
-          appFunctionMidfix: "paris"
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleaseParisAppHL7ServerDev'
+          displayName: 'Release App Paris HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerDev
-    displayName: "Release App Chemocare HL7Server - Dev"
+    displayName: 'Release App Chemocare HL7Server - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseChemocareAppHL7ServerDev"
-          displayName: "Release App Chemocare HL7Server - Dev"
-          appName: "hl7server"
-          appFunctionMidfix: "chemo"
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleaseChemocareAppHL7ServerDev'
+          displayName: 'Release App Chemocare HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7TransformerDev
-    displayName: "Release App HL7Transformer - Dev"
+    displayName: 'Release App HL7Transformer - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppHL7TransformerDev"
-          displayName: "Release App HL7Transformer - Dev"
-          appName: "hl7transformer"
-          appFunctionMidfix: ""
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleaseAppHL7TransformerDev'
+          displayName: 'Release App HL7Transformer - Dev'
+          appName: 'hl7transformer'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
 
   - stage: ReleaseHL7SenderDev
-    displayName: "Release App HL7Sender - Dev"
+    displayName: 'Release App HL7Sender - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppHL7SenderDev"
-          displayName: "Release App HL7Sender - Dev"
-          appName: "hl7sender"
-          appFunctionMidfix: ""
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleaseAppHL7SenderDev'
+          displayName: 'Release App HL7Sender - Dev'
+          appName: 'hl7sender'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseHL7MockReceiverDev
-    displayName: "Release App HL7MockReceiver - Dev"
+    displayName: 'Release App HL7MockReceiver - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppHL7MockReceiverDev"
-          displayName: "Release App HL7MockReceiver - Dev"
-          appName: "hl7mockreceiver"
-          appFunctionMidfix: ""
-          resourceGroupName: "UK-South-DHCW-IntHub-DEV-RG"
+          jobName: 'ReleaseAppHL7MockReceiverDev'
+          displayName: 'Release App HL7MockReceiver - Dev'
+          appName: 'hl7mockreceiver'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
-          environment: "dev"
+          environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7MockReceiverPipelineName }}
 
   - stage: ReleasePHWHL7ServerTest
-    displayName: "Release App PHW HL7Server - Test"
+    displayName: 'Release App PHW HL7Server - Test'
     dependsOn: ReleasePHWHL7ServerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppPHWHL7ServerTest"
-          displayName: "Release App PHW HL7Server - Test"
-          appName: "hl7server"
-          appFunctionMidfix: "phw"
-          resourceGroupName: "UK-South-DHCW-IntHub-TST-RG"
+          jobName: 'ReleaseAppPHWHL7ServerTest'
+          displayName: 'Release App PHW HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
-          environment: "tst"
+          environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerTest
-    displayName: "Release App Paris HL7Server - Test"
+    displayName: 'Release App Paris HL7Server - Test'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseParisAppHL7ServerTest"
-          displayName: "Release App Paris HL7Server - Test"
-          appName: "hl7server"
-          appFunctionMidfix: "paris"
-          resourceGroupName: "UK-South-DHCW-IntHub-TST-RG"
+          jobName: 'ReleaseParisAppHL7ServerTest'
+          displayName: 'Release App Paris HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
-          environment: "tst"
+          environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerTest
-    displayName: "Release App Chemocare HL7Server - Test"
+    displayName: 'Release App Chemocare HL7Server - Test'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseChemocareAppHL7ServerTest"
-          displayName: "Release App Chemocare HL7Server - Test"
-          appName: "hl7server"
-          appFunctionMidfix: "chemo"
-          resourceGroupName: "UK-South-DHCW-IntHub-TST-RG"
+          jobName: 'ReleaseChemocareAppHL7ServerTest'
+          displayName: 'Release App Chemocare HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
-          environment: "tst"
+          environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7TransformerTest
-    displayName: "Release App HL7Transformer - Test"
+    displayName: 'Release App HL7Transformer - Test'
     dependsOn: ReleaseHL7TransformerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppHL7TransformerTest"
-          displayName: "Release App HL7Transformer - Test"
-          appName: "hl7transformer"
-          appFunctionMidfix: ""
-          resourceGroupName: "UK-South-DHCW-IntHub-TST-RG"
+          jobName: 'ReleaseAppHL7TransformerTest'
+          displayName: 'Release App HL7Transformer - Test'
+          appName: 'hl7transformer'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
-          environment: "tst"
+          environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
 
   - stage: ReleaseHL7SenderTest
-    displayName: "Release App HL7Sender - Test"
+    displayName: 'Release App HL7Sender - Test'
     dependsOn: ReleaseHL7SenderDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: "ReleaseAppHL7SenderTest"
-          displayName: "Release App HL7Sender - Test"
-          appName: "hl7sender"
-          appFunctionMidfix: ""
-          resourceGroupName: "UK-South-DHCW-IntHub-TST-RG"
+          jobName: 'ReleaseAppHL7SenderTest'
+          displayName: 'Release App HL7Sender - Test'
+          appName: 'hl7sender'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
-          environment: "tst"
+          environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}

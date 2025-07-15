@@ -56,7 +56,8 @@ class Hl7ServerApplication:
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
-            "ADT^A40^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            # Paris A40 message
+            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             # Chemocare messages
             "ADT^A31": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             "ADT^A28": (GenericHandler, self.sender_client, self.audit_client, self.validator),
