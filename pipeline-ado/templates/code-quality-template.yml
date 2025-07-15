@@ -67,9 +67,9 @@ jobs:
           set -euo pipefail
           echo "##[group]Install Shared Dependencies"
           
-          # Install shared library using UV (editable mode)
+          # Install shared library using UV with system flag (CI/CD environment)
           echo "Installing shared library with UV..."
-          uv pip install -e shared_libs/message_bus_lib/
+          uv pip install --system -e shared_libs/message_bus_lib/
           
           # Verify shared library installation
           python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
@@ -85,14 +85,14 @@ jobs:
           # Prefer pyproject.toml over requirements.txt for UV
           if [ -f "pyproject.toml" ]; then
             echo "📦 Installing ${{ parameters.appDisplayName }} dependencies from pyproject.toml with UV..."
-            uv pip install .
+            uv pip install --system .
             
             # Install dev dependencies if available
             echo "📦 Installing development dependencies..."
-            uv pip install --group dev . || echo "No dev dependencies found in pyproject.toml"
+            uv pip install --system --group dev . || echo "No dev dependencies found in pyproject.toml"
           elif [ -f "requirements.txt" ]; then
             echo "📦 Installing ${{ parameters.appDisplayName }} dependencies from requirements.txt with UV..."
-            uv pip install -r requirements.txt
+            uv pip install --system -r requirements.txt
           else
             echo "⚠️ No pyproject.toml or requirements.txt found"
             exit 1
