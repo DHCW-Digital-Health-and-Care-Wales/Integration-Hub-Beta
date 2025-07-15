@@ -53,7 +53,3 @@ class TestHL7Validator(unittest.TestCase):
 
         with self.assertRaises(ValidationException):
             validator.validate(msg)
-
-
-if __name__ == "__main__":
-    unittest.main()
