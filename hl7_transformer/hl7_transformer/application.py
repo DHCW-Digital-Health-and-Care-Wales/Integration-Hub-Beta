@@ -47,7 +47,7 @@ def main():
         factory.create_queue_sender_client(app_config.audit_queue_name) as audit_sender_client,
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
         AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
-        TCPHealthCheckServer() as health_check_server,
+        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
     ):
         logger.info("Processor started.")
         health_check_server.start()

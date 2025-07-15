@@ -75,6 +75,7 @@ jobs:
 
     - task: AzureCLI@2
       displayName: 'Update Azure Container App'
+      continueOnError: true
       inputs:
         azureSubscription: ${{ parameters.azureServiceConnection }}
         scriptType: 'bash'
@@ -96,13 +97,26 @@ jobs:
           echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
           echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
           
-          # Create a new revision by updating the container app with semantic version as suffix
-          az containerapp update \
-            --name $appFullName \
-            --resource-group ${{ parameters.resourceGroupName }} \
-            --revision-suffix $REVISION_SUFFIX \
-            --image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
+          # Check if container app exists first
+          if az containerapp show --name $appFullName --resource-group ${{ parameters.resourceGroupName }} --output none 2>/dev/null; then
+            echo "Container app $appFullName found. Proceeding with update..."
+            
+            # Create a new revision by updating the container app with semantic version as suffix
+            az containerapp update \
+              --name $appFullName \
+              --resource-group ${{ parameters.resourceGroupName }} \
+              --revision-suffix $REVISION_SUFFIX \
+              --image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
 
-          echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
+            echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
+          else
+            echo "##vso[task.logissue type=warning]Container app $appFullName not found in resource group ${{ parameters.resourceGroupName }}. Skipping update."
+            echo "##vso[task.logissue type=warning]Please ensure the container app is created before running this pipeline, or this step will be skipped."
+            echo "Container app $appFullName does not exist yet. This is expected for first-time deployments."
+            echo "The image has been tagged and is ready for deployment when the container app is created."
+            
+            # Set task result to warning to make it visually apparent in the pipeline
+            echo "##vso[task.complete result=SucceededWithIssues]Container app not found - task completed with warnings"
+          fi
 
           
