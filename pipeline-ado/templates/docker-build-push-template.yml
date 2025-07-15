@@ -1,3 +1,7 @@
+# Docker Build and Push Template
+# This template builds Docker images with enhanced security, metadata, and UV package management
+# Features: vulnerability scanning, image signing, cleanup, and build metadata generation
+
 parameters:
   jobName: '' 
   displayName: ''
@@ -64,6 +68,16 @@ jobs:
           echo "##[endgroup]"
         displayName: 'Generate Image Metadata'
       
+      - script: |
+          echo "##[group]Install UV for Docker Builds"
+          # Install UV for use in Dockerfiles
+          python -m pip install --upgrade pip
+          python -m pip install uv
+          uv --version
+          echo "✅ UV installed for Docker builds"
+          echo "##[endgroup]"
+        displayName: 'Install UV for Docker Builds'
+
       - script: |
           echo "##[group]Setup Docker Buildx"
           # Create new builder instance
