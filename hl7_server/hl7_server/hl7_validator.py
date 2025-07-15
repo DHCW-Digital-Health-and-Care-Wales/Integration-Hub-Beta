@@ -18,5 +18,11 @@ class HL7Validator:
 
         if self.sending_app:
             message_sending_app: str = message.msh.msh_3.value
-            if self.sending_app != message_sending_app:
-                raise ValidationException("Message has wrong version")
+
+            # Parse authority code env variable string and validate
+            allowed_sending_apps = [app.strip() for app in self.sending_app.split(",")]
+
+            if message_sending_app not in allowed_sending_apps:
+                raise ValidationException(
+                    f"Message sending application '{message_sending_app}' is not in allowed authority codes."
+                )
