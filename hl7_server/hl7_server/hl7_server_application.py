@@ -56,6 +56,7 @@ class Hl7ServerApplication:
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A40^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
             "ERR": (ErrorHandler, self.audit_client),
         }
 
