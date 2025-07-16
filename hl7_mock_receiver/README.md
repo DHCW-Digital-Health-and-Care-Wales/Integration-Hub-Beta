@@ -18,7 +18,7 @@ A negative ack (NACK) can be produced by having the word `fail` inside the messa
 
 ### Build / checks
 
-In the [hl7_mock_receiver](.) folder, install dependencies and create virtual environment:
+In the [hl7_mock_receiver](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync
@@ -56,7 +56,7 @@ From the [hl7_mock_receiver](.) folder run:
 python application.py
 ```
 
-### Runing in docker
+### Running in docker
 
 You can build the docker image with provided [Dockerfile](./Dockerfile) or you can run selected workflow
 using Docker compose configuration in [local](../local/README.md).

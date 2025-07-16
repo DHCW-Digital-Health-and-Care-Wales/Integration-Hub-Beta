@@ -10,7 +10,7 @@
 
 ### Build / checks
 
-In the [message_bus_lib](.) folder, install dependencies and create virtual environment:
+In the [message_bus_lib](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync

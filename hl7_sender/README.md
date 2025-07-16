@@ -12,7 +12,7 @@ HL7 Sender Service
 
 ### Build / checks
 
-In the [hl7_sender](.) folder, install dependencies and create virtual environment:
+In the [hl7_sender](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync

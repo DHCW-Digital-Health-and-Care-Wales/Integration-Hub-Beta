@@ -12,7 +12,7 @@ HL7 Transformer Service
 
 ### Build / checks
 
-In the [hl7_transformer](.) folder, install dependencies and create virtual environment:
+In the [hl7_transformer](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync

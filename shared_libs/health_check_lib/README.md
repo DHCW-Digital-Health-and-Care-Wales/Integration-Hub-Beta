@@ -10,7 +10,7 @@
 
 ### Build / checks
 
-In the [health_check_lib](.) folder, install dependencies and create virtual environment:
+In the [health_check_lib](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync

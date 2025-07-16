@@ -12,7 +12,7 @@ Configurable HL7 MLLP server built with hl7apy package.
 
 ### Build / checks
 
-In the [hl7_server](.) folder, install dependencies and create virtual environment:
+In the [hl7_server](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync
@@ -60,7 +60,7 @@ From the [hl7_server](.) folder run:
 python -m hl7_server.application
 ```
 
-### Runing in docker
+### Running in docker
 
 You can build the docker image with provided [Dockerfile](./Dockerfile) or you can run selected workflow
 using Docker compose configuration in [local](../local/README.md).
