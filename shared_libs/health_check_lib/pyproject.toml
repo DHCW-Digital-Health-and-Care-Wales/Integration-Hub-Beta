@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",  
 ]  
 dependencies = [  
-    "setuptools==80.0.0",  
+    "setuptools==80.9.0",  
 ]  
 
 [tool.setuptools.packages.find]  

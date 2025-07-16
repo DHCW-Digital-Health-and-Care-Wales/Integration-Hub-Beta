@@ -12,37 +12,35 @@ A negative ack (NACK) can be produced by having the word `fail` inside the messa
 
 ### Dependencies
 
-- python3
-- pipx - to run code quality checks ([Ruff](https://github.com/astral-sh/ruff), [Bandit](https://github.com/PyCQA/bandit))
+- [uv](https://docs.astral.sh/uv/) - Python package and project manager
+- macOS: `brew install uv`
+- Other platforms: See [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Build / checks
 
-In the [hl7_mock_receiver](.) folder create virtual environment and start using it:
-```
-python3 -m venv venv
-source venv/bin/activate
-```
+In the [hl7_mock_receiver](.) folder, install dependencies and create virtual environment:
 
-Install dependencies:
-```
-pip install -r requirements.txt
+```bash
+uv sync
 ```
 
 Run code quality checks:
-```
-pipx run ruff check
-pipx run bandit hl7_mock_receiver/**/*.py tests/**/*.py
-pipx run mypy --ignore-missing-imports hl7_mock_receiver/**/*.py tests/**/*.py
+
+```bash
+uv run ruff check
+uv run bandit hl7_mock_receiver/**/*.py tests/**/*.py
+uv run mypy --ignore-missing-imports hl7_mock_receiver/**/*.py tests/**/*.py
 ```
 
 Run unit tests:
-```
-python -m unittest discover tests
+
+```bash
+uv run python -m unittest discover tests
 ```
 
 ## Running HL7 server
 
-You can run the HL7 server directly with python or build docker image and run it in the container.
+You can run the HL7 server directly with uv or build docker image and run it in the container.
 To define host and port the server should bind to use environment variables configuration.
 
 ### Environment variables
@@ -54,7 +52,7 @@ To define host and port the server should bind to use environment variables conf
 ### Running directly
 
 From the [hl7_mock_receiver](.) folder run:
-```sh
+```bash
 python application.py
 ```
 
