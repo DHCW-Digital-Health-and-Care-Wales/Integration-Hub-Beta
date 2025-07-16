@@ -21,7 +21,16 @@ python3 generate_secrets.py > .secrets
 
 - Amend queues, topics and subscriptions configuration when needed in [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json).
 
-- provide custom CA certificates if needed (required in some proxied corporate networks): merge them in a single pem file and add in every service  under `./ca-certs/cacerts.pem` path.
+- **For machines on corporate networks**: Configure SSL certificates to allow uv and Docker to work with corporate proxies:
+
+    **For local development (uv sync):**
+    ```bash
+    # Add to your shell profile (~/.zshrc)
+    export SSL_CERT_FILE=/path/to/your/corporate-certificate.pem
+    ```
+
+    **For Docker containers:**
+    Provide custom CA certificates if needed (required in some proxied corporate networks): merge them in a single crt (change extension if needed) file and add in every service  under `./ca-certs/cacerts.crt` path.
 
 ## Startup
 

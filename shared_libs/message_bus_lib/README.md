@@ -1,28 +1,31 @@
 # Azure Service Bus helper library
 
-
 ## Development
 
-Create virtual environment and start using it:
+### Dependencies
 
-```python3 -m venv venv```
+- [uv](https://docs.astral.sh/uv/) - Python package and project manager
+- macOS: `brew install uv`
+- Other platforms: See [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 
-Activate virtual enviornment:
+### Build / checks
 
-```source venv/bin/activate```
+In the [message_bus_lib](.) folder, to create a virtual environment and install project dependencies:
 
-Install dependencies:
-
-```pip install -r requirements.txt```
+```bash
+uv sync
+```
 
 Run code quality checks:
 
-```
-pipx run ruff check
-pipx run bandit message_bus_lib/**/*.py
-pipx run mypy --ignore-missing-imports message_bus_lib/**/*.py
+```bash
+uv run ruff check
+uv run bandit message_bus_lib/**/*.py tests/**/*.py
+uv run mypy --ignore-missing-imports message_bus_lib/**/*.py tests/**/*.py
 ```
 
 Run unit tests:
 
-```python -m unittest discover tests```
+```bash
+uv run python -m unittest discover tests
+```

@@ -4,25 +4,30 @@ HL7 Transformer Service
 
 ## Development
 
-Create virtual environment and start using it:
+### Dependencies
 
+- [uv](https://docs.astral.sh/uv/) - Python package and project manager
+- macOS: `brew install uv`
+- Other platforms: See [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+
+### Build / checks
+
+In the [hl7_transformer](.) folder, to create a virtual environment and install project dependencies:
+
+```bash
+uv sync
 ```
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Install dependencies:
-
-```pip install -r requirements.txt```
 
 Run code quality checks:
 
-```
-pipx run ruff check
-pipx run bandit hl7_transformer/**/*.py tests/**/*.py
-pipx run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
+```bash
+uv run ruff check
+uv run bandit hl7_transformer/**/*.py tests/**/*.py
+uv run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
 ```
 
 Run unit tests:
 
-```python -m unittest discover tests```
+```bash
+uv run python -m unittest discover tests
+```
