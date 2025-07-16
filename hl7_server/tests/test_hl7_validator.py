@@ -14,7 +14,7 @@ VALID_A28_MESSAGE = str.join(
 )
 
 
-class TestGenericHandler(unittest.TestCase):
+class TestHL7Validator(unittest.TestCase):
     def test_with_valid_message(self) -> None:
         msg = parse_message(VALID_A28_MESSAGE)
         validator = HL7Validator("2.5", "252")
@@ -28,7 +28,7 @@ class TestGenericHandler(unittest.TestCase):
         with self.assertRaises(ValidationException):
             validator.validate(msg)
 
-    def test_with_invalid_seding_app(self) -> None:
+    def test_with_invalid_sending_app(self) -> None:
         msg = parse_message(VALID_A28_MESSAGE)
         validator = HL7Validator("2.5", "101")
 
@@ -40,3 +40,16 @@ class TestGenericHandler(unittest.TestCase):
         validator = HL7Validator()
 
         validator.validate(msg)
+
+    def test_list_multiple_allowed_sending_apps_valid(self) -> None:
+        msg = parse_message(VALID_A28_MESSAGE)
+        validator = HL7Validator("2.5", "192, TestApp, 252")
+
+        validator.validate(msg)
+
+    def test_list_multiple_allowed_sending_apps_invalid(self) -> None:
+        msg = parse_message(VALID_A28_MESSAGE)
+        validator = HL7Validator("2.5", "TestApp, 199, 255")
+
+        with self.assertRaises(ValidationException):
+            validator.validate(msg)
