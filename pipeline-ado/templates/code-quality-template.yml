@@ -44,13 +44,10 @@ jobs:
       - script: |
           set -euo pipefail  # Bash strict mode
           echo "##[group]Install UV and code quality tools"
-          
-          # Install UV - the fast Python package installer and resolver
+
           python -m pip install --upgrade pip
           python -m pip install uv
           
-          # Install code quality tools using UV
-          # These will be available globally for all projects
           echo "Installing global code quality tools with UV..."
           uv tool install ruff
           uv tool install bandit
@@ -67,7 +64,6 @@ jobs:
           set -euo pipefail
           echo "##[group]Install Shared Dependencies"
           
-          # Install shared library using UV with system flag (CI/CD environment)
           echo "Installing shared library with UV..."
           uv pip install --system -e shared_libs/message_bus_lib/
           
@@ -82,7 +78,6 @@ jobs:
           echo "##[group]Install ${{ parameters.appDisplayName }} Dependencies"
           cd ${{ parameters.appName }}
           
-          # Prefer pyproject.toml over requirements.txt for UV
           if [ -f "pyproject.toml" ]; then
             echo "📦 Installing ${{ parameters.appDisplayName }} dependencies from pyproject.toml with UV..."
             uv pip install --system .
