@@ -1,7 +1,3 @@
-# Docker Build and Push Template
-# This template builds Docker images with enhanced security, metadata, and UV package management
-# Features: vulnerability scanning, image signing, cleanup, and build metadata generation
-
 parameters:
   jobName: '' 
   displayName: ''
