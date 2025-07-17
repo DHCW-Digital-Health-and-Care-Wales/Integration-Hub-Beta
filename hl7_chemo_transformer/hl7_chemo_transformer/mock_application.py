@@ -23,11 +23,7 @@ def _transform_msh_segment(hl7_msg: Message) -> None:
     if hasattr(msh, "msh_12") and msh.msh_12:
         msh.msh_12.msh_12_1 = "2.5"
 
-    # for child in hl7_msg.children:
-    #     print(child)
-
     if hasattr(pid, "pid_2") and pid.pid_2:
-        print("Found PID.2:")
         pid.pid_2 = "999"
 
 
@@ -53,6 +49,17 @@ hl7_msg = parse_message(message_body)
 msh_segment = hl7_msg.msh
 print(f"Message ID: {msh_segment.msh_10.value}")
 
+print("\nOriginal HL7 Message:")
+print("=" * 50)
+original_message = hl7_msg.to_er7()
+formatted_original = original_message.replace("\r", "\n")
+print(formatted_original)
+print("=" * 50)
+
 hl7_msg_1 = transform_chemocare(hl7_msg)
 updated_message = hl7_msg_1.to_er7()
-print(updated_message)
+print("Updated HL7 Message:")
+print("=" * 50)
+formatted_message = updated_message.replace("\r", "\n")
+print(formatted_message)
+print("=" * 50)
