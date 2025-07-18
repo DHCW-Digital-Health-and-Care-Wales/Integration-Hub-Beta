@@ -78,20 +78,12 @@ jobs:
           echo "##[group]Install ${{ parameters.appDisplayName }} Dependencies"
           cd ${{ parameters.appName }}
           
-          if [ -f "pyproject.toml" ]; then
-            echo "📦 Installing ${{ parameters.appDisplayName }} dependencies from pyproject.toml with UV..."
-            uv pip install --system .
-            
-            # Install dev dependencies if available
-            echo "📦 Installing development dependencies..."
-            uv pip install --system --group dev . || echo "No dev dependencies found in pyproject.toml"
-          elif [ -f "requirements.txt" ]; then
-            echo "📦 Installing ${{ parameters.appDisplayName }} dependencies from requirements.txt with UV..."
-            uv pip install --system -r requirements.txt
-          else
-            echo "⚠️ No pyproject.toml or requirements.txt found"
-            exit 1
-          fi
+          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies with UV..."
+          uv pip install --system .
+          
+          # Install dev dependencies if available
+          echo "📦 Installing development dependencies..."
+          uv pip install --system --group dev . || echo "No dev dependencies found"
           
           echo "✅ Dependencies installed successfully"
           echo "##[endgroup]"
