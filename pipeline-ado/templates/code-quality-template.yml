@@ -53,6 +53,7 @@ jobs:
           uv tool install bandit
           uv tool install mypy
           uv tool install pip-audit
+          uv tool install uv-secure
           
           # Verify UV installation
           uv --version
@@ -122,6 +123,12 @@ jobs:
           
           echo "🔒 Running Bandit security scan..."
           uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🛡️ Running UV-Secure dependency security scan..."
+          uv tool run uv-secure
           echo ""
           echo "----------------------------------------"
           echo ""
