@@ -43,23 +43,30 @@ jobs:
 
       - script: |
           set -euo pipefail  # Bash strict mode
-          echo "##[group]Install pipx and tools"
+          echo "##[group]Install UV and code quality tools"
+
           python -m pip install --upgrade pip
-          python -m pip install pipx
-          pipx install ruff
-          pipx install bandit
-          pipx install mypy
-          pipx install pip-audit
+          python -m pip install uv
+          
+          echo "Installing global code quality tools with UV..."
+          uv tool install ruff
+          uv tool install bandit
+          uv tool install mypy
+          uv tool install pip-audit
+          uv tool install uv-secure
+          
+          # Verify UV installation
+          uv --version
+          echo "✅ UV and global code quality tools installed"
           echo "##[endgroup]"
-        displayName: 'Install Code Quality Tools'
+        displayName: 'Install UV and Code Quality Tools'
 
       - script: |
           set -euo pipefail
           echo "##[group]Install Shared Dependencies"
           
-          # Install shared library only (apps will install their own dependencies)
-          echo "Installing shared library..."
-          pip install -e shared_libs/message_bus_lib/
+          echo "Installing shared library with UV..."
+          uv pip install --system -e shared_libs/message_bus_lib/
           
           # Verify shared library installation
           python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
@@ -72,8 +79,12 @@ jobs:
           echo "##[group]Install ${{ parameters.appDisplayName }} Dependencies"
           cd ${{ parameters.appName }}
           
-          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies..."
-          pip install -r requirements.txt
+          echo "📦 Installing ${{ parameters.appDisplayName }} dependencies with UV..."
+          uv pip install --system .
+          
+          # Install dev dependencies if available
+          echo "📦 Installing development dependencies..."
+          uv pip install --system --group dev . || echo "No dev dependencies found"
           
           echo "✅ Dependencies installed successfully"
           echo "##[endgroup]"
@@ -85,7 +96,7 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🔐 Running pip-audit for dependency vulnerability scanning..."
-          pipx run pip-audit --desc
+          uv tool run pip-audit --desc
           
           echo "✅ Dependency scan completed"
           echo "##[endgroup]"
@@ -105,19 +116,25 @@ jobs:
           fi
           
           echo "🔍 Running Ruff check..."
-          pipx run ruff check --output-format=github .
+          uv tool run ruff check --output-format=github .
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🔒 Running Bandit security scan..."
-          pipx run bandit -r ${BANDIT_SOURCE} tests --severity-level medium
+          uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium
+          echo ""
+          echo "----------------------------------------"
+          echo ""
+          
+          echo "🛡️ Running UV-Secure dependency security scan..."
+          uv tool run uv-secure
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🏷️ Running MyPy type check..."
-          pipx run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports
+          uv tool run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports
           echo ""
           echo "----------------------------------------"
           echo ""

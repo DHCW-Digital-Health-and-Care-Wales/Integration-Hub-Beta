@@ -159,6 +159,7 @@ stages:
 
   - stage: ReleaseParisHL7ServerTest
     displayName: 'Release App Paris HL7Server - Test'
+    dependsOn: ReleaseParisHL7ServerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
@@ -176,6 +177,7 @@ stages:
 
   - stage: ReleaseChemocareHL7ServerTest
     displayName: 'Release App Chemocare HL7Server - Test'
+    dependsOn: ReleaseChemocareHL7ServerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
