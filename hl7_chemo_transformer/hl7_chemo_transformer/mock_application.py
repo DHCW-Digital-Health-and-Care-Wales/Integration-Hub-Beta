@@ -24,12 +24,13 @@ def _transform_msh_segment(hl7_msg: Message) -> None:
         msh.msh_12.msh_12_1 = "2.5"
 
     # Copy MSH.20 to MSH.21/EI.1 and clear MSH.20
+    msh20_value = ""
     if hasattr(msh, "msh_20") and msh.msh_20:
         msh20_value = msh.msh_20.value
-
-        if hasattr(msh, "msh_21") and msh.msh_21:
-            msh.msh_21.msh_21_1 = msh20_value
         msh.msh_20 = ""
+
+    if hasattr(msh, "msh_21") and msh.msh_21 and msh20_value:
+        msh.msh_21.msh_21_1 = msh20_value
 
     # Copy MSH.21 to MSH.21/EI.1
     if hasattr(msh, "msh_21") and msh.msh_21:
@@ -42,59 +43,58 @@ def _transform_pid_segment(hl7_msg: Message) -> None:
     pid = hl7_msg.pid
     msh = hl7_msg.msh
 
-    # Copy PID.2/CX.1 to PID.3/CX.1[1] and clear PID.2/CX.1
+    pid2_value = ""
     if hasattr(pid, "pid_2") and pid.pid_2:
         pid2_value = pid.pid_2.pid_2_1.value
-
-        # Get MSH.3.1 value
-        msh3_value = ""
-        if hasattr(msh, "msh_3") and msh.msh_3:
-            msh3_value = msh.msh_3.msh_3_1.value if hasattr(msh.msh_3, "msh_3_1") else str(msh.msh_3.value)
-
-        if hasattr(pid, "pid_3") and pid.pid_3:
-            # Handle first repetition
-            current_pid3_rep1 = pid.pid_3[0].value if pid.pid_3 else ""
-            components_rep1 = current_pid3_rep1.split("^")
-
-            # Ensure we have components for first repetition
-            while len(components_rep1) < 5:
-                components_rep1.append("")
-
-            # Set CX.1 to the PID.2 value
-            components_rep1[0] = pid2_value
-            # Set CX.4 to "NHS"
-            components_rep1[3] = "NHS"
-            # Set CX.5 to "NH"
-            components_rep1[4] = "NH"
-
-            pid.pid_3[0].value = "^".join(components_rep1)
-
-            # Handle second repetition
-            if len(pid.pid_3) > 1:
-                current_pid3_rep2 = pid.pid_3[1].value if len(pid.pid_3) > 1 else ""
-                components_rep2 = current_pid3_rep2.split("^")
-
-                # Ensure we have components for second repetition
-                while len(components_rep2) < 5:
-                    components_rep2.append("")
-
-                # Set CX.1 to PID.2 value + MSH.3.1 value
-                components_rep2[0] = pid2_value + msh3_value
-                # Set CX.4 to MSH.3.1 value directly as HD.1
-                components_rep2[3] = msh3_value
-                # Set CX.5 to PI
-                components_rep2[4] = "PI"
-
-                pid.pid_3[1].value = "^".join(components_rep2)
-
         pid.pid_2.pid_2_1 = ""
 
-    # Copy PID.32 to PID.31 and clear PID.32
+    msh3_value = ""
+    if hasattr(msh, "msh_3") and msh.msh_3:
+        msh3_value = msh.msh_3.msh_3_1.value if hasattr(msh.msh_3, "msh_3_1") else str(msh.msh_3.value)
+
+    # Update PID.3 first repetition
+    if hasattr(pid, "pid_3") and pid.pid_3 and pid2_value:
+        current_pid3_rep1 = pid.pid_3[0].value if pid.pid_3 else ""
+        components_rep1 = current_pid3_rep1.split("^")
+
+        # Ensure we have components for first repetition
+        while len(components_rep1) < 5:
+            components_rep1.append("")
+
+        # Set CX.1 to the PID.2 value
+        components_rep1[0] = pid2_value
+        # Set CX.4 to "NHS"
+        components_rep1[3] = "NHS"
+        # Set CX.5 to "NH"
+        components_rep1[4] = "NH"
+
+        pid.pid_3[0].value = "^".join(components_rep1)
+
+    # Update PID.3 second repetition
+    if hasattr(pid, "pid_3") and pid.pid_3 and len(pid.pid_3) > 1 and pid2_value and msh3_value:
+        current_pid3_rep2 = pid.pid_3[1].value if len(pid.pid_3) > 1 else ""
+        components_rep2 = current_pid3_rep2.split("^")
+
+        # Ensure we have components for second repetition
+        while len(components_rep2) < 5:
+            components_rep2.append("")
+
+        # Set CX.1 to PID.2 value + MSH.3.1 value
+        components_rep2[0] = pid2_value + msh3_value
+        # Set CX.4 to MSH.3.1 value directly as HD.1
+        components_rep2[3] = msh3_value
+        # Set CX.5 to PI
+        components_rep2[4] = "PI"
+
+        pid.pid_3[1].value = "^".join(components_rep2)
+
+    pid32_value = ""
     if hasattr(pid, "pid_32") and pid.pid_32:
         pid32_value = pid.pid_32.value
-        if hasattr(pid, "pid_31"):
-            pid.pid_31 = pid32_value
         pid.pid_32 = ""
+
+    if hasattr(pid, "pid_31") and pid32_value:
+        pid.pid_31 = pid32_value
 
 
 # Used to access HL7 nested fields directly (without crashing)
