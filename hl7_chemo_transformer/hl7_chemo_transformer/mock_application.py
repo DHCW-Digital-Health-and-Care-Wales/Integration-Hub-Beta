@@ -34,28 +34,50 @@ def _transform_msh_segment(hl7_msg: Message) -> None:
 
 def _transform_pid_segment(hl7_msg: Message) -> None:
     pid = hl7_msg.pid
+    msh = hl7_msg.msh
 
     # Copy PID.2/CX.1 to PID.3/CX.1[1] and clear PID.2/CX.1
     if hasattr(pid, "pid_2") and pid.pid_2:
         pid2_value = pid.pid_2.pid_2_1.value
 
-        if hasattr(pid, "pid_3") and pid.pid_3:
-            # Get the current PID.3 value and modify it
-            current_pid3 = pid.pid_3[0].value if pid.pid_3 else ""
-            components = current_pid3.split("^")
+        # Get MSH.3.1 value
+        msh3_value = ""
+        if hasattr(msh, "msh_3") and msh.msh_3:
+            msh3_value = msh.msh_3.msh_3_1.value if hasattr(msh.msh_3, "msh_3_1") else str(msh.msh_3.value)
 
-            # Ensure we have enough components
-            while len(components) < 5:
-                components.append("")
+        if hasattr(pid, "pid_3") and pid.pid_3:
+            # Handle first repetition
+            current_pid3_rep1 = pid.pid_3[0].value if pid.pid_3 else ""
+            components_rep1 = current_pid3_rep1.split("^")
+
+            # Ensure we have components for first repetition
+            while len(components_rep1) < 5:
+                components_rep1.append("")
 
             # Set CX.1 to the PID.2 value
-            components[0] = pid2_value
+            components_rep1[0] = pid2_value
             # Set CX.4 to "NHS"
-            components[3] = "NHS"
+            components_rep1[3] = "NHS"
             # Set CX.5 to "NH"
-            components[4] = "NH"
+            components_rep1[4] = "NH"
 
-            pid.pid_3[0].value = "^".join(components)
+            pid.pid_3[0].value = "^".join(components_rep1)
+
+            # Handle second repetition
+            if len(pid.pid_3) > 1:
+                current_pid3_rep2 = pid.pid_3[1].value if len(pid.pid_3) > 1 else ""
+                components_rep2 = current_pid3_rep2.split("^")
+
+                # Ensure we have components for second repetition
+                while len(components_rep2) < 5:
+                    components_rep2.append("")
+
+                # Set CX.1 to PID.2 value + MSH.3.1 value
+                components_rep2[0] = pid2_value + msh3_value
+
+                components_rep2[4] = "PI"
+
+                pid.pid_3[1].value = "^".join(components_rep2)
 
         pid.pid_2.pid_2_1 = ""
 
