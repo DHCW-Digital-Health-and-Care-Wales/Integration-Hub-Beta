@@ -5,11 +5,12 @@ from hl7apy.parser import parse_message
 
 
 def transform_chemocare(hl7_msg: Message) -> Message:
-    # logger.debug("Applying Chemocare transformation")
-    _transform_msh_segment(hl7_msg)
-    _transform_pid_segment(hl7_msg)
-    # logger.debug("Chemocare transformation completed")
-    return hl7_msg
+    original_er7 = hl7_msg.to_er7()
+    transformed_msg = parse_message(original_er7)
+    _transform_msh_segment(transformed_msg)
+    _transform_pid_segment(transformed_msg)
+
+    return transformed_msg
 
 
 def _transform_msh_segment(hl7_msg: Message) -> None:
@@ -115,19 +116,18 @@ message_body = (
 )
 
 
-hl7_msg = parse_message(message_body)
-msh_segment = hl7_msg.msh
+original_hl7_msg = parse_message(message_body)
 
-print("\nOriginal HL7 Message:")
+print("\nORIGINAL HL7 Message:")
 print("=" * 50)
-original_message = hl7_msg.to_er7()
+original_message = original_hl7_msg.to_er7()
 formatted_original = original_message.replace("\r", "\n")
 print(formatted_original)
 print("=" * 50)
 
-hl7_msg_1 = transform_chemocare(hl7_msg)
-updated_message = hl7_msg_1.to_er7()
-print("Updated HL7 Message:")
+transformed_hl7_msg = transform_chemocare(original_hl7_msg)
+updated_message = transformed_hl7_msg.to_er7()
+print("\nTRANSFORMED HL7 Message:")
 print("=" * 50)
 formatted_message = updated_message.replace("\r", "\n")
 print(formatted_message)
