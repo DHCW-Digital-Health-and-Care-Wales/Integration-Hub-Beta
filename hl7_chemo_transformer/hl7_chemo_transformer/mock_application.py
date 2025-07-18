@@ -31,6 +31,12 @@ def _transform_msh_segment(hl7_msg: Message) -> None:
             msh.msh_21.msh_21_1 = msh20_value
         msh.msh_20 = ""
 
+    # Copy MSH.21 to MSH.21/EI.1
+    if hasattr(msh, "msh_21") and msh.msh_21:
+        msh21_value = msh.msh_21.value
+        msh.msh_21.msh_21_1 = msh21_value
+        msh.msh_21 = ""
+
 
 def _transform_pid_segment(hl7_msg: Message) -> None:
     pid = hl7_msg.pid
@@ -74,12 +80,21 @@ def _transform_pid_segment(hl7_msg: Message) -> None:
 
                 # Set CX.1 to PID.2 value + MSH.3.1 value
                 components_rep2[0] = pid2_value + msh3_value
-
+                # Set CX.4 to MSH.3.1 value directly as HD.1
+                components_rep2[3] = msh3_value
+                # Set CX.5 to PI
                 components_rep2[4] = "PI"
 
                 pid.pid_3[1].value = "^".join(components_rep2)
 
         pid.pid_2.pid_2_1 = ""
+
+    # Copy PID.32 to PID.31 and clear PID.32
+    if hasattr(pid, "pid_32") and pid.pid_32:
+        pid32_value = pid.pid_32.value
+        if hasattr(pid, "pid_31"):
+            pid.pid_31 = pid32_value
+        pid.pid_32 = ""
 
 
 # Used to access HL7 nested fields directly (without crashing)
