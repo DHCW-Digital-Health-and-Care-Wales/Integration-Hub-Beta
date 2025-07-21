@@ -14,10 +14,9 @@ applyTo: '**/*.py'
 ## General Instructions
 
 - Always prioritize readability and clarity.
-- For algorithm-related code, include explanations of the approach used.
-- Write code with good maintainability practices, including comments on why certain design decisions were made.
+- Write code with good maintainability practices.
 - Handle edge cases and write clear exception handling.
-- For libraries or external dependencies, mention their usage and purpose in comments.
+- For libraries or external dependencies.
 - Use consistent naming conventions and follow language-specific best practices.
 - Write concise, efficient, and idiomatic code that is also easily understandable.
 

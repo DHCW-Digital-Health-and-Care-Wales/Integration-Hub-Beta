@@ -267,6 +267,7 @@ dependencies = [
     { name = "azure-servicebus" },
     { name = "health-check-lib" },
     { name = "hl7apy" },
+    { name = "lxml" },
     { name = "message-bus-lib" },
 ]
 
@@ -284,6 +285,7 @@ requires-dist = [
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },
+    { name = "lxml", specifier = "==4.9.0" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
 ]
 
@@ -371,6 +373,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/54/4d/e940025e2ce31a8ce
 wheels = [
     { url = "https://files.pythonhosted.org/packages/15/aa/0aca39a37d3c7eb941ba736ede56d689e7be91cab5d9ca846bde3999eba6/isodate-0.7.2-py3-none-any.whl", hash = "sha256:28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15", size = 22320, upload-time = "2024-10-08T23:04:09.501Z" },
 ]
+
+[[package]]
+name = "lxml"
+version = "4.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/23/bda4e9881090f0f5e33e2efe89aacfa0668eb6e1ab2de28591e2912d78d4/lxml-4.9.0.tar.gz", hash = "sha256:520461c36727268a989790aef08884347cd41f2d8ae855489ccf40b50321d8d7", size = 3377099, upload-time = "2022-05-31T21:16:09.148Z" }
 
 [[package]]
 name = "markdown-it-py"

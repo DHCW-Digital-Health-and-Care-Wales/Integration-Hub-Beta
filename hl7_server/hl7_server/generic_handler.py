@@ -7,8 +7,10 @@ from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
+from hl7_xml_converter import Hl7XmlConverter
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
+from .xml_schema_validator import XMLSchemaValidator
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -22,6 +24,11 @@ class GenericHandler(AbstractHandler):
         self.sender_client = sender_client
         self.audit_client = audit_client
         self.validator = validator
+        self.xml_converter = Hl7XmlConverter()
+        self.xml_validator = XMLSchemaValidator()
+
+        schemas = self.xml_validator.get_available_schemas()
+        logger.info(f"Loaded XML schemas for validation: {schemas}")
 
     def reply(self) -> str:
         try:
@@ -33,6 +40,14 @@ class GenericHandler(AbstractHandler):
             logger.info("Received message type: %s, Control ID: %s", message_type, message_control_id)
 
             self.validator.validate(msg)
+            xml_string = self.xml_converter.convert_to_xml(msg)
+            is_valid, errors = self.xml_validator.validate(xml_string)
+            if is_valid:
+                logger.info("XML validation passed!")
+            else:
+                logger.error("XML validation failed:")
+                logger.error(errors)
+
             self.audit_client.log_validation_result(
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )

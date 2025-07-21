@@ -5,10 +5,11 @@ from hl7_server.generic_handler import GenericHandler
 from hl7_server.hl7_validator import ValidationException
 
 # Sample valid HL7 message (pipe & hat, type A28)
-VALID_A28_MESSAGE = (
-    "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
-    "PID|1||123456^^^Hospital^MR||Doe^John\r"
-)
+VALID_A28_MESSAGE = """MSH|^~\&|252|252|100|100|20250505232332||ADT_ALL|202505052323364444|P|2.5|||||||||||1
+EVN|A28|20250505232332
+PID|1|123456|||Hospital^MR||||Doe^John^^^L
+PV1|1|I
+MRG|123456|||Hospital^MR"""
 
 ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
 
