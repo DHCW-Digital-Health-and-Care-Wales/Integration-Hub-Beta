@@ -1,3 +1,5 @@
+from typing import Any, Optional
+
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
@@ -14,57 +16,44 @@ def create_new_message(original_message: Message) -> Message:
 
     new_message = Message(version="2.5")
 
+    # MSH
+
+    # MSH.1 and MSH.2 are mandatory fields in HL7 messages, so we set them directly.
     new_message.msh.msh_1 = original_msh.msh_1
     new_message.msh.msh_2 = original_msh.msh_2
 
-    if hasattr(original_msh, "msh_3") and original_msh.msh_3.hd_1:
-        new_message.msh.msh_3.hd_1 = original_msh.msh_3.hd_1
+    set_nested_field(original_msh, new_message.msh, "msh_3", "hd_1")
+    set_nested_field(original_msh, new_message.msh, "msh_4", "hd_1")
+    set_nested_field(original_msh, new_message.msh, "msh_5", "hd_1")
+    set_nested_field(original_msh, new_message.msh, "msh_6", "hd_1")
+    set_nested_field(original_msh, new_message.msh, "msh_7", "ts_1")
+    set_nested_field(original_msh, new_message.msh, "msh_8")
+    set_nested_field(original_msh, new_message.msh, "msh_9", "msg_1")
+    set_nested_field(original_msh, new_message.msh, "msh_9", "msg_2")
 
-    if hasattr(original_msh, "msh_4") and original_msh.msh_4.hd_1:
-        new_message.msh.msh_4.hd_1 = original_msh.msh_4.hd_1
+    # Always ensure MSH.9 exists before setting msg_3
+    if not getattr(new_message.msh, "msh_9", None):
+        new_message.msh.msh_9 = new_message.msh.add_field("msh_9")
+    new_message.msh.msh_9.msg_3 = "ADT_A05"
 
-    if hasattr(original_msh, "msh_5") and original_msh.msh_5.hd_1:
-        new_message.msh.msh_5.hd_1 = original_msh.msh_5.hd_1
+    # MSH.10-12 are mandatory fields in HL7 messages, so we set them directly.
+    new_message.msh.msh_10 = original_msh.msh_10
+    new_message.msh.msh_11 = original_msh.msh_11
 
-    if hasattr(original_msh, "msh_6") and original_msh.msh_6.hd_1:
-        new_message.msh.msh_6.hd_1 = original_msh.msh_6.hd_1
-
-    if hasattr(original_msh, "msh_7") and original_msh.msh_7.ts_1:
-        new_message.msh.msh_7.ts_1 = original_msh.msh_7.ts_1
-
-    if hasattr(original_msh, "msh_9") and original_msh.msh_9:
-        new_message.msh.msh_9.msg_1 = _safe_get_value(original_msh.msh_9, "msg_1") or _safe_get_value(
-            original_msh.msh_9, "msh_9_1"
-        )
-        new_message.msh.msh_9.msg_2 = _safe_get_value(original_msh.msh_9, "msg_2") or _safe_get_value(
-            original_msh.msh_9, "msh_9_2"
-        )
-        new_message.msh.msh_9.msg_3 = "ADT_A05"
-
-    if hasattr(original_msh, "msh_10") and original_msh.msh_10:
-        new_message.msh.msh_10 = original_msh.msh_10
-
-    if hasattr(original_msh, "msh_11") and original_msh.msh_11.pt_1:
-        new_message.msh.msh_11.pt_1 = original_msh.msh_11.pt_1
-
+    # Always ensure MSH.12 exists before setting the version ID
+    if not getattr(new_message.msh, "msh_12", None):
+        new_message.msh.msh_12 = new_message.msh.add_field("msh_12")
     new_message.msh.msh_12.vid_1 = "2.5"
 
-    for i in range(13, 20):
+    for i in range(13, 22):
         field_name = f"msh_{i}"
-        if hasattr(original_msh, field_name):
-            field_value = getattr(original_msh, field_name)
-            if field_value:
-                setattr(new_message.msh, field_name, field_value)
+        set_nested_field(original_msh, new_message.msh, field_name)
 
-    msh20_value = _safe_get_value(original_msh, "msh_20")
-    msh21_value = _safe_get_value(original_msh, "msh_21")
-    if msh20_value:
-        new_message.msh.msh_21.ei_1 = msh20_value
-    elif msh21_value:
-        new_message.msh.msh_21.ei_1 = msh21_value
+    # EVN
+    set_nested_field(original_message, new_message, "evn")
 
-    if hasattr(original_pid, "pid_1") and original_pid.pid_1:
-        new_message.pid.pid_1 = original_pid.pid_1
+    # PID
+    set_nested_field(original_pid, new_message.pid, "pid_1")
 
     pid2_value = _safe_get_value(original_pid, "pid_2.pid_2_1") or _safe_get_value(original_pid, "pid_2")
     msh3_value = _safe_get_value(original_msh, "msh_3.msh_3_1") or _safe_get_value(original_msh, "msh_3")
@@ -86,26 +75,13 @@ def create_new_message(original_message: Message) -> Message:
     if hasattr(original_pid, "pid_5") and original_pid.pid_5.xpn_1.fn_1:
         new_message.pid.pid_5.xpn_1.fn_1 = original_pid.pid_5.xpn_1.fn_1
 
-    if hasattr(original_pid, "pid_5") and original_pid.pid_5.xpn_2:
-        new_message.pid.pid_5.xpn_2 = original_pid.pid_5.xpn_2
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_3") and original_pid.pid_5.xpn_3:
-        new_message.pid.pid_5.xpn_3 = original_pid.pid_5.xpn_3
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_4") and original_pid.pid_5.xpn_4:
-        new_message.pid.pid_5.xpn_4 = original_pid.pid_5.xpn_4
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_5") and original_pid.pid_5.xpn_5:
-        new_message.pid.pid_5.xpn_5 = original_pid.pid_5.xpn_5
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_6") and original_pid.pid_5.xpn_6:
-        new_message.pid.pid_5.xpn_6 = original_pid.pid_5.xpn_6
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_7") and original_pid.pid_5.xpn_7:
-        new_message.pid.pid_5.xpn_7 = original_pid.pid_5.xpn_7
-
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_8") and original_pid.pid_5.xpn_8:
-        new_message.pid.pid_5.xpn_8 = original_pid.pid_5.xpn_8
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_2")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_3")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_4")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_5")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_6")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_7")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_8")
 
     if (
         hasattr(original_pid, "pid_5")
@@ -115,8 +91,8 @@ def create_new_message(original_message: Message) -> Message:
     ):
         new_message.pid.pid_5.xpn_9.ce_1 = original_pid.pid_5.xpn_9.ce_1
 
-    if hasattr(original_pid, "pid_5") and hasattr(original_pid.pid_5, "xpn_11") and original_pid.pid_5.xpn_11:
-        new_message.pid.pid_5.xpn_11 = original_pid.pid_5.xpn_11
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_10")
+    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_11")
 
     if (
         hasattr(original_pid, "pid_6")
@@ -126,11 +102,8 @@ def create_new_message(original_message: Message) -> Message:
     ):
         new_message.pid.pid_6.xpn_1.fn_1 = original_pid.pid_6.xpn_1.fn_1
 
-    if hasattr(original_pid, "pid_7") and original_pid.pid_7:
-        new_message.pid.pid_7 = original_pid.pid_7
-
-    if hasattr(original_pid, "pid_8") and original_pid.pid_8:
-        new_message.pid.pid_8 = original_pid.pid_8
+    set_nested_field(original_pid, new_message.pid, "pid_7")
+    set_nested_field(original_pid, new_message.pid, "pid_8")
 
     if (
         hasattr(original_pid, "pid_9")
@@ -140,11 +113,7 @@ def create_new_message(original_message: Message) -> Message:
     ):
         new_message.pid.pid_9.xpn_1.fn_1 = original_pid.pid_9.xpn_1.fn_1
 
-    if hasattr(original_pid, "pid_10") and hasattr(original_pid.pid_10, "ce_1") and original_pid.pid_10.ce_1:
-        new_message.pid.pid_10.ce_1 = original_pid.pid_10.ce_1
-
-    if hasattr(original_pid, "pid_11") and original_pid.pid_11:
-        new_message.pid.pid_11 = original_pid.pid_11
+    set_nested_field(original_pid, new_message.pid, "pid_10", "ce_1")
 
     if (
         hasattr(original_pid, "pid_11")
@@ -154,57 +123,29 @@ def create_new_message(original_message: Message) -> Message:
     ):
         new_message.pid.pid_11.xad_1.sad_1 = original_pid.pid_11.xad_1.sad_1
 
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_2") and original_pid.pid_11.xad_2:
-        new_message.pid.pid_11.xad_2 = original_pid.pid_11.xad_2
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_2")
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_3")
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_4")
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_5")
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_7")
+    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_8")
 
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_3") and original_pid.pid_11.xad_3:
-        new_message.pid.pid_11.xad_3 = original_pid.pid_11.xad_3
+    set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_1")
+    set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_2")
 
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_4") and original_pid.pid_11.xad_4:
-        new_message.pid.pid_11.xad_4 = original_pid.pid_11.xad_4
+    set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_1")
+    set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_2")
 
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_5") and original_pid.pid_11.xad_5:
-        new_message.pid.pid_11.xad_5 = original_pid.pid_11.xad_5
-
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_7") and original_pid.pid_11.xad_7:
-        new_message.pid.pid_11.xad_7 = original_pid.pid_11.xad_7
-
-    if hasattr(original_pid, "pid_11") and hasattr(original_pid.pid_11, "xad_8") and original_pid.pid_11.xad_8:
-        new_message.pid.pid_11.xad_8 = original_pid.pid_11.xad_8
-
-    if hasattr(original_pid, "pid_13") and original_pid.pid_13:
-        new_message.pid.pid_13 = original_pid.pid_13
-
-    if hasattr(original_pid, "pid_13") and hasattr(original_pid.pid_13, "xtn_1") and original_pid.pid_13.xtn_1:
-        new_message.pid.pid_13.xtn_1 = original_pid.pid_13.xtn_1
-
-    if hasattr(original_pid, "pid_13") and hasattr(original_pid.pid_13, "xtn_2") and original_pid.pid_13.xtn_2:
-        new_message.pid.pid_13.xtn_2 = original_pid.pid_13.xtn_2
-
-    if hasattr(original_pid, "pid_14") and hasattr(original_pid.pid_14, "xtn_1") and original_pid.pid_14.xtn_1:
-        new_message.pid.pid_14.xtn_1 = original_pid.pid_14.xtn_1
-
-    if hasattr(original_pid, "pid_14") and hasattr(original_pid.pid_14, "xtn_2") and original_pid.pid_14.xtn_2:
-        new_message.pid.pid_14.xtn_2 = original_pid.pid_14.xtn_2
-
-    if hasattr(original_pid, "pid_17") and hasattr(original_pid.pid_17, "ce_1") and original_pid.pid_17.ce_1:
-        new_message.pid.pid_17.ce_1 = original_pid.pid_17.ce_1
-
-    if hasattr(original_pid, "pid_22") and hasattr(original_pid.pid_22, "ce_1") and original_pid.pid_22.ce_1:
-        new_message.pid.pid_22.ce_1 = original_pid.pid_22.ce_1
-
-    if hasattr(original_pid, "pid_29") and hasattr(original_pid.pid_29, "ts_1") and original_pid.pid_29.ts_1:
-        new_message.pid.pid_29.ts_1 = original_pid.pid_29.ts_1
+    set_nested_field(original_pid, new_message.pid, "pid_17", "ce_1")
+    set_nested_field(original_pid, new_message.pid, "pid_22", "ce_1")
+    set_nested_field(original_pid, new_message.pid, "pid_29", "ts_1")
 
     pid32_value = _safe_get_value(original_pid, "pid_32")
     if pid32_value:
         new_message.pid.pid_31 = pid32_value
 
-    if hasattr(original_message, "evn") and original_message.evn:
-        new_message.evn = original_message.evn
-
-    if hasattr(original_message, "pv1") and original_message.pv1:
-        new_message.pv1 = original_message.pv1
+    # PV1
+    set_nested_field(original_message, new_message, "pv1")
 
     # PD1 specific mappings
     if hasattr(original_message, "pd1") and original_message.pd1:
@@ -339,8 +280,29 @@ def _safe_get_value(segment, field_path: str) -> str:
         return ""
 
 
+def set_nested_field(source_msg: Any, target_msg: Any, field: str, subfield: Optional[str] = None) -> None:
+    """
+    Safely copy a field or nested field (e.g., msh_7.ts_1) from source to target message.
+    Only copies if the source field (and subfield, if provided) exist and are populated.
+    Example usage:
+    - set_nested_field(original_msh, new_message.msh, "msh_7", "ts_1")  # nested field
+    - set_nested_field(original_msh, new_message.msh, "msh_8")          # top-level field
+    """
+    if hasattr(source_msg, field):
+        src_field = getattr(source_msg, field)
+        if src_field:
+            if subfield:
+                if hasattr(src_field, subfield):
+                    value = getattr(src_field, subfield)
+                    if value:
+                        setattr(getattr(target_msg, field), subfield, value)
+            else:
+                setattr(target_msg, field, src_field)
+
+
 message_body = (
-    "MSH|^~\\&|245|245|100|100|20250701141950||ADT^A31|596887414401487|P|2.4|||NE|NE EVN||20250701141950\r"
+    "MSH|^~\\&|245|245|100|100|20250701141950||ADT^A31|596887414401487|P|2.4|||NE|NE\r"
+    "EVN||20250701141950\r"
     "PID|1|1000000001^^^^NH|1000000001^^^^NH~00rb00^^^^PI||TEST^TEST||20000101000000|M|||1 Street^Town^Rhondda, cynon, taff^^CF11 9AD||07000000001\r"
     "PV1||U\r"
 )
