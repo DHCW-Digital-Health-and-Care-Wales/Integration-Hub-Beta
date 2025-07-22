@@ -57,24 +57,44 @@ def create_new_message(original_message: Message) -> Message:
     # PID
     set_nested_field(original_pid, new_message.pid, "pid_1")
 
-    pid2_value = _safe_get_value(original_pid, "pid_2.pid_2_1") or _safe_get_value(original_pid, "pid_2")
-    msh3_value = _safe_get_value(original_msh, "msh_3.msh_3_1") or _safe_get_value(original_msh, "msh_3")
-    msh4_value = _safe_get_value(original_msh, "msh_4.msh_4_1") or _safe_get_value(original_msh, "msh_4")
+    # if the cx_1 subfield on pid_2 is empty we default to the entire pid_2 field
+    pid2_value = get_hl7_field_value(original_pid, "pid_2.cx_1") or get_hl7_field_value(original_pid, "pid_2")
+    # if the hd_1 subfield on msh_3 is empty we default to the entire msh_3 field
+    msh3_value = get_hl7_field_value(original_msh, "msh_3.hd_1") or get_hl7_field_value(original_msh, "msh_3")
+
+    pid3_rep1 = new_message.pid.add_field("pid_3")
+    pid3_rep1.cx_4.hd_1 = "NHS"
+    pid3_rep1.cx_5 = "NH"
+
+    pid3_rep2 = new_message.pid.add_field("pid_3")
+    pid3_rep2.cx_4.hd_1 = "NHS"
+    pid3_rep2.cx_5 = "PI"
 
     if pid2_value:
-        pid3_rep1 = new_message.pid.add_field("pid_3")
         pid3_rep1.cx_1 = pid2_value
-        pid3_rep1.cx_2 = f"{pid2_value}{msh3_value}" if msh3_value else pid2_value
-        pid3_rep1.cx_4.hd_1 = "NHS"
-        pid3_rep1.cx_5 = "NH"
 
-    if msh3_value:
-        pid3_rep2 = new_message.pid.add_field("pid_3")
-        pid3_rep2.cx_1 = f"{msh4_value}{msh3_value}"
-        pid3_rep2.cx_4.hd_1 = "NHS"
-        pid3_rep2.cx_5 = "PI"
+        if msh3_value:
+            # Mapping rules based on msh.3.hd_1
+            health_board = ""
+            if msh3_value == "244":
+                health_board = "VCC"
+            elif msh3_value == "212":
+                health_board = "BCUCCC"
+            elif msh3_value == "192":
+                health_board = "SWW"
+            elif msh3_value == "245":
+                health_board = "SEW"
 
-    if hasattr(original_pid, "pid_5") and original_pid.pid_5.xpn_1.fn_1:
+            # If MSH.3.HD_1 has a different value to one of the 4 expected health boards - it will NOT be mapped
+            if health_board:
+                pid3_rep2.cx_1 = f"{health_board}{pid2_value}"
+
+    if (
+        hasattr(original_pid, "pid_5")
+        and hasattr(original_pid.pid_5, "xpn_1")
+        and hasattr(original_pid.pid_5.xpn_1, "fn_1")
+        and original_pid.pid_5.xpn_1.fn_1
+    ):
         new_message.pid.pid_5.xpn_1.fn_1 = original_pid.pid_5.xpn_1.fn_1
 
     set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_2")
@@ -142,7 +162,7 @@ def create_new_message(original_message: Message) -> Message:
     set_nested_field(original_pid, new_message.pid, "pid_22", "ce_1")
     set_nested_field(original_pid, new_message.pid, "pid_29", "ts_1")
 
-    pid32_value = _safe_get_value(original_pid, "pid_32")
+    pid32_value = get_hl7_field_value(original_pid, "pid_32")
     if pid32_value:
         new_message.pid.pid_31 = pid32_value
 
@@ -201,31 +221,28 @@ def create_new_message(original_message: Message) -> Message:
     set_nested_field(original_nk1, new_message.nk1, "nk1_4", "xad_7")
     set_nested_field(original_nk1, new_message.nk1, "nk1_5", "xtn_1")
 
-    if hasattr(original_message, "nk1") and original_message.nk1:
-        original_nk1 = original_message.nk1
+    if (
+        hasattr(original_nk1, "nk1_2")
+        and hasattr(original_nk1.nk1_2, "xpn_1")
+        and hasattr(original_nk1.nk1_2.xpn_1, "fn_1")
+        and original_nk1.nk1_2.xpn_1.fn_1
+    ):
+        new_message.nk1.nk1_2.xpn_1.fn_1 = original_nk1.nk1_2.xpn_1.fn_1
 
-        if (
-            hasattr(original_nk1, "nk1_2")
-            and hasattr(original_nk1.nk1_2, "xpn_1")
-            and hasattr(original_nk1.nk1_2.xpn_1, "fn_1")
-            and original_nk1.nk1_2.xpn_1.fn_1
-        ):
-            new_message.nk1.nk1_2.xpn_1.fn_1 = original_nk1.nk1_2.xpn_1.fn_1
+    if (
+        hasattr(original_nk1, "nk1_4")
+        and hasattr(original_nk1.nk1_4, "xad_1")
+        and hasattr(original_nk1.nk1_4.xad_1, "sad_1")
+        and original_nk1.nk1_4.xad_1.sad_1
+    ):
+        new_message.nk1.nk1_4.xad_1.sad_1 = original_nk1.nk1_4.xad_1.sad_1
 
-        if (
-            hasattr(original_nk1, "nk1_4")
-            and hasattr(original_nk1.nk1_4, "xad_1")
-            and hasattr(original_nk1.nk1_4.xad_1, "sad_1")
-            and original_nk1.nk1_4.xad_1.sad_1
-        ):
-            new_message.nk1.nk1_4.xad_1.sad_1 = original_nk1.nk1_4.xad_1.sad_1
-
-        # for i in range(1, 40):
-        #     field_name = f"nk1_{i}"
-        #     if hasattr(original_nk1, field_name) and field_name not in ["nk1_2", "nk1_3", "nk1_4", "nk1_5"]:
-        #         field_value = getattr(original_nk1, field_name)
-        #         if field_value:
-        #             setattr(new_message.nk1, field_name, field_value)
+    # for i in range(1, 40):
+    #     field_name = f"nk1_{i}"
+    #     if hasattr(original_nk1, field_name) and field_name not in ["nk1_2", "nk1_3", "nk1_4", "nk1_5"]:
+    #         field_value = getattr(original_nk1, field_name)
+    #         if field_value:
+    #             setattr(new_message.nk1, field_name, field_value)
 
     segment_names = ["pv2", "obx", "al1", "dg1", "pr1", "gt1", "in1", "in2", "in3"]
 
@@ -238,15 +255,33 @@ def create_new_message(original_message: Message) -> Message:
     return new_message
 
 
-# Used to access HL7 nested fields directly (without crashing)
-def _safe_get_value(segment, field_path: str) -> str:
-    try:
-        current = segment
-        for part in field_path.split("."):
-            current = getattr(current, part)
-        return current.value if hasattr(current, "value") else str(current)
-    except (AttributeError, IndexError):
-        return ""
+def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
+    """
+    Safely retrieves the string value of a nested HL7 field using a dot-separated path.
+
+    Traverses the HL7 segment hierarchy following the provided path,
+    handling missing attributes and empty values gracefully (returns empty string to maintain compatibility with hl7apy)
+    Works with hl7apy objects which may have .value attributes or can be converted to strings.
+    Example usage:
+    - get_hl7_field_value(original_msh, "msh_4.hd_1") = "HOSPITAL NAME"
+    - get_hl7_field_value(original_pid, "pid_5.xpn_1.fn_1") = "TEST"
+    - get_hl7_field_value(original_msh, "nonexistent.field") = ""
+    """
+    current_element = hl7_segment
+    # Loop through each attribute in the field path in order
+    for field_name in field_path.split("."):
+        try:
+            current_element = getattr(current_element, field_name)
+            if not current_element:
+                return ""  # Empty field
+        except (AttributeError, IndexError):
+            return ""  # Non-existent field
+
+    # Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
+    if current_element is not None:
+        field_value = current_element.value
+        return str(field_value) if field_value is not None else ""
+    return ""
 
 
 def set_nested_field(source_msg: Any, target_msg: Any, field: str, subfield: Optional[str] = None) -> None:
@@ -269,34 +304,19 @@ def set_nested_field(source_msg: Any, target_msg: Any, field: str, subfield: Opt
                 setattr(target_msg, field, src_field)
 
 
-message_body = (
-    "MSH|^~\\&|245|245|100|100|20250701141950||ADT^A31|596887414401487|P|2.4|||NE|NE\r"
-    "EVN||20250701141950\r"
-    "PID|1|1000000001^^^^NH|1000000001^^^^NH~00rb00^^^^PI||TEST^TEST||20000101000000|M|||1 Street^Town^Rhondda, cynon, taff^^CF11 9AD||07000000001\r"
-    "PV1||U\r"
-)
+def print_original_msg(msg: Message, key: Optional[str] = None) -> None:
+    print("\nORIGINAL {} Message:".format(key if key else ""))
+    print("=" * 50)
+    original_message = msg.to_er7()
+    print(original_message.replace("\r", "\n"))
+    print("=" * 50)
 
-
-original_hl7_msg = parse_message(message_body)
-
-print("\nORIGINAL HL7 Message:")
-print("=" * 50)
-original_message = original_hl7_msg.to_er7()
-formatted_original = original_message.replace("\r", "\n")
-print(formatted_original)
-print("=" * 50)
-
-transformed_hl7_msg = transform_chemocare(original_hl7_msg)
-updated_message = transformed_hl7_msg.to_er7()
-print("\nTRANSFORMED HL7 Message:")
-print("=" * 50)
-formatted_message = updated_message.replace("\r", "\n")
-print(formatted_message)
-print("=" * 50)
 
 for key, message in chemo_messages.items():
     hl7_msg = parse_message(message)
+    print_original_msg(hl7_msg, key)
     transformed_msg = transform_chemocare(hl7_msg)
-    updated_transformed_msg = transformed_msg.to_er7().replace("\r", " ")
-    print("\nTransformed {} message:".format(key))
+    updated_transformed_msg = transformed_msg.to_er7().replace("\r", "\n")
+    print("\nTRANSFORMED {} message:".format(key))
+    print("=" * 50)
     print(updated_transformed_msg)
