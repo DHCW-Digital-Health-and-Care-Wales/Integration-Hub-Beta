@@ -285,8 +285,8 @@ def set_nested_field(source_msg: Any, target_msg: Any, field: str, subfield: Opt
     Safely copy a field or nested field (e.g., msh_7.ts_1) from source to target message.
     Only copies if the source field (and subfield, if provided) exist and are populated.
     Example usage:
-    - set_nested_field(original_msh, new_message.msh, "msh_7", "ts_1")  # nested field
-    - set_nested_field(original_msh, new_message.msh, "msh_8")          # top-level field
+    - set_nested_field(original_msh, new_message.msh, "msh_7", "ts_1") - nested field
+    - set_nested_field(original_msh, new_message.msh, "msh_8")         - top-level field
     """
     if hasattr(source_msg, field):
         src_field = getattr(source_msg, field)
@@ -324,3 +324,12 @@ print("=" * 50)
 formatted_message = updated_message.replace("\r", "\n")
 print(formatted_message)
 print("=" * 50)
+
+from chemo_messages import chemo_messages
+
+for key, message in chemo_messages.items():
+    hl7_msg = parse_message(message)
+    transformed_msg = transform_chemocare(hl7_msg)
+    updated_transformed_msg = transformed_msg.to_er7().replace("\r", " ")
+    print("\nTransformed {} message:".format(key))
+    print(updated_transformed_msg)
