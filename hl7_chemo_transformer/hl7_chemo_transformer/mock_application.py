@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from chemo_messages import chemo_messages
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
@@ -13,11 +14,12 @@ def transform_chemocare(hl7_msg: Message) -> Message:
 def create_new_message(original_message: Message) -> Message:
     original_msh = original_message.msh
     original_pid = original_message.pid
+    original_pd1 = original_message.pd1
+    original_nk1 = original_message.nk1
 
     new_message = Message(version="2.5")
 
     # MSH
-
     # MSH.1 and MSH.2 are mandatory fields in HL7 messages, so we set them directly.
     new_message.msh.msh_1 = original_msh.msh_1
     new_message.msh.msh_2 = original_msh.msh_2
@@ -148,72 +150,57 @@ def create_new_message(original_message: Message) -> Message:
     set_nested_field(original_message, new_message, "pv1")
 
     # PD1 specific mappings
-    if hasattr(original_message, "pd1") and original_message.pd1:
-        original_pd1 = original_message.pd1
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_1")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_3")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_4")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_5")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_7")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_9")
 
-        # PD1.3/XON mappings
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_1") and original_pd1.pd1_3.xon_1:
-            new_message.pd1.pd1_3.xon_1 = original_pd1.pd1_3.xon_1
+    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_1")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_3")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_4")
+    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_6")
 
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_3") and original_pd1.pd1_3.xon_3:
-            new_message.pd1.pd1_3.xon_3 = original_pd1.pd1_3.xon_3
+    if (
+        hasattr(original_pd1, "pd1_3")
+        and hasattr(original_pd1.pd1_3, "xon_6")
+        and hasattr(original_pd1.pd1_3.xon_6, "hd_1")
+        and original_pd1.pd1_3.xon_6.hd_1
+    ):
+        new_message.pd1.pd1_3.xon_6.hd_1 = original_pd1.pd1_3.xon_6.hd_1
 
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_4") and original_pd1.pd1_3.xon_4:
-            new_message.pd1.pd1_3.xon_4 = original_pd1.pd1_3.xon_4
+    if (
+        hasattr(original_pd1, "pd1_3")
+        and hasattr(original_pd1.pd1_3, "xon_8")
+        and hasattr(original_pd1.pd1_3.xon_8, "hd_1")
+        and original_pd1.pd1_3.xon_8.hd_1
+    ):
+        new_message.pd1.pd1_3.xon_8.hd_1 = original_pd1.pd1_3.xon_8.hd_1
 
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_5") and original_pd1.pd1_3.xon_5:
-            new_message.pd1.pd1_3.xon_5 = original_pd1.pd1_3.xon_5
+    if (
+        hasattr(original_pd1, "pd1_4")
+        and hasattr(original_pd1.pd1_4, "xcn_2")
+        and hasattr(original_pd1.pd1_4.xcn_2, "fn_1")
+        and original_pd1.pd1_4.xcn_2.fn_1
+    ):
+        new_message.pd1.pd1_4.xcn_2.fn_1 = original_pd1.pd1_4.xcn_2.fn_1
 
-        if (
-            hasattr(original_pd1, "pd1_3")
-            and hasattr(original_pd1.pd1_3, "xon_6")
-            and hasattr(original_pd1.pd1_3.xon_6, "hd_1")
-            and original_pd1.pd1_3.xon_6.hd_1
-        ):
-            new_message.pd1.pd1_3.xon_6.hd_1 = original_pd1.pd1_3.xon_6.hd_1
-
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_7") and original_pd1.pd1_3.xon_7:
-            new_message.pd1.pd1_3.xon_7 = original_pd1.pd1_3.xon_7
-
-        if (
-            hasattr(original_pd1, "pd1_3")
-            and hasattr(original_pd1.pd1_3, "xon_8")
-            and hasattr(original_pd1.pd1_3.xon_8, "hd_1")
-            and original_pd1.pd1_3.xon_8.hd_1
-        ):
-            new_message.pd1.pd1_3.xon_8.hd_1 = original_pd1.pd1_3.xon_8.hd_1
-
-        if hasattr(original_pd1, "pd1_3") and hasattr(original_pd1.pd1_3, "xon_9") and original_pd1.pd1_3.xon_9:
-            new_message.pd1.pd1_3.xon_9 = original_pd1.pd1_3.xon_9
-
-        if hasattr(original_pd1, "pd1_4") and hasattr(original_pd1.pd1_4, "xcn_1") and original_pd1.pd1_4.xcn_1:
-            new_message.pd1.pd1_4.xcn_1 = original_pd1.pd1_4.xcn_1
-
-        if (
-            hasattr(original_pd1, "pd1_4")
-            and hasattr(original_pd1.pd1_4, "xcn_2")
-            and hasattr(original_pd1.pd1_4.xcn_2, "fn_1")
-            and original_pd1.pd1_4.xcn_2.fn_1
-        ):
-            new_message.pd1.pd1_4.xcn_2.fn_1 = original_pd1.pd1_4.xcn_2.fn_1
-
-        if hasattr(original_pd1, "pd1_4") and hasattr(original_pd1.pd1_4, "xcn_3") and original_pd1.pd1_4.xcn_3:
-            new_message.pd1.pd1_4.xcn_3 = original_pd1.pd1_4.xcn_3
-
-        if hasattr(original_pd1, "pd1_4") and hasattr(original_pd1.pd1_4, "xcn_4") and original_pd1.pd1_4.xcn_4:
-            new_message.pd1.pd1_4.xcn_4 = original_pd1.pd1_4.xcn_4
-
-        if hasattr(original_pd1, "pd1_4") and hasattr(original_pd1.pd1_4, "xcn_6") and original_pd1.pd1_4.xcn_6:
-            new_message.pd1.pd1_4.xcn_6 = original_pd1.pd1_4.xcn_6
-
-        for i in range(1, 15):
-            field_name = f"pd1_{i}"
-            if hasattr(original_pd1, field_name) and field_name not in ["pd1_3", "pd1_4"]:
-                field_value = getattr(original_pd1, field_name)
-                if field_value:
-                    setattr(new_message.pd1, field_name, field_value)
+    # for i in range(1, 15):
+    #     field_name = f"pd1_{i}"
+    #     if hasattr(original_pd1, field_name) and field_name not in ["pd1_3", "pd1_4"]:
+    #         field_value = getattr(original_pd1, field_name)
+    #         if field_value:
+    #             setattr(new_message.pd1, field_name, field_value)
 
     # NK1 specific mappings
+    set_nested_field(original_nk1, new_message.nk1, "nk1_2", "xpn_2")
+    set_nested_field(original_nk1, new_message.nk1, "nk1_2", "xpn_7")
+    set_nested_field(original_nk1, new_message.nk1, "nk1_3", "ce_1")
+    set_nested_field(original_nk1, new_message.nk1, "nk1_4", "xad_2")
+    set_nested_field(original_nk1, new_message.nk1, "nk1_4", "xad_7")
+    set_nested_field(original_nk1, new_message.nk1, "nk1_5", "xtn_1")
+
     if hasattr(original_message, "nk1") and original_message.nk1:
         original_nk1 = original_message.nk1
 
@@ -225,15 +212,6 @@ def create_new_message(original_message: Message) -> Message:
         ):
             new_message.nk1.nk1_2.xpn_1.fn_1 = original_nk1.nk1_2.xpn_1.fn_1
 
-        if hasattr(original_nk1, "nk1_2") and hasattr(original_nk1.nk1_2, "xpn_2") and original_nk1.nk1_2.xpn_2:
-            new_message.nk1.nk1_2.xpn_2 = original_nk1.nk1_2.xpn_2
-
-        if hasattr(original_nk1, "nk1_2") and hasattr(original_nk1.nk1_2, "xpn_7") and original_nk1.nk1_2.xpn_7:
-            new_message.nk1.nk1_2.xpn_7 = original_nk1.nk1_2.xpn_7
-
-        if hasattr(original_nk1, "nk1_3") and hasattr(original_nk1.nk1_3, "ce_1") and original_nk1.nk1_3.ce_1:
-            new_message.nk1.nk1_3.ce_1 = original_nk1.nk1_3.ce_1
-
         if (
             hasattr(original_nk1, "nk1_4")
             and hasattr(original_nk1.nk1_4, "xad_1")
@@ -242,21 +220,12 @@ def create_new_message(original_message: Message) -> Message:
         ):
             new_message.nk1.nk1_4.xad_1.sad_1 = original_nk1.nk1_4.xad_1.sad_1
 
-        if hasattr(original_nk1, "nk1_4") and hasattr(original_nk1.nk1_4, "xad_2") and original_nk1.nk1_4.xad_2:
-            new_message.nk1.nk1_4.xad_2 = original_nk1.nk1_4.xad_2
-
-        if hasattr(original_nk1, "nk1_4") and hasattr(original_nk1.nk1_4, "xad_7") and original_nk1.nk1_4.xad_7:
-            new_message.nk1.nk1_4.xad_7 = original_nk1.nk1_4.xad_7
-
-        if hasattr(original_nk1, "nk1_5") and hasattr(original_nk1.nk1_5, "xtn_1") and original_nk1.nk1_5.xtn_1:
-            new_message.nk1.nk1_5.xtn_1 = original_nk1.nk1_5.xtn_1
-
-        for i in range(1, 40):
-            field_name = f"nk1_{i}"
-            if hasattr(original_nk1, field_name) and field_name not in ["nk1_2", "nk1_3", "nk1_4", "nk1_5"]:
-                field_value = getattr(original_nk1, field_name)
-                if field_value:
-                    setattr(new_message.nk1, field_name, field_value)
+        # for i in range(1, 40):
+        #     field_name = f"nk1_{i}"
+        #     if hasattr(original_nk1, field_name) and field_name not in ["nk1_2", "nk1_3", "nk1_4", "nk1_5"]:
+        #         field_value = getattr(original_nk1, field_name)
+        #         if field_value:
+        #             setattr(new_message.nk1, field_name, field_value)
 
     segment_names = ["pv2", "obx", "al1", "dg1", "pr1", "gt1", "in1", "in2", "in3"]
 
@@ -324,8 +293,6 @@ print("=" * 50)
 formatted_message = updated_message.replace("\r", "\n")
 print(formatted_message)
 print("=" * 50)
-
-from chemo_messages import chemo_messages
 
 for key, message in chemo_messages.items():
     hl7_msg = parse_message(message)
