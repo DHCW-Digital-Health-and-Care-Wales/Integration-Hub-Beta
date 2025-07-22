@@ -1,34 +1,21 @@
-# import logging
-
 from hl7apy.core import Message
 
-# logger = logging.getLogger(__name__)
+from .mappers.additional_segment_mapper import map_non_specific_segments
+from .mappers.evn_mapper import map_evn
+from .mappers.msh_mapper import map_msh
+from .mappers.nk1_mapper import map_nk1
+from .mappers.pd1_mapper import map_pd1
+from .mappers.pid_mapper import map_pid
 
 
-def transform_chemocare(hl7_msg: Message) -> Message:
-    # logger.debug("Applying Chemocare transformation")
-    _transform_msh_segment(hl7_msg)
-    # logger.debug("Chemocare transformation completed")
-    return hl7_msg
+def transform_chemocare_message(original_hl7_msg: Message) -> Message:
+    new_message = Message(version="2.5")
 
+    map_msh(original_hl7_msg, new_message)
+    map_evn(original_hl7_msg, new_message)
+    map_pid(original_hl7_msg, new_message)
+    map_pd1(original_hl7_msg, new_message)
+    map_nk1(original_hl7_msg, new_message)
+    map_non_specific_segments(original_hl7_msg, new_message)
 
-def _transform_msh_segment(hl7_msg: Message) -> None:
-    msh = hl7_msg.msh
-
-    # MSH.9/MSG.3 = "ADT_A05"
-    if hasattr(msh, "msh_9") and msh.msh_9:
-        msh.msh_9.msh_9_3 = "ADT_A05"
-
-    # MSH.12/VID.1 = "2.5"
-    if hasattr(msh, "msh_12") and msh.msh_12:
-        msh.msh_12.msh_12_1 = "2.5"
-
-# Used to access HL7 nested fields directly (without crashing)
-def _safe_get_value(segment, field_path: str) -> str:
-    try:
-        current = segment
-        for part in field_path.split("."):
-            current = getattr(current, part)
-        return current.value if hasattr(current, "value") else str(current)
-    except (AttributeError, IndexError):
-        return ""
+    return new_message

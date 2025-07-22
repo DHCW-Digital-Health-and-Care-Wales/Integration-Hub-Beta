@@ -14,7 +14,7 @@ from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from .app_config import AppConfig
-from .chemocare_transformer import transform_chemocare
+from .chemocare_transformer import transform_chemocare_message
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -79,10 +79,9 @@ def _process_message(
         sending_app = _get_sending_app(hl7_msg)
         logger.info(f"Applying Chemocare transformation for SENDING_APP: {sending_app}")
 
-        hl7_msg = transform_chemocare(hl7_msg)
+        transformed_hl7_message = transform_chemocare_message(hl7_msg)
 
-        updated_message = hl7_msg.to_er7()
-        sender_client.send_message(updated_message)
+        sender_client.send_message(transformed_hl7_message.to_er7())
 
         audit_client.log_message_processed(
             message_body,
