@@ -23,7 +23,7 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     pid3_rep1.cx_5 = "NH"
 
     pid3_rep2 = new_message.pid.add_field("pid_3")
-    pid3_rep2.cx_4.hd_1 = "NHS"
+    pid3_rep2.cx_4.hd_1 = msh3_value
     pid3_rep2.cx_5 = "PI"
 
     if pid2_value:
