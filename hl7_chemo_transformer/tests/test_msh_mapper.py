@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import MagicMock, patch
 
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
@@ -15,55 +14,49 @@ class TestMSHMapper(unittest.TestCase):
 
         self.new_message = Message(version="2.5")
 
-    def test_map_msh_basic_fields(self) -> None:
+    def test_map_msh_all_transformed_mappings(self) -> None:
         map_msh(self.original_message, self.new_message)
 
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.msh, "msh_1"),
-            get_hl7_field_value(self.new_message.msh, "msh_1"),
-        )
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.msh, "msh_2"),
-            get_hl7_field_value(self.new_message.msh, "msh_2"),
-        )
+        test_cases = [
+            ("msh_9.msg_3", "ADT_A05"),
+            ("msh_9", "ADT^A28^ADT_A05"),
+            ("msh_12.vid_1", "2.5"),
+        ]
+        for field_path, expected_value in test_cases:
+            self.assertEqual(expected_value, get_hl7_field_value(self.new_message.msh, field_path))
 
-    def test_map_msh_nested_fields(self) -> None:
+    def test_map_msh_all_direct_mappings(self) -> None:
         map_msh(self.original_message, self.new_message)
 
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.msh, "msh_3.hd_1"),
-            get_hl7_field_value(self.new_message.msh, "msh_3.hd_1"),
-        )
+        test_cases = [
+            "msh_1",
+            "msh_2",
+            "msh_3.hd_1",
+            "msh_4.hd_1",
+            "msh_5.hd_1",
+            "msh_6.hd_1",
+            "msh_7.ts_1",
+            "msh_8",
+            "msh_9.msg_1",
+            "msh_9.msg_2",
+            "msh_10",
+            "msh_11",
+            "msh_13",
+            "msh_14",
+            "msh_15",
+            "msh_16",
+            "msh_17",
+            "msh_18",
+            "msh_19",
+            "msh_20",
+            "msh_21",
+        ]
 
-    def test_map_msh_message_type(self) -> None:
-        map_msh(self.original_message, self.new_message)
-
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.msh, "msh_9.msg_1"),
-            get_hl7_field_value(self.new_message.msh, "msh_9.msg_1"),
-        )
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.msh, "msh_9.msg_2"),
-            get_hl7_field_value(self.new_message.msh, "msh_9.msg_2"),
-        )
-        self.assertEqual(
-            "ADT_A05",
-            get_hl7_field_value(self.new_message.msh, "msh_9.msg_3"),
-        )
-        self.assertEqual("ADT^A28^ADT_A05", get_hl7_field_value(self.new_message.msh, "msh_9"))
-
-    def test_map_msh_version_id(self) -> None:
-        map_msh(self.original_message, self.new_message)
-
-        self.assertEqual("2.5", get_hl7_field_value(self.new_message.msh, "msh_12.vid_1"))
-
-    @patch("hl7_chemo_transformer.mappers.msh_mapper.set_nested_field")
-    def test_map_msh_calls_set_nested_field(self, mock_set_nested_field: MagicMock) -> None:
-        map_msh(self.original_message, self.new_message)
-
-        # Verify that set_nested_field was called with the expected parameters
-        mock_set_nested_field.assert_any_call(self.original_message.msh, self.new_message.msh, "msh_3", "hd_1")
-        mock_set_nested_field.assert_any_call(self.original_message.msh, self.new_message.msh, "msh_9", "msg_1")
+        for field_path in test_cases:
+            self.assertEqual(
+                get_hl7_field_value(self.original_message.msh, field_path),
+                get_hl7_field_value(self.new_message.msh, field_path),
+            )
 
 
 if __name__ == "__main__":
