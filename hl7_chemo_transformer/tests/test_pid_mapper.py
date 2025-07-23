@@ -64,7 +64,7 @@ class TestPIDMapper(unittest.TestCase):
     def test_map_pid_health_board_logic(self) -> None:
         health_board_cases = [
             ("192", "SWW"),
-            ("244", "VCC"),
+            ("224", "VCC"),
             ("212", "BCUCCC"),
             ("245", "SEW"),
         ]

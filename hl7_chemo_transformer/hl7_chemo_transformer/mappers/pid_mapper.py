@@ -53,13 +53,9 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     ):
         new_message.pid.pid_5.xpn_1.fn_1 = original_pid.pid_5.xpn_1.fn_1
 
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_2")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_3")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_4")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_5")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_6")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_7")
-    set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_8")
+    pid_5_fields = ["xpn_2", "xpn_3", "xpn_4", "xpn_5", "xpn_6", "xpn_7", "xpn_8"]
+    for field in pid_5_fields:
+        set_nested_field(original_pid, new_message.pid, "pid_5", field)
 
     if (
         hasattr(original_pid, "pid_5")
@@ -101,12 +97,9 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     ):
         new_message.pid.pid_11.xad_1.sad_1 = original_pid.pid_11.xad_1.sad_1
 
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_2")
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_3")
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_4")
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_5")
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_7")
-    set_nested_field(original_pid, new_message.pid, "pid_11", "xad_8")
+    pid_11_fields = ["xad_2", "xad_3", "xad_4", "xad_5", "xad_7", "xad_8"]
+    for field in pid_11_fields:
+        set_nested_field(original_pid, new_message.pid, "pid_11", field)
 
     set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_1")
     set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_2")

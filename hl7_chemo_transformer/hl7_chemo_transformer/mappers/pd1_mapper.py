@@ -8,17 +8,13 @@ def map_pd1(original_hl7_message: Message, new_message: Message) -> None:
     if original_pd1 is None:
         return  # No PD1 segment
 
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_1")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_3")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_4")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_5")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_7")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_3", "xon_9")
+    pd1_3_fields = ["xon_1", "xon_3", "xon_4", "xon_5", "xon_7", "xon_9"]
+    for field in pd1_3_fields:
+        set_nested_field(original_pd1, new_message.pd1, "pd1_3", field)
 
-    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_1")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_3")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_4")
-    set_nested_field(original_pd1, new_message.pd1, "pd1_4", "xcn_6")
+    pd1_4_fields = ["xcn_1", "xcn_3", "xcn_4", "xcn_6"]
+    for field in pd1_4_fields:
+        set_nested_field(original_pd1, new_message.pd1, "pd1_4", field)
 
     if (
         hasattr(original_pd1, "pd1_3")
