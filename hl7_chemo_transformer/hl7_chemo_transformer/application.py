@@ -27,7 +27,7 @@ MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum, frame):
+def shutdown_handler(signum, frame) -> None:
     global PROCESSOR_RUNNING
     logger.info("Shutting down the processor")
     PROCESSOR_RUNNING = False
@@ -37,7 +37,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 
-def main():
+def main() -> None:
     global PROCESSOR_RUNNING
 
     app_config = AppConfig.read_env_config()

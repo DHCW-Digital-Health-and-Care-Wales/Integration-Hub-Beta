@@ -55,11 +55,10 @@ class TestPIDMapper(unittest.TestCase):
         ]
 
         for field_path in test_cases:
-            with self.subTest(field=field_path):
-                self.assertEqual(
-                    get_hl7_field_value(self.original_message.pid, field_path),
-                    get_hl7_field_value(self.new_message.pid, field_path),
-                )
+            self.assertEqual(
+                get_hl7_field_value(self.original_message.pid, field_path),
+                get_hl7_field_value(self.new_message.pid, field_path),
+            )
 
     def test_map_pid_patient_id_logic(self) -> None:
         map_pid(self.original_message, self.new_message)
