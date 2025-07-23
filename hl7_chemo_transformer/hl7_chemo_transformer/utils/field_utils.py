@@ -26,6 +26,9 @@ def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
     # Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
     if current_element is not None:
         field_value = current_element.value
+        # Handle nested values - HL7 datatype objects may have their own .value attribute
+        if hasattr(field_value, 'value'):
+            field_value = field_value.value
         return str(field_value) if field_value is not None else ""
     return ""
 
