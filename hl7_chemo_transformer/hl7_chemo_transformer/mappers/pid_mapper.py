@@ -32,7 +32,7 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
         if msh3_value:
             # Mapping rules based on msh.3.hd_1
             health_board = ""
-            if msh3_value == "244":
+            if msh3_value == "224":
                 health_board = "VCC"
             elif msh3_value == "212":
                 health_board = "BCUCCC"
