@@ -35,11 +35,11 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
             if msh3_value == "224":
                 health_board = "VCC"
             elif msh3_value == "212":
-                health_board = "BCUCCC"
+                health_board = "BCUCC"
             elif msh3_value == "192":
-                health_board = "SWW"
+                health_board = "SWWCC"
             elif msh3_value == "245":
-                health_board = "SEW"
+                health_board = "SEWCC"
 
             # If MSH.3.HD_1 has a different value to one of the 4 expected health boards - it will NOT be mapped
             if health_board:
