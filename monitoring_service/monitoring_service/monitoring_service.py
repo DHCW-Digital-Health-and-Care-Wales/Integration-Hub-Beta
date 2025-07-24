@@ -45,13 +45,18 @@ def main() -> None:
         app_config.service_bus_namespace
     )
     factory = ServiceBusClientFactory(client_config)
+
+    db_client = MonitoringDatabaseClient(
+        app_config.database_connection_string,
+        app_config.stored_procedure_name
+    )
     
     with (
         factory.create_message_receiver_client(app_config.audit_queue_name) as receiver_client,
-        MonitoringDatabaseClient(app_config.database_connection_string) as db_client,
+        db_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
     ):
-        logger.info("Monitoring service started.")
+        logger.info(f"Monitoring service started with stored procedure: {app_config.stored_procedure_name}")
         health_check_server.start()
         
         while PROCESSOR_RUNNING:

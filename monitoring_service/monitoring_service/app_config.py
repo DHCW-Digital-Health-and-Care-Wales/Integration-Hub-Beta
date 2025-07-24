@@ -10,6 +10,7 @@ class MonitoringAppConfig:
     service_bus_namespace: str | None
     audit_queue_name: str
     database_connection_string: str
+    stored_procedure_name: str
     health_check_hostname: str | None
     health_check_port: int | None
 
@@ -20,6 +21,7 @@ class MonitoringAppConfig:
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
             database_connection_string=_read_env("DATABASE_CONNECTION_STRING", required=True),
+            stored_procedure_name=_read_env("STORED_PROCEDURE_NAME", required=False) or "[queue].[prInsertEvent]",
             health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT", required=False),
         )
