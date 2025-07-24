@@ -1,6 +1,7 @@
 from hl7apy.parser import parse_message
 
-from .chemo_messages import chemo_messages
+from tests.chemo_messages import chemo_messages
+
 from .chemocare_transformer import transform_chemocare_message
 from .utils.message_print_utils import print_original_msg
 

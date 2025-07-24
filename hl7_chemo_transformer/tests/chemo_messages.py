@@ -52,7 +52,8 @@ chemo_messages: Dict[str, str] = {
         "MSH|^~\\&|212|212|200|200|20250701140735||ADT^A31|201600952808665|P|2.4|||NE|NE\r"
         "EVN|Sub|20250701140735\r"
         "PID|1|1000000001^^^^NH|1000000001^^^^NH||TEST^TEST^T^^Mrs.||20000101000000|F|||TEST,^TEST^TEST TEST^^CF11 9AD||01000 000 001|07000000001||||||||||||||||||0\r"
-        "PD1||||G7000001\r"
+        "PD1||||G7000021\r"
         "PV1||U\r"
+        "NK1|1|JONES^BARBARA^K|WIFE||||||NK^NEXT OF KIN||||||||||\r"
     ),
 }

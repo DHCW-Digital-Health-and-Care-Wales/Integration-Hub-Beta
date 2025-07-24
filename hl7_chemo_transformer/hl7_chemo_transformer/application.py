@@ -2,6 +2,8 @@ import configparser
 import logging
 import os
 import signal
+from types import FrameType
+from typing import Optional
 
 from azure.servicebus import ServiceBusMessage
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -27,7 +29,7 @@ MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum, frame) -> None:
+def shutdown_handler(signum: int, frame: Optional[FrameType]) -> None:
     global PROCESSOR_RUNNING
     logger.info("Shutting down the processor")
     PROCESSOR_RUNNING = False

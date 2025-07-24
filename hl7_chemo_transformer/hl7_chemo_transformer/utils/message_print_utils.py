@@ -14,7 +14,7 @@ def print_original_msg(msg: Message, key: Optional[str] = None) -> None:
     print("=" * 50)
 
 
-def _hl7_message_to_dict(message_part, base_datatypes, use_long_name=True):
+def _hl7_message_to_dict(message_part: Message, base_datatypes, use_long_name=True):
     """Convert an HL7 message to a dictionary for easier readibility
     Source: Github and Copilot
     :param message_part: The HL7 message from parse_message
