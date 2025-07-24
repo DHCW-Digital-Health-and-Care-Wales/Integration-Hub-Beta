@@ -1,15 +1,14 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from chemo_messages import chemo_messages
 from hl7apy.parser import parse_message
 
 from hl7_chemo_transformer.chemocare_transformer import transform_chemocare_message
 
-from .chemo_messages import chemo_messages
-
 
 class TestChemocareTransformer(unittest.TestCase):
-    def test_transform_a28_southwest_message(self):
+    def test_transform_a28_southwest_message(self) -> None:
         original_message = parse_message(chemo_messages["a28_southwest"])
 
         transformed_message = transform_chemocare_message(original_message)
@@ -34,7 +33,7 @@ class TestChemocareTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pd1.value, "PD1||||G7000001")
         self.assertEqual(transformed_message.pv1.value, "PV1||U")
 
-    def test_transform_a31_bcu_message(self):
+    def test_transform_a31_bcu_message(self) -> None:
         original_message = parse_message(chemo_messages["a31_bcu"])
 
         transformed_message = transform_chemocare_message(original_message)
@@ -67,8 +66,14 @@ class TestChemocareTransformer(unittest.TestCase):
     @patch("hl7_chemo_transformer.chemocare_transformer.map_nk1")
     @patch("hl7_chemo_transformer.chemocare_transformer.map_non_specific_segments")
     def test_all_mapper_functions_called(
-        self, mock_map_non_specific, mock_map_nk1, mock_map_pd1, mock_map_pid, mock_map_evn, mock_map_msh
-    ):
+        self,
+        mock_map_non_specific: Mock,
+        mock_map_nk1: Mock,
+        mock_map_pd1: Mock,
+        mock_map_pid: Mock,
+        mock_map_evn: Mock,
+        mock_map_msh: Mock,
+    ) -> None:
         original_message = parse_message(chemo_messages["a28_southwest"])
 
         transformed_message = transform_chemocare_message(original_message)
