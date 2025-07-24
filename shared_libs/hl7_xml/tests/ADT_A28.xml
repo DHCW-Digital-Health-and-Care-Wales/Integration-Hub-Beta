@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ns:ADT_A05 xmlns:ns="urn:hl7-org:v2xml">
+    <ns:MSH>
+        <ns:MSH.1>|</ns:MSH.1>
+        <ns:MSH.2>^~\&amp;</ns:MSH.2>
+        <ns:MSH.3>
+            <ns:HD.1>109</ns:HD.1>
+        </ns:MSH.3>
+        <ns:MSH.4>
+            <ns:HD.1>7A1</ns:HD.1>
+        </ns:MSH.4>
+        <ns:MSH.5>
+            <ns:HD.1>200</ns:HD.1>
+        </ns:MSH.5>
+        <ns:MSH.6>
+            <ns:HD.1>200</ns:HD.1>
+        </ns:MSH.6>
+        <ns:MSH.7>
+            <ns:TS.1>20250210112501</ns:TS.1>
+        </ns:MSH.7>
+        <ns:MSH.9>
+            <ns:MSG.1>ADT</ns:MSG.1>
+            <ns:MSG.2>A28</ns:MSG.2>
+            <ns:MSG.3>ADT_A05</ns:MSG.3>
+        </ns:MSH.9>
+        <ns:MSH.10>10928038161</ns:MSH.10>
+        <ns:MSH.11>
+            <ns:PT.1>P</ns:PT.1>
+        </ns:MSH.11>
+        <ns:MSH.12>
+            <ns:VID.1>2.5.1</ns:VID.1>
+        </ns:MSH.12>
+        <ns:MSH.15>AL</ns:MSH.15>
+    </ns:MSH>
+    <ns:EVN>
+        <ns:EVN.2>
+            <ns:TS.1>20250210112501</ns:TS.1>
+        </ns:EVN.2>
+        <ns:EVN.5>
+            <ns:XCN.1>FSA078103</ns:XCN.1>
+        </ns:EVN.5>
+        <ns:EVN.6>
+            <ns:TS.1>20250210112500</ns:TS.1>
+        </ns:EVN.6>
+    </ns:EVN>
+    <ns:PID>
+        <ns:PID.1>1</ns:PID.1>
+        <ns:PID.3 / >
+        <ns:PID.3>
+            <ns:CX.1>B3159251</ns:CX.1>
+            <ns:CX.4>
+                <ns:HD.1>109</ns:HD.1>
+            </ns:CX.4>
+            <ns:CX.5>PI</ns:CX.5>
+        </ns:PID.3>
+        <ns:PID.5>
+            <ns:XPN.1>
+                <ns:FN.1>JONES</ns:FN.1>
+            </ns:XPN.1>
+            <ns:XPN.2>GRACIE</ns:XPN.2>
+            <ns:XPN.3 />
+            <ns:XPN.5>Miss</ns:XPN.5>
+        </ns:PID.5>
+        <ns:PID.7>
+            <ns:TS.1>19840110</ns:TS.1>
+        </ns:PID.7>
+        <ns:PID.8>F</ns:PID.8>
+        <ns:PID.11>
+            <ns:XAD.1>
+                <ns:SAD.1>7 Pengarth</ns:SAD.1>
+            </ns:XAD.1>
+            <ns:XAD.2>Conwy</ns:XAD.2>
+            <ns:XAD.3>Conwy</ns:XAD.3>
+            <ns:XAD.4 />
+            <ns:XAD.5>LL32 8RW</ns:XAD.5>
+            <ns:XAD.7>H</ns:XAD.7>
+        </ns:PID.11>
+        <ns:PID.11>
+            <ns:XAD.1>
+                <ns:SAD.1>7 Pengarth</ns:SAD.1>
+            </ns:XAD.1>
+            <ns:XAD.2>Conwy</ns:XAD.2>
+            <ns:XAD.3>Conwy</ns:XAD.3>
+            <ns:XAD.4 />
+            <ns:XAD.5>LL32 8RW</ns:XAD.5>
+            <ns:XAD.7>M</ns:XAD.7>
+        </ns:PID.11>
+        <ns:PID.16>
+            <ns:CE.1>9</ns:CE.1>
+        </ns:PID.16>
+        <ns:PID.17>
+            <ns:CE.1>Z</ns:CE.1>
+        </ns:PID.17>
+        <ns:PID.22>
+            <ns:CE.1>ZZ</ns:CE.1>
+        </ns:PID.22>
+        <ns:PID.29>
+            <ns:TS.1 />
+        </ns:PID.29>
+        <ns:PID.30>N</ns:PID.30>
+        <ns:PID.32 />
+        <ns:PID.33>
+            <ns:TS.1>20250210112448</ns:TS.1>
+        </ns:PID.33>
+    </ns:PID>
+    <ns:PD1>
+        <ns:PD1.3>
+            <ns:XON.1>QVM/DANESBURY SITE</ns:XON.1>
+            <ns:XON.10>Y02029</ns:XON.10>
+        </ns:PD1.3>
+        <ns:PD1.4>
+            <ns:XCN.1>G6762874</ns:XCN.1>
+            <ns:XCN.2>
+                <ns:FN.1>PARRY</ns:FN.1>
+            </ns:XCN.2>
+            <ns:XCN.3>A</ns:XCN.3>
+        </ns:PD1.4>
+    </ns:PD1>
+    <ns:NK1>
+        <ns:NK1.1>1</ns:NK1.1>
+    </ns:NK1>
+    <ns:NK1>
+        <ns:NK1.1>2</ns:NK1.1>
+    </ns:NK1>
+    <ns:PV1>
+    </ns:PV1>
+    <ns:PV2>
+    </ns:PV2>
+</ns:ADT_A05>
