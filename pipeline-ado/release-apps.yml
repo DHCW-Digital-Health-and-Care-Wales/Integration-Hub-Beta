@@ -122,6 +122,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
+  - stage: ReleaseChemocareHL7SenderDev
+    displayName: 'Release App Chemocare HL7Sender - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7SenderDev'
+          displayName: 'Release App Chemocare HL7Sender - Dev'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
   - stage: ReleaseHL7MockReceiverDev
     displayName: 'Release App HL7MockReceiver - Dev'
     jobs:
@@ -221,6 +238,24 @@ stages:
           displayName: 'Release App HL7Sender - Test'
           appName: 'hl7sender'
           appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseChemocareHL7SenderTest
+    displayName: 'Release App Chemocare HL7Sender - Test'
+    dependsOn: ReleaseChemocareHL7SenderDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7SenderTest'
+          displayName: 'Release App Chemocare HL7Sender - Test'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'chemo'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
