@@ -27,6 +27,8 @@ class TestChemocareTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_3[0].value, "1000000001^^^NHS^NH")
         self.assertEqual(transformed_message.pid.pid_3[1].value, "SWWCC1000000001^^^192^PI")
         self.assertEqual(transformed_message.pid.pid_5.value, "TEST^TEST^TEST^^Mr.")
+        self.assertEqual(transformed_message.pid.pid_13[0].value, "01000 000001^PRN^^test@test.com")
+        self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001^PRS")
         self.assertEqual(transformed_message.evn.value, "EVN|Sub|20250701154910")
         self.assertEqual(transformed_message.pd1.value, "PD1||||G7000001")
         self.assertEqual(transformed_message.pv1.value, "PV1||U")
