@@ -105,7 +105,3 @@ class TestProcessChemoMessage(unittest.TestCase):
                 sending_app = _get_sending_app(hl7_message)
 
                 self.assertEqual(sending_app, expected_sending_app)
-
-
-if __name__ == "__main__":
-    unittest.main()

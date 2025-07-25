@@ -10,8 +10,7 @@ from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value
 class TestPD1Mapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|192|192|200|200|20250624161510||ADT^A31|369913945290925|P|2.4|||NE|NE\r"
-            "PD1||||G7000001\r"
+            "MSH|^~\\&|192|192|200|200|20250624161510||ADT^A31|369913945290925|P|2.4|||NE|NE\rPD1||||G7000001\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
@@ -40,7 +39,3 @@ class TestPD1Mapper(unittest.TestCase):
                 get_hl7_field_value(self.original_message.pd1, field_path),
                 get_hl7_field_value(self.new_message.pd1, field_path),
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

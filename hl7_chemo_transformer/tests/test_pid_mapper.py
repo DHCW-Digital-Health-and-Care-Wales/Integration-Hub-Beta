@@ -82,13 +82,35 @@ class TestPIDMapper(unittest.TestCase):
                 )
 
     def test_map_pid_health_board_logic(self) -> None:
-        map_pid(self.original_message, self.new_message)
+        health_board_map = {
+            "224": "VCC",
+            "212": "BCUCC",
+            "192": "SWWCC",
+            "245": "SEWCC",
+        }
 
-        original_pid2 = get_hl7_field_value(self.original_message.pid, "pid_2.cx_1")
-        new_pid3_rep2 = get_hl7_field_value(self.new_message.pid.pid_3[1], "cx_1")
+        for code, expected_health_board in list(health_board_map.items()):
+            self.original_message.msh.msh_3.hd_1.value = code
 
-        self.assertEqual(f"VCC{original_pid2}", new_pid3_rep2)
+            new_message = Message(version="2.5")
 
+            with self.subTest(health_board_id=code):
+                map_pid(self.original_message, new_message)
+                original_pid2 = get_hl7_field_value(self.original_message.pid, "pid_2.cx_1")
+                new_pid3_rep2 = get_hl7_field_value(new_message.pid.pid_3[1], "cx_1")
 
-if __name__ == "__main__":
-    unittest.main()
+                self.assertEqual(f"{expected_health_board}{original_pid2}", new_pid3_rep2)
+
+    def test_map_pid_health_board_uknown_to_empty_string(self) -> None:
+        unknown_health_boards = ["123", ""]
+
+        for unknown_code in unknown_health_boards:
+            self.original_message.msh.msh_3.hd_1.value = unknown_code
+
+            new_message = Message(version="2.5")
+
+            with self.subTest(health_board_id=unknown_code):
+                map_pid(self.original_message, new_message)
+                new_pid3_rep2 = get_hl7_field_value(new_message.pid.pid_3[1], "cx_1")
+
+                self.assertEqual("", new_pid3_rep2)

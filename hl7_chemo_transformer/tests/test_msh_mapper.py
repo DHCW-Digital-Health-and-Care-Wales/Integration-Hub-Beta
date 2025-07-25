@@ -57,7 +57,3 @@ class TestMSHMapper(unittest.TestCase):
                 get_hl7_field_value(self.original_message.msh, field_path),
                 get_hl7_field_value(self.new_message.msh, field_path),
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

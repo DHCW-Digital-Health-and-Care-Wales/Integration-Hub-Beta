@@ -82,7 +82,3 @@ class TestChemocareTransformer(unittest.TestCase):
         mock_map_pd1.assert_called_once_with(original_message, transformed_message)
         mock_map_nk1.assert_called_once_with(original_message, transformed_message)
         mock_map_non_specific.assert_called_once_with(original_message, transformed_message)
-
-
-if __name__ == "__main__":
-    unittest.main()

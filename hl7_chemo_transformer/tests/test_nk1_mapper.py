@@ -35,7 +35,3 @@ class TestNK1Mapper(unittest.TestCase):
                 get_hl7_field_value(self.original_message.nk1, field_path),
                 get_hl7_field_value(self.new_message.nk1, field_path),
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

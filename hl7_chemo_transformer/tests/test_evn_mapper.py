@@ -9,8 +9,7 @@ from hl7_chemo_transformer.mappers.evn_mapper import map_evn
 class TestEVNMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|192|192|200|200|20250624161510||ADT^A31|369913945290925|P|2.4|||NE|NE\r"
-            "EVN|Sub|20250624161510\r"
+            "MSH|^~\\&|192|192|200|200|20250624161510||ADT^A31|369913945290925|P|2.4|||NE|NE\rEVN|Sub|20250624161510\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
@@ -21,7 +20,3 @@ class TestEVNMapper(unittest.TestCase):
         original_evn_str = self.original_message.evn.to_er7()
         new_evn_str = self.new_message.evn.to_er7()
         self.assertEqual(original_evn_str, new_evn_str)
-
-
-if __name__ == "__main__":
-    unittest.main()
