@@ -101,8 +101,10 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     for field in pid_11_fields:
         set_nested_field(original_pid, new_message.pid, "pid_11", field)
 
+    #TODO - multiple instances of pid_13.xtn are not implemented
     set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_1")
     set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_2")
+    set_nested_field(original_pid, new_message.pid, "pid_13", "xtn_4")
 
     set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_1")
     set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_2")
@@ -110,7 +112,4 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     set_nested_field(original_pid, new_message.pid, "pid_17", "ce_1")
     set_nested_field(original_pid, new_message.pid, "pid_22", "ce_1")
     set_nested_field(original_pid, new_message.pid, "pid_29", "ts_1")
-
-    pid32_value = get_hl7_field_value(original_pid, "pid_32")
-    if pid32_value:
-        new_message.pid.pid_31 = pid32_value
+    set_nested_field(original_pid, new_message.pid, "pid_32")

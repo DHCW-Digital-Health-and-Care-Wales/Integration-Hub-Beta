@@ -47,11 +47,13 @@ class TestPIDMapper(unittest.TestCase):
             "pid_11.xad_8",
             "pid_13.xtn_1",
             "pid_13.xtn_2",
+            "pid_13.xtn_4",
             "pid_14.xtn_1",
             "pid_14.xtn_2",
             "pid_17.ce_1",
             "pid_22.ce_1",
             "pid_29.ts_1",
+            "pid_32",
         ]
 
         for field_path in test_cases:
@@ -74,14 +76,6 @@ class TestPIDMapper(unittest.TestCase):
         new_pid3_rep2 = get_hl7_field_value(self.new_message.pid.pid_3[1], "cx_1")
 
         self.assertEqual(f"VCC{original_pid2}", new_pid3_rep2)
-
-    def test_map_pid_32_to_31_mapping(self) -> None:
-        map_pid(self.original_message, self.new_message)
-
-        self.assertEqual(
-            get_hl7_field_value(self.original_message.pid, "pid_32"),
-            get_hl7_field_value(self.new_message.pid, "pid_31"),
-        )
 
 
 if __name__ == "__main__":
