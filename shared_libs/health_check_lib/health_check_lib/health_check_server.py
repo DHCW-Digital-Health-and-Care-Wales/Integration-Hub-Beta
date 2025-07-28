@@ -40,6 +40,6 @@ class TCPHealthCheckServer:
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args: object) -> None:
         self.stop()
         logger.debug("Health check server closed.")
