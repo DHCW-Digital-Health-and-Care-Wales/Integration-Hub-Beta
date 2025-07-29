@@ -1,4 +1,8 @@
+import logging
+
 from hl7apy.core import Message
+
+logger = logging.getLogger(__name__)
 
 
 def map_non_specific_segments(original_hl7_message: Message, new_message: Message) -> None:
@@ -17,4 +21,4 @@ def map_non_specific_segments(original_hl7_message: Message, new_message: Messag
         except (AttributeError, TypeError) as e:
             # A failure with one of these segments should not stop the entire mapping
             # as the required field mapping has already been completed
-            print("Error copying segment {}: {}".format(segment, str(e)))
+            logger.warning("Error copying segment %s: %s", segment, str(e))

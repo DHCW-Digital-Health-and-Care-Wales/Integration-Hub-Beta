@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from chemo_messages import chemo_messages
 from hl7apy.parser import parse_message
 
 from hl7_chemo_transformer.chemocare_transformer import transform_chemocare_message
+
+from .chemo_messages import chemo_messages
 
 
 class TestChemocareTransformer(unittest.TestCase):

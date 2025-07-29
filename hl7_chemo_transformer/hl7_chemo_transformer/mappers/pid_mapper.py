@@ -1,6 +1,13 @@
 from hl7apy.core import Message
 
-from ..utils.field_utils import get_hl7_field_value, set_nested_field
+from ..utils.field_utils import get_hl7_field_value, safe_copy_nested_field, set_nested_field
+
+HEALTH_BOARD_MAPPING = {
+    "224": "VCC",
+    "212": "BCUCC",
+    "192": "SWWCC",
+    "245": "SEWCC"
+}
 
 
 def map_pid(original_hl7_message: Message, new_message: Message) -> None:
@@ -31,71 +38,33 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
         if msh3_value:
             # Mapping rules based on msh.3.hd_1
-            health_board = ""
-            if msh3_value == "224":
-                health_board = "VCC"
-            elif msh3_value == "212":
-                health_board = "BCUCC"
-            elif msh3_value == "192":
-                health_board = "SWWCC"
-            elif msh3_value == "245":
-                health_board = "SEWCC"
+            health_board = HEALTH_BOARD_MAPPING.get(msh3_value, "")
 
             # If MSH.3.HD_1 has a different value to one of the 4 expected health boards - it will NOT be mapped
             if health_board:
                 pid3_rep2.cx_1 = f"{health_board}{pid2_value}"
 
-    if (
-        hasattr(original_pid, "pid_5")
-        and hasattr(original_pid.pid_5, "xpn_1")
-        and hasattr(original_pid.pid_5.xpn_1, "fn_1")
-        and original_pid.pid_5.xpn_1.fn_1
-    ):
-        new_message.pid.pid_5.xpn_1.fn_1 = original_pid.pid_5.xpn_1.fn_1
+    safe_copy_nested_field(original_pid, new_message.pid, "pid_5.xpn_1.fn_1")
 
     pid_5_fields = ["xpn_2", "xpn_3", "xpn_4", "xpn_5", "xpn_6", "xpn_7", "xpn_8"]
     for field in pid_5_fields:
         set_nested_field(original_pid, new_message.pid, "pid_5", field)
 
-    if (
-        hasattr(original_pid, "pid_5")
-        and hasattr(original_pid.pid_5, "xpn_9")
-        and hasattr(original_pid.pid_5.xpn_9, "ce_1")
-        and original_pid.pid_5.xpn_9.ce_1
-    ):
-        new_message.pid.pid_5.xpn_9.ce_1 = original_pid.pid_5.xpn_9.ce_1
+    safe_copy_nested_field(original_pid, new_message.pid, "pid_5.xpn_9.ce_1")
 
     set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_10")
     set_nested_field(original_pid, new_message.pid, "pid_5", "xpn_11")
 
-    if (
-        hasattr(original_pid, "pid_6")
-        and hasattr(original_pid.pid_6, "xpn_1")
-        and hasattr(original_pid.pid_6.xpn_1, "fn_1")
-        and original_pid.pid_6.xpn_1.fn_1
-    ):
-        new_message.pid.pid_6.xpn_1.fn_1 = original_pid.pid_6.xpn_1.fn_1
+    safe_copy_nested_field(original_pid, new_message.pid, "pid_6.xpn_1.fn_1")
 
     set_nested_field(original_pid, new_message.pid, "pid_7")
     set_nested_field(original_pid, new_message.pid, "pid_8")
 
-    if (
-        hasattr(original_pid, "pid_9")
-        and hasattr(original_pid.pid_9, "xpn_1")
-        and hasattr(original_pid.pid_9.xpn_1, "fn_1")
-        and original_pid.pid_9.xpn_1.fn_1
-    ):
-        new_message.pid.pid_9.xpn_1.fn_1 = original_pid.pid_9.xpn_1.fn_1
+    safe_copy_nested_field(original_pid, new_message.pid, "pid_9.xpn_1.fn_1")
 
     set_nested_field(original_pid, new_message.pid, "pid_10", "ce_1")
 
-    if (
-        hasattr(original_pid, "pid_11")
-        and hasattr(original_pid.pid_11, "xad_1")
-        and hasattr(original_pid.pid_11.xad_1, "sad_1")
-        and original_pid.pid_11.xad_1.sad_1
-    ):
-        new_message.pid.pid_11.xad_1.sad_1 = original_pid.pid_11.xad_1.sad_1
+    safe_copy_nested_field(original_pid, new_message.pid, "pid_11.xad_1.sad_1")
 
     pid_11_fields = ["xad_2", "xad_3", "xad_4", "xad_5", "xad_7", "xad_8"]
     for field in pid_11_fields:
@@ -110,7 +79,6 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_1")
     set_nested_field(original_pid, new_message.pid, "pid_14", "xtn_2")
-
     set_nested_field(original_pid, new_message.pid, "pid_17", "ce_1")
     set_nested_field(original_pid, new_message.pid, "pid_22", "ce_1")
     set_nested_field(original_pid, new_message.pid, "pid_29", "ts_1")

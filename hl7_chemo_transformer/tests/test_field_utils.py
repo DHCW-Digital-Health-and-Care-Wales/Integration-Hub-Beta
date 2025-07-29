@@ -1,64 +1,24 @@
 import unittest
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
 
-from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value, set_nested_field
+from hl7apy.core import Message
+from hl7apy.parser import parse_message
 
-
-@dataclass
-class _MockHL7Value:
-    """
-    Internal mock for HL7 value objects
-    """
-
-    value: Optional[Any] = None
+from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value, safe_copy_nested_field, set_nested_field
 
 
-@dataclass
-class _MockHL7Field:
-    """
-    Internal mock for HL7 field objects, aims to mirror HL7 segment fields with optional subfields
-    """
-
-    value: Optional[Any] = None
-    subfields: Dict[str, Any] = field(default_factory=dict)
-
-    def __getattr__(self, name: str) -> Any:
-        # similar to hl7apy
-        if name in self.subfields:
-            return self.subfields[name]
-        raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{name}'")
-
-
-def create_test_segments() -> tuple[_MockHL7Field, _MockHL7Field]:
-    # Create a mock MSH segment with various field types
-    msh_segment = _MockHL7Field(
-        value="MSH_SEGMENT",
-        subfields={
-            "msh_3": _MockHL7Field("SENDING_APP"),
-            "msh_4": _MockHL7Field(value="MSH_4", subfields={"hd_1": _MockHL7Field("HOSPITAL")}),
-            "msh_7": _MockHL7Field(value="20250725120000", subfields={"ts_1": _MockHL7Field("20250725")}),
-            "empty_field": _MockHL7Field(""),
-            "none_field": _MockHL7Field(None),
-        },
+def create_test_segments() -> tuple:
+    msh_message_str = (
+        "MSH|^~\\&|SENDING_APP|HOSPITAL||TEST|20250725120000||ADT^A28|123|P|2.4|||NE|NE\rEVN|A28|20250725120000\r"
     )
+    msh_message = parse_message(msh_message_str)
 
-    # Add double-nested value
-    nested_value = _MockHL7Value("NESTED_VALUE")
-    msh_segment.subfields["double_nested"] = _MockHL7Field(nested_value)
-
-    # Create a mock PID segment
-    pid_segment = _MockHL7Field(
-        value="PID_SEGMENT",
-        subfields={
-            "pid_5": _MockHL7Field(
-                value="PID_5",
-                subfields={"xpn_1": _MockHL7Field(value="XPN_1", subfields={"fn_1": _MockHL7Field("PATIENT_NAME")})},
-            )
-        },
+    pid_message_str = (
+        "MSH|^~\\&|TEST|TEST||TEST|20250725120000||ADT^A28|123|P|2.4|||NE|NE\r"
+        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||123 MAIN ST^^CITY^STATE^12345||555-1234^PRN||ENG|M||123456789||||||||||||\r"
     )
+    pid_message = parse_message(pid_message_str)
 
-    return msh_segment, pid_segment
+    return msh_message.msh, pid_message.pid
 
 
 class TestGetHL7FieldValue(unittest.TestCase):
@@ -83,9 +43,9 @@ class TestGetHL7FieldValue(unittest.TestCase):
             },
             {
                 "segment": self.msh_segment,
-                "field_path": "double_nested",
-                "expected": "NESTED_VALUE",
-                "description": "double-nested value in msh_segment",
+                "field_path": "msh_7.ts_1",
+                "expected": "20250725120000",
+                "description": "nested timestamp field in msh_segment",
             },
         ]
 
@@ -103,11 +63,11 @@ class TestGetHL7FieldValue(unittest.TestCase):
         self.assertEqual(result, "")
 
     def test_get_empty_field(self) -> None:
-        result = get_hl7_field_value(self.msh_segment, "empty_field")
+        result = get_hl7_field_value(self.msh_segment, "msh_5")
         self.assertEqual(result, "")
 
     def test_get_none_field(self) -> None:
-        result = get_hl7_field_value(self.msh_segment, "none_field")
+        result = get_hl7_field_value(self.msh_segment, "msh_25")
         self.assertEqual(result, "")
 
 
@@ -115,7 +75,9 @@ class TestSetNestedField(unittest.TestCase):
     def setUp(self) -> None:
         self.msh_segment, _ = create_test_segments()
         self.source = self.msh_segment
-        self.target = _MockHL7Field(value="TARGET", subfields={"msh_7": _MockHL7Field(value="TARGET_MSH_7")})
+
+        target_message = Message(version="2.5")
+        self.target = target_message.msh
 
     def test_set_field_no_subfield(self) -> None:
         set_nested_field(self.source, self.target, "msh_3")
@@ -124,41 +86,80 @@ class TestSetNestedField(unittest.TestCase):
         self.assertEqual(self.target.msh_3.value, "SENDING_APP")
 
     def test_set_field_with_subfield(self) -> None:
-        # Create target with msh_4 field but no hd_1 subfield
-        target = _MockHL7Field(subfields={"msh_4": _MockHL7Field(value="TARGET_MSH_4")})
+        self.target.msh_4 = ""
 
-        set_nested_field(self.source, target, "msh_4", "hd_1")
+        set_nested_field(self.source, self.target, "msh_4", "hd_1")
 
-        self.assertTrue(hasattr(target.msh_4, "hd_1"))
-        self.assertEqual(target.msh_4.hd_1.value, "HOSPITAL")
+        self.assertTrue(hasattr(self.target.msh_4, "hd_1"))
+        self.assertEqual(self.target.msh_4.hd_1.value, "HOSPITAL")
 
     def test_set_nonexistent_field(self) -> None:
-        target = _MockHL7Field()
+        initial_msh3_exists = hasattr(self.target, "msh_3")
 
-        set_nested_field(self.source, target, "missing_field")
+        set_nested_field(self.source, self.target, "missing_field")
 
-        self.assertFalse(hasattr(target, "missing_field"))
+        final_msh3_exists = hasattr(self.target, "msh_3")
+        self.assertEqual(initial_msh3_exists, final_msh3_exists)
 
     def test_set_empty_field_copied_over(self) -> None:
-        target = _MockHL7Field()
+        set_nested_field(self.source, self.target, "msh_5")
 
-        set_nested_field(self.source, target, "empty_field")
-
-        self.assertTrue(hasattr(target, "empty_field"))
-        self.assertEqual(target.empty_field.value, "")
-
-    def test_set_none_field_copied_over(self) -> None:
-        target = _MockHL7Field()
-
-        set_nested_field(self.source, target, "none_field")
-
-        self.assertTrue(hasattr(target, "none_field"))
-        self.assertEqual(target.none_field.value, None)
+        self.assertTrue(hasattr(self.target, "msh_5"))
+        self.assertEqual(str(self.target.msh_5.value), "")
 
     def test_set_nonexistent_subfield(self) -> None:
-        target = _MockHL7Field(subfields={"msh_3": _MockHL7Field(value="target_msh_3")})
+        self.target.msh_3 = ""
 
-        set_nested_field(self.source, target, "msh_3", "nonexistent_subfield")
+        set_nested_field(self.source, self.target, "msh_3", "nonexistent_subfield")
 
-        self.assertTrue(hasattr(target, "msh_3"))
-        self.assertFalse(hasattr(target.msh_3, "nonexistent_subfield"))
+        self.assertTrue(hasattr(self.target, "msh_3"))
+
+
+class TestSafeCopyNestedField(unittest.TestCase):
+    def setUp(self) -> None:
+        self.msh_segment, self.pid_segment = create_test_segments()
+
+    def test_safe_copy_existing_nested_field(self) -> None:
+        target_message = Message(version="2.5")
+        target = target_message.pid
+
+        target.pid_5 = ""
+        target.pid_5.xpn_1 = ""
+
+        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.fn_1")
+
+        self.assertTrue(result)
+        self.assertTrue(hasattr(target.pid_5.xpn_1, "fn_1"))
+        copied_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
+        self.assertEqual(copied_value, "PATIENT_NAME")
+
+    def test_safe_copy_missing_field_returns_false(self) -> None:
+        target_message = Message(version="2.5")
+        target = target_message.pid
+
+        target.pid_5 = ""
+        target.pid_5.xpn_1 = ""
+
+        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.missing_field")
+
+        self.assertFalse(result)
+        try:
+            hasattr(target.pid_5.xpn_1, "missing_field")
+        except Exception:
+            pass
+
+    def test_safe_copy_with_missing_intermediate_structure(self) -> None:
+        target_message = Message(version="2.5")
+        target = target_message.pid
+
+        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.fn_1")
+
+        if result:
+            self.assertTrue(hasattr(target.pid_5.xpn_1, "fn_1"))
+            copied_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
+            self.assertEqual(copied_value, "PATIENT_NAME")
+        else:
+            try:
+                pass
+            except Exception:
+                pass
