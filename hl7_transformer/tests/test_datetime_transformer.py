@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_transformer.datetime_transformer import transform_datetime
+from hl7_transformer.datetime_transformer import transform_datetime, transform_date_of_death
 
 
 class TestDatetimeTransformer(unittest.TestCase):
@@ -33,6 +33,34 @@ class TestDatetimeTransformer(unittest.TestCase):
     def test_incorrect_datetime(self):
         with self.assertRaises(ValueError):
             transform_datetime("2023-02-30 12:00:00")  # Invalid date
+
+class TestDateOfDeathTransformer(unittest.TestCase):
+    
+    def test_resurrec_transformation(self) -> None:
+        # Test exact case
+        self.assertEqual(transform_date_of_death("RESURREC"), '""')
+        
+        # Test case insensitive matching
+        self.assertEqual(transform_date_of_death("resurrec"), '""')
+        self.assertEqual(transform_date_of_death("Resurrec"), '""')
+        self.assertEqual(transform_date_of_death("RESURREC"), '""')
+        
+        # Test with whitespace
+        self.assertEqual(transform_date_of_death("  RESURREC  "), '""')
+        self.assertEqual(transform_date_of_death("\tRESURREC\n"), '""')
+
+    def test_valid_date_passthrough(self) -> None:
+        valid_dates = [
+            "2023-01-15",
+            "1999-12-31", 
+            "2025-05-23",
+            "2000-02-29",  # Leap year date
+            "1900-01-01"
+        ]
+        
+        for date in valid_dates:
+            with self.subTest(date=date):
+                self.assertEqual(transform_date_of_death(date), date)
 
 
 if __name__ == "__main__":

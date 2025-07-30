@@ -12,7 +12,7 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.audit_service_client import AuditServiceClient
 from health_check_lib.health_check_server import TCPHealthCheckServer
-from .datetime_transformer import transform_datetime
+from .datetime_transformer import transform_datetime, transform_date_of_death
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -74,18 +74,41 @@ def _process_message(
         msh_segment = hl7_msg.msh
         logger.debug(f"Message ID: {msh_segment.msh_10.value}")
 
+        transformations_applied = []
+
         created_datetime = msh_segment.msh_7.value
 
         transformed_datetime = transform_datetime(created_datetime)
         msh_segment.msh_7.value = transformed_datetime
 
+        transformations_applied.append(
+                f"DateTime transformed from {created_datetime} to {transformed_datetime}"
+            )
+
+        if hl7_msg.pid:
+            pid_segment = hl7_msg.pid
+
+            if pid_segment.pid_29.value is not None:
+                original_dod = pid_segment.pid_29.value
+                transformed_dod = transform_date_of_death(original_dod)
+                pid_segment.pid_29.value = transformed_dod
+
+                if original_dod != transformed_dod:
+                    transformations_applied.append(
+                        f"Date of death transformed from {original_dod} to {transformed_dod}"
+                    )
+
+                    if original_dod and original_dod.strip().upper() == "RESURREC":
+                        logger.info(f"Converted RESURREC date of death for message {msh_segment.msh_10.value}")
+
         updated_message = hl7_msg.to_er7()
         sender_client.send_message(updated_message)
 
-        audit_client.log_message_processed(
-            message_body,
-            f"DateTime transformed from {created_datetime} to {transformed_datetime}",
-        )
+        if transformations_applied:
+            transformation_summary = "; ".join(transformations_applied)
+            audit_message = f"HL7 transformations applied: {transformation_summary}"
+
+        audit_client.log_message_processed(message_body, audit_message)
 
         return ProcessingResult.successful()
 
