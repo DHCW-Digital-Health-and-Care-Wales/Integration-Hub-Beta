@@ -3,7 +3,7 @@ import unittest
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
-from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value, safe_copy_nested_field, set_nested_field
+from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value, set_nested_field
 
 
 def create_test_segments() -> tuple:
@@ -14,7 +14,7 @@ def create_test_segments() -> tuple:
 
     pid_message_str = (
         "MSH|^~\\&|TEST|TEST||TEST|20250725120000||ADT^A28|123|P|2.4|||NE|NE\r"
-        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||123 MAIN ST^^CITY^STATE^12345||555-1234^PRN||ENG|M||123456789||||||||||||\r"
+        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||^^^^CF11 9AD||555-1234^PRN||ENG|M||123456789||||||||||||\r"
     )
     pid_message = parse_message(pid_message_str)
 
@@ -73,79 +73,63 @@ class TestGetHL7FieldValue(unittest.TestCase):
 
 class TestSetNestedField(unittest.TestCase):
     def setUp(self) -> None:
-        self.msh_segment, _ = create_test_segments()
-        self.source = self.msh_segment
+        self.msh_segment, self.pid_segment = create_test_segments()
+        self.target_message = Message(version="2.5")
+        self.target = self.target_message.pid
 
-        target_message = Message(version="2.5")
-        self.target = target_message.msh
+    def test_set_existing_nested_field(self) -> None:
+        result = set_nested_field(self.pid_segment, self.target, "pid_5.xpn_1.fn_1")
+
+        self.assertTrue(result)
+        self.assertTrue(hasattr(self.target.pid_5.xpn_1, "fn_1"))
+        copied_value = get_hl7_field_value(self.target, "pid_5.xpn_1.fn_1")
+        self.assertEqual(copied_value, "PATIENT_NAME")
+
+    def test_set_missing_field_returns_false(self) -> None:
+        result = set_nested_field(self.pid_segment, self.target, "pid_5.xpn_1.missing_field")
+
+        self.assertFalse(result)
+        missing_field_value = get_hl7_field_value(self.target, "pid_5.xpn_1.missing_field")
+        self.assertEqual(missing_field_value, "")
+
+    def test_set_with_missing_intermediate_structure(self) -> None:
+        set_nested_field(self.pid_segment, self.target, "pid_11.xad_1.sad_1")
+
+        nested_field_value = get_hl7_field_value(self.target, "pid_11.xad_1.sad_1")
+        self.assertEqual(nested_field_value, "")
 
     def test_set_field_no_subfield(self) -> None:
-        set_nested_field(self.source, self.target, "msh_3")
+        msh_target = self.target_message.msh
+        set_nested_field(self.msh_segment, msh_target, "msh_3")
 
-        self.assertTrue(hasattr(self.target, "msh_3"))
-        self.assertEqual(self.target.msh_3.value, "SENDING_APP")
+        self.assertTrue(hasattr(msh_target, "msh_3"))
+        self.assertEqual(msh_target.msh_3.value, "SENDING_APP")
 
     def test_set_field_with_subfield(self) -> None:
-        set_nested_field(self.source, self.target, "msh_4", "hd_1")
+        msh_target = self.target_message.msh
+        set_nested_field(self.msh_segment, msh_target, "msh_4.hd_1")
 
-        self.assertTrue(hasattr(self.target.msh_4, "hd_1"))
-        self.assertEqual(self.target.msh_4.hd_1.value, "HOSPITAL")
+        self.assertTrue(hasattr(msh_target.msh_4, "hd_1"))
+        self.assertEqual(msh_target.msh_4.hd_1.value, "HOSPITAL")
 
     def test_set_nonexistent_field(self) -> None:
-        initial_msh3_exists = hasattr(self.target, "msh_3")
+        msh_target = self.target_message.msh
+        initial_msh3_exists = hasattr(msh_target, "msh_3")
 
-        set_nested_field(self.source, self.target, "missing_field")
+        set_nested_field(self.msh_segment, msh_target, "missing_field")
 
-        final_msh3_exists = hasattr(self.target, "msh_3")
+        final_msh3_exists = hasattr(msh_target, "msh_3")
         self.assertEqual(initial_msh3_exists, final_msh3_exists)
 
     def test_set_empty_field_copied_over(self) -> None:
-        set_nested_field(self.source, self.target, "msh_5")
+        msh_target = self.target_message.msh
+        set_nested_field(self.msh_segment, msh_target, "msh_5")
 
-        self.assertTrue(hasattr(self.target, "msh_5"))
-        self.assertEqual(str(self.target.msh_5.value), "")
+        self.assertTrue(hasattr(msh_target, "msh_5"))
+        self.assertEqual(str(msh_target.msh_5.value), "")
 
     def test_set_nonexistent_subfield(self) -> None:
-        set_nested_field(self.source, self.target, "msh_3", "nonexistent_subfield")
+        msh_target = self.target_message.msh
+        set_nested_field(self.msh_segment, msh_target, "msh_3.nonexistent_subfield")
 
-        self.assertTrue(hasattr(self.target, "msh_3"))
-
-
-class TestSafeCopyNestedField(unittest.TestCase):
-    def setUp(self) -> None:
-        self.msh_segment, self.pid_segment = create_test_segments()
-
-    def test_safe_copy_existing_nested_field(self) -> None:
-        target_message = Message(version="2.5")
-        target = target_message.pid
-
-        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.fn_1")
-
-        self.assertTrue(result)
-        self.assertTrue(hasattr(target.pid_5.xpn_1, "fn_1"))
-        copied_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
-        self.assertEqual(copied_value, "PATIENT_NAME")
-
-    def test_safe_copy_missing_field_returns_false(self) -> None:
-        target_message = Message(version="2.5")
-        target = target_message.pid
-
-        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.missing_field")
-
-        self.assertFalse(result)
-        missing_field_value = get_hl7_field_value(target, "pid_5.xpn_1.missing_field")
-        self.assertEqual(missing_field_value, "")
-
-    def test_safe_copy_with_missing_intermediate_structure(self) -> None:
-        target_message = Message(version="2.5")
-        target = target_message.pid
-
-        result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.fn_1")
-
-        if result:
-            self.assertTrue(hasattr(target.pid_5.xpn_1, "fn_1"))
-            copied_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
-            self.assertEqual(copied_value, "PATIENT_NAME")
-        else:
-            nested_field_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
-            self.assertEqual(nested_field_value, "")
+        self.assertTrue(hasattr(msh_target, "msh_3"))
