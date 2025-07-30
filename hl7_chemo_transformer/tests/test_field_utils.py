@@ -86,8 +86,6 @@ class TestSetNestedField(unittest.TestCase):
         self.assertEqual(self.target.msh_3.value, "SENDING_APP")
 
     def test_set_field_with_subfield(self) -> None:
-        self.target.msh_4 = ""
-
         set_nested_field(self.source, self.target, "msh_4", "hd_1")
 
         self.assertTrue(hasattr(self.target.msh_4, "hd_1"))
@@ -108,8 +106,6 @@ class TestSetNestedField(unittest.TestCase):
         self.assertEqual(str(self.target.msh_5.value), "")
 
     def test_set_nonexistent_subfield(self) -> None:
-        self.target.msh_3 = ""
-
         set_nested_field(self.source, self.target, "msh_3", "nonexistent_subfield")
 
         self.assertTrue(hasattr(self.target, "msh_3"))
@@ -123,9 +119,6 @@ class TestSafeCopyNestedField(unittest.TestCase):
         target_message = Message(version="2.5")
         target = target_message.pid
 
-        target.pid_5 = ""
-        target.pid_5.xpn_1 = ""
-
         result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.fn_1")
 
         self.assertTrue(result)
@@ -137,16 +130,11 @@ class TestSafeCopyNestedField(unittest.TestCase):
         target_message = Message(version="2.5")
         target = target_message.pid
 
-        target.pid_5 = ""
-        target.pid_5.xpn_1 = ""
-
         result = safe_copy_nested_field(self.pid_segment, target, "pid_5.xpn_1.missing_field")
 
         self.assertFalse(result)
-        try:
-            hasattr(target.pid_5.xpn_1, "missing_field")
-        except Exception:
-            pass
+        missing_field_value = get_hl7_field_value(target, "pid_5.xpn_1.missing_field")
+        self.assertEqual(missing_field_value, "")
 
     def test_safe_copy_with_missing_intermediate_structure(self) -> None:
         target_message = Message(version="2.5")
@@ -159,7 +147,5 @@ class TestSafeCopyNestedField(unittest.TestCase):
             copied_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
             self.assertEqual(copied_value, "PATIENT_NAME")
         else:
-            try:
-                pass
-            except Exception:
-                pass
+            nested_field_value = get_hl7_field_value(target, "pid_5.xpn_1.fn_1")
+            self.assertEqual(nested_field_value, "")
