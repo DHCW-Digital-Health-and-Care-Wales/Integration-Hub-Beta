@@ -58,6 +58,8 @@ services:
     restart: on-failure
     depends_on:
       - sb-emulator
+    profiles:
+      - phw-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -75,48 +77,104 @@ services:
     <<: *default-healthcheck
     depends_on:
       - sb-emulator
+    profiles:
+      - phw-to-mpi
     restart: on-failure
     networks:
       integration-hub:
         aliases:
           - "phw-hl7-transformer"
             
-  phw-hl7-sender:
-    container_name: phw-hl7-sender
+  mpi-hl7-sender:
+    container_name: mpi-hl7-sender
     build:
       context: ../hl7_sender
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./phw-hl7-sender.env
+      - ./mpi-hl7-sender.env
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
       - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
     networks:
       integration-hub:
         aliases:
-          - "phw-hl7-sender"
+          - "mpi-hl7-sender"
 
-  phw-hl7-mock-receiver:
-    container_name: phw-hl7-mock-receiver
+  mpi-hl7-mock-receiver:
+    container_name: mpi-hl7-mock-receiver
     build:
       context: ../hl7_mock_receiver
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./phw-hl7-mock-receiver.env
+      - ./mpi-hl7-mock-receiver.env
     ports:
       - "2576:2576"
     restart: on-failure
     depends_on:
       - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
     networks:
       integration-hub:
         aliases:
-          - "phw-hl7-mock-receiver"
+          - "mpi-hl7-mock-receiver"
+
+  paris-hl7-server:
+    container_name: paris-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./paris-hl7-server.env
+    ports:
+      - "2577:2577"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - paris-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "paris-hl7-server"
+
+  chemo-hl7-server:
+    container_name: chemo-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./chemo-hl7-server.env
+    ports:
+      - "2578:2578"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - chemo-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "chemo-hl7-server"
 
 networks:
   integration-hub:

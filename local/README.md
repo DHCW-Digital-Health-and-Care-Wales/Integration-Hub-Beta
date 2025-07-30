@@ -35,9 +35,14 @@ python3 generate_secrets.py > .secrets
 ## Startup
 
 ### Build and start containers
+Profiles:
+- phw-to-mpi
+- paris-to-mpi
+- chemo-to-mpi
 
+The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "*"
 ```
-docker compose up -d
+docker compose --profile <profile-name> up -d
 ```
 
 ### Review logs
