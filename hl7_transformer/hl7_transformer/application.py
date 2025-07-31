@@ -12,7 +12,8 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.audit_service_client import AuditServiceClient
 from health_check_lib.health_check_server import TCPHealthCheckServer
-from .datetime_transformer import transform_datetime, transform_date_of_death
+from .datetime_transformer import transform_datetime
+from .date_of_death_transformer import transform_date_of_death
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -72,7 +73,8 @@ def _process_message(
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
-        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
+        message_id = msh_segment.msh_10.value
+        logger.debug(f"Message ID: {message_id}")
 
         transformations_applied = []
 
@@ -86,14 +88,9 @@ def _process_message(
             )
 
         pid_segment = getattr(hl7_msg, "pid", None)
-        if pid_segment is not None:
-            
+        if pid_segment:
             dod_field = getattr(pid_segment, "pid_29", None)
-            original_dod = (
-                getattr(dod_field, "value", dod_field)
-                if hasattr(dod_field, "value")
-                else dod_field
-            )
+            original_dod = getattr(dod_field, "value", dod_field)
             
             if original_dod is not None:
                 transformed_dod = transform_date_of_death(original_dod)
@@ -109,7 +106,7 @@ def _process_message(
                     )
 
                     if original_dod and original_dod.strip().upper() == "RESURREC":
-                        logger.info(f"Converted RESURREC date of death for message {msh_segment.msh_10.value}")
+                        logger.info(f"Converted RESURREC date of death for message {message_id}")
 
         updated_message = hl7_msg.to_er7()
         sender_client.send_message(updated_message)
