@@ -37,17 +37,17 @@ class TestDatetimeTransformer(unittest.TestCase):
 class TestDateOfDeathTransformer(unittest.TestCase):
     
     def test_resurrec_transformation(self) -> None:
-        # Test exact case
-        self.assertEqual(transform_date_of_death("RESURREC"), '""')
+        resurrec_variants = [
+            "RESURREC",
+            "resurrec", 
+            "Resurrec",
+            "  RESURREC  ",
+            "\tRESURREC\n"
+        ]
         
-        # Test case insensitive matching
-        self.assertEqual(transform_date_of_death("resurrec"), '""')
-        self.assertEqual(transform_date_of_death("Resurrec"), '""')
-        self.assertEqual(transform_date_of_death("RESURREC"), '""')
-        
-        # Test with whitespace
-        self.assertEqual(transform_date_of_death("  RESURREC  "), '""')
-        self.assertEqual(transform_date_of_death("\tRESURREC\n"), '""')
+        for variant in resurrec_variants:
+            with self.subTest(variant=variant):
+                self.assertEqual(transform_date_of_death(variant), '""')
 
     def test_valid_date_passthrough(self) -> None:
         valid_dates = [

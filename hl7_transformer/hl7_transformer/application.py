@@ -85,13 +85,23 @@ def _process_message(
                 f"DateTime transformed from {created_datetime} to {transformed_datetime}"
             )
 
-        if hl7_msg.pid:
-            pid_segment = hl7_msg.pid
-
-            if pid_segment.pid_29.value is not None:
-                original_dod = pid_segment.pid_29.value
+        pid_segment = getattr(hl7_msg, "pid", None)
+        if pid_segment is not None:
+            
+            dod_field = getattr(pid_segment, "pid_29", None)
+            original_dod = (
+                getattr(dod_field, "value", dod_field)
+                if hasattr(dod_field, "value")
+                else dod_field
+            )
+            
+            if original_dod is not None:
                 transformed_dod = transform_date_of_death(original_dod)
-                pid_segment.pid_29.value = transformed_dod
+                
+                if hasattr(dod_field, "value"):
+                    dod_field.value = transformed_dod
+                else:
+                    pid_segment.pid_29 = transformed_dod
 
                 if original_dod != transformed_dod:
                     transformations_applied.append(
