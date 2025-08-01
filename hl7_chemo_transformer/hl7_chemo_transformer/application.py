@@ -7,6 +7,7 @@ from typing import Optional
 
 from azure.servicebus import ServiceBusMessage
 from health_check_lib.health_check_server import TCPHealthCheckServer
+from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
@@ -15,8 +16,7 @@ from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from .app_config import AppConfig
-from .date_of_death_transformer import transform_date_of_death
-from .datetime_transformer import transform_datetime
+from .chemocare_transformer import transform_chemocare_message
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 
-def main():
+def main() -> None:
     global PROCESSOR_RUNNING
 
     app_config = AppConfig.read_env_config()
@@ -53,7 +53,7 @@ def main():
         AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id) as audit_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
     ):
-        logger.info("Processor started.")
+        logger.info("Chemocare Transformer processor started.")
         health_check_server.start()
 
         while PROCESSOR_RUNNING:
@@ -72,63 +72,31 @@ def _process_message(
     logger.debug("Received message")
 
     try:
-        audit_client.log_message_received(message_body, "Message received for transformation")
+        audit_client.log_message_received(message_body, "Message received for Chemocare transformation")
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
-        message_id = msh_segment.msh_10.value
-        logger.debug(f"Message ID: {message_id}")
+        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
 
-        transformations_applied = []
+        sending_app = _get_sending_app(hl7_msg)
+        logger.info(f"Applying Chemocare transformation for SENDING_APP: {sending_app}")
 
-        created_datetime = msh_segment.msh_7.value
+        transformed_hl7_message = transform_chemocare_message(hl7_msg)
 
-        transformed_datetime = transform_datetime(created_datetime)
-        msh_segment.msh_7.value = transformed_datetime
+        sender_client.send_message(transformed_hl7_message.to_er7())
 
-        transformations_applied.append(
-                f"DateTime transformed from {created_datetime} to {transformed_datetime}"
-            )
-
-        pid_segment = getattr(hl7_msg, "pid", None)
-        if pid_segment:
-            dod_field = getattr(pid_segment, "pid_29", None)
-            original_dod = getattr(dod_field, "value", dod_field)
-
-            if original_dod is not None:
-                transformed_dod = transform_date_of_death(original_dod)
-
-                if hasattr(dod_field, "value"):
-                    dod_field.value = transformed_dod
-                else:
-                    pid_segment.pid_29 = transformed_dod
-
-                if original_dod != transformed_dod:
-                    transformations_applied.append(
-                        f"Date of death transformed from {original_dod} to {transformed_dod}"
-                    )
-
-                    if original_dod and original_dod.strip().upper() == "RESURREC":
-                        logger.info(f"Converted RESURREC date of death for message {message_id}")
-
-        updated_message = hl7_msg.to_er7()
-        sender_client.send_message(updated_message)
-
-        if transformations_applied:
-            transformation_summary = "; ".join(transformations_applied)
-            audit_message = f"HL7 transformations applied: {transformation_summary}"
-        else:
-            audit_message = "HL7 message processed successfully with no transformations required"
-
-        audit_client.log_message_processed(message_body, audit_message)
+        audit_client.log_message_processed(
+            message_body,
+            f"Chemocare transformation applied for SENDING_APP: {sending_app}",
+        )
 
         return ProcessingResult.successful()
 
     except ValueError as e:
-        error_msg = f"Failed to transform datetime: {e}"
+        error_msg = f"Failed to transform Chemocare message: {e}"
         logger.error(error_msg)
 
-        audit_client.log_message_failed(message_body, error_msg, "DateTime transformation failed")
+        audit_client.log_message_failed(message_body, error_msg, "Chemocare transformation failed")
 
         return ProcessingResult.failed(str(e))
 
@@ -139,6 +107,13 @@ def _process_message(
         audit_client.log_message_failed(message_body, error_msg, "Unexpected processing error")
 
         return ProcessingResult.failed(str(e), retry=True)
+
+
+def _get_sending_app(hl7_msg: Message) -> str:
+    try:
+        return hl7_msg.msh.msh_3.msh_3_1.value
+    except (AttributeError, IndexError):
+        return "UNKNOWN"
 
 
 if __name__ == "__main__":

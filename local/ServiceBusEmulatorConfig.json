@@ -33,7 +33,7 @@
             }
           },
           {
-            "Name": "local-inthub-phw-sender-ingress",
+            "Name": "local-inthub-chemo-transformer-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",
@@ -47,7 +47,21 @@
             }
           },
           {
-            "Name": "local-inthub-phw-mock-receiver",
+            "Name": "local-inthub-mpi-sender-ingress",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": false,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 3,
+              "RequiresDuplicateDetection": false,
+              "RequiresSession": false
+            }
+          },
+          {
+            "Name": "local-inthub-mpi-mock-receiver",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",

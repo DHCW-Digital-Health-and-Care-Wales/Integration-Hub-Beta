@@ -28,6 +28,8 @@ python3 generate_secrets.py > .secrets
     # Add to your shell profile (~/.zshrc)
     export SSL_CERT_FILE=/path/to/your/corporate-certificate.pem
     ```
+    # Run to refresh /.zshrc
+    source ~/.zshrc
 
     **For Docker containers:**
     Provide custom CA certificates if needed (required in some proxied corporate networks): merge them in a single crt (change extension if needed) file and add in every service  under `./ca-certs/cacerts.crt` path.
@@ -35,9 +37,14 @@ python3 generate_secrets.py > .secrets
 ## Startup
 
 ### Build and start containers
+Profiles:
+- phw-to-mpi
+- paris-to-mpi
+- chemo-to-mpi
 
+The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "*"
 ```
-docker compose up -d
+docker compose --profile <profile-name> up -d
 ```
 
 ### Review logs
