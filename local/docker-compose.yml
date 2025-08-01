@@ -176,6 +176,26 @@ services:
         aliases:
           - "chemo-hl7-server"
 
+  chemo-hl7-transformer:
+    container_name: chemo-hl7-transformer
+    build:
+      context: ../hl7_chemo_transformer
+      additional_contexts:
+      - ca-certs=../ca-certs
+      - shared_libs=../shared_libs
+    env_file:
+      - ./chemo-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - chemo-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "chemo-hl7-transformer"
+
 networks:
   integration-hub:
 
