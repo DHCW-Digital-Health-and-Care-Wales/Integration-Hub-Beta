@@ -8,10 +8,14 @@ from hl7_transformer.app_config import AppConfig
 from hl7_transformer.application import _process_message, main
 
 
-def _setup(created_datetime: str):
+def _setup(created_datetime: str, date_of_death: str = None) -> tuple:
     hl7_message = Message("ADT_A01")
     hl7_message.msh.msh_7 = created_datetime
     hl7_message.msh.msh_10 = "MSGID1234"
+
+    if date_of_death is not None:
+        hl7_message.pid.pid_29 = date_of_death
+    
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_sender = MagicMock()
@@ -23,12 +27,15 @@ def _setup(created_datetime: str):
 class TestProcessMessage(unittest.TestCase):
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
-    def test_process_message_success(self, mock_transform_datetime, mock_parse_message):
+    @patch("hl7_transformer.application.transform_date_of_death")
+    def test_process_message_success(self, mock_transform_dod, mock_transform_datetime, mock_parse_message):
         # Arrange
         created_datetime = "2025-05-22_10:30:00"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime)
+        resurrec_dod = "RESURREC"
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime, resurrec_dod)
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
+        mock_transform_dod.return_value = '""'
 
         # Act
         result = _process_message(service_bus_message, mock_sender, mock_audit_client)
@@ -36,6 +43,7 @@ class TestProcessMessage(unittest.TestCase):
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
         mock_transform_datetime.assert_called_once_with(created_datetime)
+        mock_transform_dod.assert_called_once_with(resurrec_dod)
         mock_sender.send_message.assert_called_once_with(hl7_message.to_er7())
 
         mock_audit_client.log_message_received.assert_called_once_with(
@@ -43,9 +51,33 @@ class TestProcessMessage(unittest.TestCase):
         )
         mock_audit_client.log_message_processed.assert_called_once_with(
             hl7_string,
-            "DateTime transformed from 2025-05-22_10:30:00 to 20250522103000",
+            'HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; Date of death transformed from RESURREC to ""',
         )
 
+        self.assertTrue(result.success)
+
+    @patch("hl7_transformer.application.parse_message")
+    @patch("hl7_transformer.application.transform_datetime")
+    @patch("hl7_transformer.application.transform_date_of_death")
+    def test_process_message_with_valid_date_of_death(
+        self, mock_transform_dod, mock_transform_datetime, mock_parse_message
+    ) -> None:
+        # Arrange
+        created_datetime = "2025-05-22 10:30:00"
+        valid_dod = "2023-01-15"
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(
+            created_datetime, valid_dod
+        )
+        
+        mock_parse_message.return_value = hl7_message
+        mock_transform_datetime.return_value = "20250522103000"
+        mock_transform_dod.return_value = valid_dod  # No change needed
+
+        # Act
+        result = _process_message(service_bus_message, mock_sender, mock_audit_client)
+
+        # Assert
+        mock_transform_dod.assert_called_once_with(valid_dod)
         self.assertTrue(result.success)
 
     @patch("hl7_transformer.application.parse_message")

@@ -15,6 +15,7 @@ from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from .app_config import AppConfig
+from .date_of_death_transformer import transform_date_of_death
 from .datetime_transformer import transform_datetime
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
@@ -75,20 +76,51 @@ def _process_message(
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
-        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
+        message_id = msh_segment.msh_10.value
+        logger.debug(f"Message ID: {message_id}")
+
+        transformations_applied = []
 
         created_datetime = msh_segment.msh_7.value
 
         transformed_datetime = transform_datetime(created_datetime)
         msh_segment.msh_7.value = transformed_datetime
 
+        transformations_applied.append(
+                f"DateTime transformed from {created_datetime} to {transformed_datetime}"
+            )
+
+        pid_segment = getattr(hl7_msg, "pid", None)
+        if pid_segment:
+            dod_field = getattr(pid_segment, "pid_29", None)
+            original_dod = getattr(dod_field, "value", dod_field)
+
+            if original_dod is not None:
+                transformed_dod = transform_date_of_death(original_dod)
+
+                if hasattr(dod_field, "value"):
+                    dod_field.value = transformed_dod
+                else:
+                    pid_segment.pid_29 = transformed_dod
+
+                if original_dod != transformed_dod:
+                    transformations_applied.append(
+                        f"Date of death transformed from {original_dod} to {transformed_dod}"
+                    )
+
+                    if original_dod and original_dod.strip().upper() == "RESURREC":
+                        logger.info(f"Converted RESURREC date of death for message {message_id}")
+
         updated_message = hl7_msg.to_er7()
         sender_client.send_message(updated_message)
 
-        audit_client.log_message_processed(
-            message_body,
-            f"DateTime transformed from {created_datetime} to {transformed_datetime}",
-        )
+        if transformations_applied:
+            transformation_summary = "; ".join(transformations_applied)
+            audit_message = f"HL7 transformations applied: {transformation_summary}"
+        else:
+            audit_message = "HL7 message processed successfully with no transformations required"
+
+        audit_client.log_message_processed(message_body, audit_message)
 
         return ProcessingResult.successful()
 
