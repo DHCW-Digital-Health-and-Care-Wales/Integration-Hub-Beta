@@ -1,19 +1,20 @@
+import configparser
 import logging
 import os
 import signal
-import configparser
 
 from azure.servicebus import ServiceBusMessage
+from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
-from .app_config import AppConfig
+from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.processing_result import ProcessingResult
-from message_bus_lib.audit_service_client import AuditServiceClient
-from health_check_lib.health_check_server import TCPHealthCheckServer
-from .datetime_transformer import transform_datetime
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+
+from .app_config import AppConfig
 from .date_of_death_transformer import transform_date_of_death
+from .datetime_transformer import transform_datetime
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -91,10 +92,10 @@ def _process_message(
         if pid_segment:
             dod_field = getattr(pid_segment, "pid_29", None)
             original_dod = getattr(dod_field, "value", dod_field)
-            
+
             if original_dod is not None:
                 transformed_dod = transform_date_of_death(original_dod)
-                
+
                 if hasattr(dod_field, "value"):
                     dod_field.value = transformed_dod
                 else:
@@ -116,7 +117,7 @@ def _process_message(
             audit_message = f"HL7 transformations applied: {transformation_summary}"
         else:
             audit_message = "HL7 message processed successfully with no transformations required"
-        
+
         audit_client.log_message_processed(message_body, audit_message)
 
         return ProcessingResult.successful()
