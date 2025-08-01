@@ -114,8 +114,7 @@ def _process_message(
         if transformations_applied:
             transformation_summary = "; ".join(transformations_applied)
             audit_message = f"HL7 transformations applied: {transformation_summary}"
-
-        audit_client.log_message_processed(message_body, audit_message)
+            audit_client.log_message_processed(message_body, audit_message)
 
         return ProcessingResult.successful()
 
