@@ -1,9 +1,11 @@
 import logging
 import socket
+from typing import Any, Optional, Type
 
 from hl7.client import MLLPClient
 
 logger = logging.getLogger(__name__)
+
 
 def is_socket_closed(sock: socket.socket) -> bool:
     try:
@@ -44,8 +46,13 @@ class HL7SenderClient:
         except Exception as e:
             raise ConnectionError(f"Connection error while sending message: {e}")
 
-    def __enter__(self):
+    def __enter__(self) -> "HL7SenderClient":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
         self.mllp_client.close()
