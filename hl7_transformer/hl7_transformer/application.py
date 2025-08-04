@@ -39,7 +39,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 
-def main():
+def main() -> None:
     global PROCESSOR_RUNNING
 
     app_config = AppConfig.read_env_config()
@@ -93,23 +93,25 @@ def _process_message(
         pid_segment = getattr(hl7_msg, "pid", None)
         if pid_segment:
             dod_field = getattr(pid_segment, "pid_29", None)
-            original_dod = getattr(dod_field, "value", dod_field)
+            
+            if dod_field is not None:
+                original_dod = getattr(dod_field, "value", dod_field) if hasattr(dod_field, "value") else dod_field
 
-            if original_dod is not None:
-                transformed_dod = transform_date_of_death(original_dod)
+                if original_dod is not None:
+                    transformed_dod = transform_date_of_death(original_dod)
 
-                if hasattr(dod_field, "value"):
-                    dod_field.value = transformed_dod
-                else:
-                    pid_segment.pid_29 = transformed_dod
+                    if hasattr(dod_field, "value"):
+                        dod_field.value = transformed_dod
+                    else:
+                        pid_segment.pid_29 = transformed_dod
 
-                if original_dod != transformed_dod:
-                    transformations_applied.append(
-                        f"Date of death transformed from {original_dod} to {transformed_dod}"
-                    )
+                    if original_dod != transformed_dod:
+                        transformations_applied.append(
+                            f"Date of death transformed from {original_dod} to {transformed_dod}"
+                        )
 
-                    if original_dod and original_dod.strip().upper() == "RESURREC":
-                        logger.info(f"Converted RESURREC date of death for message {message_id}")
+                        if original_dod and original_dod.strip().upper() == "RESURREC":
+                            logger.info(f"Converted RESURREC date of death for message {message_id}")
 
         updated_message = hl7_msg.to_er7()
         sender_client.send_message(updated_message)
