@@ -15,7 +15,7 @@ def _setup(created_datetime: str, date_of_death: str = None) -> tuple:
 
     if date_of_death is not None:
         hl7_message.pid.pid_29 = date_of_death
-    
+
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_sender = MagicMock()
@@ -32,7 +32,13 @@ class TestProcessMessage(unittest.TestCase):
         # Arrange
         created_datetime = "2025-05-22_10:30:00"
         resurrec_dod = "RESURREC"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime, resurrec_dod)
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_sender,
+            mock_audit_client,
+        ) = _setup(created_datetime, resurrec_dod)
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
@@ -49,9 +55,13 @@ class TestProcessMessage(unittest.TestCase):
         mock_audit_client.log_message_received.assert_called_once_with(
             hl7_string, "Message received for transformation"
         )
+        audit_message = (
+            "HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; "
+            'Date of death transformed from RESURREC to ""'
+        )
         mock_audit_client.log_message_processed.assert_called_once_with(
             hl7_string,
-            'HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; Date of death transformed from RESURREC to ""',
+            audit_message,
         )
 
         self.assertTrue(result.success)
@@ -68,7 +78,7 @@ class TestProcessMessage(unittest.TestCase):
         service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(
             created_datetime, valid_dod
         )
-        
+
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = valid_dod  # No change needed
@@ -128,8 +138,8 @@ class TestProcessMessage(unittest.TestCase):
             health_check_port=9000,
         )
 
-        # Set PROCESSOR_RUNNING to False to exit the loop immediately
-        with patch("hl7_transformer.application.PROCESSOR_RUNNING", False):
+        # Set STATE["running"] to False to exit the loop immediately
+        with patch("hl7_transformer.application.STATE", {"running": False}):
             # Act
             main()
 
