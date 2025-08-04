@@ -1,6 +1,6 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from typing import Optional
+from unittest.mock import MagicMock, patch
 
 from hl7_transformer.app_config import AppConfig
 

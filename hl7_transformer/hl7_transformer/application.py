@@ -26,21 +26,31 @@ config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum: int, frame: Optional[FrameType]) -> None:
-    global PROCESSOR_RUNNING
-    logger.info("Shutting down the processor")
-    PROCESSOR_RUNNING = False
+class ProcessorManager:
+    def __init__(self) -> None:
+        self._running = True
+        self._setup_signal_handlers()
 
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(signal.SIGINT, self._shutdown_handler)
+        signal.signal(signal.SIGTERM, self._shutdown_handler)
 
-signal.signal(signal.SIGINT, shutdown_handler)
-signal.signal(signal.SIGTERM, shutdown_handler)
+    def _shutdown_handler(self, signum: int, frame: Optional[FrameType]) -> None:
+        logger.info("Shutting down the processor")
+        self._running = False
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    def stop(self) -> None:
+        self._running = False
 
 
 def main() -> None:
-    global PROCESSOR_RUNNING
+    processor_manager = ProcessorManager()
 
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
@@ -56,7 +66,7 @@ def main() -> None:
         logger.info("Processor started.")
         health_check_server.start()
 
-        while PROCESSOR_RUNNING:
+        while processor_manager.is_running:
             receiver_client.receive_messages(
                 MAX_BATCH_SIZE,
                 lambda message: _process_message(message, sender_client, audit_client),
@@ -93,7 +103,7 @@ def _process_message(
         pid_segment = getattr(hl7_msg, "pid", None)
         if pid_segment:
             dod_field = getattr(pid_segment, "pid_29", None)
-            
+
             if dod_field is not None:
                 original_dod = getattr(dod_field, "value", dod_field) if hasattr(dod_field, "value") else dod_field
 
