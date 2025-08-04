@@ -2,6 +2,8 @@ import configparser
 import logging
 import os
 import signal
+from types import FrameType
+from typing import Optional
 
 from azure.servicebus import ServiceBusMessage
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -26,7 +28,7 @@ MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum, frame):
+def shutdown_handler(signum: int, frame: Optional[FrameType]) -> None:
     global PROCESSOR_RUNNING
     logger.info("Shutting down the processor")
     PROCESSOR_RUNNING = False
@@ -36,12 +38,15 @@ signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 
-def main():
+def main() -> None:
     global PROCESSOR_RUNNING
 
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
+
+    assert app_config.receiver_mllp_hostname is not None
+    assert app_config.receiver_mllp_port is not None
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
