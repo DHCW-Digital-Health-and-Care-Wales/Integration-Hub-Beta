@@ -25,28 +25,42 @@ config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum: int, frame: Optional[FrameType]) -> None:
-    global PROCESSOR_RUNNING
-    logger.info("Shutting down the processor")
-    PROCESSOR_RUNNING = False
+class ProcessorManager:
+    """Manages the processor state and signal handling without global variables."""
 
+    def __init__(self) -> None:
+        self._running = True
+        self._setup_signal_handlers()
 
-signal.signal(signal.SIGINT, shutdown_handler)
-signal.signal(signal.SIGTERM, shutdown_handler)
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(signal.SIGINT, self._shutdown_handler)
+        signal.signal(signal.SIGTERM, self._shutdown_handler)
+
+    def _shutdown_handler(self, signum: int, frame: Optional[FrameType]) -> None:
+        logger.info("Shutting down the processor")
+        self._running = False
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    def stop(self) -> None:
+        self._running = False
 
 
 def main() -> None:
-    global PROCESSOR_RUNNING
+    processor_manager = ProcessorManager()
 
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
 
-    assert app_config.receiver_mllp_hostname is not None
-    assert app_config.receiver_mllp_port is not None
+    if app_config.receiver_mllp_hostname is None:
+        raise ValueError("receiver_mllp_hostname configuration is required")
+    if app_config.receiver_mllp_port is None:
+        raise ValueError("receiver_mllp_port configuration is required")
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
@@ -60,7 +74,7 @@ def main() -> None:
         logger.info("Processor started.")
         health_check_server.start()
 
-        while PROCESSOR_RUNNING:
+        while processor_manager.is_running:
             receiver_client.receive_messages(
                 MAX_BATCH_SIZE, lambda message: _process_message(message, hl7_sender_client, audit_client)
             )

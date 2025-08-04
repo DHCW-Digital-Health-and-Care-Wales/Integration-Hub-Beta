@@ -83,8 +83,11 @@ class TestProcessMessage(unittest.TestCase):
             microservice_id="test_microservice_id",
             ack_timeout_seconds=30
         )
-        # Set PROCESSOR_RUNNING to False to exit the loop immediately
-        with patch("hl7_sender.application.PROCESSOR_RUNNING", False):
+        # Mock ProcessorManager to exit the loop immediately
+        with patch("hl7_sender.application.ProcessorManager") as mock_processor_manager:
+            mock_instance = mock_processor_manager.return_value
+            mock_instance.is_running = False
+
             # Act
             main()
 
