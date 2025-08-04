@@ -1,39 +1,61 @@
 import logging
+import time
+
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiver
 from typing import Callable
-
-from message_bus_lib.processing_result import ProcessingResult
 
 logger = logging.getLogger(__name__)
 
 
 class MessageReceiverClient:
+    MAX_DELAY_SECONDS = 15 * 60 # 15 minutes
+    INITIAL_DELAY_SECONDS = 5
+    MAX_WAIT_TIME_SECONDS = 5
+
     def __init__(self, receiver: ServiceBusReceiver):
         self.receiver = receiver
+        self.retry_attempt = 0
+        self.delay = self.INITIAL_DELAY_SECONDS
 
-    def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], ProcessingResult]):
-        messages = self.receiver.receive_messages(max_message_count=num_of_messages, max_wait_time=5)
+    def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]):
 
-        for msg in messages:
-            try:
-                result = message_processor(msg)
+        while True:
+            messages = self.receiver.receive_messages(max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS)
 
-                if result.success:
-                    self.receiver.complete_message(msg)
-                    logger.debug("Message processed and completed: %s", msg.message_id)
+            for msg in messages:
+                try:
+                    is_success = message_processor(msg)
 
-                elif result.retry:
-                    self.receiver.abandon_message(msg)
-                    logger.error("Message processing failed, message abandoned: %s", msg.message_id)
+                    if is_success:
+                        self.receiver.complete_message(msg)
+                        logger.debug("Message processed and completed: %s", msg.message_id)
+                        self.retry_attempt = 0
+                        self.delay = self.INITIAL_DELAY_SECONDS
+                    else:
+                        logger.error("Message processing failed, message abandoned: %s", msg.message_id)
+                        self._abandon_message_and_delay(msg)
+                        break
 
-                else:
-                    reason = result.error_reason
-                    self.receiver.dead_letter_message(msg, reason=reason)
-                    logger.error("Message processing failed, message dead lettered: %s", msg.message_id)
+                except Exception as e:
+                    logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
+                    self._abandon_message_and_delay(msg)
+                    break
 
-            except Exception as e:
-                logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
-                self.receiver.abandon_message(msg)
+            if self.retry_attempt == 0 or not messages:
+                break
+
+    def _abandon_message_and_delay(self, msg: ServiceBusMessage):
+        self.receiver.abandon_message(msg)
+        self.retry_attempt += 1
+        self._apply_backoff(msg)
+        self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
+
+    def _apply_backoff(self, msg: ServiceBusMessage):
+        logger.error(
+            "Retry attempt %d, waiting for %d seconds before retrying message: %s",
+            self.retry_attempt, self.delay, msg.message_id
+        )
+        time.sleep(self.delay)
 
     def close(self):
         self.receiver.close()

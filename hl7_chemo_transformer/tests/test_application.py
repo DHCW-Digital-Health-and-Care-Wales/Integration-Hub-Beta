@@ -45,7 +45,7 @@ class TestProcessChemoMessage(unittest.TestCase):
         mock_transform_chemocare.assert_called_once()
         input_message = mock_transform_chemocare.call_args[0][0]
         self.assertEqual(input_message.msh.msh_10.value, "369913945290925")
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_chemo_transformer.application.transform_chemocare_message")
     def test_process_message_transform_failure(self, mock_transform_chemocare: Any) -> None:
@@ -54,8 +54,7 @@ class TestProcessChemoMessage(unittest.TestCase):
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
+        self.assertFalse(result)
         self.mock_sender.send_message.assert_not_called()
 
     @patch("hl7_chemo_transformer.application.transform_chemocare_message")
@@ -82,9 +81,7 @@ class TestProcessChemoMessage(unittest.TestCase):
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
-        self.assertTrue(result.retry)
+        self.assertFalse(result)
 
     def test_get_sending_app_all_message_types(self) -> None:
         test_cases = [

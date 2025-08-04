@@ -54,7 +54,7 @@ class TestProcessMessage(unittest.TestCase):
             'HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; Date of death transformed from RESURREC to ""',
         )
 
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
@@ -78,7 +78,7 @@ class TestProcessMessage(unittest.TestCase):
 
         # Assert
         mock_transform_dod.assert_called_once_with(valid_dod)
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
@@ -108,8 +108,7 @@ class TestProcessMessage(unittest.TestCase):
         )
         mock_audit_client.log_message_processed.assert_not_called()
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
+        self.assertFalse(result)
 
     @patch("hl7_transformer.application.AuditServiceClient")
     @patch("hl7_transformer.application.AppConfig")
