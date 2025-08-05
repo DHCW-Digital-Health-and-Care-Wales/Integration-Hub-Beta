@@ -102,6 +102,7 @@ services:
       - phw-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
+      - pims-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -125,6 +126,7 @@ services:
       - phw-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
+      - pims-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -196,6 +198,48 @@ services:
         aliases:
           - "chemo-hl7-transformer"
 
+  pims-hl7-server:
+    container_name: pims-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./pims-hl7-server.env
+    ports:
+      - "2579:2579"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - pims-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "pims-hl7-server"
+  
+  pims-hl7-transformer:
+    container_name: pims-hl7-transformer
+    build:
+      context: ../hl7_transformer
+      additional_contexts:
+      - ca-certs=../ca-certs
+      - shared_libs=../shared_libs
+    env_file:
+      - ./pims-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - pims-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "pims-hl7-transformer"
+
 networks:
   integration-hub:
-
