@@ -17,7 +17,8 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     set_nested_field(original_pid, new_message.pid, "pid_8")
 
-    set_nested_field(original_pid, new_message.pid, "pid_11.xad_1.sad_1")
+    # SAD does not exist on HL7 v2.3.1 so it's mapped manually
+    new_message.pid.pid_11.xad_1.sad_1 = original_pid.pid_11.xad_1
 
     pid_11_fields = ["xad_2", "xad_3", "xad_4", "xad_5"]
     for field in pid_11_fields:
