@@ -137,8 +137,8 @@ stages:
         parameters:
           jobName: 'ReleaseAppPIMSHL7TransformerDev'
           displayName: 'Release App PIMS HL7Transformer - Dev'
-          appName: 'hl7transformer'
-          appFunctionMidfix: 'pims'
+          appName: 'hl7pimstransformer'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -330,8 +330,8 @@ stages:
         parameters:
           jobName: 'ReleaseAppPIMSHL7TransformerTest'
           displayName: 'Release App PIMS HL7Transformer - Test'
-          appName: 'hl7transformer'
-          appFunctionMidfix: 'pims'
+          appName: 'hl7pimstransformer'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
