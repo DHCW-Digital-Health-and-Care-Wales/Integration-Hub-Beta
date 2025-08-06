@@ -147,6 +147,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
+  - stage: ReleaseHL7PIMSTransformerDev
+    displayName: 'Release App HL7PIMSTransformer - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7PIMSTransformerDev'
+          displayName: 'Release App HL7PIMSTransformer - Dev'
+          appName: 'hl7pimstransformer'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
+
   - stage: ReleaseHL7SenderDev
     displayName: 'Release App HL7Sender - Dev'
     jobs:
@@ -323,14 +340,13 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
-  - stage: ReleasePIMSHL7TransformerTest
-    displayName: 'Release App PIMS HL7Transformer - Test'
-    dependsOn: ReleasePIMSHL7TransformerDev
+  - stage: ReleaseHL7PIMSTransformerTest
+    displayName: 'Release App HL7PIMSTransformer - Test'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppPIMSHL7TransformerTest'
-          displayName: 'Release App PIMS HL7Transformer - Test'
+          jobName: 'ReleaseAppHL7PIMSTransformerTest'
+          displayName: 'Release App HL7PIMSTransformer - Test'
           appName: 'hl7pimstransformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
