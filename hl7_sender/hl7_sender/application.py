@@ -32,11 +32,6 @@ def main() -> None:
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
 
-    if app_config.receiver_mllp_hostname is None:
-        raise ValueError("receiver_mllp_hostname configuration is required")
-    if app_config.receiver_mllp_port is None:
-        raise ValueError("receiver_mllp_port configuration is required")
-
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
         HL7SenderClient(

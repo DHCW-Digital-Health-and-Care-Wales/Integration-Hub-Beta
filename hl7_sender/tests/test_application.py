@@ -75,7 +75,11 @@ class TestProcessMessage(unittest.TestCase):
         mock_health_check_ctx.__enter__.return_value = mock_health_server
         mock_health_check.return_value = mock_health_check_ctx
         mock_app_config.read_env_config.return_value = AppConfig(
-            None, None, None, "test-hostname", 2575,
+            connection_string=None, 
+            ingress_queue_name="test-queue-name", 
+            service_bus_namespace=None, 
+            receiver_mllp_hostname="test-hostname", 
+            receiver_mllp_port=2575,
             health_check_hostname="localhost",
             health_check_port=9000,
             audit_queue_name="test_audit_queue",
