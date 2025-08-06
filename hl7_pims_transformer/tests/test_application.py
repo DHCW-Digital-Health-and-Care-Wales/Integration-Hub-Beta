@@ -21,7 +21,7 @@ class TestProcessPimsMessage(unittest.TestCase):
 
         self.mock_transformed_message = MagicMock()
         self.mock_transformed_message.to_er7.return_value = (
-            "MSH|^~\\&|TRANSFORMED|192|200|200|20250624161510||ADT^A31|369913945290925|P|2.5|||NE|NE\r"
+            "MSH|^~\\&|103|103|200|200|20250806100245||ADT|73711860|P|2.5|||||GBR||EN\r"
         )
 
         self.mock_app_config = AppConfig(
@@ -37,15 +37,20 @@ class TestProcessPimsMessage(unittest.TestCase):
         )
 
     @patch("hl7_pims_transformer.application.transform_pims_message")
-    def test_process_message_input_validation(self, mock_transform_pims: Any) -> None:
+    def test_process_message_successfully_sends_message(self, mock_transform_pims: Any) -> None:
         mock_transform_pims.return_value = self.mock_transformed_message
+        expected_message = self.mock_transformed_message.to_er7.return_value
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        mock_transform_pims.assert_called_once()
-        input_message = mock_transform_pims.call_args[0][0]
-        self.assertEqual(input_message.msh.msh_10.value, "73711860")
         self.assertTrue(result.success)
+        mock_transform_pims.assert_called_once()
+        self.mock_sender.send_message.assert_called_once_with(expected_message)
+        self.mock_audit_client.log_message_received.assert_called_once()
+        self.mock_audit_client.log_message_processed.assert_called_once_with(
+            self.hl7_string, "PIMS transformation applied"
+        )
+        self.mock_audit_client.log_message_failed.assert_not_called()
 
     @patch("hl7_pims_transformer.application.transform_pims_message")
     def test_process_message_transform_failure(self, mock_transform_pims: Any) -> None:
