@@ -24,6 +24,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_11.value, "P")
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
+        # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
         self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(
