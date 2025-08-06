@@ -66,7 +66,7 @@ services:
           - "phw-hl7-server"
 
   phw-hl7-transformer:
-    container_name: hl7_pims_transformer
+    container_name: phw-hl7-transformer
     build:
       context: ../hl7_transformer
       additional_contexts:
