@@ -8,7 +8,6 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     if original_pid is None:
         return  # No PID segment
 
-    # PID
     set_nested_field(original_pid, new_message.pid, "pid_5.xpn_1.fn_1")
 
     pid_5_fields = ["xpn_2", "xpn_3", "xpn_4", "xpn_5"]

@@ -15,7 +15,7 @@ class TestPimsTransformer(unittest.TestCase):
 
         self.assertEqual(transformed_message.version, "2.5")
 
-        segments_to_check = ["msh"]
+        segments_to_check = ["msh", "evn", "pid"]
         for segment in segments_to_check:
             self.assertTrue(hasattr(transformed_message, segment))
 
@@ -33,6 +33,8 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[0].value, "01234567892")
         self.assertEqual(transformed_message.pid.pid_13[1].value, "01234567896")
         self.assertEqual(transformed_message.pid.pid_14.value, "")
+        self.assertEqual(transformed_message.evn.evn_1.value, "")
+        self.assertEqual(transformed_message.evn.value, "EVN")
 
     @patch("hl7_pims_transformer.pims_transformer.map_msh")
     @patch("hl7_pims_transformer.pims_transformer.map_pid")
