@@ -147,23 +147,6 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
-  - stage: ReleasePIMSHL7TransformerDev
-    displayName: 'Release App PIMS HL7Transformer - Dev'
-    jobs:
-      - template: templates/release-container-app-template.yml
-        parameters:
-          jobName: 'ReleaseAppPIMSHL7TransformerDev'
-          displayName: 'Release App PIMS HL7Transformer - Dev'
-          appName: 'hl7pimstransformer'
-          appFunctionMidfix: ''
-          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
-          azureLocation: $(azureLocation)
-          environment: 'dev'
-          acrName: $(acrName)
-          azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ parameters.POOL_SELECTION }}
-          resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
-
   - stage: ReleaseHL7SenderDev
     displayName: 'Release App HL7Sender - Dev'
     jobs:
