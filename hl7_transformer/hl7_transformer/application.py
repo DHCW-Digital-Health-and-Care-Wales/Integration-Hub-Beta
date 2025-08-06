@@ -1,9 +1,6 @@
 import configparser
 import logging
 import os
-import signal
-from types import FrameType
-from typing import Optional
 
 from azure.servicebus import ServiceBusMessage
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -17,6 +14,7 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from .app_config import AppConfig
 from .date_of_death_transformer import transform_date_of_death
 from .datetime_transformer import transform_datetime
+from .processor_manager import ProcessorManager
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -26,27 +24,6 @@ config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-
-
-class ProcessorManager:
-    def __init__(self) -> None:
-        self._running = True
-        self._setup_signal_handlers()
-
-    def _setup_signal_handlers(self) -> None:
-        signal.signal(signal.SIGINT, self._shutdown_handler)
-        signal.signal(signal.SIGTERM, self._shutdown_handler)
-
-    def _shutdown_handler(self, signum: int, frame: Optional[FrameType]) -> None:
-        logger.info("Shutting down the processor")
-        self._running = False
-
-    @property
-    def is_running(self) -> bool:
-        return self._running
-
-    def stop(self) -> None:
-        self._running = False
 
 
 def main() -> None:
