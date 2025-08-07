@@ -42,10 +42,6 @@ class MessageSenderClient:
     def send_text_message(self, message_text: str, custom_properties: Optional[Dict[str, str]] = None):
         self.send_message(message_text.encode('utf-8'), custom_properties)
 
-    def close(self):
-        self.sender.close()
-        logger.debug("ServiceBusSenderClient closed.")
-
     def __enter__(self):
         return self
 
