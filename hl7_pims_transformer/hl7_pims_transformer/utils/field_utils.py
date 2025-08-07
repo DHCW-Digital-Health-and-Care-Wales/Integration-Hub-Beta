@@ -5,7 +5,7 @@ from hl7apy.exceptions import ChildNotFound
 
 def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
     """
-    Safely retrieves the string value of a nested HL7 field using a dot-separated path.
+    Safely retrieves the string value of a NESTED HL7 field using a **dot-separated path.**
 
     Traverses the HL7 segment hierarchy following the provided path,
     handling missing attributes and empty values gracefully (returns empty string to maintain compatibility with hl7apy)
@@ -13,17 +13,32 @@ def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
     Example usage:
     - get_hl7_field_value(original_msh, "msh_4.hd_1") = "HOSPITAL NAME"
     - get_hl7_field_value(original_pid, "pid_5.xpn_1.fn_1") = "TEST"
+    - get_hl7_field_value(original_pid, "pid_3[0].cx_1") = "100001"
+    - get_hl7_field_value(original_pid, "pid_13[1].xtn_1") = "07001234567"
     - get_hl7_field_value(original_msh, "nonexistent.field") = ""
     """
     current_element = hl7_segment
     # Loop through each attribute in the field path in order
     for field_name in field_path.split("."):
         try:
-            current_element = getattr(current_element, field_name)
+            # only handles SINGLE repetitions per field_name
+            if "[" in field_name and field_name.endswith("]"):
+                # Split on '[' to get field name and index
+                field_base, index_part = field_name.split("[", 1)
+                index = int(index_part.rstrip("]"))
+
+                # Get the field array and access the specific index
+                field_array = getattr(current_element, field_base)
+                if hasattr(field_array, "__getitem__") and len(field_array) > index:
+                    current_element = field_array[index]
+                else:
+                    return ""  # Index out of range or not an iterable element
+            else:
+                current_element = getattr(current_element, field_name)
             if not current_element:
                 return ""  # Empty field
-        except (AttributeError, IndexError, ChildNotFound):
-            return ""  # Non-existent field
+        except (AttributeError, IndexError, ChildNotFound, ValueError):
+            return ""  # Non-existent field or index out of range
 
     # Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
     if current_element is not None:
