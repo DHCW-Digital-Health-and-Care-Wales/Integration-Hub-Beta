@@ -1,12 +1,29 @@
 from hl7apy.core import Message
 
-from ..utils.field_utils import set_nested_field
+from ..utils.field_utils import get_hl7_field_value, set_nested_field
 
 
 def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     original_pid = getattr(original_hl7_message, "pid", None)
     if original_pid is None:
         return  # No PID segment
+
+    original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")
+    pid3_rep1 = new_message.pid.add_field("pid_3")
+
+    # if the cx_1 subfield on pid_3[0] exists and is not empty, and cx_5 is "NI"
+    if original_pid_3_rep1_cx_1 and get_hl7_field_value(original_pid, "pid_3[0].cx_5") == "NI":
+        pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
+        pid3_rep1.cx_4.hd_1 = "NHS"
+        pid3_rep1.cx_5 = "NH"
+
+    original_pid_3_rep2_cx_1 = get_hl7_field_value(original_pid, "pid_3[1].cx_1")
+    # if the cx_1 subfield on pid_3[1] exists and is not empty, and cx_5 is "PI"
+    if original_pid_3_rep2_cx_1 and get_hl7_field_value(original_pid, "pid_3[1].cx_5") == "PI":
+        pid3_rep2 = new_message.pid.add_field("pid_3")
+        pid3_rep2.cx_1 = original_pid_3_rep2_cx_1
+        pid3_rep2.cx_4.hd_1 = "103"
+        pid3_rep2.cx_5 = "PI"
 
     set_nested_field(original_pid, new_message.pid, "pid_5.xpn_1.fn_1")
 
