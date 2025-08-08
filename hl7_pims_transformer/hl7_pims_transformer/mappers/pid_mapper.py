@@ -48,3 +48,7 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
             set_nested_field(original_pid_13, new_pid_13_repetition, "xtn_1")
 
     set_nested_field(original_pid, new_message.pid, "pid_14.xtn_1")
+
+    # trim at first "+" if length > 6, otherwise set to ""
+    original_pid29_ts1 = get_hl7_field_value(original_pid, "pid_29.ts_1")
+    new_message.pid.pid_29.ts_1 = original_pid29_ts1.split("+")[0] if len(original_pid29_ts1) > 6 else ""
