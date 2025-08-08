@@ -108,3 +108,23 @@ class TestPIDMapper(unittest.TestCase):
                 get_hl7_field_value(original_pid13_reps[rep_count], "xtn_1"),
                 get_hl7_field_value(new_pid13_reps[rep_count], "xtn_1"),
             )
+
+    def test_map_pid_29_ts1_datetime_trimming(self) -> None:
+        test_cases = [
+            ("20250630155034+0000", "20250630155034"),  # length > 6, trimmed
+            ("2025063015+0000", "2025063015"),  # length > 6, trimmed
+            ("20250630+0100", "20250630"),  # length > 6, trimmed
+            ("202506", '""'),  # length = 6, set to empty
+            ("20250", '""'),  # length < 6, set to empty
+            ('""', '""'),  # empty string
+            ("", '""'),  # no value
+            ("20250630155034-0100", "20250630155034-0100"),  # negative timezone, shouldn't happen in GB
+        ]
+
+        for original_value, expected_value in test_cases:
+            with self.subTest(original_value=original_value):
+                self.original_message.pid.pid_29.ts_1.value = original_value
+
+                map_pid(self.original_message, self.new_message)
+
+                self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), expected_value)
