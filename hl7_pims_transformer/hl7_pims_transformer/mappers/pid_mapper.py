@@ -33,7 +33,7 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     set_nested_field(original_pid, new_message.pid, "pid_8")
 
-    # SAD does not exist on HL7 v2.3.1 so it's mapped manually
+    # SAD does not exist in HL7 v2.3.1 so it's mapped manually
     new_message.pid.pid_11.xad_1.sad_1 = original_pid.pid_11.xad_1
 
     pid_11_fields = ["xad_2", "xad_3", "xad_4", "xad_5"]
@@ -49,6 +49,6 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     set_nested_field(original_pid, new_message.pid, "pid_14.xtn_1")
 
-    # trim at first "+" if length > 6, otherwise set to ""
+    # death date and time: trim at first "+" if length > 6, otherwise set to '""'
     original_pid29_ts1 = get_hl7_field_value(original_pid, "pid_29.ts_1")
-    new_message.pid.pid_29.ts_1 = original_pid29_ts1.split("+")[0] if len(original_pid29_ts1) > 6 else ""
+    new_message.pid.pid_29.ts_1 = original_pid29_ts1.split("+")[0] if len(original_pid29_ts1) > 6 else '""'
