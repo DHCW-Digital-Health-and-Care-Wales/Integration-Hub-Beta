@@ -7,31 +7,32 @@ def generate_ack_msg(ack_code: str) -> str:
     return ("MSH|^~\\&|SENDER|SENDER_APP|RECEIVER|RECEIVER_APP|20250101000000||ACK^A01|123456|P|2.5\r"
             f"MSA|{ack_code}|123456\r")
 
+
 class TestGetAckResult(unittest.TestCase):
 
-    def test_valid_ack_aa(self):
+    def test_valid_ack_aa(self) -> None:
         result = get_ack_result(generate_ack_msg("AA"))
 
         self.assertTrue(result.success)
 
-    def test_valid_ack_ca(self):
+    def test_valid_ack_ca(self) -> None:
         result = get_ack_result(generate_ack_msg("CA"))
 
         self.assertTrue(result.success)
 
-    def test_negative_ack_ae(self):
+    def test_negative_ack_ae(self) -> None:
         result = get_ack_result(generate_ack_msg("AE"))
 
         self.assertFalse(result.success)
         self.assertIn('Negative ACK received: AE', result.error_reason)
 
-    def test_negative_ack_ar(self):
+    def test_negative_ack_ar(self) -> None:
         result = get_ack_result(generate_ack_msg("AR"))
 
         self.assertFalse(result.success)
         self.assertIn('Negative ACK received: AR', result.error_reason)
 
-    def test_non_ack_message(self):
+    def test_non_ack_message(self) -> None:
         non_ack_message = (
             "MSH|^~\\&|SENDER|SENDER_APP|RECEIVER|RECEIVER_APP|20250101000000||ADT^A01|111111|P|2.5\r"
             "PID|1||123456^^^Hospital^MR||Doe^John\r"
@@ -42,11 +43,12 @@ class TestGetAckResult(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertIn('Received a non-ACK message', result.error_reason)
 
-    def test_malformed_message(self):
+    def test_malformed_message(self) -> None:
         result = get_ack_result("This is not a valid HL7 message")
 
         self.assertFalse(result.success)
         self.assertTrue('Exception occurred' in result.error_reason)
+
 
 if __name__ == '__main__':
     unittest.main()

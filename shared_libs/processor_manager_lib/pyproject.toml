@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "processor-manager-lib"
+version = "0.1.0"
+description = "Processor manager utility library"
+authors = [{name = "DHCW"}]
+requires-python = ">=3.13"
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "setuptools==80.9.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["processor_manager_lib*"]
+
+

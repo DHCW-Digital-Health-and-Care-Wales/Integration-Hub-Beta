@@ -11,6 +11,7 @@ dependencies = [
   "hl7==0.4.5",
   "message-bus-lib",
   "health-check-lib",
+  "processor-manager-lib",
 ]
 
 [dependency-groups]
@@ -24,6 +25,7 @@ dev = [
 [tool.uv.sources]
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
+processor-manager-lib = { path = "../shared_libs/processor_manager_lib" }
 
 [tool.mypy]
 python_version = "3.13"

@@ -1,28 +1,28 @@
+import socket
 import unittest
 from unittest.mock import Mock, patch
-import socket
 
-from hl7_sender.hl7_sender_client import is_socket_closed, HL7SenderClient
+from hl7_sender.hl7_sender_client import HL7SenderClient, is_socket_closed
 
 
 class TestIsSocketClosed(unittest.TestCase):
 
-    def test_socket_open_blocking_io_error(self):
+    def test_socket_open_blocking_io_error(self) -> None:
         mock_socket = Mock(spec=socket.socket)
         mock_socket.recv.side_effect = BlockingIOError
         self.assertFalse(is_socket_closed(mock_socket))
 
-    def test_socket_closed_empty_data(self):
+    def test_socket_closed_empty_data(self) -> None:
         mock_socket = Mock(spec=socket.socket)
         mock_socket.recv.return_value = b''
         self.assertTrue(is_socket_closed(mock_socket))
 
-    def test_socket_closed_connection_reset(self):
+    def test_socket_closed_connection_reset(self) -> None:
         mock_socket = Mock(spec=socket.socket)
         mock_socket.recv.side_effect = ConnectionResetError
         self.assertTrue(is_socket_closed(mock_socket))
 
-    def test_socket_closed_unexpected_exception(self):
+    def test_socket_closed_unexpected_exception(self) -> None:
         mock_socket = Mock(spec=socket.socket)
         mock_socket.recv.side_effect = RuntimeError("Some unexpected error")
         with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as cm:
@@ -33,7 +33,7 @@ class TestIsSocketClosed(unittest.TestCase):
 class TestHL7SenderClient(unittest.TestCase):
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
-    def test_send_message_socket_open(self, mock_mllp_cls):
+    def test_send_message_socket_open(self, mock_mllp_cls: Mock) -> None:
         mock_mllp = Mock()
         mock_mllp.socket = Mock()
         mock_mllp.send_message.return_value = b'ACK'
@@ -48,7 +48,7 @@ class TestHL7SenderClient(unittest.TestCase):
             mock_mllp.socket.settimeout.assert_called_once_with(30)
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
-    def test_send_message_socket_closed_triggers_reconnect(self, mock_mllp_cls):
+    def test_send_message_socket_closed_triggers_reconnect(self, mock_mllp_cls: Mock) -> None:
         mock_mllp1 = Mock()
         mock_mllp1.socket = Mock()
         mock_mllp2 = Mock()
@@ -66,7 +66,7 @@ class TestHL7SenderClient(unittest.TestCase):
             mock_mllp2.socket.settimeout.assert_called_once_with(40)
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
-    def test_send_message_timeout_error(self, mock_mllp_cls):
+    def test_send_message_timeout_error(self, mock_mllp_cls: Mock) -> None:
         mock_mllp = Mock()
         mock_mllp.socket = Mock()
         mock_mllp.send_message.side_effect = socket.timeout
@@ -79,7 +79,7 @@ class TestHL7SenderClient(unittest.TestCase):
             self.assertIn("No ACK received within 30 seconds", str(context.exception))
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
-    def test_context_manager_closes_connection(self, mock_mllp_cls):
+    def test_context_manager_closes_connection(self, mock_mllp_cls: Mock) -> None:
         mock_mllp = Mock()
         mock_mllp.socket = Mock()
         mock_mllp_cls.return_value = mock_mllp
