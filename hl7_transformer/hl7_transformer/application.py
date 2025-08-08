@@ -10,11 +10,11 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from processor_manager_lib import ProcessorManager
 
 from .app_config import AppConfig
 from .date_of_death_transformer import transform_date_of_death
 from .datetime_transformer import transform_datetime
-from .processor_manager import ProcessorManager
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)

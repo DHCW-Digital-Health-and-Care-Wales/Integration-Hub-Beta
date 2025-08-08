@@ -27,3 +27,5 @@ class ProcessorManager:
     def stop(self) -> None:
         logger.info("Manual processor stop requested")
         self._running = False
+
+

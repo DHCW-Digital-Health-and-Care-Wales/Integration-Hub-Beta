@@ -9,11 +9,11 @@ from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from processor_manager_lib import ProcessorManager
 
 from hl7_sender.ack_processor import get_ack_result
 from hl7_sender.app_config import AppConfig
 from hl7_sender.hl7_sender_client import HL7SenderClient
-from hl7_sender.processor_manager import ProcessorManager
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
