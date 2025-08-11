@@ -9,7 +9,6 @@ from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.processing_result import ProcessingResult
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
 
@@ -54,7 +53,7 @@ def _process_message(
     message: ServiceBusMessage,
     sender_client: MessageSenderClient,
     audit_client: AuditServiceClient,
-) -> ProcessingResult:
+) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     logger.debug("Received message")
 
@@ -77,7 +76,7 @@ def _process_message(
             f"Chemocare transformation applied for SENDING_APP: {sending_app}",
         )
 
-        return ProcessingResult.successful()
+        return True
 
     except ValueError as e:
         error_msg = f"Failed to transform Chemocare message: {e}"
@@ -85,7 +84,7 @@ def _process_message(
 
         audit_client.log_message_failed(message_body, error_msg, "Chemocare transformation failed")
 
-        return ProcessingResult.failed(str(e))
+        return False
 
     except Exception as e:
         error_msg = f"Unexpected error during message processing: {e}"
@@ -93,7 +92,7 @@ def _process_message(
 
         audit_client.log_message_failed(message_body, error_msg, "Unexpected processing error")
 
-        return ProcessingResult.failed(str(e), retry=True)
+        return False
 
 
 def _get_sending_app(hl7_msg: Message) -> str:

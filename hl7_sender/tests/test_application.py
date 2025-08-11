@@ -30,7 +30,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
-        mock_ack_processor.return_value = ProcessingResult.successful()
+        mock_ack_processor.return_value = True
 
         # Act
         result = _process_message(service_bus_message, mock_hl7_sender_client, mock_audit_client)
@@ -41,7 +41,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_audit_client.log_message_received.assert_called_once()
         mock_audit_client.log_message_processed.assert_called_once()
 
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_timeout_error(self, mock_parse_message: Mock) -> None:
@@ -56,9 +56,7 @@ class TestProcessMessage(unittest.TestCase):
         # Assert
         mock_audit_client.log_message_received.assert_called_once()
         mock_audit_client.log_message_failed.assert_called_once()
-        self.assertFalse(result.success)
-        self.assertTrue(result.retry)
-        self.assertIn("No ACK received", result.error_reason)
+        self.assertFalse(result)
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")

@@ -72,7 +72,7 @@ class TestProcessMessage(unittest.TestCase):
             audit_message,
         )
 
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
@@ -99,7 +99,7 @@ class TestProcessMessage(unittest.TestCase):
 
         # Assert
         mock_transform_dod.assert_called_once_with(valid_dod)
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
@@ -133,8 +133,7 @@ class TestProcessMessage(unittest.TestCase):
         )
         mock_audit_client.log_message_processed.assert_not_called()
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
+        self.assertFalse(result)
 
     @patch("hl7_transformer.application.AuditServiceClient")
     @patch("hl7_transformer.application.AppConfig")
