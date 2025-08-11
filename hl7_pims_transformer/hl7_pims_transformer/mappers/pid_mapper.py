@@ -41,7 +41,6 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
         set_nested_field(original_pid, new_message.pid, f"pid_11.{field}")
 
     # Map all repetitions of pid_13
-    # TODO check if mapping rules for pid_13 specify all repetitions
     if hasattr(original_pid, "pid_13"):
         for rep_count, original_pid_13 in enumerate(original_pid.pid_13):
             new_pid_13_repetition = new_message.pid.add_field("pid_13")

@@ -10,7 +10,7 @@ def map_non_specific_segments(original_hl7_message: Message, new_message: Messag
     Maps non-specific segments which have not been explicity specified by the business rules
     from the original message to the new message, with no special transformation logic.
     """
-    segments = ["pv1", "pv2", "obx", "al1", "dg1", "pr1", "gt1", "in1", "in2", "in3"]
+    segments = ["pv2", "obx", "al1", "dg1", "pr1", "gt1", "in1", "in2", "in3"]
 
     for segment in segments:
         try:
