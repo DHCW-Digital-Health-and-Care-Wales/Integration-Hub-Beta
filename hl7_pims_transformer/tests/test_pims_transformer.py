@@ -36,16 +36,21 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_14.value, "")
         self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.value, "EVN")
+        self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "W98006")
+        self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "G9310201")
+        self.assertEqual(transformed_message.pd1.value, "PD1|||^^W98006|G9310201")
 
     @patch("hl7_pims_transformer.pims_transformer.map_msh")
     @patch("hl7_pims_transformer.pims_transformer.map_pid")
     @patch("hl7_pims_transformer.pims_transformer.map_evn")
+    @patch("hl7_pims_transformer.pims_transformer.map_pd1")
     @patch("hl7_pims_transformer.pims_transformer.map_non_specific_segments")
     def test_all_mapper_functions_called(
         self,
         mock_map_evn: Mock,
         mock_map_msh: Mock,
         mock_map_pid: Mock,
+        mock_map_pd1: Mock,
         mock_map_non_specific: Mock,
     ) -> None:
         original_message = parse_message(pims_messages["a04"])
@@ -55,4 +60,5 @@ class TestPimsTransformer(unittest.TestCase):
         mock_map_msh.assert_called_once_with(original_message, transformed_message)
         mock_map_pid.assert_called_once_with(original_message, transformed_message)
         mock_map_evn.assert_called_once_with(original_message, transformed_message)
+        mock_map_pd1.assert_called_once_with(original_message, transformed_message)
         mock_map_non_specific.assert_called_once_with(original_message, transformed_message)

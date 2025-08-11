@@ -1,6 +1,16 @@
 from typing import Any
 
+from hl7apy.core import Message
 from hl7apy.exceptions import ChildNotFound
+
+
+def is_a04_or_a08_trigger_event(hl7_message: Message) -> bool:
+    """Check if the HL7 message trigger event is A04 (registration) or A08 (update)."""
+    try:
+        trigger_event = hl7_message.msh.msh_9.msg_2.value
+        return trigger_event in ["A04", "A08"]
+    except AttributeError:
+        return False
 
 
 def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
