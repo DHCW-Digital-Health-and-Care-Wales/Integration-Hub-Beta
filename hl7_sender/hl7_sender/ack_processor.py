@@ -26,6 +26,6 @@ def get_ack_result(response: str) -> bool:
             logger.error(error)
             return False
 
-    except Exception as e:
+    except Exception:
         logger.exception("Exception while parsing ACK message")
         return False

@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
-from message_bus_lib.processing_result import ProcessingResult
 
 from hl7_sender.app_config import AppConfig
 from hl7_sender.application import _process_message, main
