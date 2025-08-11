@@ -12,6 +12,7 @@ class TestPV1Mapper(unittest.TestCase):
         self.base_hl7_message = (
             "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
             "PD1||||G9310201~W98006\r"
+            "PV1||NA\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")

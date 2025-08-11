@@ -5,7 +5,7 @@ from ..utils.field_utils import get_hl7_field_value, set_nested_field
 
 def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     original_pid = getattr(original_hl7_message, "pid", None)
-    if original_pid is None:
+    if not original_pid:
         return  # No PID segment
 
     original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")
