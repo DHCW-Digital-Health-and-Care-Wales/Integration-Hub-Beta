@@ -1,13 +1,14 @@
 import unittest
-from unittest.mock import patch
+from typing import Optional
+from unittest.mock import Mock, patch
 
 from hl7_sender.app_config import AppConfig
 
 
 class TestAppConfig(unittest.TestCase):
     @patch("hl7_sender.app_config.os.getenv")
-    def test_read_env_config_returns_config(self, mock_getenv):
-        def getenv_side_effect(name):
+    def test_read_env_config_returns_config(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
             values = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "INGRESS_QUEUE_NAME": "ingress_queue",
@@ -35,7 +36,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.ack_timeout_seconds, 30)
 
     @patch("hl7_sender.app_config.os.getenv")
-    def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv):
+    def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv: Mock) -> None:
         mock_getenv.return_value = None
         with self.assertRaises(RuntimeError) as context:
             AppConfig.read_env_config()
