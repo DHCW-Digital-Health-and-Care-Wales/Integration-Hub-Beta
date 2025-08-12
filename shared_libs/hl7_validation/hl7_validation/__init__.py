@@ -1,14 +1,21 @@
-from .convert import er7_to_xml
-from .validate import validate_xml, validate_xml_with_schema, XmlValidationError
-from .schemas import list_available_schemas, get_schema_xsd_path
+from .validate import (
+    validate_xml,
+    validate_er7_with_flow,
+    XmlValidationError,
+)
+from .schemas import (
+    list_schema_groups,
+    list_schemas_for_group,
+    get_schema_xsd_path_for,
+)
 
 __all__ = [
-    "er7_to_xml",
     "validate_xml",
-    "validate_xml_with_schema",
+    "validate_er7_with_flow",
     "XmlValidationError",
-    "list_available_schemas",
-    "get_schema_xsd_path",
+    "list_schema_groups",
+    "list_schemas_for_group",
+    "get_schema_xsd_path_for",
 ]
 
 

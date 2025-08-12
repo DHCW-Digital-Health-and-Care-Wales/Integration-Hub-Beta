@@ -1,91 +1,190 @@
-from typing import Any
-from xml.etree.ElementTree import Element, SubElement, tostring
+from typing import Dict, List, Optional
+from xml.etree.ElementTree import Element as XElem
+from xml.etree.ElementTree import tostring
 
 from hl7apy.parser import parse_message
 
+from .utils.er7_utils import _get_field_text
+from .utils.xml_schema_maps import (
+    _load_hl7_type_maps,
+    _load_segment_occurs_map,
+    _load_segment_sequences,
+)
+from .utils.structure_detection import (
+    _load_message_structure,
+    _resolve_base_dir,
+    _detect_base_prefix,
+)
 
-def _set_text_if_not_none(node: Element, value: Any) -> None:
-    if value is not None:
-        node.text = str(value)
 
+def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) -> str:
+    ns = "urn:hl7-org:v2xml"
+    hl7_msg = parse_message(er7_message, find_groups=False)
 
-def _get_field_text(field: Any) -> str:
-    text_value: str | None = None
+    base_dir = _resolve_base_dir(structure_xsd_path)
+    base_prefix = _detect_base_prefix(structure_xsd_path)
+    element_to_type, type_children, type_base = _load_hl7_type_maps(base_dir, base_prefix)
+    element_max_occurs = _load_segment_occurs_map(base_dir, base_prefix)
+    segment_sequences = _load_segment_sequences(base_dir, base_prefix)
+
+    def q(tag: str) -> str:
+        return f"{{{ns}}}{tag}"
+
+    def resolve_type_children(type_name: Optional[str]) -> List[str]:
+        if not type_name:
+            return []
+        seen: set[str] = set()
+        current = type_name
+        while current and current not in seen:
+            seen.add(current)
+            children = type_children.get(current)
+            if children:
+                return children
+            current = type_base.get(current)
+        return []
+
+    def emit_element(parent: XElem, element_name: str, raw_value: str) -> None:
+        elem = XElem(q(element_name))
+        parent.append(elem)
+
+        type_name = element_to_type.get(element_name)
+        children = resolve_type_children(type_name)
+        if not children:
+            if raw_value:
+                elem.text = raw_value
+            return
+
+        components = raw_value.split("^") if raw_value else []
+        for idx, child_element_name in enumerate(children):
+            component_value = components[idx] if idx < len(components) else ""
+            emit_element(elem, child_element_name, component_value)
+
+    def emit_field(parent: XElem, segment_name: str, field_number: int, raw_value: str) -> None:
+        field_element_name = f"{segment_name}.{field_number}"
+        if segment_name == "MSH" and field_number == 2:
+            emit_element(parent, field_element_name, raw_value)
+            return
+        occ = element_max_occurs.get(field_element_name, 1)
+        allows_repetition = (occ == "unbounded") or (isinstance(occ, int) and occ > 1)
+        reps = raw_value.split("~") if (raw_value and allows_repetition) else [raw_value or ""]
+        for rep in reps:
+            emit_element(parent, field_element_name, rep)
+
+    # Determine trigger event and message structure to choose the XML root element.
     try:
-        text_value = field.to_er7()  # type: ignore[attr-defined]
+        trigger_event = (getattr(hl7_msg.msh.msh_9.msh_9_2, "value", None) or "").strip()
     except Exception:
-        text_value = getattr(field, "value", None)
-    return (text_value or "").strip()
+        trigger_event = ""
+    try:
+        structure_id = (getattr(hl7_msg.msh.msh_9.msh_9_3, "value", None) or "").strip()
+    except Exception:
+        structure_id = ""
+    if not structure_id:
+        structure_id = f"ADT_{trigger_event}" if trigger_event else "ADT_A39"
 
+    # If we have a structure XSD, parse it to infer dynamic groups for this structure.
+    group_children_map: Dict[str, List[str]] = {}
+    group_first_child: Dict[str, str] = {}
+    if structure_xsd_path:
+        try:
+            _, group_children_map = _load_message_structure(structure_xsd_path, structure_id)
+            for gname, children in group_children_map.items():
+                if children:
+                    group_first_child[gname] = children[0]
+        except Exception:
+            # Fall back silently if parsing fails
+            pass
 
-def er7_to_xml(er7_message: str) -> str:
-    hl7_msg = parse_message(er7_message)
+    root = XElem(q(structure_id))
+    current_group_node: XElem | None = None
+    current_group_name: Optional[str] = None
 
-    root = Element("HL7Message")
     for segment in hl7_msg.children:
-        seg_tag = segment.name
-        seg_node = SubElement(root, seg_tag)
+        seg_tag = str(segment.name)
 
-        if seg_tag == "MSH":
-            # Emit all MSH fields (1..21) to ensure presence for validation.
-            max_fields = 21
-            field_number_to_child: dict[int, Any] = {}
-            for child in segment.children:
-                try:
-                    number = int(str(child.name).split("_")[1])
-                    field_number_to_child[number] = child
-                except Exception:
-                    continue
-            for field_index in range(1, max_fields + 1):
-                text_value = ""
-                field = field_number_to_child.get(field_index)
-                if field is not None:
-                    text_value = _get_field_text(field)
+        # If using dynamic grouping inferred from XSD, decide group boundaries from first-child rules
+        if group_children_map:
+            allowed_current = set(group_children_map.get(current_group_name or "", [])) if current_group_name else set()
+            # Determine if this segment is a first-child of any group
+            candidate_group_name: Optional[str] = None
+            for gname, first_child in group_first_child.items():
+                if seg_tag == first_child:
+                    candidate_group_name = gname
+                    break
 
-                field_tag = f"{seg_tag}.{field_index}"
-                field_node = SubElement(seg_node, field_tag)
-                if text_value:
-                    _set_text_if_not_none(field_node, text_value)
-            continue
-
-        if seg_tag == "PID":
-            indices = [3, 5, 7, 8, 29]
-            pid_field_number_to_children: dict[int, list[Any]] = {}
-            for child in segment.children:
-                try:
-                    number = int(str(child.name).split("_")[1])
-                    pid_field_number_to_children.setdefault(number, []).append(child)
-                except Exception:
-                    continue
-            for field_index in indices:
-                children = pid_field_number_to_children.get(field_index, [])
-                if not children:
-                    continue
-                if field_index == 3:
-                    for child in children:
-                        text_value = _get_field_text(child)
-                        if text_value:
-                            SubElement(seg_node, f"{seg_tag}.3").text = text_value
+            if current_group_name is not None:
+                if seg_tag in allowed_current:
+                    # If we hit the first child again, start a new repetition
+                    if candidate_group_name == current_group_name:
+                        current_group_node = XElem(q(current_group_name))
+                        root.append(current_group_node)
+                    # else continue within the same open group
                 else:
-                    for child in children:
-                        text_value = _get_field_text(child)
-                        if text_value:
-                            SubElement(
-                                seg_node, f"{seg_tag}.{field_index}"
-                            ).text = text_value
-                            break
-            continue
+                    # Close group and maybe open a new one if seg starts a group
+                    current_group_name = None
+                    current_group_node = None
+                    if candidate_group_name is not None:
+                        current_group_name = candidate_group_name
+                        current_group_node = XElem(q(current_group_name))
+                        root.append(current_group_node)
+            else:
+                # No group open; open one if this seg starts a group
+                if candidate_group_name is not None:
+                    current_group_name = candidate_group_name
+                    current_group_node = XElem(q(current_group_name))
+                    root.append(current_group_node)
 
+            target_parent = current_group_node if current_group_node is not None else root
+        else:
+            target_parent = root
+
+        seg_node = XElem(q(seg_tag))
+        target_parent.append(seg_node)
+
+        field_number_to_texts: Dict[int, List[str]] = {}
         for child in segment.children:
-            text_value = _get_field_text(child)
-            if not text_value:
-                continue
-            try:
-                number = int(str(child.name).split("_")[1])
-            except Exception:
-                continue
-            field_tag = f"{seg_tag}.{number}"
-            field_node = SubElement(seg_node, field_tag)
-            _set_text_if_not_none(field_node, text_value)
+            name = str(child.name)
+            if "_" in name:
+                part = name.split("_")[1]
+                if part.isdigit():
+                    idx = int(part)
+                    field_number_to_texts.setdefault(idx, []).append(_get_field_text(child))
+
+        sequence_items = segment_sequences.get(seg_tag, [])
+        if not sequence_items:
+            for idx in sorted(field_number_to_texts.keys()):
+                values = field_number_to_texts[idx]
+                if not values:
+                    continue
+                occ = element_max_occurs.get(f"{seg_tag}.{idx}", 1)
+                allows_repetition = occ == "unbounded" or (isinstance(occ, int) and occ > 1)
+                if allows_repetition:
+                    for val in values:
+                        emit_field(seg_node, seg_tag, idx, val)
+                else:
+                    emit_field(seg_node, seg_tag, idx, values[0])
+        else:
+            for ref_name, min_occurs, max_occurs in sequence_items:
+                # ref_name like 'MRG.1' -> extract index
+                try:
+                    idx_str = ref_name.split(".")[1]
+                    idx = int(idx_str)
+                except Exception:
+                    continue
+                values = field_number_to_texts.get(idx, [])
+                allows_repetition = (
+                    max_occurs == "unbounded" or (isinstance(max_occurs, int) and max_occurs > 1)
+                )
+                if values:
+                    if allows_repetition:
+                        for val in values:
+                            emit_field(seg_node, seg_tag, idx, val)
+                    else:
+                        emit_field(seg_node, seg_tag, idx, values[0])
+                else:
+                    required_count = min_occurs if isinstance(min_occurs, int) else 1
+                    for _ in range(required_count):
+                        emit_field(seg_node, seg_tag, idx, "")
 
     return tostring(root, encoding="unicode")
+

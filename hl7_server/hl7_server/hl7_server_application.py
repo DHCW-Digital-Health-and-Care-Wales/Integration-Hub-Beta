@@ -53,20 +53,22 @@ class Hl7ServerApplication:
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
+        flow_name = app_config.hl7_validation_flow
+
         handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
-            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
             # Paris A40 message
-            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
             # Chemocare messages
-            "ADT^A31": (GenericHandler, self.sender_client, self.audit_client, self.validator),
-            "ADT^A28": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A31": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A28": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure
-            "ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
             #PIMS messages
-            "ADT^A04^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator),
-            "ADT^A08^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator),
-            "ADT^A40^ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator),
+            "ADT^A04^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A08^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A40^ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
 
             "ERR": (ErrorHandler, self.audit_client),
         }

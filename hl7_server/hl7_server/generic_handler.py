@@ -1,34 +1,36 @@
 import logging
 
+from hl7_validation import (
+    XmlValidationError,
+    validate_er7_with_flow,
+)
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
-from hl7_validation import er7_to_xml, validate_xml_with_schema, XmlValidationError
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
 class GenericHandler(AbstractHandler):
     def __init__(
-        self, msg: str, sender_client: MessageSenderClient, audit_client: AuditServiceClient, validator: HL7Validator
+        self,
+        msg: str,
+        sender_client: MessageSenderClient,
+        audit_client: AuditServiceClient,
+        validator: HL7Validator,
+        flow_name: str | None = None,
     ):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
         self.audit_client = audit_client
         self.validator = validator
-        # Optional schema name provided via environment (passed indirectly through application config)
-        # The handler accesses it via audit client context or message attributes is not available here;
-        # so we will parse and validate on demand based on XML schema name embedded in message or env.
-        # To keep it simple, we read from env at runtime.
-        import os
-        self.schema_name: str | None = os.getenv("HL7_VALIDATION_SCHEMA")
+        self.flow_name: str | None = flow_name
 
     def reply(self) -> str:
         try:
@@ -44,21 +46,21 @@ class GenericHandler(AbstractHandler):
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
 
-            # Optional pre-transform XML Schema validation
-            if self.schema_name:
+            if self.flow_name:
                 try:
-                    xml_string = er7_to_xml(self.incoming_message)
-                    validate_xml_with_schema(xml_string, self.schema_name)
+                    validate_er7_with_flow(self.incoming_message, self.flow_name)
                     self.audit_client.log_validation_result(
                         self.incoming_message,
-                        f"XML validation passed using schema '{self.schema_name}'",
+                        f"XML validation passed for flow '{self.flow_name}'",
                         is_success=True,
                     )
                 except XmlValidationError as e:
-                    error_msg = f"XML validation failed using schema '{self.schema_name}': {e}"
+                    error_msg = f"XML validation failed for flow '{self.flow_name}': {e}"
                     logger.error(error_msg)
                     self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
-                    self.audit_client.log_message_failed(self.incoming_message, error_msg, "XML schema validation failed")
+                    self.audit_client.log_message_failed(
+                        self.incoming_message, error_msg, "XML schema validation failed"
+                    )
                     raise
 
             self._send_to_service_bus(message_control_id)
