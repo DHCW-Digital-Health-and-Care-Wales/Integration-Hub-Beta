@@ -17,7 +17,7 @@ class TestProcessPimsMessage(unittest.TestCase):
         self.service_bus_message = ServiceBusMessage(body=self.hl7_string)
 
         self.mock_sender = MagicMock()
-        self.mock_audit_client = MagicMock()
+        self.mock_event_logger = MagicMock()
 
         self.mock_transformed_message = MagicMock()
         self.mock_transformed_message.to_er7.return_value = (
@@ -41,23 +41,23 @@ class TestProcessPimsMessage(unittest.TestCase):
         mock_transform_pims.return_value = self.mock_transformed_message
         expected_message = self.mock_transformed_message.to_er7.return_value
 
-        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
+        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_event_logger)
 
         self.assertTrue(result)
         mock_transform_pims.assert_called_once()
         self.mock_sender.send_message.assert_called_once_with(expected_message)
-        self.mock_audit_client.log_message_received.assert_called_once()
-        self.mock_audit_client.log_message_processed.assert_called_once_with(
+        self.mock_event_logger.log_message_received.assert_called_once()
+        self.mock_event_logger.log_message_processed.assert_called_once_with(
             self.hl7_string, "PIMS transformation applied"
         )
-        self.mock_audit_client.log_message_failed.assert_not_called()
+        self.mock_event_logger.log_message_failed.assert_not_called()
 
     @patch("hl7_pims_transformer.application.transform_pims_message")
     def test_process_message_transform_failure(self, mock_transform_pims: Any) -> None:
         error_reason = "Invalid segment mapping"
         mock_transform_pims.side_effect = ValueError(error_reason)
 
-        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
+        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_event_logger)
 
         self.assertFalse(result)
         self.mock_sender.send_message.assert_not_called()
@@ -67,23 +67,23 @@ class TestProcessPimsMessage(unittest.TestCase):
         error_reason = "Invalid segment mapping"
         mock_transform_pims.side_effect = ValueError(error_reason)
 
-        _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
+        _process_message(self.service_bus_message, self.mock_sender, self.mock_event_logger)
 
-        self.mock_audit_client.log_message_received.assert_called_once_with(
+        self.mock_event_logger.log_message_received.assert_called_once_with(
             self.hl7_string, "Message received for PIMS transformation"
         )
-        self.mock_audit_client.log_message_failed.assert_called_once_with(
+        self.mock_event_logger.log_message_failed.assert_called_once_with(
             self.hl7_string,
             f"Failed to transform PIMS message: {error_reason}",
             "PIMS transformation failed",
         )
-        self.mock_audit_client.log_message_processed.assert_not_called()
+        self.mock_event_logger.log_message_processed.assert_not_called()
 
     @patch("hl7_pims_transformer.application.transform_pims_message")
     def test_process_message_unexpected_error(self, mock_transform_pims: Any) -> None:
         error_reason = "Unexpected database connection error"
         mock_transform_pims.side_effect = Exception(error_reason)
 
-        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
+        result = _process_message(self.service_bus_message, self.mock_sender, self.mock_event_logger)
 
         self.assertFalse(result)
