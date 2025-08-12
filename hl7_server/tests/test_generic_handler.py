@@ -16,9 +16,9 @@ ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
 class TestGenericHandler(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_sender = MagicMock()
-        self.mock_audit_client = MagicMock()
+        self.mock_event_logger = MagicMock()
         self.validator = MagicMock()
-        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender, self.mock_audit_client, self.validator)
+        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.validator)
 
     def test_valid_a28_message_returns_ack(self) -> None:
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
@@ -59,13 +59,13 @@ class TestGenericHandler(unittest.TestCase):
 
         validator = MagicMock()
         validator.validate = MagicMock(side_effect=exception)
-        handler = GenericHandler(message, self.mock_sender, self.mock_audit_client, validator)
+        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, validator)
 
         with self.assertRaises(ValidationException):
             handler.reply()
 
         mock_logger.error.assert_called_once_with(f"HL7 validation error: {exception}")
-        self.mock_audit_client.log_message_failed.assert_called_once_with(message, f"HL7 validation error: {exception}")
+        self.mock_event_logger.log_message_failed.assert_called_once_with(message, f"HL7 validation error: {exception}")
 
     def test_message_sent_to_service_bus(self) -> None:
         self.handler.reply()
