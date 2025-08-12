@@ -1,17 +1,16 @@
 import configparser
 import logging
 import os
-import signal
-from types import FrameType
-from typing import Optional
 
 from azure.servicebus import ServiceBusMessage
 from health_check_lib.health_check_server import TCPHealthCheckServer
+from hl7apy.core import Field
 from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from processor_manager_lib import ProcessorManager
 
 from .app_config import AppConfig
 from .date_of_death_transformer import transform_date_of_death
@@ -25,21 +24,10 @@ config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-PROCESSOR_RUNNING = True
 
 
-def shutdown_handler(signum: int, frame: Optional[FrameType]) -> None:
-    global PROCESSOR_RUNNING
-    logger.info("Shutting down the processor")
-    PROCESSOR_RUNNING = False
-
-
-signal.signal(signal.SIGINT, shutdown_handler)
-signal.signal(signal.SIGTERM, shutdown_handler)
-
-
-def main():
-    global PROCESSOR_RUNNING
+def main() -> None:
+    processor_manager = ProcessorManager()
 
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
@@ -55,7 +43,7 @@ def main():
         logger.info("Processor started.")
         health_check_server.start()
 
-        while PROCESSOR_RUNNING:
+        while processor_manager.is_running:
             receiver_client.receive_messages(
                 MAX_BATCH_SIZE,
                 lambda message: _process_message(message, sender_client, audit_client),
@@ -97,7 +85,7 @@ def _process_message(
             if original_dod is not None:
                 transformed_dod = transform_date_of_death(original_dod)
 
-                if hasattr(dod_field, "value"):
+                if isinstance(dod_field, Field) and hasattr(dod_field, "value"):
                     dod_field.value = transformed_dod
                 else:
                     pid_segment.pid_29 = transformed_dod

@@ -105,8 +105,11 @@ jobs:
 
       - script: |
           set -euo pipefail  # Bash strict mode back to normal
-          echo "##[group]Validate ${{ parameters.appDisplayName }}"
+          echo "##[group]Code Quality Validation - ${{ parameters.appDisplayName }}"
           cd ${{ parameters.appName }}
+
+          # Track overall validation status
+          VALIDATION_FAILED=0
           
           # Derive bandit source directory
           if [ "${{ parameters.banditSourceDir }}" = "" ]; then
@@ -116,33 +119,62 @@ jobs:
           fi
           
           echo "🔍 Running Ruff check..."
-          uv tool run ruff check --output-format=github .
+          if ! uv tool run ruff check --output-format=github .; then
+            echo "##[error]Ruff code style checks failed!"
+            VALIDATION_FAILED=1
+          fi
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🔒 Running Bandit security scan..."
-          uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium
+          if ! uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium; then
+            echo "##[error]Bandit security scan found issues!"
+            VALIDATION_FAILED=1
+          fi
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🛡️ Running UV-Secure dependency security scan..."
-          uv tool run uv-secure
+          if ! uv tool run uv-secure; then
+            echo "##[error]UV-Secure found dependency security issues!"
+            VALIDATION_FAILED=1
+          fi
           echo ""
           echo "----------------------------------------"
           echo ""
           
           echo "🏷️ Running MyPy type check..."
-          uv tool run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports
+          if ! uv tool run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports; then
+            echo "##[error]MyPy type checking failed!"
+            VALIDATION_FAILED=1
+          fi
           echo ""
           echo "----------------------------------------"
           echo ""
+
+          # Exit with failure if any validation step failed
+          if [ $VALIDATION_FAILED -eq 1 ]; then
+            echo "##[error]Code quality validation failed! Please fix the issues above."
+            exit 1
+          fi
+
+          echo "✅ All code quality checks passed"
+          echo "##[endgroup]"
+        displayName: 'Code Quality Validation - ${{ parameters.appDisplayName }}'
+          
+      - script: |
+          set -euo pipefail
+          echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
+          cd ${{ parameters.appName }}
           
           echo "🧪 Running unit tests..."
-          python -m unittest discover tests -v
+          if ! python -m unittest discover tests -v; then
+            echo "##[error]Unit tests failed!"
+            exit 1
+          fi
           
-          echo "✅ ${{ parameters.appDisplayName }} validation completed"
+          echo "✅ All unit tests passed"
           echo "##[endgroup]"
-        displayName: 'Validate ${{ parameters.appDisplayName }}'
-        continueOnError: true
+        displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'

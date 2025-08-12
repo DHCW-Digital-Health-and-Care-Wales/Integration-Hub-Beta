@@ -1,4 +1,5 @@
 import unittest
+from typing import Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 from azure.servicebus import ServiceBusMessage
@@ -8,14 +9,16 @@ from hl7_transformer.app_config import AppConfig
 from hl7_transformer.application import _process_message, main
 
 
-def _setup(created_datetime: str, date_of_death: str = None) -> tuple:
+def _setup(
+    created_datetime: str, date_of_death: Optional[str] = None
+) -> Tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock]:
     hl7_message = Message("ADT_A01")
     hl7_message.msh.msh_7 = created_datetime
     hl7_message.msh.msh_10 = "MSGID1234"
 
     if date_of_death is not None:
         hl7_message.pid.pid_29 = date_of_death
-    
+
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_sender = MagicMock()
@@ -28,11 +31,22 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
     @patch("hl7_transformer.application.transform_date_of_death")
-    def test_process_message_success(self, mock_transform_dod, mock_transform_datetime, mock_parse_message):
+    def test_process_message_success(
+        self,
+        mock_transform_dod: MagicMock,
+        mock_transform_datetime: MagicMock,
+        mock_parse_message: MagicMock
+    ) -> None:
         # Arrange
         created_datetime = "2025-05-22_10:30:00"
         resurrec_dod = "RESURREC"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime, resurrec_dod)
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_sender,
+            mock_audit_client,
+        ) = _setup(created_datetime, resurrec_dod)
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
@@ -49,9 +63,13 @@ class TestProcessMessage(unittest.TestCase):
         mock_audit_client.log_message_received.assert_called_once_with(
             hl7_string, "Message received for transformation"
         )
+        audit_message = (
+            "HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; "
+            'Date of death transformed from RESURREC to ""'
+        )
         mock_audit_client.log_message_processed.assert_called_once_with(
             hl7_string,
-            'HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; Date of death transformed from RESURREC to ""',
+            audit_message,
         )
 
         self.assertTrue(result)
@@ -60,7 +78,10 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_transformer.application.transform_datetime")
     @patch("hl7_transformer.application.transform_date_of_death")
     def test_process_message_with_valid_date_of_death(
-        self, mock_transform_dod, mock_transform_datetime, mock_parse_message
+        self,
+        mock_transform_dod: MagicMock,
+        mock_transform_datetime: MagicMock,
+        mock_parse_message: MagicMock
     ) -> None:
         # Arrange
         created_datetime = "2025-05-22 10:30:00"
@@ -68,7 +89,7 @@ class TestProcessMessage(unittest.TestCase):
         service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(
             created_datetime, valid_dod
         )
-        
+
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = valid_dod  # No change needed
@@ -82,7 +103,11 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_transformer.application.parse_message")
     @patch("hl7_transformer.application.transform_datetime")
-    def test_process_message_failure_due_to_transform(self, mock_transform_datetime, mock_parse_message):
+    def test_process_message_failure_due_to_transform(
+        self,
+        mock_transform_datetime: MagicMock,
+        mock_parse_message: MagicMock
+    ) -> None:
         # Arrange
         created_datetime = "invalid_datetime"
         service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime)
@@ -115,7 +140,12 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_transformer.application.ServiceBusClientFactory")
     @patch("hl7_transformer.application.TCPHealthCheckServer")
     def test_health_check_server_starts_and_stops(
-        self, mock_health_check, mock_factory, mock_app_config, mock_audit_client):
+        self,
+        mock_health_check: MagicMock,
+        mock_factory: MagicMock,
+        mock_app_config: MagicMock,
+        mock_audit_client: MagicMock
+    ) -> None:
         # Arrange
         mock_health_server = MagicMock()
         mock_health_check_ctx = MagicMock()
@@ -127,8 +157,11 @@ class TestProcessMessage(unittest.TestCase):
             health_check_port=9000,
         )
 
-        # Set PROCESSOR_RUNNING to False to exit the loop immediately
-        with patch("hl7_transformer.application.PROCESSOR_RUNNING", False):
+        # Mock ProcessorManager to exit the loop immediately
+        with patch("hl7_transformer.application.ProcessorManager") as mock_processor_manager:
+            mock_instance = mock_processor_manager.return_value
+            mock_instance.is_running = False
+
             # Act
             main()
 
