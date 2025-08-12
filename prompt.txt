@@ -1,0 +1,80 @@
+I want to implement a new shared_libs called hl7_validation
+
+I need to validate the schema of the files received
+So that I can ensure they are in the correct format to send to MPI
+
+Description
+
+Based on the findings of the SPIKE (https://dev.azure.com/NHS-Wales-Digital/INSE/_workitems/edit/540117) we need to set up a schema that matches the messages we receive from PHW.
+
+See https://dev.azure.com/NHS-Wales-Digital/INSE/_workitems/edit/529931 for details.
+
+If the message isn't received in the expected format, then we need to drop the message and report an error back to PHW (as per https://dev.azure.com/NHS-Wales-Digital/INSE/_workitems/edit/529931 )
+
+Dependencies
+
+SPIKE - https://dev.azure.com/NHS-Wales-Digital/INSE/_workitems/edit/540117
+
+Technical Design
+
+To validate using XmlSchema definitions (as is currently done in Fiorano flow) Integration Hub needs to convert the ER (pipe-and-hat) format to XML. 
+The python libraries used in the project don't provide xml support - the translation needs to be implemented based on the metadata for HL7 elements provided by hl7Apy library (see the proof of concept linked in design proposal below). 
+The Xml Schema definitions require all elements of complex data types to be included - which means the translation will need to create those elements even if they are empty (not implemented in POC).
+
+The validation code should be implemented as shared python package (in shared_libs folder, eg. hl7_validation).
+
+Design Proposal:  https://dev.azure.com/NHS-Wales-Digital/INSE/_wiki/wikis/INSE.wiki/4878/3.-Hl7-v2-Validation
+
+Tasks:
+implement transformation from ER (pipe-and-hat) to XML form
+Validate generated xml against provided XmlSchema
+
+
+
+
+
+Scenario 1 - Message sent in expected format
+
+Given I am a PHW admin
+When I connect to the PHW endpoint in the Integration Hub
+And I send an A31 or A28 message in HL7v2.5 in pipe and hat format that complies with provided XmlSchema
+Then the message is sent to the Azure service bus queue
+AND a log is sent to the monitoring solution
+AND the log contains no PII data
+AND 'ack' message is sent back to client
+
+Scenario 2 - Message sent in unexpected format
+
+Given I am a PHW admin
+When I connect to the PHW endpoint in the Integration Hub
+And I send a message that is not in the format HL7v2.5 pipe and hat or not complies  with provided XmlSchema
+Then the message is rejected
+AND an error is sent to the monitoring solution
+AND the log contains no PII data but contains enough details about the field(s) which failed validation
+AND the connection is closed
+
+Problem
+Hl7v2 Messages send from various services are not conformant with strict validation provided by HL7apy library - eg. Date/Time of the message (MSH-7) is expected to be numeric (eg. 20250210112501), but comes with dashes, spaces and colons (e.g 2025-05-05 23:23:32).
+
+Those cases aren't currently blocking messages ingestion in Fiorano as current solution uses XmlSchema files provided by HL7 organization that are defining timestamp as any string.
+
+Options
+Use custom conformance profile for validation
+Transform incoming messages to xml for validation and validate them using XmlSchema definitions
+Implement custom validation in python
+Use paid tool such as caristix  to generate Conformance profile if still supported
+Using custom conformance profiles
+
+HL7apy library supports validation with custom conformance profiles - see Hl7apy : Message Profiles 
+
+The library provides tooling to generate configuration from xml definitions of Conformance profile.
+The problem is getting conformance profile xml definitions (xml with HL7v2xConformanceProfile).
+
+Transforming incoming messages to xml for validation and validate them using XmlSchema definition
+
+There are no python libraries supporting translation from ER format to XML out of the box. This transformation can be implemented (see POC in https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta/tree/poc-hl7-xml-python/shared_libs/hl7_xml , permalink ).
+
+The problem with used XmlSchema definitions is that the schema requires many fields to exist - even if they are optional in the specification (empty fields satisfy validation rules).
+To comply with the schema ER-to-XML translation will need to create empty nodes for all the required subelements of those data types.
+
+Implementing custom validation in Python

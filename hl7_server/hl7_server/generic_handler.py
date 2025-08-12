@@ -5,6 +5,7 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.audit_service_client import AuditServiceClient
+from hl7_validation import er7_to_xml, validate_xml_with_schema, XmlValidationError
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from .hl7_ack_builder import HL7AckBuilder
@@ -22,6 +23,12 @@ class GenericHandler(AbstractHandler):
         self.sender_client = sender_client
         self.audit_client = audit_client
         self.validator = validator
+        # Optional schema name provided via environment (passed indirectly through application config)
+        # The handler accesses it via audit client context or message attributes is not available here;
+        # so we will parse and validate on demand based on XML schema name embedded in message or env.
+        # To keep it simple, we read from env at runtime.
+        import os
+        self.schema_name: str | None = os.getenv("HL7_VALIDATION_SCHEMA")
 
     def reply(self) -> str:
         try:
@@ -36,6 +43,23 @@ class GenericHandler(AbstractHandler):
             self.audit_client.log_validation_result(
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
+
+            # Optional pre-transform XML Schema validation
+            if self.schema_name:
+                try:
+                    xml_string = er7_to_xml(self.incoming_message)
+                    validate_xml_with_schema(xml_string, self.schema_name)
+                    self.audit_client.log_validation_result(
+                        self.incoming_message,
+                        f"XML validation passed using schema '{self.schema_name}'",
+                        is_success=True,
+                    )
+                except XmlValidationError as e:
+                    error_msg = f"XML validation failed using schema '{self.schema_name}': {e}"
+                    logger.error(error_msg)
+                    self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
+                    self.audit_client.log_message_failed(self.incoming_message, error_msg, "XML schema validation failed")
+                    raise
 
             self._send_to_service_bus(message_control_id)
 
