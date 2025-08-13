@@ -372,3 +372,293 @@ stages:
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  # ===== PRE-PRODUCTION STAGES (PPD) =====
+  - stage: ReleasePHWHL7ServerPreProd
+    displayName: 'Release App PHW HL7Server - Pre-Prod'
+    dependsOn: ReleasePHWHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppPHWHL7ServerPreProd'
+          displayName: 'Release App PHW HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseParisHL7ServerPreProd
+    displayName: 'Release App Paris HL7Server - Pre-Prod'
+    dependsOn: ReleaseParisHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7ServerPreProd'
+          displayName: 'Release App Paris HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseChemocareHL7ServerPreProd
+    displayName: 'Release App Chemocare HL7Server - Pre-Prod'
+    dependsOn: ReleaseChemocareHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7ServerPreProd'
+          displayName: 'Release App Chemocare HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseHL7TransformerPreProd
+    displayName: 'Release App HL7Transformer - Pre-Prod'
+    dependsOn: ReleaseHL7TransformerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7TransformerPreProd'
+          displayName: 'Release App HL7Transformer - Pre-Prod'
+          appName: 'hl7transformer'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
+
+  - stage: ReleaseHL7ChemoTransformerPreProd
+    displayName: 'Release App HL7ChemoTransformer - Pre-Prod'
+    dependsOn: ReleaseHL7ChemoTransformerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7ChemoTransformerPreProd'
+          displayName: 'Release App HL7ChemoTransformer - Pre-Prod'
+          appName: 'hl7transformer'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
+
+  - stage: ReleasePHWHL7SenderPreProd
+    displayName: 'Release App PHW HL7Sender - Pre-Prod'
+    dependsOn: ReleasePHWHL7SenderTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppPHWHL7SenderPreProd'
+          displayName: 'Release App PHW HL7Sender - Pre-Prod'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseParisHL7SenderPreProd
+    displayName: 'Release App Paris HL7Sender - Pre-Prod'
+    dependsOn: ReleaseParisHL7SenderTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7SenderPreProd'
+          displayName: 'Release App Paris HL7Sender - Pre-Prod'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseChemocareHL7SenderPreProd
+    displayName: 'Release App Chemocare HL7Sender - Pre-Prod'
+    dependsOn: ReleaseChemocareHL7SenderTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7SenderPreProd'
+          displayName: 'Release App Chemocare HL7Sender - Pre-Prod'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  # ===== PRODUCTION STAGES (PRD) =====
+  - stage: ReleasePHWHL7ServerProd
+    displayName: 'Release App PHW HL7Server - Production'
+    dependsOn: ReleasePHWHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppPHWHL7ServerProd'
+          displayName: 'Release App PHW HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseParisHL7ServerProd
+    displayName: 'Release App Paris HL7Server - Production'
+    dependsOn: ReleaseParisHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7ServerProd'
+          displayName: 'Release App Paris HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseChemocareHL7ServerProd
+    displayName: 'Release App Chemocare HL7Server - Production'
+    dependsOn: ReleaseChemocareHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7ServerProd'
+          displayName: 'Release App Chemocare HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseHL7TransformerProd
+    displayName: 'Release App HL7Transformer - Production'
+    dependsOn: ReleaseHL7TransformerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7TransformerProd'
+          displayName: 'Release App HL7Transformer - Production'
+          appName: 'hl7transformer'
+          appFunctionMidfix: ''
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7TransformerPipelineName }}
+
+  - stage: ReleaseHL7ChemoTransformerProd
+    displayName: 'Release App HL7ChemoTransformer - Production'
+    dependsOn: ReleaseHL7ChemoTransformerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppHL7ChemoTransformerProd'
+          displayName: 'Release App HL7ChemoTransformer - Production'
+          appName: 'hl7transformer'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
+
+  - stage: ReleasePHWHL7SenderProd
+    displayName: 'Release App PHW HL7Sender - Production'
+    dependsOn: ReleasePHWHL7SenderPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppPHWHL7SenderProd'
+          displayName: 'Release App PHW HL7Sender - Production'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'phw'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseParisHL7SenderProd
+    displayName: 'Release App Paris HL7Sender - Production'
+    dependsOn: ReleaseParisHL7SenderPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseParisAppHL7SenderProd'
+          displayName: 'Release App Paris HL7Sender - Production'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'paris'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseChemocareHL7SenderProd
+    displayName: 'Release App Chemocare HL7Sender - Production'
+    dependsOn: ReleaseChemocareHL7SenderPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseChemocareAppHL7SenderProd'
+          displayName: 'Release App Chemocare HL7Sender - Production'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
