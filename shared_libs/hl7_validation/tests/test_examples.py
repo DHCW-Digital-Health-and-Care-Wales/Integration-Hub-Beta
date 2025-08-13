@@ -55,7 +55,7 @@ class TestExampleMessages(unittest.TestCase):
     def test_phw_a39_convert_and_validate(self) -> None:
         er7 = "\r".join(
             [
-                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A39^ADT_A39|202505052323364444444444|P|2.5|||||GBR||EN",
+                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A28^ADT_A39||P|2.5|||||GBR||EN",
                 "EVN|A39|20250502092900|20250505232332|||20250505232332",
                 "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||^^^~|||||||||||||||||||01",
                 "PD1|||^^W00000^|G999999",
@@ -71,7 +71,7 @@ class TestExampleMessages(unittest.TestCase):
     def test_phw_a05_convert_and_validate(self) -> None:
         er7 = "\r".join(
             [
-                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:30||ADT^A05^ADT_A05|202505052323300000000000|P|2.5|||||GBR||EN",
+                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:30||ADT^A31^ADT_A05|202505052323300000000000|P|2.5|||||GBR||EN",
                 "EVN|A05|20250502092900|20250505232330|||20250505232330",
                 "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||SURNAME^FORENAME",
                 "PV1||",
@@ -85,7 +85,7 @@ class TestExampleMessages(unittest.TestCase):
     def test_chemo_a05_convert_and_validate(self) -> None:
         er7 = "\r".join(
             [
-                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:30||ADT^A05^ADT_A05|202505052323300000000000|P|2.5|||||GBR||EN",
+                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:30||ADT^A40^ADT_A05|202505052323300000000000|P|2.5|||||GBR||EN",
                 "EVN|A05|20250502092900|20250505232330|||20250505232330",
                 "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||SURNAME^FORENAME",
                 "PV1||",

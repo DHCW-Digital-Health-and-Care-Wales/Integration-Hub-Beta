@@ -15,7 +15,7 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
 
     def test_extract_trigger_event_from_er7(self) -> None:
         er7 = "\r".join([
-            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A39^ADT_A39|MSGID|P|2.5",
+            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A28^ADT_A39|MSGID|P|2.5",
             "EVN|A39|20250101010101",
         ])
 
