@@ -41,6 +41,7 @@ Profiles:
 - phw-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
+- pims-to-mpi
 
 The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "*"
 ```

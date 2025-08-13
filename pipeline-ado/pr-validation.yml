@@ -13,6 +13,8 @@ pr:
       - hl7_transformer/*
       - hl7_sender/*
       - hl7_mock_receiver/*
+      - hl7_chemo_transformer/*
+      - hl7_pims_transformer/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -62,6 +64,22 @@ stages:
         parameters:
           appName: 'hl7_mock_receiver'
           appDisplayName: 'HL7 Mock Receiver'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # HL7 Chemo Transformer validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_chemo_transformer'
+          appDisplayName: 'HL7 Chemo Transformer'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # HL7 PIMS Transformer validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_pims_transformer'
+          appDisplayName: 'HL7 PIMS Transformer'
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}
 
