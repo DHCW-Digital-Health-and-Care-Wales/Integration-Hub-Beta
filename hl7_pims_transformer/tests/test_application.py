@@ -43,7 +43,7 @@ class TestProcessPimsMessage(unittest.TestCase):
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        self.assertTrue(result.success)
+        self.assertTrue(result)
         mock_transform_pims.assert_called_once()
         self.mock_sender.send_message.assert_called_once_with(expected_message)
         self.mock_audit_client.log_message_received.assert_called_once()
@@ -59,8 +59,7 @@ class TestProcessPimsMessage(unittest.TestCase):
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
+        self.assertFalse(result)
         self.mock_sender.send_message.assert_not_called()
 
     @patch("hl7_pims_transformer.application.transform_pims_message")
@@ -87,6 +86,4 @@ class TestProcessPimsMessage(unittest.TestCase):
 
         result = _process_message(self.service_bus_message, self.mock_sender, self.mock_audit_client)
 
-        self.assertFalse(result.success)
-        self.assertEqual(result.error_reason, error_reason)
-        self.assertTrue(result.retry)
+        self.assertFalse(result)
