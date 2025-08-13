@@ -95,7 +95,3 @@ class TestExampleMessages(unittest.TestCase):
         from hl7_validation import validate_er7_with_flow
 
         validate_er7_with_flow(er7, "chemo")
-
-
-if __name__ == "__main__":
-    unittest.main()

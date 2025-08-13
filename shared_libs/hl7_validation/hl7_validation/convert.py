@@ -4,7 +4,7 @@ from xml.etree.ElementTree import tostring
 
 from hl7apy.parser import parse_message
 
-from .utils.er7_utils import _get_field_text
+from .utils.extract_string import _get_field_text
 from .utils.xml_schema_maps import (
     _load_hl7_type_maps,
     _load_segment_occurs_map,
@@ -23,7 +23,9 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
 
     base_dir = _resolve_base_dir(structure_xsd_path)
     base_prefix = _detect_base_prefix(structure_xsd_path)
-    element_to_type, type_children, type_base = _load_hl7_type_maps(base_dir, base_prefix)
+    element_to_type, type_children, type_base = _load_hl7_type_maps(
+        base_dir, base_prefix
+    )
     element_max_occurs = _load_segment_occurs_map(base_dir, base_prefix)
     segment_sequences = _load_segment_sequences(base_dir, base_prefix)
 
@@ -59,41 +61,38 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
             component_value = components[idx] if idx < len(components) else ""
             emit_element(elem, child_element_name, component_value)
 
-    def emit_field(parent: XElem, segment_name: str, field_number: int, raw_value: str) -> None:
+    def emit_field(
+        parent: XElem, segment_name: str, field_number: int, raw_value: str
+    ) -> None:
         field_element_name = f"{segment_name}.{field_number}"
         if segment_name == "MSH" and field_number == 2:
             emit_element(parent, field_element_name, raw_value)
             return
         occ = element_max_occurs.get(field_element_name, 1)
         allows_repetition = (occ == "unbounded") or (isinstance(occ, int) and occ > 1)
-        reps = raw_value.split("~") if (raw_value and allows_repetition) else [raw_value or ""]
+        reps = (
+            raw_value.split("~")
+            if (raw_value and allows_repetition)
+            else [raw_value or ""]
+        )
         for rep in reps:
             emit_element(parent, field_element_name, rep)
 
-    # Determine trigger event and message structure to choose the XML root element.
-    try:
-        trigger_event = (getattr(hl7_msg.msh.msh_9.msh_9_2, "value", None) or "").strip()
-    except Exception:
-        trigger_event = ""
-    try:
-        structure_id = (getattr(hl7_msg.msh.msh_9.msh_9_3, "value", None) or "").strip()
-    except Exception:
-        structure_id = ""
+    structure_id = (getattr(hl7_msg.msh.msh_9.msh_9_3, "value", None) or "").strip()
     if not structure_id:
-        structure_id = f"ADT_{trigger_event}" if trigger_event else "ADT_A39"
+        raise ValueError(
+            "Unable to determine message structure (MSH-9.3) from ER7 message"
+        )
 
-    # If we have a structure XSD, parse it to infer dynamic groups for this structure.
     group_children_map: Dict[str, List[str]] = {}
     group_first_child: Dict[str, str] = {}
     if structure_xsd_path:
-        try:
-            _, group_children_map = _load_message_structure(structure_xsd_path, structure_id)
-            for gname, children in group_children_map.items():
-                if children:
-                    group_first_child[gname] = children[0]
-        except Exception:
-            # Fall back silently if parsing fails
-            pass
+        _, group_children_map = _load_message_structure(
+            structure_xsd_path, structure_id
+        )
+        for gname, children in group_children_map.items():
+            if children:
+                group_first_child[gname] = children[0]
 
     root = XElem(q(structure_id))
     current_group_node: XElem | None = None
@@ -102,10 +101,12 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
     for segment in hl7_msg.children:
         seg_tag = str(segment.name)
 
-        # If using dynamic grouping inferred from XSD, decide group boundaries from first-child rules
         if group_children_map:
-            allowed_current = set(group_children_map.get(current_group_name or "", [])) if current_group_name else set()
-            # Determine if this segment is a first-child of any group
+            allowed_current = (
+                set(group_children_map.get(current_group_name or "", []))
+                if current_group_name
+                else set()
+            )
             candidate_group_name: Optional[str] = None
             for gname, first_child in group_first_child.items():
                 if seg_tag == first_child:
@@ -114,13 +115,10 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
 
             if current_group_name is not None:
                 if seg_tag in allowed_current:
-                    # If we hit the first child again, start a new repetition
                     if candidate_group_name == current_group_name:
                         current_group_node = XElem(q(current_group_name))
                         root.append(current_group_node)
-                    # else continue within the same open group
                 else:
-                    # Close group and maybe open a new one if seg starts a group
                     current_group_name = None
                     current_group_node = None
                     if candidate_group_name is not None:
@@ -128,13 +126,14 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                         current_group_node = XElem(q(current_group_name))
                         root.append(current_group_node)
             else:
-                # No group open; open one if this seg starts a group
                 if candidate_group_name is not None:
                     current_group_name = candidate_group_name
                     current_group_node = XElem(q(current_group_name))
                     root.append(current_group_node)
 
-            target_parent = current_group_node if current_group_node is not None else root
+            target_parent = (
+                current_group_node if current_group_node is not None else root
+            )
         else:
             target_parent = root
 
@@ -148,7 +147,9 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                 part = name.split("_")[1]
                 if part.isdigit():
                     idx = int(part)
-                    field_number_to_texts.setdefault(idx, []).append(_get_field_text(child))
+                    field_number_to_texts.setdefault(idx, []).append(
+                        _get_field_text(child)
+                    )
 
         sequence_items = segment_sequences.get(seg_tag, [])
         if not sequence_items:
@@ -157,7 +158,9 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                 if not values:
                     continue
                 occ = element_max_occurs.get(f"{seg_tag}.{idx}", 1)
-                allows_repetition = occ == "unbounded" or (isinstance(occ, int) and occ > 1)
+                allows_repetition = occ == "unbounded" or (
+                    isinstance(occ, int) and occ > 1
+                )
                 if allows_repetition:
                     for val in values:
                         emit_field(seg_node, seg_tag, idx, val)
@@ -172,8 +175,8 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                 except Exception:
                     continue
                 values = field_number_to_texts.get(idx, [])
-                allows_repetition = (
-                    max_occurs == "unbounded" or (isinstance(max_occurs, int) and max_occurs > 1)
+                allows_repetition = max_occurs == "unbounded" or (
+                    isinstance(max_occurs, int) and max_occurs > 1
                 )
                 if values:
                     if allows_repetition:
@@ -187,4 +190,3 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                         emit_field(seg_node, seg_tag, idx, "")
 
     return tostring(root, encoding="unicode")
-

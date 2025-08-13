@@ -19,38 +19,22 @@ def _resolve_base_dir(structure_xsd_path: Optional[str]) -> str:
 def _detect_base_prefix(structure_xsd_path: Optional[str]) -> str:
     if not structure_xsd_path:
         raise ValueError("structure_xsd_path is required to detect base XSD prefix")
-    try:
-        tree = ET.parse(structure_xsd_path)
-        root = tree.getroot()
-        xs = "{http://www.w3.org/2001/XMLSchema}"
-        for inc in root.findall(f"{xs}include"):
-            loc = inc.get("schemaLocation")
-            if not loc:
-                continue
-            filename = os.path.basename(loc)
-            if filename.endswith("_segments.xsd"):
-                return filename[: -len("_segments.xsd")]
-    except Exception:
-        pass
-    base_dir = os.path.dirname(structure_xsd_path)
-    for prefix in ("2_5", "2_4"):
-        if os.path.exists(os.path.join(base_dir, f"{prefix}_segments.xsd")):
-            return prefix
+    tree = ET.parse(structure_xsd_path)
+    root = tree.getroot()
+    xs = "{http://www.w3.org/2001/XMLSchema}"
+    for inc in root.findall(f"{xs}include"):
+        loc = inc.get("schemaLocation")
+        if not loc:
+            continue
+        filename = os.path.basename(loc)
+        if filename.endswith("_segments.xsd"):
+            return filename[: -len("_segments.xsd")]
     raise FileNotFoundError(
         "Unable to determine base XSD prefix from structure; expected include of '<prefix>_segments.xsd'"
     )
 
 
 def _load_message_structure(structure_xsd_path: str, structure_id: str) -> Tuple[List[Tuple[str, int | str, int | str]] | None, Dict[str, List[str]]]:
-    """Parse a message-structure XSD (e.g., PHW/ADT_A39 or ADT_A05) to infer root sequence
-    and group definitions.
-
-    Returns a tuple:
-    - root_sequence: list of (ref_name, minOccurs, maxOccurs) of the root element sequence
-    - group_children_map: mapping of group element name -> ordered list of direct child segment/group names
-
-    This only inspects one level of nesting.
-    """
     tree = ET.parse(structure_xsd_path)
     root = tree.getroot()
     xs = "{http://www.w3.org/2001/XMLSchema}"

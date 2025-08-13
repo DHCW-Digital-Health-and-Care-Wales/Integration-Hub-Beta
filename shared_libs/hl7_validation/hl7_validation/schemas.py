@@ -33,11 +33,6 @@ def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
 
 
 def get_schema_xsd_path_for(flow_name: str, trigger_event: str) -> str:
-    """Resolve on-disk path for the XSD mapped to flow + trigger event.
-
-    - flow_name: e.g., 'phw', 'chemo', 'paris'
-    - trigger_event: e.g., 'A31'
-    """
     triggers = list_schemas_for_group(flow_name)
     xsd_rel = triggers.get(trigger_event)
     if not xsd_rel:
