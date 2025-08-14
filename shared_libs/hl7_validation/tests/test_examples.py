@@ -85,10 +85,10 @@ class TestExampleMessages(unittest.TestCase):
     def test_chemo_a05_convert_and_validate(self) -> None:
         er7 = "\r".join(
             [
-                "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:30||ADT^A40^ADT_A05|202505052323300000000000|P|2.5|||||GBR||EN",
-                "EVN|A05|20250502092900|20250505232330|||20250505232330",
-                "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||SURNAME^FORENAME",
-                "PV1||",
+                "MSH|^~\\&|212|212|200|200|20250701140735||ADT^A31|201600952808665|P|2.4|||NE|NE EVN|Sub|20250701140735",
+                "PID|1|1000000001^^^^NH|1000000001^^^^NH||TEST^TEST^T^^Mrs.||20000101000000|F|||TEST,^TEST^TEST TEST^^CF11 9AD||01000 000 001|07000000001||||||||||||||||||0",
+                "PD1||||G7000001",
+                "PV1||U",
             ]
         )
 

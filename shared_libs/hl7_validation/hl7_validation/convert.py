@@ -168,7 +168,6 @@ def er7_to_hl7v2xml(er7_message: str, structure_xsd_path: Optional[str] = None) 
                     emit_field(seg_node, seg_tag, idx, values[0])
         else:
             for ref_name, min_occurs, max_occurs in sequence_items:
-                # ref_name like 'MRG.1' -> extract index
                 try:
                     idx_str = ref_name.split(".")[1]
                     idx = int(idx_str)
