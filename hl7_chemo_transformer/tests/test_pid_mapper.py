@@ -11,7 +11,9 @@ class TestPIDMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
             "MSH|^~\\&|224|224|100|100|20250624162400||ADT^A31|109088442894725|P|2.4|||NE|NE\r"
-            "PID|1|1000000001^^^^NH|1000000001^^^^NH~V100000A^^^^PAS||TEST^TEST^^^Ms.||20000101000000|F|||1 TEST^TEST^TEST^TEST^CF11 9AD||07000000001^PRN^^test@test.co.uk~07000000001^PRS~07000000001^PRN^^test@test.co.uk~|07000000001^WPN||||||||A||||||||||1\r"
+            "PID|1|1000000001^^^^NH|1000000001^^^^NH~V100000A^^^^PAS||TEST^TEST^^^Ms.||20000101000000|F|||"
+            "1 TEST^TEST^TEST^TEST^CF11 9AD||07000000001^PRN^^test@test.co.uk~07000000001^PRS~"
+            "07000000001^PRN^^test@test.co.uk~|07000000001^WPN||||||||A||||||||||1\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")

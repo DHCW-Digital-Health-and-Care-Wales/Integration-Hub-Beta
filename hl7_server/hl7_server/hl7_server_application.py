@@ -66,9 +66,9 @@ class Hl7ServerApplication:
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure
             "ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
             #PIMS messages
-            "ADT^A04^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A08^ADT^A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A40^ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A04^ADT_A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A08^ADT_A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A40^ADT_A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
 
             "ERR": (ErrorHandler, self.audit_client),
         }

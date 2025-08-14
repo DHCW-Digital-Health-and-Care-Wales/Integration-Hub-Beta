@@ -1,15 +1,14 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
 from hl7_sender.app_config import AppConfig
 from hl7_sender.application import _process_message, main
-from message_bus_lib.processing_result import ProcessingResult
 
 
-def _setup():
+def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock]:
     hl7_message = Message("ADT_A01")
     hl7_message.msh.msh_10 = 'MSGID1234'
     hl7_string = hl7_message.to_er7()
@@ -24,13 +23,13 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    def test_process_message_success(self, mock_ack_processor, mock_parse_message):
+    def test_process_message_success(self, mock_ack_processor: Mock, mock_parse_message: Mock) -> None:
         # Arrange
         service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_audit_client = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
-        mock_ack_processor.return_value = ProcessingResult.successful()
+        mock_ack_processor.return_value = True
 
         # Act
         result = _process_message(service_bus_message, mock_hl7_sender_client, mock_audit_client)
@@ -41,10 +40,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_audit_client.log_message_received.assert_called_once()
         mock_audit_client.log_message_processed.assert_called_once()
 
-        self.assertTrue(result.success)
+        self.assertTrue(result)
 
     @patch("hl7_sender.application.parse_message")
-    def test_process_message_timeout_error(self, mock_parse_message):
+    def test_process_message_timeout_error(self, mock_parse_message: Mock) -> None:
         # Arrange
         service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_audit_client = _setup()
         mock_parse_message.return_value = hl7_message
@@ -56,9 +55,7 @@ class TestProcessMessage(unittest.TestCase):
         # Assert
         mock_audit_client.log_message_received.assert_called_once()
         mock_audit_client.log_message_failed.assert_called_once()
-        self.assertFalse(result.success)
-        self.assertTrue(result.retry)
-        self.assertIn("No ACK received", result.error_reason)
+        self.assertFalse(result)
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")
@@ -67,14 +64,19 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.HL7SenderClient")
     @patch("hl7_sender.application.AuditServiceClient")
     def test_health_check_server_starts_and_stops(
-        self, mock_audit_client, mock_hl7_sender, mock_health_check, mock_app_config, mock_factory, mock_connection_config):
+        self, mock_audit_client: Mock, mock_hl7_sender: Mock, mock_health_check: Mock,
+            mock_app_config: Mock, mock_factory: Mock, mock_connection_config: Mock) -> None:
         # Arrange
         mock_health_server = MagicMock()
         mock_health_check_ctx = MagicMock()
         mock_health_check_ctx.__enter__.return_value = mock_health_server
         mock_health_check.return_value = mock_health_check_ctx
         mock_app_config.read_env_config.return_value = AppConfig(
-            None, None, None, None, None,
+            connection_string=None,
+            ingress_queue_name="test-queue-name",
+            service_bus_namespace=None,
+            receiver_mllp_hostname="test-hostname",
+            receiver_mllp_port=2575,
             health_check_hostname="localhost",
             health_check_port=9000,
             audit_queue_name="test_audit_queue",
@@ -82,8 +84,11 @@ class TestProcessMessage(unittest.TestCase):
             microservice_id="test_microservice_id",
             ack_timeout_seconds=30
         )
-        # Set PROCESSOR_RUNNING to False to exit the loop immediately
-        with patch("hl7_sender.application.PROCESSOR_RUNNING", False):
+        # Mock ProcessorManager to exit the loop immediately
+        with patch("hl7_sender.application.ProcessorManager") as mock_processor_manager:
+            mock_instance = mock_processor_manager.return_value
+            mock_instance.is_running = False
+
             # Act
             main()
 
@@ -91,6 +96,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_health_check.assert_called_once_with("localhost", 9000)
             mock_health_server.start.assert_called_once()
             mock_health_check_ctx.__exit__.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()

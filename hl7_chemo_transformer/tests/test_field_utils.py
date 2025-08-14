@@ -14,7 +14,8 @@ def create_test_segments() -> tuple:
 
     pid_message_str = (
         "MSH|^~\\&|TEST|TEST||TEST|20250725120000||ADT^A28|123|P|2.4|||NE|NE\r"
-        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||^^^^CF11 9AD||555-1234^PRN||ENG|M||123456789||||||||||||\r"
+        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||^^^^CF11 9AD||"
+        "555-1234^PRN||ENG|M||123456789||||||||||||\r"
     )
     pid_message = parse_message(pid_message_str)
 
