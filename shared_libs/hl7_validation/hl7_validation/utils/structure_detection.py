@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Dict, List, Tuple, Optional
 
 import os
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 
 def _resolve_base_dir(structure_xsd_path: Optional[str]) -> str:

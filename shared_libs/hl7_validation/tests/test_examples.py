@@ -1,6 +1,6 @@
 import os
 import unittest
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from hl7_validation import (
     list_schema_groups,

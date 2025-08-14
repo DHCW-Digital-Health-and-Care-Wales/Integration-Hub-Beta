@@ -9,27 +9,30 @@ import json
 @lru_cache(maxsize=1)
 def list_schema_groups() -> List[str]:
     groups: List[str] = []
-    try:
-        res_root = files("hl7_validation.resources")
-        for item in res_root.iterdir():  # type: ignore[attr-defined]
+    res_root = files("hl7_validation.resources")
+    for item in getattr(res_root, "iterdir", lambda: [])():  # type: ignore[attr-defined]
+        try:
             if item.is_dir():
                 groups.append(item.name)
-    except Exception:
-        pass
+        except (OSError, AttributeError):
+            continue
     return sorted(set(groups))
 
 
 @lru_cache(maxsize=64)
 def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
     mapping: Dict[str, str] = {}
+    flow_dir = files("hl7_validation.resources") / flow_name
     try:
-        flow_dir = files("hl7_validation.resources") / flow_name
-        for item in flow_dir.iterdir():  # type: ignore[attr-defined]
-            if item.name.lower().endswith(".xsd"):
-                trigger = item.stem
-                mapping.setdefault(trigger, f"{flow_name}/{item.name}")
-    except Exception:
-        pass
+        for item in getattr(flow_dir, "iterdir", lambda: [])():  # type: ignore[attr-defined]
+            try:
+                if item.name.lower().endswith(".xsd"):
+                    trigger = item.stem
+                    mapping.setdefault(trigger, f"{flow_name}/{item.name}")
+            except (OSError, AttributeError):
+                continue
+    except (FileNotFoundError, NotADirectoryError, PermissionError):
+        return {}
     return mapping
 
 
@@ -46,19 +49,19 @@ def get_schema_xsd_path_for(flow_name: str, trigger_event: str) -> str:
 
 @lru_cache(maxsize=1)
 def _load_fallback_mappings() -> Dict[str, Dict[str, str]]:
+    cfg_path = files("hl7_validation.resources") / "structure_fallbacks.json"
     try:
-        cfg_path = files("hl7_validation.resources") / "structure_fallbacks.json"
         with cfg_path.open("r", encoding="utf-8") as f:  # type: ignore[attr-defined]
             data = json.load(f)
-            if isinstance(data, dict):
-                result: Dict[str, Dict[str, str]] = {}
-                for flow, mapping in data.items():
-                    if isinstance(mapping, dict):
-                        result[str(flow)] = {str(k): str(v) for k, v in mapping.items()}
-                return result
-    except Exception:
-        pass
-    return {}
+    except (OSError, FileNotFoundError, IsADirectoryError, PermissionError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    result: Dict[str, Dict[str, str]] = {}
+    for flow, mapping in data.items():
+        if isinstance(mapping, dict):
+            result[str(flow)] = {str(k): str(v) for k, v in mapping.items()}
+    return result
 
 
 def get_fallback_structure_for(flow_name: str, trigger_event: str) -> Optional[str]:
