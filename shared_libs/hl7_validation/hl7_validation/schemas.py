@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 from importlib.resources import files
-from typing import Dict, List
+from typing import Dict, List, Optional
+import json
 
 
 @lru_cache(maxsize=1)
@@ -41,3 +42,26 @@ def get_schema_xsd_path_for(flow_name: str, trigger_event: str) -> str:
             f"No XSD mapping for flow '{flow_name}' and trigger '{trigger_event}'. Available triggers: {available}"
         )
     return str(files("hl7_validation.resources") / xsd_rel)
+
+
+@lru_cache(maxsize=1)
+def _load_fallback_mappings() -> Dict[str, Dict[str, str]]:
+    try:
+        cfg_path = files("hl7_validation.resources") / "structure_fallbacks.json"
+        with cfg_path.open("r", encoding="utf-8") as f:  # type: ignore[attr-defined]
+            data = json.load(f)
+            if isinstance(data, dict):
+                result: Dict[str, Dict[str, str]] = {}
+                for flow, mapping in data.items():
+                    if isinstance(mapping, dict):
+                        result[str(flow)] = {str(k): str(v) for k, v in mapping.items()}
+                return result
+    except Exception:
+        pass
+    return {}
+
+
+def get_fallback_structure_for(flow_name: str, trigger_event: str) -> Optional[str]:
+    fallbacks = _load_fallback_mappings()
+    flow_map = fallbacks.get(flow_name, {})
+    return flow_map.get(trigger_event)

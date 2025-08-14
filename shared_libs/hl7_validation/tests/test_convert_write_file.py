@@ -29,12 +29,5 @@ class TestConvertAndWriteFile(unittest.TestCase):
 
         self.assertTrue(os.path.exists(out_file))
 
-        # Optional sanity check: parse to ensure well-formed XML and expected root name
         root = ET.fromstring(xml_str)
         self.assertTrue(root.tag.endswith("}ADT_A05") or root.tag == "ADT_A05")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-

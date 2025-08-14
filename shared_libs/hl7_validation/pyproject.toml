@@ -27,6 +27,6 @@ include = ["hl7_validation*"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"hl7_validation" = ["resources/*.xsd", "resources/**/*.xsd"]
+"hl7_validation" = ["resources/*.xsd", "resources/**/*.xsd", "resources/*.json"]
 
 

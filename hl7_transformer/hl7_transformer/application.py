@@ -112,7 +112,6 @@ def _process_message(
                         logger.info(f"Converted RESURREC date of death for message {message_id}")
 
         updated_message = hl7_msg.to_er7()
-
         sender_client.send_message(updated_message)
 
         if transformations_applied:

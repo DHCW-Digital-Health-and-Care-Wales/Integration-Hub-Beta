@@ -3,6 +3,8 @@ import unittest
 
 from hl7_validation.validate import (
     _extract_trigger_event_from_er7,
+    validate_er7_with_flow,
+    XmlValidationError,
 )
 from hl7_validation import get_schema_xsd_path_for
 
@@ -31,6 +33,17 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
 
             trigger = _extract_trigger_event_from_er7(er7)
             self.assertEqual(trigger, "A05")
+
+    def test_validate_uses_fallback_when_structure_missing(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A31|MSGID|P|2.5",
+            "PID|||8888888^^^252^PI||SURNAME^FORENAME",
+        ])
+
+        try:
+            validate_er7_with_flow(er7, "phw")
+        except XmlValidationError as e:
+            self.fail(f"Validation should succeed with fallback: {e}")
 
     def test_get_schema_xsd_path_for_unknown_flow_raises(self) -> None:
         with self.assertRaises(ValueError):
