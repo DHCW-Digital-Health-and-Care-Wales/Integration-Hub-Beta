@@ -16,6 +16,7 @@ class AppConfig:
     sending_app: str | None
     health_check_hostname: str | None
     health_check_port: int | None
+    hl7_validation_flow: str | None = None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -30,6 +31,7 @@ class AppConfig:
             sending_app=_read_env("SENDING_APP"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
+            hl7_validation_flow=_read_env("HL7_VALIDATION_FLOW"),
         )
 
 
