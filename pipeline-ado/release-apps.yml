@@ -410,6 +410,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleasePIMSHL7ServerPreProd
+    displayName: 'Release App PIMS HL7Server - Pre-Prod'
+    dependsOn: ReleasePIMSHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleasePIMSAppHL7ServerPreProd'
+          displayName: 'Release App PIMS HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'pims'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseChemocareHL7ServerPreProd
     displayName: 'Release App Chemocare HL7Server - Pre-Prod'
     dependsOn: ReleaseChemocareHL7ServerTest
@@ -464,16 +482,16 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
-  - stage: ReleasePHWHL7SenderPreProd
-    displayName: 'Release App PHW HL7Sender - Pre-Prod'
-    dependsOn: ReleasePHWHL7SenderTest
+  - stage: ReleaseHL7SenderPreProd
+    displayName: 'Release App HL7Sender - Pre-Prod'
+    dependsOn: ReleaseHL7SenderTest
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppPHWHL7SenderPreProd'
-          displayName: 'Release App PHW HL7Sender - Pre-Prod'
+          jobName: 'ReleaseAppHL7SenderPreProd'
+          displayName: 'Release App HL7Sender - Pre-Prod'
           appName: 'hl7sender'
-          appFunctionMidfix: 'phw'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
           azureLocation: $(azureLocation)
           environment: 'ppd'
@@ -482,16 +500,16 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
-  - stage: ReleaseParisHL7SenderPreProd
-    displayName: 'Release App Paris HL7Sender - Pre-Prod'
-    dependsOn: ReleaseParisHL7SenderTest
+  - stage: ReleasePIMSHL7SenderPreProd
+    displayName: 'Release App PIMS HL7Sender - Pre-Prod'
+    dependsOn: ReleasePIMSHL7SenderTest
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseParisAppHL7SenderPreProd'
-          displayName: 'Release App Paris HL7Sender - Pre-Prod'
+          jobName: 'ReleasePIMSAppHL7SenderPreProd'
+          displayName: 'Release App PIMS HL7Sender - Pre-Prod'
           appName: 'hl7sender'
-          appFunctionMidfix: 'paris'
+          appFunctionMidfix: 'pims'
           resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
           azureLocation: $(azureLocation)
           environment: 'ppd'
@@ -555,6 +573,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleasePIMSHL7ServerProd
+    displayName: 'Release App PIMS HL7Server - Production'
+    dependsOn: ReleasePIMSHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleasePIMSAppHL7ServerProd'
+          displayName: 'Release App PIMS HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'pims'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseChemocareHL7ServerProd
     displayName: 'Release App Chemocare HL7Server - Production'
     dependsOn: ReleaseChemocareHL7ServerPreProd
@@ -609,16 +645,16 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
-  - stage: ReleasePHWHL7SenderProd
-    displayName: 'Release App PHW HL7Sender - Production'
-    dependsOn: ReleasePHWHL7SenderPreProd
+  - stage: ReleaseHL7SenderProd
+    displayName: 'Release App HL7Sender - Production'
+    dependsOn: ReleaseHL7SenderPreProd
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppPHWHL7SenderProd'
-          displayName: 'Release App PHW HL7Sender - Production'
+          jobName: 'ReleaseAppHL7SenderProd'
+          displayName: 'Release App HL7Sender - Production'
           appName: 'hl7sender'
-          appFunctionMidfix: 'phw'
+          appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
           environment: 'prd'
@@ -627,16 +663,16 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
-  - stage: ReleaseParisHL7SenderProd
-    displayName: 'Release App Paris HL7Sender - Production'
-    dependsOn: ReleaseParisHL7SenderPreProd
+  - stage: ReleasePIMSHL7SenderProd
+    displayName: 'Release App PIMS HL7Sender - Production'
+    dependsOn: ReleasePIMSHL7SenderPreProd
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseParisAppHL7SenderProd'
-          displayName: 'Release App Paris HL7Sender - Production'
+          jobName: 'ReleasePIMSAppHL7SenderProd'
+          displayName: 'Release App PIMS HL7Sender - Production'
           appName: 'hl7sender'
-          appFunctionMidfix: 'paris'
+          appFunctionMidfix: 'pims'
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
           environment: 'prd'
