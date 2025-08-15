@@ -134,7 +134,7 @@ stages:
           jobName: 'ReleaseAppHL7ChemoTransformerDev'
           displayName: 'Release App HL7ChemoTransformer - Dev'
           appName: 'hl7chemotransformer'
-          appFunctionMidfix: ''
+          appFunctionMidfix: 'chemo'
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
           environment: 'dev'
@@ -309,8 +309,8 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7ChemoTransformerTest'
           displayName: 'Release App HL7ChemoTransformer - Test'
-          appName: 'hl7chemotransformer'
-          appFunctionMidfix: ''
+          appName: 'hl7transformer'
+          appFunctionMidfix: 'chemo'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
