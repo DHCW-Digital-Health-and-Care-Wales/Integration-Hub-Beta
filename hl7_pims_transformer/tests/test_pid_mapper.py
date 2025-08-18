@@ -128,3 +128,57 @@ class TestPIDMapper(unittest.TestCase):
                 map_pid(self.original_message, self.new_message)
 
                 self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), expected_value)
+
+    def test_map_pid_3_a28_message_with_n3_prefix(self) -> None:
+        a28_message = (
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            'PID|||N3123456789^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
+            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
+            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
+        )
+        original_message = parse_message(a28_message)
+        new_message = Message(version="2.5")
+
+        map_pid(original_message, new_message)
+
+        # N3 prefix values mapped for A28
+        new_pid3_rep1 = new_message.pid.pid_3[0]
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N3123456789")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "108")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "LI")
+
+    def test_map_pid_3_a28_message_with_n4_prefix(self) -> None:
+        a28_message = (
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            'PID|||N4987654321^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
+            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
+            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
+        )
+        original_message = parse_message(a28_message)
+        new_message = Message(version="2.5")
+
+        map_pid(original_message, new_message)
+
+        # N4 prefix values mapped for A28
+        new_pid3_rep1 = new_message.pid.pid_3[0]
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N4987654321")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "108")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "LI")
+
+    def test_map_pid_3_a28_message_without_n3_n4_prefix(self) -> None:
+        a28_message = (
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            'PID|||1000000001^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
+            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
+            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
+        )
+        original_message = parse_message(a28_message)
+        new_message = Message(version="2.5")
+
+        map_pid(original_message, new_message)
+
+        # blank values for non-N3/N4 prefix in A28
+        new_pid3_rep1 = new_message.pid.pid_3[0]
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "")

@@ -8,14 +8,36 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     if not original_pid:
         return  # No PID segment
 
+    # trigger event for A28 specific logic
+    trigger_event = get_hl7_field_value(original_hl7_message, "msh.msh_9.msg_2")
+    is_a28_message = trigger_event == "A28"
+
     original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")
     pid3_rep1 = new_message.pid.add_field("pid_3")
 
     # if the cx_1 subfield on pid_3[0] exists and is not empty, and cx_5 is "NI"
     if original_pid_3_rep1_cx_1 and get_hl7_field_value(original_pid, "pid_3[0].cx_5") == "NI":
-        pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
-        pid3_rep1.cx_4.hd_1 = "NHS"
-        pid3_rep1.cx_5 = "NH"
+
+        # check if NHS number starts with N3 or N4
+        nhs_number_prefix = original_pid_3_rep1_cx_1[:2].upper() if len(original_pid_3_rep1_cx_1) >= 2 else ""
+        is_n3_or_n4_prefix = nhs_number_prefix in ["N3", "N4"]
+
+        if is_a28_message:
+            if is_n3_or_n4_prefix:
+                # for N3 or N4 prefix set values
+                pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
+                pid3_rep1.cx_4.hd_1 = "108"
+                pid3_rep1.cx_5 = "LI"
+            else:
+                # for not N3 or N4 prefix set fields to blank
+                pid3_rep1.cx_1 = ""
+                pid3_rep1.cx_4.hd_1 = ""
+                pid3_rep1.cx_5 = ""
+        else:
+            # for non-A28 messages use original logic
+            pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
+            pid3_rep1.cx_4.hd_1 = "NHS"
+            pid3_rep1.cx_5 = "NH"
 
     original_pid_3_rep2_cx_1 = get_hl7_field_value(original_pid, "pid_3[1].cx_1")
     # if the cx_1 subfield on pid_3[1] exists and is not empty, and cx_5 is "PI"
