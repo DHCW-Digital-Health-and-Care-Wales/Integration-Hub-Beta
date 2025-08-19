@@ -19,7 +19,7 @@ variables:
   hl7ServerPipelineName: 'HL7 Server - Build'
   hl7TransformerPipelineName: 'HL7 Transformer - Build'
   hl7ChemoTransformerPipelineName: 'HL7 Chemo Transformer - Build'
-  hl7PimsTransformerPipelineName: 'HL7 PIMS Transformer - Build'
+  hl7PimsTransformerPipelineName: 'HL7 Pims Transformer - Build'
   hl7SenderPipelineName: 'HL7 Sender - Build'
   hl7MockReceiverPipelineName: 'HL7 Mock Receiver - Build'
 
@@ -34,8 +34,8 @@ resources:
     - pipeline: 'HL7 Chemo Transformer - Build'
       source: 'HL7 Chemo Transformer - Build'
       trigger: none
-    - pipeline: 'HL7 PIMS Transformer - Build'
-      source: 'HL7 PIMS Transformer - Build'
+    - pipeline: 'HL7 Pims Transformer - Build'
+      source: 'HL7 Pims Transformer - Build'
       trigger: none
     - pipeline: 'HL7 Sender - Build'
       source: 'HL7 Sender - Build'
