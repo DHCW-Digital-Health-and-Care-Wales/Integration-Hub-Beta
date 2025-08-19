@@ -1,11 +1,11 @@
-# HL7 Chemo Transformer Build Pipeline
+# HL7 Pims Transformer Build Pipeline
 trigger:
   branches:
     include:
       - main
   paths:
     include:
-      - hl7_chemo_transformer/*
+      - hl7_pims_transformer/*
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
@@ -37,22 +37,22 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_chemo_transformer'
-          appDisplayName: 'Chemocare HL7 Transformer'
+          appName: 'hl7_pims_transformer'
+          appDisplayName: 'Pims HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
 
-  - stage: BuildAndPushHL7ChemoTransformer
-    displayName: 'Build and Push HL7 Chemocare Transformer'
+  - stage: BuildAndPushHL7PimsTransformer
+    displayName: 'Build and Push HL7 Pims Transformer'
     dependsOn: CodeQuality
     jobs:
       - template: templates/docker-build-push-template.yml
         parameters:
-          jobName: 'BuildPushHL7ChemoTransformer'
+          jobName: 'BuildPushHL7PimsTransformer'
           displayName: 'Build and Push HL7 Transformer'
-          appName: 'chemo-hl7transformer'
-          dockerfilePath: 'hl7_chemo_transformer/Dockerfile'
-          buildContext: 'hl7_chemo_transformer'
+          appName: 'pims-hl7transformer'
+          dockerfilePath: 'hl7_pims_transformer/Dockerfile'
+          buildContext: 'hl7_pims_transformer'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

@@ -3,7 +3,7 @@ import unittest
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
-from hl7_chemo_transformer.utils.field_utils import get_hl7_field_value, set_nested_field
+from hl7_pims_transformer.utils.field_utils import get_hl7_field_value, set_nested_field
 
 
 def create_test_segments() -> tuple:
@@ -14,8 +14,8 @@ def create_test_segments() -> tuple:
 
     pid_message_str = (
         "MSH|^~\\&|TEST|TEST||TEST|20250725120000||ADT^A28|123|P|2.4|||NE|NE\r"
-        "PID|1|123^^^^NH|123^^^^NH||PATIENT_NAME^FIRST^^^||19900101|M|||^^^^CF11 9AD||"
-        "555-1234^PRN||ENG|M||123456789||||||||||||\r"
+        "PID|1|123^^^^NH|^03^^^NI~N5022039^^^^PI||PATIENT_NAME^FIRST^^^||19900101|M|||^^^^CF11 9AD||"
+        "07001231234^PRN~07001234567^ORN||ENG|M||123456789||||||||||||\r"
     )
     pid_message = parse_message(pid_message_str)
 
@@ -54,6 +54,48 @@ class TestGetHL7FieldValue(unittest.TestCase):
             with self.subTest(msg=case["description"]):
                 result = get_hl7_field_value(case["segment"], str(case["field_path"]))
                 self.assertEqual(result, case["expected"])
+
+    def test_get_field_with_bracket_notation(self) -> None:
+        test_cases = [
+            {
+                "field_path": "pid_3[0].cx_1",
+                "expected": "",
+                "description": "first repetition of pid_3 cx_1 field - not populated",
+            },
+            {
+                "field_path": "pid_3[0].cx_2",
+                "expected": "03",
+                "description": "first repetition of pid_3 cx_2 field",
+            },
+            {
+                "field_path": "pid_3[1].cx_1",
+                "expected": "N5022039",
+                "description": "second repetition of pid_3 cx_1 field",
+            },
+            {
+                "field_path": "pid_13[0].xtn_1",
+                "expected": "07001231234",
+                "description": "first repetition of pid_13 xtn_1 field",
+            },
+            {
+                "field_path": "pid_13[1].xtn_1",
+                "expected": "07001234567",
+                "description": "second repetition of pid_13 xtn_1 field",
+            },
+        ]
+
+        for case in test_cases:
+            with self.subTest(msg=case["description"]):
+                result = get_hl7_field_value(self.pid_segment, str(case["field_path"]))
+                self.assertEqual(result, case["expected"])
+
+    def test_get_field_with_bracket_notation_out_of_range(self) -> None:
+        result = get_hl7_field_value(self.pid_segment, "pid_3[5].cx_1")
+        self.assertEqual(result, "")
+
+    def test_get_field_with_bracket_notation_missing_field(self) -> None:
+        result = get_hl7_field_value(self.pid_segment, "nonexistent_field[0].value")
+        self.assertEqual(result, "")
 
     def test_get_missing_field(self) -> None:
         result = get_hl7_field_value(self.msh_segment, "nonexistent_field")
