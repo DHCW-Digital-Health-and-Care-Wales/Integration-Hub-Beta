@@ -10,12 +10,12 @@ import json
 def list_schema_groups() -> List[str]:
     groups: List[str] = []
     res_root = files("hl7_validation.resources")
-    for item in getattr(res_root, "iterdir", lambda: [])():  # type: ignore[attr-defined]
-        try:
+    try:
+        for item in res_root.iterdir():
             if item.is_dir():
                 groups.append(item.name)
-        except (OSError, AttributeError):
-            continue
+    except (OSError, AttributeError):
+        pass
     return sorted(set(groups))
 
 
@@ -24,14 +24,11 @@ def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
     mapping: Dict[str, str] = {}
     flow_dir = files("hl7_validation.resources") / flow_name
     try:
-        for item in getattr(flow_dir, "iterdir", lambda: [])():  # type: ignore[attr-defined]
-            try:
-                if item.name.lower().endswith(".xsd"):
-                    trigger = item.stem
-                    mapping.setdefault(trigger, f"{flow_name}/{item.name}")
-            except (OSError, AttributeError):
-                continue
-    except (FileNotFoundError, NotADirectoryError, PermissionError):
+        for item in flow_dir.iterdir():
+            if item.name.lower().endswith(".xsd"):
+                trigger = item.stem
+                mapping.setdefault(trigger, f"{flow_name}/{item.name}")
+    except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
         return {}
     return mapping
 
@@ -51,12 +48,14 @@ def get_schema_xsd_path_for(flow_name: str, trigger_event: str) -> str:
 def _load_fallback_mappings() -> Dict[str, Dict[str, str]]:
     cfg_path = files("hl7_validation.resources") / "structure_fallbacks.json"
     try:
-        with cfg_path.open("r", encoding="utf-8") as f:  # type: ignore[attr-defined]
+        with cfg_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, FileNotFoundError, IsADirectoryError, PermissionError):
         return {}
+
     if not isinstance(data, dict):
         return {}
+
     result: Dict[str, Dict[str, str]] = {}
     for flow, mapping in data.items():
         if isinstance(mapping, dict):
