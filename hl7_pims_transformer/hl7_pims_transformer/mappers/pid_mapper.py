@@ -9,7 +9,7 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
         return  # No PID segment
 
     # trigger event for A28 specific logic
-    trigger_event = get_hl7_field_value(original_hl7_message, "msh.msh_9.msg_2")
+    trigger_event = get_hl7_field_value(new_message, "msh.msh_9.msg_2")
     is_a28_message = trigger_event == "A28"
 
     original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")

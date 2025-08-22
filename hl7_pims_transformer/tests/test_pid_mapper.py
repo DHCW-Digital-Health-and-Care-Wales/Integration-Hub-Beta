@@ -131,13 +131,17 @@ class TestPIDMapper(unittest.TestCase):
 
     def test_map_pid_3_a28_message_with_n3_prefix(self) -> None:
         a28_message = (
-            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A04^ADT_A01|48209024|P|2.3.1\r"
             'PID|||N3123456789^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
             "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
             "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
         )
         original_message = parse_message(a28_message)
         new_message = Message(version="2.5")
+
+        new_message.msh.msh_9.msg_1 = "ADT"
+        new_message.msh.msh_9.msg_2 = "A28"
+        new_message.msh.msh_9.msg_3 = "ADT_A05"
 
         map_pid(original_message, new_message)
 
@@ -149,13 +153,17 @@ class TestPIDMapper(unittest.TestCase):
 
     def test_map_pid_3_a28_message_with_n4_prefix(self) -> None:
         a28_message = (
-            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A04^ADT_A01|48209024|P|2.3.1\r"
             'PID|||N4987654321^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
             "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
             "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
         )
         original_message = parse_message(a28_message)
         new_message = Message(version="2.5")
+
+        new_message.msh.msh_9.msg_1 = "ADT"
+        new_message.msh.msh_9.msg_2 = "A28"
+        new_message.msh.msh_9.msg_3 = "ADT_A05"
 
         map_pid(original_message, new_message)
 
@@ -167,13 +175,17 @@ class TestPIDMapper(unittest.TestCase):
 
     def test_map_pid_3_a28_message_without_n3_n4_prefix(self) -> None:
         a28_message = (
-            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A28^ADT_A05|48209024|P|2.3.1\r"
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A04^ADT_A01|48209024|P|2.3.1\r"
             'PID|||1000000001^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
             "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
             "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
         )
         original_message = parse_message(a28_message)
         new_message = Message(version="2.5")
+
+        new_message.msh.msh_9.msg_1 = "ADT"
+        new_message.msh.msh_9.msg_2 = "A28"
+        new_message.msh.msh_9.msg_3 = "ADT_A05"
 
         map_pid(original_message, new_message)
 
