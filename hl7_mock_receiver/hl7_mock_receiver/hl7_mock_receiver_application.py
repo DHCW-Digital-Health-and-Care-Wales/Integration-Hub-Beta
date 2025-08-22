@@ -46,6 +46,7 @@ class Hl7MockReceiver:
         handlers = {
             "ADT^A31^ADT_A05": (GenericHandler, self.sender_client),
             "ADT^A28^ADT_A05": (GenericHandler, self.sender_client),
+            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client),
             'ERR': (ErrorHandler,)
         }
 
