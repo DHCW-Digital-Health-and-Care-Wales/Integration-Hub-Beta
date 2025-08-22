@@ -38,9 +38,10 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[1].value, "01234567896")
         self.assertEqual(transformed_message.pid.pid_14.value, "")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
-        # EVN not present for A08
-        self.assertEqual(transformed_message.evn.evn_1.value, "")
-        self.assertEqual(transformed_message.evn.value, "EVN")
+        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
+        self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20241231101035")
+        self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20241231101035")
+        self.assertEqual(transformed_message.evn.value, "EVN||20241231101035||||20241231101035")
         self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "W98006")
         self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "G9310201")
         self.assertEqual(transformed_message.pd1.value, "PD1|||^^W98006|G9310201")
@@ -77,7 +78,8 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
         # EVN not present for A08
         self.assertEqual(transformed_message.evn.evn_1.value, "")
-        self.assertEqual(transformed_message.evn.value, "EVN")
+        self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20250702085440")
+        self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20250702085450")
         self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "W90001")
         self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "G7000001")
         self.assertEqual(transformed_message.pd1.value, "PD1|||^^W90001|G7000001")
@@ -112,9 +114,11 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001 PT")
         self.assertEqual(transformed_message.pid.pid_14.value, "50500 02920")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
-        # EVN not present for A40 (hl7apy returns just segment name when there are no values)
-        self.assertEqual(transformed_message.evn.evn_1.value, "")
-        self.assertEqual(transformed_message.evn.value, "EVN")
+        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
+        self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20250630155034")
+        self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20250630155034")
+        self.assertEqual(transformed_message.evn.value, "EVN||20250630155034||||20250630155034")
+
         # PD1 not present for A40
         self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "")
         self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "")
