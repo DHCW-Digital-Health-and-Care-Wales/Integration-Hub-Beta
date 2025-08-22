@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import xmlschema
-from hl7apy.parser import parse_message
 
 from .convert import er7_to_hl7v2xml, STRUCTURE_ERROR_MSG
 from .schemas import get_schema_xsd_path_for, get_fallback_structure_for

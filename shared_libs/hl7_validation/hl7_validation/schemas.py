@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from importlib.resources import files
+from pathlib import Path
 from typing import Dict, List, Optional
 import json
 
@@ -26,7 +27,7 @@ def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
     try:
         for item in flow_dir.iterdir():
             if item.name.lower().endswith(".xsd"):
-                trigger = item.stem
+                trigger = Path(item.name).stem
                 mapping.setdefault(trigger, f"{flow_name}/{item.name}")
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
         return {}
