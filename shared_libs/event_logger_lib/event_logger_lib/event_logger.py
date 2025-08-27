@@ -18,12 +18,13 @@ class EventLogger:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
         connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
-        self.enabled = bool(connection_string)
+        self.azure_monitor_enabled = bool(connection_string)
 
-        if self.enabled:
+        if self.azure_monitor_enabled:
             self._initialize_azure_monitor()
         else:
-            logger.debug("Event logging is disabled - APPLICATIONINSIGHTS_CONNECTION_STRING not set or empty")
+            logger.info("Azure Monitor logging is disabled - APPLICATIONINSIGHTS_CONNECTION_STRING not set or empty. "
+                        "Standard logger will be used.")
 
     def _initialize_azure_monitor(self) -> None:
         try:
@@ -35,7 +36,7 @@ class EventLogger:
             logger.info("Azure Monitor initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Azure Monitor: {e}")
-            self.enabled = False
+            self.azure_monitor_enabled = False
             raise
 
     def _get_credential(self):
@@ -101,21 +102,22 @@ class EventLogger:
         self._send_log_event(event)
 
     def _send_log_event(self, event: LogEvent) -> None:
-        if not self.enabled:
-            logger.debug(f"Event logging disabled, skipping event: {event.event_type.value}")
-            return
-
         try:
-            logger.info(
-                "Integration Hub Event",
-                extra={
-                    **asdict(event),
-                    "event_type": event.event_type.value,
-                    "timestamp": event.timestamp.isoformat(),
-                }
-            )
+            event_dict = {
+                **asdict(event),
+                "event_type": event.event_type.value,
+                "timestamp": event.timestamp.isoformat(),
+            }
 
-            logger.debug(f"Event logged to Azure Monitor: {event.event_type.value}")
+            if self.azure_monitor_enabled:
+                logger.info(
+                    "Integration Hub Event",
+                    extra=event_dict
+                )
+                logger.debug(f"Event logged to Azure Monitor: {event.event_type.value}")
+            else:
+                logger.info(f"Integration Hub Event: {event_dict}")
+
         except Exception as e:
-            logger.error(f"Failed to send log event to Azure Monitor: {e}")
+            logger.error(f"Failed to log event: {e}")
             raise

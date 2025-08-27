@@ -51,24 +51,24 @@ class TestEventLogger(unittest.TestCase):
     def test_initialization_with_logging_disabled(self):
         with patch.dict(os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True):
             logger = EventLogger("test-workflow", "test-service")
-            self.assertFalse(logger.enabled)
+            self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_disabled_no_env_var(self):
         with patch.dict(os.environ, {}, clear=True):
             logger = EventLogger("test-workflow", "test-service")
-            self.assertFalse(logger.enabled)
+            self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_disabled_whitespace_only(self):
         with patch.dict(os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": "   "}, clear=True):
             logger = EventLogger("test-workflow", "test-service")
-            self.assertFalse(logger.enabled)
+            self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_enabled(self):
         with patch.dict(os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint"}):
             with patch('event_logger_lib.event_logger.configure_azure_monitor') as mock_configure:
                 with patch('event_logger_lib.event_logger.DefaultAzureCredential') as mock_cred:
                     logger = EventLogger("test-workflow", "test-service")
-                    self.assertTrue(logger.enabled)
+                    self.assertTrue(logger.azure_monitor_enabled)
                     mock_configure.assert_called_once()
                     mock_cred.assert_called_once()
 
@@ -81,7 +81,7 @@ class TestEventLogger(unittest.TestCase):
 
     @patch('event_logger_lib.event_logger.datetime')
     @patch('event_logger_lib.event_logger.logger')
-    def test_log_message_received(self, mock_logger, mock_datetime):
+    def test_log_message_received_with_azure_monitor_enabled(self, mock_logger: MagicMock, mock_datetime: MagicMock) -> None:
         # Arrange
         mock_datetime.now.return_value = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         message_content = "Test HL7 Message"
@@ -91,13 +91,41 @@ class TestEventLogger(unittest.TestCase):
         self.event_logger.log_message_received(message_content, validation_result)
 
         # Assert
+        self.assertTrue(self.event_logger.azure_monitor_enabled)
         self._assert_log_event(
             mock_logger,
-            "MESSAGE_RECEIVED",
-            message_content,
-            "2023-01-01T12:00:00+00:00",
+            event_type=EventType.MESSAGE_RECEIVED.value,
+            message_content=message_content,
+            timestamp='2023-01-01T12:00:00+00:00',
             validation_result=validation_result
         )
+
+    @patch('event_logger_lib.event_logger.datetime')
+    @patch('event_logger_lib.event_logger.logger')
+    def test_log_message_received_with_azure_monitor_disabled(self, mock_logger: MagicMock, mock_datetime: MagicMock) -> None:
+        # Arrange
+        with patch.dict(os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True):
+            event_logger = EventLogger(self.workflow_id, self.microservice_id)
+        mock_logger.info.reset_mock()
+        mock_datetime.now.return_value = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        message_content = "Test HL7 Message"
+        validation_result = "Valid"
+
+        # Act
+        event_logger.log_message_received(message_content, validation_result)
+
+        # Assert
+        self.assertFalse(event_logger.azure_monitor_enabled)
+        mock_logger.info.assert_called_once()
+        call_args = mock_logger.info.call_args
+        logged_message = call_args[0][0]
+        self.assertIn("Integration Hub Event:", logged_message)
+        self.assertIn("'workflow_id': 'test-workflow'", logged_message)
+        self.assertIn("'microservice_id': 'test-service'", logged_message)
+        self.assertIn("'event_type': 'MESSAGE_RECEIVED'", logged_message)
+        self.assertIn("'message_content': 'Test HL7 Message'", logged_message)
+        self.assertIn("'validation_result': 'Valid'", logged_message)
+        self.assertIn("'timestamp': '2023-01-01T12:00:00+00:00'", logged_message)
 
     @patch('event_logger_lib.event_logger.datetime')
     @patch('event_logger_lib.event_logger.logger')
@@ -118,6 +146,7 @@ class TestEventLogger(unittest.TestCase):
             "2025-01-01T12:00:00+00:00",
             validation_result=validation_result
         )
+        mock_logger.debug.assert_called_once_with("Event logged to Azure Monitor: MESSAGE_PROCESSED")
 
     @patch('event_logger_lib.event_logger.datetime')
     @patch('event_logger_lib.event_logger.logger')
@@ -140,6 +169,7 @@ class TestEventLogger(unittest.TestCase):
             validation_result=validation_result,
             error_details=error_details
         )
+        mock_logger.debug.assert_called_once_with("Event logged to Azure Monitor: MESSAGE_FAILED")
 
     @patch('event_logger_lib.event_logger.datetime')
     @patch('event_logger_lib.event_logger.logger')
@@ -160,6 +190,7 @@ class TestEventLogger(unittest.TestCase):
             "2025-01-01T12:00:00+00:00",
             validation_result=validation_result
         )
+        mock_logger.debug.assert_called_once_with("Event logged to Azure Monitor: VALIDATION_SUCCESS")
 
     @patch('event_logger_lib.event_logger.datetime')
     @patch('event_logger_lib.event_logger.logger')
@@ -180,33 +211,19 @@ class TestEventLogger(unittest.TestCase):
             "2025-01-01T12:00:00+00:00",
             validation_result=validation_result
         )
-
-    @patch('event_logger_lib.event_logger.logger')
-    def test_logging_disabled_skips_events(self, mock_logger):
-        # Arrange
-        with patch.dict(os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True):
-            logger = EventLogger("test-workflow", "test-service")
-
-        # Act
-        logger.log_message_received("Test message")
-
-        # Assert
-        mock_logger.debug.assert_called_with(
-            "Event logging disabled, skipping event: MESSAGE_RECEIVED"
-        )
-        mock_logger.info.assert_not_called()
+        mock_logger.debug.assert_called_once_with("Event logged to Azure Monitor: VALIDATION_FAILED")
 
     @patch('event_logger_lib.event_logger.logger')
     def test_send_log_event_exception_handling(self, mock_logger):
         # Arrange
-        mock_logger.info.side_effect = Exception("Azure Monitor connection failed")
+        mock_logger.info.side_effect = Exception("Something went wrong")
 
         # Act & Assert
         with self.assertRaises(Exception):
             self.event_logger.log_message_received("Test message")
 
         mock_logger.error.assert_called_with(
-            "Failed to send log event to Azure Monitor: Azure Monitor connection failed"
+            "Failed to log event: Something went wrong"
         )
 
     def test_create_log_event(self):
@@ -244,7 +261,7 @@ class TestEventLogger(unittest.TestCase):
                     with patch('event_logger_lib.event_logger.DefaultAzureCredential') as mock_default_cred:
                         logger = EventLogger("test-workflow", "test-service")
 
-                        self.assertTrue(logger.enabled)
+                        self.assertTrue(logger.azure_monitor_enabled)
                         mock_configure.assert_called_once()
                         mock_managed_cred.assert_called_once_with(client_id=insights_uami_client_id)
                         mock_default_cred.assert_not_called()
@@ -281,7 +298,7 @@ class TestEventLogger(unittest.TestCase):
 
                         logger = EventLogger("test-workflow", "test-service")
 
-                        self.assertTrue(logger.enabled)
+                        self.assertTrue(logger.azure_monitor_enabled)
                         mock_configure.assert_called_once()
                         mock_default_cred.assert_called_once()
                         mock_managed_cred.assert_not_called()
