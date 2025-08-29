@@ -50,7 +50,12 @@ class TestMSHMapper(unittest.TestCase):
                 get_hl7_field_value(self.new_message.msh, field_path),
             )
 
-    def test_msh9_mapping(self) -> None:
+    def test_map_msh_7_datetime(self) -> None:
+        map_msh(self.original_message, self.new_message)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.msh, "msh_7.ts_1"), "20241231101053")
+
+    def test_map_msh_9(self) -> None:
         test_cases = [
             ("ADT^A04^ADT_A01", "ADT^A28^ADT_A05"),
             ("ADT^A08^ADT_A01", "ADT^A31^ADT_A05"),

@@ -139,6 +139,11 @@ class TestPIDMapper(unittest.TestCase):
                 self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "108")
                 self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "LI")
 
+    def test_map_pid_7_datetime(self) -> None:
+        map_pid(self.original_message, self.new_message)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_7.ts_1"), "20000101")
+
     def test_map_pid_13_repetitions(self) -> None:
         map_pid(self.original_message, self.new_message)
 
@@ -153,16 +158,14 @@ class TestPIDMapper(unittest.TestCase):
                 get_hl7_field_value(new_pid13_reps[rep_count], "xtn_1"),
             )
 
-    def test_map_pid_29_ts1_datetime_trimming(self) -> None:
+    def test_map_pid_29_ts1_datetime(self) -> None:
         test_cases = [
             ("20250630155034+0000", "20250630155034"),  # length > 6, trimmed
-            ("2025063015+0000", "2025063015"),  # length > 6, trimmed
             ("20250630+0100", "20250630"),  # length > 6, trimmed
             ("202506", '""'),  # length = 6, set to empty
             ("20250", '""'),  # length < 6, set to empty
             ('""', '""'),  # empty string
             ("", '""'),  # no value
-            ("20250630155034-0100", "20250630155034-0100"),  # negative timezone, shouldn't happen in GB
         ]
 
         for original_value, expected_value in test_cases:
@@ -176,3 +179,26 @@ class TestPIDMapper(unittest.TestCase):
                 map_pid(original_message, new_message)
 
                 self.assertEqual(get_hl7_field_value(new_message.pid, "pid_29.ts_1"), expected_value)
+
+    def test_map_pid_29_ts1_datetime_invalid_date(self) -> None:
+        invalid_format_test_cases = [
+            ("2025063015+0000", "10 digits after removal - invalid length"),
+            ("20250630abc+0000", "Contains non-numeric characters"),
+            ("2025-06-30+0000", "Contains hyphens"),
+            ("20250630155034-0100", "No support for negative timezone offsets"),
+        ]
+
+        for original_value, description in invalid_format_test_cases:
+            with self.subTest(original_value=original_value, description=description):
+                # Create fresh messages for each subtest
+                original_message = parse_message(self.base_hl7_message)
+                new_message = Message(version="2.5")
+
+                original_message.pid.pid_29.ts_1.value = original_value
+
+                with self.assertRaises(ValueError) as context:
+                    map_pid(original_message, new_message)
+
+                error_message = str(context.exception)
+                self.assertIn("Invalid datetime format after timezone removal", error_message)
+                self.assertIn("Expected format: YYYYMMDD (8 digits) or YYYYMMDDHHMMSS (14 digits)", error_message)
