@@ -58,8 +58,12 @@ class TestMSHMapper(unittest.TestCase):
         ]
         for msh_9_original_value, expected_value in test_cases:
             with self.subTest(msh_9=msh_9_original_value):
-                self.original_message.msh.msh_9 = msh_9_original_value
+                # Fresh instances for each subtest iteration
+                original_message = parse_message(self.msh_header)
+                new_message = Message(version="2.5")
 
-                map_msh(self.original_message, self.new_message)
+                original_message.msh.msh_9 = msh_9_original_value
 
-                self.assertEqual(expected_value, get_hl7_field_value(self.new_message.msh, "msh_9"))
+                map_msh(original_message, new_message)
+
+                self.assertEqual(expected_value, get_hl7_field_value(new_message.msh, "msh_9"))
