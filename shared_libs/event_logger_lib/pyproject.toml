@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "event-logger-lib"
+version = "0.1.0"
+description = "Azure Monitor Insights event logging library"
+authors = [{name = "DHCW"}]
+requires-python = ">=3.13"
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "azure-monitor-opentelemetry==1.6.13",
+    "azure-identity==1.23.0",
+    "setuptools==80.9.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["event_logger_lib*"]

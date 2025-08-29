@@ -14,9 +14,9 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock]:
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_hl7_sender_client = MagicMock()
-    mock_audit_client = MagicMock()
+    mock_event_logger = MagicMock()
 
-    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_audit_client
+    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger
 
 
 class TestProcessMessage(unittest.TestCase):
@@ -25,36 +25,36 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.get_ack_result")
     def test_process_message_success(self, mock_ack_processor: Mock, mock_parse_message: Mock) -> None:
         # Arrange
-        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_audit_client = _setup()
+        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_ack_processor.return_value = True
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_audit_client)
+        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger)
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
-        mock_audit_client.log_message_received.assert_called_once()
-        mock_audit_client.log_message_processed.assert_called_once()
+        mock_event_logger.log_message_received.assert_called_once()
+        mock_event_logger.log_message_processed.assert_called_once()
 
         self.assertTrue(result)
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_timeout_error(self, mock_parse_message: Mock) -> None:
         # Arrange
-        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_audit_client = _setup()
+        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger = _setup()
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.side_effect = TimeoutError("No ACK received within 30 seconds")
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_audit_client)
+        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger)
 
         # Assert
-        mock_audit_client.log_message_received.assert_called_once()
-        mock_audit_client.log_message_failed.assert_called_once()
+        mock_event_logger.log_message_received.assert_called_once()
+        mock_event_logger.log_message_failed.assert_called_once()
         self.assertFalse(result)
 
     @patch("hl7_sender.application.ConnectionConfig")
@@ -62,9 +62,9 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.AppConfig")
     @patch("hl7_sender.application.TCPHealthCheckServer")
     @patch("hl7_sender.application.HL7SenderClient")
-    @patch("hl7_sender.application.AuditServiceClient")
+    @patch("hl7_sender.application.EventLogger")
     def test_health_check_server_starts_and_stops(
-        self, mock_audit_client: Mock, mock_hl7_sender: Mock, mock_health_check: Mock,
+        self, mock_event_logger: Mock, mock_hl7_sender: Mock, mock_health_check: Mock,
             mock_app_config: Mock, mock_factory: Mock, mock_connection_config: Mock) -> None:
         # Arrange
         mock_health_server = MagicMock()

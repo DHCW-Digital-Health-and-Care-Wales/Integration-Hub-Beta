@@ -10,6 +10,7 @@ dependencies = [
   "hl7apy==1.3.5",
   "message-bus-lib",
   "health-check-lib",
+  "event-logger-lib",
 ]
 
 [dependency-groups]
@@ -23,6 +24,7 @@ dev = [
 [tool.uv.sources]
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
+event-logger-lib = { path = "../shared_libs/event_logger_lib" }
 
 [tool.mypy]
 python_version = "3.13"

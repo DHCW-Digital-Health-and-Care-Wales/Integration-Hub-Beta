@@ -22,9 +22,9 @@ def _setup(
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_sender = MagicMock()
-    mock_audit_client = MagicMock()
+    mock_event_logger = MagicMock()
 
-    return service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client
+    return service_bus_message, hl7_message, hl7_string, mock_sender, mock_event_logger
 
 
 class TestProcessMessage(unittest.TestCase):
@@ -45,14 +45,14 @@ class TestProcessMessage(unittest.TestCase):
             hl7_message,
             hl7_string,
             mock_sender,
-            mock_audit_client,
+            mock_event_logger,
         ) = _setup(created_datetime, resurrec_dod)
         mock_parse_message.return_value = hl7_message
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
 
         # Act
-        result = _process_message(service_bus_message, mock_sender, mock_audit_client)
+        result = _process_message(service_bus_message, mock_sender, mock_event_logger)
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -60,14 +60,14 @@ class TestProcessMessage(unittest.TestCase):
         mock_transform_dod.assert_called_once_with(resurrec_dod)
         mock_sender.send_message.assert_called_once_with(hl7_message.to_er7())
 
-        mock_audit_client.log_message_received.assert_called_once_with(
+        mock_event_logger.log_message_received.assert_called_once_with(
             hl7_string, "Message received for transformation"
         )
         audit_message = (
             "HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; "
             'Date of death transformed from RESURREC to ""'
         )
-        mock_audit_client.log_message_processed.assert_called_once_with(
+        mock_event_logger.log_message_processed.assert_called_once_with(
             hl7_string,
             audit_message,
         )
@@ -86,7 +86,7 @@ class TestProcessMessage(unittest.TestCase):
         # Arrange
         created_datetime = "2025-05-22 10:30:00"
         valid_dod = "2023-01-15"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_event_logger = _setup(
             created_datetime, valid_dod
         )
 
@@ -95,7 +95,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_transform_dod.return_value = valid_dod  # No change needed
 
         # Act
-        result = _process_message(service_bus_message, mock_sender, mock_audit_client)
+        result = _process_message(service_bus_message, mock_sender, mock_event_logger)
 
         # Assert
         mock_transform_dod.assert_called_once_with(valid_dod)
@@ -110,32 +110,32 @@ class TestProcessMessage(unittest.TestCase):
     ) -> None:
         # Arrange
         created_datetime = "invalid_datetime"
-        service_bus_message, hl7_message, hl7_string, mock_sender, mock_audit_client = _setup(created_datetime)
+        service_bus_message, hl7_message, hl7_string, mock_sender, mock_event_logger = _setup(created_datetime)
         mock_parse_message.return_value = hl7_message
         error_reason = "Invalid date"
         mock_transform_datetime.side_effect = ValueError(error_reason)
 
         # Act
-        result = _process_message(service_bus_message, mock_sender, mock_audit_client)
+        result = _process_message(service_bus_message, mock_sender, mock_event_logger)
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
         mock_transform_datetime.assert_called_once_with(created_datetime)
         mock_sender.send_message.assert_not_called()
 
-        mock_audit_client.log_message_received.assert_called_once_with(
+        mock_event_logger.log_message_received.assert_called_once_with(
             hl7_string, "Message received for transformation"
         )
-        mock_audit_client.log_message_failed.assert_called_once_with(
+        mock_event_logger.log_message_failed.assert_called_once_with(
             hl7_string,
             f"Failed to transform datetime: {error_reason}",
             "DateTime transformation failed",
         )
-        mock_audit_client.log_message_processed.assert_not_called()
+        mock_event_logger.log_message_processed.assert_not_called()
 
         self.assertFalse(result)
 
-    @patch("hl7_transformer.application.AuditServiceClient")
+    @patch("hl7_transformer.application.EventLogger")
     @patch("hl7_transformer.application.AppConfig")
     @patch("hl7_transformer.application.ServiceBusClientFactory")
     @patch("hl7_transformer.application.TCPHealthCheckServer")
@@ -144,7 +144,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_health_check: MagicMock,
         mock_factory: MagicMock,
         mock_app_config: MagicMock,
-        mock_audit_client: MagicMock
+        mock_event_logger: MagicMock
     ) -> None:
         # Arrange
         mock_health_server = MagicMock()
