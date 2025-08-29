@@ -29,6 +29,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_3[1].value, "N5022039^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
+        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
         self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
@@ -38,7 +39,6 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[1].value, "01234567896")
         self.assertEqual(transformed_message.pid.pid_14.value, "")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
-        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
         self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20241231101035")
         self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20241231101035")
@@ -71,6 +71,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_3[1].value, "N1000001^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TEST^TEST-TEST^""^^MISS')
+        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
         self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(transformed_message.pid.pid_11.value, '1 TEST^TEST^TEST^""^CF11 9AD')
         self.assertEqual(transformed_message.pid.pid_13[0].value, "07000000001")
@@ -80,6 +81,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20250702085440")
         self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20250702085450")
+        self.assertEqual(transformed_message.evn.value, "EVN||20250702085440||||20250702085450")
         self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "W90001")
         self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "G7000001")
         self.assertEqual(transformed_message.pd1.value, "PD1|||^^W90001|G7000001")
@@ -105,6 +107,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
         self.assertEqual(transformed_message.pid.pid_5.value, "TEST^TEST^TEST^^MS.")
+        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
         self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
@@ -114,11 +117,10 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001 PT")
         self.assertEqual(transformed_message.pid.pid_14.value, "50500 02920")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
-        self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
+        self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20250630155034")
         self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20250630155034")
         self.assertEqual(transformed_message.evn.value, "EVN||20250630155034||||20250630155034")
-
         # PD1 not present for A40
         self.assertEqual(transformed_message.pd1.pd1_3.xon_3.value, "")
         self.assertEqual(transformed_message.pd1.pd1_4.xcn_1.value, "")
