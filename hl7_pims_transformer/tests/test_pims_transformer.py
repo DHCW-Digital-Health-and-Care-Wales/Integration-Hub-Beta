@@ -39,6 +39,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_14.value, "")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
+        self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20241231101035")
         self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20241231101035")
         self.assertEqual(transformed_message.evn.value, "EVN||20241231101035||||20241231101035")
@@ -76,7 +77,6 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001")
         self.assertEqual(transformed_message.pid.pid_14.value, "07000000001")
         self.assertEqual(transformed_message.pid.pid_29.ts_1.value, '""')
-        # EVN not present for A08
         self.assertEqual(transformed_message.evn.evn_1.value, "")
         self.assertEqual(transformed_message.evn.evn_2.ts_1.value, "20250702085440")
         self.assertEqual(transformed_message.evn.evn_6.ts_1.value, "20250702085450")
