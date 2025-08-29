@@ -21,18 +21,22 @@ class TestPD1Mapper(unittest.TestCase):
 
         for trigger_event in trigger_events:
             with self.subTest(original_value=trigger_event):
-                original_pd1_4_rep2_xcn_1_value = "W98006"
-                self.original_message.msh.msh_9.msg_2 = trigger_event
-                self.original_message.pd1.pd1_4[0].xcn_1 = "G9310201"
-                self.original_message.pd1.pd1_4[1].xcn_1 = original_pd1_4_rep2_xcn_1_value
+                # Fresh instances for each subtest iteration
+                original_message = parse_message(self.base_hl7_message)
+                new_message = Message(version="2.5")
 
-                map_pd1(self.original_message, self.new_message)
+                original_pd1_4_rep2_xcn_1_value = "W98006"
+                original_message.msh.msh_9.msg_2 = trigger_event
+                original_message.pd1.pd1_4[0].xcn_1 = "G9310201"
+                original_message.pd1.pd1_4[1].xcn_1 = original_pd1_4_rep2_xcn_1_value
+
+                map_pd1(original_message, new_message)
 
                 self.assertEqual(
-                    get_hl7_field_value(self.original_message.pd1, "pd1_4.xcn_1"),
-                    get_hl7_field_value(self.new_message.pd1, "pd1_4.xcn_1"),
+                    get_hl7_field_value(original_message.pd1, "pd1_4.xcn_1"),
+                    get_hl7_field_value(new_message.pd1, "pd1_4.xcn_1"),
                 )
-                self.assertEqual(self.new_message.pd1.pd1_3.xon_3.value, original_pd1_4_rep2_xcn_1_value)
+                self.assertEqual(new_message.pd1.pd1_3.xon_3.value, original_pd1_4_rep2_xcn_1_value)
 
     def test_map_pd1_pd1_3_and_pd_1_4_for_non_matching_trigger_event(self) -> None:
         self.original_message.msh.msh_9.msg_2.value = "A40"
