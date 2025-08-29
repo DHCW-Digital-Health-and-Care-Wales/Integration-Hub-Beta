@@ -10,6 +10,7 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
+from mappers.pid_mapper import map_pid
 
 from .app_config import AppConfig
 from .pims_transformer import transform_pims_message
