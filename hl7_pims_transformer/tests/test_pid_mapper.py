@@ -139,6 +139,11 @@ class TestPIDMapper(unittest.TestCase):
                 self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "108")
                 self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "LI")
 
+    def test_map_pid_7_datetime(self) -> None:
+        map_pid(self.original_message, self.new_message)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_7.ts_1"), "20000101")
+
     def test_map_pid_13_repetitions(self) -> None:
         map_pid(self.original_message, self.new_message)
 
@@ -153,7 +158,7 @@ class TestPIDMapper(unittest.TestCase):
                 get_hl7_field_value(new_pid13_reps[rep_count], "xtn_1"),
             )
 
-    def test_map_pid_29_ts1_datetime_trimming(self) -> None:
+    def test_map_pid_29_ts1_datetime(self) -> None:
         test_cases = [
             ("20250630155034+0000", "20250630155034"),  # length > 6, trimmed
             ("20250630+0100", "20250630"),  # length > 6, trimmed
@@ -175,7 +180,7 @@ class TestPIDMapper(unittest.TestCase):
 
                 self.assertEqual(get_hl7_field_value(new_message.pid, "pid_29.ts_1"), expected_value)
 
-    def test_map_pid_29_ts1_datetime_trimming_invalid_date(self) -> None:
+    def test_map_pid_29_ts1_datetime_invalid_date(self) -> None:
         invalid_format_test_cases = [
             ("2025063015+0000", "10 digits after removal - invalid length"),
             ("20250630abc+0000", "Contains non-numeric characters"),

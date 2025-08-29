@@ -24,12 +24,12 @@ class TestEVNMapper(unittest.TestCase):
             get_hl7_field_value(self.new_message.evn, "evn_1"),
         )
 
-    def test_map_evn_2(self) -> None:
+    def test_map_evn_2_datetime(self) -> None:
         map_evn(self.original_message, self.new_message)
 
         self.assertEqual(get_hl7_field_value(self.new_message.evn, "evn_2.ts_1"), "20250702085440")
 
-    def test_map_evn_6(self) -> None:
+    def test_map_evn_6_datetime(self) -> None:
         map_evn(self.original_message, self.new_message)
 
         self.assertEqual(get_hl7_field_value(self.new_message.evn, "evn_6.ts_1"), "20250702085444")
