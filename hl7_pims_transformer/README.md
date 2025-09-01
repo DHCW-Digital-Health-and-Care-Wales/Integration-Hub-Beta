@@ -1,6 +1,6 @@
 # HL7 PIMS Transformer
 
-HL7 PIMS to MPI Transformer Service
+HL7 PIMS to MPI Transformer Service - transforms messages from PIMS systems (SENDING_APP: PIMS) to MPI format.
 
 ### Dependencies
 
