@@ -9,7 +9,7 @@ A cloud-native platform for seamless and secure exchange of clinical information
 - [Repository Structure](#repository-structure)
 - [Core Components](#core-components)
 - [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
+- [Local Setup](#local-setup)
 - [Development](#development)
 - [Deployment](#deployment)
 - [Architecture](#architecture)
@@ -104,15 +104,13 @@ The system supports multiple healthcare system integration profiles:
 - **Architecture**: Microservices with event-driven messaging
 - **Cloud Platform**: Azure (cloud-native design)
 
-## Getting Started
+## Local Setup
 
 ### Prerequisites
 
 - Docker Desktop
 - WSL enabled (Windows only)
 - [UV](https://docs.astral.sh/uv/)
-
-### Local Development
 
 > [!IMPORTANT]
 > For comprehensive local setup instructions, see [`local/README.md`](local/README.md).
@@ -126,6 +124,7 @@ The `shared_libs/` directory contains common functionality:
 - **`health_check_lib/`** - Standardized health check endpoints
 - **`message_bus_lib/`** - Azure Service Bus integration and messaging patterns
 - **`processor_manager_lib/`** - Message processing orchestration and error handling
+- **`event_logger_lib/`** - Azure Monitor / Application Insights event logging library
 
 ### Service Structure
 
