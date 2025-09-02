@@ -3,8 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
-from typing import Dict, List, Optional
-import json
+from typing import Dict, List
 
 
 @lru_cache(maxsize=1)
@@ -34,37 +33,18 @@ def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
     return mapping
 
 
-def get_schema_xsd_path_for(flow_name: str, trigger_event: str) -> str:
+def get_schema_xsd_path_for(flow_name: str, trigger_event_or_structure: str) -> str:
     triggers = list_schemas_for_group(flow_name)
-    xsd_rel = triggers.get(trigger_event)
-    if not xsd_rel:
+    from_key = _resolve_mapping_for_key(triggers, trigger_event_or_structure)
+    if not from_key:
         available = ", ".join(sorted(triggers.keys())) or "<none>"
         raise ValueError(
-            f"No XSD mapping for flow '{flow_name}' and trigger '{trigger_event}'. Available triggers: {available}"
+            f"No XSD mapping for flow '{flow_name}' and "
+            f"trigger/structure '{trigger_event_or_structure}'. "
+            f"Available: {available}"
         )
-    return str(files("hl7_validation.resources") / xsd_rel)
+    return str(files("hl7_validation.resources") / from_key)
 
 
-@lru_cache(maxsize=1)
-def _load_fallback_mappings() -> Dict[str, Dict[str, str]]:
-    cfg_path = files("hl7_validation.resources") / "structure_fallbacks.json"
-    try:
-        with cfg_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, FileNotFoundError, IsADirectoryError, PermissionError):
-        return {}
-
-    if not isinstance(data, dict):
-        return {}
-
-    result: Dict[str, Dict[str, str]] = {}
-    for flow, mapping in data.items():
-        if isinstance(mapping, dict):
-            result[str(flow)] = {str(k): str(v) for k, v in mapping.items()}
-    return result
-
-
-def get_fallback_structure_for(flow_name: str, trigger_event: str) -> Optional[str]:
-    fallbacks = _load_fallback_mappings()
-    flow_map = fallbacks.get(flow_name, {})
-    return flow_map.get(trigger_event)
+def _resolve_mapping_for_key(triggers: Dict[str, str], key: str) -> str | None:
+    return triggers.get(key)

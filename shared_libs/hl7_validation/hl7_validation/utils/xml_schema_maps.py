@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from typing import Dict, List, Tuple
 
-import os
 from defusedxml import ElementTree as ET
 
 XS_NS = "{http://www.w3.org/2001/XMLSchema}"

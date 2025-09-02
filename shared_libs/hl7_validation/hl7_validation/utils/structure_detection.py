@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import Dict, List, Tuple, Optional
-
 import os
+from functools import lru_cache
+from typing import Dict, List, Optional, Tuple
+
 from defusedxml import ElementTree as ET
 
 
@@ -34,7 +34,10 @@ def _detect_base_prefix(structure_xsd_path: Optional[str]) -> str:
     )
 
 
-def _load_message_structure(structure_xsd_path: str, structure_id: str) -> Tuple[List[Tuple[str, int | str, int | str]] | None, Dict[str, List[str]]]:
+def _load_message_structure(
+    structure_xsd_path: str,
+    structure_id: str,
+) -> Tuple[List[Tuple[str, int | str, int | str]] | None, Dict[str, List[str]]]:
     tree = ET.parse(structure_xsd_path)
     root = tree.getroot()
     xs = "{http://www.w3.org/2001/XMLSchema}"

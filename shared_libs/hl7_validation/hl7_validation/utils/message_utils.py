@@ -1,4 +1,5 @@
-from typing import Optional, Any
+from typing import Any, Optional
+
 from hl7apy.parser import parse_message
 
 

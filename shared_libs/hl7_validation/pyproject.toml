@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "HL7 v2 ER7 to XML conversion and XML Schema validation"
 authors = [{name = "DHCW"}]
 requires-python = ">=3.13"
-readme = "IMPLEMENTATION.md"
+readme = "README.md"
 license = {text = "MIT"}
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -20,6 +20,14 @@ dependencies = [
   "xmlschema==3.4.3",
 ]
 
+[dependency-groups]
+dev = [
+  "ruff==0.11.11",
+  "bandit==1.8.6",
+  "mypy==1.15.0",
+  "uv-secure[faster-async]==0.11.1",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["hl7_validation*"]
@@ -28,6 +36,27 @@ include = ["hl7_validation*"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"hl7_validation" = ["resources/*.xsd", "resources/**/*.xsd", "resources/*.json"]
+"hl7_validation" = ["resources/*.xsd", "resources/**/*.xsd"]
 
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",  # Enforces style guide rules (Pycodestyle errors).
+  "F",  # Detects various errors in Python code (Pyflakes errors).
+  "W",  # Enforces style guide warnings (Pycodestyle warnings).
+  "A",  # Detects shadowing of Python built-in functions (Flake8-builtins).
+  "PLC",  # Enforces coding conventions (Pylint convention messages).
+  "PLE",  # Detects errors in Python code (Pylint error messages).
+  "PLW",  # Detects potential issues in Python code (Pylint warning messages).
+  "I"  # Sorts and organizes imports (Import-related rules).
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]  # Stops asserts in tests being flagged.
 
