@@ -6,13 +6,13 @@ A cloud-native platform for seamless and secure exchange of clinical information
 
 - [Overview](#overview)
 - [Mission and Key Objectives](#mission-and-key-objectives)
+- [Architecture](#architecture)
 - [Repository Structure](#repository-structure)
 - [Core Components](#core-components)
 - [Technology Stack](#technology-stack)
 - [Local Setup](#local-setup)
 - [Development](#development)
 - [Deployment](#deployment)
-- [Architecture](#architecture)
 - [Security & Compliance](#security--compliance)
 - [Contributing](#contributing)
 
@@ -28,6 +28,58 @@ This internally-owned product replaces proprietary systems, unlocking agility, r
 > For more information, view [the product brief](https://gig-cymru-nhs-wales.github.io/product-briefs/integration-hub/)
 
 The Integration Hub facilitates the move to a clean, open, and secure-by-design architecture, enables the decommissioning of legacy data centres by being cloud-native, and provides the essential mechanism for data to flow into the National Data Resource (NDR) where services are unable to integrate directly (the preferred approach).
+
+## Architecture
+
+The Integration Hub follows a microservices architecture with event-driven messaging:
+
+1. **HL7 Servers** receive messages from source systems
+2. **Transformers** convert messages to target formats such as HL7 v2.5
+3. **Message Bus** provides reliable message routing
+4. **Senders** deliver transformed messages to destination systems such as PIMS
+
+### Integration Patterns
+
+- **Direct Integration**: Preferred approach where services can integrate directly with the National Data Resource (NDR)
+- **Hub-Mediated Integration**: For legacy systems that cannot integrate directly, the Integration Hub facilitates data flow to the NDR
+- **Legacy System Bridge**: Enables gradual migration from legacy data centres to cloud-native solutions
+
+### How it works (high-level)
+
+```mermaid
+flowchart LR
+  Source[Source Systems] --> HL7_PHW["hl7_server MLLP (PHW)"]
+  Source --> HL7_PARIS["hl7_server MLLP (Paris)"]
+  Source --> HL7_CHEMO["hl7_server MLLP (Chemo)"]
+  Source --> HL7_PIMS["hl7_server MLLP (PIMS)"]
+
+  HL7_PHW --> SB["Service Bus (pre-transform queues)"]
+  HL7_CHEMO --> SB
+  HL7_PIMS --> SB
+
+  subgraph Transformers
+    T_PHW["hl7_transformer (PHW)"]
+    T_CHEMO["hl7_chemo_transformer"]
+    T_PIMS["hl7_pims_transformer"]
+  end
+
+  SB --> T_PHW
+  SB --> T_CHEMO
+  SB --> T_PIMS
+
+  T_PHW --> SB2["Service Bus"]
+  T_CHEMO --> SB2
+  T_PIMS --> SB2
+
+  HL7_PARIS --> SB2
+  SB2 --> SENDER["hl7_sender (PHW and Paris)"]
+  SB2 --> CHEMO_SENDER["hl7_sender (Chemo)"]
+  SB2 --> PIMS_SENDER["hl7_sender (PIMS)"]
+
+  SENDER --> MPI["MPI"]
+  CHEMO_SENDER --> MPI
+  PIMS_SENDER --> MPI
+```
 
 ## Repository Structure
 
@@ -170,25 +222,6 @@ Each service can be configured through environment files in the `local/` directo
 - `mpi-hl7-sender.env`
 - `mpi-hl7-mock-receiver.env`
 - And profile-specific configurations...
-
-## Architecture
-
-The Integration Hub follows a microservices architecture with event-driven messaging:
-
-1. **HL7 Servers** receive messages from source systems
-2. **Transformers** convert messages to target formats such as HL7 v2.5
-3. **Message Bus** provides reliable message routing
-4. **Senders** deliver transformed messages to destination systems such as PIMS
-
-### Integration Patterns
-
-- **Direct Integration**: Preferred approach where services can integrate directly with the National Data Resource (NDR)
-- **Hub-Mediated Integration**: For legacy systems that cannot integrate directly, the Integration Hub facilitates data flow to the NDR
-- **Legacy System Bridge**: Enables gradual migration from legacy data centres to cloud-native solutions
-
-### How it works (high-level)
-
-`Source System → hl7_server → Service Bus → transformer → Service Bus → hl7_sender → Target System`
 
 ## Security & Compliance
 
