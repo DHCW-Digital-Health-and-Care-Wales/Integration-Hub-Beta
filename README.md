@@ -25,7 +25,7 @@ This internally-owned product replaces proprietary systems, unlocking agility, r
 ## Mission and Key Objectives
 
 > [!TIP]
-> For more information, view [the product brief](https://gig-cymru-nhs-wales.github.io/product-briefs/integration-hub/)
+> For more information, view the [product brief](https://gig-cymru-nhs-wales.github.io/product-briefs/integration-hub/)
 
 The Integration Hub facilitates the move to a clean, open, and secure-by-design architecture, enables the decommissioning of legacy data centres by being cloud-native, and provides the essential mechanism for data to flow into the National Data Resource (NDR) where services are unable to integrate directly (the preferred approach).
 
@@ -43,6 +43,9 @@ The Integration Hub follows a microservices architecture with event-driven messa
 - **Direct Integration**: Preferred approach where services can integrate directly with the National Data Resource (NDR)
 - **Hub-Mediated Integration**: For legacy systems that cannot integrate directly, the Integration Hub facilitates data flow to the NDR
 - **Legacy System Bridge**: Enables gradual migration from legacy data centres to cloud-native solutions
+
+> [!NOTE]
+> For a more detailed overview of the architecture, see the [wiki](https://dev.azure.com/NHS-Wales-Digital/INSE/_wiki/wikis/INSE.wiki/4403/Architecture)
 
 ### How it works (high-level)
 
@@ -238,6 +241,11 @@ Each service can be configured through environment files in the `local/` directo
 2. Include comprehensive tests
 3. Update documentation
 4. Align with secure-by-design principles
+
+## Related repositories
+
+- [Terraform](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Terraform)
+- [Automated tests](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-tests)
 
 ---
 
