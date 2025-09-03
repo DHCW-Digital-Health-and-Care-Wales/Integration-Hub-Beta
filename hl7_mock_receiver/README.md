@@ -3,8 +3,10 @@
 Configurable HL7 MLLP server built with hl7apy package used for testing.
 
 Accepted message types:
+
 - "ADT^A31^ADT_A05"
 - "ADT^A28^ADT_A05"
+- "ADT^A40^ADT_A39"
 
 A negative ack (NACK) can be produced by having the word `fail` inside the message body.
 
@@ -52,6 +54,7 @@ To define host and port the server should bind to use environment variables conf
 ### Running directly
 
 From the [hl7_mock_receiver](.) folder run:
+
 ```bash
 python application.py
 ```

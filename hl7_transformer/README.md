@@ -1,6 +1,6 @@
 # HL7 Transformer
 
-HL7 Transformer Service
+PHW (Public Health Wales) message transformation service. Subscribes to PHW-specific messages (SENDING_APP: 252) to MPI format. Transforms relevant datetime fields to an MPI format.
 
 ## Development
 
