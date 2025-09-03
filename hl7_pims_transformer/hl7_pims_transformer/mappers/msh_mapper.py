@@ -1,6 +1,7 @@
 from hl7apy.core import Message
 
-from ..utils.field_utils import set_nested_field
+from ..utils.field_utils import get_hl7_field_value, set_nested_field
+from ..utils.remove_timezone_from_datetime import remove_timezone_from_datetime
 
 
 def map_msh(original_hl7_message: Message, new_message: Message) -> None:
@@ -14,6 +15,11 @@ def map_msh(original_hl7_message: Message, new_message: Message) -> None:
     new_message.msh.msh_4.hd_1 = "103"
     new_message.msh.msh_5.hd_1 = "200"
     new_message.msh.msh_6.hd_1 = "200"
+
+    # MSH.7 - remove timezone from timestamp for MPI compatibility
+    original_msh7_ts1 = get_hl7_field_value(original_msh, "msh_7.ts_1")
+    if original_msh7_ts1:
+        new_message.msh.msh_7.ts_1 = remove_timezone_from_datetime(original_msh7_ts1)
 
     set_nested_field(original_msh, new_message.msh, "msh_8")
 

@@ -50,7 +50,12 @@ class TestMSHMapper(unittest.TestCase):
                 get_hl7_field_value(self.new_message.msh, field_path),
             )
 
-    def test_msh9_mapping(self) -> None:
+    def test_map_msh_7_datetime(self) -> None:
+        map_msh(self.original_message, self.new_message)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.msh, "msh_7.ts_1"), "20241231101053")
+
+    def test_map_msh_9(self) -> None:
         test_cases = [
             ("ADT^A04^ADT_A01", "ADT^A28^ADT_A05"),
             ("ADT^A08^ADT_A01", "ADT^A31^ADT_A05"),
@@ -58,8 +63,12 @@ class TestMSHMapper(unittest.TestCase):
         ]
         for msh_9_original_value, expected_value in test_cases:
             with self.subTest(msh_9=msh_9_original_value):
-                self.original_message.msh.msh_9 = msh_9_original_value
+                # Fresh instances for each subtest iteration
+                original_message = parse_message(self.msh_header)
+                new_message = Message(version="2.5")
 
-                map_msh(self.original_message, self.new_message)
+                original_message.msh.msh_9 = msh_9_original_value
 
-                self.assertEqual(expected_value, get_hl7_field_value(self.new_message.msh, "msh_9"))
+                map_msh(original_message, new_message)
+
+                self.assertEqual(expected_value, get_hl7_field_value(new_message.msh, "msh_9"))

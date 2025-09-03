@@ -75,7 +75,7 @@ def set_nested_field(source_obj: Any, target_obj: Any, field_path: str) -> bool:
 
         setattr(current_target, final_field_name, final_field_value)
         return True
-    except (AttributeError, ChildNotFound):
+    except (AttributeError, IndexError, ChildNotFound):
         return False
 
 
@@ -87,5 +87,5 @@ def _safe_hasattr(obj: Any, name: str) -> bool:
     try:
         getattr(obj, name)
         return True
-    except (AttributeError, ChildNotFound):
+    except (AttributeError, IndexError, ChildNotFound):
         return False

@@ -1,6 +1,7 @@
 from hl7apy.core import Message
 
 from ..utils.field_utils import get_hl7_field_value, set_nested_field
+from ..utils.remove_timezone_from_datetime import remove_timezone_from_datetime
 
 
 def map_pid(original_hl7_message: Message, new_message: Message) -> None:
@@ -8,14 +9,35 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     if not original_pid:
         return  # No PID segment
 
+    # trigger event for A28 (=A04 originally) specific logic
+    # NB! in the original message the message type is A04 before conversion to A28
+    # so this is checked instead of relying on the mapping order having converted the message type prior
+    msg_trigger_event = get_hl7_field_value(original_hl7_message, "msh.msh_9.msg_2")
+    is_a04_message = msg_trigger_event == "A04"
+
     original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")
     pid3_rep1 = new_message.pid.add_field("pid_3")
 
     # if the cx_1 subfield on pid_3[0] exists and is not empty, and cx_5 is "NI"
     if original_pid_3_rep1_cx_1 and get_hl7_field_value(original_pid, "pid_3[0].cx_5") == "NI":
-        pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
-        pid3_rep1.cx_4.hd_1 = "NHS"
-        pid3_rep1.cx_5 = "NH"
+        # check if the NHS number starts with N3 or N4
+        nhs_number_prefix = original_pid_3_rep1_cx_1[:2].upper() if len(original_pid_3_rep1_cx_1) >= 2 else ""
+        is_n3_or_n4_prefix = nhs_number_prefix in ["N3", "N4"]
+
+        if is_a04_message:
+            if is_n3_or_n4_prefix:
+                pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
+                pid3_rep1.cx_4.hd_1 = "108"
+                pid3_rep1.cx_5 = "LI"
+            else:
+                pid3_rep1.cx_1 = ""
+                pid3_rep1.cx_4.hd_1 = ""
+                pid3_rep1.cx_5 = ""
+        else:
+            # for non-A28(=A04 originally) messages
+            pid3_rep1.cx_1 = original_pid_3_rep1_cx_1
+            pid3_rep1.cx_4.hd_1 = "NHS"
+            pid3_rep1.cx_5 = "NH"
 
     original_pid_3_rep2_cx_1 = get_hl7_field_value(original_pid, "pid_3[1].cx_1")
     # if the cx_1 subfield on pid_3[1] exists and is not empty, and cx_5 is "PI"
@@ -30,6 +52,11 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
     pid_5_fields = ["xpn_2", "xpn_3", "xpn_4", "xpn_5"]
     for field in pid_5_fields:
         set_nested_field(original_pid, new_message.pid, f"pid_5.{field}")
+
+    # PID.7 - remove timezone from timestamp for MPI compatibility
+    original_pid7_ts1 = get_hl7_field_value(original_pid, "pid_7.ts_1")
+    if original_pid7_ts1:
+        new_message.pid.pid_7.ts_1 = remove_timezone_from_datetime(original_pid7_ts1)
 
     set_nested_field(original_pid, new_message.pid, "pid_8")
 
@@ -48,6 +75,8 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     set_nested_field(original_pid, new_message.pid, "pid_14.xtn_1")
 
-    # death date and time: trim at first "+" if length > 6, otherwise set to '""'
+    # Death date and time: trim at first "+" if length > 6, otherwise set to '""'
     original_pid29_ts1 = get_hl7_field_value(original_pid, "pid_29.ts_1")
-    new_message.pid.pid_29.ts_1 = original_pid29_ts1.split("+")[0] if len(original_pid29_ts1) > 6 else '""'
+    new_message.pid.pid_29.ts_1 = (
+        remove_timezone_from_datetime(original_pid29_ts1) if len(original_pid29_ts1) > 6 else '""'
+    )

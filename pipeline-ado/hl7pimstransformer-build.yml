@@ -50,7 +50,7 @@ stages:
         parameters:
           jobName: 'BuildPushHL7PimsTransformer'
           displayName: 'Build and Push HL7 Transformer'
-          appName: 'hl7pimstransformer'
+          appName: 'pims-hl7transformer'
           dockerfilePath: 'hl7_pims_transformer/Dockerfile'
           buildContext: 'hl7_pims_transformer'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
