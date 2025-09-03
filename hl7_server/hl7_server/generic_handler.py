@@ -1,6 +1,10 @@
 import logging
 
 from event_logger_lib.event_logger import EventLogger
+from hl7_validation import (
+    XmlValidationError,
+    validate_er7_with_flow,
+)
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
@@ -10,18 +14,23 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
 class GenericHandler(AbstractHandler):
     def __init__(
-        self, msg: str, sender_client: MessageSenderClient, event_logger: EventLogger, validator: HL7Validator
+        self,
+        msg: str,
+        sender_client: MessageSenderClient,
+        event_logger: EventLogger,
+        validator: HL7Validator,
+        flow_name: str | None = None,
     ):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
         self.event_logger = event_logger
         self.validator = validator
+        self.flow_name: str | None = flow_name
 
     def reply(self) -> str:
         try:
@@ -36,6 +45,23 @@ class GenericHandler(AbstractHandler):
             self.event_logger.log_validation_result(
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
+
+            if self.flow_name:
+                try:
+                    validate_er7_with_flow(self.incoming_message, self.flow_name)
+                    self.audit_client.log_validation_result(
+                        self.incoming_message,
+                        f"XML validation passed for flow '{self.flow_name}'",
+                        is_success=True,
+                    )
+                except XmlValidationError as e:
+                    error_msg = f"XML validation failed for flow '{self.flow_name}': {e}"
+                    logger.error(error_msg)
+                    self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
+                    self.audit_client.log_message_failed(
+                        self.incoming_message, error_msg, "XML schema validation failed"
+                    )
+                    raise
 
             self._send_to_service_bus(message_control_id)
 
