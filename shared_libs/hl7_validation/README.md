@@ -14,14 +14,15 @@ Each flow directory should contain:
 2. **Base HL7 XSDs**: Version-specific base schemas (e.g., `2_5_fields.xsd`, `2_5_segments.xsd`, `2_5_types.xsd`)
 3. No fallback configuration file is required; built-in mappings are used for ADT triggers where applicable.
 
-## Key Features
+When adding new flows or message types:
 
-- **ER7 to XML Conversion**: Converts pipe-delimited HL7 v2 messages to XML format
-- **Schema Validation**: Validates XML against HL7 v2 XML Schema Definitions (XSD)
-- **Multi-Flow Support**: Supports different integration flows with their own schemas
-- **Automatic Structure Detection**: Detects message structure from MSH-9 fields
-// ... existing code ...
-- **Error Handling**: Provides clear, actionable error messages
+1. Create a new directory under `hl7_validation/resources/`
+2. Add the appropriate HL7 base XSDs for your HL7 version
+3. Add structure XSDs named by trigger event
+4. No need to update any fallback configuration; ensure required structure XSDs exist.
+5. Add tests for your new schemas
+
+No code changes are required - the library automatically discovers new schema mappings.
 
 ## Installation
 
@@ -65,8 +66,6 @@ The library supports multiple integration flows, each with their own set of HL7 
 - `chemo` - Chemotherapy
 - `paris` - Paris integration
 - `pims` - Patient Information Management System
-
-### Advanced Usage
 
 #### Convert ER7 to XML
 
@@ -149,23 +148,12 @@ Common error types:
 - `XmlValidationError`: Message doesn't conform to schema
 - `ValueError`: Invalid flow name or missing schema mapping
 
-
-
 ## Dependencies
 
 - `hl7apy>=1.3.5` - For ER7 message parsing
 - `xmlschema>=3.4.3` - For XML Schema validation
 - `defusedxml>=0.7.1` - For secure XML parsing
 - `Python>=3.13`
-
-## Integration with Healthcare Systems
-
-This library is designed to be used in healthcare integration scenarios:
-
-- **Message Validation**: Ensure incoming HL7 messages conform to expected formats
-- **Data Quality**: Validate message structure and content before processing
-- **Interoperability**: Support multiple HL7 v2 versions and custom schemas
-- **Error Prevention**: Catch formatting issues before they reach downstream systems
 
 ## Examples
 
@@ -174,23 +162,3 @@ See the `tests/` directory for comprehensive examples including:
 - ADT A39 messages (patient merges)
 - Multi-identifier repetitions
 - Structure detection and fallback scenarios
-
-## Contributing
-
-When adding new flows or message types:
-
-1. Create a new directory under `hl7_validation/resources/`
-2. Add the appropriate HL7 base XSDs for your HL7 version
-3. Add structure XSDs named by trigger event
-4. No need to update any fallback configuration; ensure required structure XSDs exist.
-5. Add tests for your new schemas
-
-No code changes are required - the library automatically discovers new schema mappings.
-
-## License
-
-MIT License
-
-## Support
-
-For issues and questions, please refer to the implementation guide (`IMPLEMENTATION.md`) for detailed technical documentation.

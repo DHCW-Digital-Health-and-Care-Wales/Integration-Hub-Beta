@@ -415,17 +415,6 @@ def _build_message_xml_tree(
         if seg_tag in required:
             seen[seg_tag] = True
 
-    if required.get("PV1") and not seen.get("PV1"):
-        _insert_required_segment(
-            root,
-            "PV1",
-            [(2, "U")],
-            element_to_type,
-            type_children,
-            type_base,
-            element_max_occurs,
-        )
-
     return root
 
 
