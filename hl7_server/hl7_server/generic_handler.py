@@ -1,10 +1,10 @@
 import logging
 
+from event_logger_lib.event_logger import EventLogger
 from hl7_validation import (
     XmlValidationError,
     validate_er7_with_flow,
 )
-from event_logger_lib.event_logger import EventLogger
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
@@ -22,7 +22,7 @@ class GenericHandler(AbstractHandler):
         self,
         msg: str,
         sender_client: MessageSenderClient,
-        event_logger: EventLogger
+        event_logger: EventLogger,
         validator: HL7Validator,
         flow_name: str | None = None,
     ):

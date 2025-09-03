@@ -10,19 +10,18 @@ This library helps healthcare integration teams validate HL7 v2 messages against
 
 Each flow directory should contain:
 
-1. **Structure XSDs**: Named by trigger event (e.g., `A05.xsd`, `A39.xsd`)
+1. **Structure XSDs**: Named by structure (e.g., `ADT_A05.xsd`, `ADT_A39.xsd`)
 2. **Base HL7 XSDs**: Version-specific base schemas (e.g., `2_5_fields.xsd`, `2_5_segments.xsd`, `2_5_types.xsd`)
-3. No fallback configuration file is required; built-in mappings are used for ADT triggers where applicable.
 
 When adding new flows or message types:
 
 1. Create a new directory under `hl7_validation/resources/`
 2. Add the appropriate HL7 base XSDs for your HL7 version
 3. Add structure XSDs named by trigger event
-4. No need to update any fallback configuration; ensure required structure XSDs exist.
-5. Add tests for your new schemas
+4. Add tests for your new schemas
 
 No code changes are required - the library automatically discovers new schema mappings.
+
 
 ## Installation
 
@@ -66,6 +65,8 @@ The library supports multiple integration flows, each with their own set of HL7 
 - `chemo` - Chemotherapy
 - `paris` - Paris integration
 - `pims` - Patient Information Management System
+
+### Advanced Usage
 
 #### Convert ER7 to XML
 
@@ -112,22 +113,7 @@ print("PHW schemas:", phw_schemas)
 The library automatically detects message structure from the MSH segment:
 
 1. **Primary**: Uses `MSH-9.3` (structure field) - e.g., `ADT^A05^ADT_A05` → uses `ADT_A05.xsd`
-2. **Built-in mapping**: If `MSH-9.3` is missing, uses `MSH-9.2` (trigger) with built-in ADT mappings for HL7 v2.4 and below:
-   - `ADT A28` → `ADT_A05`
-   - `ADT A31` → `ADT_A05`
-   - `ADT A40` → `ADT_A39`
-
-Example of fallback usage:
-```python
-# Message with missing structure
-er7_missing_structure = "\r".join([
-    "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A31|MSG123|P|2.5",
-    "PID|||123456^^^MR||DOE^JOHN",
-])
-
-# Will use built-in mapping: ADT A31 → ADT_A05 for 'phw' flow
-validate_er7_with_flow(er7_missing_structure, "phw")
-```
+2. **Secondary**: If `MSH-9.3` is missing, uses `MSH-9.2` (trigger) - e.g., `ADT^A05` → uses `ADT_A05.xsd`
 
 ## Error Handling
 
@@ -161,4 +147,4 @@ See the `tests/` directory for comprehensive examples including:
 - ADT A05 messages (patient admissions)
 - ADT A39 messages (patient merges)
 - Multi-identifier repetitions
-- Structure detection and fallback scenarios
+- Structure detection scenarios
