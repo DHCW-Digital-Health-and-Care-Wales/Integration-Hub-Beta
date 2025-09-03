@@ -1,6 +1,8 @@
 # HL7 MLLP server
 
-Configurable HL7 MLLP server built with hl7apy package.
+A configurable HL7 message receiving server via TCP/MLLP. Receives and validates incoming HL7 messages, publishes validated messages to the message bus, and returns MLLP acknowledgements to senders.
+
+Provides shared ingestion concerns (connection handling, ack building, health checks, error handling) and is intentionally implemented as a reusable base. Other server variants for different business flows (PHW, Paris, Chemo, PIMS, etc.) reuse or extend this service to implement flow-specific logic while keeping common behaviour centralized.
 
 ## Development
 
@@ -56,6 +58,7 @@ To define host and port the server should bind to use environment variables conf
 ### Running directly
 
 From the [hl7_server](.) folder run:
+
 ```sh
 python -m hl7_server.application
 ```

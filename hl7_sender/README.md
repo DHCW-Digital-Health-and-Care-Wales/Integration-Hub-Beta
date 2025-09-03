@@ -1,6 +1,6 @@
 # HL7 Sender
 
-HL7 Sender Service
+HL7 Sender Service is a message delivery service that subscribes to transformed HL7 messages from the message bus and reliably delivers them to target systems (e.g., MPI - Master Patient Index). Handles connection management, retries, delivery acknowledgements, and error reporting to ensure end-to-end message delivery.
 
 ## Development
 
