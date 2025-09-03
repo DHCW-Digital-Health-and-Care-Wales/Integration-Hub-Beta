@@ -19,11 +19,15 @@ class TestMRGMapper(unittest.TestCase):
 
         for trigger_event in trigger_events:
             with self.subTest(original_value=trigger_event):
-                self.original_message.msh.msh_9.msg_2 = trigger_event
+                # Fresh instances for each subtest iteration
+                original_message = parse_message(self.a40_hl7_message)
+                new_message = Message(version="2.5")
 
-                map_mrg(self.original_message, self.new_message)
+                original_message.msh.msh_9.msg_2 = trigger_event
 
-                mrg_segment = self.new_message.mrg
+                map_mrg(original_message, new_message)
+
+                mrg_segment = new_message.mrg
                 if mrg_segment is None:
                     self.assertIsNone(mrg_segment)
                 else:

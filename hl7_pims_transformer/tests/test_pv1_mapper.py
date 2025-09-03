@@ -22,11 +22,15 @@ class TestPV1Mapper(unittest.TestCase):
 
         for trigger_event in trigger_events:
             with self.subTest(original_value=trigger_event):
-                self.original_message.msh.msh_9.msg_2 = trigger_event
+                # Fresh instances for each subtest iteration
+                original_message = parse_message(self.base_hl7_message)
+                new_message = Message(version="2.5")
 
-                map_pv1(self.original_message, self.new_message)
+                original_message.msh.msh_9.msg_2 = trigger_event
 
-                self.assertEqual(self.new_message.pv1.pv1_2.value, "N")
+                map_pv1(original_message, new_message)
+
+                self.assertEqual(new_message.pv1.pv1_2.value, "N")
 
     def test_map_pv1_2_for_non_matching_trigger_event(self) -> None:
         self.original_message.msh.msh_9.msg_2.value = "A40"

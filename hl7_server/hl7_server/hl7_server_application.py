@@ -4,9 +4,9 @@ import signal
 import threading
 from typing import Any
 
+from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.mllp import MLLPServer
-from message_bus_lib.audit_service_client import AuditServiceClient
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class Hl7ServerApplication:
     def __init__(self) -> None:
         self.sender_client: MessageSenderClient = None
-        self.audit_client: AuditServiceClient = None
+        self.event_logger: EventLogger = None
         self._server_thread: threading.Thread | None = None
         self.health_check_server: TCPHealthCheckServer = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
@@ -48,29 +48,28 @@ class Hl7ServerApplication:
         factory = ServiceBusClientFactory(client_config)
 
         self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
-        audit_sender_client = factory.create_queue_sender_client(app_config.audit_queue_name)
-        self.audit_client = AuditServiceClient(audit_sender_client, app_config.workflow_id, app_config.microservice_id)
+        self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
         flow_name = app_config.hl7_validation_flow
 
         handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             # Paris A40 message
-            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             # Chemocare messages
-            "ADT^A31": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A28": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A31": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A28": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure
-            "ADT^A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A40": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             #PIMS messages
-            "ADT^A04^ADT_A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A08^ADT_A01": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
-            "ADT^A40^ADT_A40": (GenericHandler, self.sender_client, self.audit_client, self.validator, flow_name),
+            "ADT^A04^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A08^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A40^ADT_A40": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
 
-            "ERR": (ErrorHandler, self.audit_client),
+            "ERR": (ErrorHandler, self.event_logger),
         }
 
         try:
@@ -91,9 +90,6 @@ class Hl7ServerApplication:
             self.sender_client.close()
             logger.info("Service Bus sender client shut down.")
 
-        if self.audit_client:
-            self.audit_client.close()
-            logger.info("Audit service client shut down.")
 
         if self.health_check_server:
             self.health_check_server.stop()
