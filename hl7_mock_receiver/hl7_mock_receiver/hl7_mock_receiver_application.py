@@ -2,7 +2,7 @@ import logging
 import os
 import signal
 import threading
-from typing import Any
+from typing import Any, Dict, Optional, Type
 
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class CustomMLLPRequestHandler(MLLPRequestHandler):
-    def __init__(self, request, client_address, server):
+    def __init__(self, request: Any, client_address: tuple[str, int], server: "CustomMLLPServer") -> None:
         super().__init__(request, client_address, server)
         if hasattr(server, "sender_client"):
             self.sender_client = server.sender_client
@@ -35,7 +35,14 @@ class CustomMLLPRequestHandler(MLLPRequestHandler):
 
 
 class CustomMLLPServer(MLLPServer):
-    def __init__(self, host, port, handlers=None, request_handler_class=CustomMLLPRequestHandler, sender_client=None):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        handlers: Optional[Dict[str, Any]] = None,
+        request_handler_class: Type[MLLPRequestHandler] = CustomMLLPRequestHandler,
+        sender_client: Optional[Any] = None,
+    ) -> None:
         super().__init__(host, port, handlers or {}, request_handler_class=request_handler_class)
         self.sender_client = sender_client
 
