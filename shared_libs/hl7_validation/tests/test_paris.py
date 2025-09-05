@@ -34,8 +34,10 @@ class TestParisValidation(unittest.TestCase):
             "PV1||N"
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "paris")
+        error_message = str(context.exception)
+        self.assertIn("Unable to parse ER7 message", error_message)
 
     def test_paris_a05_correctly_structured_invalid_data_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -45,5 +47,7 @@ class TestParisValidation(unittest.TestCase):
             #Missing PV1 data
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "paris")
+        error_message = str(context.exception)
+        self.assertIn("PV1", error_message)
