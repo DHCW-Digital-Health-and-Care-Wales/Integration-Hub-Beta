@@ -49,7 +49,7 @@ class GenericHandler(AbstractHandler):
             if self.flow_name:
                 try:
                     validate_er7_with_flow(self.incoming_message, self.flow_name)
-                    self.audit_client.log_validation_result(
+                    self.event_logger.log_validation_result(
                         self.incoming_message,
                         f"XML validation passed for flow '{self.flow_name}'",
                         is_success=True,
@@ -57,8 +57,8 @@ class GenericHandler(AbstractHandler):
                 except XmlValidationError as e:
                     error_msg = f"XML validation failed for flow '{self.flow_name}': {e}"
                     logger.error(error_msg)
-                    self.audit_client.log_validation_result(self.incoming_message, error_msg, is_success=False)
-                    self.audit_client.log_message_failed(
+                    self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
+                    self.event_logger.log_message_failed(
                         self.incoming_message, error_msg, "XML schema validation failed"
                     )
                     raise
