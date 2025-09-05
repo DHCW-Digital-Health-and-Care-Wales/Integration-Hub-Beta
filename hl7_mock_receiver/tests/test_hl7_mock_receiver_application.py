@@ -46,14 +46,18 @@ class TestHl7ServerApplication(unittest.TestCase):
 
         self._assert_shutdown(server, thread)
 
-    def test_signal_handler_shutdown(self, mock_thread: MagicMock, _: MagicMock, mock_custom_mllp_server: MagicMock) -> None:
+    def test_signal_handler_shutdown(
+        self, mock_thread: MagicMock, _: MagicMock, mock_custom_mllp_server: MagicMock
+    ) -> None:
         server, thread = self._setup_mocks(mock_thread, mock_custom_mllp_server)
         self.app.start_server()
         self.app._signal_handler(signal.SIGINT, None)
 
         self._assert_shutdown(server, thread)
 
-    def test_server_exception_handling(self, mock_thread: MagicMock, _: MagicMock, mock_custom_mllp_server: MagicMock) -> None:
+    def test_server_exception_handling(
+        self, mock_thread: MagicMock, _: MagicMock, mock_custom_mllp_server: MagicMock
+    ) -> None:
         server, thread = self._setup_mocks(mock_thread, mock_custom_mllp_server)
         thread.start.side_effect = RuntimeError("Simulated server error")
 
