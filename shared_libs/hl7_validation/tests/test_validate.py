@@ -17,17 +17,13 @@ from hl7_validation.validate import (
 
 class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
     def test_get_schema_xsd_path_for(self) -> None:
-
         path = get_schema_xsd_path_for("phw", "ADT_A39")
         self.assertTrue(os.path.exists(path))
-
-
-
-
 
     def test_validate_uses_built_in_mapping_when_structure_missing(self) -> None:
         er7 = "\r".join([
             "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A31|MSGID|P|2.5",
+            "EVN|A31|20250101010101",
             "PID|||8888888^^^252^PI||SURNAME^FORENAME",
             "PV1||",
         ])
