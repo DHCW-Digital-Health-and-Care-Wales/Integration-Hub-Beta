@@ -39,8 +39,10 @@ class TestPhwMessages(unittest.TestCase):
             "PV1||"
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "phw")
+        error_message = str(context.exception)
+        self.assertIn("Unable to parse ER7 message", error_message)
 
     def test_phw_a39_incorrectly_structured_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -54,8 +56,10 @@ class TestPhwMessages(unittest.TestCase):
             "PV1||"
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "phw")
+        error_message = str(context.exception)
+        self.assertIn("Unable to parse ER7 message", error_message)
 
     def test_phw_a05_correctly_structured_invalid_data_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -66,8 +70,10 @@ class TestPhwMessages(unittest.TestCase):
             # Missing PV1 segment which is required according to ADT_A05 schema
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "phw")
+        error_message = str(context.exception)
+        self.assertIn("Tag '{urn:hl7-org:v2xml}PV1' expected", error_message)
 
     def test_phw_a39_correctly_structured_invalid_data_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -79,5 +85,7 @@ class TestPhwMessages(unittest.TestCase):
             # Missing MRG segment which is required according to ADT_A39 schema
         ])
 
-        with self.assertRaises(XmlValidationError):
+        with self.assertRaises(XmlValidationError) as context:
             validate_er7_with_flow(er7, "phw")
+        error_message = str(context.exception)
+        self.assertIn("Tag '{urn:hl7-org:v2xml}MRG' expected", error_message)
