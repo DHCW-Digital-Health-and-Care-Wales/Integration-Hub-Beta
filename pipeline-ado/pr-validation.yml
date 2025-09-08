@@ -10,7 +10,7 @@ pr:
   paths:
     include:
       - hl7_server/*
-      - hl7_transformer/*
+      - hl7_phw_transformer/*
       - hl7_sender/*
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
@@ -46,7 +46,7 @@ stages:
       # HL7 Transformer validation
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_transformer'
+          appName: 'hl7_phw_transformer'
           appDisplayName: 'HL7 Transformer'
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}

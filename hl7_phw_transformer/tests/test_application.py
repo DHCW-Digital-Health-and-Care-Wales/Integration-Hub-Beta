@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
-from hl7_transformer.app_config import AppConfig
-from hl7_transformer.application import _process_message, main
+from hl7_phw_transformer.app_config import AppConfig
+from hl7_phw_transformer.application import _process_message, main
 
 
 def _setup(
@@ -28,9 +28,9 @@ def _setup(
 
 
 class TestProcessMessage(unittest.TestCase):
-    @patch("hl7_transformer.application.parse_message")
-    @patch("hl7_transformer.application.transform_datetime")
-    @patch("hl7_transformer.application.transform_date_of_death")
+    @patch("hl7_phw_transformer.application.parse_message")
+    @patch("hl7_phw_transformer.application.transform_datetime")
+    @patch("hl7_phw_transformer.application.transform_date_of_death")
     def test_process_message_success(
         self,
         mock_transform_dod: MagicMock,
@@ -74,9 +74,9 @@ class TestProcessMessage(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("hl7_transformer.application.parse_message")
-    @patch("hl7_transformer.application.transform_datetime")
-    @patch("hl7_transformer.application.transform_date_of_death")
+    @patch("hl7_phw_transformer.application.parse_message")
+    @patch("hl7_phw_transformer.application.transform_datetime")
+    @patch("hl7_phw_transformer.application.transform_date_of_death")
     def test_process_message_with_valid_date_of_death(
         self,
         mock_transform_dod: MagicMock,
@@ -101,8 +101,8 @@ class TestProcessMessage(unittest.TestCase):
         mock_transform_dod.assert_called_once_with(valid_dod)
         self.assertTrue(result)
 
-    @patch("hl7_transformer.application.parse_message")
-    @patch("hl7_transformer.application.transform_datetime")
+    @patch("hl7_phw_transformer.application.parse_message")
+    @patch("hl7_phw_transformer.application.transform_datetime")
     def test_process_message_failure_due_to_transform(
         self,
         mock_transform_datetime: MagicMock,
@@ -135,10 +135,10 @@ class TestProcessMessage(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @patch("hl7_transformer.application.EventLogger")
-    @patch("hl7_transformer.application.AppConfig")
-    @patch("hl7_transformer.application.ServiceBusClientFactory")
-    @patch("hl7_transformer.application.TCPHealthCheckServer")
+    @patch("hl7_phw_transformer.application.EventLogger")
+    @patch("hl7_phw_transformer.application.AppConfig")
+    @patch("hl7_phw_transformer.application.ServiceBusClientFactory")
+    @patch("hl7_phw_transformer.application.TCPHealthCheckServer")
     def test_health_check_server_starts_and_stops(
         self,
         mock_health_check: MagicMock,
@@ -158,7 +158,7 @@ class TestProcessMessage(unittest.TestCase):
         )
 
         # Mock ProcessorManager to exit the loop immediately
-        with patch("hl7_transformer.application.ProcessorManager") as mock_processor_manager:
+        with patch("hl7_phw_transformer.application.ProcessorManager") as mock_processor_manager:
             mock_instance = mock_processor_manager.return_value
             mock_instance.is_running = False
 

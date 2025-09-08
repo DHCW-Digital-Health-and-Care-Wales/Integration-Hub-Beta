@@ -2,11 +2,11 @@ import unittest
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
-from hl7_transformer.app_config import AppConfig
+from hl7_phw_transformer.app_config import AppConfig
 
 
 class TestAppConfig(unittest.TestCase):
-    @patch("hl7_transformer.app_config.os.getenv")
+    @patch("hl7_phw_transformer.app_config.os.getenv")
     def test_read_env_config_returns_config(self, mock_getenv: MagicMock) -> None:
         def getenv_side_effect(name: str) -> Optional[str]:
             values = {
@@ -28,7 +28,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.egress_queue_name, "topic")
         self.assertEqual(config.service_bus_namespace, "namespace")
 
-    @patch("hl7_transformer.app_config.os.getenv")
+    @patch("hl7_phw_transformer.app_config.os.getenv")
     def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv: MagicMock) -> None:
         mock_getenv.return_value = None
         with self.assertRaises(RuntimeError) as context:

@@ -32,7 +32,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 # Copy the rest of the project source code and install it
-COPY hl7_transformer/ /app/hl7_transformer
+COPY hl7_phw_transformer/ /app/hl7_phw_transformer
 RUN uv --native-tls sync --locked --no-dev
 
 # Place executables in the environment at the front of the path
@@ -44,4 +44,4 @@ RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /
 USER appuser
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["python", "-m", "hl7_transformer.application"]
+CMD ["python", "-m", "hl7_phw_transformer.application"]

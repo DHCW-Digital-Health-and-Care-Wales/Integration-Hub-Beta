@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_transformer.date_of_death_transformer import transform_date_of_death
+from hl7_phw_transformer.date_of_death_transformer import transform_date_of_death
 
 
 class TestDateOfDeathTransformer(unittest.TestCase):
