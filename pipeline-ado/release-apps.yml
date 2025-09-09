@@ -113,6 +113,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseEndoscopyHL7ServerDev
+    displayName: 'Release App Endoscopy HL7Server - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerDev'
+          displayName: 'Release App Endoscopy HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7TransformerDev
     displayName: 'Release App HL7Transformer - Dev'
     jobs:
@@ -304,6 +321,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseEndoscopyHL7ServerTest
+    displayName: 'Release App Endoscopy HL7Server - Test'
+    dependsOn: ReleaseEndoscopyHL7ServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerTest'
+          displayName: 'Release App Endoscopy HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7TransformerTest
     displayName: 'Release App HL7Transformer - Test'
     dependsOn: ReleaseHL7TransformerDev
@@ -485,6 +520,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseEndoscopyHL7ServerPreProd
+    displayName: 'Release App Endoscopy HL7Server - Pre-Prod'
+    dependsOn: ReleaseEndoscopyHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerPreProd'
+          displayName: 'Release App Endoscopy HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7TransformerPreProd
     displayName: 'Release App HL7Transformer - Pre-Prod'
     dependsOn: ReleaseHL7TransformerTest
@@ -658,6 +711,24 @@ stages:
           displayName: 'Release App Chemocare HL7Server - Production'
           appName: 'hl7server'
           appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseEndoscopyHL7ServerProd
+    displayName: 'Release App Endoscopy HL7Server - Production'
+    dependsOn: ReleaseEndoscopyHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerProd'
+          displayName: 'Release App Endoscopy HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
           environment: 'prd'
