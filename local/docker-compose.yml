@@ -103,6 +103,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - endoscopy-to-wrrs
     networks:
       integration-hub:
         aliases:
@@ -127,6 +128,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - endoscopy-to-wrrs
     networks:
       integration-hub:
         aliases:
@@ -240,6 +242,29 @@ services:
       integration-hub:
         aliases:
           - "pims-hl7-transformer"
+
+  endoscopy-hl7-server:
+    container_name: endoscopy-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./endoscopy-hl7-server.env
+    ports:
+      - "2579:2579"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - endoscopy-to-wrrs
+    networks:
+      integration-hub:
+        aliases:
+          - "endoscopy-hl7-server"
 
 networks:
   integration-hub:

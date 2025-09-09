@@ -68,6 +68,8 @@ class Hl7ServerApplication:
             "ADT^A04^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             "ADT^A08^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             "ADT^A40^ADT_A40": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            # Endoscopy message
+            "ORU^R01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
 
             "ERR": (ErrorHandler, self.event_logger),
         }

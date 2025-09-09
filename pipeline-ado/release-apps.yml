@@ -113,6 +113,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseEndoscopyHL7ServerDev
+    displayName: 'Release App Endoscopy HL7Server - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerDev'
+          displayName: 'Release App Endoscopy HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7TransformerDev
     displayName: 'Release App HL7Transformer - Dev'
     jobs:
@@ -215,6 +232,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
+  - stage: ReleaseEndoscopyHL7SenderDev
+    displayName: 'Release App Endoscopy HL7Sender - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7SenderDev'
+          displayName: 'Release App Endoscopy HL7Sender - Dev'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'endoscopy'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
   - stage: ReleaseHL7MockReceiverDev
     displayName: 'Release App HL7MockReceiver - Dev'
     jobs:
@@ -296,6 +330,24 @@ stages:
           displayName: 'Release App Chemocare HL7Server - Test'
           appName: 'hl7server'
           appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseEndoscopyHL7ServerTest
+    displayName: 'Release App Endoscopy HL7Server - Test'
+    dependsOn: ReleaseEndoscopyHL7ServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7ServerTest'
+          displayName: 'Release App Endoscopy HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'endoscopy'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
@@ -404,6 +456,24 @@ stages:
           displayName: 'Release App Chemocare HL7Sender - Test'
           appName: 'hl7sender'
           appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
+
+  - stage: ReleaseEndoscopyHL7SenderTest
+    displayName: 'Release App Endoscopy HL7Sender - Test'
+    dependsOn: ReleaseEndoscopyHL7SenderDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseEndoscopyAppHL7SenderTest'
+          displayName: 'Release App Endoscopy HL7Sender - Test'
+          appName: 'hl7sender'
+          appFunctionMidfix: 'endoscopy'
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
           environment: 'tst'
