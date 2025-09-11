@@ -37,20 +37,20 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_phw_transformer'
-          appDisplayName: 'HL7 Transformer'
+          appName: 'phw-hl7transformer'
+          appDisplayName: 'Phw HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
 
-  - stage: BuildAndPushHL7Transformer
-    displayName: 'Build and Push HL7 Transformer'
+  - stage: BuildAndPushPhwHL7Transformer
+    displayName: 'Build and Push Phw HL7 Transformer'
     dependsOn: CodeQuality
     jobs:
       - template: templates/docker-build-push-template.yml
         parameters:
-          jobName: 'BuildPushHL7Transformer'
-          displayName: 'Build and Push HL7 Transformer'
-          appName: 'hl7phwtransformer'
+          jobName: 'BuildPushPhwHL7Transformer'
+          displayName: 'Build and Push Phw HL7 Transformer'
+          appName: 'phw-hl7transformer'
           dockerfilePath: 'hl7_phw_transformer/Dockerfile'
           buildContext: 'hl7_phw_transformer'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
