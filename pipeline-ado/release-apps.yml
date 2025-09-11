@@ -17,7 +17,7 @@ variables:
   azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
   azureLocation: 'uks'
   hl7ServerPipelineName: 'HL7 Server - Build'
-  hl7TransformerPipelineName: 'HL7 Transformer - Build'
+  hl7TransformerPipelineName: 'HL7 Phw Transformer - Build'
   hl7ChemoTransformerPipelineName: 'HL7 Chemo Transformer - Build'
   hl7PimsTransformerPipelineName: 'HL7 Pims Transformer - Build'
   hl7SenderPipelineName: 'HL7 Sender - Build'
@@ -28,8 +28,8 @@ resources:
     - pipeline: 'HL7 Server - Build'
       source: 'HL7 Server - Build'
       trigger: none
-    - pipeline: 'HL7 Transformer - Build'
-      source: 'HL7 Transformer - Build'
+    - pipeline: 'HL7 PhwTransformer - Build'
+      source: 'HL7 Phw Transformer - Build'
       trigger: none
     - pipeline: 'HL7 Chemo Transformer - Build'
       source: 'HL7 Chemo Transformer - Build'
