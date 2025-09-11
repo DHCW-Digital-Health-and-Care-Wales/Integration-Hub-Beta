@@ -1,4 +1,4 @@
-# HL7 Transformer
+# HL7 PHW Transformer
 
 PHW (Public Health Wales) message transformation service. Subscribes to PHW-specific messages (SENDING_APP: 252) to MPI format. Transforms relevant datetime fields to an MPI format.
 
@@ -12,7 +12,7 @@ PHW (Public Health Wales) message transformation service. Subscribes to PHW-spec
 
 ### Build / checks
 
-In the [hl7_transformer](.) folder, to create a virtual environment and install project dependencies:
+In the [hl7_phw_transformer](.) folder, to create a virtual environment and install project dependencies:
 
 ```bash
 uv sync
@@ -22,8 +22,8 @@ Run code quality checks:
 
 ```bash
 uv run ruff check
-uv run bandit hl7_transformer/**/*.py tests/**/*.py
-uv run mypy --ignore-missing-imports hl7_transformer/**/*.py tests/**/*.py
+uv run bandit hl7_phw_transformer/**/*.py tests/**/*.py
+uv run mypy --ignore-missing-imports hl7_phw_transformer/**/*.py tests/**/*.py
 ```
 
 Run unit tests:

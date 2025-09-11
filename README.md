@@ -61,7 +61,7 @@ flowchart LR
   HL7_PIMS --> SB
 
   subgraph Transformers
-    T_PHW["hl7_transformer (PHW)"]
+    T_PHW["hl7_phw_transformer (PHW)"]
     T_CHEMO["hl7_chemo_transformer"]
     T_PIMS["hl7_pims_transformer"]
   end
@@ -111,7 +111,7 @@ The platform handles HL7 message processing through specialized microservices:
 
 - Generic HL7 message receiving server via TCP/MLLP. Also provides acknowledgment responses back to source systems. Other server variants for different business flows (PHW, Paris, Chemocare, PIMS, etc.) reuse or extend this service to implement flow-specific logic while keeping common behaviour centralized.
 
-**`hl7_transformer/`**
+**`hl7_phw_transformer/`**
 
 - PHW (Public Health Wales) message transformation service.
 - Subscribes to PHW-specific messages from the service bus and transforms relevant datetime fields to an MPI format.

@@ -113,14 +113,14 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
-  - stage: ReleaseHL7TransformerDev
-    displayName: 'Release App HL7Transformer - Dev'
+  - stage: ReleaseHL7PhwTransformerDev
+    displayName: 'Release App HL7PhwTransformer - Dev'
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7TransformerDev'
-          displayName: 'Release App HL7Transformer - Dev'
-          appName: 'hl7transformer'
+          jobName: 'ReleaseAppHL7PhwTransformerDev'
+          displayName: 'Release App HL7PhwTransformer - Dev'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
@@ -312,7 +312,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7TransformerTest'
           displayName: 'Release App HL7Transformer - Test'
-          appName: 'hl7transformer'
+          appName: 'hl7phwtransformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
@@ -485,15 +485,15 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
-  - stage: ReleaseHL7TransformerPreProd
-    displayName: 'Release App HL7Transformer - Pre-Prod'
-    dependsOn: ReleaseHL7TransformerTest
+  - stage: ReleaseHL7PhwTransformerPreProd
+    displayName: 'Release App HL7PhwTransformer - Pre-Prod'
+    dependsOn: ReleaseHL7PhwTransformerTest
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7TransformerPreProd'
-          displayName: 'Release App HL7Transformer - Pre-Prod'
-          appName: 'hl7transformer'
+          jobName: 'ReleaseAppHL7PhwTransformerPreProd'
+          displayName: 'Release App HL7PhwTransformer - Pre-Prod'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
           azureLocation: $(azureLocation)
@@ -666,15 +666,15 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
-  - stage: ReleaseHL7TransformerProd
-    displayName: 'Release App HL7Transformer - Production'
-    dependsOn: ReleaseHL7TransformerPreProd
+  - stage: ReleaseHL7PhwTransformerProd
+    displayName: 'Release App HL7PhwTransformer - Production'
+    dependsOn: ReleaseHL7PhwTransformerPreProd
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7TransformerProd'
-          displayName: 'Release App HL7Transformer - Production'
-          appName: 'hl7transformer'
+          jobName: 'ReleaseAppHL7PhwTransformerProd'
+          displayName: 'Release App HL7PhwTransformer - Production'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)

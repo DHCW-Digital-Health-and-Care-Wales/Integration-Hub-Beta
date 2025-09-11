@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_transformer.datetime_transformer import transform_datetime
+from hl7_phw_transformer.datetime_transformer import transform_datetime
 
 
 class TestDatetimeTransformer(unittest.TestCase):

@@ -68,7 +68,7 @@ services:
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
-      context: ../hl7_transformer
+      context: ../hl7_phw_transformer
       additional_contexts:
       - ca-certs=../ca-certs
       - shared_libs=../shared_libs
