@@ -1,0 +1,60 @@
+# HL7 Pharmacy Transformer Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - hl7_pharmacy_transformer/*
+      - shared_libs/*
+      - pipeline-ado/templates/*
+      - ca-certs/*
+
+pr: none
+
+parameters:
+  - name: POOL_SELECTION
+    displayName: 'Select Agent Pool'
+    type: string
+    default: 'Azure Pipelines'
+    values:
+      - 'Azure Pipelines'
+      - 'integration-hub-azure-build'
+      - 'integration-hub-azure-build-dev'
+
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+
+stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_pharmacy_transformer'
+          appDisplayName: 'Pharmacy HL7 Transformer'
+          pythonVersion: '3.13'
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+  - stage: BuildAndPushHL7PharmacyTransformer
+    displayName: 'Build and Push HL7 Pharmacy Transformer'
+    dependsOn: CodeQuality
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushHL7PharmacyTransformer'
+          displayName: 'Build and Push HL7 Pharmacy Transformer'
+          appName: 'pharmacy-hl7transformer'
+          dockerfilePath: 'hl7_pharmacy_transformer/Dockerfile'
+          buildContext: 'hl7_pharmacy_transformer'
+          additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
