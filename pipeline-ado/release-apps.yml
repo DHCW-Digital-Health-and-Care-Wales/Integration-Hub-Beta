@@ -305,12 +305,12 @@ stages:
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerTest
-    displayName: 'Release App HL7Transformer - Test'
-    dependsOn: ReleaseHL7TransformerDev
+    displayName: 'Release App HL7PhwTransformer - Test'
+    dependsOn: ReleaseHL7PhwTransformerDev
     jobs:
       - template: templates/release-container-app-template.yml
         parameters:
-          jobName: 'ReleaseAppHL7TransformerTest'
+          jobName: 'ReleaseAppHL7PhwTransformerTest'
           displayName: 'Release App HL7PhwTransformer - Test'
           appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
