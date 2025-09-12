@@ -37,7 +37,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'phw-hl7transformer'
+          appName: 'hl7_phw_transformer'
           appDisplayName: 'Phw HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ parameters.POOL_SELECTION }}
