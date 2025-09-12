@@ -29,7 +29,6 @@ class TestPhwHL7Validator(unittest.TestCase):
         for invalid_pid, description in invalid_pid_segments:
             with self.subTest(desc=description):
                 phw_message = phw_msh_segment + invalid_pid
-                print(phw_message)
                 msg = parse_message(phw_message)
                 validator = HL7Validator(hl7_version="2.5", sending_app="252", flow_name="phw")
 

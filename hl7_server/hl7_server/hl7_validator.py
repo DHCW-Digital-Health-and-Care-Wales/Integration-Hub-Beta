@@ -55,7 +55,7 @@ class HL7Validator:
 
         if not dob:
             raise ValidationException("PID.7 (Date of birth) is required for PHW.")
-        # expecting only YYYYMMDD
+        # Only the yyyyMMdd format is accepted for PID.7 (Date of birth) in the PHW flow
         if not dob.isdigit() or len(dob) != 8:
             raise ValidationException("PID.7 (Date of birth) must be a valid date in YYYYMMDD format for PHW.")
 
@@ -64,5 +64,4 @@ class HL7Validator:
             if birthdate.year < 1800:
                 raise ValidationException("PID.7 (Date of birth) - year of birth must be 1800 or later for PHW.")
         except ValueError:
-            # to handle the edge case of "00000000"
             raise ValidationException("PID.7 (Date of birth) must be a valid date in YYYYMMDD format for PHW.")
