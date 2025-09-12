@@ -1,3 +1,5 @@
+from typing import Optional
+
 from hl7apy.core import Message
 
 VALID_ASSIGNING_AUTHORITIES = {
@@ -41,9 +43,9 @@ def validate_assigning_authority(hl7_msg: Message) -> bool:
         return False
 
 
-def transform_pharmacy_message(original_hl7_msg: Message) -> Message:
+def transform_pharmacy_message(original_hl7_msg: Message) -> Optional[Message]:
     if not validate_assigning_authority(original_hl7_msg):
-        raise ValueError("Invalid assigning authority for Pharmacy system")
+        return None
 
     new_message = Message(version=original_hl7_msg.version)
 

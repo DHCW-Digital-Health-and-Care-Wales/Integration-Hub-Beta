@@ -68,10 +68,9 @@ class TestPharmacyTransformer(unittest.TestCase):
             with self.subTest(message_key=message_key):
                 hl7_message = parse_message(pharmacy_messages[message_key])
 
-                with self.assertRaises(ValueError) as context:
-                    transform_pharmacy_message(hl7_message)
+                result = transform_pharmacy_message(hl7_message)
 
-                self.assertIn("Invalid assigning authority", str(context.exception))
+                self.assertIsNone(result, f"Message {message_key} should be dropped (return None)")
 
     def test_transform_pharmacy_message_preserves_content(self) -> None:
         hl7_message = parse_message(pharmacy_messages["valid_assigning_authority_108"])

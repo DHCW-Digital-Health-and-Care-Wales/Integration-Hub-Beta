@@ -69,6 +69,10 @@ def _process_message(
 
         transformed_hl7_message = transform_pharmacy_message(hl7_msg)
 
+        if transformed_hl7_message is None:
+            logger.info(f"Dropping message with invalid assigning authority: {assigning_authority}")
+            return True
+
         sender_client.send_message(transformed_hl7_message.to_er7())
 
         event_logger.log_message_processed(

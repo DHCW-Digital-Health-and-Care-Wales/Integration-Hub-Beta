@@ -55,11 +55,11 @@ class TestProcessPharmacyMessage(unittest.TestCase):
 
     @patch("hl7_pharmacy_transformer.application.transform_pharmacy_message")
     def test_process_message_invalid_assigning_authority(self, mock_transform_pharmacy: Any) -> None:
-        mock_transform_pharmacy.side_effect = ValueError("Invalid assigning authority for Pharmacy system")
+        mock_transform_pharmacy.return_value = None
 
         result = _process_message(self.invalid_service_bus_message, self.mock_sender, self.mock_event_logger)
 
-        self.assertFalse(result)
+        self.assertTrue(result)
         self.mock_sender.send_message.assert_not_called()
 
     @patch("hl7_pharmacy_transformer.application.transform_pharmacy_message")
@@ -75,21 +75,17 @@ class TestProcessPharmacyMessage(unittest.TestCase):
         self.mock_event_logger.log_message_failed.assert_not_called()
 
     @patch("hl7_pharmacy_transformer.application.transform_pharmacy_message")
-    def test_process_message_audit_logging_failure(self, mock_transform_pharmacy: Any) -> None:
-        error_reason = "Invalid assigning authority for Pharmacy system"
-        mock_transform_pharmacy.side_effect = ValueError(error_reason)
+    def test_process_message_audit_logging_dropped_message(self, mock_transform_pharmacy: Any) -> None:
+        mock_transform_pharmacy.return_value = None  # Message dropped
 
         _process_message(self.invalid_service_bus_message, self.mock_sender, self.mock_event_logger)
 
         self.mock_event_logger.log_message_received.assert_called_once_with(
             self.invalid_hl7_string, "Message received for Pharmacy transformation"
         )
-        self.mock_event_logger.log_message_failed.assert_called_once_with(
-            self.invalid_hl7_string,
-            f"Failed to transform Pharmacy message: {error_reason}",
-            "Pharmacy transformation failed",
-        )
+        # Dropped messages are not logged as processed or failed
         self.mock_event_logger.log_message_processed.assert_not_called()
+        self.mock_event_logger.log_message_failed.assert_not_called()
 
     @patch("hl7_pharmacy_transformer.application.transform_pharmacy_message")
     def test_process_message_unexpected_error(self, mock_transform_pharmacy: Any) -> None:
