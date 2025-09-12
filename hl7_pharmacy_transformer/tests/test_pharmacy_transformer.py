@@ -1,5 +1,7 @@
 import unittest
+from typing import cast
 
+from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
 from hl7_pharmacy_transformer.pharmacy_transformer import transform_pharmacy_message, validate_assigning_authority
@@ -56,6 +58,7 @@ class TestPharmacyTransformer(unittest.TestCase):
                 result = transform_pharmacy_message(hl7_message)
 
                 self.assertIsNotNone(result)
+                result = cast(Message, result)
                 self.assertEqual(result.version, hl7_message.version)
                 self.assertIsNotNone(result.msh)
 
@@ -76,6 +79,8 @@ class TestPharmacyTransformer(unittest.TestCase):
         hl7_message = parse_message(pharmacy_messages["valid_assigning_authority_108"])
         result = transform_pharmacy_message(hl7_message)
 
+        self.assertIsNotNone(result)
+        result = cast(Message, result)
         original_msh = hl7_message.msh
         result_msh = result.msh
 
