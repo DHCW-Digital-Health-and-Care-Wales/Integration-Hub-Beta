@@ -50,7 +50,7 @@ stages:
         parameters:
           jobName: 'BuildPushPhwHL7Transformer'
           displayName: 'Build and Push Phw HL7 Transformer'
-          appName: 'hl7_phw_transformer'
+          appName: 'phw-hl7transformer'
           dockerfilePath: 'hl7_phw_transformer/Dockerfile'
           buildContext: 'hl7_phw_transformer'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"

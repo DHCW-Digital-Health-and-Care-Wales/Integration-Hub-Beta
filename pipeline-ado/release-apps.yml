@@ -120,7 +120,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7PhwTransformerDev'
           displayName: 'Release App HL7PhwTransformer - Dev'
-          appName: 'hl7_phw_transformer'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
           azureLocation: $(azureLocation)
@@ -312,7 +312,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7PhwTransformerTest'
           displayName: 'Release App HL7PhwTransformer - Test'
-          appName: 'hl7_phw_transformer'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
           azureLocation: $(azureLocation)
@@ -493,7 +493,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7PhwTransformerPreProd'
           displayName: 'Release App HL7PhwTransformer - Pre-Prod'
-          appName: 'hl7_phw_transformer'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
           azureLocation: $(azureLocation)
@@ -674,7 +674,7 @@ stages:
         parameters:
           jobName: 'ReleaseAppHL7PhwTransformerProd'
           displayName: 'Release App HL7PhwTransformer - Production'
-          appName: 'hl7_phw_transformer'
+          appName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
