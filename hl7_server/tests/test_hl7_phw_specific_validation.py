@@ -2,7 +2,8 @@ import unittest
 
 from hl7apy.parser import parse_message
 
-from hl7_server.hl7_validator import HL7Validator, ValidationException
+from hl7_server.exceptions.validation_exception import ValidationException
+from hl7_server.hl7_validator import HL7Validator
 
 VALID_PHW_A28_MESSAGE = (
     "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:28||ADT^A28^ADT_A05|202505052323326666666666|P|2.5|||||GBR||EN\r"
