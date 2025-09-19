@@ -9,8 +9,8 @@ parameters:
     default: 'Azure Pipelines'
     values:
       - 'Azure Pipelines'
-      - 'integration-hub-azure-build'
-      - 'inegration-hub-azure-build-dev'
+      - 'UKS-DHCW-IH-DEV-ADOManagedPool'
+      - 'UKS-DHCW-IH-TST-ADOManagedPool'
 
 variables:
   acrName: 'uksdhcwihsharedcr'
