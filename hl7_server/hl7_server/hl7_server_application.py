@@ -6,12 +6,12 @@ from typing import Any
 
 from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
-from hl7apy.mllp import MLLPServer
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from hl7_server.hl7_validator import HL7Validator
+from hl7_server.size_limited_mllp_server import SizeLimitedMLLPServer
 
 from .app_config import AppConfig
 from .error_handler import ErrorHandler
@@ -36,7 +36,7 @@ class Hl7ServerApplication:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-        self._server: MLLPServer | None = None
+        self._server: SizeLimitedMLLPServer | None = None
 
     def _signal_handler(self, signum: Any, frame: Any) -> None:
         logger.info("Shutdown signal received (signal %s).", signum)
@@ -72,10 +72,10 @@ class Hl7ServerApplication:
         }
 
         try:
-            self._server = MLLPServer(self.HOST, self.PORT, handlers)
+            self._server = SizeLimitedMLLPServer(self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger)
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
-            logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT}")
+            logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT} with message size limit: {app_config.max_message_size_bytes} bytes")
             self.health_check_server.start()
         except Exception as e:
             logger.exception("Server encountered an unexpected error: %s", e)

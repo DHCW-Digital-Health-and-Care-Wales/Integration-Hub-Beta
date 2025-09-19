@@ -17,6 +17,7 @@ class AppConfig:
     health_check_hostname: str | None
     health_check_port: int | None
     hl7_validation_flow: str | None = None
+    max_message_size_bytes: int = 1048576  # Default 1MB
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -32,6 +33,7 @@ class AppConfig:
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
             hl7_validation_flow=_read_env("HL7_VALIDATION_FLOW"),
+            max_message_size_bytes=_read_int_env("MAX_MESSAGE_SIZE_BYTES") or 1048576,
         )
 
 

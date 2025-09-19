@@ -4,9 +4,8 @@ import unittest
 from typing import Dict
 from unittest.mock import MagicMock, patch
 
-from hl7apy.mllp import MLLPServer
-
 from hl7_server.hl7_server_application import Hl7ServerApplication
+from hl7_server.size_limited_mllp_server import SizeLimitedMLLPServer
 
 ENV_VARS: Dict[str, str] = {
     "HOST": "127.0.0.1",
@@ -23,14 +22,14 @@ ENV_VARS: Dict[str, str] = {
 
 @patch.dict(os.environ, ENV_VARS)
 @patch("hl7_server.hl7_server_application.TCPHealthCheckServer")
-@patch("hl7_server.hl7_server_application.MLLPServer")
+@patch("hl7_server.hl7_server_application.SizeLimitedMLLPServer")
 @patch("hl7_server.hl7_server_application.ServiceBusClientFactory")
 @patch("hl7_server.hl7_server_application.threading.Thread")
 class TestHl7ServerApplication(unittest.TestCase):
     def setUp(self) -> None:
         self.app = Hl7ServerApplication()
 
-    def _setup_mocks(self, mock_thread: MagicMock, mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> tuple[
+    def _setup_mocks(self, mock_thread: MagicMock, mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> tuple[
         MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
@@ -47,7 +46,7 @@ class TestHl7ServerApplication(unittest.TestCase):
         health_check.stop.assert_called_once()
 
     def test_server_initialization_and_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                                mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+                                                mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
@@ -56,7 +55,7 @@ class TestHl7ServerApplication(unittest.TestCase):
         self._assert_shutdown(server, thread, health_check)
 
     def test_signal_handler_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                     mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+                                     mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
@@ -65,7 +64,7 @@ class TestHl7ServerApplication(unittest.TestCase):
         self._assert_shutdown(server, thread, health_check)
 
     def test_server_exception_handling(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                       mock_mllp_server: MLLPServer,
+                                       mock_mllp_server: SizeLimitedMLLPServer,
                                        mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         thread.start.side_effect = RuntimeError("Simulated server error")
@@ -76,7 +75,7 @@ class TestHl7ServerApplication(unittest.TestCase):
         self._assert_shutdown(server, thread, health_check)
 
     def test_health_check_initialization(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                         mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+                                         mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
