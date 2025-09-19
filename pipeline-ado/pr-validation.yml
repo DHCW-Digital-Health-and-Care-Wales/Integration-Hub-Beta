@@ -87,7 +87,39 @@ stages:
       - template: templates/code-quality-template.yml
         parameters:
           appName: 'shared_libs/message_bus_lib'
-          appDisplayName: 'Shared Libraries'
+          appDisplayName: 'Message Bus Library'
           banditSourceDir: 'message_bus_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/event_logger_lib'
+          appDisplayName: 'Event Logger Library'
+          banditSourceDir: 'event_logger_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/health_check_lib'
+          appDisplayName: 'Health Check Library'
+          banditSourceDir: 'health_check_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/hl7_validation'
+          appDisplayName: 'HL7 Validation Library'
+          banditSourceDir: 'hl7_validation'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/processor_manager_lib'
+          appDisplayName: 'Processor Manager Library'
+          banditSourceDir: 'processor_manager_lib'
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}
