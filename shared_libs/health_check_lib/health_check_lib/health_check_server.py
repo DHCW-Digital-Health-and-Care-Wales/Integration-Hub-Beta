@@ -36,6 +36,8 @@ class TCPHealthCheckServer:
                 self._server_socket.close()
             except Exception as e:
                 logger.warning(f"Failed to close socket: {e}")
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1.0)
 
     def __enter__(self):
         return self
