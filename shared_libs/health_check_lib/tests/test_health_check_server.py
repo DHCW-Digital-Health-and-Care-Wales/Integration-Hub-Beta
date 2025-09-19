@@ -1,6 +1,5 @@
 import unittest
 import socket
-import time
 from unittest.mock import MagicMock
 
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -9,25 +8,13 @@ from health_check_lib.health_check_server import TCPHealthCheckServer
 class TestTCPHealthCheckServer(unittest.TestCase):
     def setUp(self):
         # Use an ephemeral port (0) so the OS assigns an available one
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                self.server = TCPHealthCheckServer(host='127.0.0.1', port=0)
-                self.server.start()
-                self.actual_port = self.server._server_socket.getsockname()[1]
-                break
-            except OSError as e:
-                if attempt == max_retries - 1:
-                    raise
-                print(f"Warning: Attempt {attempt + 1} failed to bind socket: {e}")
-                time.sleep(0.1)
+        self.server = TCPHealthCheckServer(host='127.0.0.1', port=0)
+        self.server.start()
+
+        self.actual_port = self.server._server_socket.getsockname()[1]
 
     def tearDown(self):
-        try:
-            self.server.stop()
-            time.sleep(0.1)
-        except Exception as e:
-            print(f"Warning: Error during server cleanup: {e}")
+        self.server.stop()
 
     def test_server_accepts_connection(self):
         try:
