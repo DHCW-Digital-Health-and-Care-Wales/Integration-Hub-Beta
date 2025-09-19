@@ -3,6 +3,7 @@ import unittest
 from hl7_validation import validate_er7_with_flow
 from hl7_validation.validate import XmlValidationError
 
+
 class TestPPimsValidation(unittest.TestCase):
     def test_pims_a40_convert_and_validate(self) -> None:
         er7 = "\r".join(
