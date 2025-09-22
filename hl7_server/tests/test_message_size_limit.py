@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 from event_logger_lib.event_logger import EventLogger
 
+from hl7_server.app_config import AppConfig
 from hl7_server.generic_handler import GenericHandler
 from hl7_server.hl7_validator import HL7Validator
 from hl7_server.size_limited_mllp_server import SizeLimitedMLLPServer
@@ -39,8 +40,6 @@ class TestMessageSizeLimit(unittest.TestCase):
         self.assertEqual(server.max_message_size_bytes, 1000)
 
     def test_app_config_default_message_size(self) -> None:
-        from hl7_server.app_config import AppConfig
-
         with patch.dict('os.environ', {
             'EGRESS_QUEUE_NAME': 'test-queue',
             'AUDIT_QUEUE_NAME': 'audit-queue',
@@ -51,8 +50,6 @@ class TestMessageSizeLimit(unittest.TestCase):
             self.assertEqual(config.max_message_size_bytes, 1048576)  # 1MB default
 
     def test_app_config_custom_message_size(self) -> None:
-        from hl7_server.app_config import AppConfig
-
         with patch.dict('os.environ', {
             'EGRESS_QUEUE_NAME': 'test-queue',
             'AUDIT_QUEUE_NAME': 'audit-queue',
