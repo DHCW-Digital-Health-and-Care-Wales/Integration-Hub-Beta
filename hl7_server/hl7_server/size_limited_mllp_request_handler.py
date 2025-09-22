@@ -38,7 +38,11 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 accumulated_data += char
 
                 if len(accumulated_data) > max_message_size:
-                    error_msg = f"Message size ({len(accumulated_data)} bytes) exceeds maximum allowed size ({max_message_size} bytes). Connection will be closed."
+                    error_msg = (
+                        f"Message size ({len(accumulated_data)} bytes) "
+                        f"exceeds maximum allowed size ({max_message_size} bytes). "
+                        "Connection will be closed."
+                    )
                     logger.error(error_msg)
 
                     if event_logger:
@@ -57,7 +61,10 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
         message_content = self._extract_hl7_message(accumulated_data.decode(self.encoding))
         if message_content is not None:
-            logger.info(f"Received message of size {len(accumulated_data)} bytes (within limit of {max_message_size} bytes)")
+            logger.info(
+                f"Received message of size {len(accumulated_data)} bytes "
+                f"(within limit of {max_message_size} bytes)"
+            )
 
             try:
                 response = self._route_message(message_content)

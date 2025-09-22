@@ -18,7 +18,13 @@ class TestMessageSizeLimit(unittest.TestCase):
         self.test_message_size_limit = 100
 
         self.test_handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.mock_sender_client, self.mock_event_logger, self.mock_validator, "test_flow"),
+            "ADT^A31^ADT_A05": (
+                GenericHandler,
+                self.mock_sender_client,
+                self.mock_event_logger,
+                self.mock_validator,
+                "test_flow"
+            ),
         }
 
     def test_message_within_size_limit_accepted(self) -> None:

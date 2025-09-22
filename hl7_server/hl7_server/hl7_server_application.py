@@ -72,10 +72,19 @@ class Hl7ServerApplication:
         }
 
         try:
-            self._server = SizeLimitedMLLPServer(self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger)
+            self._server = SizeLimitedMLLPServer(
+                self.HOST,
+                self.PORT,
+                handlers,
+                app_config.max_message_size_bytes,
+                self.event_logger
+            )
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
-            logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT} with message size limit: {app_config.max_message_size_bytes} bytes")
+            logger.info(
+                f"MLLP Server listening on {self.HOST}:{self.PORT} "
+                f"with message size limit: {app_config.max_message_size_bytes} bytes"
+            )
             self.health_check_server.start()
         except Exception as e:
             logger.exception("Server encountered an unexpected error: %s", e)

@@ -29,8 +29,12 @@ class TestHl7ServerApplication(unittest.TestCase):
     def setUp(self) -> None:
         self.app = Hl7ServerApplication()
 
-    def _setup_mocks(self, mock_thread: MagicMock, mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> tuple[
-        MagicMock, MagicMock, MagicMock]:
+    def _setup_mocks(
+        self,
+        mock_thread: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock
+    ) -> tuple[MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
         mock_health_instance = MagicMock()
@@ -45,8 +49,13 @@ class TestHl7ServerApplication(unittest.TestCase):
         thread.join.assert_called_once()
         health_check.stop.assert_called_once()
 
-    def test_server_initialization_and_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                                mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
+    def test_server_initialization_and_shutdown(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
