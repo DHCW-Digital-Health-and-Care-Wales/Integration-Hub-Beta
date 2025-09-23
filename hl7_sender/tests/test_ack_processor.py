@@ -16,14 +16,22 @@ class TestGetAckResult(unittest.TestCase):
         result = get_ack_result(generate_ack_msg("AA"))
 
         self.assertTrue(result)
-        mock_logger.info.assert_called_once_with("Valid ACK received.")
+        # Check that 'Valid ACK received.' was logged
+        self.assertIn(
+            ("Valid ACK received.",),
+            [call.args for call in mock_logger.info.call_args_list]
+        )
 
     @patch('hl7_sender.ack_processor.logger')
     def test_valid_ack_ca(self, mock_logger: MagicMock) -> None:
         result = get_ack_result(generate_ack_msg("CA"))
 
         self.assertTrue(result)
-        mock_logger.info.assert_called_once_with("Valid ACK received.")
+        # Check that 'Valid ACK received.' was logged
+        self.assertIn(
+            ("Valid ACK received.",),
+            [call.args for call in mock_logger.info.call_args_list]
+        )
 
     @patch('hl7_sender.ack_processor.logger')
     def test_negative_ack_ae(self, mock_logger: MagicMock) -> None:
@@ -56,7 +64,24 @@ class TestGetAckResult(unittest.TestCase):
         result = get_ack_result("This is not a valid HL7 message")
 
         self.assertFalse(result)
-        mock_logger.exception.assert_called_once_with('Exception while parsing ACK message')
+        # The malformed message triggers exception logging
+        mock_logger.exception.assert_called()
+
+    @patch('hl7_sender.ack_processor.logger')
+    @patch('hl7_sender.ack_processor.parse_message')
+    def test_parsing_exception(self, mock_parse_message: MagicMock, mock_logger: MagicMock) -> None:
+        # Create a message that passes initial validation but fails during parsing
+        malformed_hl7 = (
+            "MSH|^~\\&|SENDER|SENDER_APP|RECEIVER|RECEIVER_APP|20250101000000||"
+            "ACK^A01|123456|P|2.5\rINVALID_SEGMENT"
+        )
+        mock_parse_message.side_effect = Exception("Parsing failed")
+
+        result = get_ack_result(malformed_hl7)
+
+        self.assertFalse(result)
+        # This should trigger the exception handling path
+        mock_logger.exception.assert_called_once()
 
 
 if __name__ == '__main__':

@@ -56,3 +56,4 @@ class HL7SenderClient:
         exc_tb: Optional[Any],
     ) -> None:
         self.mllp_client.close()
+
