@@ -65,7 +65,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
     def _has_end_sequence(self, data: bytes, end_seq: bytes) -> bool:
         if len(data) < len(end_seq) + 1: # Need at least start block + content + end_seq
             return False
-        
+
         return data[-len(end_seq):] == end_seq
 
     def _process_complete_message(self, accumulated_data: bytes, max_message_size: int) -> None:
