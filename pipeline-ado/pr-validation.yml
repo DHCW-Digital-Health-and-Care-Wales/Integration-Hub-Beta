@@ -91,3 +91,21 @@ stages:
           banditSourceDir: 'message_bus_lib'
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}
+
+      # Transformer Base Library validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/transformer_base_lib'
+          appDisplayName: 'Transformer Base Library'
+          banditSourceDir: 'transformer_base_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      # Field Utils Library validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/field_utils_lib'
+          appDisplayName: 'Field Utils Library'
+          banditSourceDir: 'field_utils_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
