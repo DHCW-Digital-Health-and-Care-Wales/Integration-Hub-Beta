@@ -65,6 +65,7 @@ def _process_message(
         ack_response = hl7_sender_client.send_message(message_body)
 
         event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
+
         logger.info(f"Sent message: {message_id}")
 
         return get_ack_result(ack_response)

@@ -5,7 +5,7 @@ from hl7_sender.ack_processor import get_ack_result
 
 
 def generate_ack_msg(ack_code: str) -> str:
-    return ("MSH|^~\\&|SENDER|SENDER_APP|RECEIVER|RECEIVER_APP|20250101000000||ACK^A01|123456|P|2.5\r"
+    return ("MSH|^~\\&|SENDER|SENDER_APP|RECEIVER|RECEIVER_APP|20250101000000||ACK^A01|123456|P|2.5\r\n"
             f"MSA|{ack_code}|123456\r")
 
 

@@ -1,3 +1,4 @@
+import base64
 import logging
 import socket
 from typing import Any, Optional, Type
@@ -39,7 +40,14 @@ class HL7SenderClient:
         self.mllp_client.socket.settimeout(self.ack_timeout_seconds)
 
         try:
-            ack_response = self.mllp_client.send_message(message).decode('utf-8')
+            raw_response = self.mllp_client.send_message(message)
+
+            # Log raw response in base64 for debugging
+            raw_response_b64 = base64.b64encode(raw_response).decode('ascii')
+            logger.info(f"Raw MLLP response (base64): {raw_response_b64}")
+
+            ack_response = raw_response.decode('utf-8').strip()
+
             return ack_response
         except socket.timeout:
             raise TimeoutError(f"No ACK received within {self.ack_timeout_seconds} seconds")
