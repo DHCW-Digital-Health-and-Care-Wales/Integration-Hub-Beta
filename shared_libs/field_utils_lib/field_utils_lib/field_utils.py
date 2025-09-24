@@ -7,28 +7,28 @@ def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
     """
     Safely retrieves the string value of a nested HL7 field using a dot-separated path.
 
-    Traverses the HL7 segment hierarchy following the provided path,
-    handling missing attributes and empty values gracefully (returns empty string to maintain compatibility with hl7apy)
-    Works with hl7apy objects which may have .value attributes or can be converted to strings.
-    Example usage:
-    - get_hl7_field_value(original_msh, "msh_4.hd_1") = "HOSPITAL NAME"
-    - get_hl7_field_value(original_pid, "pid_5.xpn_1.fn_1") = "TEST"
-    - get_hl7_field_value(original_msh, "nonexistent.field") = ""
+    Supports single-repetition bracket notation, e.g. pid_13[1].xtn_1
     """
     current_element = hl7_segment
-    # Loop through each attribute in the field path in order
     for field_name in field_path.split("."):
         try:
-            current_element = getattr(current_element, field_name)
+            if "[" in field_name and field_name.endswith("]"):
+                field_base, index_part = field_name.split("[", 1)
+                index = int(index_part.rstrip("]"))
+                field_array = getattr(current_element, field_base)
+                if hasattr(field_array, "__getitem__") and len(field_array) > index:
+                    current_element = field_array[index]
+                else:
+                    return ""
+            else:
+                current_element = getattr(current_element, field_name)
             if not current_element:
-                return ""  # Empty field
-        except (AttributeError, IndexError, ChildNotFound):
-            return ""  # Non-existent field
+                return ""
+        except (AttributeError, IndexError, ChildNotFound, ValueError):
+            return ""
 
-    # Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
     if current_element is not None:
         field_value = current_element.value
-        # Handle nested values - HL7 datatype objects may have their own .value attribute
         if hasattr(field_value, "value"):
             field_value = field_value.value
         return str(field_value) if field_value is not None else ""
@@ -39,13 +39,6 @@ def set_nested_field(source_obj: Any, target_obj: Any, field_path: str) -> bool:
     """
     Copy a nested field from source to target using a dot-separated path.
     Only sets the target field if the source field exists and has a value.
-    Example usage:
-    - set_nested_field(original_msh, new_message.msh, "msh_7.ts_1") - nested field
-    - set_nested_field(original_msh, new_message.msh, "msh_8")      - top-level field
-
-    If a subfield is missing for example xad_1 from pid_11, any children of this subfield will be set to empty string.
-    Example usage:
-     - set_nested_field(original_msh, new_message.msh, "pid_11.xad_1.sad_1")  - sad_1 will be set to ""
     """
     fields = field_path.split(".")
 
@@ -80,12 +73,11 @@ def set_nested_field(source_obj: Any, target_obj: Any, field_path: str) -> bool:
 
 
 def _safe_hasattr(obj: Any, name: str) -> bool:
-    """
-    Helper function to safely check if an object has an attribute,
-    handling hl7apy's ChildNotFound exceptions.
-    """
+    """Safely check attribute existence handling hl7apy exceptions."""
     try:
         getattr(obj, name)
         return True
     except (AttributeError, IndexError, ChildNotFound):
         return False
+
+

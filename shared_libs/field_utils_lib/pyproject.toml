@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "field-utils-lib"
+version = "0.1.0"
+description = "Shared HL7 field utilities (bracket-aware)"
+requires-python = ">=3.13"
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "hl7apy==1.3.5",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["field_utils_lib*"]
+
+

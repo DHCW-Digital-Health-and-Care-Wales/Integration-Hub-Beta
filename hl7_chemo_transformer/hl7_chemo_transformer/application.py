@@ -1,97 +1,50 @@
-import configparser
 import logging
 import os
+from typing import Callable
 
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
-from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.core import Message
-from hl7apy.parser import parse_message
-from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
-from processor_manager_lib import ProcessorManager
+from transformer_base_lib import run_transformer_app
+from transformer_base_lib.processing import process_message as base_process_message
 
-from .app_config import AppConfig
 from .chemocare_transformer import transform_chemocare_message
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
 
-config = configparser.ConfigParser()
-config_path = os.path.join(os.path.dirname(__file__), "config.ini")
-config.read(config_path)
-
-MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-
 
 def main() -> None:
-    processor_manager = ProcessorManager()
+    config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 
-    app_config = AppConfig.read_env_config()
-    client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
-    factory = ServiceBusClientFactory(client_config)
-    event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
+    def process(
+        message: ServiceBusMessage,
+        sender: MessageSenderClient,
+        event_logger: EventLogger,
+        transform_fn: Callable[[Message], Message],
+    ) -> bool:
+        def processed_audit_text_builder(_msg: Message) -> str:
+            sending_app = _get_sending_app(_msg)
+            return f"Chemocare transformation applied for SENDING_APP: {sending_app}"
 
-    with (
-        factory.create_queue_sender_client(app_config.egress_queue_name) as sender_client,
-        factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
-    ):
-        logger.info("Chemocare Transformer processor started.")
-        health_check_server.start()
-
-        while processor_manager.is_running:
-            receiver_client.receive_messages(
-                MAX_BATCH_SIZE,
-                lambda message: _process_message(message, sender_client, event_logger),
-            )
-
-
-def _process_message(
-    message: ServiceBusMessage,
-    sender_client: MessageSenderClient,
-    event_logger: EventLogger,
-) -> bool:
-    message_body = b"".join(message.body).decode("utf-8")
-    logger.debug("Received message")
-
-    try:
-        event_logger.log_message_received(message_body, "Message received for Chemocare transformation")
-
-        hl7_msg = parse_message(message_body)
-        msh_segment = hl7_msg.msh
-        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
-
-        sending_app = _get_sending_app(hl7_msg)
-        logger.info(f"Applying Chemocare transformation for SENDING_APP: {sending_app}")
-
-        transformed_hl7_message = transform_chemocare_message(hl7_msg)
-
-        sender_client.send_message(transformed_hl7_message.to_er7())
-
-        event_logger.log_message_processed(
-            message_body,
-            f"Chemocare transformation applied for SENDING_APP: {sending_app}",
+        return base_process_message(
+            message=message,
+            sender_client=sender,
+            event_logger=event_logger,
+            transform=transform_fn,
+            transformer_display_name="Chemocare",
+            received_audit_text="Message received for Chemocare transformation",
+            processed_audit_text_builder=processed_audit_text_builder,
+            failed_audit_text="Chemocare transformation failed",
         )
 
-        return True
-
-    except ValueError as e:
-        error_msg = f"Failed to transform Chemocare message: {e}"
-        logger.error(error_msg)
-
-        event_logger.log_message_failed(message_body, error_msg, "Chemocare transformation failed")
-
-        return False
-
-    except Exception as e:
-        error_msg = f"Unexpected error during message processing: {e}"
-        logger.error(error_msg)
-
-        event_logger.log_message_failed(message_body, error_msg, "Unexpected processing error")
-
-        return False
+    run_transformer_app(
+        transformer_display_name="Chemocare",
+        transform=transform_chemocare_message,
+        process_message_fn=process,
+        config_path=config_path,
+    )
 
 
 def _get_sending_app(hl7_msg: Message) -> str:
@@ -103,3 +56,24 @@ def _get_sending_app(hl7_msg: Message) -> str:
 
 if __name__ == "__main__":
     main()
+
+
+def _process_message(
+    message: ServiceBusMessage,
+    sender_client: MessageSenderClient,
+    event_logger: EventLogger,
+) -> bool:
+    def processed_audit_text_builder(_msg: Message) -> str:
+        sending_app = _get_sending_app(_msg)
+        return f"Chemocare transformation applied for SENDING_APP: {sending_app}"
+
+    return base_process_message(
+        message=message,
+        sender_client=sender_client,
+        event_logger=event_logger,
+        transform=transform_chemocare_message,
+        transformer_display_name="Chemocare",
+        received_audit_text="Message received for Chemocare transformation",
+        processed_audit_text_builder=processed_audit_text_builder,
+        failed_audit_text="Chemocare transformation failed",
+    )
