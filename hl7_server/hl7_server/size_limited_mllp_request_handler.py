@@ -16,8 +16,6 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         end_seq = self.eb + self.cr
         accumulated_data = b""
 
-        buffer_size = min(8192, max_message_size // 4)  # 8KB or 1/4 of max size, whichever is smaller
-
         try:
             line = self.request.recv(3)
             if not line:
@@ -34,21 +32,27 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
         while accumulated_data[-2:] != end_seq:
             try:
-                remaining_space = max_message_size - len(accumulated_data)
-                if remaining_space <= 0:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger)
-                    return
-
-                chunk_size = min(buffer_size, remaining_space)
-                chunk = self.rfile.read(chunk_size)
-
-                if not chunk:
+                char = self.rfile.read(1)
+                if not char:
                     break
-
-                accumulated_data += chunk
+                accumulated_data += char
 
                 if len(accumulated_data) > max_message_size:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger)
+                    error_msg = (
+                        f"Message size ({len(accumulated_data)} bytes) "
+                        f"exceeds maximum allowed size ({max_message_size} bytes). "
+                        "Connection will be closed."
+                    )
+                    logger.error(error_msg)
+
+                    if event_logger:
+                        try:
+                            partial_message = accumulated_data.decode('utf-8', errors='ignore')[:1000]
+                            event_logger.log_message_failed(partial_message, error_msg, "Message size limit exceeded")
+                        except Exception:
+                            pass
+
+                    self.request.close()
                     return
 
             except socket.timeout:
@@ -65,28 +69,6 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
             try:
                 response = self._route_message(message_content)
                 self.wfile.write(response.encode(self.encoding))
-            except Exception:
-                pass
-
-        self.request.close()
-
-    def _handle_size_limit_exceeded(
-        self,
-        accumulated_data: bytes,
-        max_message_size: int,
-        event_logger: Optional[EventLogger]
-    ) -> None:
-        error_msg = (
-            f"Message size ({len(accumulated_data)} bytes) "
-            f"exceeds maximum allowed size ({max_message_size} bytes). "
-            "Connection will be closed."
-        )
-        logger.error(error_msg)
-
-        if event_logger:
-            try:
-                partial_message = accumulated_data.decode('utf-8', errors='ignore')[:1000]
-                event_logger.log_message_failed(partial_message, error_msg, "Message size limit exceeded")
             except Exception:
                 pass
 
