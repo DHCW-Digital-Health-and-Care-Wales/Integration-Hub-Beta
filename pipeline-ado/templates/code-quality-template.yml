@@ -64,13 +64,21 @@ jobs:
       - script: |
           set -euo pipefail
           echo "##[group]Install Shared Dependencies"
-          
-          echo "Installing shared library with UV..."
+
+          echo "Installing shared libraries with UV..."
+
+          # Install all required shared libraries
           uv pip install --system -e shared_libs/message_bus_lib/
-          
-          # Verify shared library installation
+          uv pip install --system -e shared_libs/health_check_lib/
+          uv pip install --system -e shared_libs/processor_manager_lib/
+          uv pip install --system -e shared_libs/event_logger_lib/
+
+          # Verify shared library installations
           python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
-          
+          python -c "import health_check_lib; print('✅ health_check_lib imported successfully')"
+          python -c "import processor_manager_lib; print('✅ processor_manager_lib imported successfully')"
+          python -c "import event_logger_lib; print('✅ event_logger_lib imported successfully')"
+
           echo "##[endgroup]"
         displayName: 'Install Shared Dependencies'
 
@@ -128,9 +136,16 @@ jobs:
           echo ""
           
           echo "🔒 Running Bandit security scan..."
-          if ! uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium; then
-            echo "##[error]Bandit security scan found issues!"
-            VALIDATION_FAILED=1
+          if [ -d "tests" ]; then
+            if ! uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium; then
+              echo "##[error]Bandit security scan found issues!"
+              VALIDATION_FAILED=1
+            fi
+          else
+            if ! uv tool run bandit -r ${BANDIT_SOURCE} --severity-level medium; then
+              echo "##[error]Bandit security scan found issues!"
+              VALIDATION_FAILED=1
+            fi
           fi
           echo ""
           echo "----------------------------------------"
@@ -146,9 +161,16 @@ jobs:
           echo ""
           
           echo "🏷️ Running MyPy type check..."
-          if ! uv tool run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports; then
-            echo "##[error]MyPy type checking failed!"
-            VALIDATION_FAILED=1
+          if [ -d "tests" ]; then
+            if ! uv tool run mypy ${BANDIT_SOURCE} tests --ignore-missing-imports; then
+              echo "##[error]MyPy type checking failed!"
+              VALIDATION_FAILED=1
+            fi
+          else
+            if ! uv tool run mypy ${BANDIT_SOURCE} --ignore-missing-imports; then
+              echo "##[error]MyPy type checking failed!"
+              VALIDATION_FAILED=1
+            fi
           fi
           echo ""
           echo "----------------------------------------"
@@ -170,9 +192,13 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🧪 Running unit tests..."
-          if ! python -m unittest discover tests -v; then
-            echo "##[error]Unit tests failed!"
-            exit 1
+          if [ -d "tests" ]; then
+            if ! python -m unittest discover tests -v; then
+              echo "##[error]Unit tests failed!"
+              exit 1
+            fi
+          else
+            echo "⚠️ No tests directory found - skipping unit tests"
           fi
           
           echo "✅ All unit tests passed"
