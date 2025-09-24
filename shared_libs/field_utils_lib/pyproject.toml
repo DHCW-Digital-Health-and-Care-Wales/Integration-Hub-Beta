@@ -21,4 +21,9 @@ dependencies = [
 where = ["."]
 include = ["field_utils_lib*"]
 
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+]
+
 
