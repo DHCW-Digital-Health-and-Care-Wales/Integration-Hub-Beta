@@ -1,51 +1,64 @@
-import configparser
+from __future__ import annotations
+
 import logging
 import os
-from typing import Callable
+from typing import TYPE_CHECKING
 
+from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
-from hl7apy.core import Message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
 
-from .app_config import AppConfig
+from .app_config import TransformerConfig
+from .processing import process_message
+
+if TYPE_CHECKING:
+    from .base_transformer import BaseTransformer
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
 
 
-def run_transformer_app(
-    transformer_display_name: str,
-    transform: Callable[[Message], Message],
-    process_message_fn: Callable,
-    config_path: str,
-) -> None:
+def run_transformer_app(transformer: BaseTransformer) -> None:
+    
+    from .base_transformer import BaseTransformer
+    
+    if not isinstance(transformer, BaseTransformer):
+        raise TypeError("transformer must be an instance of BaseTransformer")
+    
     processor_manager = ProcessorManager()
-
-    app_config = AppConfig.read_env_config()
-    client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
+    config = TransformerConfig.from_env_and_config_file(transformer.config_path)
+    
+    client_config = ConnectionConfig(config.connection_string, config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
-
-    event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    max_batch_size = config.getint("DEFAULT", "max_batch_size")
+    event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
     with (
-        factory.create_queue_sender_client(app_config.egress_queue_name) as sender_client,
-        factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
+        factory.create_queue_sender_client(config.egress_queue_name) as sender_client,
+        factory.create_message_receiver_client(config.ingress_queue_name) as receiver_client,
+        TCPHealthCheckServer(config.health_check_hostname, config.health_check_port) as health_check_server,
     ):
-        logger.info(f"{transformer_display_name} Transformer processor started.")
+        logger.info(f"{transformer.transformer_name} Transformer processor started.")
         health_check_server.start()
+
+        def message_processor(message: ServiceBusMessage) -> bool:
+            return process_message(
+                message=message,
+                sender_client=sender_client,
+                event_logger=event_logger,
+                transform=transformer.transform_message,
+                transformer_display_name=transformer.transformer_name,
+                received_audit_text=transformer.get_received_audit_text(),
+                processed_audit_text_builder=transformer.get_processed_audit_text,
+                failed_audit_text=transformer.get_failed_audit_text(),
+            )
 
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                max_batch_size,
-                lambda message: process_message_fn(message, sender_client, event_logger, transform),
+                config.max_batch_size,
+                message_processor,
             )
 
 

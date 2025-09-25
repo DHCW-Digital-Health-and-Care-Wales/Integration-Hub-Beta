@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import configparser
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -30,6 +31,27 @@ class AppConfig:
             microservice_id=_read_env("MICROSERVICE_ID", required=True),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT", required=False),
+        )
+
+
+@dataclass
+class TransformerConfig(AppConfig):    
+    max_batch_size: int = 100
+
+    @classmethod
+    def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
+        app_config = AppConfig.read_env_config()
+        
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        
+        max_batch_size = 100
+        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "max_batch_size"):
+            max_batch_size = config.getint("DEFAULT", "max_batch_size")
+        
+        return cls(
+            **asdict(app_config),
+            max_batch_size=max_batch_size
         )
 
 
