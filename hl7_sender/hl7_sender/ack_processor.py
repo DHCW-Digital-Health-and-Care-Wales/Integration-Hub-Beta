@@ -5,6 +5,7 @@ from hl7apy.parser import parse_message
 
 logger = logging.getLogger(__name__)
 
+
 def get_ack_result(response: str) -> bool:
     try:
         response_msg: Message = parse_message(response)
