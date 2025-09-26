@@ -25,10 +25,13 @@ class TestBaseTransformer(unittest.TestCase):
     def test_get_sending_app_with_unknown_app(self):
         transformer = TestTransformer("test_transformer")
         mock_message = MagicMock()
-        mock_message.msh.msh_3.msh_3_1.side_effect = AttributeError()
-        
+
+        mock_value = MagicMock()
+        mock_value.value.side_effect = AttributeError()
+        mock_message.msh.msh_3.msh_3_1 = mock_value
+
         result = transformer._get_sending_app(mock_message)
-        
+
         self.assertEqual(result, "UNKNOWN")
 
 if __name__ == '__main__':

@@ -1,6 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
-from hl7apy.exceptions import ChildNotFound
+from unittest.mock import MagicMock
 
 from field_utils_lib.field_utils import get_hl7_field_value, set_nested_field
 
