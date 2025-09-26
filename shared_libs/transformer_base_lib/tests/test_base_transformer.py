@@ -26,9 +26,7 @@ class TestBaseTransformer(unittest.TestCase):
         transformer = TestTransformer("test_transformer")
         mock_message = MagicMock()
 
-        mock_value = MagicMock()
-        mock_value.value.side_effect = AttributeError()
-        mock_message.msh.msh_3.msh_3_1 = mock_value
+        mock_message.msh.msh_3.msh_3_1 = MagicMock(spec=[])
 
         result = transformer._get_sending_app(mock_message)
 
