@@ -9,123 +9,67 @@ Integration Hub overview – Training
 
 Table of Contents
 
-[1. Why? 2](#_Toc209000305)
-
-[1.1. Current Solution – Fiorano 3](#_Toc209000306)
-
-[1.2. Strategic Alignment 3](#_Toc209000307)
-
-[2. What? 3](#_Toc209000308)
-
-[2.1. Key features of the Integration Hub 3](#_Toc209000309)
-
-[2.2. Benefits for DHCW and patients 4](#_Toc209000310)
-
-[3. How? 4](#_Toc209000311)
-
-[4. Aside – a primer on architecture 5](#_Toc209000312)
-
-[4.1. What is Software Architecture? 5](#_Toc209000313)
-
-[4.2. What are Microservices? 5](#_Toc209000314)
-
-[4.2.1. Traditional vs. Microservices Approach 5](#_Toc209000315)
-
-[4.2.2. Why Use Microservices? 5](#_Toc209000316)
-
-[4.2.3. Event-Driven Messaging: How Services Talk to Each Other 6](#_Toc209000317)
-
-[4.2.4. Benefits of Event-Driven Messaging 6](#_Toc209000318)
-
-[4.2.5. Azure Service Bus: The Message Highway 6](#_Toc209000319)
-
-[4.2.5.1. Key Features 6](#_Toc209000320)
-
-[4.2.5.2. Queues 7](#_Toc209000321)
-
-[4.3. Why Use Cloud Computing (Azure)? 7](#_Toc209000322)
-
-[4.3.1. Benefits of Using Azure Cloud 7](#_Toc209000323)
-
-[4.3.2. Benefits for Healthcare 8](#_Toc209000324)
-
-[5. Integration Hub Components 8](#_Toc209000325)
-
-[5.1. HL7 Server Components - The Reception Desks 9](#_Toc209000326)
-
-[5.2. Azure Service Bus 9](#_Toc209000327)
-
-[5.3. Transformers 9](#_Toc209000328)
-
-[5.3.1. hl7_transformer/ (PHW Transformer): 9](#_Toc209000329)
-
-[5.3.2. hl7_chemo_transformer/ (Chemocare Transformer): 9](#_Toc209000330)
-
-[5.3.3. hl7_pims_transformer/ (PIMS Transformer): 10](#_Toc209000331)
-
-[5.4. Senders 11](#_Toc209000332)
-
-[5.5. Aside – Retry backoff strategy 12](#_Toc209000333)
-
-[5.6. Shared Libraries 12](#_Toc209000334)
-
-[5.6.1. Health check library 12](#_Toc209000335)
-
-[5.6.1.1. Why use TCP for health checks in Azure 13](#_Toc209000336)
-
-[5.6.2. Message bus library 13](#_Toc209000337)
-
-[5.6.3. Event logger library 15](#_Toc209000338)
-
-[5.6.3.1. Why? 15](#_Toc209000339)
-
-[5.6.3.2. Deep dive 16](#_Toc209000340)
-
-[5.6.3.3. How logging works 17](#_Toc209000341)
-
-[5.6.3.4. Azure Monitor 17](#_Toc209000342)
-
-[5.6.4. Validation library 18](#_Toc209000343)
-
-[5.6.4.1. Structure 19](#_Toc209000344)
-
-[5.6.4.2. Validation step by step 20](#_Toc209000345)
-
-[5.6.4.3. Usage in HL7 server 22](#_Toc209000346)
-
-[5.6.4.4. Why this approach 23](#_Toc209000347)
-
-[6. Tech Stack 23](#_Toc209000348)
-
-[6.1. UV and Python 24](#_Toc209000349)
-
-[6.2. Local development 25](#_Toc209000350)
-
-[6.2.1. Benefits 25](#_Toc209000351)
-
-[6.2.2. Docker 26](#_Toc209000352)
-
-[6.2.3. Docker compose structure 26](#_Toc209000353)
-
-[6.2.4. Secrets and security management, corporate networks 27](#_Toc209000354)
-
-[6.2.5. Dev workflow 27](#_Toc209000355)
-
-[7. Integration Hub Platform 28](#_Toc209000356)
-
-[7.1. Azure Resources 28](#_Toc209000357)
-
-[7.1.1. Applications in Azure Container Apps 28](#_Toc209000358)
-
-[7.1.2. Azure Service Bus 29](#_Toc209000359)
-
-[7.1.3. Network Isolation and Security 29](#_Toc209000360)
-
-[7.2. Infrastructure as Code (IaC) and Terraform 29](#_Toc209000361)
-
-[7.3. Environments 30](#_Toc209000362)
-
-[7.4. Deployment with Azure DevOps Pipelines 31](#_Toc209000363)
+- [Why?](#why)
+  - [Current Solution – Fiorano](#current-solution--fiorano)
+  - [Strategic Alignment](#strategic-alignment)
+- [What?](#what)
+  - [Key features of the Integration Hub](#key-features-of-the-integration-hub)
+  - [Benefits for DHCW and patients](#benefits-for-dhcw-and-patients)
+- [How?](#how)
+  - [What is Software Architecture?](#what-is-software-architecture)
+  - [What are Microservices?](#what-are-microservices)
+    - [Traditional vs. Microservices Approach](#traditional-vs-microservices-approach)
+    - [Why Use Microservices?](#why-use-microservices)
+    - [Event-Driven Messaging: How Services Talk to Each Other](#event-driven-messaging-how-services-talk-to-each-other)
+    - [Benefits of Event-Driven Messaging](#benefits-of-event-driven-messaging)
+    - [Azure Service Bus: The Message Highway](#azure-service-bus-the-message-highway)
+      - [Key Features](#key-features)
+      - [Queues](#queues)
+  - [Why Use Cloud Computing (Azure)?](#why-use-cloud-computing-azure)
+    - [Benefits of Using Azure Cloud](#benefits-of-using-azure-cloud)
+    - [Benefits for Healthcare](#benefits-for-healthcare)
+- [Integration Hub Components](#integration-hub-components)
+  - [HL7 Server Components - The Reception Desks](#hl7-server-components---the-reception-desks)
+  - [Azure Service Bus](#azure-service-bus)
+  - [Transformers](#transformers)
+    - [hl7_transformer/ (PHW Transformer)](#hl7_transformer-phw-transformer)
+    - [hl7_chemo_transformer/ (Chemocare Transformer)](#hl7_chemo_transformer-chemocare-transformer)
+    - [hl7_pims_transformer/ (PIMS Transformer)](#hl7_pims_transformer-pims-transformer)
+  - [Senders](#senders)
+  - [Aside – Retry backoff strategy](#aside--retry-backoff-strategy)
+  - [Shared Libraries](#shared-libraries)
+    - [Health check library](#health-check-library)
+      - [Why use TCP for health checks in Azure](#why-use-tcp-for-health-checks-in-azure)
+    - [Message bus library](#message-bus-library)
+    - [Event logger library](#event-logger-library)
+      - [Why?](#why-1)
+      - [Deep dive](#deep-dive)
+      - [How logging works](#how-logging-works)
+      - [Azure Monitor](#azure-monitor)
+    - [Validation library](#validation-library)
+      - [Structure](#structure)
+        - [Schema resources](#schema-resources)
+        - [Core validation functions](#core-validation-functions)
+        - [Helper/utility functions](#helperutility-functions)
+      - [Validation step by step](#validation-step-by-step)
+      - [Usage in HL7 server](#usage-in-hl7-server)
+      - [Why this approach](#why-this-approach)
+- [Tech Stack](#tech-stack)
+  - [UV and Python](#uv-and-python)
+  - [Local development](#local-development)
+    - [Benefits](#benefits)
+    - [Docker](#docker)
+    - [Docker compose structure](#docker-compose-structure)
+    - [Secrets and security management, corporate networks](#secrets-and-security-management-corporate-networks)
+    - [Dev workflow](#dev-workflow)
+- [Integration Hub Platform](#integration-hub-platform)
+  - [Azure Resources](#azure-resources)
+    - [Applications in Azure Container Apps](#applications-in-azure-container-apps)
+    - [Azure Service Bus](#azure-service-bus-1)
+    - [Network Isolation and Security](#network-isolation-and-security)
+  - [Infrastructure as Code (IaC) and Terraform](#infrastructure-as-code-iac-and-terraform)
+  - [Environments](#environments)
+  - [Deployment with Azure DevOps Pipelines](#deployment-with-azure-devops-pipelines)
 
 # Why?
 
@@ -193,17 +137,7 @@ It provides the scalable foundation needed to handle the growing volume of digit
 
 # How?
 
-The integration hub is built using a microservice architecture with event-driven messaging.
-
-# Aside – a primer on architecture
-
-## What is Software Architecture?
-
-- the blueprint of a building. Just as an architect designs how rooms connect, where the plumbing goes, and how people move through the building, software architects design how different parts of a computer system work together.
-
-The Integration Hub connects multiple Welsh healthcare systems to a central Master Patient Index (MPI).
-
-Analogy - like a sophisticated postal service that ensures patient information gets to the right place in the right format, no matter where it comes from.
+The integration hub is built using a microservice architecture with event-driven messaging to connect multiple Welsh healthcare systems to a central Master Patient Index (MPI).
 
 ## What are Microservices?
 
@@ -216,7 +150,7 @@ Traditional monolithic architecture is like a single large building:
 - If one part breaks, the whole system might go down
 - Hard to update or change individual features
 
-In comparison, **microservices architecture** is like a uni campus of specialized buildings:
+In comparison, in a **microservices architecture**:
 
 - The system is broken down into many small, independent services
 - Each service has a specific job (like authentication, data processing, notifications)
@@ -234,14 +168,6 @@ In comparison, **microservices architecture** is like a uni campus of specialize
 
 ### Event-Driven Messaging: How Services Talk to Each Other
 
-Analogy - a restaurant kitchen:
-
-- When a customer orders food (an "event"), the waiter doesn't need to constantly check if the food is ready
-- Instead, the kitchen rings a bell (sends a "message") when the order is complete
-- The waiter responds to this event by picking up the food
-
-In software:
-
 - Events are things that happen in the system (user logs in, data is updated, payment is processed)
 - Messages are notifications sent when events occur
 - Services listen for relevant events and respond accordingly
@@ -255,16 +181,11 @@ In software:
 
 ### Azure Service Bus: The Message Highway
 
-Analogy - Azure Service Bus is essentially a sophisticated postal system:
-
-- both parties need to be available at the same time
-- like sending letters - you can send a message even if the recipient isn't available right now
-
-**Service Bus is used to decouple applications and services from each other.**
+Service Bus is used to decouple applications and services from each other.
 
 #### Key Features
 
-1. **Queues**: Messages wait in line until they're processed (like a post office queue)
+1. **Queues**: Messages wait in line until they're processed
 2. **Topics and Subscriptions:** One message can be delivered to multiple interested services (like a newsletter)
 3. **Reliability**: Messages are guaranteed to be delivered, even if services are temporarily offline
 4. **Ordering**: Messages can be processed in the correct sequence when needed
@@ -275,7 +196,7 @@ Messages are sent to and received from queues. Queues store messages until the r
 
 Messages in queues are ordered and timestamped on arrival. Once the broker accepts the message, the message is always held durably in triple-redundant storage.
 
-Service Bus keeps messages in memory or volatile storage until client reports them as accepted.
+Service Bus keeps messages in memory or volatile storage until the client reports them as accepted.
 
 Messages are delivered in pull mode, only delivering messages when requested.
 
@@ -328,7 +249,54 @@ The microservices architecture with event-driven messaging on Azure cloud provid
 
 # Integration Hub Components
 
-INSERT IMAGE HERE
+```mermaid
+graph LR
+    S[Source Systems]
+
+    PHWServer[hl7_server MLLP PHW]
+    ChemoServer[hl7_server MLLP Chemo]
+    PIMSServer[hl7_server MLLP PIMS]
+    ParisServer[hl7_server MLLP Paris]
+
+    SBPre["Service Bus pre-transform"]
+    PHWTransformer["PHW Transformer"]
+    ChemoTransformer["Chemo Transformer"]
+    PIMSTransformer["PIMS Transformer"]
+    SBPost["Service Bus post-transform"]
+
+    SenderPHWParis["hl7_sender PHW & Paris"]
+    SenderChemo["hl7_sender Chemo"]
+    SenderPIMS["hl7_sender PIMS"]
+
+    MPI[MPI]
+
+    S --> PHWServer
+    S --> ChemoServer
+    S --> PIMSServer
+    S --> ParisServer
+
+    PHWServer --> SBPre
+    ChemoServer --> SBPre
+    PIMSServer --> SBPre
+
+    SBPre --> PHWTransformer
+    SBPre --> ChemoTransformer
+    SBPre --> PIMSTransformer
+
+    PHWTransformer --> SBPost
+    ChemoTransformer --> SBPost
+    PIMSTransformer --> SBPost
+
+    ParisServer --> SBPost
+
+    SBPost --> SenderPHWParis
+    SBPost --> SenderChemo
+    SBPost --> SenderPIMS
+
+    SenderPHWParis --> MPI
+    SenderChemo --> MPI
+    SenderPIMS --> MPI
+```
 
 Fig.1 A high level overview of how the components link together to form the 4 flows to date (24 Sept 2025)
 
@@ -345,8 +313,6 @@ A hospital in Cardiff sends patient admission data
 
 ## Azure Service Bus
 
-The central nervous system that routes messages between all components.
-
 Consists of multiple queues per service.
 
 Example:
@@ -358,8 +324,6 @@ Example:
 ## Transformers
 
 These are the "specialists" that understand how to convert data from one hospital/healthcare provider format to a standard format everyone can understand. In our case that’s HL7v2.5.
-
-Analogy – like translators in the United Nations, French to English, Spanish to English etc but they all produce the same format of documents in English.
 
 ### hl7_transformer/ (PHW Transformer):
 
@@ -376,9 +340,26 @@ Analogy – like translators in the United Nations, French to English, Spanish t
   - converts cancer treatment system data to HL7 v2.5 standard
 - Specific transformations
   - Direct one to one mappings – a subset below, Chemocare source on the LHS, MPI target on the RHS.
-    INSERT IMAGE HERE
-  - PID3 complex mapping
-    INSERT IMAGE HERE
+
+| Chemocare source field | MPI Target field       |
+| ---------------------- | ---------------------- |
+| PID.5/XPN.10/DR.1/TS.1 | PID.5/XPN.10/DR.1/TS.1 |
+| PID.5/XPN.10/DR.2/TS.1 | PID.5/XPN.10/DR.2/TS.1 |
+| PID.5/XPN.11           | PID.5/XPN.11           |
+| PID.6/XPN.1/FN.1       | PID.6/XPN.1/FN.1       |
+| PID.7/TS.1             | PID.7/TS.1             |
+| PID.8                  | PID.8                  |
+| PID.9/XPN.1/FN.1       | PID.9/XPN.1/FN.1       |
+| PID.10/CE.1            | PID.10/CE.1            |
+
+- PID3 complex mapping
+
+| Source Field | Value / Transformation                                                                                                                                                                                  | Target Field       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| PID.2/CX.1   | (copy source)                                                                                                                                                                                           | PID.3[1]/CX.1      |
+|              | Constant: NHS                                                                                                                                                                                           | PID.3[1]/CX.4/HD.1 |
+|              | Constant: NH                                                                                                                                                                                            | PID.3[1]/CX.5      |
+| PID.2/CX.1   | Conditional prefix + PID.2.1:<br>If from VEL ('224') → `VCC` + PID.2.1<br>If from BCU ('212') → `BCUCC` + PID.2.1<br>If from SWW ('192') → `SWWCC` + PID.2.1<br>If from SEW ('245') → `SEWCC` + PID.2.1 | PID.3[2]/CX.1      |
 
 ### hl7_pims_transformer/ (PIMS Transformer):
 
@@ -396,7 +377,7 @@ Analogy – like translators in the United Nations, French to English, Spanish t
 | MSH.13       | MSH.13       |
 | EVN.1        | EVN.1        |
 
-- - Hardcoded mappings
+- Hardcoded mappings
 
 |                 |             |
 | --------------- | ----------- |
@@ -407,7 +388,7 @@ Analogy – like translators in the United Nations, French to English, Spanish t
 | 200             | MSH.5/HD.1  |
 | 200             | MSH.6/HD.1  |
 
-- - More complex transformations
+- More complex transformations
 
 |                                                                                                                     |                    |
 | ------------------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -451,15 +432,13 @@ On subsequent retries, time is added exponentially to the initial duration for e
 
 Exponential back-off adds some small randomization to delays to stagger retries in high-throughput scenarios to avoid overwhelming the service.
 
-Further example - in Message bus library (jump to heading)
+Further example - in the [Message bus library](#message-bus-library)
 
 ## Shared Libraries
 
 ### Health check library
 
 Provides a standardized way for all services to report their status - a piece of software that helps monitor whether your application is running correctly.
-
-Analogy - like a doctor checking your pulse - it's a simple way to verify that an application is "alive" and functioning properly.
 
 Example: Operations team can check if for example the Chemocare transformer is running properly.
 
@@ -501,7 +480,7 @@ In Azure cloud environments, applications often run in containers or as microser
 
 3. Application Gateway Health Probes: Azure Application Gateway can monitor backend health via TCP connections
 
-4. Minimal Overhead: TCP connections require less processing than HTTP requests with JSON parsing. The health check doesn't need to exchange data - the successful TCP handshake itself is the health indicator. This makes it extremely fast and lightweight.
+4. Minimal Overhead: TCP connections require less processing than HTTP requests with JSON parsing. The health check doesn't need to exchange data - the successful TCP handshake itself is the health indicator. This makes it fast and lightweight.
 
 5. Language Agnostic: External systems don't need to understand HTTP or JSON
 
@@ -520,20 +499,6 @@ The message bus library is a comprehensive Azure Service Bus wrapper designed sp
 
 The library is built around the concept of reliable message processing with full audit trails.
 
-Analogy:
-
-A hospital's electronic health record system that needs to process HL7 messages containing patient data, lab results, and prescriptions.
-
-Instead of each system directly connecting to others, they communicate through Azure Service Bus queues:
-
-1. Lab system sends test results to a queue
-
-2. HL7 transformer service picks up the message, transforms it, and puts it in another queue
-
-3. Electronic health record system retrieves the processed message
-
-4. Every step is logged for compliance
-
 We can create different types of Azure Service Bus clients using the factory design pattern which handles:
 
 - Authentication Decision: Automatically chooses between connection string and managed identity
@@ -547,11 +512,9 @@ We support 2 types of sender clients:
 - Queues - Point-to-point messaging (one sender, one receiver)
 - Topics - Publish-subscribe messaging (one sender, multiple subscribers)
 
-The sender clients implement sophisticated error handling for different Azure Service Bus failure scenarios – network timeouts, oversized messages, service issues
+The sender clients implement error handling for different Azure Service Bus failure scenarios – network timeouts, oversized messages, service issues
 
-And one type of message receiver client:
-
-It implements a feature called PEEK LOCK, crucial for reliable message processing.
+The type of message receiver client supported implements a feature called PEEK LOCK, crucial for reliable message processing.
 
 - Message is "peeked" from the queue and locked (invisible to other consumers)
 - Consumer processes the message
@@ -575,21 +538,6 @@ Second failure: Wait 10 seconds (5 \* 2)
 Third failure: Wait 20 seconds (10 \* 2)
 
 Maximum delay: Caps at 15 minutes to prevent excessive delays
-
-Example of processing in Chemocare transformer:
-
-- Continuous Polling
-  - The application continuously polls the ingress queue for new messages
-- Batch Processing
-  - Processes up to MAX_BATCH_SIZE messages at once for efficiency
-
-Lambda Function - Each message is processed by the \_process_message function
-
-Graceful Shutdown - The loop continues until processor_manager.is_running becomes False
-
-After too many failures, the message is abandoned.
-
-Message is transformed and then sent to the egress queue for the next step in the workflow.
 
 ### Event logger library
 
@@ -864,12 +812,12 @@ The convert.py module transforms this into structured XML that looks like:
 
 </ADT_A05>
 
-**This conversion process is extremely complex because it must:**
+**This conversion process is fairly complex because it must:**
 
 - **Parse the pipe-delimited format correctly**
 - **Handle repeated fields and components**
 - **Create proper XML hierarchy**
-- **Insert required but missing segments (like EVN if required)**
+- **Insert required but missing segments (e.g. EVN if required)**
 - **Map field positions to XML element names**
 - **Handle different data types appropriately**
 
@@ -967,7 +915,7 @@ Also there’s a reduced maintenance burden - schema updates from standards bodi
   - functional testing: Python 3.13, Framework: **pytest**
   - performance testing: **TODO**
   - other?
-- code quality tools -å
+- code quality tools
   - [Bandit](https://github.com/PyCQA/bandit)  - security scanner
   - [Ruff](https://github.com/astral-sh/ruff)  - linter and code formatter (as pre-commmit hook: <https://github.com/astral-sh/ruff-pre-commit> )
   - [MyPy](https://github.com/python/mypy)  - static type checker (pre-commit hook: <https://github.com/pre-commit/mirrors-mypy> )
@@ -983,8 +931,6 @@ Also there’s a reduced maintenance burden - schema updates from standards bodi
 - Microservices - <https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta>
 - Terraform - <https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Terraform>
 - Automated tests - <https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-tests>
-
-Walk through repo local setup – clone the repository, open a microservice, navigate to the README, follow the steps - uv sync, run unit tests, ruff and bandit.
 
 ## UV and Python
 
@@ -1011,8 +957,6 @@ UV also offers compatible and familiar api commands – pip install -> uv pip in
 
 The **local** folder in the Integration Hub Beta project serves as a comprehensive development environment setup that allows developers to run the entire healthcare integration system on their local machines using containerization technology.
 
-Solves a critical problem in distributed systems development: how do you test complex multi-service applications without requiring access to expensive cloud infrastructure or production systems.
-
 ### Benefits
 
 The primary purpose of the local setup is to create a complete, isolated replica of the production Integration Hub system that developers can run on their personal computers. Benefits of this include:
@@ -1033,8 +977,6 @@ This ensures that code tested locally will behave predictably when deployed to p
 ### Docker
 
 The local environment is built using Docker, which is a containerization platform that packages applications and their dependencies into lightweight, portable containers.
-
-**Analogy** – like shipping containers - they provide a standardized way to package and run software that works consistently regardless of the underlying system.
 
 Docker Compose is used to orchestrate multiple containers that work together as a complete system. It defines how different services should be started, how they should communicate with each other, and what resources they need.
 
@@ -1190,7 +1132,10 @@ The Integration Hub uses **multiple environments** to ensure safe and reliable d
 - **Pre-Production (pre-prod):** A near-identical copy of production for final checks.
 - **Production (prod):** The live environment serving real users.
 
-INSERT IMAGE HERE
+```mermaid
+graph LR
+    Dev[Dev] --> G1{Gate} --> Test[Test] --> G2{Gate} --> PreProd[Pre-Prod] --> G3{Gate} --> Prod[Prod]
+```
 
 **Why multiple environments?**
 
