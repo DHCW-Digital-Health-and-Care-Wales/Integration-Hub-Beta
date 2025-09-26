@@ -14,21 +14,30 @@ def get_hl7_field_value(hl7_segment: Any, field_path: str) -> str:
     - get_hl7_field_value(original_msh, "msh_4.hd_1") = "HOSPITAL NAME"
     - get_hl7_field_value(original_pid, "pid_5.xpn_1.fn_1") = "TEST"
     - get_hl7_field_value(original_msh, "nonexistent.field") = ""
+    Supports single-repetition bracket notation, e.g. pid_13[1].xtn_1
     """
     current_element = hl7_segment
-    # Loop through each attribute in the field path in order
     for field_name in field_path.split("."):
         try:
-            current_element = getattr(current_element, field_name)
+            if "[" in field_name and field_name.endswith("]"):
+                field_base, index_part = field_name.split("[", 1)
+                index = int(index_part.rstrip("]"))
+                field_array = getattr(current_element, field_base)
+                if hasattr(field_array, "__getitem__") and len(field_array) > index:
+                    current_element = field_array[index]
+                else:
+                    return ""
+            else:
+                current_element = getattr(current_element, field_name)
             if not current_element:
-                return ""  # Empty field
-        except (AttributeError, IndexError, ChildNotFound):
-            return ""  # Non-existent field
+                return ""
+        except (AttributeError, IndexError, ChildNotFound, ValueError):
+            return ""
 
-    # Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
+# Assuming all hl7apy fields have a .value - see docs https://crs4.github.io/hl7apy/api_docs/core.html
     if current_element is not None:
         field_value = current_element.value
-        # Handle nested values - HL7 datatype objects may have their own .value attribute
+         # Handle nested values - HL7 datatype objects may have their own .value attribute
         if hasattr(field_value, "value"):
             field_value = field_value.value
         return str(field_value) if field_value is not None else ""
@@ -89,3 +98,5 @@ def _safe_hasattr(obj: Any, name: str) -> bool:
         return True
     except (AttributeError, IndexError, ChildNotFound):
         return False
+
+
