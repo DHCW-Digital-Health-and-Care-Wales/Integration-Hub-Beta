@@ -36,7 +36,7 @@ class AppConfig:
 
 @dataclass
 class TransformerConfig(AppConfig):    
-    max_batch_size: int = 100
+    MAX_BATCH_SIZE: int | None
 
     @classmethod
     def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
@@ -45,13 +45,13 @@ class TransformerConfig(AppConfig):
         config = configparser.ConfigParser()
         config.read(config_path)
         
-        max_batch_size = 100
-        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "max_batch_size"):
-            max_batch_size = config.getint("DEFAULT", "max_batch_size")
+        MAX_BATCH_SIZE = None
+        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
+            MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
         
         return cls(
             **asdict(app_config),
-            max_batch_size=max_batch_size
+            MAX_BATCH_SIZE=MAX_BATCH_SIZE
         )
 
 

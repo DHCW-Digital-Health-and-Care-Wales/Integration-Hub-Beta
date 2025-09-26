@@ -30,8 +30,6 @@ class BaseTransformer(ABC):
         sending_app = self._get_sending_app(hl7_msg)
         return f"{self.transformer_name} transformation applied for SENDING_APP: {sending_app}"
 
-    def get_failed_audit_text(self) -> str:
-        return f"{self.transformer_name} transformation failed"
 
     def _get_sending_app(self, hl7_msg: Message) -> str:
 

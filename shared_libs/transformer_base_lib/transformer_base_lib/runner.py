@@ -52,12 +52,12 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
                 transformer_display_name=transformer.transformer_name,
                 received_audit_text=transformer.get_received_audit_text(),
                 processed_audit_text_builder=transformer.get_processed_audit_text,
-                failed_audit_text=transformer.get_failed_audit_text(),
+                failed_audit_text=f"{transformer.transformer_name} transformation failed",
             )
 
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                config.max_batch_size,
+                config.MAX_BATCH_SIZE,
                 message_processor,
             )
 

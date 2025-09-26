@@ -64,8 +64,6 @@ class TestChemocareTransformer(unittest.TestCase):
         received_text = self.transformer.get_received_audit_text()
         self.assertEqual(received_text, "Message received for Chemocare transformation")
 
-        failed_text = self.transformer.get_failed_audit_text()
-        self.assertEqual(failed_text, "Chemocare transformation failed")
 
         processed_text = self.transformer.get_processed_audit_text(self.hl7_message)
         self.assertEqual(processed_text, "Chemocare transformation applied for SENDING_APP: 192")

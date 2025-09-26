@@ -72,12 +72,18 @@ jobs:
           uv pip install --system -e shared_libs/health_check_lib/
           uv pip install --system -e shared_libs/processor_manager_lib/
           uv pip install --system -e shared_libs/event_logger_lib/
+          uv pip install --system -e shared_libs/field_utils_lib/
+          uv pip install --system -e shared_libs/transformer_base_lib/
+          uv pip install --system -e shared_libs/hl7_validation/
 
           # Verify shared library installations
           python -c "import message_bus_lib; print('✅ message_bus_lib imported successfully')"
           python -c "import health_check_lib; print('✅ health_check_lib imported successfully')"
           python -c "import processor_manager_lib; print('✅ processor_manager_lib imported successfully')"
           python -c "import event_logger_lib; print('✅ event_logger_lib imported successfully')"
+          python -c "import field_utils_lib; print('✅ field_utils_lib imported successfully')"
+          python -c "import transformer_base_lib; print('✅ transformer_base_lib imported successfully')"
+          python -c "import hl7_validation; print('✅ hl7_validation imported successfully')"
 
           echo "##[endgroup]"
         displayName: 'Install Shared Dependencies'
@@ -136,16 +142,9 @@ jobs:
           echo ""
           
           echo "🔒 Running Bandit security scan..."
-          if [ -d "tests" ]; then
-            if ! uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium; then
-              echo "##[error]Bandit security scan found issues!"
-              VALIDATION_FAILED=1
-            fi
-          else
-            if ! uv tool run bandit -r ${BANDIT_SOURCE} --severity-level medium; then
-              echo "##[error]Bandit security scan found issues!"
-              VALIDATION_FAILED=1
-            fi
+          if ! uv tool run bandit -r ${BANDIT_SOURCE} tests --severity-level medium; then
+            echo "##[error]Bandit security scan found issues!"
+            VALIDATION_FAILED=1
           fi
           echo ""
           echo "----------------------------------------"
@@ -192,13 +191,9 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🧪 Running unit tests..."
-          if [ -d "tests" ]; then
-            if ! python -m unittest discover tests -v; then
-              echo "##[error]Unit tests failed!"
-              exit 1
-            fi
-          else
-            echo "⚠️ No tests directory found - skipping unit tests"
+          if ! python -m unittest discover tests -v; then
+            echo "##[error]Unit tests failed!"
+            exit 1
           fi
           
           echo "✅ All unit tests passed"
