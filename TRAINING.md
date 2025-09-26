@@ -1,4 +1,4 @@
-Integration Hub overview – Training
+# Integration Hub overview – Training
 
 |         |            |                                                                             |        |
 | ------- | ---------- | --------------------------------------------------------------------------- | ------ |
@@ -6,6 +6,7 @@ Integration Hub overview – Training
 | 0.1     | 09/09/2025 | First draft completed                                                       | CI     |
 | 0.2     | 11/09/2025 | Added heading numbering and a high level business flow diagram in section 6 | CI     |
 | 0.3     | 12/09/2025 | New section on integration hub platform                                     | LJ     |
+| 0.4     | 26/09/2025 | Update diagrams, streamline content and add panels for key info             | CI     |
 
 Table of Contents
 
@@ -16,7 +17,6 @@ Table of Contents
   - [Key features of the Integration Hub](#key-features-of-the-integration-hub)
   - [Benefits for DHCW and patients](#benefits-for-dhcw-and-patients)
 - [How?](#how)
-  - [What is Software Architecture?](#what-is-software-architecture)
   - [What are Microservices?](#what-are-microservices)
     - [Traditional vs. Microservices Approach](#traditional-vs-microservices-approach)
     - [Why Use Microservices?](#why-use-microservices)
@@ -78,6 +78,9 @@ Quick summary: **Enables clinical data to flow securely and seamlessly between s
 NHS Wales requires a modern solution to connect disparate digital health systems that use incompatible data formats and standards.
 
 The Integration Hub is a cloud-native platform providing robust data validation and transformation capabilities to enable the seamless and secure exchange of sensitive clinical information. This new, internally-owned product replaces proprietary systems, unlocking agility, reducing costs, and ensuring data flows reliably between internal (NHS Wales) and third-party products to support patient care.
+
+> [!NOTE]
+> The Integration Hub replaces a proprietary, GUI‑centric platform with a fully code‑driven, cloud‑native approach—unlocking automation, scalability, and internal ownership while reducing licensing and private data centre dependency.
 
 ## Current Solution – Fiorano
 
@@ -157,6 +160,9 @@ In comparison, in a **microservices architecture**:
 - Services can be developed, deployed, and updated independently
 - If one service fails, others can continue working
 
+> [!IMPORTANT]
+> Microservices only deliver real value when each service is independently deployable, observable, and loosely coupled through asynchronous messaging — not when a monolith is sliced into tightly interdependent services sharing databases or synchronous chains.
+
 ### Why Use Microservices?
 
 - Scalability
@@ -201,6 +207,9 @@ Service Bus keeps messages in memory or volatile storage until the client report
 Messages are delivered in pull mode, only delivering messages when requested.
 
 To retain message ordering all the queues are configured as FIFO queues.
+
+> [!TIP]
+> Queue FIFO settings help, but true end‑to‑end ordering also depends on transformers and senders avoiding parallel reordering (e.g. unordered async processing).
 
 ## Why Use Cloud Computing (Azure)?
 
@@ -658,10 +667,10 @@ In hl7_server
 - The HL7ServerApplication creates an EventLogger during startup
 - This EventLogger is then passed to the message handlers that process incoming HL7 messages.
 - The GenericHandler uses the event logger throughout the message processing lifecycle:
-  - 1. When a message arrives: It calls log_message_received to record that a new message has been received
-  - 2. After validation: It calls log_validation_result to record whether the message passed validation checks
-  - 3. On success: It calls log_message_processed when the message is successfully handled
-  - 4. On failure: It calls log_message_failed when something goes wrong, including detailed error information
+  - When a message arrives: It calls log_message_received to record that a new message has been received
+  - After validation: It calls log_validation_result to record whether the message passed validation checks
+  - On success: It calls log_message_processed when the message is successfully handled
+  - On failure: It calls log_message_failed when something goes wrong, including detailed error information
 - This creates a complete audit trail of what happens to each message as it flows through the system.
 
 ### Validation library
@@ -683,15 +692,15 @@ Key benefits:
 
 By validating every message against strict schemas, the system ensures that only properly formatted, complete healthcare data enters the system. This prevents scenarios where incomplete patient records could lead to medical errors.
 
-1. System Interoperability and regulatory compliance
+2. System Interoperability and regulatory compliance
 
 Different healthcare systems (hospitals, labs, pharmacies) can trust that messages they receive will be in the expected format adhering to the HL7 standard, making integration between systems much more reliable.
 
-1. Error Prevention
+3. Error Prevention
 
 Catching validation errors early prevents them from propagating through the healthcare system where they could cause more serious problems downstream.
 
-1. Audit trail
+4. Audit trail
 
 The integration with the event logger creates a complete audit trail of message validation, which is crucial for healthcare compliance and troubleshooting.
 
@@ -712,37 +721,19 @@ Each flow has the following types of schema files, for instance for Paris:
 
 ##### Core validation functions
 
-validate.py
+`validate.py` - the main entry point that orchestrates the entire validation process. When you want to validate a message, you call functions in this file.
 
-the main entry point that orchestrates the entire validation process. When you want to validate a message, you call functions in this file.
+`convert.py` - converts HL7's native ER7 format (pipe and hat delimited text) into XML format so it can be validated against XML schemas. This is like translating from one language to another while preserving all the meaning.
 
-convert.py
-
-converts HL7's native ER7 format (pipe and hat delimited text) into XML format so it can be validated against XML schemas. This is like translating from one language to another while preserving all the meaning.
-
-schemas.py
-
-manages access to all the different schema files and helps determine which schema should be used for which message type.
+`schemas.py` - manages access to all the different schema files and helps determine which schema should be used for which message type.
 
 ##### Helper/utility functions
 
-The utils folder contains helper functions that handle specific tasks
+The utils folder contains helper functions that handle specific tasks, such as:
 
-structure_detection.py
-
-analyses message structures to understand the organization and hierarchy of different message components.
-
-xml_schema_maps.py
-
-creates mappings between different schema elements to understand relationships and inheritance between data types.
-
-message_utils.py
-
-provides functions to extract key information from messages like message type, trigger events, and structure identifiers.
-
-extract_string.py
-
-handles the extraction of text content from complex message structures.
+- analysing the message structures to understand the organization and hierarchy of different message components.
+- creating mappings between different schema elements to understand relationships and inheritance between data types.
+- extracting key information from messages like message type, trigger events, and structure identifiers.
 
 #### Validation step by step
 
@@ -751,14 +742,12 @@ handles the extraction of text content from complex message structures.
 First, the system examines the incoming message to determine:
 
 - What type of message it is (like an admission, discharge, or transfer)
-
 - What trigger event occurred (like A28 for adding person information)
-
 - What message structure should be used for validation
 
-This information is typically found in the MSH (Message Header) segment of the HL7 message.
+This information is typically found in the `MSH` (Message Header) segment of the HL7 message.
 
-For example, a message might be identified as "ADT^A28^ADT_A05" meaning it's an ADT (Admission, Discharge, Transfer) message with **trigger event A28** using the **ADT_A05** structure.
+For example, a message might be identified as `"ADT^A28^ADT_A05"` meaning it's an ADT (Admission, Discharge, Transfer) message with **trigger event A28** using the **ADT_A05** structure.
 
 **Step 2: Schema Selection**
 
@@ -768,142 +757,96 @@ Step 3: ER7 to XML Conversion
 
 HL7 messages typically arrive in ER7 format, which looks like this:
 
+```
 MSH|^~\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230901120000||ADT^A28^ADT_A05|MSG001|P|2.5.1
-
 EVN||20230901120000
-
 PID|1||123456789^^^MRN||DOE^JOHN^M||19800101|M|||123 MAIN ST^^ANYTOWN^ST^12345
+```
 
 The convert.py module transforms this into structured XML that looks like:
 
+```xml
 <ADT_A05 xmlns="urn:hl7-org:v2xml">
 
 <MSH>
-
 <MSH.1>|</MSH.1>
-
 <MSH.2>^~\&</MSH.2>
-
 <MSH.3>
-
 <HD.1>SENDING_APP</HD.1>
-
 </MSH.3>
-
 <!-- ... more fields -->
-
 </MSH>
 
 <EVN>
-
 <EVN.2>
-
 <TS.1>20230901120000</TS.1>
-
 </EVN.2>
-
 </EVN>
 
 <PID>
-
 <!-- patient information fields -->
-
 </PID>
-
 </ADT_A05>
+```
 
-**This conversion process is fairly complex because it must:**
+This conversion process is fairly complex because it must:
 
-- **Parse the pipe-delimited format correctly**
-- **Handle repeated fields and components**
-- **Create proper XML hierarchy**
-- **Insert required but missing segments (e.g. EVN if required)**
-- **Map field positions to XML element names**
-- **Handle different data types appropriately**
+- Parse the pipe-delimited format correctly
+- Handle repeated fields and components
+- Create proper XML hierarchy
+- Insert required but missing segments (e.g. EVN if required)
+- Map field positions to XML element names
+- Handle different data types appropriately
 
 **Step 4: XML Schema Validation**
 
 Once the message is in XML format, the system uses the Python xmlschema library to validate it against the selected XSD file. This validation checks:
 
-- Structure:
-
-Are all required segments present?
-
-Are they in the correct order?
-
-- Data Types:
-
-Do dates look like dates?
-
-Do numbers contain only numeric characters?
-
-- Cardinality:
-
-Are there the right number of repetitions for repeating fields?
-
-- Value Sets:
-
-Do coded values match allowed values?
-
-- Dependencies:
-
-Are conditional fields present when required?
+- Structure - Are all required segments present? Are they in the correct order?
+- Data Types - Do dates look like dates? Do numbers contain only numeric characters?
+- Cardinality - Are there the right number of repetitions for repeating fields?
+- Value Sets - Do coded values match allowed values?
+- Dependencies - Are conditional fields present when required?
 
 **Step 5: Error Reporting**
 
-If validation fails, the system provides detailed error messages explaining exactly what's wrong, such as:
+If validation fails, the system provides detailed error messages explaining exactly what went wrong, such as:
 
-- "Required segment PV1 is missing"
-
-- "Field PID.7 (Date of Birth) contains invalid date format"
-
-- "Invalid segment XYZ"
+- `"Required segment PV1 is missing"`
+- `"Field PID.7 (Date of Birth) contains invalid date format"`
+- `"Invalid segment XYZ"`
 
 #### Usage in HL7 server
 
 Here’s how the validation library integrates into a real healthcare message processing system:
 
-In generic_handler.py
-
 When the HL7 server receives a message, it first logs that a message was received using the event logger.
-
 The system uses the hl7apy library to do basic parsing and extract key information like message type and control ID.
-
 The system performs standard HL7 validation using the HL7Validator class to check basic message structure.
-
-If a flow name is specified (like "paris"), the system calls the validation library:
-
-validate_er7_with_flow(self.incoming_message, self.flow_name)
+If a flow name is specified (like "paris"), the system calls the validation library.
 
 If validation fails, the system:
 
 - Logs detailed error information
-
 - Records the validation failure in the event logger
-
 - Raises an exception to stop processing the invalid message
 
 If validation succeeds:
 
 - The message is sent to the service bus for further processing
-
 - An ACK (acknowledgment) message is generated
-
 - Success is logged in the event logger
 
 #### Why this approach
 
-The decision to use XSD schema validation for HL7 message validation was primarily driven by the fact that comprehensive XML Schema Definition files were already available from healthcare standards organisations and could be directly leveraged without manual recreation.
+The decision to use XSD schema validation for HL7 message validation was primarily driven by the fact that comprehensive XML Schema Definition files were already available from healthcare standards organisations and could be directly utilised without manual recreation.
 
 Python's robust ecosystem of XML processing libraries, particularly xmlschema and defusedxml, provided mature, well-tested tools for parsing and validating against these schemas with minimal implementation effort.
 
-This approach eliminated the need to manually encode hundreds of validation rules in procedural code (tedious!), instead allowing the declarative XSD files to serve as both documentation and validation logic – they already contain all the complex constraints, cardinality rules, and conditional relationships.
-
 The resulting solution is inherently self-documenting, version-controlled through schema updates, and provides precise, standardized error messages that directly reference official HL7 specification terminology, making it immediately familiar to healthcare IT professionals who already understand XSD-based validation approaches.
 
-XSD schemas can be used across different programming languages and platforms, making the validation logic technology-agnostic
-
-Also there’s a reduced maintenance burden - schema updates from standards bodies can be dropped in without code changes, eliminating the need to maintain custom validation logic as HL7 standards evolve.
+> [!NOTE]
+> Using the existing HL7 XSD schemas avoids re‑implementing hundreds of structural rules in code. The schemas double as authoritative documentation and validation logic, accelerating adaptation to HL7 updates, reducing maintenance, and allowing for precise error feedback.
 
 # Tech Stack
 
@@ -914,7 +857,7 @@ Also there’s a reduced maintenance burden - schema updates from standards bodi
 - testing tools
   - functional testing: Python 3.13, Framework: **pytest**
   - performance testing: **TODO**
-  - other?
+  - HAPI test panel
 - code quality tools
   - [Bandit](https://github.com/PyCQA/bandit)  - security scanner
   - [Ruff](https://github.com/astral-sh/ruff)  - linter and code formatter (as pre-commmit hook: <https://github.com/astral-sh/ruff-pre-commit> )
@@ -934,23 +877,14 @@ Also there’s a reduced maintenance burden - schema updates from standards bodi
 
 ## UV and Python
 
-We’re using UV as the standard tool for python requirements/package management
-
-It’s a modern, high-performance Python package manager, which solves some Python pain points:
-
-- slow installation times – significantly faster than pip
-- dependency conflicts
-- environment management complexity
-
-UV:
+We’re using UV as the standard tool for python requirements/package management.
 
 - offers savings in computing and development time
-- Handles python virtual environment creation
+- handles python virtual environment creation
 
 **Through the lockfile uv ensures a consistent, easily reproducible project setup across different systems**
 
 It’s easy to migrate to with existing tooling before fully switching over a project (which we already did)
-
 UV also offers compatible and familiar api commands – pip install -> uv pip install
 
 ## Local development
@@ -982,9 +916,7 @@ Docker Compose is used to orchestrate multiple containers that work together as 
 
 **One of the most critical components is the Azure Service Bus emulator.** In production, the Integration Hub uses Azure Service Bus, which is Microsoft's cloud messaging service that enables reliable communication between different services. The emulator provides the exact same functionality but runs locally on your computer instead of in the cloud.
 
-(As mentioned previously, the service bus acts as a message broker, handling the flow of HL7 healthcare messages between different services.)
-
-Service bus configuration - ServiceBusEmulatorConfig.json defines the message routing infrastructure:
+Service bus configuration - `ServiceBusEmulatorConfig.json` defines the message routing infrastructure:
 
 **Queues**: Named channels where messages wait to be processed. For example, there might be a "chemo-incoming" queue where chemotherapy messages wait for processing.
 
@@ -1134,7 +1066,7 @@ The Integration Hub uses **multiple environments** to ensure safe and reliable d
 
 ```mermaid
 graph LR
-    Dev[Dev] --> G1{Gate} --> Test[Test] --> G2{Gate} --> PreProd[Pre-Prod] --> G3{Gate} --> Prod[Prod]
+    Dev[Dev] --> G1{Manual Approval Gate} --> Test[Test] --> G2{Manual Approval Gate} --> PreProd[Pre-Prod] --> G3{Manual Approval Gate} --> Prod[Prod]
 ```
 
 **Why multiple environments?**
