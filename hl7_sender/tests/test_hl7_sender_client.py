@@ -1,5 +1,6 @@
 import socket
 import unittest
+from typing import Any, Callable, Dict
 from unittest.mock import Mock, patch
 
 from hl7_sender.hl7_sender_client import HL7SenderClient, is_socket_closed
@@ -87,6 +88,48 @@ class TestHL7SenderClient(unittest.TestCase):
         with HL7SenderClient('localhost', 1234, 30):
             pass
         mock_mllp.close.assert_called_once()
+
+    @patch('hl7_sender.hl7_sender_client.MLLPClient')
+    def test_send_message_ack_response_handling(self, mock_mllp_cls: Mock) -> None:
+        test_cases: list[Dict[str, Any]] = [
+            {
+                'name': 'strips_complete_encoding_chars',
+                'encoded_response': lambda content: ("\x0b" + content + "\x1c" + "\r").encode('utf-8'),
+                'description': 'Complete MLLP framing with start block, end block, and CR'
+            },
+            {
+                'name': 'strips_partial_encoding_chars',
+                'encoded_response': lambda content: ("\x0b" + content + "\r").encode('utf-8'),
+                'description': 'Partial MLLP framing with start block and CR (missing end block)'
+            },
+            {
+                'name': 'handles_plain_response',
+                'encoded_response': lambda content: content.encode('utf-8'),
+                'description': 'Plain ACK response without any MLLP encoding characters'
+            }
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(scenario=test_case['name']):
+                # Arrange
+                mock_mllp = Mock()
+                mock_mllp.socket = Mock()
+                mock_mllp_cls.return_value = mock_mllp
+
+                ack_content = "MSH|^~\\&|RECEIVING_APP|RECEIVING_FACILITY|SENDING_APP|SENDING_FACILITY||ACK"
+                encoded_response_func: Callable[[str], bytes] = test_case['encoded_response']
+                encoded_ack = encoded_response_func(ack_content)
+                mock_mllp.send_message.return_value = encoded_ack
+
+                with patch('hl7_sender.hl7_sender_client.is_socket_closed', return_value=False):
+                    client = HL7SenderClient('localhost', 1234, 30)
+
+                    # Act
+                    result = client.send_message('MSH|...')
+
+                    # Assert
+                    self.assertEqual(result, ack_content,
+                                     f"Failed for {test_case['description']}")
 
 
 if __name__ == '__main__':
