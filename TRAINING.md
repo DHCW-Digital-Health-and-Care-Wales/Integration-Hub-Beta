@@ -6,7 +6,7 @@
 | 0.1     | 09/09/2025 | First draft completed                                                       | CI     |
 | 0.2     | 11/09/2025 | Added heading numbering and a high level business flow diagram in section 6 | CI     |
 | 0.3     | 12/09/2025 | New section on integration hub platform                                     | LJ     |
-| 0.4     | 26/09/2025 | Update diagrams, streamline content and add panels for key info             | CI     |
+| 0.4     | 29/09/2025 | Update diagrams, streamline content and add panels for key info             | CI     |
 
 Table of Contents
 
@@ -309,7 +309,7 @@ graph LR
 
 Fig.1 A high level overview of how the components link together to form the 4 flows to date (24 Sept 2025)
 
-## HL7 Server Components - The Reception Desks
+## HL7 Server Components
 
 These are the "front doors" that receive patient data from different healthcare systems.
 
@@ -319,6 +319,29 @@ A hospital in Cardiff sends patient admission data
 1. The data arrives at, for example, the PHW HL7 server via TCP/MLLP protocol
 2. The server receives the message and sends back an acknowledgment: "Got it!"
 3. The server places the raw message onto the Azure Service Bus for further processing
+
+The primary purpose of the HL7 server is to act as a reliable interface between external healthcare systems and our internal Azure-based integration platform. It ensures that:
+
+- Only valid, well-formed HL7 messages enter our system
+- Messages are properly acknowledged, so sending systems know whether delivery succeeded
+- Valid messages are forwarded to appropriate Azure Service Bus queues for further processing
+
+### The flow of a typical successful message through the server component
+
+1. An external system sends an HL7 message (e.g., ADT^A31)
+2. Our HL7 server receives the message through an Azure endpoint
+3. The message is parsed and its control ID and type are extracted
+4. Validation confirms the message structure and content meet our requirements
+5. The message is forwarded to the appropriate Azure Service Bus queue
+6. An acknowledgment (ACK) message with "AA" status is generated
+7. The ACK is returned to the sending system
+8. The sending system marks the transaction as complete
+9. Downstream Azure services process the message from the Service Bus queue
+
+If validation fails, the process changes at step 4, where:
+
+4. An error is logged with specific details
+5. The sending system receives information about why the message was rejected
 
 ## Azure Service Bus
 
@@ -856,7 +879,7 @@ The resulting solution is inherently self-documenting, version-controlled throug
 - infrastructure: Terraform
 - testing tools
   - functional testing: Python 3.13, Framework: **pytest**
-  - performance testing: **TODO**
+  - performance testing: **TBD**
   - HAPI test panel
 - code quality tools
   - [Bandit](https://github.com/PyCQA/bandit)  - security scanner
@@ -975,6 +998,9 @@ Developers start specific integration scenarios using Docker Compose profiles:
 This command starts only the services needed for the chemotherapy integration workflow: the chemo HL7 server, chemo transformer, Service Bus emulator, and mock MPI receiver.
 
 The "-d" flag runs services in the background so developers can continue working.
+
+> [!NOTE]
+> For more information about runing the services locally including running the HAPI TestPanel, follow the steps in the [README in `local/` ](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta/tree/main/local)
 
 # Integration Hub Platform
 
