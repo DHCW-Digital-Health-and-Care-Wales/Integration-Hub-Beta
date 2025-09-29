@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 class TCPHealthCheckServer:
     def __init__(self, host: str | None = None, port: int | None = None):
-        self.host = host or "127.0.0.1"
-        self.port = port or 9000
+        self.host = host if host is not None else "127.0.0.1"
+        self.port = port if port is not None else 9000
         self._server_socket = None
         self._thread = None
         self._running = False
@@ -33,9 +33,15 @@ class TCPHealthCheckServer:
         self._running = False
         if self._server_socket:
             try:
+                try:
+                    self._server_socket.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
                 self._server_socket.close()
             except Exception as e:
                 logger.warning(f"Failed to close socket: {e}")
+        if self._thread:
+            self._thread.join(timeout=1)
 
     def __enter__(self):
         return self
