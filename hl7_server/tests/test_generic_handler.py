@@ -17,8 +17,15 @@ class TestGenericHandler(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_sender = MagicMock()
         self.mock_event_logger = MagicMock()
+        self.mock_metric_sender = MagicMock()
         self.validator = MagicMock()
-        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.validator)
+        self.handler = GenericHandler(
+            VALID_A28_MESSAGE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator
+        )
 
     def test_valid_a28_message_returns_ack(self) -> None:
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
@@ -59,7 +66,13 @@ class TestGenericHandler(unittest.TestCase):
 
         validator = MagicMock()
         validator.validate = MagicMock(side_effect=exception)
-        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, validator)
+        handler = GenericHandler(
+            message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator
+        )
 
         with self.assertRaises(ValidationException):
             handler.reply()
@@ -71,6 +84,11 @@ class TestGenericHandler(unittest.TestCase):
         self.handler.reply()
 
         self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE)
+
+    def test_metric_sent_on_message_received(self) -> None:
+        self.handler.reply()
+
+        self.mock_metric_sender.send_message_received_metric.assert_called_once()
 
 
 if __name__ == "__main__":
