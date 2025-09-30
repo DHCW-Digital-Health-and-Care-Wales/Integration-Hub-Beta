@@ -38,7 +38,7 @@ class TestChemocareTransformer(unittest.TestCase):
             health_check_port=9000,
         )
 
-    @patch("hl7_chemo_transformer.application.transform_chemocare_message")
+    @patch("hl7_chemo_transformer.chemocare_transformer.transform_chemocare_message")
     def test_transform_message_input_validation(self, mock_transform_chemocare: Any) -> None:
         mock_transform_chemocare.return_value = self.mock_transformed_message
 
@@ -49,7 +49,7 @@ class TestChemocareTransformer(unittest.TestCase):
         self.assertEqual(input_message.msh.msh_10.value, "369913945290925")
         self.assertEqual(result, self.mock_transformed_message)
 
-    @patch("hl7_chemo_transformer.application.transform_chemocare_message")
+    @patch("hl7_chemo_transformer.chemocare_transformer.transform_chemocare_message")
     def test_transform_message_failure(self, mock_transform_chemocare: Any) -> None:
         error_reason = "Invalid segment mapping"
         mock_transform_chemocare.side_effect = ValueError(error_reason)
