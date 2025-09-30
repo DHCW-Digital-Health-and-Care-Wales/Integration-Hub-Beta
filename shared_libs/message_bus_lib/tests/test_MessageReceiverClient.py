@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from azure.servicebus import ServiceBusMessage
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient

@@ -47,7 +47,9 @@ class Hl7ServerApplication:
         client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
         factory = ServiceBusClientFactory(client_config)
 
-        self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
+        self.sender_client = factory.create_queue_sender_client(
+            app_config.egress_queue_name, app_config.egress_session_id
+        )
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)

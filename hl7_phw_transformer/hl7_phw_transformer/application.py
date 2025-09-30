@@ -35,8 +35,12 @@ def main() -> None:
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
 
     with (
-        factory.create_queue_sender_client(app_config.egress_queue_name) as sender_client,
-        factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
+        factory.create_queue_sender_client(
+            app_config.egress_queue_name, app_config.egress_session_id
+        ) as sender_client,
+        factory.create_message_receiver_client(
+            app_config.ingress_queue_name, app_config.ingress_session_id
+        ) as receiver_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
     ):
         logger.info("Processor started.")

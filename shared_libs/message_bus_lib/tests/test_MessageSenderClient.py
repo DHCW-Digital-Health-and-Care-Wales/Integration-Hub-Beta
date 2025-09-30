@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import MagicMock
 
-from message_bus_lib.message_sender_client import MessageSenderClient
 from azure.servicebus.exceptions import (
     OperationTimeoutError,
 )
+
+from message_bus_lib.message_sender_client import MessageSenderClient
 
 
 class TestMessageSenderClient(unittest.TestCase):

@@ -74,6 +74,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_app_config.read_env_config.return_value = AppConfig(
             connection_string=None,
             ingress_queue_name="test-queue-name",
+            ingress_session_id="test-session-id",
             service_bus_namespace=None,
             receiver_mllp_hostname="test-hostname",
             receiver_mllp_port=2575,
