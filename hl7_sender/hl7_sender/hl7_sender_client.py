@@ -3,8 +3,10 @@ import socket
 from typing import Any, Optional, Type
 
 from hl7.client import MLLPClient
+from hl7apy.consts import MLLP_ENCODING_CHARS
 
 logger = logging.getLogger(__name__)
+ENCODING_CHARS = MLLP_ENCODING_CHARS.SB + MLLP_ENCODING_CHARS.EB + MLLP_ENCODING_CHARS.CR
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
@@ -40,7 +42,8 @@ class HL7SenderClient:
 
         try:
             ack_response = self.mllp_client.send_message(message).decode('utf-8')
-            return ack_response
+            stripped_response = ack_response.strip(ENCODING_CHARS)
+            return stripped_response
         except socket.timeout:
             raise TimeoutError(f"No ACK received within {self.ack_timeout_seconds} seconds")
         except Exception as e:
