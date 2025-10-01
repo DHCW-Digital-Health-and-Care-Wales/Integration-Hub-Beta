@@ -47,6 +47,7 @@ To define host and port the server should bind to use environment variables conf
 - **SERVICE_BUS_CONNECTION_STRING** - service bus connection string (optional, required when SERVICE_BUS_NAMESPACE is empty)
 - **SERVICE_BUS_NAMESPACE** - service bus namespace (recommended, required when SERVICE_BUS_CONNECTION_STRING is empty)
 - **EGRESS_QUEUE_NAME** - service bus queue name to store received messages
+- **EGRESS_TOPIC_NAME** - service bus topic name to store received messages
 - **AUDIT_QUEUE_NAME** - service bus queue name for storing audit events
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
