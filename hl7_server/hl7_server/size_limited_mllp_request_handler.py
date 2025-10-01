@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
     def handle(self) -> None:
-        max_message_size: int = getattr(self.server, 'max_message_size_bytes', 1048576)
+        max_message_size: int = getattr(self.server, 'max_message_size_bytes')
         event_logger: Optional[EventLogger] = getattr(self.server, 'event_logger', None)
 
         end_seq = self.eb + self.cr
