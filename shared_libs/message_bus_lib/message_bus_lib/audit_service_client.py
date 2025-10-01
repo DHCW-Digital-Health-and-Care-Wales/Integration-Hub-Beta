@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
+from types import TracebackType
 from typing import Optional
 
 from .audit_event import AuditEvent, AuditEventType
@@ -48,7 +49,7 @@ class AuditServiceClient:
         )
         self._send_audit_event(event)
 
-    def log_message_failed(self, message_content: str, error_details: str, 
+    def log_message_failed(self, message_content: str, error_details: str,
                            validation_result: Optional[str] = None) -> None:
         event = self._create_audit_event(
             AuditEventType.MESSAGE_FAILED,
@@ -58,7 +59,7 @@ class AuditServiceClient:
         )
         self._send_audit_event(event)
 
-    def log_validation_result(self, message_content: str, validation_result: str, 
+    def log_validation_result(self, message_content: str, validation_result: str,
                               is_success: bool) -> None:
         event_type = AuditEventType.VALIDATION_SUCCESS if is_success else AuditEventType.VALIDATION_FAILED
         event = self._create_audit_event(
@@ -67,7 +68,7 @@ class AuditServiceClient:
             validation_result=validation_result
         )
         self._send_audit_event(event)
-    
+
     def _send_audit_event(self, event: AuditEvent) -> None:
         try:
             audit_data = json.dumps(event.to_dict())
@@ -82,8 +83,12 @@ class AuditServiceClient:
             self.sender_client.close()
             logger.debug("AuditServiceClient closed.")
 
-    def __enter__(self):
+    def __enter__(self) -> 'AuditServiceClient':
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
+    def __exit__(
+        self, exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None
+    ) -> None:
         self.close()

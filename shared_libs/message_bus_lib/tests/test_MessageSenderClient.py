@@ -10,12 +10,12 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 
 class TestMessageSenderClient(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.TOPIC_NAME = "test-topic"
         self.service_bus_sender_client = MagicMock()
         self.message_sender_client = MessageSenderClient(self.service_bus_sender_client, self.TOPIC_NAME)
 
-    def test_send_message_sends_message_to_service_bus(self):
+    def test_send_message_sends_message_to_service_bus(self) -> None:
         # Arrange
         message = b"Test Message"
 
@@ -25,7 +25,7 @@ class TestMessageSenderClient(unittest.TestCase):
         # Assert
         self.service_bus_sender_client.send_messages.assert_called_once()
 
-    def test_send_message_retries_on_failure(self):
+    def test_send_message_retries_on_failure(self) -> None:
         # Arrange
         message = b"Test Message"
         self.service_bus_sender_client.send_messages = MagicMock(side_effect=OperationTimeoutError())
@@ -36,7 +36,7 @@ class TestMessageSenderClient(unittest.TestCase):
         # Assert
         self.assertEqual(len(self.service_bus_sender_client.send_messages.mock_calls), 3)
 
-    def test_exit_service_bus_sender_client_closed(self):
+    def test_exit_service_bus_sender_client_closed(self) -> None:
         # Arrange
         exc_type = ValueError
         exc_value = ValueError("test error")
