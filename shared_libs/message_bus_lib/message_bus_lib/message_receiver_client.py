@@ -21,9 +21,6 @@ class MessageReceiverClient:
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
 
-        if self.session_id is not None:
-            self.receiver.session.set_state("START")
-
         while True:
             messages = self.receiver.receive_messages(max_message_count=num_of_messages,
                                                       max_wait_time=self.MAX_WAIT_TIME_SECONDS)
@@ -39,7 +36,7 @@ class MessageReceiverClient:
                         self.delay = self.INITIAL_DELAY_SECONDS
 
                         if self.session_id is not None:
-                            self.receiver.session.renew_lock()
+                            self._renew_lock()
 
                     else:
                         logger.error("Message processing failed, message abandoned: %s", msg.message_id)
@@ -53,9 +50,6 @@ class MessageReceiverClient:
 
             if self.retry_attempt == 0 or not messages:
                 break
-
-        if self.session_id is not None:
-            self.receiver.session.set_state("END")
 
     def _abandon_message_and_delay(self, msg: ServiceBusReceivedMessage) -> None:
         self.receiver.abandon_message(msg)
