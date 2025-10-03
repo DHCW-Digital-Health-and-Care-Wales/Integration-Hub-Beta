@@ -15,7 +15,7 @@ class TestMessageSenderClient(unittest.TestCase):
         self.service_bus_sender_client = MagicMock()
         self.message_sender_client = MessageSenderClient(self.service_bus_sender_client, self.TOPIC_NAME)
 
-    def test_send_message_sends_message_to_service_bus(self) -> None:
+    def test_send_message_sends_message_to_service_bus_without_session(self) -> None:
         # Arrange
         message = b"Test Message"
 
@@ -24,6 +24,24 @@ class TestMessageSenderClient(unittest.TestCase):
 
         # Assert
         self.service_bus_sender_client.send_messages.assert_called_once()
+        messge_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
+        self.assertIsNone(messge_sent.session_id)
+
+    def test_send_message_with_session(self) -> None:
+        # Arrange
+        message = b"Test Message"
+        session_id = "test-session-id"
+        message_sender_client = MessageSenderClient(
+            self.service_bus_sender_client, self.TOPIC_NAME, session_id=session_id
+        )
+
+        # Act
+        message_sender_client.send_message(message)
+
+        # Assert
+        self.service_bus_sender_client.send_messages.assert_called_once()
+        messge_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
+        self.assertEqual(messge_sent.session_id, session_id)
 
     def test_send_message_retries_on_failure(self) -> None:
         # Arrange

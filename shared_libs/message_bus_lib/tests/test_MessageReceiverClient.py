@@ -182,5 +182,27 @@ class TestMessageReceiverClient(unittest.TestCase):
         # Assert
         self.service_bus_receiver_client.close.assert_called_once()
 
+    @patch("time.sleep", return_value=None)
+    def test_receive_renews_session_lock_when_uses_session(self, sleep_mock: MagicMock) -> None:
+        # Arrange
+        messages = [
+            create_message("123"),
+        ]
+        session_id = "test-session"
+        message_receiver_client = MessageReceiverClient(self.service_bus_receiver_client, session_id)
+
+        self.service_bus_receiver_client.receive_messages.return_value = messages
+        def processor(msg: Any) -> bool:
+            return True
+
+        # Act
+        message_receiver_client.receive_messages(1, processor)
+
+        # Assert
+        self.service_bus_receiver_client.session.renew_lock.assert_called_once()
+        self.service_bus_receiver_client.complete_message.assert_called_once_with(messages[0])
+        self.service_bus_receiver_client.abandon_message.assert_not_called()
+        sleep_mock.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()
