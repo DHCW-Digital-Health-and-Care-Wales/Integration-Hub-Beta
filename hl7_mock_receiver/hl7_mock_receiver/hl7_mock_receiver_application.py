@@ -4,6 +4,7 @@ import signal
 import threading
 from typing import Any
 
+from hl7apy.core import Message
 from hl7apy.mllp import MLLPRequestHandler, MLLPServer
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class CustomMLLPRequestHandler(MLLPRequestHandler):
 
-    def _route_message(self, msg):
+    def _route_message(self, msg: Message) -> Any:
 
         try:
             generic_handler_config = self.handlers.get('generic')
