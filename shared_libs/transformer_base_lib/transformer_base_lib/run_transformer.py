@@ -12,7 +12,7 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
 
 from .app_config import TransformerConfig
-from .processing import process_message
+from .message_processor import process_message
 
 if TYPE_CHECKING:
     from .base_transformer import BaseTransformer

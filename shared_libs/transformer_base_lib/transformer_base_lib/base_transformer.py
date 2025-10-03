@@ -42,5 +42,5 @@ class BaseTransformer(ABC):
         return os.path.join(os.path.dirname(__file__), "config.ini")
 
     def run(self) -> None:
-        from .runner import run_transformer_app
+        from .run_transformer import run_transformer_app
         run_transformer_app(self)
