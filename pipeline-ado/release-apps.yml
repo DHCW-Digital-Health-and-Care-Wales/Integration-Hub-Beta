@@ -114,6 +114,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseMPIHL7ServerDev
+    displayName: 'Release App MPI HL7Server - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseMPIAppHL7ServerDev'
+          displayName: 'Release App MPI HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'mpi'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerDev
     displayName: 'Release App HL7PhwTransformer - Dev'
     jobs:
@@ -298,6 +315,24 @@ stages:
           displayName: 'Release App Chemocare HL7Server - DTE'
           appName: 'hl7server'
           appFunctionMidfix: 'chemo'
+          resourceGroupName: $(dteResourceGroupName)
+          azureLocation: $(azureLocation)
+          environment: 'dte'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseMPIHL7ServerDTE
+    displayName: 'Release App MPI HL7Server - DTE'
+    dependsOn: ReleaseMPIHL7ServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseMPIAppHL7ServerDTE'
+          displayName: 'Release App MPI HL7Server - DTE'
+          appName: 'hl7server'
+          appFunctionMidfix: 'mpi'
           resourceGroupName: $(dteResourceGroupName)
           azureLocation: $(azureLocation)
           environment: 'dte'
@@ -505,6 +540,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseMPIHL7ServerTest
+    displayName: 'Release App MPI HL7Server - Test'
+    dependsOn: ReleaseMPIHL7ServerDTE
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseMPIAppHL7ServerTest'
+          displayName: 'Release App MPI HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'mpi'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerTest
     displayName: 'Release App HL7PhwTransformer - Test'
     dependsOn: ReleaseHL7PhwTransformerDTE
@@ -686,6 +739,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseMPIHL7ServerPreProd
+    displayName: 'Release App MPI HL7Server - Pre-Prod'
+    dependsOn: ReleaseMPIHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseMPIAppHL7ServerPreProd'
+          displayName: 'Release App MPI HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'mpi'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerPreProd
     displayName: 'Release App HL7PhwTransformer - Pre-Prod'
     dependsOn: ReleaseHL7PhwTransformerTest
@@ -859,6 +930,24 @@ stages:
           displayName: 'Release App Chemocare HL7Server - Production'
           appName: 'hl7server'
           appFunctionMidfix: 'chemo'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseMPIHL7ServerProd
+    displayName: 'Release App MPI HL7Server - Production'
+    dependsOn: ReleaseMPIHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseMPIAppHL7ServerProd'
+          displayName: 'Release App MPI HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'mpi'
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
           environment: 'prd'
