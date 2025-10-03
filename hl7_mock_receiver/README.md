@@ -30,8 +30,8 @@ Run code quality checks:
 
 ```bash
 uv run ruff check
-uv run bandit hl7_mock_receiver/**/*.py tests/**/*.py
-uv run mypy --ignore-missing-imports hl7_mock_receiver/**/*.py tests/**/*.py
+uv run bandit -r hl7_mock_receiver/ tests/
+uv run mypy --ignore-missing-imports hl7_mock_receiver/ tests/
 ```
 
 Run unit tests:

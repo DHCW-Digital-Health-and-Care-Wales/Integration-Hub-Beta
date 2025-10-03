@@ -1,27 +1,29 @@
 import unittest
+from typing import Any
 from unittest.mock import MagicMock, patch
+
 from azure.servicebus import ServiceBusMessage
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 
 
-def create_message(message_id):
+def create_message(message_id: str) -> MagicMock:
     message = MagicMock(spec=ServiceBusMessage)
     message.message_id = message_id
     return message
 
 class TestMessageReceiverClient(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.service_bus_receiver_client = MagicMock()
         self.message_receiver_client = MessageReceiverClient(self.service_bus_receiver_client)
 
     @patch("time.sleep", return_value=None)
-    def test_receive_messages_calls_complete_when_valid_message(self, sleep_mock: MagicMock):
+    def test_receive_messages_calls_complete_when_valid_message(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
         self.service_bus_receiver_client.receive_messages.return_value = [message]
-        def processor(msg):
+        def processor(msg: Any) -> bool:
             return True
 
         # Act
@@ -33,13 +35,13 @@ class TestMessageReceiverClient(unittest.TestCase):
         sleep_mock.assert_not_called()
 
     @patch("time.sleep", return_value=None)
-    def test_receive_messages_complete_and_abandon(self, sleep_mock: MagicMock):
+    def test_receive_messages_complete_and_abandon(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message1 = create_message("123")
         message2 = create_message("456")
         self.service_bus_receiver_client.receive_messages.side_effect = [[message1, message2], []]
 
-        def processor(msg):
+        def processor(msg: Any) -> bool:
             return msg.message_id == "123"
 
         # Act
@@ -50,11 +52,11 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.abandon_message.assert_called_once_with(message2)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_calls_abandon_when_message_fails_processing(self, sleep_mock: MagicMock):
+    def test_receiveMessages_calls_abandon_when_message_fails_processing(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
         self.service_bus_receiver_client.receive_messages.side_effect = [[message], []]
-        def processor(msg):
+        def processor(msg: Any) -> bool:
             return False
 
         # Act
@@ -64,12 +66,12 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.abandon_message.assert_called_once_with(message)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_calls_abandon_when_exception_during_processing(self, sleep_mock: MagicMock):
+    def test_receiveMessages_calls_abandon_when_exception_during_processing(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
         self.service_bus_receiver_client.receive_messages.side_effect = [[message], []]
 
-        def processor(msg):
+        def processor(msg: Any) -> bool:
             raise RuntimeError("Test Exception")
 
         # Act
@@ -79,14 +81,14 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.abandon_message.assert_called_once_with(message)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_backoff_doubles_delay_on_each_retry(self, sleep_mock: MagicMock):
+    def test_receiveMessages_backoff_doubles_delay_on_each_retry(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
 
         # Simulate 3 rounds: 2 failures, 1 empty to exit
         self.service_bus_receiver_client.receive_messages.side_effect = [[message], [message], []]
 
-        def always_fail_processor(msg):
+        def always_fail_processor(msg: Any) -> bool:
             return False
 
         # Act
@@ -99,14 +101,14 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS * 4)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_backoff_called_on_exception(self, sleep_mock: MagicMock):
+    def test_receiveMessages_backoff_called_on_exception(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
 
         # Simulate 2 rounds: 1 exception, then exit
         self.service_bus_receiver_client.receive_messages.side_effect = [[message], []]
 
-        def error_processor(msg):
+        def error_processor(msg: Any) -> bool:
             raise RuntimeError("Processing failed")
 
         # Act
@@ -118,14 +120,14 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS * 2)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_backoff_delay_does_not_exceed_max(self, sleep_mock: MagicMock):
+    def test_receiveMessages_backoff_delay_does_not_exceed_max(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message = create_message("123")
 
         # Simulate 10 failed receives, then exit
         self.service_bus_receiver_client.receive_messages.side_effect = [[message]] * 10 + [[]]
 
-        def fail_processor(msg):
+        def fail_processor(msg: Any) -> bool:
             return False
 
         # Act
@@ -137,7 +139,7 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.assertLessEqual(final_delay, self.message_receiver_client.MAX_DELAY_SECONDS)
 
     @patch("time.sleep", return_value=None)
-    def test_receiveMessages_backoff_delay_exits_after_success(self, sleep_mock: MagicMock):
+    def test_receiveMessages_backoff_delay_exits_after_success(self, sleep_mock: MagicMock) -> None:
         # Arrange
         message1 = create_message("123")
         message2 = create_message("456")
@@ -148,7 +150,7 @@ class TestMessageReceiverClient(unittest.TestCase):
         # 3rd: success → exit
         self.service_bus_receiver_client.receive_messages.side_effect = [[message1, message2], [message3]]
 
-        def processor(msg):
+        def processor(msg: ServiceBusMessage) -> bool:
             return msg.message_id != "456"
         # Act
         self.message_receiver_client.receive_messages(4, processor)
@@ -168,7 +170,7 @@ class TestMessageReceiverClient(unittest.TestCase):
         # Final retry_attempt should also reset to 0
         self.assertEqual(self.message_receiver_client.retry_attempt, 0)
 
-    def test_exit_service_bus_receiver_client_closed(self):
+    def test_exit_service_bus_receiver_client_closed(self) -> None:
         # Arrange
         exc_type = ValueError
         exc_value = ValueError("test error")
@@ -179,6 +181,28 @@ class TestMessageReceiverClient(unittest.TestCase):
 
         # Assert
         self.service_bus_receiver_client.close.assert_called_once()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_renews_session_lock_when_uses_session(self, sleep_mock: MagicMock) -> None:
+        # Arrange
+        messages = [
+            create_message("123"),
+        ]
+        session_id = "test-session"
+        message_receiver_client = MessageReceiverClient(self.service_bus_receiver_client, session_id)
+
+        self.service_bus_receiver_client.receive_messages.return_value = messages
+        def processor(msg: Any) -> bool:
+            return True
+
+        # Act
+        message_receiver_client.receive_messages(1, processor)
+
+        # Assert
+        self.service_bus_receiver_client.session.renew_lock.assert_called_once()
+        self.service_bus_receiver_client.complete_message.assert_called_once_with(messages[0])
+        self.service_bus_receiver_client.abandon_message.assert_not_called()
+        sleep_mock.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()
