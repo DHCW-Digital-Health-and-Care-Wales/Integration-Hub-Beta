@@ -111,6 +111,8 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self.app.stop_server()
 
+        self._assert_shutdown(server, thread, health_check)
+
 
 @patch.dict(os.environ, ENV_VARS_TOPIC)
 @patch("hl7_server.hl7_server_application.TCPHealthCheckServer")
@@ -137,15 +139,6 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         thread.join.assert_called_once()
         health_check.stop.assert_called_once()
 
-    def test_server_initialization_with_topic(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                             mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
-        server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
-
-        self.app.start_server()
-        self.app.stop_server()
-
-        self._assert_shutdown(server, thread, health_check)
-
     def test_creates_topic_sender_client(self, mock_thread: MagicMock, mock_factory: MagicMock,
                                         mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
@@ -157,3 +150,5 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         mock_factory_instance.create_queue_sender_client.assert_not_called()
 
         self.app.stop_server()
+
+        self._assert_shutdown(server, thread, health_check)
