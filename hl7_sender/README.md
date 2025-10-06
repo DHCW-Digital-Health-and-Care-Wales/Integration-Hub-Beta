@@ -22,7 +22,7 @@ Run code quality checks:
 
 ```bash
 uv run ruff check
-uv run bandit -r hl7_sender/ tests/
+uv run bandit -r hl7_sender/ tests/ 
 uv run mypy --ignore-missing-imports hl7_sender/**/*.py
 ```
 
