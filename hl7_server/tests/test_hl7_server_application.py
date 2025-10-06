@@ -106,7 +106,7 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self.app.start_server()
 
-        mock_factory_instance.create_queue_sender_client.assert_called_once_with("egress_queue")
+        mock_factory_instance.create_queue_sender_client.assert_called_once_with("egress_queue", None)
         mock_factory_instance.create_topic_sender_client.assert_not_called()
 
         self.app.stop_server()
