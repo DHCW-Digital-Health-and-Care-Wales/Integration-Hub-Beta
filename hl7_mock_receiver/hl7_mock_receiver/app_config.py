@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class AppConfig:
     connection_string: str | None
     egress_queue_name: str | None
+    egress_session_id: str | None
     service_bus_namespace: str | None
 
     @staticmethod
@@ -15,6 +16,7 @@ class AppConfig:
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
+            egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False)
         )
 
