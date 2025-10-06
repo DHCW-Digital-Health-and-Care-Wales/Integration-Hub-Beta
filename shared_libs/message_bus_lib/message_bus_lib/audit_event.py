@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -23,7 +24,7 @@ class AuditEvent:
     message_content: str
     validation_result: Optional[str] = None
     error_details: Optional[str] = None
-    
+
     def to_dict(self) -> dict:
         return {
             "workflow_id": self.workflow_id,
