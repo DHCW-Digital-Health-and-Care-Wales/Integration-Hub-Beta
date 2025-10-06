@@ -34,4 +34,10 @@ dev = [
     "bandit>=1.8.0",
 ]
 
+[tool.uv.sources]
+message-bus-lib = { path = "../message_bus_lib" }
+health-check-lib = { path = "../health_check_lib" }
+processor-manager-lib = { path = "../processor_manager_lib" }
+event-logger-lib = { path = "../event_logger_lib" }
+
 
