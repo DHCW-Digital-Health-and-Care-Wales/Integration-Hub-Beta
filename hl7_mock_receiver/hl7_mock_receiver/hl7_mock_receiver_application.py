@@ -10,6 +10,7 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from .app_config import AppConfig
+from .error_handler import ErrorHandler
 from .generic_handler import GenericHandler
 
 log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -67,6 +68,7 @@ class Hl7MockReceiver:
 
         handlers = {
             'generic': (GenericHandler, self.sender_client),
+            'ERR': (ErrorHandler,),
         }
 
         try:
