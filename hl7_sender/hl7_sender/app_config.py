@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class AppConfig:
     connection_string: str | None
     ingress_queue_name: str
+    ingress_session_id: str | None
     service_bus_namespace: str | None
     receiver_mllp_hostname: str
     receiver_mllp_port: int
@@ -23,6 +24,7 @@ class AppConfig:
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             ingress_queue_name=_read_required_env("INGRESS_QUEUE_NAME"),
+            ingress_session_id=_read_env("INGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             receiver_mllp_hostname=_read_required_env("RECEIVER_MLLP_HOST"),
             receiver_mllp_port=_read_required_int_env("RECEIVER_MLLP_PORT"),

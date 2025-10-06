@@ -33,7 +33,8 @@ def main() -> None:
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
 
     with (
-        factory.create_message_receiver_client(app_config.ingress_queue_name) as receiver_client,
+        factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id
+        ) as receiver_client,
         HL7SenderClient(
             app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
         ) as hl7_sender_client,

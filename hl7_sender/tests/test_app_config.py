@@ -12,6 +12,7 @@ class TestAppConfig(unittest.TestCase):
             values = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "INGRESS_QUEUE_NAME": "ingress_queue",
+                "INGRESS_SESSION_ID": "ingress_session",
                 "SERVICE_BUS_NAMESPACE": "namespace",
                 "RECEIVER_MLLP_HOST": "localhost",
                 "RECEIVER_MLLP_PORT": "1234",

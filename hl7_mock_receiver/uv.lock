@@ -410,6 +410,14 @@ requires-dist = [
     { name = "setuptools", specifier = "==80.9.0" },
 ]
 
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.8.6" },
+    { name = "mypy", specifier = "==1.15.0" },
+    { name = "ruff", specifier = "==0.11.11" },
+    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.11.1" },
+]
+
 [[package]]
 name = "more-itertools"
 version = "10.7.0"

@@ -10,6 +10,7 @@ DEFAULT_MAX_MESSAGE_SIZE_BYTES = 1048576  # 1MB - default message size limit for
 class AppConfig:
     connection_string: str | None
     egress_queue_name: str
+    egress_session_id: str | None
     service_bus_namespace: str | None
     audit_queue_name: str
     workflow_id: str
@@ -26,6 +27,7 @@ class AppConfig:
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             egress_queue_name=_read_required_env("EGRESS_QUEUE_NAME"),
+            egress_session_id=_read_env("EGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
