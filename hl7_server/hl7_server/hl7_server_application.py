@@ -51,7 +51,9 @@ class Hl7ServerApplication:
             self.sender_client = factory.create_topic_sender_client(app_config.egress_topic_name)
             logger.info(f"Configured to send messages to topic: {app_config.egress_topic_name}")
         else:
-            self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
+            self.sender_client = factory.create_queue_sender_client(
+                app_config.egress_queue_name, app_config.egress_session_id
+            )
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)

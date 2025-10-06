@@ -25,13 +25,14 @@ class ServiceBusClientFactory:
         sender: ServiceBusSender = self.servicebus_client.get_topic_sender(topic_name=topic_name)
         return MessageSenderClient(sender, topic_name)
 
-    def create_queue_sender_client(self, queue_name: str) -> MessageSenderClient:
-        sender: ServiceBusSender = self.servicebus_client.get_queue_sender(queue_name=queue_name)
+    def create_queue_sender_client(self, queue_name: str, session_id: str | None = None) -> MessageSenderClient:
+        sender: ServiceBusSender = self.servicebus_client.get_queue_sender(queue_name=queue_name, session_id=session_id)
         return MessageSenderClient(sender, queue_name)
 
-    def create_message_receiver_client(self, queue_name: str) -> MessageReceiverClient:
+    def create_message_receiver_client(self, queue_name: str, session_id: str | None = None) -> MessageReceiverClient:
         receiver: ServiceBusReceiver = self.servicebus_client.get_queue_receiver(
             queue_name=queue_name,
-            receive_mode=ServiceBusReceiveMode.PEEK_LOCK
+            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            session_id=session_id
         )
         return MessageReceiverClient(receiver)
