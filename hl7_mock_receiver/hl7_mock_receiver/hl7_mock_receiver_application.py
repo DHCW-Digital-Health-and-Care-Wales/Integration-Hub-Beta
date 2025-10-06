@@ -64,7 +64,9 @@ class Hl7MockReceiver:
         client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
         factory = ServiceBusClientFactory(client_config)
 
-        self.sender_client = factory.create_queue_sender_client(app_config.egress_queue_name)
+        self.sender_client = factory.create_queue_sender_client(
+            app_config.egress_queue_name, app_config.egress_session_id
+        )
 
         handlers = {
             'generic': (GenericHandler, self.sender_client),
