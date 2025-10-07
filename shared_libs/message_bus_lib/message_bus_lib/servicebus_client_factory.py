@@ -47,12 +47,14 @@ class ServiceBusClientFactory:
         self.logger.debug(
             "Creating message receiver client for queue '%s' with session_id '%s'", queue_name, session_id
         )
+
+        lock_renewal = AutoLockRenewer(max_lock_renewal_duration=MAX_LOCK_RENEWAL_DURATION) if session_id else None
+
         receiver: ServiceBusReceiver = self.servicebus_client.get_queue_receiver(
             queue_name=queue_name,
             session_id=session_id,
-            receive_mode=ServiceBusReceiveMode.PEEK_LOCK
+            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            lock_renewal=lock_renewal,
         )
-        if (receiver.session is not None):
-            lock_renewal = AutoLockRenewer(max_lock_renewal_duration=MAX_LOCK_RENEWAL_DURATION)
-            lock_renewal.register(receiver, receiver.session)
+
         return MessageReceiverClient(receiver, session_id)
