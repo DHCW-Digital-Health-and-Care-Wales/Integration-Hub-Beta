@@ -2,14 +2,20 @@ import logging
 from typing import Optional
 
 from azure.identity import DefaultAzureCredential
-from azure.servicebus import ServiceBusClient, ServiceBusReceiveMode, ServiceBusReceiver, ServiceBusSender
+from azure.servicebus import (
+    AutoLockRenewer,
+    ServiceBusClient,
+    ServiceBusReceiveMode,
+    ServiceBusReceiver,
+    ServiceBusSender,
+)
 
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
-
+MAX_LOCK_RENEWAL_DURATION = 300 # 5 minutes
 
 class ServiceBusClientFactory:
     def __init__(self, config: ConnectionConfig):
@@ -46,4 +52,7 @@ class ServiceBusClientFactory:
             session_id=session_id,
             receive_mode=ServiceBusReceiveMode.PEEK_LOCK
         )
+        if (receiver.session is not None):
+            lock_renewal = AutoLockRenewer(max_lock_renewal_duration=MAX_LOCK_RENEWAL_DURATION)
+            lock_renewal.register(receiver, receiver.session)
         return MessageReceiverClient(receiver, session_id)
