@@ -35,9 +35,6 @@ class MessageReceiverClient:
                         self.retry_attempt = 0
                         self.delay = self.INITIAL_DELAY_SECONDS
 
-                        if self.session_id is not None:
-                            self._renew_lock()
-
                     else:
                         logger.error("Message processing failed, message abandoned: %s", msg.message_id)
                         self._abandon_message_and_delay(msg)
@@ -63,10 +60,6 @@ class MessageReceiverClient:
             self.retry_attempt, self.delay, msg.message_id
         )
         time.sleep(self.delay)
-
-    def _renew_lock(self) -> None:
-        self.receiver.session.renew_lock()
-        logger.debug("Session lock renewed.")
 
     def close(self) -> None:
         self.receiver.close()
