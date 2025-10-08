@@ -241,5 +241,28 @@ services:
         aliases:
           - "pims-hl7-transformer"
 
+  mpi-hl7-server:
+    container_name: mpi-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mpi-hl7-server.env
+    ports:
+      - "2580:2580"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "mpi-hl7-server"
+
 networks:
   integration-hub:
