@@ -2,12 +2,22 @@ import unittest
 from unittest.mock import ANY, MagicMock, patch
 
 from hl7_server.generic_handler import GenericHandler
-from hl7_server.hl7_validator import ValidationException
+from hl7_server.hl7_validator import HL7Validator, ValidationException
 
 # Sample valid HL7 message (pipe & hat, type A28)
 VALID_A28_MESSAGE = (
     "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
     "PID|1||123456^^^Hospital^MR||Doe^John\r"
+)
+
+VALID_MPI_MESSAGE_WITH_UPDATE_SOURCE = (
+    "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A28^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
+    "PID|1|98765^^^100^MR||Doe^John\r"
+)
+
+INVALID_MPI_MESSAGE_TYPE = (
+    "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A01^ADT_A01|202505052323364444|P|2.5|||||GBR||EN\r"
+    "PID|1|98765^^^100^MR||Doe^John\r"
 )
 
 ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
@@ -71,6 +81,53 @@ class TestGenericHandler(unittest.TestCase):
         self.handler.reply()
 
         self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE)
+
+    @patch("hl7_server.generic_handler.validate_er7_with_flow")
+    def test_mpi_flow_sets_custom_properties_with_update_source(self, mock_validate_flow_xml: MagicMock) -> None:
+        sender = MagicMock()
+        event_logger = MagicMock()
+        validator = HL7Validator(flow_name="mpi")
+        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
+            mock_ack_instance = mock_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bACK\x1c\r"
+            mock_ack_instance.build_ack.return_value = mock_ack_message
+
+            handler = GenericHandler(
+                VALID_MPI_MESSAGE_WITH_UPDATE_SOURCE,
+                sender,
+                event_logger,
+                validator,
+                flow_name="mpi",
+            )
+
+            handler.reply()
+
+        mock_validate_flow_xml.assert_called_once()
+        sender.send_text_message.assert_called_once_with(
+            VALID_MPI_MESSAGE_WITH_UPDATE_SOURCE,
+            {"MessageType": "A28", "UpdateSource": "100"},
+        )
+
+    @patch("hl7_server.generic_handler.validate_er7_with_flow")
+    def test_mpi_flow_rejects_unsupported_message_type(self, mock_validate_flow_xml: MagicMock) -> None:
+        sender = MagicMock()
+        event_logger = MagicMock()
+        validator = HL7Validator(flow_name="mpi")
+
+        handler = GenericHandler(
+            INVALID_MPI_MESSAGE_TYPE,
+            sender,
+            event_logger,
+            validator,
+            flow_name="mpi",
+        )
+
+        with self.assertRaises(ValidationException):
+            handler.reply()
+
+        mock_validate_flow_xml.assert_not_called()
+        sender.send_text_message.assert_not_called()
 
 
 if __name__ == "__main__":
