@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class AppConfig:
     connection_string: str | None
     ingress_queue_name: str | None
+    ingress_session_id: str | None
     egress_queue_name: str | None
     service_bus_namespace: str | None
     audit_queue_name: str | None
@@ -23,6 +24,7 @@ class AppConfig:
                 "SERVICE_BUS_CONNECTION_STRING", required=False
             ),
             ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=True),
+            ingress_session_id=_read_env("INGRESS_SESSION_ID", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
