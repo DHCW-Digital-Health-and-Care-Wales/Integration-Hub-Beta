@@ -16,7 +16,7 @@ A cloud-native platform for seamless and secure exchange of clinical information
 - [Security & Compliance](#security--compliance)
 - [Contributing](#contributing)
 
-## Overview
+## Overview 
 
 NHS Wales requires a modern solution to connect digital health systems that use incompatible data formats and standards. The Integration Hub is a cloud-native platform providing robust data validation and transformation capabilities to enable the seamless and secure exchange of sensitive clinical information.
 
