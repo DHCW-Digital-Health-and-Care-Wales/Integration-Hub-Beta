@@ -1,6 +1,6 @@
-from hl7_validation.utils.message_utils import extract_message_trigger
 from hl7apy.core import Message
 
+from hl7_server.custom_validation.mpi_outbound_validation import _validate_mpi_outbound_specific_fields
 from hl7_server.custom_validation.phw_validation import _validate_pid7_date_of_birth
 from hl7_server.exceptions.validation_exception import ValidationException
 
@@ -41,22 +41,7 @@ class HL7Validator:
         if self.flow_name == "phw":
             self._validate_phw_specific_fields(message)
         if self.flow_name == "mpi":
-            self._validate_mpi_outbound_specific_fields(message)
+            _validate_mpi_outbound_specific_fields(message)
 
     def _validate_phw_specific_fields(self, message: Message) -> None:
         _validate_pid7_date_of_birth(message)
-
-    def _validate_mpi_outbound_specific_fields(self, message: Message) -> None:
-        ALLOWED_MPI_MESSAGE_TYPES: set[str] = {"A28", "A31", "A40"}
-
-        message_type = extract_message_trigger(message)
-        if not message_type:
-            raise ValidationException("MSH.9.2 (MessageType) is missing from the message")
-
-        if message_type.upper() not in ALLOWED_MPI_MESSAGE_TYPES:
-            raise ValidationException(f"Unsupported message type '{message_type.upper()}' for MPI outbound flow")
-
-        # TODO use utils library (to be published) to extract pid.pid_2.cx_4.hd_1
-        update_source = "100"
-        if not update_source:
-            raise ValidationException("PID.2.4.1 (UpdateSource) is missing from the MPI outbound message")

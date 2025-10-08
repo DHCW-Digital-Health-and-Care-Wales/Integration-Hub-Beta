@@ -2,12 +2,13 @@ import logging
 
 from event_logger_lib.event_logger import EventLogger
 from hl7_validation import XmlValidationError, validate_er7_with_flow
-from hl7_validation.utils.message_utils import extract_message_trigger
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
+
+from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
@@ -97,25 +98,11 @@ class GenericHandler(AbstractHandler):
         return ack_msg.to_mllp()
 
     def _send_to_service_bus(self, message_control_id: str, msg: Message) -> None:
-        custom_properties = self._build_custom_mpi_outbound_properties(msg)
+        custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
+        custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
         try:
-            if custom_properties:
-                self.sender_client.send_text_message(self.incoming_message, custom_properties)
-            else:
-                self.sender_client.send_text_message(self.incoming_message)
+            self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
-
-    def _build_custom_mpi_outbound_properties(self, msg: Message) -> dict[str, str] | None:
-        if not self.flow_name == "mpi":
-            return None
-
-        custom_properties = {
-            "MessageType": extract_message_trigger(msg),
-            # TODO extract using field utils library
-            "UpdateSource": "100",
-        }
-
-        return custom_properties
