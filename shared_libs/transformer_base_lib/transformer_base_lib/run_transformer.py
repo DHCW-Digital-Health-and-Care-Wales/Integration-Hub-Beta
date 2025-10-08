@@ -37,7 +37,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
     with (
         factory.create_queue_sender_client(config.egress_queue_name) as sender_client,
-        factory.create_message_receiver_client(config.ingress_queue_name) as receiver_client,
+        factory.create_message_receiver_client(config.ingress_queue_name, config.ingress_session_id) as receiver_client,
         TCPHealthCheckServer(config.health_check_hostname, config.health_check_port) as health_check_server,
     ):
         logger.info(f"{transformer.transformer_name} Transformer processor started.")
