@@ -1,4 +1,7 @@
+import os
+
 from hl7apy.core import Message
+from transformer_base_lib import BaseTransformer
 
 from .mappers.additional_segment_mapper import map_non_specific_segments
 from .mappers.evn_mapper import map_evn
@@ -19,3 +22,13 @@ def transform_chemocare_message(original_hl7_msg: Message) -> Message:
     map_non_specific_segments(original_hl7_msg, new_message)
 
     return new_message
+
+
+class ChemocareTransformer(BaseTransformer):
+
+    def __init__(self) -> None:
+        config_path = os.path.join(os.path.dirname(__file__), "config.ini")
+        super().__init__("Chemocare", config_path)
+
+    def transform_message(self, hl7_msg: Message) -> Message:
+        return transform_chemocare_message(hl7_msg)

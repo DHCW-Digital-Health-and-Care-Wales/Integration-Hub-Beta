@@ -121,5 +121,20 @@ stages:
           appName: 'shared_libs/processor_manager_lib'
           appDisplayName: 'Processor Manager Library'
           banditSourceDir: 'processor_manager_lib'
+         
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/transformer_base_lib'
+          appDisplayName: 'Transformer Base Library'
+          banditSourceDir: 'transformer_base_lib'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ parameters.POOL_SELECTION }}
+
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'shared_libs/field_utils_lib'
+          appDisplayName: 'Field Utils Library'
+          banditSourceDir: 'field_utils_lib'
+
           pythonVersion: $(pythonVersion)
           poolName: ${{ parameters.POOL_SELECTION }}

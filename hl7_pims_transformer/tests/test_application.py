@@ -32,6 +32,7 @@ class TestProcessPimsMessage(unittest.TestCase):
             None,
             None,
             None,
+            None,
             health_check_hostname="localhost",
             health_check_port=9000,
         )
