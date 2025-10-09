@@ -62,7 +62,10 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
-            self._send_to_service_bus(message_control_id, msg)
+            custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
+            custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
+
+            self._send_to_service_bus(message_control_id, custom_properties)
 
             ack_message = self.create_ack(message_control_id, msg)
 
@@ -97,9 +100,7 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str, msg: Message) -> None:
-        custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
-        custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
+    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str] | None) -> None:
         try:
             self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
