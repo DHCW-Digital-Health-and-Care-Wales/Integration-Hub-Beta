@@ -3,7 +3,7 @@ import time
 from types import TracebackType
 from typing import Callable, Optional
 
-from azure.servicebus import ServiceBusMessage, ServiceBusReceivedMessage, ServiceBusReceiver
+from azure.servicebus import AutoLockRenewer, ServiceBusClient, ServiceBusMessage, ServiceBusReceiveMode
 
 logger = logging.getLogger(__name__)
 
@@ -11,63 +11,39 @@ logger = logging.getLogger(__name__)
 class MessageReceiverClient:
     MAX_DELAY_SECONDS = 15 * 60 # 15 minutes
     INITIAL_DELAY_SECONDS = 5
-    MAX_WAIT_TIME_SECONDS = 300 # 5 minutes
+    MAX_WAIT_TIME_SECONDS = 60
 
-    def __init__(self, receiver: ServiceBusReceiver, session_id: Optional[str] = None):
-        self.receiver = receiver
+    def __init__(self, sb_client: ServiceBusClient, queue_name: str, session_id: Optional[str] = None):
+        self.sb_client = sb_client
+        self.queue_name = queue_name
         self.session_id = session_id
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
 
-        while True:
-            messages = self.receiver.receive_messages(max_message_count=num_of_messages,
-                                                      max_wait_time=self.MAX_WAIT_TIME_SECONDS)
-
-            logger.info("Received %d messages", len(messages))
-
-            for msg in messages:
-                try:
-                    is_success = message_processor(msg)
-
-                    if is_success:
-                        self.receiver.complete_message(msg)
-                        logger.debug("Message processed and completed: %s", msg.message_id)
-                        self.retry_attempt = 0
-                        self.delay = self.INITIAL_DELAY_SECONDS
-
-                    else:
-                        logger.error("Message processing failed, message abandoned: %s", msg.message_id)
-                        self._abandon_message_and_delay(msg)
-                        break
-
-                except Exception as e:
-                    logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
-                    self._abandon_message_and_delay(msg)
+        autolock_renewer = AutoLockRenewer() if self.session_id else None
+        with self.sb_client.get_queue_receiver(
+            queue_name = self.queue_name,
+            session_id = self.session_id,
+            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            auto_lock_renewer = autolock_renewer,
+            max_wait_time = self.MAX_WAIT_TIME_SECONDS
+        ) as receiver:
+            for msg in receiver:
+                is_success = message_processor(msg)
+                if is_success:
+                    receiver.complete_message(msg)
+                    logger.info("Message processed and completed: %s", msg.message_id)
+                else:
+                    logger.error("Message processing failed, message abandoned: %s", msg.message_id)
+                    receiver.abandon_message(msg)
+                    time.sleep(self.INITIAL_DELAY_SECONDS)
                     break
-
-            if self.retry_attempt == 0:
-                break
-
-    def _abandon_message_and_delay(self, msg: ServiceBusReceivedMessage) -> None:
-        self.receiver.abandon_message(msg)
-        self.retry_attempt += 1
-        self._apply_backoff(msg)
-        self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
-
-    def _apply_backoff(self, msg: ServiceBusMessage) -> None:
-        logger.error(
-            "Retry attempt %d, waiting for %d seconds before retrying message: %s",
-            self.retry_attempt, self.delay, msg.message_id
-        )
-        time.sleep(self.delay)
+            autolock_renewer.close() if autolock_renewer else None
 
     def close(self) -> None:
-        if self.receiver._auto_lock_renewer:
-            self.receiver._auto_lock_renewer.close()
-        self.receiver.close()
-        logger.debug("ServiceBusReceiverClient closed.")
+        pass
 
     def __enter__(self) -> 'MessageReceiverClient':
         return self
