@@ -3,10 +3,7 @@ from typing import Optional
 
 from azure.identity import DefaultAzureCredential
 from azure.servicebus import (
-    AutoLockRenewer,
     ServiceBusClient,
-    ServiceBusReceiveMode,
-    ServiceBusReceiver,
     ServiceBusSender,
 )
 
@@ -47,12 +44,4 @@ class ServiceBusClientFactory:
         self.logger.debug(
             "Creating message receiver client for queue '%s' with session_id '%s'", queue_name, session_id
         )
-        receiver: ServiceBusReceiver = self.servicebus_client.get_queue_receiver(
-            queue_name=queue_name,
-            session_id=session_id,
-            receive_mode=ServiceBusReceiveMode.PEEK_LOCK
-        )
-        if (receiver.session is not None):
-            lock_renewal = AutoLockRenewer(max_lock_renewal_duration=MAX_LOCK_RENEWAL_DURATION)
-            lock_renewal.register(receiver, receiver.session)
-        return MessageReceiverClient(receiver, session_id)
+        return MessageReceiverClient(self.servicebus_client, queue_name, session_id)
