@@ -108,7 +108,7 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         self._assert_shutdown(server, thread, health_check)
 
     def test_creates_queue_sender_client(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                         mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+                                         mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         mock_factory_instance = mock_factory.return_value
 
@@ -124,15 +124,19 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
 @patch.dict(os.environ, ENV_VARS_TOPIC)
 @patch("hl7_server.hl7_server_application.TCPHealthCheckServer")
-@patch("hl7_server.hl7_server_application.MLLPServer")
+@patch("hl7_server.hl7_server_application.SizeLimitedMLLPServer")
 @patch("hl7_server.hl7_server_application.ServiceBusClientFactory")
 @patch("hl7_server.hl7_server_application.threading.Thread")
 class TestHl7ServerApplicationTopic(unittest.TestCase):
     def setUp(self) -> None:
         self.app = Hl7ServerApplication()
 
-    def _setup_mocks(self, mock_thread: MagicMock, mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> tuple[
-        MagicMock, MagicMock, MagicMock]:
+    def _setup_mocks(
+        self,
+        mock_thread: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock
+    ) -> tuple[MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
         mock_health_instance = MagicMock()
@@ -148,7 +152,7 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         health_check.stop.assert_called_once()
 
     def test_creates_topic_sender_client(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                        mock_mllp_server: MLLPServer, mock_health_check: MagicMock) -> None:
+                                        mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         mock_factory_instance = mock_factory.return_value
 
