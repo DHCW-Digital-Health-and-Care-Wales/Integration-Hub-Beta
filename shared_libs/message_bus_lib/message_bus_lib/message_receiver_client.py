@@ -19,8 +19,15 @@ class MessageReceiverClient:
         self.session_id = session_id
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
+        self.next_retry_time: Optional[float] = None
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
+        if self.next_retry_time:
+            sleep_time = min(self.next_retry_time - time.time(), self.MAX_WAIT_TIME_SECONDS)
+            logger.debug("Sleeping for : %s before retry", sleep_time)
+            time.sleep(sleep_time)
+            if time.time() < self.next_retry_time:
+                return
 
         autolock_renewer = AutoLockRenewer() if self.session_id else None
         with self.sb_client.get_queue_receiver(
@@ -35,15 +42,33 @@ class MessageReceiverClient:
                 if is_success:
                     receiver.complete_message(msg)
                     logger.info("Message processed and completed: %s", msg.message_id)
+                    self._clear_retry_state()
                 else:
-                    logger.error("Message processing failed, message abandoned: %s", msg.message_id)
-                    receiver.abandon_message(msg)
-                    time.sleep(self.INITIAL_DELAY_SECONDS)
+                    self._abort_message_processing(receiver, msg)
+                    self._set_delay_before_retry(msg)
                     break
-            autolock_renewer.close() if autolock_renewer else None
+            autolock_renewer.close() if autolock_renewer
+
+    def _clear_retry_state(self):
+        self.retry_attempt = 0
+        self.delay = self.INITIAL_DELAY_SECONDS
+        self.next_retry_time = None
+
+    def _abort_message_processing(self, receiver, msg):
+        receiver.abandon_message(msg)
+        logger.error("Message processing failed, message abandoned: %s", msg.message_id)
+
+    def _set_delay_before_retry(self, msg):
+        self.next_retry_time = time.time() + self.delay
+        logger.error(
+                        "Processing failed , scheduled waiting for %d seconds before next attempt (%d) to retry message: %s",
+                        self.retry_attempt, self.delay, msg.message_id
+                    )
+        self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
+        self.retry_attempt += 1
 
     def close(self) -> None:
-        pass
+        logger.debug("ServiceBusReceiverClient closed.")
 
     def __enter__(self) -> 'MessageReceiverClient':
         return self
