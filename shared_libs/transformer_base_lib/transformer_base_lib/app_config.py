@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import configparser
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -35,6 +36,27 @@ class AppConfig:
         )
 
 
+@dataclass
+class TransformerConfig(AppConfig):    
+    MAX_BATCH_SIZE: int | None
+
+    @classmethod
+    def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
+        app_config = AppConfig.read_env_config()
+        
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        
+        MAX_BATCH_SIZE = None
+        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
+            MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
+        
+        return cls(
+            **asdict(app_config),
+            MAX_BATCH_SIZE=MAX_BATCH_SIZE
+        )
+
+
 def _read_env(name: str, required: bool = False) -> str | None:
     value = os.getenv(name)
     if required and (value is None or value.strip() == ""):
@@ -49,3 +71,5 @@ def _read_int_env(name: str, required: bool = False) -> int | None:
             raise RuntimeError(f"Missing required configuration: {name}")
         return None
     return int(value)
+
+

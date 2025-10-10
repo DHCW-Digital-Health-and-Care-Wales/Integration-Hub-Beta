@@ -1,6 +1,5 @@
+from field_utils_lib import get_hl7_field_value, set_nested_field
 from hl7apy.core import Message
-
-from ..utils.field_utils import get_hl7_field_value, set_nested_field
 
 HEALTH_BOARD_MAPPING = {
     "224": "VCC",

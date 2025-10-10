@@ -25,7 +25,7 @@ class MessageReceiverClient:
             messages = self.receiver.receive_messages(max_message_count=num_of_messages,
                                                       max_wait_time=self.MAX_WAIT_TIME_SECONDS)
 
-            for msg in messages:
+            for i, msg in enumerate(messages):
                 try:
                     is_success = message_processor(msg)
 
@@ -35,38 +35,35 @@ class MessageReceiverClient:
                         self.retry_attempt = 0
                         self.delay = self.INITIAL_DELAY_SECONDS
 
-                        if self.session_id is not None:
-                            self._renew_lock()
-
                     else:
-                        logger.error("Message processing failed, message abandoned: %s", msg.message_id)
-                        self._abandon_message_and_delay(msg)
+                        logger.error("Message processing failed, abandoning subsequent messages: %s", msg.message_id)
+                        self._abandon_messages_and_delay(messages[i:])
                         break
 
                 except Exception as e:
                     logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
-                    self._abandon_message_and_delay(msg)
+                    self._abandon_messages_and_delay(messages[i:])
                     break
 
             if self.retry_attempt == 0 or not messages:
                 break
 
-    def _abandon_message_and_delay(self, msg: ServiceBusReceivedMessage) -> None:
-        self.receiver.abandon_message(msg)
+    def _abandon_messages_and_delay(self, messages_to_abandon: list[ServiceBusReceivedMessage]) -> None:
+        for msg in messages_to_abandon:
+            self.receiver.abandon_message(msg)
+            logger.debug("Message abandoned: %s", msg.message_id)
+
         self.retry_attempt += 1
-        self._apply_backoff(msg)
+        message_id = messages_to_abandon[0].message_id or ""
+        self._apply_backoff(message_id)
         self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
 
-    def _apply_backoff(self, msg: ServiceBusMessage) -> None:
+    def _apply_backoff(self, message_id: str) -> None:
         logger.error(
             "Retry attempt %d, waiting for %d seconds before retrying message: %s",
-            self.retry_attempt, self.delay, msg.message_id
+            self.retry_attempt, self.delay, message_id
         )
         time.sleep(self.delay)
-
-    def _renew_lock(self) -> None:
-        self.receiver.session.renew_lock()
-        logger.debug("Session lock renewed.")
 
     def close(self) -> None:
         self.receiver.close()
