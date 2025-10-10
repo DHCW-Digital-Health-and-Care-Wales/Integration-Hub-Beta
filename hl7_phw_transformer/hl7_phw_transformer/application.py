@@ -38,19 +38,21 @@ def main() -> None:
         factory.create_queue_sender_client(
             app_config.egress_queue_name, app_config.egress_session_id
         ) as sender_client,
-        factory.create_message_receiver_client(
-            app_config.ingress_queue_name, app_config.ingress_session_id
-        ) as receiver_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
     ):
         logger.info("Processor started.")
         health_check_server.start()
 
         while processor_manager.is_running:
-            receiver_client.receive_messages(
-                MAX_BATCH_SIZE,
-                lambda message: _process_message(message, sender_client, event_logger),
-            )
+            with (
+                factory.create_message_receiver_client(
+                    app_config.ingress_queue_name, app_config.ingress_session_id
+                ) as receiver_client
+            ):
+                receiver_client.receive_messages(
+                    MAX_BATCH_SIZE,
+                    lambda message: _process_message(message, sender_client, event_logger),
+                )
 
 
 def _process_message(

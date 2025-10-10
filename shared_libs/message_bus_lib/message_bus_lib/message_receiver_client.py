@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class MessageReceiverClient:
     MAX_DELAY_SECONDS = 15 * 60 # 15 minutes
     INITIAL_DELAY_SECONDS = 5
-    MAX_WAIT_TIME_SECONDS = 5
+    MAX_WAIT_TIME_SECONDS = 300 # 5 minutes
 
     def __init__(self, receiver: ServiceBusReceiver, session_id: Optional[str] = None):
         self.receiver = receiver
@@ -24,6 +24,8 @@ class MessageReceiverClient:
         while True:
             messages = self.receiver.receive_messages(max_message_count=num_of_messages,
                                                       max_wait_time=self.MAX_WAIT_TIME_SECONDS)
+
+            logger.info("Received %d messages", len(messages))
 
             for msg in messages:
                 try:
@@ -45,7 +47,7 @@ class MessageReceiverClient:
                     self._abandon_message_and_delay(msg)
                     break
 
-            if self.retry_attempt == 0 or not messages:
+            if self.retry_attempt == 0:
                 break
 
     def _abandon_message_and_delay(self, msg: ServiceBusReceivedMessage) -> None:
@@ -62,6 +64,8 @@ class MessageReceiverClient:
         time.sleep(self.delay)
 
     def close(self) -> None:
+        if self.receiver._auto_lock_renewer:
+            self.receiver._auto_lock_renewer.close()
         self.receiver.close()
         logger.debug("ServiceBusReceiverClient closed.")
 
