@@ -67,7 +67,7 @@ class Hl7ServerApplication:
             "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             # Paris A40 message
             "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
-            # Chemocare messages
+            # Chemocare and MPI outbound messages
             "ADT^A31": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             "ADT^A28": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure

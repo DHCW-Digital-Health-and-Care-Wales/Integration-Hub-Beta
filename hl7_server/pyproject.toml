@@ -11,7 +11,8 @@ dependencies = [
   "message-bus-lib",
   "health-check-lib",
   "hl7_validation_lib",
-    "event-logger-lib",
+  "event-logger-lib",
+  "field-utils-lib"
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
 hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
 event-logger-lib = { path = "../shared_libs/event_logger_lib" }
+field-utils-lib = { path = "../shared_libs/field_utils_lib" }
 
 [tool.mypy]
 python_version = "3.13"
