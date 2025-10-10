@@ -131,6 +131,23 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseWEDSHL7ServerDev
+    displayName: 'Release App WEDS HL7Server - Dev'
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseWEDSAppHL7ServerDev'
+          displayName: 'Release App WEDS HL7Server - Dev'
+          appName: 'hl7server'
+          appFunctionMidfix: 'weds'
+          resourceGroupName: 'UK-South-DHCW-IntHub-DEV-RG'
+          azureLocation: $(azureLocation)
+          environment: 'dev'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerDev
     displayName: 'Release App HL7PhwTransformer - Dev'
     jobs:
@@ -333,6 +350,24 @@ stages:
           displayName: 'Release App MPI HL7Server - DTE'
           appName: 'hl7server'
           appFunctionMidfix: 'mpi'
+          resourceGroupName: $(dteResourceGroupName)
+          azureLocation: $(azureLocation)
+          environment: 'dte'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseWEDSHL7ServerDTE
+    displayName: 'Release App WEDS HL7Server - DTE'
+    dependsOn: ReleaseWEDSHL7ServerDev
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseWEDSAppHL7ServerDTE'
+          displayName: 'Release App WEDS HL7Server - DTE'
+          appName: 'hl7server'
+          appFunctionMidfix: 'weds'
           resourceGroupName: $(dteResourceGroupName)
           azureLocation: $(azureLocation)
           environment: 'dte'
@@ -558,6 +593,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseWEDSHL7ServerTest
+    displayName: 'Release App WEDS HL7Server - Test'
+    dependsOn: ReleaseWEDSHL7ServerDTE
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppWEDSHL7ServerTest'
+          displayName: 'Release App WEDS HL7Server - Test'
+          appName: 'hl7server'
+          appFunctionMidfix: 'weds'
+          resourceGroupName: 'UK-South-DHCW-IntHub-TST-RG'
+          azureLocation: $(azureLocation)
+          environment: 'tst'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerTest
     displayName: 'Release App HL7PhwTransformer - Test'
     dependsOn: ReleaseHL7PhwTransformerDTE
@@ -757,6 +810,24 @@ stages:
           POOL_NAME: ${{ parameters.POOL_SELECTION }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
+  - stage: ReleaseWEDSHL7ServerPreProd
+    displayName: 'Release App WEDS HL7Server - Pre-Prod'
+    dependsOn: ReleaseWEDSHL7ServerTest
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppWEDSHL7ServerPreProd'
+          displayName: 'Release App WEDS HL7Server - Pre-Prod'
+          appName: 'hl7server'
+          appFunctionMidfix: 'weds'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PPD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'ppd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
   - stage: ReleaseHL7PhwTransformerPreProd
     displayName: 'Release App HL7PhwTransformer - Pre-Prod'
     dependsOn: ReleaseHL7PhwTransformerTest
@@ -948,6 +1019,24 @@ stages:
           displayName: 'Release App MPI HL7Server - Production'
           appName: 'hl7server'
           appFunctionMidfix: 'mpi'
+          resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
+          azureLocation: $(azureLocation)
+          environment: 'prd'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
+
+  - stage: ReleaseWEDSHL7ServerProd
+    displayName: 'Release App WEDS HL7Server - Production'
+    dependsOn: ReleaseWEDSHL7ServerPreProd
+    jobs:
+      - template: templates/release-container-app-template.yml
+        parameters:
+          jobName: 'ReleaseAppWEDSHL7ServerProd'
+          displayName: 'Release App WEDS HL7Server - Production'
+          appName: 'hl7server'
+          appFunctionMidfix: 'weds'
           resourceGroupName: 'UK-South-DHCW-IntHub-PRD-RG'
           azureLocation: $(azureLocation)
           environment: 'prd'
