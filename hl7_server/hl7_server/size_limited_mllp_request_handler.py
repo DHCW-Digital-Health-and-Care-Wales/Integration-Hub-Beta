@@ -7,6 +7,8 @@ from hl7apy.mllp import MLLPRequestHandler
 
 logger = logging.getLogger(__name__)
 
+MAX_PARTIAL_MESSAGE_LOG_SIZE = 1000
+
 
 class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
     def handle(self) -> None:
@@ -16,7 +18,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         end_seq = self.eb + self.cr
         accumulated_data = b""
 
-        buffer_size = min(8192, max_message_size // 4)  # 8KB or 1/4 of max size, whichever is smaller
+        buffer_size = max(1024, min(8192, max_message_size // 4))  # 1KB-8KB range, or 1/4 of max size
 
         try:
             initial_data = self.request.recv(1)
@@ -100,7 +102,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
         if event_logger:
             try:
-                partial_message = accumulated_data.decode('utf-8', errors='ignore')[:1000]
+                partial_message = accumulated_data[:MAX_PARTIAL_MESSAGE_LOG_SIZE].decode('utf-8', errors='ignore')
                 event_logger.log_message_failed(
                     partial_message,
                     error_msg,

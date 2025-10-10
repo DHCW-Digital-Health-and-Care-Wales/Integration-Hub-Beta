@@ -29,7 +29,7 @@ class TestSizeLimitedMLLPServer(unittest.TestCase):
         }
 
     def test_server_initializes_with_provided_message_size_limit(self) -> None:
-        test_size_limit = 1000  # 1KB for testing
+        test_size_limit = 512000  # 500KB for testing
 
         server = SizeLimitedMLLPServer(
             self.test_host,
@@ -40,19 +40,6 @@ class TestSizeLimitedMLLPServer(unittest.TestCase):
         )
 
         self.assertEqual(server.max_message_size_bytes, test_size_limit)
-
-    def test_server_initialization_with_custom_size_limit(self) -> None:
-        custom_size = 512000  # 500KB
-
-        server = SizeLimitedMLLPServer(
-            self.test_host,
-            self.test_port + 1,
-            self.test_handlers,
-            max_message_size_bytes=custom_size,
-            event_logger=self.mock_event_logger
-        )
-
-        self.assertEqual(server.max_message_size_bytes, custom_size)
         self.assertEqual(server.event_logger, self.mock_event_logger)
 
 
