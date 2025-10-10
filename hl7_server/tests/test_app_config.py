@@ -103,7 +103,16 @@ class TestAppConfig(unittest.TestCase):
 
     @patch("hl7_server.app_config.os.getenv")
     def test_read_env_config_missing_required_field_raises_error(self, mock_getenv: Mock) -> None:
-        mock_getenv.return_value = None
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values: Dict[str, str] = {
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                # AUDIT_QUEUE_NAME intentionally omitted to test required field validation
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice"
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
 
         with self.assertRaises(RuntimeError) as context:
             AppConfig.read_env_config()
