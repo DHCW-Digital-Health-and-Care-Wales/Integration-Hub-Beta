@@ -5,13 +5,14 @@ description = "HL7v2 server"
 requires-python = ">=3.13"
 
 dependencies = [
-  "azure-servicebus==7.14.2",
-  "azure-identity==1.23.0",
-  "hl7apy==1.3.5",
-  "message-bus-lib",
-  "health-check-lib",
-  "hl7_validation_lib",
+    "azure-servicebus==7.14.2",
+    "azure-identity==1.23.0",
+    "hl7apy==1.3.5",
+    "message-bus-lib",
+    "health-check-lib",
+    "hl7_validation_lib",
     "event-logger-lib",
+    "metric-sender-lib"
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
 hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
 event-logger-lib = { path = "../shared_libs/event_logger_lib" }
+metric-sender-lib = { path = "../shared_libs/metric_sender_lib" }
 
 [tool.mypy]
 python_version = "3.13"
