@@ -10,6 +10,9 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
     return {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
         "UpdateSource": get_hl7_field_value(msg, "pid.pid_2.cx_4.hd_1"),
+        "AssigningAuthority": get_hl7_field_value(msg, "pid.pid_3.cx_4.hd_1"),
+        "DateDeath": get_hl7_field_value(msg, "pid.pid_29.ts_1"),
+        "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
     }
 
 

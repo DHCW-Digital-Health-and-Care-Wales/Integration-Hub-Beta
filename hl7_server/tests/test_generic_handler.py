@@ -12,7 +12,9 @@ VALID_A28_MESSAGE = (
 
 VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE = (
     "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A28^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
-    "PID|1|98765^^^108^MR||Doe^John\r"
+    "PID|1|98765^^^108^MR|1000000001^^^NHS^NH~BCUCC1000000001^^^212^PI||"
+    "TEST^TEST^T^^Mrs.||20000101000000|F|||TEST,^TEST^TEST TEST^^CF11 9AD||"
+    "01000 000 001|07000000001|||||||||||||||2023-01-15|||0\r"
 )
 
 INVALID_MPI_OUTBOUND_MESSAGE_TYPE = (
@@ -108,7 +110,13 @@ class TestGenericHandler(unittest.TestCase):
         mock_validate_flow_xml.assert_called_once()
         sender.send_text_message.assert_called_once_with(
             VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
-            {"MessageType": "A28", "UpdateSource": "108"},
+            {
+                "MessageType": "A28",
+                "UpdateSource": "108",
+                "AssigningAuthority": "NHS",
+                "DateDeath": "2023-01-15",
+                "ReasonDeath": "",
+            },
         )
 
     @patch("hl7_server.generic_handler.validate_er7_with_flow")
