@@ -102,6 +102,22 @@
               "RequiresSession": false
             }
           }
+        ],
+        "Topics": [
+          {
+            "Name": "mpihl7input",
+            "Subscriptions": [
+              {
+                "Name": "mpihl7input-test-subscription",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": false
+                }
+              }
+            ]
+          }
         ]
       }
     ],
