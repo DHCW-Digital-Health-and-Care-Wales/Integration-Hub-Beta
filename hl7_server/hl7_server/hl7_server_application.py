@@ -10,6 +10,7 @@ from hl7apy.mllp import MLLPServer
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from metric_sender_lib.metric_sender import MetricSender
 
 from hl7_server.hl7_validator import HL7Validator
 
@@ -28,6 +29,7 @@ class Hl7ServerApplication:
     def __init__(self) -> None:
         self.sender_client: MessageSenderClient = None
         self.event_logger: EventLogger = None
+        self.metric_sender: MetricSender = None
         self._server_thread: threading.Thread | None = None
         self.health_check_server: TCPHealthCheckServer = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
@@ -57,25 +59,31 @@ class Hl7ServerApplication:
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
+        self.metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id)
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
         flow_name = app_config.hl7_validation_flow
 
+        generic_handler_args = (
+            GenericHandler, self.sender_client, self.event_logger,
+            self.metric_sender, self.validator, flow_name
+        )
+
         handlers = {
-            "ADT^A31^ADT_A05": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
-            "ADT^A28^ADT_A05": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A31^ADT_A05": generic_handler_args,
+            "ADT^A28^ADT_A05": generic_handler_args,
             # Paris A40 message
-            "ADT^A40^ADT_A39": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A40^ADT_A39": generic_handler_args,
             # Chemocare messages
-            "ADT^A31": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
-            "ADT^A28": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A31": generic_handler_args,
+            "ADT^A28": generic_handler_args,
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure
-            "ADT^A40": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A40": generic_handler_args,
             # PIMS messages
-            "ADT^A04^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
-            "ADT^A08^ADT_A01": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
-            "ADT^A40^ADT_A40": (GenericHandler, self.sender_client, self.event_logger, self.validator, flow_name),
+            "ADT^A04^ADT_A01": generic_handler_args,
+            "ADT^A08^ADT_A01": generic_handler_args,
+            "ADT^A40^ADT_A40": generic_handler_args,
             "ERR": (ErrorHandler, self.event_logger),
         }
 
