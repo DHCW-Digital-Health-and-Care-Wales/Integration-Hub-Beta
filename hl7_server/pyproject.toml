@@ -12,7 +12,8 @@ dependencies = [
     "health-check-lib",
     "hl7_validation_lib",
     "event-logger-lib",
-    "metric-sender-lib"
+    "metric-sender-lib",
+    "field-utils-lib"
 ]
 
 [dependency-groups]
@@ -29,6 +30,7 @@ health-check-lib = { path = "../shared_libs/health_check_lib" }
 hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
 event-logger-lib = { path = "../shared_libs/event_logger_lib" }
 metric-sender-lib = { path = "../shared_libs/metric_sender_lib" }
+field-utils-lib = { path = "../shared_libs/field_utils_lib" }
 
 [tool.mypy]
 python_version = "3.13"

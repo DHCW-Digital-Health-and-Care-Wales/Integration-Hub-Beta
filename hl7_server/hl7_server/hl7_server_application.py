@@ -66,8 +66,12 @@ class Hl7ServerApplication:
         flow_name = app_config.hl7_validation_flow
 
         generic_handler_args = (
-            GenericHandler, self.sender_client, self.event_logger,
-            self.metric_sender, self.validator, flow_name
+            GenericHandler,
+            self.sender_client,
+            self.event_logger,
+            self.metric_sender,
+            self.validator,
+            flow_name,
         )
 
         handlers = {
@@ -75,7 +79,7 @@ class Hl7ServerApplication:
             "ADT^A28^ADT_A05": generic_handler_args,
             # Paris A40 message
             "ADT^A40^ADT_A39": generic_handler_args,
-            # Chemocare messages
+            # Chemocare messages and MPI Outbound
             "ADT^A31": generic_handler_args,
             "ADT^A28": generic_handler_args,
             # TODO no examples provided for Chemocare A40, but assuming similar message type structure

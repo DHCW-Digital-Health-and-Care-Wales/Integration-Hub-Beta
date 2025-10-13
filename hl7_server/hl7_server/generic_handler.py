@@ -1,16 +1,15 @@
 import logging
 
 from event_logger_lib.event_logger import EventLogger
-from hl7_validation import (
-    XmlValidationError,
-    validate_er7_with_flow,
-)
+from hl7_validation import XmlValidationError, validate_er7_with_flow
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
 from metric_sender_lib.metric_sender import MetricSender
+
+from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
@@ -67,7 +66,10 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
-            self._send_to_service_bus(message_control_id)
+            custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
+            custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
+
+            self._send_to_service_bus(message_control_id, custom_properties)
 
             ack_message = self.create_ack(message_control_id, msg)
 
@@ -102,9 +104,9 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str) -> None:
+    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str] | None) -> None:
         try:
-            self.sender_client.send_text_message(self.incoming_message)
+            self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
