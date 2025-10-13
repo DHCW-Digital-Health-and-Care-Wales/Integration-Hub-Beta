@@ -7,6 +7,7 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
+from metric_sender_lib.metric_sender import MetricSender
 
 from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS
 
@@ -22,18 +23,21 @@ class GenericHandler(AbstractHandler):
         msg: str,
         sender_client: MessageSenderClient,
         event_logger: EventLogger,
+        metric_sender: MetricSender,
         validator: HL7Validator,
         flow_name: str | None = None,
     ):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
         self.event_logger = event_logger
+        self.metric_sender = metric_sender
         self.validator = validator
         self.flow_name: str | None = flow_name
 
     def reply(self) -> str:
         try:
             self.event_logger.log_message_received(self.incoming_message)
+            self.metric_sender.send_message_received_metric()
 
             msg = parse_message(self.incoming_message, find_groups=False)
             message_control_id = msg.msh.msh_10.value

@@ -396,6 +396,7 @@ dependencies = [
     { name = "hl7-validation-lib" },
     { name = "hl7apy" },
     { name = "message-bus-lib" },
+    { name = "metric-sender-lib" },
 ]
 
 [package.dev-dependencies]
@@ -416,6 +417,7 @@ requires-dist = [
     { name = "hl7-validation-lib", directory = "../shared_libs/hl7_validation" },
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
+    { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
 ]
 
 [package.metadata.requires-dev]
@@ -584,6 +586,23 @@ dev = [
     { name = "mypy", specifier = "==1.15.0" },
     { name = "ruff", specifier = "==0.11.11" },
     { name = "uv-secure", extras = ["faster-async"], specifier = "==0.11.1" },
+]
+
+[[package]]
+name = "metric-sender-lib"
+version = "0.1.0"
+source = { directory = "../shared_libs/metric_sender_lib" }
+dependencies = [
+    { name = "azure-identity" },
+    { name = "azure-monitor-opentelemetry" },
+    { name = "setuptools" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "setuptools", specifier = "==80.9.0" },
 ]
 
 [[package]]

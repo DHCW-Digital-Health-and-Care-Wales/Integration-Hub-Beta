@@ -29,8 +29,11 @@ class TestGenericHandler(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_sender = MagicMock()
         self.mock_event_logger = MagicMock()
+        self.mock_metric_sender = MagicMock()
         self.validator = MagicMock()
-        self.handler = GenericHandler(VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.validator)
+        self.handler = GenericHandler(
+            VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, self.validator
+        )
 
     def test_valid_a28_message_returns_ack(self) -> None:
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
@@ -71,7 +74,7 @@ class TestGenericHandler(unittest.TestCase):
 
         validator = MagicMock()
         validator.validate = MagicMock(side_effect=exception)
-        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, validator)
+        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, validator)
 
         with self.assertRaises(ValidationException):
             handler.reply()
@@ -88,8 +91,6 @@ class TestGenericHandler(unittest.TestCase):
     def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
         self, mock_validate_flow_xml: MagicMock
     ) -> None:
-        sender = MagicMock()
-        event_logger = MagicMock()
         validator = HL7Validator(flow_name="mpi")
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
             mock_ack_instance = mock_builder.return_value
@@ -99,16 +100,17 @@ class TestGenericHandler(unittest.TestCase):
 
             handler = GenericHandler(
                 VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
-                sender,
-                event_logger,
-                validator,
+                self.mock_sender,
+                self.mock_event_logger,
+                self.mock_metric_sender,
                 flow_name="mpi",
+                validator=validator,
             )
 
             handler.reply()
 
         mock_validate_flow_xml.assert_called_once()
-        sender.send_text_message.assert_called_once_with(
+        self.mock_sender.send_text_message.assert_called_once_with(
             VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
             {
                 "MessageType": "A28",
@@ -128,25 +130,29 @@ class TestGenericHandler(unittest.TestCase):
 
         for name, message in exception_scenarios:
             with self.subTest(scenario=name):
-                sender = MagicMock()
-                event_logger = MagicMock()
                 validator = HL7Validator(flow_name="mpi")
 
                 handler = GenericHandler(
                     message,
-                    sender,
-                    event_logger,
-                    validator,
+                    self.mock_sender,
+                    self.mock_event_logger,
+                    self.mock_metric_sender,
                     flow_name="mpi",
+                    validator=validator,
                 )
 
                 with self.assertRaises(ValidationException):
                     handler.reply()
 
                 mock_validate_flow_xml.assert_not_called()
-                sender.send_text_message.assert_not_called()
+                self.mock_sender.send_text_message.assert_not_called()
 
                 mock_validate_flow_xml.reset_mock()
+
+    def test_metric_sent_on_message_received(self) -> None:
+        self.handler.reply()
+
+        self.mock_metric_sender.send_message_received_metric.assert_called_once()
 
 
 if __name__ == "__main__":
