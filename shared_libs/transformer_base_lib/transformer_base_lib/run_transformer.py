@@ -36,7 +36,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
     event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
     with (
-        factory.create_queue_sender_client(config.egress_queue_name) as sender_client,
+        factory.create_queue_sender_client(config.egress_queue_name, config.egress_session_id) as sender_client,
         factory.create_message_receiver_client(config.ingress_queue_name, config.ingress_session_id) as receiver_client,
         TCPHealthCheckServer(config.health_check_hostname, config.health_check_port) as health_check_server,
     ):
