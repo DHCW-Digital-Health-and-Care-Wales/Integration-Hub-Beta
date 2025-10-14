@@ -100,7 +100,7 @@ class MessageReceiverClient:
     def _set_delay_before_retry(self) -> None:
         self.next_retry_time = time.time() + self.delay
         logger.info(
-            "Scheduled waiting for %d seconds before next attempt (%d) to retry failes message",
+            "Scheduled waiting for %d seconds before next attempt (%d) to retry failed message",
             self.delay, self.retry_attempt
         )
         self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
