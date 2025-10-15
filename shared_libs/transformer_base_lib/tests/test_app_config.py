@@ -12,8 +12,9 @@ class TestAppConfig(unittest.TestCase):
             values = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "INGRESS_QUEUE_NAME": "queue",
-                "INGRESS_SESSION_ID": "session_id",
+                "INGRESS_SESSION_ID": "in_session_id",
                 "EGRESS_QUEUE_NAME": "topic",
+                "EGRESS_SESSION_ID": "out_session_id",
                 "SERVICE_BUS_NAMESPACE": "namespace",
                 "AUDIT_QUEUE_NAME": "audit_queue",
                 "WORKFLOW_ID": "workflow_id",
@@ -28,8 +29,9 @@ class TestAppConfig(unittest.TestCase):
         config = AppConfig.read_env_config()
         self.assertEqual(config.connection_string, "conn_str")
         self.assertEqual(config.ingress_queue_name, "queue")
-        self.assertEqual(config.ingress_session_id, "session_id")
+        self.assertEqual(config.ingress_session_id, "in_session_id")
         self.assertEqual(config.egress_queue_name, "topic")
+        self.assertEqual(config.egress_session_id, "out_session_id")
         self.assertEqual(config.service_bus_namespace, "namespace")
         self.assertEqual(config.audit_queue_name, "audit_queue")
         self.assertEqual(config.workflow_id, "workflow_id")
