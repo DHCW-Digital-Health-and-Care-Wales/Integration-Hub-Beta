@@ -18,28 +18,36 @@ log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+GENERIC_HANDLER_KEY = 'generic'
+ERROR_HANDLER_KEY = 'ERR'
+
 
 class CustomMLLPRequestHandler(MLLPRequestHandler):
 
     def _route_message(self, msg: Message) -> Any:
 
         try:
-            generic_handler_config = self.handlers.get('generic')
+            generic_handler_config = self.handlers.get(GENERIC_HANDLER_KEY)
             if not generic_handler_config:
-                raise ValueError("Generic handler configuration not found in handlers")
+                raise ValueError(f"{GENERIC_HANDLER_KEY} handler configuration not found in handlers")
 
             handler_class, *handler_args = generic_handler_config
-
             handler = self._create_handler(handler_class, msg, handler_args)
 
             return handler.reply()
         except Exception as e:
             logger.error("Error routing message: %s", e)
             try:
-                err_handler, args = self.handlers['ERR'][0], self.handlers['ERR'][1:]
+                err_handler_config = self.handlers.get(ERROR_HANDLER_KEY)
+                if not err_handler_config:
+                    logger.error("Error handler configuration not found")
+                    raise e
+
+                err_handler, *args = err_handler_config
                 h = self._create_error_handler(err_handler, e, msg, args)
                 return h.reply()
-            except KeyError:
+            except (KeyError, IndexError) as handler_error:
+                logger.error("Error handler not configured properly: %s", handler_error)
                 raise e
 
 
@@ -69,8 +77,8 @@ class Hl7MockReceiver:
         )
 
         handlers = {
-            'generic': (GenericHandler, self.sender_client),
-            'ERR': (ErrorHandler,),
+            GENERIC_HANDLER_KEY: (GenericHandler, self.sender_client),
+            ERROR_HANDLER_KEY: (ErrorHandler,),
         }
 
         try:
