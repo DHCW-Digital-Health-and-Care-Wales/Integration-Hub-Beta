@@ -30,7 +30,7 @@ class AppConfig:
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
-            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
+            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=False),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
             microservice_id=_read_env("MICROSERVICE_ID", required=True),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),

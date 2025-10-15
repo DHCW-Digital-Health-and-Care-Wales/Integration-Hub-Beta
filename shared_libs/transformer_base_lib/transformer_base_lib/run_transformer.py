@@ -57,7 +57,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                config.MAX_BATCH_SIZE,
+                config.MAX_BATCH_SIZE or 1,
                 message_processor,
             )
 
