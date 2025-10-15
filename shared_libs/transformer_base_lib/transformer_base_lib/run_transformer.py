@@ -28,7 +28,19 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
         raise TypeError("transformer must be an instance of BaseTransformer")
 
     processor_manager = ProcessorManager()
-    config = TransformerConfig.from_env_and_config_file(transformer.config_path)
+
+    config_path = transformer.config_path
+    if config_path is not None:
+        logger.debug(
+            f"{transformer.transformer_name} Transformer - Loading configuration from {config_path} "
+            f"(exists={os.path.exists(config_path)})"
+        )
+    else:
+        logger.debug(
+            f"{transformer.transformer_name} Transformer - No configuration path provided"
+        )
+
+    config = TransformerConfig.from_env_and_config_file(config_path)
 
     client_config = ConnectionConfig(
         config.connection_string, config.service_bus_namespace
@@ -47,6 +59,14 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
             config.health_check_hostname, config.health_check_port
         ) as health_check_server,
     ):
+        # Fallback to batch size of 1 if not configured to stop the reconnection loop
+        batch_size = config.MAX_BATCH_SIZE or 1
+
+        logger.info(
+            f"{transformer.transformer_name} Transformer initialised with max_batch_size={batch_size} "
+            f"(the parsed max_batch_size config value={config.MAX_BATCH_SIZE})"
+        )
+
         logger.info(f"{transformer.transformer_name} Transformer processor started.")
         health_check_server.start()
 
@@ -64,6 +84,6 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                config.MAX_BATCH_SIZE or 1,
+                batch_size,
                 message_processor,
             )
