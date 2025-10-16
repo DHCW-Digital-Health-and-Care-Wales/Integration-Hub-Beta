@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import configparser
+import logging
 import os
 from dataclasses import asdict, dataclass
 
@@ -39,20 +40,28 @@ class AppConfig:
 
 
 @dataclass
-class TransformerConfig(AppConfig):    
+class TransformerConfig(AppConfig):
     MAX_BATCH_SIZE: int | None
 
     @classmethod
     def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
+        logger = logging.getLogger(__name__)
         app_config = AppConfig.read_env_config()
-        
+
         config = configparser.ConfigParser()
         config.read(config_path)
-        
-        MAX_BATCH_SIZE = None
-        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
-            MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
-        
+        logger.debug(f"Config file read from {config_path}")
+
+        MAX_BATCH_SIZE = 1  # Default fallback value
+        if config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
+            try:
+                MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
+                logger.debug(f"MAX_BATCH_SIZE set to {MAX_BATCH_SIZE} from config file")
+            except ValueError as e:
+                logger.warning(f"Failed to parse MAX_BATCH_SIZE from config file, using default value of 1: {e}")
+        else:
+            logger.debug("MAX_BATCH_SIZE not found in config file, using default value of 1")
+
         return cls(
             **asdict(app_config),
             MAX_BATCH_SIZE=MAX_BATCH_SIZE
