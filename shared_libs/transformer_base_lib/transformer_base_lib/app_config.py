@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import configparser
+import logging
 import os
 from dataclasses import asdict, dataclass
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,14 +44,26 @@ class AppConfig:
 
 @dataclass
 class TransformerConfig(AppConfig):
-    MAX_BATCH_SIZE: int | None
+    MAX_BATCH_SIZE: int
 
     @classmethod
     def from_env_and_config_file(cls, config_path: str | None) -> "TransformerConfig":
         app_config = AppConfig.read_env_config()
 
         config = configparser.ConfigParser()
-        MAX_BATCH_SIZE = None
+        # MAX_BATCH_SIZE defaults to 1 when not configured to stop the reconnection loop
+        MAX_BATCH_SIZE = 1
+
+        if config_path:
+            logger.debug(
+                "Loading transformer configuration from %s (exists=%s)",
+                config_path,
+                os.path.exists(config_path),
+            )
+        else:
+            logger.debug(
+                "No configuration path provided; using environment configuration only"
+            )
 
         if config_path and os.path.exists(config_path):
             config.read(config_path)
