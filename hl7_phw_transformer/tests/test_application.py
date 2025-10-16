@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
+from transformer_base_lib.app_config import AppConfig as BaseAppConfig
 from transformer_base_lib.message_processor import process_message
 
-from hl7_phw_transformer.app_config import AppConfig
 from hl7_phw_transformer.application import main
 from hl7_phw_transformer.phw_transformer import PhwTransformer
 
@@ -167,8 +167,6 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_event_logger: MagicMock
     ) -> None:
         # Arrange
-        from transformer_base_lib.app_config import AppConfig as BaseAppConfig
-
         # Create proper context manager mocks for all clients
         mock_health_server = MagicMock()
         mock_health_check.return_value.__enter__ = MagicMock(return_value=mock_health_server)
@@ -179,10 +177,14 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_receiver_client = MagicMock()
         mock_factory_instance = MagicMock()
         mock_factory.return_value = mock_factory_instance
-        mock_factory_instance.create_queue_sender_client.return_value.__enter__ = MagicMock(return_value=mock_sender_client)
-        mock_factory_instance.create_queue_sender_client.return_value.__exit__ = MagicMock(return_value=None)
-        mock_factory_instance.create_message_receiver_client.return_value.__enter__ = MagicMock(return_value=mock_receiver_client)
-        mock_factory_instance.create_message_receiver_client.return_value.__exit__ = MagicMock(return_value=None)
+        sender_ctx_mgr = MagicMock()
+        sender_ctx_mgr.__enter__ = MagicMock(return_value=mock_sender_client)
+        sender_ctx_mgr.__exit__ = MagicMock(return_value=None)
+        mock_factory_instance.create_queue_sender_client.return_value = sender_ctx_mgr
+        receiver_ctx_mgr = MagicMock()
+        receiver_ctx_mgr.__enter__ = MagicMock(return_value=mock_receiver_client)
+        receiver_ctx_mgr.__exit__ = MagicMock(return_value=None)
+        mock_factory_instance.create_message_receiver_client.return_value = receiver_ctx_mgr
         mock_receiver_client.receive_messages = MagicMock()
 
         # Mock the base AppConfig to return proper values
