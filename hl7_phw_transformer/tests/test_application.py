@@ -156,23 +156,46 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.assertFalse(result)
 
     @patch("hl7_phw_transformer.application.EventLogger")
-    @patch("hl7_phw_transformer.application.AppConfig")
-    @patch("hl7_phw_transformer.application.ServiceBusClientFactory")
-    @patch("hl7_phw_transformer.application.TCPHealthCheckServer")
+    @patch("transformer_base_lib.app_config.AppConfig.read_env_config")
+    @patch("transformer_base_lib.run_transformer.ServiceBusClientFactory")
+    @patch("transformer_base_lib.run_transformer.TCPHealthCheckServer")
     def test_health_check_server_starts_and_stops(
         self,
         mock_health_check: MagicMock,
         mock_factory: MagicMock,
-        mock_app_config: MagicMock,
+        mock_read_env_config: MagicMock,
         mock_event_logger: MagicMock
     ) -> None:
         # Arrange
+        from transformer_base_lib.app_config import AppConfig as BaseAppConfig
+
+        # Create proper context manager mocks for all clients
         mock_health_server = MagicMock()
-        mock_health_check_ctx = MagicMock()
-        mock_health_check_ctx.__enter__.return_value = mock_health_server
-        mock_health_check.return_value = mock_health_check_ctx
-        mock_app_config.read_env_config.return_value = AppConfig(
-            None, "ingress_queue", None, "egress_queue", None, None, None, "workflow_id", "microservice_id",
+        mock_health_check.return_value.__enter__ = MagicMock(return_value=mock_health_server)
+        mock_health_check.return_value.__exit__ = MagicMock(return_value=None)
+
+        # Mock sender and receiver clients context managers
+        mock_sender_client = MagicMock()
+        mock_receiver_client = MagicMock()
+        mock_factory_instance = MagicMock()
+        mock_factory.return_value = mock_factory_instance
+        mock_factory_instance.create_queue_sender_client.return_value.__enter__ = MagicMock(return_value=mock_sender_client)
+        mock_factory_instance.create_queue_sender_client.return_value.__exit__ = MagicMock(return_value=None)
+        mock_factory_instance.create_message_receiver_client.return_value.__enter__ = MagicMock(return_value=mock_receiver_client)
+        mock_factory_instance.create_message_receiver_client.return_value.__exit__ = MagicMock(return_value=None)
+        mock_receiver_client.receive_messages = MagicMock()
+
+        # Mock the base AppConfig to return proper values
+        mock_read_env_config.return_value = BaseAppConfig(
+            connection_string="connection_string",
+            ingress_queue_name="ingress_queue",
+            ingress_session_id=None,
+            egress_queue_name="egress_queue",
+            egress_session_id=None,
+            service_bus_namespace="service_bus_namespace",
+            audit_queue_name=None,
+            workflow_id="workflow_id",
+            microservice_id="microservice_id",
             health_check_hostname="localhost",
             health_check_port=9000,
         )
@@ -188,7 +211,7 @@ class TestProcessPhwMessage(unittest.TestCase):
             # Assert
             mock_health_check.assert_called_once_with("localhost", 9000)
             mock_health_server.start.assert_called_once()
-            mock_health_check_ctx.__exit__.assert_called_once()
+            mock_health_check.return_value.__exit__.assert_called_once()
 
 
 if __name__ == "__main__":
