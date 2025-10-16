@@ -1,7 +1,7 @@
 import logging
 import os
 
-from .pims_transformer import PimsTransformer
+from .pims_transformer import PimsTransformer, transform_pims_message
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)

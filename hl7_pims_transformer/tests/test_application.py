@@ -51,7 +51,7 @@ class TestProcessPimsMessage(unittest.TestCase):
             health_check_port=9000,
         )
 
-    @patch("hl7_pims_transformer.application.transform_pims_message")
+    @patch("hl7_pims_transformer.pims_transformer.transform_pims_message")
     def test_process_message_successfully_sends_message(self, mock_transform_pims: Any) -> None:
         mock_transform_pims.return_value = self.mock_transformed_message
         expected_message = self.mock_transformed_message.to_er7.return_value
@@ -63,11 +63,11 @@ class TestProcessPimsMessage(unittest.TestCase):
         self.mock_sender.send_message.assert_called_once_with(expected_message)
         self.mock_event_logger.log_message_received.assert_called_once()
         self.mock_event_logger.log_message_processed.assert_called_once_with(
-            self.hl7_string, "PIMS transformation applied"
+            self.hl7_string, "PIMS transformation applied for SENDING_APP: PIMS"
         )
         self.mock_event_logger.log_message_failed.assert_not_called()
 
-    @patch("hl7_pims_transformer.application.transform_pims_message")
+    @patch("hl7_pims_transformer.pims_transformer.transform_pims_message")
     def test_process_message_transform_failure(self, mock_transform_pims: Any) -> None:
         error_reason = "Invalid segment mapping"
         mock_transform_pims.side_effect = ValueError(error_reason)
@@ -77,7 +77,7 @@ class TestProcessPimsMessage(unittest.TestCase):
         self.assertFalse(result)
         self.mock_sender.send_message.assert_not_called()
 
-    @patch("hl7_pims_transformer.application.transform_pims_message")
+    @patch("hl7_pims_transformer.pims_transformer.transform_pims_message")
     def test_process_message_audit_logging_failure(self, mock_transform_pims: Any) -> None:
         error_reason = "Invalid segment mapping"
         mock_transform_pims.side_effect = ValueError(error_reason)
@@ -94,7 +94,7 @@ class TestProcessPimsMessage(unittest.TestCase):
         )
         self.mock_event_logger.log_message_processed.assert_not_called()
 
-    @patch("hl7_pims_transformer.application.transform_pims_message")
+    @patch("hl7_pims_transformer.pims_transformer.transform_pims_message")
     def test_process_message_unexpected_error(self, mock_transform_pims: Any) -> None:
         error_reason = "Unexpected database connection error"
         mock_transform_pims.side_effect = Exception(error_reason)
