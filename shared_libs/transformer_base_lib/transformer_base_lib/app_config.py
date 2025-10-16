@@ -6,6 +6,9 @@ import os
 from dataclasses import asdict, dataclass
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class AppConfig:
     connection_string: str | None
@@ -82,5 +85,3 @@ def _read_int_env(name: str, required: bool = False) -> int | None:
             raise RuntimeError(f"Missing required configuration: {name}")
         return None
     return int(value)
-
-
