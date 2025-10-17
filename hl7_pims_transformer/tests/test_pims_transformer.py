@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from field_utils_lib import get_hl7_field_value
 from hl7apy.parser import parse_message
 
 from hl7_pims_transformer.pims_transformer import transform_pims_message
-from hl7_pims_transformer.utils.field_utils import get_hl7_field_value
 from tests.pims_messages import pims_messages
 
 
