@@ -1,10 +1,10 @@
 import unittest
 
+from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
 from hl7_pims_transformer.mappers.pd1_mapper import map_pd1
-from hl7_pims_transformer.utils.field_utils import get_hl7_field_value
 
 
 class TestPD1Mapper(unittest.TestCase):

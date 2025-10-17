@@ -1,6 +1,6 @@
 from hl7apy.core import Message
 
-from ..utils.field_utils import is_a04_or_a08_trigger_event
+from ..utils.message_utils import is_a04_or_a08_trigger_event
 
 
 def map_pv1(original_hl7_message: Message, new_message: Message) -> None:
