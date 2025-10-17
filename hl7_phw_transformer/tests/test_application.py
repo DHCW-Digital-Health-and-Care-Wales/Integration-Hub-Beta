@@ -36,8 +36,8 @@ class TestProcessPhwMessage(unittest.TestCase):
             "failed_audit_text": "PHW transformation failed",
         }
 
-    @patch("hl7_phw_transformer.phw_transformer.transform_datetime")
-    @patch("hl7_phw_transformer.phw_transformer.transform_date_of_death")
+    @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
+    @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
     def test_process_message_success(
         self,
         mock_transform_dod: MagicMock,
@@ -71,8 +71,8 @@ class TestProcessPhwMessage(unittest.TestCase):
             audit_message,
         )
 
-    @patch("hl7_phw_transformer.phw_transformer.transform_datetime")
-    @patch("hl7_phw_transformer.phw_transformer.transform_date_of_death")
+    @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
+    @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
     def test_process_message_with_valid_date_of_death(
         self,
         mock_transform_dod: MagicMock,
@@ -109,7 +109,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_transform_dod.assert_called_once_with(valid_dod)
         self.assertTrue(result)
 
-    @patch("hl7_phw_transformer.phw_transformer.transform_datetime")
+    @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
     def test_process_message_failure_due_to_transform(
         self,
         mock_transform_datetime: MagicMock

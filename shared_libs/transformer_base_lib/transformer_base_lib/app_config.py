@@ -44,18 +44,21 @@ class AppConfig:
 
 @dataclass
 class TransformerConfig(AppConfig):
-    MAX_BATCH_SIZE: int | None
+    MAX_BATCH_SIZE: int
 
     @classmethod
     def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
         logger = logging.getLogger(__name__)
         app_config = AppConfig.read_env_config()
 
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config file not found at path: {config_path}")
+
         config = configparser.ConfigParser()
         config.read(config_path)
         logger.debug(f"Config file read from {config_path}")
 
-        MAX_BATCH_SIZE = 1  # Default fallback value
+        MAX_BATCH_SIZE = 1
         if config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
             try:
                 MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
