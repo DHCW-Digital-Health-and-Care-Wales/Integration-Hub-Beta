@@ -8,7 +8,7 @@ def map_pid(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
     segment_names = [s.name for s in original_msg.children]
     if 'PID' not in segment_names:
         return None
-    
+
     pid_segment = original_msg.pid
     new_pid = new_msg.add_segment("PID")
 

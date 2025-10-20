@@ -10,9 +10,12 @@ from hl7_phw_transformer.mappers.additional_segment_mapper import map_non_specif
 class TestAdditionalSegmentMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|"
+            "202505052323364444444444|P|2.5|||||GBR||EN\r"
             "EVN||20250502092900|20250505232332|||20250505232332\r"
-            "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||^^^~|||||||||||||||||||01\r"
+            "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||"
+            "19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||"
+            "^^^~|||||||||||||||||||01\r"
             "PD1|||^^W00000^|G999999\r"
             "PV1||U\r"
         )
@@ -28,10 +31,10 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
         self.assertTrue(hasattr(self.new_message, 'evn'))
         self.assertTrue(hasattr(self.new_message, 'pd1'))
         self.assertTrue(hasattr(self.new_message, 'pv1'))
-        
+
         evn = self.new_message.evn
         self.assertEqual(get_hl7_field_value(evn, "evn_2"), "20250502092900")
-        
+
         pv1 = self.new_message.pv1
         self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "U")
 
@@ -72,7 +75,8 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
 
     def test_map_non_specific_segments_empty_message(self) -> None:
         minimal_message = parse_message(
-            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|"
+            "202505052323364444444444|P|2.5|||||GBR||EN\r"
             'PID|||8888888^^^252^PI||MYSURNAME^MYFNAME\r'
         )
         new_message = Message(version="2.5")
