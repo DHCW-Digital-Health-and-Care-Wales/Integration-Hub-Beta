@@ -87,6 +87,7 @@ class Hl7ServerApplication:
             # PIMS messages
             "ADT^A04^ADT_A01": generic_handler_args,
             "ADT^A08^ADT_A01": generic_handler_args,
+            "ADT^A28^ADT_A01": generic_handler_args,
             "ADT^A40^ADT_A40": generic_handler_args,
             "ERR": (ErrorHandler, self.event_logger),
         }
