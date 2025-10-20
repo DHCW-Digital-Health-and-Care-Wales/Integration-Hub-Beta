@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from field_utils_lib.field_utils import get_hl7_field_value, set_nested_field
+from field_utils_lib.field_utils import get_hl7_field_value, set_nested_field, copy_segment_fields_in_range
 
 
 class TestGetHl7FieldValue(unittest.TestCase):
@@ -116,6 +116,92 @@ class TestSetNestedField(unittest.TestCase):
         result = set_nested_field(source_obj, target_obj, "none_field")
         
         self.assertFalse(result)
+
+
+class TestCopySegmentFieldsInRange(unittest.TestCase):
+    def test_copy_segment_fields_in_range_single_field(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        source_field = MagicMock()
+        source_field.value = "test_value"
+        source_segment.msh_3 = source_field
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=3)
+        
+        self.assertEqual(target_segment.msh_3, source_field)
+
+    def test_copy_segment_fields_in_range_multiple_fields(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        for i in range(3, 6):
+            field = MagicMock()
+            field.value = f"value_{i}"
+            setattr(source_segment, f"msh_{i}", field)
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=5)
+        
+        for i in range(3, 6):
+            self.assertEqual(getattr(target_segment, f"msh_{i}"), getattr(source_segment, f"msh_{i}"))
+
+    def test_copy_segment_fields_in_range_inclusive_end(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        for i in range(1, 40):
+            field = MagicMock()
+            field.value = f"pid_{i}"
+            setattr(source_segment, f"pid_{i}", field)
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "pid", start=1, end=39)
+        
+        self.assertEqual(getattr(target_segment, "pid_1"), getattr(source_segment, "pid_1"))
+        self.assertEqual(getattr(target_segment, "pid_39"), getattr(source_segment, "pid_39"))
+
+    def test_copy_segment_fields_in_range_skips_missing_fields(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        source_field = MagicMock()
+        source_field.value = "value_3"
+        source_segment.msh_3 = source_field
+        
+        del source_segment.msh_4
+        del source_segment.msh_5
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=5)
+        
+        self.assertEqual(target_segment.msh_3, source_field)
+
+    def test_copy_segment_fields_in_range_large_range(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        # Setup source fields
+        for i in range(1, 40):
+            field = MagicMock()
+            field.value = f"pid_{i}"
+            setattr(source_segment, f"pid_{i}", field)
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "pid", start=1, end=39)
+        
+        for i in range(1, 40):
+            self.assertEqual(getattr(target_segment, f"pid_{i}"), getattr(source_segment, f"pid_{i}"))
+
+    def test_copy_segment_fields_in_range_msh_13_to_21(self):
+        source_segment = MagicMock()
+        target_segment = MagicMock()
+        
+        for i in range(13, 22):
+            field = MagicMock()
+            field.value = f"msh_{i}"
+            setattr(source_segment, f"msh_{i}", field)
+        
+        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=13, end=21)
+        
+        for i in range(13, 22):
+            self.assertEqual(getattr(target_segment, f"msh_{i}"), getattr(source_segment, f"msh_{i}"))
 
 
 if __name__ == '__main__':
