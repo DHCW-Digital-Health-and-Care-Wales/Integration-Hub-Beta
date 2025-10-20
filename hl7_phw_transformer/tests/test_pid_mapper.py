@@ -96,7 +96,9 @@ class TestPIDMapper(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_map_pid_no_pid_segment(self) -> None:
-        original_message = parse_message("MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r")
+        original_message = parse_message(
+            "MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
+        )
         new_message = Message(version="2.5")
 
         result = map_pid(original_message, new_message)
