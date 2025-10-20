@@ -10,10 +10,11 @@ from hl7_phw_transformer.mappers.pid_mapper import map_pid
 class TestPIDMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
-            'PID|||^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
-            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
-            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||2024-12-31\r"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
+            "EVN||20250502092900|20250505232332|||20250505232332\r"
+            "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||^^^~||||||||||||||||2024-12-31|||01\r"
+            "PD1|||^^W00000^|G999999\r"
+            "PV1||U\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
@@ -97,15 +98,15 @@ class TestPIDMapper(unittest.TestCase):
 
     def test_map_pid_no_pid_segment(self) -> None:
         original_message = parse_message(
-            "MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
         )
         new_message = Message(version="2.5")
 
         result = map_pid(original_message, new_message)
 
-        # Should return None and not add PID segment to new message
         self.assertIsNone(result)
-        self.assertFalse(hasattr(new_message, 'pid'))
+        segments = [s.name for s in new_message.children]
+        self.assertEqual(segments, ['MSH'])
 
 
 if __name__ == "__main__":

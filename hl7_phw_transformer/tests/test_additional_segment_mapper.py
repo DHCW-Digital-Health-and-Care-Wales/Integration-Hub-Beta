@@ -10,13 +10,11 @@ from hl7_phw_transformer.mappers.additional_segment_mapper import map_non_specif
 class TestAdditionalSegmentMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
-            'PID|||^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
-            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
-            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||2024-12-31\r"
-            "PV1||I|WARD01^BEDS01^1||||123456^DOCTOR^JOHN^^^^DR||456789^NURSE^JANE^^^^RN|||||||ADM|||2024-12-31\r"
-            "OBR|1|||12345^CHEST X-RAY||2024-12-31|||||||||789012^TECH^RADIOLOGY^^^^TECH\r"
-            "OBX|1|ST|OBS001^OBSERVATION||NORMAL||N|||F||||2024-12-31\r"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
+            "EVN||20250502092900|20250505232332|||20250505232332\r"
+            "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||^^^~|||||||||||||||||||01\r"
+            "PD1|||^^W00000^|G999999\r"
+            "PV1||U\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
@@ -24,66 +22,65 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
     def test_map_non_specific_segments_copies_additional_segments(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
-        # Should copy PV1, OBR, OBX segments but not MSH or PID
-        self.assertFalse(hasattr(self.new_message, 'msh'))
-        self.assertFalse(hasattr(self.new_message, 'pid'))
+        segments = [s.name for s in self.new_message.children]
+        self.assertNotIn('PID', segments)
 
+        self.assertTrue(hasattr(self.new_message, 'evn'))
+        self.assertTrue(hasattr(self.new_message, 'pd1'))
         self.assertTrue(hasattr(self.new_message, 'pv1'))
+        
+        evn = self.new_message.evn
+        self.assertEqual(get_hl7_field_value(evn, "evn_2"), "20250502092900")
+        
         pv1 = self.new_message.pv1
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_1"), "1")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_3.xon_1"), "WARD01")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_3.xon_2"), "BEDS01")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_3.xon_3"), "1")
+        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "U")
 
-    def test_map_non_specific_segments_copies_obr_segment(self) -> None:
+    def test_map_non_specific_segments_copies_pd1_segment(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
-        self.assertTrue(hasattr(self.new_message, 'obr'))
-        obr = self.new_message.obr
-        self.assertEqual(get_hl7_field_value(obr, "obr_1"), "1")
-        self.assertEqual(get_hl7_field_value(obr, "obr_4.ce_1"), "12345")
-        self.assertEqual(get_hl7_field_value(obr, "obr_4.ce_2"), "CHEST X-RAY")
+        self.assertTrue(hasattr(self.new_message, 'pd1'))
+        pd1 = self.new_message.pd1
+        self.assertEqual(get_hl7_field_value(pd1, "pd1_4"), "G999999")
 
-    def test_map_non_specific_segments_copies_obx_segment(self) -> None:
+    def test_map_non_specific_segments_copies_evn_segment(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
-        self.assertTrue(hasattr(self.new_message, 'obx'))
-        obx = self.new_message.obx
-        self.assertEqual(get_hl7_field_value(obx, "obx_1"), "1")
-        self.assertEqual(get_hl7_field_value(obx, "obx_2"), "ST")
-        self.assertEqual(get_hl7_field_value(obx, "obx_3.ce_1"), "OBS001")
-        self.assertEqual(get_hl7_field_value(obx, "obx_3.ce_2"), "OBSERVATION")
-        self.assertEqual(get_hl7_field_value(obx, "obx_5"), "NORMAL")
+        self.assertTrue(hasattr(self.new_message, 'evn'))
+        evn = self.new_message.evn
+        self.assertEqual(get_hl7_field_value(evn, "evn_2"), "20250502092900")
+        self.assertEqual(get_hl7_field_value(evn, "evn_3"), "20250505232332")
+        self.assertEqual(get_hl7_field_value(evn, "evn_6"), "20250505232332")
 
     def test_map_non_specific_segments_skips_empty_fields(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
         pv1 = self.new_message.pv1
-        self.assertEqual(get_hl7_field_value(self.original_message.pv1, "pv1_2"), "")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "")
+        self.assertEqual(get_hl7_field_value(self.original_message.pv1, "pv1_1"), "")
+        self.assertEqual(get_hl7_field_value(pv1, "pv1_1"), "")
 
     def test_map_non_specific_segments_handles_multiple_segments(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
         segments = [segment.name for segment in self.new_message.children]
+        self.assertIn('EVN', segments)
+        self.assertIn('PD1', segments)
         self.assertIn('PV1', segments)
-        self.assertIn('OBR', segments)
-        self.assertIn('OBX', segments)
 
         non_msh_pid_segments = [s for s in self.original_message.children if s.name not in ['MSH', 'PID']]
-        self.assertEqual(len([s for s in self.new_message.children]), len(non_msh_pid_segments))
+        expected_count = 1 + len(non_msh_pid_segments)  # 1 for auto-created MSH
+        self.assertEqual(len([s for s in self.new_message.children]), expected_count)
 
     def test_map_non_specific_segments_empty_message(self) -> None:
         minimal_message = parse_message(
-            "MSH|^~\\&|PHW|PHW HL7Sender|EMPI|EMPI|2024-12-31 10:10:53||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
-            'PID|||12345||TESTER^TEST\r'
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444444444|P|2.5|||||GBR||EN\r"
+            'PID|||8888888^^^252^PI||MYSURNAME^MYFNAME\r'
         )
         new_message = Message(version="2.5")
 
         map_non_specific_segments(minimal_message, new_message)
 
-        self.assertEqual(len([s for s in new_message.children]), 0)
+        self.assertEqual(len([s for s in new_message.children]), 1)
+        self.assertEqual(new_message.children[0].name, 'MSH')
 
 
 if __name__ == "__main__":
