@@ -22,25 +22,45 @@ logger = logging.getLogger(__name__)
 
 
 def run_transformer_app(transformer: BaseTransformer) -> None:
-    
     from .base_transformer import BaseTransformer
-    
+
     if not isinstance(transformer, BaseTransformer):
         raise TypeError("transformer must be an instance of BaseTransformer")
-    
+
     processor_manager = ProcessorManager()
+
     config = TransformerConfig.from_env_and_config_file(transformer.config_path)
-    
-    client_config = ConnectionConfig(config.connection_string, config.service_bus_namespace)
+
+    client_config = ConnectionConfig(
+        config.connection_string, config.service_bus_namespace
+    )
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
     with (
-        factory.create_queue_sender_client(config.egress_queue_name, config.egress_session_id) as sender_client,
-        factory.create_message_receiver_client(config.ingress_queue_name, config.ingress_session_id) as receiver_client,
-        TCPHealthCheckServer(config.health_check_hostname, config.health_check_port) as health_check_server,
+        factory.create_queue_sender_client(
+            config.egress_queue_name, config.egress_session_id
+        ) as sender_client,
+        factory.create_message_receiver_client(
+            config.ingress_queue_name, config.ingress_session_id
+        ) as receiver_client,
+        TCPHealthCheckServer(
+            config.health_check_hostname, config.health_check_port
+        ) as health_check_server,
     ):
-        logger.info(f"{transformer.transformer_name} Transformer processor started.")
+        batch_size = config.MAX_BATCH_SIZE
+
+        logger.info(
+            "%s Transformer initialised with max_batch_size=%s (the parsed max_batch_size config value=%s)",
+            transformer.transformer_name,
+            batch_size,
+            config.MAX_BATCH_SIZE,
+        )
+
+        logger.info(
+            "%s Transformer processor started.",
+            transformer.transformer_name,
+        )
         health_check_server.start()
 
         def message_processor(message: ServiceBusMessage) -> bool:
@@ -57,8 +77,6 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                config.MAX_BATCH_SIZE,
+                batch_size,
                 message_processor,
             )
-
-
