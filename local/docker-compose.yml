@@ -264,5 +264,28 @@ services:
         aliases:
           - "mpi-hl7-server"
 
+  weds-hl7-server:
+    container_name: weds-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./weds-hl7-server.env
+    ports:
+      - "2581:2581"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - weds-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "weds-hl7-server"
+
 networks:
   integration-hub:
