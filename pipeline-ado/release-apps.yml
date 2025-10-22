@@ -13,8 +13,8 @@ variables:
   hl7PimsTransformerPipelineName: 'HL7 Pims Transformer - Build'
   hl7SenderPipelineName: 'HL7 Sender - Build'
   hl7MockReceiverPipelineName: 'HL7 Mock Receiver - Build'
-  POOL_NAME_NON_PROD: "UKS-DHCW-IH-DEV-ADOManagedPool"
-  POOL_NAME_PRD: "UKS-DHCW-IH-PPD-ADOManagedPool"
+  POOL_NAME_NON_PROD: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+  POOL_NAME_PRD: 'UKS-DHCW-IH-PPD-ADOManagedPool'
 
 resources:
   pipelines:

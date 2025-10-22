@@ -21,7 +21,7 @@ parameters:
 variables:
   acrName: 'uksdhcwihsharedcr'
   azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
-  POOL_NAME: "UKS-DHCW-IH-DEV-ADOManagedPool"
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
 
 stages:
   - stage: CodeQuality

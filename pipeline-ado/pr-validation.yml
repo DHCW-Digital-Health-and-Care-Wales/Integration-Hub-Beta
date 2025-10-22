@@ -20,7 +20,7 @@ pr:
 
 variables:
   pythonVersion: '3.13'
-  POOL_NAME_NON_PROD: "UKS-DHCW-IH-DEV-ADOManagedPool"
+  POOL_NAME_NON_PROD: 'UKS-DHCW-IH-DEV-ADOManagedPool'
 
 stages:
   - stage: PRValidation
