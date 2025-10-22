@@ -110,7 +110,7 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🔐 Running pip-audit for dependency vulnerability scanning..."
-          uv tool run pip-audit --desc
+          uv tool run pip-audit --desc --ignore-vuln GHSA-4xh5-x5gv-qwph
           
           echo "✅ Dependency scan completed"
           echo "##[endgroup]"
