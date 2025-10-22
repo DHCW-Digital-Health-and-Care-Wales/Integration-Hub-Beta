@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import configparser
+import logging
 import os
 from dataclasses import asdict, dataclass
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -30,7 +34,7 @@ class AppConfig:
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
-            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=True),
+            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=False),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
             microservice_id=_read_env("MICROSERVICE_ID", required=True),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
@@ -39,24 +43,37 @@ class AppConfig:
 
 
 @dataclass
-class TransformerConfig(AppConfig):    
-    MAX_BATCH_SIZE: int | None
+class TransformerConfig(AppConfig):
+    MAX_BATCH_SIZE: int
 
     @classmethod
-    def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
+    def from_env_and_config_file(cls, config_path: str | None) -> "TransformerConfig":
         app_config = AppConfig.read_env_config()
-        
+
         config = configparser.ConfigParser()
-        config.read(config_path)
-        
-        MAX_BATCH_SIZE = None
-        if config.has_section("DEFAULT") and config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
-            MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
-        
-        return cls(
-            **asdict(app_config),
-            MAX_BATCH_SIZE=MAX_BATCH_SIZE
-        )
+        # MAX_BATCH_SIZE defaults to 1 when not configured to stop the reconnection loop
+        MAX_BATCH_SIZE = 1
+
+        if config_path:
+            logger.debug(
+                "Loading transformer configuration from %s (exists=%s)",
+                config_path,
+                os.path.exists(config_path),
+            )
+        else:
+            logger.debug(
+                "No configuration path provided; using environment configuration only"
+            )
+
+        if config_path and os.path.exists(config_path):
+            config.read(config_path)
+            default_options = config.defaults()
+            if default_options:
+                raw_batch_size = default_options.get("max_batch_size")
+                if raw_batch_size:
+                    MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
+
+        return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
 
 
 def _read_env(name: str, required: bool = False) -> str | None:
@@ -73,5 +90,3 @@ def _read_int_env(name: str, required: bool = False) -> int | None:
             raise RuntimeError(f"Missing required configuration: {name}")
         return None
     return int(value)
-
-
