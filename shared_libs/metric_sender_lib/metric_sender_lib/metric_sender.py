@@ -85,3 +85,6 @@ class MetricSender:
 
     def send_message_received_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
         self.send_metric(key=f"{self.workflow_id}_messages_received", value=1, attributes=attributes)
+
+    def send_message_sent_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
+        self.send_metric(key=f"{self.workflow_id}_messages_sent", value=1, attributes=attributes)
