@@ -9,19 +9,6 @@ from .mappers.msh_mapper import map_msh
 from .mappers.pid_mapper import map_pid
 
 
-def transform_phw_message(
-    original_hl7_msg: Message,
-) -> tuple[Message, Optional[tuple[str, str]], Optional[tuple[str, str]]]:
-
-    new_message = Message(version="2.5")
-
-    datetime_transformation = map_msh(original_hl7_msg, new_message)
-    dod_transformation = map_pid(original_hl7_msg, new_message)
-    map_non_specific_segments(original_hl7_msg, new_message)
-
-    return new_message, datetime_transformation, dod_transformation
-
-
 class PhwTransformer(BaseTransformer):
 
     def __init__(self) -> None:
@@ -31,13 +18,10 @@ class PhwTransformer(BaseTransformer):
         self._current_dod_transformation: Optional[tuple[str, str]] = None
 
     def transform_message(self, hl7_msg: Message) -> Message:
-        new_message, datetime_transformation, dod_transformation = transform_phw_message(
-            hl7_msg
-        )
-
-        self._current_datetime_transformation = datetime_transformation
-        self._current_dod_transformation = dod_transformation
-
+        new_message = Message(version="2.5")
+        self._current_datetime_transformation = map_msh(hl7_msg, new_message)
+        self._current_dod_transformation = map_pid(hl7_msg, new_message)
+        map_non_specific_segments(hl7_msg, new_message)
         return new_message
 
     def get_processed_audit_text(self, hl7_msg: Message) -> str:
