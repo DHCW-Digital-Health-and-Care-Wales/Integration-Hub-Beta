@@ -13,15 +13,6 @@ trigger:
 pr: none
 
 parameters:
-  - name: POOL_SELECTION
-    displayName: 'Select Agent Pool'
-    type: string
-    default: 'Azure Pipelines'
-    values:
-      - 'Azure Pipelines'
-      - 'UKS-DHCW-IH-DEV-ADOManagedPool'
-      - 'UKS-DHCW-IH-TST-ADOManagedPool'
-
   - name: SEMANTIC_VERSION
     displayName: 'Semantic Version'
     type: string
@@ -30,6 +21,7 @@ parameters:
 variables:
   acrName: 'uksdhcwihsharedcr'
   azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: "UKS-DHCW-IH-DEV-ADOManagedPool"
 
 stages:
   - stage: CodeQuality
@@ -40,7 +32,7 @@ stages:
           appName: 'hl7_server'
           appDisplayName: 'HL7 Server'
           pythonVersion: '3.13'
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME }}
 
   - stage: BuildAndPushHL7Server
     displayName: 'Build and Push HL7 Server'
@@ -56,5 +48,5 @@ stages:
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ parameters.POOL_SELECTION }}
+          POOL_NAME: ${{ variables.POOL_NAME }}
           SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
