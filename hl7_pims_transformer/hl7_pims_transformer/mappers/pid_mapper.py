@@ -1,6 +1,6 @@
+from field_utils_lib import get_hl7_field_value, set_nested_field
 from hl7apy.core import Message
 
-from ..utils.field_utils import get_hl7_field_value, set_nested_field
 from ..utils.remove_timezone_from_datetime import remove_timezone_from_datetime
 
 

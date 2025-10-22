@@ -100,3 +100,33 @@ def _safe_hasattr(obj: Any, name: str) -> bool:
         return False
 
 
+def copy_segment_fields_in_range(
+    source_segment: Any,
+    target_segment: Any,
+    field_prefix: str,
+    start: int,
+    end: int
+) -> None:
+    """
+    Copies fields from source_segment to target_segment for the given field range (inclusive).
+    
+    This utility simplifies copying multiple fields from a source HL7 segment to a target segment
+    by automating the common pattern of iterating through field ranges.
+    
+    Args:
+        source_segment: The source HL7 segment object to copy fields from
+        target_segment: The target HL7 segment object to copy fields to
+        field_prefix: The field prefix (e.g., "msh", "pid") used to construct field names
+        start: The starting field index (inclusive)
+        end: The ending field index (inclusive)
+    
+    Example usage:
+    - copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=21)
+    - copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=1, end=39)
+    """
+    # +1 to range so that all segments from start to end (inclusive) are copied
+    for i in range(start, end + 1):
+        field_name = f"{field_prefix}_{i}"
+        set_nested_field(source_segment, target_segment, field_name)
+
+

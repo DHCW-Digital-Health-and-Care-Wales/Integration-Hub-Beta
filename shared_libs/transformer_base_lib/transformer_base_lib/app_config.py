@@ -47,33 +47,31 @@ class TransformerConfig(AppConfig):
     MAX_BATCH_SIZE: int
 
     @classmethod
-    def from_env_and_config_file(cls, config_path: str | None) -> "TransformerConfig":
+    def from_env_and_config_file(cls, config_path: str) -> "TransformerConfig":
+        logger = logging.getLogger(__name__)
         app_config = AppConfig.read_env_config()
 
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config file not found at path: {config_path}")
+
         config = configparser.ConfigParser()
-        # MAX_BATCH_SIZE defaults to 1 when not configured to stop the reconnection loop
+        config.read(config_path)
+        logger.debug(f"Config file read from {config_path}")
+
         MAX_BATCH_SIZE = 1
-
-        if config_path:
-            logger.debug(
-                "Loading transformer configuration from %s (exists=%s)",
-                config_path,
-                os.path.exists(config_path),
-            )
+        if config.has_option("DEFAULT", "MAX_BATCH_SIZE"):
+            try:
+                MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
+                logger.debug(f"MAX_BATCH_SIZE set to {MAX_BATCH_SIZE} from config file")
+            except ValueError as e:
+                logger.warning(f"Failed to parse MAX_BATCH_SIZE from config file, using default value of 1: {e}")
         else:
-            logger.debug(
-                "No configuration path provided; using environment configuration only"
-            )
+            logger.debug("MAX_BATCH_SIZE not found in config file, using default value of 1")
 
-        if config_path and os.path.exists(config_path):
-            config.read(config_path)
-            default_options = config.defaults()
-            if default_options:
-                raw_batch_size = default_options.get("max_batch_size")
-                if raw_batch_size:
-                    MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
-
-        return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
+        return cls(
+            **asdict(app_config),
+            MAX_BATCH_SIZE=MAX_BATCH_SIZE
+        )
 
 
 def _read_env(name: str, required: bool = False) -> str | None:

@@ -1,4 +1,4 @@
-from field_utils_lib import set_nested_field
+from field_utils_lib import copy_segment_fields_in_range, set_nested_field
 from hl7apy.core import Message
 
 
@@ -33,6 +33,4 @@ def map_msh(original_hl7_message: Message, new_message: Message) -> None:
         new_message.msh.msh_12 = new_message.msh.add_field("msh_12")
     new_message.msh.msh_12.vid_1 = "2.5"
 
-    for i in range(13, 22):
-        field_name = f"msh_{i}"
-        set_nested_field(original_msh, new_message.msh, field_name)
+    copy_segment_fields_in_range(original_msh, new_message.msh, "msh", start=13, end=21)
