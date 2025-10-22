@@ -52,7 +52,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleasePIMSHL7ServerDev
@@ -69,7 +69,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerDev
@@ -86,7 +86,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerDev
@@ -103,7 +103,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseMPIHL7ServerDev
@@ -120,7 +120,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerDev
@@ -137,7 +137,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PhwTransformerPipelineName }}
 
   - stage: ReleaseHL7ChemoTransformerDev
@@ -154,7 +154,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
   - stage: ReleaseHL7PimsTransformerDev
@@ -171,7 +171,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
 
   - stage: ReleaseHL7SenderDev
@@ -188,7 +188,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleasePIMSHL7SenderDev
@@ -205,7 +205,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseChemocareHL7SenderDev
@@ -222,7 +222,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseHL7MockReceiverDev
@@ -239,7 +239,7 @@ stages:
           environment: 'dev'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7MockReceiverPipelineName }}
 
   # DTE Environment Stages
@@ -258,7 +258,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleasePIMSHL7ServerDTE
@@ -276,7 +276,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerDTE
@@ -294,7 +294,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerDTE
@@ -312,7 +312,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseMPIHL7ServerDTE
@@ -330,7 +330,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerDTE
@@ -348,7 +348,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PhwTransformerPipelineName }}
 
   - stage: ReleaseHL7ChemoTransformerDTE
@@ -366,7 +366,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
   - stage: ReleaseHL7PimsTransformerDTE
@@ -384,7 +384,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
 
   - stage: ReleaseHL7SenderDTE
@@ -402,7 +402,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleasePIMSHL7SenderDTE
@@ -420,7 +420,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseChemocareHL7SenderDTE
@@ -438,7 +438,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseHL7MockReceiverDTE
@@ -456,7 +456,7 @@ stages:
           environment: 'dte'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7MockReceiverPipelineName }}
 
   # Test Environment Stages
@@ -475,7 +475,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleasePIMSHL7ServerTest
@@ -493,7 +493,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerTest
@@ -511,7 +511,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerTest
@@ -529,7 +529,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseMPIHL7ServerTest
@@ -547,7 +547,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerTest
@@ -565,7 +565,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PhwTransformerPipelineName }}
 
   - stage: ReleaseHL7ChemoTransformerTest
@@ -583,7 +583,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
   - stage: ReleaseHL7PimsTransformerTest
@@ -601,7 +601,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
 
   - stage: ReleaseHL7SenderTest
@@ -619,7 +619,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleasePIMSHL7SenderTest
@@ -637,7 +637,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseChemocareHL7SenderTest
@@ -655,7 +655,7 @@ stages:
           environment: 'tst'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   # ===== PRE-PRODUCTION STAGES (PPD) =====
@@ -674,7 +674,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerPreProd
@@ -692,7 +692,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleasePIMSHL7ServerPreProd
@@ -710,7 +710,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerPreProd
@@ -728,7 +728,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseMPIHL7ServerPreProd
@@ -746,7 +746,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerPreProd
@@ -764,7 +764,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7PhwTransformerPipelineName }}
 
   - stage: ReleaseHL7PimsTransformerPreProd
@@ -782,7 +782,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
 
   - stage: ReleaseHL7ChemoTransformerPreProd
@@ -800,7 +800,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
   - stage: ReleaseHL7SenderPreProd
@@ -818,7 +818,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleasePIMSHL7SenderPreProd
@@ -836,7 +836,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseChemocareHL7SenderPreProd
@@ -854,7 +854,7 @@ stages:
           environment: 'ppd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   # ===== PRODUCTION STAGES (PRD) =====
@@ -873,7 +873,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseParisHL7ServerProd
@@ -891,7 +891,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleasePIMSHL7ServerProd
@@ -909,7 +909,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseChemocareHL7ServerProd
@@ -927,7 +927,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseMPIHL7ServerProd
@@ -945,7 +945,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ServerPipelineName }}
 
   - stage: ReleaseHL7PhwTransformerProd
@@ -963,7 +963,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7PhwTransformerPipelineName }}
 
   - stage: ReleaseHL7PimsTransformerProd
@@ -981,7 +981,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7PimsTransformerPipelineName }}
 
   - stage: ReleaseHL7ChemoTransformerProd
@@ -999,7 +999,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7ChemoTransformerPipelineName }}
 
   - stage: ReleaseHL7SenderProd
@@ -1017,7 +1017,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleasePIMSHL7SenderProd
@@ -1035,7 +1035,7 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
 
   - stage: ReleaseChemocareHL7SenderProd
@@ -1053,5 +1053,5 @@ stages:
           environment: 'prd'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          POOL_NAME: ${{ variables.POOL_NAME_PROD}}
+          POOL_NAME: ${{ variables.POOL_NAME_PROD }}
           resourcePipelineName: ${{ variables.hl7SenderPipelineName }}
