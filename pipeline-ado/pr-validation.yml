@@ -18,18 +18,9 @@ pr:
       - shared_libs/*
       - pipeline-ado/*
 
-parameters:
-  - name: POOL_SELECTION
-    displayName: 'Select Agent Pool'
-    type: string
-    default: 'Azure Pipelines'
-    values:
-      - 'Azure Pipelines'
-      - 'UKS-DHCW-IH-DEV-ADOManagedPool'
-      - 'UKS-DHCW-IH-TST-ADOManagedPool'
-
 variables:
   pythonVersion: '3.13'
+  POOL_NAME_NON_PROD: 'UKS-DHCW-IH-DEV-ADOManagedPool'
 
 stages:
   - stage: PRValidation
@@ -41,7 +32,7 @@ stages:
           appName: 'hl7_server'
           appDisplayName: 'HL7 Server'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # HL7 Transformer validation
       - template: templates/code-quality-template.yml
@@ -49,7 +40,7 @@ stages:
           appName: 'hl7_phw_transformer'
           appDisplayName: 'HL7 Transformer'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # HL7 Sender validation
       - template: templates/code-quality-template.yml
@@ -57,7 +48,7 @@ stages:
           appName: 'hl7_sender'
           appDisplayName: 'HL7 Sender'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # HL7 Mock Receiver validation
       - template: templates/code-quality-template.yml
@@ -65,7 +56,7 @@ stages:
           appName: 'hl7_mock_receiver'
           appDisplayName: 'HL7 Mock Receiver'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # HL7 Chemo Transformer validation
       - template: templates/code-quality-template.yml
@@ -73,7 +64,7 @@ stages:
           appName: 'hl7_chemo_transformer'
           appDisplayName: 'HL7 Chemo Transformer'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # HL7 PIMS Transformer validation
       - template: templates/code-quality-template.yml
@@ -81,7 +72,7 @@ stages:
           appName: 'hl7_pims_transformer'
           appDisplayName: 'HL7 PIMS Transformer'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       # Shared Libraries validation
       - template: templates/code-quality-template.yml
@@ -90,7 +81,7 @@ stages:
           appDisplayName: 'Message Bus Library'
           banditSourceDir: 'message_bus_lib'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       - template: templates/code-quality-template.yml
         parameters:
@@ -98,7 +89,7 @@ stages:
           appDisplayName: 'Event Logger Library'
           banditSourceDir: 'event_logger_lib'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       - template: templates/code-quality-template.yml
         parameters:
@@ -106,7 +97,7 @@ stages:
           appDisplayName: 'Health Check Library'
           banditSourceDir: 'health_check_lib'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       - template: templates/code-quality-template.yml
         parameters:
@@ -114,13 +105,14 @@ stages:
           appDisplayName: 'HL7 Validation Library'
           banditSourceDir: 'hl7_validation'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       - template: templates/code-quality-template.yml
         parameters:
           appName: 'shared_libs/processor_manager_lib'
           appDisplayName: 'Processor Manager Library'
           banditSourceDir: 'processor_manager_lib'
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
          
       - template: templates/code-quality-template.yml
         parameters:
@@ -128,7 +120,7 @@ stages:
           appDisplayName: 'Transformer Base Library'
           banditSourceDir: 'transformer_base_lib'
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
       - template: templates/code-quality-template.yml
         parameters:
@@ -137,4 +129,4 @@ stages:
           banditSourceDir: 'field_utils_lib'
 
           pythonVersion: $(pythonVersion)
-          poolName: ${{ parameters.POOL_SELECTION }}
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
