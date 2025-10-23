@@ -17,7 +17,7 @@ from .message_processor import process_message
 if TYPE_CHECKING:
     from .base_transformer import BaseTransformer
 
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(__name__)
 
 

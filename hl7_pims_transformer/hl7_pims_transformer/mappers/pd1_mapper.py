@@ -1,6 +1,7 @@
+from field_utils_lib import get_hl7_field_value, set_nested_field
 from hl7apy.core import Message
 
-from ..utils.field_utils import get_hl7_field_value, is_a04_or_a08_trigger_event, set_nested_field
+from ..utils.message_utils import is_a04_or_a08_trigger_event
 
 
 def map_pd1(original_hl7_message: Message, new_message: Message) -> None:
