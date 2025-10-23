@@ -13,6 +13,7 @@ dependencies = [
   "health-check-lib",
   "processor-manager-lib",
   "event-logger-lib",
+  "metric-sender-lib",
 ]
 
 [dependency-groups]
@@ -28,6 +29,7 @@ message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../shared_libs/health_check_lib" }
 processor-manager-lib = { path = "../shared_libs/processor_manager_lib" }
 event-logger-lib = { path = "../shared_libs/event_logger_lib" }
+metric-sender-lib = { path = "../shared_libs/metric_sender_lib" }
 
 [tool.mypy]
 python_version = "3.13"
