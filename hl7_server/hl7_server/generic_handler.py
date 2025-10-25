@@ -49,7 +49,7 @@ class GenericHandler(AbstractHandler):
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
 
-            if self.flow_name:
+            if self.flow_name and self.flow_name != "mpi":
                 try:
                     validate_er7_with_flow(self.incoming_message, self.flow_name)
                     self.event_logger.log_validation_result(
