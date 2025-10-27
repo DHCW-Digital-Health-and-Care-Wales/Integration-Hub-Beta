@@ -109,7 +109,7 @@ class TestGenericHandler(unittest.TestCase):
 
             handler.reply()
 
-        mock_validate_flow_xml.assert_called_once()
+        mock_validate_flow_xml.assert_not_called()
         self.mock_sender.send_text_message.assert_called_once_with(
             VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
             {
