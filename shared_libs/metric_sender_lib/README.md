@@ -25,6 +25,11 @@ metric_sender.send_message_received_metric()
 # or with custom attributes
 metric_sender.send_message_received_metric({"key": "value"})
 
+# Convenient wrapper for message sent events (uses workflow_id as key with value 1)
+metric_sender.send_message_sent_metric()
+# or with custom attributes
+metric_sender.send_message_sent_metric({"key": "value"})
+
 # Generic metric sending with default value of 1
 metric_sender.send_metric("message_processed")
 # Generic metric sending with custom value and attributes

@@ -288,6 +288,35 @@ class TestMetricSender(unittest.TestCase):
                         attributes=test_case['attributes']
                     )
 
+    @patch('metric_sender_lib.metric_sender.logger')
+    def test_send_message_sent_metric_scenarios(self, mock_logger: MagicMock) -> None:
+        test_cases: List[Dict[str, Any]] = [
+            {
+                'name': 'with_attributes',
+                'attributes': {"message_type": "ADT", "ack_code": "AA"}
+            },
+            {
+                'name': 'without_attributes',
+                'attributes': None
+            }
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case['name']):
+                # Arrange
+                metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+
+                with patch.object(metric_sender, 'send_metric') as mock_send_metric:
+                    # Act
+                    metric_sender.send_message_sent_metric(test_case['attributes'])
+
+                    # Assert
+                    mock_send_metric.assert_called_once_with(
+                        key=f"{self.workflow_id}_messages_sent",
+                        value=1,
+                        attributes=test_case['attributes']
+                    )
+
 
 if __name__ == '__main__':
     unittest.main()

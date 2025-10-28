@@ -8,54 +8,138 @@ from hl7_sender.app_config import AppConfig
 from hl7_sender.application import _process_message, main
 
 
-def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock]:
+def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock]:
     hl7_message = Message("ADT_A01")
     hl7_message.msh.msh_10 = 'MSGID1234'
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_hl7_sender_client = MagicMock()
     mock_event_logger = MagicMock()
+    mock_metric_sender = MagicMock()
 
-    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger
+    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger, mock_metric_sender
 
 
 class TestProcessMessage(unittest.TestCase):
+
+    def _assert_error_handling(
+        self,
+        result: bool,
+        mock_event_logger: MagicMock,
+        mock_metric_sender: MagicMock
+    ) -> None:
+        mock_event_logger.log_message_received.assert_called_once()
+        mock_event_logger.log_message_failed.assert_called_once()
+        mock_metric_sender.send_message_sent_metric.assert_not_called()
+        self.assertFalse(result)
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     def test_process_message_success(self, mock_ack_processor: Mock, mock_parse_message: Mock) -> None:
         # Arrange
-        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger = _setup()
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+        ) = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_ack_processor.return_value = True
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger)
+        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
+        mock_metric_sender.send_message_sent_metric.assert_called_once()
 
         self.assertTrue(result)
 
     @patch("hl7_sender.application.parse_message")
-    def test_process_message_timeout_error(self, mock_parse_message: Mock) -> None:
+    @patch("hl7_sender.application.get_ack_result")
+    def test_process_message_success_with_negative_ack(
+        self, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
         # Arrange
-        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger = _setup()
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+        ) = _setup()
         mock_parse_message.return_value = hl7_message
-        mock_hl7_sender_client.send_message.side_effect = TimeoutError("No ACK received within 30 seconds")
+        hl7_ack_message = "HL7 ack message"
+        mock_hl7_sender_client.send_message.return_value = hl7_ack_message
+        mock_ack_processor.return_value = False  # Negative ACK
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger)
+        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
 
         # Assert
+        mock_parse_message.assert_called_once_with(hl7_string)
+        mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
-        mock_event_logger.log_message_failed.assert_called_once()
+        mock_event_logger.log_message_processed.assert_called_once()
+        mock_metric_sender.send_message_sent_metric.assert_not_called()
+
         self.assertFalse(result)
+
+    @patch("hl7_sender.application.parse_message")
+    def test_process_message_send_errors(self, mock_parse_message: Mock) -> None:
+        error_cases = [
+            {"description": "timeout_error", "error": TimeoutError("No ACK received within 30 seconds")},
+            {"description": "connection_error", "error": ConnectionError("Connection failed")},
+        ]
+
+        for case in error_cases:
+            with self.subTest(error=case["description"]):
+                # Arrange
+                (
+                    service_bus_message,
+                    hl7_message,
+                    hl7_string,
+                    mock_hl7_sender_client,
+                    mock_event_logger,
+                    mock_metric_sender,
+                ) = _setup()
+                mock_parse_message.return_value = hl7_message
+                mock_hl7_sender_client.send_message.side_effect = case["error"]
+
+                # Act
+                result = _process_message(
+                    service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender
+                )
+
+                # Assert
+                self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
+
+    @patch("hl7_sender.application.parse_message")
+    def test_process_message_unexpected_error(self, mock_parse_message: Mock) -> None:
+        # Arrange
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+        ) = _setup()
+        mock_parse_message.side_effect = Exception("Unexpected error")
+
+        # Act
+        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
+
+        # Assert
+        self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")
