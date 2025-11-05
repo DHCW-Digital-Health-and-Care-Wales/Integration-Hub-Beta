@@ -18,8 +18,10 @@ jobs:
   pool:
       ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
         vmImage: 'ubuntu-latest'
-      ${{ else }}:
+      ${{ elseif ne(parameters.POOL_NAME, '') }}:
         name: ${{ parameters.POOL_NAME }}
+      ${{ else }}:
+        vmImage: 'ubuntu-latest'
   variables:
     ${{ if ne(parameters.appFunctionMidfix, '') }}:
       appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appName }}-ca'
