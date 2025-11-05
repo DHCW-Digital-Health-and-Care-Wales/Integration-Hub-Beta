@@ -31,8 +31,9 @@ stages:
           - stage: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
             displayName: 'Release ${{ app.name }} - ${{ env.displayName }}'
             
-            # Set up dependencies
-            ${{ if eq(env.dependsOnPrevious, true) }}:
+            # Set up dependencies - only when deploying all environments
+            # When deploying a single environment, skip dependencies to allow standalone deployment
+            ${{ if and(eq(env.dependsOnPrevious, true), eq(parameters.selectedEnvironment, 'all')) }}:
               ${{ if eq(env.name, 'dte') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
               ${{ elseif eq(env.name, 'tst') }}:

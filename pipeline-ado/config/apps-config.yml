@@ -88,28 +88,35 @@ environments:
     
   - name: 'dte'
     displayName: 'DTE'
-    resourceGroup: 'UK-South-DHCW-IntHub-DTE-RG'
+    resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
     poolName: 'POOL_NAME_NON_PROD'
     approvalRequired: false
     dependsOnPrevious: true
     
   - name: 'tst'
     displayName: 'Test'
-    resourceGroup: 'UK-South-DHCW-IntHub-TST-RG'
+    resourceGroup: 'UK-South-DHCW-IntHub-TST-App-RG'
+    poolName: 'POOL_NAME_NON_PROD'
+    approvalRequired: false
+    dependsOnPrevious: true
+
+  - name: 'uat'
+    displayName: 'UAT'
+    resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
     poolName: 'POOL_NAME_NON_PROD'
     approvalRequired: false
     dependsOnPrevious: true
     
   - name: 'ppd'
     displayName: 'Pre-Production'
-    resourceGroup: 'UK-South-DHCW-IntHub-PPD-RG'
+    resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
     poolName: 'POOL_NAME_PROD'
     approvalRequired: true
     dependsOnPrevious: true
     
   - name: 'prd'
     displayName: 'Production'
-    resourceGroup: 'UK-South-DHCW-IntHub-PRD-RG'
+    resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
     poolName: 'POOL_NAME_PROD'
     approvalRequired: true
     dependsOnPrevious: true
