@@ -12,28 +12,36 @@ parameters:
     type: string
   - name: azureServiceConnection
     type: string
-  - name: selectedApp
+  - name: selectedApps
     type: string
     default: 'all'
-  - name: selectedEnvironment
+  - name: selectedEnvironments
     type: string
     default: 'all'
+  - name: maintainDependencies
+    type: boolean
+    default: false
 
 stages:
   # Loop through each environment
   - ${{ each env in parameters.environments }}:
-    # Only deploy if environment is selected (or 'all' is selected)
-    - ${{ if or(eq(parameters.selectedEnvironment, 'all'), eq(parameters.selectedEnvironment, env.name)) }}:
+    # Check if environment is selected (supports comma-separated list)
+    # Deploy if: 'all' is selected OR environment name is in the comma-separated list
+    - ${{ if or(eq(parameters.selectedEnvironments, 'all'), contains(parameters.selectedEnvironments, env.name)) }}:
       # Loop through each application
       - ${{ each app in parameters.appConfig }}:
-        # Only deploy if app is selected (or 'all' is selected)
-        - ${{ if or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)) }}:
+        # Check if app is selected (supports comma-separated list)
+        # Deploy if: 'all' is selected OR app name is in the comma-separated list
+        - ${{ if or(eq(parameters.selectedApps, 'all'), contains(parameters.selectedApps, app.name)) }}:
           - stage: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
             displayName: 'Release ${{ app.name }} - ${{ env.displayName }}'
             
-            # Set up dependencies - only when deploying all environments
-            # When deploying a single environment, skip dependencies to allow standalone deployment
-            ${{ if and(eq(env.dependsOnPrevious, true), eq(parameters.selectedEnvironment, 'all')) }}:
+            # Set up dependencies based on maintainDependencies flag and environment configuration
+            # Dependencies are created if:
+            # 1. The environment requires dependencies (dependsOnPrevious: true)
+            # 2. User wants to maintain dependencies (maintainDependencies: true)
+            # 3. The previous environment is also being deployed (checked via contains)
+            ${{ if and(eq(env.dependsOnPrevious, true), eq(parameters.maintainDependencies, true)) }}:
               ${{ if eq(env.name, 'dte') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
               ${{ elseif eq(env.name, 'tst') }}:

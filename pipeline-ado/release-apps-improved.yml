@@ -5,36 +5,31 @@ trigger: none
 pr: none
 
 parameters:
-  - name: selectedApp
-    displayName: 'Select Application to Deploy (or "all" for all apps)'
+  - name: selectedApps
+    displayName: 'Select Applications (comma-separated, or "all")'
     type: string
     default: 'all'
-    values:
-      - 'all'
-      - 'PHW HL7Server'
-      - 'PIMS HL7Server'
-      - 'Paris HL7Server'
-      - 'Chemocare HL7Server'
-      - 'MPI HL7Server'
-      - 'HL7 Phw Transformer'
-      - 'HL7 Chemo Transformer'
-      - 'HL7 Pims Transformer'
-      - 'HL7 Sender'
-      - 'PIMS HL7 Sender'
-      - 'Chemocare HL7 Sender'
-      - 'HL7 Mock Receiver'
+    # Examples:
+    # - "all" = deploy all applications
+    # - "PHW HL7Server" = deploy single app
+    # - "PHW HL7Server,PIMS HL7Server,HL7 Sender" = deploy multiple apps
       
-  - name: selectedEnvironment
-    displayName: 'Select Environment to Deploy (or "all" for all environments)'
+  - name: selectedEnvironments
+    displayName: 'Select Environments (comma-separated, or "all")'
     type: string
     default: 'all'
-    values:
-      - 'all'
-      - 'dev'
-      - 'dte'
-      - 'tst'
-      - 'ppd'
-      - 'prd'
+    # Examples:
+    # - "all" = deploy to all environments (with dependencies)
+    # - "dev" = deploy to dev only
+    # - "dev,dte,tst" = deploy to dev, dte, and tst (with dependencies between them)
+    # - "tst,ppd" = deploy to tst and ppd only (no dependencies)
+    
+  - name: maintainDependencies
+    displayName: 'Maintain environment dependencies? (only for multiple environments)'
+    type: boolean
+    default: false
+    # true = enforce dev→dte→tst→ppd→prd chain (only if those envs are selected)
+    # false = deploy to selected environments independently (parallel deployment)
 
 variables:
   # Shared Configuration
@@ -76,8 +71,9 @@ stages:
   # Define applications metadata inline (can be moved to a separate file later)
   - template: templates/dynamic-stages-template.yml
     parameters:
-      selectedApp: ${{ parameters.selectedApp }}
-      selectedEnvironment: ${{ parameters.selectedEnvironment }}
+      selectedApps: ${{ parameters.selectedApps }}
+      selectedEnvironments: ${{ parameters.selectedEnvironments }}
+      maintainDependencies: ${{ parameters.maintainDependencies }}
       azureLocation: $(azureLocation)
       acrName: $(acrName)
       azureServiceConnection: $(azureServiceConnection)
