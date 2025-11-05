@@ -50,12 +50,6 @@ variables:
     value: 'UKS-DHCW-IH-DEV-ADOManagedPool'
   - name: POOL_NAME_PROD
     value: 'UKS-DHCW-IH-PPD-ADOManagedPool'
-    
-  # Load application configuration from external file
-  - name: appsConfig
-    value: $[ stageDependencies.LoadConfig.LoadConfigJob.outputs['loadConfig.appsConfig'] ]
-  - name: environmentsConfig
-    value: $[ stageDependencies.LoadConfig.LoadConfigJob.outputs['loadConfig.environmentsConfig'] ]
 
 resources:
   pipelines:
