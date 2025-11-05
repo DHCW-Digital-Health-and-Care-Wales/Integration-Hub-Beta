@@ -1,0 +1,58 @@
+# Dynamic Stage Generation Template
+# This template generates deployment stages for an app across specified environments
+
+parameters:
+  - name: appConfig
+    type: object
+  - name: environments
+    type: object
+  - name: azureLocation
+    type: string
+  - name: acrName
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: selectedApp
+    type: string
+    default: 'all'
+  - name: selectedEnvironment
+    type: string
+    default: 'all'
+
+stages:
+  # Loop through each environment
+  - ${{ each env in parameters.environments }}:
+    # Only deploy if environment is selected (or 'all' is selected)
+    - ${{ if or(eq(parameters.selectedEnvironment, 'all'), eq(parameters.selectedEnvironment, env.name)) }}:
+      # Loop through each application
+      - ${{ each app in parameters.appConfig }}:
+        # Only deploy if app is selected (or 'all' is selected)
+        - ${{ if or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)) }}:
+          - stage: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
+            displayName: 'Release ${{ app.name }} - ${{ env.displayName }}'
+            
+            # Set up dependencies
+            ${{ if eq(env.dependsOnPrevious, true) }}:
+              ${{ if eq(env.name, 'dte') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
+              ${{ elseif eq(env.name, 'tst') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DTE
+              ${{ elseif eq(env.name, 'ppd') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_TST
+              ${{ elseif eq(env.name, 'prd') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_PPD
+            
+            jobs:
+              - template: release-container-app-template.yml
+                parameters:
+                  jobName: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
+                  displayName: Release ${{ app.name }} - ${{ env.displayName }}
+                  appName: ${{ app.appName }}
+                  appFunctionMidfix: ${{ app.appFunctionMidfix }}
+                  resourceGroupName: ${{ env.resourceGroup }}
+                  azureLocation: ${{ parameters.azureLocation }}
+                  environment: ${{ env.name }}
+                  acrName: ${{ parameters.acrName }}
+                  azureServiceConnection: ${{ parameters.azureServiceConnection }}
+                  POOL_NAME: ${{ variables[env.poolName] }}
+                  resourcePipelineName: ${{ app.buildPipeline }}
