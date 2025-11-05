@@ -1,0 +1,115 @@
+# Dynamic Stages Template - Checkbox Version
+# Generates deployment stages based on checkbox selections
+
+parameters:
+  # Application checkbox parameters
+  - name: deployAllApps
+    type: boolean
+  - name: deployPHWHL7Server
+    type: boolean
+  - name: deployPIMSHL7Server
+    type: boolean
+  - name: deployParisHL7Server
+    type: boolean
+  - name: deployChemocareHL7Server
+    type: boolean
+  - name: deployMPIHL7Server
+    type: boolean
+  - name: deployHL7PhwTransformer
+    type: boolean
+  - name: deployHL7ChemoTransformer
+    type: boolean
+  - name: deployHL7PimsTransformer
+    type: boolean
+  - name: deployHL7Sender
+    type: boolean
+  - name: deployPIMSHL7Sender
+    type: boolean
+  - name: deployChemocareHL7Sender
+    type: boolean
+  - name: deployHL7MockReceiver
+    type: boolean
+  
+  # Environment checkbox parameters
+  - name: deployToAllEnvironments
+    type: boolean
+  - name: deployToDev
+    type: boolean
+  - name: deployToDTE
+    type: boolean
+  - name: deployToTest
+    type: boolean
+  - name: deployToPreProd
+    type: boolean
+  - name: deployToProduction
+    type: boolean
+  
+  - name: maintainDependencies
+    type: boolean
+    default: false
+  
+  # Configuration parameters
+  - name: azureLocation
+    type: string
+  - name: acrName
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: appConfig
+    type: object
+  - name: environments
+    type: object
+
+stages:
+  # Loop through each environment
+  - ${{ each env in parameters.environments }}:
+      # Check if this environment should be deployed
+      # Deploy if: deployToAllEnvironments is true OR the specific environment checkbox is checked
+      - ${{ if or(eq(parameters.deployToAllEnvironments, true), eq(parameters[env.paramName], true)) }}:
+          
+          # Loop through each application
+          - ${{ each app in parameters.appConfig }}:
+              # Check if this app should be deployed
+              # Deploy if: deployAllApps is true OR the specific app checkbox is checked
+              - ${{ if or(eq(parameters.deployAllApps, true), eq(parameters[app.paramName], true)) }}:
+                  
+                  - stage: Deploy_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
+                    displayName: 'Deploy ${{ app.name }} to ${{ env.displayName }}'
+                    
+                    # Set up dependencies based on maintainDependencies flag
+                    ${{ if eq(parameters.maintainDependencies, true) }}:
+                      # If maintaining dependencies and this env depends on previous
+                      ${{ if and(eq(env.dependsOnPrevious, true), ne(env.previousEnv, '')) }}:
+                        dependsOn:
+                          - ${{ each prevApp in parameters.appConfig }}:
+                              - ${{ if or(eq(parameters.deployAllApps, true), eq(parameters[prevApp.paramName], true)) }}:
+                                  - Deploy_${{ replace(replace(prevApp.name, ' ', ''), '-', '') }}_${{ upper(env.previousEnv) }}
+                      ${{ else }}:
+                        dependsOn: []
+                    ${{ else }}:
+                      # No dependencies - parallel execution
+                      dependsOn: []
+                    
+                    jobs:
+                      - template: release-container-app-template.yml
+                        parameters:
+                          # Environment Information
+                          ENVIRONMENT: ${{ env.name }}
+                          AZURE_LOCATION: ${{ parameters.azureLocation }}
+                          RESOURCE_GROUP: ${{ env.resourceGroup }}
+                          
+                          # Application Information
+                          APP_NAME: ${{ app.appName }}
+                          APP_FUNCTION_MIDFIX: ${{ app.appFunctionMidfix }}
+                          
+                          # Container Registry
+                          ACR_NAME: ${{ parameters.acrName }}
+                          
+                          # Azure Configuration
+                          AZURE_SERVICE_CONNECTION: ${{ parameters.azureServiceConnection }}
+                          
+                          # Pool Configuration
+                          POOL_NAME: ${{ variables[env.poolName] }}
+                          
+                          # Build Pipeline Information
+                          PIPELINE_NAME: ${{ app.buildPipeline }}
