@@ -14,7 +14,7 @@ services:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
     pull_policy: always
     volumes:
-      - "./ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
+      - "${HOST_WORKSPACE_PATH:-..}/local/ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
     ports:
       - "5672:5672"
     restart: on-failure

@@ -69,6 +69,18 @@ or from selected container
 docker compose logs -f ${CONTAINER_NAME}
 ```
 
+### Rebuilding Containers
+
+If you make changes to a service after the containers have previously been
+built, you may need to rebuild the containers in order for those changes to be
+incorporated:
+
+```
+docker compose --profile <profile-name> build
+```
+
+Then re-start the containers as per [Build and start containers](#build-and-start-containers)
+
 ### Interact with Azure Service Bus emulator
 
 You can connect to Azure Service Bus emulator from the local machine using following connection string:
@@ -76,6 +88,22 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 ```
 "Endpoint=sb://127.0.0.1;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
 ```
+
+### Using Python MLLP Send to test
+
+**Pre-requisites**
+
+- [python-hl7](https://pypi.org/project/hl7/) installed locally
+- Docker containers need to be running with the profile of the service(s) desired - see [Build and start containers](#build-and-start-containers)
+
+**Steps**
+
+* Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
+* Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
+* Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
+* Check the Docker logs to show whether the request succeeded.
+
+See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
 
 ### Using the HAPI test panel to connect to the Service Bus Emulator (macOS)
 
@@ -109,5 +137,50 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 To terminate the containers you can proceed with the following command in the `/local` directory:
 
 ```
-docker compose down
+docker compose --profile "*" down
 ```
+
+## Using Make
+
+There is a `Makefile` to streamline commmon tasks for local development.
+
+Execute `make help` to see instructions, in summary:
+
+Targets:
+```
+  install   Install Python dependencies (hl7).
+  secrets   Force generation of the .secrets file.
+  build     Build (or rebuild) Docker containers. (Usage: make build <profile>)
+  start     Start Docker containers. (Usage: make run <profile>)
+  send      Send a HL7 message. (Usage: make send <hl7-message-filename>)
+  logs      Follow logs from services. (Usage: make logs <service_name>)
+  stop      Stop all Docker containers.
+```
+	
+Examples:
+```bash
+  make start phw-to-mpi
+  make send test_message.hl7
+  make logs mpi-hl7-mock-receiver
+  make stop
+  make build phw-to-mpi
+```
+
+## DevContainer Usage
+
+It is possible to run 'locally` using GitHub Dev Containers:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta/?quickstart=1)
+
+Note: It can take a few minutes to fully launch Codespaces the first time, but
+is faster on subsequent launches as the environment is then cached.
+
+This provides:
+
+* A pre-configured VS Code environment (with useful extensions installed - such as Container Management)
+* Ability to work in a 'Browser` based UI e.g. via Edge/Chrome or the desktop VS Code application.
+* A virtual development environment, removing the need to install any software locally.
+* Access to a Linux `Terminal` with `Docker` installed to manage containers.
+* The ability to run and test the whole system.
+
+Once you have successfully launched a Codespace you can follow the steps in this README, preferrably via `make` see [Using Make](#using-make).
