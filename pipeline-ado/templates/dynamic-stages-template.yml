@@ -1,6 +1,3 @@
-# Dynamic Stage Generation Template
-# This template generates deployment stages for an app across specified environments
-
 parameters:
   - name: appConfig
     type: object
@@ -38,8 +35,10 @@ stages:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
               ${{ elseif eq(env.name, 'tst') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DTE
-              ${{ elseif eq(env.name, 'ppd') }}:
+              ${{ elseif eq(env.name, 'uat') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_TST
+              ${{ elseif eq(env.name, 'ppd') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_UAT
               ${{ elseif eq(env.name, 'prd') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_PPD
             
@@ -48,7 +47,7 @@ stages:
                 parameters:
                   jobName: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
                   displayName: Release ${{ app.name }} - ${{ env.displayName }}
-                  appName: ${{ app.appName }}
+                  appImageName: ${{ app.appImageName }}
                   appFunctionMidfix: ${{ app.appFunctionMidfix }}
                   resourceGroupName: ${{ env.resourceGroup }}
                   azureLocation: ${{ parameters.azureLocation }}

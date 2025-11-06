@@ -103,12 +103,12 @@ stages:
                           resourceGroupName: ${{ env.resourceGroup }}
                           
                           # Application Information
-                          appName: ${{ app.appName }}
+                          appImageName: ${{ app.appImageName }}
                           appFunctionMidfix: ${{ app.appFunctionMidfix }}
                           
                           # Container Registry
                           acrName: ${{ parameters.acrName }}
-                          acrRepository: ${{ app.appName }}
+                          acrRepository: ${{ app.appImageName }}
                           
                           # Azure Configuration
                           azureServiceConnection: ${{ parameters.azureServiceConnection }}

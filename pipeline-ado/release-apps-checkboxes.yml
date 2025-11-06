@@ -189,76 +189,76 @@ stages:
         # HL7 Server Variants
         - name: 'PHW HL7Server'
           paramName: 'deployPHWHL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'phw'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'PIMS HL7Server'
           paramName: 'deployPIMSHL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Paris HL7Server'
           paramName: 'deployParisHL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'paris'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Chemocare HL7Server'
           paramName: 'deployChemocareHL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'MPI HL7Server'
           paramName: 'deployMPIHL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'mpi'
           buildPipeline: 'HL7 Server - Build'
 
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           paramName: 'deployHL7PhwTransformer'
-          appName: 'phw-hl7transformer'
+          appImageName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Phw Transformer - Build'
           
         - name: 'HL7 Chemo Transformer'
           paramName: 'deployHL7ChemoTransformer'
-          appName: 'chemo-hl7transformer'
+          appImageName: 'chemo-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Chemo Transformer - Build'
           
         - name: 'HL7 Pims Transformer'
           paramName: 'deployHL7PimsTransformer'
-          appName: 'pims-hl7transformer'
+          appImageName: 'pims-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
 
         # HL7 Sender Variants
         - name: 'HL7 Sender'
           paramName: 'deployHL7Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Sender - Build'
           
         - name: 'PIMS HL7 Sender'
           paramName: 'deployPIMSHL7Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Sender - Build'
           
         - name: 'Chemocare HL7 Sender'
           paramName: 'deployChemocareHL7Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
           paramName: 'deployHL7MockReceiver'
-          appName: 'hl7mockreceiver'
+          appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
       

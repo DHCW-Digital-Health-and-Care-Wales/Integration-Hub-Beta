@@ -84,65 +84,65 @@ stages:
       appConfig:
         # HL7 Server Variants
         - name: 'PHW HL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'phw'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'PIMS HL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Paris HL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'paris'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Chemocare HL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'MPI HL7Server'
-          appName: 'hl7server'
+          appImageName: 'hl7server'
           appFunctionMidfix: 'mpi'
           buildPipeline: 'HL7 Server - Build'
 
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
-          appName: 'phw-hl7transformer'
+          appImageName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Phw Transformer - Build'
           
         - name: 'HL7 Chemo Transformer'
-          appName: 'chemo-hl7transformer'
+          appImageName: 'chemo-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Chemo Transformer - Build'
           
         - name: 'HL7 Pims Transformer'
-          appName: 'pims-hl7transformer'
+          appImageName: 'pims-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
 
         # HL7 Sender Variants
         - name: 'HL7 Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Sender - Build'
           
         - name: 'PIMS HL7 Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Sender - Build'
           
         - name: 'Chemocare HL7 Sender'
-          appName: 'hl7sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
-          appName: 'hl7mockreceiver'
+          appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
       
@@ -156,7 +156,7 @@ stages:
           
         - name: 'dte'
           displayName: 'DTE'
-          resourceGroup: 'UK-South-DHCW-IntHub-DTE-RG'
+          resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
           poolName: 'POOL_NAME_NON_PROD'
           dependsOnPrevious: true
           
@@ -168,18 +168,18 @@ stages:
           
         - name: 'uat'
           displayName: 'UAT'
-          resourceGroup: 'UK-South-DHCW-IntHub-UAT-RG'
+          resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
           poolName: 'POOL_NAME_NON_PROD'
           dependsOnPrevious: true
           
         - name: 'ppd'
           displayName: 'Pre-Production'
-          resourceGroup: 'UK-South-DHCW-IntHub-PPD-RG'
+          resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
           poolName: 'POOL_NAME_PROD'
           dependsOnPrevious: true
           
         - name: 'prd'
           displayName: 'Production'
-          resourceGroup: 'UK-South-DHCW-IntHub-PRD-RG'
+          resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
           poolName: 'POOL_NAME_PROD'
           dependsOnPrevious: true
