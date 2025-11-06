@@ -1,6 +1,3 @@
-# Improved Release Pipeline with Dynamic Stage Generation
-# This pipeline uses configuration files and loops to reduce repetition
-
 trigger: none
 pr: none
 
@@ -33,6 +30,7 @@ parameters:
       - dev
       - dte
       - tst
+      - uat
       - ppd
       - prd
 
@@ -73,7 +71,7 @@ resources:
       trigger: none
 
 stages:
-  # Define applications metadata inline (can be moved to a separate file later)
+  # Define applications metadata inline
   - template: templates/dynamic-stages-template.yml
     parameters:
       selectedApp: ${{ parameters.selectedApp }}
@@ -165,6 +163,12 @@ stages:
         - name: 'tst'
           displayName: 'Test'
           resourceGroup: 'UK-South-DHCW-IntHub-TST-RG'
+          poolName: 'POOL_NAME_NON_PROD'
+          dependsOnPrevious: true
+          
+        - name: 'uat'
+          displayName: 'UAT'
+          resourceGroup: 'UK-South-DHCW-IntHub-UAT-RG'
           poolName: 'POOL_NAME_NON_PROD'
           dependsOnPrevious: true
           
