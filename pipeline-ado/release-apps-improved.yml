@@ -40,6 +40,8 @@ variables:
     value: 'uksdhcwihsharedcr'
   - name: azureServiceConnection
     value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  - name: azureServiceConnectionProd
+    value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
   - name: azureLocation
     value: 'uks'
     
@@ -79,6 +81,7 @@ stages:
       azureLocation: $(azureLocation)
       acrName: $(acrName)
       azureServiceConnection: $(azureServiceConnection)
+      azureServiceConnectionProd: $(azureServiceConnectionProd)
       
       # Application configurations
       appConfig:
@@ -152,34 +155,40 @@ stages:
           displayName: 'Development'
           resourceGroup: 'UK-South-DHCW-IntHub-DEV-RG'
           poolName: 'POOL_NAME_NON_PROD'
+          azureServiceConnection: 'azureServiceConnection'
           dependsOnPrevious: false
           
         - name: 'dte'
           displayName: 'DTE'
           resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
           poolName: 'POOL_NAME_NON_PROD'
+          azureServiceConnection: 'azureServiceConnection'
           dependsOnPrevious: true
           
         - name: 'tst'
           displayName: 'Test'
           resourceGroup: 'UK-South-DHCW-IntHub-TST-RG'
           poolName: 'POOL_NAME_NON_PROD'
+          azureServiceConnection: 'azureServiceConnection'
           dependsOnPrevious: true
           
         - name: 'uat'
           displayName: 'UAT'
           resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
           poolName: 'POOL_NAME_NON_PROD'
+          azureServiceConnection: 'azureServiceConnection'
           dependsOnPrevious: true
           
         - name: 'ppd'
           displayName: 'Pre-Production'
           resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
           poolName: 'POOL_NAME_PROD'
+          azureServiceConnection: 'azureServiceConnectionProd'
           dependsOnPrevious: true
           
         - name: 'prd'
           displayName: 'Production'
           resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
           poolName: 'POOL_NAME_PROD'
+          azureServiceConnection: 'azureServiceConnectionProd'
           dependsOnPrevious: true

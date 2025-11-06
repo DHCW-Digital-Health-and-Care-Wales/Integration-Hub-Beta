@@ -9,6 +9,8 @@ parameters:
     type: string
   - name: azureServiceConnection
     type: string
+  - name: azureServiceConnectionProd
+    type: string
   - name: selectedApp
     type: string
     default: 'all'
@@ -53,11 +55,6 @@ stages:
                   azureLocation: ${{ parameters.azureLocation }}
                   environment: ${{ env.name }}
                   acrName: ${{ parameters.acrName }}
-                  azureServiceConnection: ${{ parameters.azureServiceConnection }}
-                  ${{ if eq(env.poolName, 'POOL_NAME_NON_PROD') }}:
-                    POOL_NAME: ${{ variables.POOL_NAME_NON_PROD }}
-                  ${{ elseif eq(env.poolName, 'POOL_NAME_PROD') }}:
-                    POOL_NAME: ${{ variables.POOL_NAME_PROD }}
-                  ${{ else }}:
-                    POOL_NAME: 'Azure Pipelines'
+                  azureServiceConnection: ${{ coalesce(variables[env.azureServiceConnection], parameters.azureServiceConnection) }}
+                  POOL_NAME: ${{ coalesce(variables[env.poolName], 'Azure Pipelines') }}
                   resourcePipelineName: ${{ app.buildPipeline }}
