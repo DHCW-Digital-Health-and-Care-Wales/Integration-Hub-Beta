@@ -84,7 +84,19 @@ class MetricSender:
             raise
 
     def send_message_received_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        self.send_metric(key=f"{self.workflow_id}_messages_received", value=1, attributes=attributes)
+        hb = self.workflow_id.split('-')[0].upper()
+        enhanced_attributes = {
+            "HB": hb,
+            "Service": "MPI",
+            **(attributes or {})
+        }
+        self.send_metric(key="messages_received", value=1, attributes=enhanced_attributes)
 
     def send_message_sent_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        self.send_metric(key=f"{self.workflow_id}_messages_sent", value=1, attributes=attributes)
+        hb = self.workflow_id.split('-')[0].upper()
+        enhanced_attributes = {
+            "HB": hb,
+            "Service": "MPI",
+            **(attributes or {})
+        }
+        self.send_metric(key="messages_sent", value=1, attributes=enhanced_attributes)

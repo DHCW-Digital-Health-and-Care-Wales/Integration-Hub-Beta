@@ -30,6 +30,15 @@ class TestMetricSender(unittest.TestCase):
             expected.update(custom_attrs)
         return expected
 
+    def _get_expected_attributes_for_message_metrics(self, custom_attrs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        expected: Dict[str, Any] = {
+            "HB": self.workflow_id.split('-')[0].upper(),
+            "Service": "MPI",
+        }
+        if custom_attrs:
+            expected.update(custom_attrs)
+        return expected
+
     @patch('metric_sender_lib.metric_sender.logger')
     def test_init_scenarios_where_azure_monitor_disabled(self, mock_logger: MagicMock) -> None:
         test_cases = [
@@ -282,10 +291,11 @@ class TestMetricSender(unittest.TestCase):
                     metric_sender.send_message_received_metric(test_case['attributes'])
 
                     # Assert
+                    expected_attributes = self._get_expected_attributes_for_message_metrics(test_case['attributes'])
                     mock_send_metric.assert_called_once_with(
-                        key=f"{self.workflow_id}_messages_received",
+                        key="messages_received",
                         value=1,
-                        attributes=test_case['attributes']
+                        attributes=expected_attributes
                     )
 
     @patch('metric_sender_lib.metric_sender.logger')
@@ -311,10 +321,11 @@ class TestMetricSender(unittest.TestCase):
                     metric_sender.send_message_sent_metric(test_case['attributes'])
 
                     # Assert
+                    expected_attributes = self._get_expected_attributes_for_message_metrics(test_case['attributes'])
                     mock_send_metric.assert_called_once_with(
-                        key=f"{self.workflow_id}_messages_sent",
+                        key="messages_sent",
                         value=1,
-                        attributes=test_case['attributes']
+                        attributes=expected_attributes
                     )
 
 
