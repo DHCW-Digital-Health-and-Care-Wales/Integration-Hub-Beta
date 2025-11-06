@@ -94,8 +94,8 @@ stages:
                       - template: release-container-app-template.yml
                         parameters:
                           # Job Configuration
-                          jobName: 'Deploy_${{ replace(replace(app.name, " ", ""), "-", "") }}'
-                          displayName: 'Deploy ${{ app.name }} to ${{ env.displayName }}'
+                          jobName: Deploy_${{ replace(replace(app.name, ' ', ''), '-', '') }}
+                          displayName: Deploy ${{ app.name }} to ${{ env.displayName }}
                           
                           # Environment Information
                           environment: ${{ env.name }}
