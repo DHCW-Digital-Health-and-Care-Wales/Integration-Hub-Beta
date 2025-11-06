@@ -61,7 +61,7 @@ jobs:
           # Set the variable for use in subsequent steps
           echo "##vso[task.setvariable variable=IMAGE_TAG]$IMAGE_TAG"
 
-          echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG"
+          echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG"
           az acr login --name ${{ parameters.acrName }}
           
           # Use pre-computed image tag from template variables
@@ -69,11 +69,11 @@ jobs:
           
           az acr import \
             --name ${{ parameters.acrName }} \
-            --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG \
+            --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
             --image $IMAGE_TAG_WITH_FLOW \
             --force
 
-          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
+          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
 
     - task: AzureCLI@2
       displayName: 'Update Azure Container App'
