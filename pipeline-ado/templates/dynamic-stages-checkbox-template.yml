@@ -93,23 +93,28 @@ stages:
                     jobs:
                       - template: release-container-app-template.yml
                         parameters:
+                          # Job Configuration
+                          jobName: 'Deploy_${{ replace(replace(app.name, " ", ""), "-", "") }}'
+                          displayName: 'Deploy ${{ app.name }} to ${{ env.displayName }}'
+                          
                           # Environment Information
-                          ENVIRONMENT: ${{ env.name }}
-                          AZURE_LOCATION: ${{ parameters.azureLocation }}
-                          RESOURCE_GROUP: ${{ env.resourceGroup }}
+                          environment: ${{ env.name }}
+                          azureLocation: ${{ parameters.azureLocation }}
+                          resourceGroupName: ${{ env.resourceGroup }}
                           
                           # Application Information
-                          APP_NAME: ${{ app.appName }}
-                          APP_FUNCTION_MIDFIX: ${{ app.appFunctionMidfix }}
+                          appName: ${{ app.appName }}
+                          appFunctionMidfix: ${{ app.appFunctionMidfix }}
                           
                           # Container Registry
-                          ACR_NAME: ${{ parameters.acrName }}
+                          acrName: ${{ parameters.acrName }}
+                          acrRepository: ${{ app.appName }}
                           
                           # Azure Configuration
-                          AZURE_SERVICE_CONNECTION: ${{ parameters.azureServiceConnection }}
+                          azureServiceConnection: ${{ parameters.azureServiceConnection }}
                           
                           # Pool Configuration
                           POOL_NAME: ${{ variables[env.poolName] }}
                           
                           # Build Pipeline Information
-                          PIPELINE_NAME: ${{ app.buildPipeline }}
+                          resourcePipelineName: ${{ app.buildPipeline }}
