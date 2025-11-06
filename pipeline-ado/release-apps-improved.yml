@@ -165,7 +165,7 @@ stages:
           
         - name: 'tst'
           displayName: 'Test'
-          resourceGroup: 'UK-South-DHCW-IntHub-TST-RG'
+          resourceGroup: 'UK-South-DHCW-IntHub-TST-App-RG'
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: true
