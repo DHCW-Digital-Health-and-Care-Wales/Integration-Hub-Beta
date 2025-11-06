@@ -5,105 +5,115 @@ trigger: none
 pr: none
 
 parameters:
-  # Application Selection (Checkboxes)
+  # ═══════════════════════════════════════════════════════════════
+  # APPLICATION SELECTION
+  # ═══════════════════════════════════════════════════════════════
+  
   - name: deployAllApps
-    displayName: '✓ Deploy ALL Applications'
+    displayName: '📦 Applications │ ✓ Deploy ALL Applications'
     type: boolean
     default: false
     
   - name: deployPHWHL7Server
-    displayName: '☐ PHW HL7Server'
+    displayName: '📦 Applications │ ☐ PHW HL7Server'
     type: boolean
     default: false
     
   - name: deployPIMSHL7Server
-    displayName: '☐ PIMS HL7Server'
+    displayName: '📦 Applications │ ☐ PIMS HL7Server'
     type: boolean
     default: false
     
   - name: deployParisHL7Server
-    displayName: '☐ Paris HL7Server'
+    displayName: '📦 Applications │ ☐ Paris HL7Server'
     type: boolean
     default: false
     
   - name: deployChemocareHL7Server
-    displayName: '☐ Chemocare HL7Server'
+    displayName: '📦 Applications │ ☐ Chemocare HL7Server'
     type: boolean
     default: false
     
   - name: deployMPIHL7Server
-    displayName: '☐ MPI HL7Server'
+    displayName: '📦 Applications │ ☐ MPI HL7Server'
     type: boolean
     default: false
     
   - name: deployHL7PhwTransformer
-    displayName: '☐ HL7 Phw Transformer'
+    displayName: '📦 Applications │ ☐ HL7 Phw Transformer'
     type: boolean
     default: false
     
   - name: deployHL7ChemoTransformer
-    displayName: '☐ HL7 Chemo Transformer'
+    displayName: '📦 Applications │ ☐ HL7 Chemo Transformer'
     type: boolean
     default: false
     
   - name: deployHL7PimsTransformer
-    displayName: '☐ HL7 Pims Transformer'
+    displayName: '📦 Applications │ ☐ HL7 Pims Transformer'
     type: boolean
     default: false
     
   - name: deployHL7Sender
-    displayName: '☐ HL7 Sender'
+    displayName: '📦 Applications │ ☐ HL7 Sender'
     type: boolean
     default: false
     
   - name: deployPIMSHL7Sender
-    displayName: '☐ PIMS HL7 Sender'
+    displayName: '📦 Applications │ ☐ PIMS HL7 Sender'
     type: boolean
     default: false
     
   - name: deployChemocareHL7Sender
-    displayName: '☐ Chemocare HL7 Sender'
+    displayName: '📦 Applications │ ☐ Chemocare HL7 Sender'
     type: boolean
     default: false
     
   - name: deployHL7MockReceiver
-    displayName: '☐ HL7 Mock Receiver'
+    displayName: '📦 Applications │ ☐ HL7 Mock Receiver'
     type: boolean
     default: false
 
-  # Environment Selection (Checkboxes)
+  # ═══════════════════════════════════════════════════════════════
+  # ENVIRONMENT SELECTION
+  # ═══════════════════════════════════════════════════════════════
+  
   - name: deployToAllEnvironments
-    displayName: '✓ Deploy to ALL Environments'
+    displayName: '🌍 Environments │ ✓ Deploy to ALL Environments'
     type: boolean
     default: false
     
   - name: deployToDev
-    displayName: '☐ Development (dev)'
+    displayName: '🌍 Environments │ ☐ Development (dev)'
     type: boolean
     default: false
     
   - name: deployToDTE
-    displayName: '☐ DTE'
+    displayName: '🌍 Environments │ ☐ DTE'
     type: boolean
     default: false
     
   - name: deployToTest
-    displayName: '☐ Test (tst)'
+    displayName: '🌍 Environments │ ☐ Test (tst)'
     type: boolean
     default: false
     
   - name: deployToPreProd
-    displayName: '☐ Pre-Production (ppd)'
+    displayName: '🌍 Environments │ ☐ Pre-Production (ppd)'
     type: boolean
     default: false
     
   - name: deployToProduction
-    displayName: '☐ Production (prd)'
+    displayName: '🌍 Environments │ ☐ Production (prd)'
     type: boolean
     default: false
+  
+  # ═══════════════════════════════════════════════════════════════
+  # DEPLOYMENT OPTIONS
+  # ═══════════════════════════════════════════════════════════════
     
   - name: maintainDependencies
-    displayName: 'Maintain environment dependencies (dev→dte→tst→ppd→prd)?'
+    displayName: '⚙️ Options │ Maintain environment dependencies (dev→dte→tst→ppd→prd)?'
     type: boolean
     default: false
 
