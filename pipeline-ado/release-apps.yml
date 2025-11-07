@@ -74,7 +74,7 @@ resources:
 
 stages:
   # Define applications metadata inline
-  - template: templates/release-appsdynamic-stages-template.yml
+  - template: templates/release-apps-dynamic-stages-template.yml
     parameters:
       selectedApp: ${{ parameters.selectedApp }}
       selectedEnvironment: ${{ parameters.selectedEnvironment }}
