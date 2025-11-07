@@ -151,8 +151,8 @@ Targets:
   install   Install Python dependencies (hl7).
   secrets   Force generation of the .secrets file.
   build     Build (or rebuild) Docker containers. (Usage: make build <profile>)
-  start     Start Docker containers. (Usage: make run <profile>)
-  send      Send a HL7 message. (Usage: make send <hl7-message-filename>)
+  start     Start Docker containers. (Usage: make start <profile>)
+  send      Send a HL7 message. (Usage: make send file=<filename> [port=<port>])
   logs      Follow logs from services. (Usage: make logs <service_name>)
   stop      Stop all Docker containers.
 ```
@@ -160,7 +160,8 @@ Targets:
 Examples:
 ```bash
   make start phw-to-mpi
-  make send test_message.hl7
+  make send file=test_message.hl7
+	make send file=test_message.hl7 port=2576
   make logs mpi-hl7-mock-receiver
   make stop
   make build phw-to-mpi

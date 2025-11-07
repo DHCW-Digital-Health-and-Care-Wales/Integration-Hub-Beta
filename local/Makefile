@@ -21,15 +21,16 @@ help:
 	@echo "  install   Install Python dependencies (hl7)."
 	@echo "  secrets   Force generation of the .secrets file."
 	@echo "  build     Build (or rebuild) Docker containers (Usage: make build <profile>)"
-	@echo "  start     Start Docker containers. (Usage: make run <profile>)"
-	@echo "  send      Send a HL7 message. (Usage: make send <hl7-message-filename>)"
+	@echo "  start     Start Docker containers. (Usage: make start <profile>)"
+	@echo "  send      Send a HL7 message. (Usage: make send file=<filename> [port=<port>])"
 	@echo "  logs      Follow logs from services. (Usage: make logs <service_name>)"
 	@echo "  stop      Stop all Docker containers."
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build phw-to-mpi"
 	@echo "  make start phw-to-mpi"
-	@echo "  make send test_message.hl7"
+	@echo "  make send file=test_message.hl7"
+	@echo "  make send file=test_message.hl7 port=2576"
 	@echo "  make logs mpi-hl7-mock-receiver"
 	@echo "  make stop"
 
@@ -60,10 +61,16 @@ start: .secrets
 	docker compose --profile $(EXTRA_ARGS) up -d
 
 ## 🧪 send: Send a HL7 message
-# Uses $(EXTRA_ARGS) as path to file containing hl7 message.
+# Usage: make send file=<filename> [port=<port>]
+# Default port is 2575
+port ?= 2575
 send:
-	@echo "Sending HL7 file: $(EXTRA_ARGS)..."
-	mllp_send --loose --file $(EXTRA_ARGS) --port 2575 127.0.0.1
+	@if [ -z "$(file)" ]; then \
+		echo "Usage: make send file=<filename> [port=<port>]"; \
+		exit 1; \
+	fi
+	@echo "Sending HL7 file: $(file) to port $(port)..."
+	mllp_send --loose --file $(file) --port $(port) 127.0.0.1
 
 ## 📖 logs: Follow container logs
 # Uses $(EXTRA_ARGS) to pass service names to the command.
@@ -87,7 +94,7 @@ stop:
 
 # --- Dummy Target ---
 
-# Catche any "extra" argument and gives it an empty recipe, 
+# Catch any "extra" argument and gives it an empty recipe, 
 # so 'make' doesn't error.
 $(EXTRA_ARGS):
 	@# This is a dummy target to catch the extra args
