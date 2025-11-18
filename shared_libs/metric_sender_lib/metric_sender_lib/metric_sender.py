@@ -12,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 class MetricSender:
 
-    def __init__(self, workflow_id: str, microservice_id: str):
+    def __init__(self, workflow_id: str, microservice_id: str, service_name: Optional[str] = None):
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
+        self.service_name = service_name
+        self.hb = workflow_id.split('-')[0].upper() if '-' in workflow_id else workflow_id.upper()
         self._counters: Dict[str, Counter] = {}
 
         connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
@@ -69,6 +71,10 @@ class MetricSender:
                 "microservice_id": self.microservice_id,
             }
 
+            if self.service_name:
+                metric_attributes["HB"] = self.hb
+                metric_attributes["Service"] = self.service_name
+
             if attributes:
                 metric_attributes.update(attributes)
 
@@ -84,19 +90,7 @@ class MetricSender:
             raise
 
     def send_message_received_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        hb = self.workflow_id.split('-')[0].upper()
-        enhanced_attributes = {
-            "HB": hb,
-            "Service": "MPI",
-            **(attributes or {})
-        }
-        self.send_metric(key="messages_received", value=1, attributes=enhanced_attributes)
+        self.send_metric(key="messages_received", value=1, attributes=attributes)
 
     def send_message_sent_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        hb = self.workflow_id.split('-')[0].upper()
-        enhanced_attributes = {
-            "HB": hb,
-            "Service": "MPI",
-            **(attributes or {})
-        }
-        self.send_metric(key="messages_sent", value=1, attributes=enhanced_attributes)
+        self.send_metric(key="messages_sent", value=1, attributes=attributes)
