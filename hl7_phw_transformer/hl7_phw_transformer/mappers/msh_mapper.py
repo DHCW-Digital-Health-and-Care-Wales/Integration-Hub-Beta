@@ -5,6 +5,9 @@ from ..datetime_transformer import transform_datetime
 
 
 def map_msh(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
+    # Intentional failure for DR testing: raise an error to simulate mapper bug
+    raise RuntimeError("Simulated failure in MSH mapper for recovery testing")
+
     msh_segment = original_msg.msh
     new_msh = new_msg.msh
 
