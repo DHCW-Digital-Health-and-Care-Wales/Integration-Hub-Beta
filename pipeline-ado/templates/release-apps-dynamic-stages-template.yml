@@ -1,0 +1,56 @@
+parameters:
+  - name: appConfig
+    type: object
+  - name: environments
+    type: object
+  - name: azureLocation
+    type: string
+  - name: acrName
+    type: string
+  - name: selectedApp
+    type: string
+    default: 'all'
+  - name: selectedEnvironment
+    type: string
+    default: 'all'
+
+stages:
+  # Loop through each environment
+  - ${{ each env in parameters.environments }}:
+    # Check if environment is selected
+    - ${{ if or(eq(parameters.selectedEnvironment, 'all'), eq(parameters.selectedEnvironment, env.name)) }}:
+      # Loop through each application
+      - ${{ each app in parameters.appConfig }}:
+        # Check if app is selected
+        - ${{ if or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)) }}:
+          - stage: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
+            displayName: 'Release ${{ app.name }} - ${{ env.displayName }}'
+            
+            # Set up dependencies based on environment configuration
+            # Only add dependencies if 'all' environments are selected to maintain the chain
+            ${{ if and(eq(env.dependsOnPrevious, true), eq(parameters.selectedEnvironment, 'all')) }}:
+              ${{ if eq(env.name, 'dte') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
+              ${{ elseif eq(env.name, 'tst') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DTE
+              ${{ elseif eq(env.name, 'uat') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_TST
+              ${{ elseif eq(env.name, 'ppd') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_UAT
+              ${{ elseif eq(env.name, 'prd') }}:
+                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_PPD
+            
+            jobs:
+              - template: release-container-app-template.yml
+                parameters:
+                  jobName: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
+                  displayName: Release ${{ app.name }} - ${{ env.displayName }}
+                  appImageName: ${{ app.appImageName }}
+                  appFunctionMidfix: ${{ app.appFunctionMidfix }}
+                  resourceGroupName: ${{ env.resourceGroup }}
+                  azureLocation: ${{ parameters.azureLocation }}
+                  environment: ${{ env.name }}
+                  acrName: ${{ parameters.acrName }}
+                  azureServiceConnection: ${{ env.azureServiceConnection }}
+                  POOL_NAME: ${{ env.poolName }}
+                  resourcePipelineName: ${{ app.buildPipeline }}
