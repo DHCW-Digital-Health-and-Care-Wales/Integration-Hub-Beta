@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 class MetricSender:
 
-    def __init__(self, workflow_id: str, microservice_id: str, service_name: Optional[str] = None):
+    def __init__(self, workflow_id: str, microservice_id: str, hb: str, service: str):
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
-        self.service_name = service_name
-        self.hb = workflow_id.split('-')[0].upper() if '-' in workflow_id else workflow_id.upper()
+        self.hb = hb
+        self.service = service
         self._counters: Dict[str, Counter] = {}
 
         connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
@@ -69,11 +69,9 @@ class MetricSender:
             metric_attributes = {
                 "workflow_id": self.workflow_id,
                 "microservice_id": self.microservice_id,
+                "HB": self.hb,
+                "Service": self.service,
             }
-
-            if self.service_name:
-                metric_attributes["HB"] = self.hb
-                metric_attributes["Service"] = self.service_name
 
             if attributes:
                 metric_attributes.update(attributes)

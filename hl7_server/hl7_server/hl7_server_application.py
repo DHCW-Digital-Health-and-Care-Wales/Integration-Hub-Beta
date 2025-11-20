@@ -59,7 +59,9 @@ class Hl7ServerApplication:
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-        self.metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id)
+        self.metric_sender = MetricSender(
+            app_config.workflow_id, app_config.microservice_id, app_config.hb, app_config.service
+        )
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
