@@ -17,6 +17,8 @@ class TestAppConfig(unittest.TestCase):
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service",
                 "HL7_VERSION": "2.5.1",
                 "SENDING_APP": "test_app",
                 "HEALTH_CHECK_HOST": "localhost",
@@ -53,6 +55,8 @@ class TestAppConfig(unittest.TestCase):
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service",
                 "MAX_MESSAGE_SIZE_BYTES": "2097152"  # 2MB custom size
             }
             return values.get(name)
@@ -70,6 +74,8 @@ class TestAppConfig(unittest.TestCase):
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service",
                 "MAX_MESSAGE_SIZE_BYTES": "104857601"  # 1 byte over 100MB limit
             }
             return values.get(name)
@@ -92,6 +98,8 @@ class TestAppConfig(unittest.TestCase):
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service",
                 "MAX_MESSAGE_SIZE_BYTES": "104857600"  # Exactly 100MB
             }
             return values.get(name)
@@ -108,7 +116,9 @@ class TestAppConfig(unittest.TestCase):
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 # AUDIT_QUEUE_NAME intentionally omitted to test required field validation
                 "WORKFLOW_ID": "test-workflow",
-                "MICROSERVICE_ID": "test-microservice"
+                "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service"
             }
             return values.get(name)
 
@@ -126,7 +136,9 @@ class TestAppConfig(unittest.TestCase):
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
-                "MICROSERVICE_ID": "test-microservice"
+                "MICROSERVICE_ID": "test-microservice",
+                "HB": "test-hb",
+                "SERVICE": "test-service"
             }
             return required_values.get(name)  # Returns None for optional fields
 
