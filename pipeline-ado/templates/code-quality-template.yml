@@ -53,7 +53,7 @@ jobs:
           uv tool install bandit
           uv tool install mypy
           uv tool install pip-audit
-          uv tool install uv-secure
+          uv tool install uv-secure==0.14.4
           
           # Verify UV installation
           uv --version
