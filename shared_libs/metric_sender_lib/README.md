@@ -11,10 +11,12 @@ This library provides metric sending functionality that sends telemetry data to 
 ```python
 from metric_sender_lib import MetricSender
 
-# Initialize with workflow and microservice identifiers
+# Initialize with workflow, microservice, HB, and Service identifiers
 metric_sender = MetricSender(
     workflow_id="my-workflow",
-    microservice_id="my-service"
+    microservice_id="my-service",
+    hb="HB",
+    service="Service"
 )
 
 # Send custom metrics
