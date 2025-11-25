@@ -19,6 +19,8 @@ class TestAppConfig(unittest.TestCase):
                 "AUDIT_QUEUE_NAME": "audit-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
                 "ACK_TIMEOUT_SECONDS": "30"
             }
             return values.get(name)
@@ -34,6 +36,8 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.audit_queue_name, "audit-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
         self.assertEqual(config.microservice_id, "test-microservice")
+        self.assertEqual(config.health_board, "test health board")
+        self.assertEqual(config.peer_service, "test-service")
         self.assertEqual(config.ack_timeout_seconds, 30)
 
     @patch("hl7_sender.app_config.os.getenv")

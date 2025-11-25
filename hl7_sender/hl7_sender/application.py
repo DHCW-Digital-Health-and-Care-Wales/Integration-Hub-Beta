@@ -32,7 +32,8 @@ def main() -> None:
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-    metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.hb, app_config.service)
+    metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
+                                 app_config.peer_service)
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id

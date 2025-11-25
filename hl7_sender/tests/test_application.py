@@ -167,8 +167,8 @@ class TestProcessMessage(unittest.TestCase):
             audit_queue_name="test_audit_queue",
             workflow_id="test_workflow_id",
             microservice_id="test_microservice_id",
-            hb="test-hb",
-            service="test-service",
+            health_board="test-health-board",
+            peer_service="test-service",
             ack_timeout_seconds=30
         )
         # Mock ProcessorManager to exit the loop immediately

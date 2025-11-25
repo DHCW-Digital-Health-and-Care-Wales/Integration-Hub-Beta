@@ -17,8 +17,8 @@ class AppConfig:
     audit_queue_name: str
     workflow_id: str
     microservice_id: str
-    hb: str
-    service: str
+    health_board: str
+    peer_service: str
     ack_timeout_seconds: int
 
     @staticmethod
@@ -35,8 +35,8 @@ class AppConfig:
             audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
-            hb=_read_required_env("HB"),
-            service=_read_required_env("SERVICE"),
+            health_board=_read_required_env("HEALTH_BOARD"),
+            peer_service=_read_required_env("PEER_SERVICE"),
             ack_timeout_seconds=_read_int_env("ACK_TIMEOUT_SECONDS") or 30,
         )
 

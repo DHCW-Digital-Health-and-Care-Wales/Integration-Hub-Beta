@@ -15,8 +15,8 @@ ENV_VARS_QUEUE: Dict[str, str] = {
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
-    "HB": "test-hb",
-    "SERVICE": "test-service",
+    "HEALTH_BOARD": "test-health-board",
+    "PEER_SERVICE": "test-service",
     "HEALTH_CHECK_HOST": "127.0.0.1",
     "HEALTH_CHECK_PORT": "9000",
 }
@@ -29,8 +29,8 @@ ENV_VARS_TOPIC: Dict[str, str] = {
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
-    "HB": "test-hb",
-    "SERVICE": "test-service",
+    "HEALTH_BOARD": "test-health-board",
+    "PEER_SERVICE": "test-service",
     "HEALTH_CHECK_HOST": "127.0.0.1",
     "HEALTH_CHECK_PORT": "9000",
 }
