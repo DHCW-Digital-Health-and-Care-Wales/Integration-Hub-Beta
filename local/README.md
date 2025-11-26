@@ -140,31 +140,40 @@ To terminate the containers you can proceed with the following command in the `/
 docker compose --profile "*" down
 ```
 
-## Using Make
+## Using Just
 
-There is a `Makefile` to streamline commmon tasks for local development.
+There is a `justfile` to streamline common tasks for local development using [Just](https://github.com/casey/just), a modern command runner.
 
-Execute `make help` to see instructions, in summary:
+### Installation
 
-Targets:
+Install Just, see the [Just installation guide](https://github.com/casey/just#installation).
+
+### Available Commands
+
+Execute `just --list` to see all available commands. Key commands include:
+
 ```
-  install   Install Python dependencies (hl7).
-  secrets   Force generation of the .secrets file.
-  build     Build (or rebuild) Docker containers. (Usage: make build <profile>)
-  start     Start Docker containers. (Usage: make start <profile>)
-  send      Send a HL7 message. (Usage: make send file=<filename> [port=<port>])
-  logs      Follow logs from services. (Usage: make logs <service_name>)
-  stop      Stop all Docker containers.
+  install          Install Python dependencies (hl7).
+  secrets          Generate the .secrets file.
+  build <profile>  Build (or rebuild) Docker containers for a profile.
+  start <profile>  Start Docker containers for a profile.
+  send <file> [port=<port>]  Send a HL7 message (default port: 2575).
+  logs [service]   Follow logs from services (all or specific service).
+  stop             Stop all Docker containers.
+  run [profile]    Complete setup: install, generate secrets, and optionally start services.
+  restart <profile> Rebuild and restart services.
+  clean            Stop all containers and remove secrets file.
 ```
-	
+
 Examples:
 ```bash
-  make start phw-to-mpi
-  make send file=test_message.hl7
-	make send file=test_message.hl7 port=2576
-  make logs mpi-hl7-mock-receiver
-  make stop
-  make build phw-to-mpi
+  just start phw-to-mpi
+  just send phw-to-mpi.sample.hl7
+  just send phw-to-mpi.sample.hl7 2576
+  just logs mpi-hl7-mock-receiver
+  just stop
+  just build phw-to-mpi
+  just run phw-to-mpi     # Complete setup and start in one command
 ```
 
 ## DevContainer Usage
@@ -181,7 +190,19 @@ This provides:
 * A pre-configured VS Code environment (with useful extensions installed - such as Container Management)
 * Ability to work in a 'Browser` based UI e.g. via Edge/Chrome or the desktop VS Code application.
 * A virtual development environment, removing the need to install any software locally.
-* Access to a Linux `Terminal` with `Docker` installed to manage containers.
+* Access to a Linux `Terminal` with `Docker` and `Just` installed to manage containers.
 * The ability to run and test the whole system.
 
-Once you have successfully launched a Codespace you can follow the steps in this README, preferrably via `make` see [Using Make](#using-make).
+### Quick Start with DevContainer
+
+Once you have successfully launched a Codespace:
+
+1. **Just is automatically installed** in the DevContainer (no manual installation needed)
+2. **Discover available commands**: Run `just --list` to see all available commands
+3. **Quick start**: Run `just run phw-to-mpi` to install dependencies, generate secrets, and start services in one command
+4. **Manual setup** (if preferred):
+   - Install dependencies: `just install`
+   - Generate secrets: `just secrets`
+   - Start a profile: `just start <profile-name>`
+
+For more details, see [Using Just](#using-just).
