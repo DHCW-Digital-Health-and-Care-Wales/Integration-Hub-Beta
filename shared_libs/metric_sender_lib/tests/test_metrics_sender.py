@@ -7,8 +7,10 @@ from metric_sender_lib.metric_sender import MetricSender
 
 class TestMetricSender(unittest.TestCase):
     def setUp(self) -> None:
-        self.workflow_id = "test_workflow"
+        self.workflow_id = "phw-mpi"
         self.microservice_id = "test_microservice"
+        self.health_board = "PHW"
+        self.peer_service = "MPI"
         self.test_connection_string = "InstrumentationKey=test-key;IngestionEndpoint=https://test.com/"
 
         self.env_patcher = patch.dict('os.environ', {}, clear=True)
@@ -17,14 +19,16 @@ class TestMetricSender(unittest.TestCase):
     def tearDown(self) -> None:
         self.env_patcher.stop()
 
-    def _create_metric_sender_with_azure_monitor(self) -> MetricSender:
+    def _create_metric_sender_with_azure_monitor(self, health_board: Optional[str] = None, peer_service: Optional[str] = None) -> MetricSender:
         with patch.object(MetricSender, '_initialize_azure_monitor'):
-            return MetricSender(self.workflow_id, self.microservice_id)
+            return MetricSender(self.workflow_id, self.microservice_id, health_board or self.health_board, peer_service or self.peer_service)
 
-    def _get_expected_attributes(self, custom_attrs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _get_expected_attributes(self, custom_attrs: Optional[Dict[str, Any]] = None, health_board: Optional[str] = None, peer_service: Optional[str] = None) -> Dict[str, Any]:
         expected: Dict[str, Any] = {
             "workflow_id": self.workflow_id,
             "microservice_id": self.microservice_id,
+            "health_board": health_board or self.health_board,
+            "peer_service": peer_service or self.peer_service,
         }
         if custom_attrs:
             expected.update(custom_attrs)
@@ -52,11 +56,13 @@ class TestMetricSender(unittest.TestCase):
                     mock_logger.reset_mock()
 
                     # Act
-                    metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+                    metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
                     # Assert
                     self.assertEqual(metric_sender.workflow_id, self.workflow_id)
                     self.assertEqual(metric_sender.microservice_id, self.microservice_id)
+                    self.assertEqual(metric_sender.health_board, self.health_board)
+                    self.assertEqual(metric_sender.peer_service, self.peer_service)
                     self.assertEqual(metric_sender.azure_monitor_enabled, False)
                     self.assertEqual(metric_sender._counters, {})
                     mock_logger.info.assert_called_once_with(log_message)
@@ -76,7 +82,7 @@ class TestMetricSender(unittest.TestCase):
             mock_get_credential.return_value = mock_credential
 
             # Act
-            metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+            metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
             # Assert
             self.assertTrue(metric_sender.azure_monitor_enabled)
@@ -98,7 +104,7 @@ class TestMetricSender(unittest.TestCase):
 
             # Act & Assert
             with self.assertRaises(Exception) as context:
-                MetricSender(self.workflow_id, self.microservice_id)
+                MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
             self.assertEqual(str(context.exception), "Azure Monitor setup failed")
             mock_logger.error.assert_called_with("Failed to initialize Azure Monitor metrics: Azure Monitor setup failed")
@@ -111,7 +117,7 @@ class TestMetricSender(unittest.TestCase):
         # Arrange
         mock_credential = MagicMock()
         mock_managed_identity.return_value = mock_credential
-        metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+        metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
         # Act
         credential = metric_sender._get_credential()
@@ -145,7 +151,7 @@ class TestMetricSender(unittest.TestCase):
                     mock_default_credential.return_value = mock_credential
                     mock_logger.reset_mock()
 
-                    metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+                    metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
                     # Act
                     credential = metric_sender._get_credential()
@@ -216,7 +222,7 @@ class TestMetricSender(unittest.TestCase):
     @patch('metric_sender_lib.metric_sender.logger')
     def test_send_metric_with_azure_monitor_disabled(self, mock_logger: MagicMock) -> None:
         # Arrange
-        metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+        metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
         test_attributes = {"custom_attr": "test_value"}
         expected_attributes = self._get_expected_attributes(test_attributes)
 
@@ -231,7 +237,7 @@ class TestMetricSender(unittest.TestCase):
     @patch('metric_sender_lib.metric_sender.logger')
     def test_send_metric_with_default_value_and_no_attributes(self, mock_logger: MagicMock) -> None:
         # Arrange
-        metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+        metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
         expected_attributes = self._get_expected_attributes()
 
         # Act
@@ -275,7 +281,7 @@ class TestMetricSender(unittest.TestCase):
         for test_case in test_cases:
             with self.subTest(test_case['name']):
                 # Arrange
-                metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+                metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
                 with patch.object(metric_sender, 'send_metric') as mock_send_metric:
                     # Act
@@ -283,7 +289,7 @@ class TestMetricSender(unittest.TestCase):
 
                     # Assert
                     mock_send_metric.assert_called_once_with(
-                        key=f"{self.workflow_id}_messages_received",
+                        key="messages_received",
                         value=1,
                         attributes=test_case['attributes']
                     )
@@ -304,7 +310,7 @@ class TestMetricSender(unittest.TestCase):
         for test_case in test_cases:
             with self.subTest(test_case['name']):
                 # Arrange
-                metric_sender = MetricSender(self.workflow_id, self.microservice_id)
+                metric_sender = MetricSender(self.workflow_id, self.microservice_id, self.health_board, self.peer_service)
 
                 with patch.object(metric_sender, 'send_metric') as mock_send_metric:
                     # Act
@@ -312,11 +318,10 @@ class TestMetricSender(unittest.TestCase):
 
                     # Assert
                     mock_send_metric.assert_called_once_with(
-                        key=f"{self.workflow_id}_messages_sent",
+                        key="messages_sent",
                         value=1,
                         attributes=test_case['attributes']
                     )
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,6 +16,8 @@ class AppConfig:
     audit_queue_name: str
     workflow_id: str
     microservice_id: str
+    health_board: str
+    peer_service: str
     hl7_version: str | None
     sending_app: str | None
     health_check_hostname: str | None
@@ -43,6 +45,8 @@ class AppConfig:
             audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
+            health_board=_read_required_env("HEALTH_BOARD"),
+            peer_service=_read_required_env("PEER_SERVICE"),
             hl7_version=_read_env("HL7_VERSION"),
             sending_app=_read_env("SENDING_APP"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),

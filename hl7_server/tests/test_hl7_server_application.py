@@ -15,6 +15,8 @@ ENV_VARS_QUEUE: Dict[str, str] = {
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
+    "HEALTH_BOARD": "test-health-board",
+    "PEER_SERVICE": "test-service",
     "HEALTH_CHECK_HOST": "127.0.0.1",
     "HEALTH_CHECK_PORT": "9000",
 }
@@ -27,6 +29,8 @@ ENV_VARS_TOPIC: Dict[str, str] = {
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
+    "HEALTH_BOARD": "test-health-board",
+    "PEER_SERVICE": "test-service",
     "HEALTH_CHECK_HOST": "127.0.0.1",
     "HEALTH_CHECK_PORT": "9000",
 }
@@ -93,7 +97,10 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.app.start_server()
 
-        self._assert_shutdown(server, thread, health_check)
+        server.shutdown.assert_called_once()
+        server.server_close.assert_called_once()
+        thread.join.assert_called_once()
+        health_check.stop.assert_called_once()
 
     def test_health_check_initialization(self, mock_thread: MagicMock, mock_factory: MagicMock,
                                          mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:

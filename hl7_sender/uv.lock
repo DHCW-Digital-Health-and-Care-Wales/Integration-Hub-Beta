@@ -553,6 +553,13 @@ requires-dist = [
     { name = "setuptools", specifier = "==80.9.0" },
 ]
 
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.9.1" },
+    { name = "mypy", specifier = ">=1.18.2" },
+    { name = "ruff", specifier = ">=0.14.5" },
+]
+
 [[package]]
 name = "more-itertools"
 version = "10.7.0"

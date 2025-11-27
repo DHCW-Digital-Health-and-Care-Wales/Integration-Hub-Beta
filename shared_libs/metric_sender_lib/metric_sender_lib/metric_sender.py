@@ -12,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 class MetricSender:
 
-    def __init__(self, workflow_id: str, microservice_id: str):
+    def __init__(self, workflow_id: str, microservice_id: str, health_board: str, peer_service: str):
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
+        self.health_board = health_board
+        self.peer_service = peer_service
         self._counters: Dict[str, Counter] = {}
 
         connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
@@ -67,6 +69,8 @@ class MetricSender:
             metric_attributes = {
                 "workflow_id": self.workflow_id,
                 "microservice_id": self.microservice_id,
+                "health_board": self.health_board,
+                "peer_service": self.peer_service,
             }
 
             if attributes:
@@ -84,7 +88,7 @@ class MetricSender:
             raise
 
     def send_message_received_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        self.send_metric(key=f"{self.workflow_id}_messages_received", value=1, attributes=attributes)
+        self.send_metric(key="messages_received", value=1, attributes=attributes)
 
     def send_message_sent_metric(self, attributes: Optional[Dict[str, Any]] = None) -> None:
-        self.send_metric(key=f"{self.workflow_id}_messages_sent", value=1, attributes=attributes)
+        self.send_metric(key="messages_sent", value=1, attributes=attributes)
