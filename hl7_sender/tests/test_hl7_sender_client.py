@@ -8,28 +8,94 @@ from hl7_sender.hl7_sender_client import HL7SenderClient, is_socket_closed
 
 class TestIsSocketClosed(unittest.TestCase):
 
-    def test_socket_open_blocking_io_error(self) -> None:
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_not_readable_no_data_available(self, mock_select: Mock) -> None:
         mock_socket = Mock(spec=socket.socket)
-        mock_socket.recv.side_effect = BlockingIOError
-        self.assertFalse(is_socket_closed(mock_socket))
+        # Simulate select.select returning empty readable list (no data available)
+        mock_select.return_value = ([], [], [])
 
-    def test_socket_closed_empty_data(self) -> None:
+        result = is_socket_closed(mock_socket)
+
+        self.assertFalse(result)
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+        # recv should not be called when socket is not readable
+        mock_socket.recv.assert_not_called()
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_readable_with_data_socket_open(self, mock_select: Mock) -> None:
         mock_socket = Mock(spec=socket.socket)
+        # Simulate select.select returning the socket in readable list
+        mock_select.return_value = ([mock_socket], [], [])
+        mock_socket.recv.return_value = b'some data here'
+
+        result = is_socket_closed(mock_socket)
+
+        self.assertFalse(result)
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_readable_with_empty_data_socket_closed(self, mock_select: Mock) -> None:
+        mock_socket = Mock(spec=socket.socket)
+        # Simulate select.select returning the socket in readable list
+        mock_select.return_value = ([mock_socket], [], [])
+        # Simulate recv returning empty data (EOF - socket closed)
         mock_socket.recv.return_value = b''
-        self.assertTrue(is_socket_closed(mock_socket))
 
-    def test_socket_closed_connection_reset(self) -> None:
+        result = is_socket_closed(mock_socket)
+
+        self.assertTrue(result)
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_recv_raises_blocking_io_error(self, mock_select: Mock) -> None:
         mock_socket = Mock(spec=socket.socket)
+        mock_select.return_value = ([mock_socket], [], [])
+        mock_socket.recv.side_effect = BlockingIOError
+
+        result = is_socket_closed(mock_socket)
+
+        self.assertFalse(result)
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_recv_raises_connection_reset_error(self, mock_select: Mock) -> None:
+        mock_socket = Mock(spec=socket.socket)
+        mock_select.return_value = ([mock_socket], [], [])
         mock_socket.recv.side_effect = ConnectionResetError
-        self.assertTrue(is_socket_closed(mock_socket))
 
-    def test_socket_closed_unexpected_exception(self) -> None:
+        result = is_socket_closed(mock_socket)
+
+        self.assertTrue(result)
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_unexpected_exception_during_check(self, mock_select: Mock) -> None:
         mock_socket = Mock(spec=socket.socket)
+        mock_select.return_value = ([mock_socket], [], [])
         mock_socket.recv.side_effect = RuntimeError("Some unexpected error")
-        with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as cm:
-            self.assertFalse(is_socket_closed(mock_socket))
-            self.assertIn("unexpected exception", cm.output[0])
 
+        with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as log:
+            result = is_socket_closed(mock_socket)
+
+            self.assertFalse(result)
+            self.assertIn("unexpected exception", log.output[0])
+
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_select_itself_raises_exception(self, mock_select: Mock) -> None:
+        mock_socket = Mock(spec=socket.socket)
+        mock_select.side_effect = OSError("select failed")
+
+        with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as log:
+            result = is_socket_closed(mock_socket)
+
+            self.assertFalse(result)
+            self.assertIn("unexpected exception", log.output[0])
+
+        mock_select.assert_called_once_with([mock_socket], [], [], 0)
 
 class TestHL7SenderClient(unittest.TestCase):
 
