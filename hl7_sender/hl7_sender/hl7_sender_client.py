@@ -1,4 +1,5 @@
 import logging
+import select
 import socket
 from typing import Any, Optional, Type
 
@@ -11,10 +12,13 @@ ENCODING_CHARS = MLLP_ENCODING_CHARS.SB + MLLP_ENCODING_CHARS.EB + MLLP_ENCODING
 
 def is_socket_closed(sock: socket.socket) -> bool:
     try:
+        # Check if the socket is readable (may indicate data or EOF)
         # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-        data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
-        if len(data) == 0:
-            return True
+        readable, _, _ = select.select([sock], [], [], 0)
+        if readable:
+            data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+            return len(data) == 0
+        return False  # no data, but socket is fine
     except BlockingIOError:
         return False  # socket is open and reading from it would block
     except ConnectionResetError:
@@ -22,7 +26,6 @@ def is_socket_closed(sock: socket.socket) -> bool:
     except Exception:
         logger.exception("unexpected exception when checking if a socket is closed")
         return False
-    return False
 
 
 class HL7SenderClient:
@@ -35,6 +38,7 @@ class HL7SenderClient:
 
     def send_message(self, message: str) -> str:
         if is_socket_closed(self.mllp_client.socket):
+            logger.info("creating new MLLP client connection")
             self.mllp_client.close()
             self.mllp_client = MLLPClient(self.receiver_mllp_hostname, self.receiver_mllp_port)
 
