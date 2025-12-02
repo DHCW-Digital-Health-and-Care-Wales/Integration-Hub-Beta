@@ -15,8 +15,14 @@ from hl7_sender.ack_processor import get_ack_result
 from hl7_sender.app_config import AppConfig
 from hl7_sender.hl7_sender_client import HL7SenderClient
 
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logging.getLogger("azure.servicebus").setLevel(logging.ERROR)
+logging.getLogger("azure.identity").setLevel(logging.ERROR)
+logging.getLogger("azure").setLevel(logging.ERROR)
+logging.getLogger("azure.monitor.opentelemetry").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("msal").setLevel(logging.ERROR)
 
 config = configparser.ConfigParser()
 config_path = os.path.join(os.path.dirname(__file__), "config.ini")
