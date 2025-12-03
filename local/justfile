@@ -119,10 +119,10 @@ python := "python3"
     echo "✅ Services started successfully!"
     echo "📍 Running containers for profile: {{profile}}"
     echo ""
-    echo "💡 Next steps:"
+    echo "💡 Next steps examples:"
     echo "   - Check status: docker ps"
-    echo "   - View logs: just logs {{profile}}"
-    echo "   - Send test message: just send <message.hl7>"
+    echo "   - View logs: just logs phw-hl7-server"
+    echo "   - Send test message: just send phw-to-mpi.sample.hl7"
     echo "   - Stop services: just stop"
 
 # Stop all Docker containers across all profiles
