@@ -53,6 +53,21 @@ python := "python3"
     just --list --unsorted
 
 # ============================================
+# Profiles
+# ============================================
+
+# Lists the available profiles
+@profiles:
+    echo "Available profiles for use with other commands:"
+    echo ""
+    echo "  - phw-to-mpi     : Public Health Wales to MPI integration"
+    echo "  - paris-to-mpi   : PARIS to MPI integration"
+    echo "  - chemo-to-mpi   : Chemo to MPI integration"
+    echo "  - pims-to-mpi    : PIMS to MPI integration"
+    echo ""
+    echo "💡 Run 'just start <profile>' to start services"
+
+# ============================================
 # Setup & Installation
 # ============================================
 
