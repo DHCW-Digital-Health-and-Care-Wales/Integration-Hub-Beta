@@ -4,7 +4,10 @@
   "remoteEnv": {
     // the original host directory which is needed for volume 
     // mount commands from inside the container (Docker in Docker)
-    "HOST_WORKSPACE_PATH": "${localWorkspaceFolder}"
+    "HOST_WORKSPACE_PATH": "${localWorkspaceFolder}",
+
+    // Force DOCKER API version as Docker daemon and client aren't on the same version yet
+    "DOCKER_API_VERSION": "1.43"
   },
   // Forward 'server' ports to allow sending of HL7 messages from the local machine
   "forwardPorts": [2575, 2577, 2579, 2580],
