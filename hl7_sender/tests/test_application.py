@@ -27,7 +27,7 @@ class TestProcessMessage(unittest.TestCase):
         self,
         result: bool,
         mock_event_logger: MagicMock,
-        mock_metric_sender: MagicMock
+        mock_metric_sender: MagicMock,
     ) -> None:
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_failed.assert_called_once()
@@ -95,6 +95,8 @@ class TestProcessMessage(unittest.TestCase):
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_not_called()
+        mock_throttler.wait_if_needed.assert_called_once()
+        mock_throttler.record_message_sent.assert_called_once()
 
         self.assertFalse(result)
 
@@ -127,6 +129,8 @@ class TestProcessMessage(unittest.TestCase):
 
                 # Assert
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
+                mock_throttler.wait_if_needed.assert_called_once()
+                mock_throttler.record_message_sent.assert_called_once()
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_unexpected_error(self, mock_parse_message: Mock) -> None:
@@ -147,6 +151,8 @@ class TestProcessMessage(unittest.TestCase):
 
         # Assert
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
+        mock_throttler.wait_if_needed.assert_not_called()
+        mock_throttler.record_message_sent.assert_not_called()
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")

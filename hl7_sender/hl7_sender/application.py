@@ -74,16 +74,16 @@ def _process_message(
         logger.info(f"Message ID: {message_id}")
 
         throttler.wait_if_needed()
-        ack_response = hl7_sender_client.send_message(message_body)
         throttler.record_message_sent()
-
-        event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
-        logger.info(f"Sent message: {message_id}")
+        ack_response = hl7_sender_client.send_message(message_body)
 
         ack_success = get_ack_result(ack_response)
 
         if ack_success:
             metric_sender.send_message_sent_metric()
+
+        event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
+        logger.info(f"Sent message: {message_id}")
 
         return ack_success
 
