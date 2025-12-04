@@ -14,6 +14,7 @@ from processor_manager_lib import ProcessorManager
 from hl7_sender.ack_processor import get_ack_result
 from hl7_sender.app_config import AppConfig
 from hl7_sender.hl7_sender_client import HL7SenderClient
+from hl7_sender.message_throttler import MessageThrottler
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def main() -> None:
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
     metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
                                  app_config.peer_service)
+    throttler = MessageThrottler(app_config.messages_per_minute)
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id
@@ -49,7 +51,7 @@ def main() -> None:
         while processor_manager.is_running:
             receiver_client.receive_messages(
                 MAX_BATCH_SIZE,
-                lambda message: _process_message(message, hl7_sender_client, event_logger, metric_sender),
+                lambda message: _process_message(message, hl7_sender_client, event_logger, metric_sender, throttler),
             )
 
 
@@ -58,6 +60,7 @@ def _process_message(
     hl7_sender_client: HL7SenderClient,
     event_logger: EventLogger,
     metric_sender: MetricSender,
+    throttler: MessageThrottler,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     logger.info("Received message")
@@ -70,7 +73,9 @@ def _process_message(
         message_id = msh_segment.msh_10.value
         logger.info(f"Message ID: {message_id}")
 
+        throttler.wait_if_needed()
         ack_response = hl7_sender_client.send_message(message_body)
+        throttler.record_message_sent()
 
         event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
         logger.info(f"Sent message: {message_id}")
