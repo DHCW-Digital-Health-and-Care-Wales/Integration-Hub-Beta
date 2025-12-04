@@ -18,7 +18,10 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
     mock_metric_sender = MagicMock()
     mock_throttler = MagicMock()
 
-    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler
+    return (
+        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client,
+        mock_event_logger, mock_metric_sender, mock_throttler
+    )
 
 
 class TestProcessMessage(unittest.TestCase):
@@ -53,7 +56,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = True
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -87,7 +93,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = False  # Negative ACK
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -147,7 +156,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.side_effect = Exception("Unexpected error")
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)

@@ -61,7 +61,7 @@ class TestMessageThrottlingIntegration(unittest.TestCase):
         print(f"Waiting {wait_time:.0f} seconds for processing (expected: {expected_time:.0f}s)...")
 
         # Poll progress every 10 seconds
-        elapsed = 0
+        elapsed: float = 0.0
         while elapsed < wait_time:
             time.sleep(10)
             elapsed = time.time() - process_start

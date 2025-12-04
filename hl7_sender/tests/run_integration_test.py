@@ -14,10 +14,12 @@ Usage:
 """
 
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 EXPECTED_SERVICES = [
     "sb-emulator",
@@ -26,16 +28,16 @@ EXPECTED_SERVICES = [
 ]
 
 
-def run_command(cmd: list[str], cwd: Path = None) -> tuple[int, str, str]:
+def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
-    import subprocess
     try:
         result = subprocess.run(
             cmd,
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=300,
+            check=False
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
@@ -45,15 +47,14 @@ def run_command(cmd: list[str], cwd: Path = None) -> tuple[int, str, str]:
 
 def check_containers_running(services: list[str]) -> bool:
     """Check if expected containers are running."""
-    import subprocess
-
     print(f"Checking for running containers: {', '.join(services)}")
 
     try:
         result = subprocess.run(
             ["docker", "ps", "--format", "table {{.Names}}"],
             capture_output=True,
-            text=True
+            text=True,
+            check=False
         )
 
         running_containers = result.stdout.strip().split('\n')[1:]
@@ -76,11 +77,11 @@ def check_containers_running(services: list[str]) -> bool:
 
 def get_actual_timing_from_logs() -> dict:
     """Parse container logs to get actual message timing from the most recent test run."""
-    import subprocess
     result = subprocess.run(
         ["docker", "logs", "mpi-hl7-sender", "-t", "--since", "5m"],
         capture_output=True,
-        text=True
+        text=True,
+        check=False
     )
     logs = result.stdout + result.stderr
 
