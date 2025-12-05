@@ -175,7 +175,3 @@ cython_debug/
 .secrets
 tmp
 .DS_Store
-
-# Local integration tests (run against Docker containers)
-hl7_sender/tests/run_integration_test.py
-hl7_sender/tests/test_throttling_local.py

@@ -20,7 +20,7 @@ class AppConfig:
     health_board: str
     peer_service: str
     ack_timeout_seconds: int
-    messages_per_minute: int | None
+    max_messages_per_minute: int | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -39,7 +39,7 @@ class AppConfig:
             health_board=_read_required_env("HEALTH_BOARD"),
             peer_service=_read_required_env("PEER_SERVICE"),
             ack_timeout_seconds=_read_int_env("ACK_TIMEOUT_SECONDS") or 30,
-            messages_per_minute=_read_int_env("MESSAGES_PER_MINUTE"),
+            max_messages_per_minute=_read_int_env("MAX_MESSAGES_PER_MINUTE"),
         )
 
 

@@ -68,7 +68,6 @@ class TestProcessMessage(unittest.TestCase):
         mock_event_logger.log_message_processed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_called_once()
         mock_throttler.wait_if_needed.assert_called_once()
-        mock_throttler.record_message_sent.assert_called_once()
 
         self.assertTrue(result)
 
@@ -105,7 +104,6 @@ class TestProcessMessage(unittest.TestCase):
         mock_event_logger.log_message_processed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_not_called()
         mock_throttler.wait_if_needed.assert_called_once()
-        mock_throttler.record_message_sent.assert_called_once()
 
         self.assertFalse(result)
 
@@ -139,7 +137,6 @@ class TestProcessMessage(unittest.TestCase):
                 # Assert
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
                 mock_throttler.wait_if_needed.assert_called_once()
-                mock_throttler.record_message_sent.assert_called_once()
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_unexpected_error(self, mock_parse_message: Mock) -> None:
@@ -164,7 +161,6 @@ class TestProcessMessage(unittest.TestCase):
         # Assert
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
         mock_throttler.wait_if_needed.assert_not_called()
-        mock_throttler.record_message_sent.assert_not_called()
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")
@@ -195,7 +191,7 @@ class TestProcessMessage(unittest.TestCase):
             health_board="test-health-board",
             peer_service="test-service",
             ack_timeout_seconds=30,
-            messages_per_minute=None
+            max_messages_per_minute=None
         )
         # Mock ProcessorManager to exit the loop immediately
         with patch("hl7_sender.application.ProcessorManager") as mock_processor_manager:

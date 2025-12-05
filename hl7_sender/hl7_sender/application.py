@@ -35,7 +35,7 @@ def main() -> None:
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
     metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
                                  app_config.peer_service)
-    throttler = MessageThrottler(app_config.messages_per_minute)
+    throttler = MessageThrottler(app_config.max_messages_per_minute)
 
     with (
         factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id
@@ -74,7 +74,6 @@ def _process_message(
         logger.info(f"Message ID: {message_id}")
 
         throttler.wait_if_needed()
-        throttler.record_message_sent()
         ack_response = hl7_sender_client.send_message(message_body)
 
         ack_success = get_ack_result(ack_response)
