@@ -17,7 +17,7 @@ class TestMessageThrottlingIntegration(unittest.TestCase):
 
     def setUp(self) -> None:
         self.app_config = AppConfig.read_env_config()
-        self.messages_per_minute = self.app_config.messages_per_minute or 30
+        self.messages_per_minute = self.app_config.max_messages_per_minute or 30
 
         self.connection_string = self.app_config.connection_string
         self.queue_name = self.app_config.ingress_queue_name

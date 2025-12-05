@@ -14,12 +14,14 @@ class MessageThrottler:
         self._last_message_time: Optional[float] = None
 
     def wait_if_needed(self) -> None:
-        if self._max_messages_per_minute is None:
+        if self._max_messages_per_minute is None or self._max_messages_per_minute <= 0:
             return
+
+        now = time.monotonic()
 
         if self._last_message_time is not None:
             min_interval = SECONDS_PER_MINUTE / self._max_messages_per_minute
-            elapsed = time.time() - self._last_message_time
+            elapsed = now - self._last_message_time
             wait_time = min_interval - elapsed
 
             if wait_time > 0:
@@ -29,5 +31,6 @@ class MessageThrottler:
                     self._max_messages_per_minute,
                 )
                 time.sleep(wait_time)
+                now = time.monotonic()
 
-        self._last_message_time = time.time()
+        self._last_message_time = now
