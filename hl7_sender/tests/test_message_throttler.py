@@ -29,7 +29,7 @@ class TestMessageThrottler(unittest.TestCase):
     def test_throttles_when_interval_not_elapsed(self, mock_time: unittest.mock.Mock) -> None:
         throttler = MessageThrottler(max_messages_per_minute=30)  # 2 seconds between messages
 
-        mock_time.monotonic.side_effect = [1000.0, 1000.5, 1002.0]
+        mock_time.monotonic.side_effect = [1000.0, 1000.5]
         throttler.wait_if_needed()  # sets last_message_time to 1000.0
 
         throttler.wait_if_needed()
@@ -66,7 +66,7 @@ class TestMessageThrottler(unittest.TestCase):
     def test_multiple_messages_at_correct_rate(self, mock_time: unittest.mock.Mock) -> None:
         throttler = MessageThrottler(max_messages_per_minute=30)  # 2 seconds between messages
 
-        mock_time.monotonic.side_effect = [1000.0, 1001.0, 1002.0, 1004.0]
+        mock_time.monotonic.side_effect = [1000.0, 1001.0, 1004.0]
         throttler.wait_if_needed()  # sets last_message_time to 1000.0
         mock_time.sleep.assert_not_called()
 
