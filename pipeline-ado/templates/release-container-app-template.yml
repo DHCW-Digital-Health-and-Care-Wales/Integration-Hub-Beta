@@ -70,8 +70,8 @@ jobs:
           # Find the subscription where ACR exists by querying all accessible subscriptions
           echo "Finding ACR subscription..."
           ACR_SUBSCRIPTION=$(az account list --query "[].id" -o tsv | while read sub; do
-            if az acr show --name ${{ parameters.acrName }} --subscription $sub --query id -o tsv 2>/dev/null; then
-              echo $sub
+            if az acr show --name ${{ parameters.acrName }} --subscription "$sub" --query id -o tsv 2>/dev/null >/dev/null; then
+              echo "$sub"
               break
             fi
           done)
@@ -88,7 +88,7 @@ jobs:
           
           if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
             echo "Switching to ACR subscription..."
-            az account set --subscription $ACR_SUBSCRIPTION
+            az account set --subscription "$ACR_SUBSCRIPTION"
           fi
           
           # Import preserves the digest
@@ -101,7 +101,7 @@ jobs:
           # Switch back to original subscription if we changed it
           if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
             echo "Switching back to original subscription..."
-            az account set --subscription $CURRENT_SUBSCRIPTION
+            az account set --subscription "$CURRENT_SUBSCRIPTION"
           fi
 
           echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
