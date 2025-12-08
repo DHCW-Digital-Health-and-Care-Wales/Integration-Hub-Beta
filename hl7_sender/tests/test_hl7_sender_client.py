@@ -212,8 +212,8 @@ class TestHL7SenderClient(unittest.TestCase):
             self.assertIn("No ACK received within 30 seconds", str(context.exception))
             mock_mllp1.close.assert_called_once()
             mock_mllp2.close.assert_called_once()
-            # Verify 3 MLLPClient instances were created (initial + retry + after error)
-            self.assertEqual(mock_mllp_cls.call_count, 3)
+            # Verify 2 MLLPClient instances were created (initial + retry)
+            self.assertEqual(mock_mllp_cls.call_count, 2)
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
     def test_send_message_connection_error(self, mock_mllp_cls: Mock) -> None:

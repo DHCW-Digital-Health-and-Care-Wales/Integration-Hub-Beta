@@ -64,7 +64,7 @@ class HL7SenderClient:
                 logger.warning("Socket timeout occurred, attempting retry with new connection...")
                 self.mllp_client = self._close_and_create_new_mllp_client()
                 return self.send_message(message, _retry_attempted=True)
-            self.mllp_client = self._close_and_create_new_mllp_client()
+            self._close_mllp_client()
             raise TimeoutError(f"No ACK received within {self.ack_timeout_seconds} seconds")
         except Exception as e:
             self.mllp_client = self._close_and_create_new_mllp_client()
