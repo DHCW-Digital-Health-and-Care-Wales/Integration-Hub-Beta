@@ -67,11 +67,16 @@ jobs:
           # Use pre-computed image tag from template variables
           IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
           
-          az acr import \
-            --name ${{ parameters.acrName }} \
-            --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
-            --image $IMAGE_TAG_WITH_FLOW \
-            --force
+          # Pull the source image
+          docker pull ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG
+          
+          # Tag with environment-specific tag
+          docker tag \
+            ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
+            ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
+          
+          # Push the newly tagged image
+          docker push ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
 
           echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
 
