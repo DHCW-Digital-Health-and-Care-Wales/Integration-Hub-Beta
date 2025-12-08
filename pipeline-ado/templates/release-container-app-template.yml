@@ -67,7 +67,7 @@ jobs:
           # Use pre-computed image tag from template variables
           IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
           
-          # Find the subscription where ACR exists by querying all accessible subscriptions
+          # Set ACR Subscription
           echo "Finding ACR subscription..."
           ACR_SUBSCRIPTION=$(az account list --query "[].id" -o tsv | while read sub; do
             if az acr show --name ${{ parameters.acrName }} --subscription "$sub" --query id -o tsv 2>/dev/null >/dev/null; then
