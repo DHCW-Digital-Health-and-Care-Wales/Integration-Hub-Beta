@@ -6,6 +6,10 @@ from hl7_sender.message_throttler import MessageThrottler
 
 class TestMessageThrottler(unittest.TestCase):
 
+    def test_zero_value_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            MessageThrottler(max_messages_per_minute=0)
+
     def test_no_throttling_when_disabled(self) -> None:
         throttler = MessageThrottler(max_messages_per_minute=None)
 

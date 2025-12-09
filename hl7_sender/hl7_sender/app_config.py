@@ -39,7 +39,7 @@ class AppConfig:
             health_board=_read_required_env("HEALTH_BOARD"),
             peer_service=_read_required_env("PEER_SERVICE"),
             ack_timeout_seconds=_read_int_env("ACK_TIMEOUT_SECONDS") or 30,
-            max_messages_per_minute=_read_int_env("MAX_MESSAGES_PER_MINUTE"),
+            max_messages_per_minute=_read_positive_int_env("MAX_MESSAGES_PER_MINUTE"),
         )
 
 
@@ -58,6 +58,14 @@ def _read_int_env(name: str) -> int | None:
     if value is None:
         return None
     return int(value)
+
+def _read_positive_int_env(name: str) -> int | None:
+    value = _read_int_env(name)
+    if value is None:
+        return None
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer when provided")
+    return value
 
 def _read_required_int_env(name: str) -> int:
     value = _read_required_env(name)

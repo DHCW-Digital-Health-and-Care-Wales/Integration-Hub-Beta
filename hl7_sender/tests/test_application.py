@@ -5,7 +5,12 @@ from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
 from hl7_sender.app_config import AppConfig
-from hl7_sender.application import _process_message, main
+from hl7_sender.application import (
+    MAX_BATCH_SIZE,
+    _calculate_batch_size,
+    _process_message,
+    main,
+)
 
 
 def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock, MagicMock]:
@@ -205,6 +210,24 @@ class TestProcessMessage(unittest.TestCase):
             mock_health_check.assert_called_once_with("localhost", 9000)
             mock_health_server.start.assert_called_once()
             mock_health_check_ctx.__exit__.assert_called_once()
+
+
+class TestBatchSizing(unittest.TestCase):
+
+    def test_uses_max_batch_when_no_throttle(self) -> None:
+        throttler = MagicMock(interval_seconds=None)
+
+        batch_size = _calculate_batch_size(throttler)
+
+        self.assertEqual(batch_size, MAX_BATCH_SIZE)
+
+    def test_reduces_batch_when_interval_exceeds_lock_window(self) -> None:
+        throttler = MagicMock(interval_seconds=60.0)  # one message per minute
+
+        with patch("hl7_sender.application.MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS", 900):
+            batch_size = _calculate_batch_size(throttler)
+
+        self.assertEqual(batch_size, 15)  # (900-30)/60 = 14 intervals => 15 messages
 
 
 if __name__ == '__main__':
