@@ -44,6 +44,5 @@ class MessageThrottler:
                 )
                 time.sleep(wait_time)
             else:
-                target_time = now  # behind schedule; reset to avoid a catch-up burst
-
+                target_time = now  # idle or behind schedule, reset target time to now to prevent a burst of messages
         self._last_message_time = target_time
