@@ -25,7 +25,7 @@ This internally-owned product replaces proprietary systems, unlocking agility, r
 ## Mission and Key Objectives
 
 > [!TIP]
-> For more information, view the [product brief](https://gig-cymru-nhs-wales.github.io/product-briefs/integration-hub/)
+> For more information, view the [product brief](https://gigcymru.github.io/product-briefs/integration-hub/)
 
 The Integration Hub facilitates the move to a clean, open, and secure-by-design architecture, enables the decommissioning of legacy data centres by being cloud-native, and provides the essential mechanism for data to flow into the National Data Resource (NDR) where services are unable to integrate directly (the preferred approach).
 
