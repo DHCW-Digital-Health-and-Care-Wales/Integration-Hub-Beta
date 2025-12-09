@@ -7,8 +7,8 @@ from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from message_bus_lib.message_receiver_client import MessageReceiverClient
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
 from processor_manager_lib import ProcessorManager
 
