@@ -20,6 +20,7 @@ class MessageReceiverClient:
     MAX_DELAY_SECONDS = 15 * 60 # 15 minutes
     INITIAL_DELAY_SECONDS = 5
     MAX_WAIT_TIME_SECONDS = 60
+    LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
 
     def __init__(self, sb_client: ServiceBusClient, queue_name: str, session_id: Optional[str] = None):
         self.sb_client = sb_client

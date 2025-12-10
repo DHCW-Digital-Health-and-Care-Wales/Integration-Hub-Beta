@@ -5,10 +5,15 @@ from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
 
 from hl7_sender.app_config import AppConfig
-from hl7_sender.application import _process_message, main
+from hl7_sender.application import (
+    MAX_BATCH_SIZE,
+    _calculate_batch_size,
+    _process_message,
+    main,
+)
 
 
-def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock]:
+def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock, MagicMock]:
     hl7_message = Message("ADT_A01")
     hl7_message.msh.msh_10 = 'MSGID1234'
     hl7_string = hl7_message.to_er7()
@@ -16,8 +21,12 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
     mock_hl7_sender_client = MagicMock()
     mock_event_logger = MagicMock()
     mock_metric_sender = MagicMock()
+    mock_throttler = MagicMock()
 
-    return service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client, mock_event_logger, mock_metric_sender
+    return (
+        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client,
+        mock_event_logger, mock_metric_sender, mock_throttler
+    )
 
 
 class TestProcessMessage(unittest.TestCase):
@@ -26,7 +35,7 @@ class TestProcessMessage(unittest.TestCase):
         self,
         result: bool,
         mock_event_logger: MagicMock,
-        mock_metric_sender: MagicMock
+        mock_metric_sender: MagicMock,
     ) -> None:
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_failed.assert_called_once()
@@ -44,6 +53,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_hl7_sender_client,
             mock_event_logger,
             mock_metric_sender,
+            mock_throttler,
         ) = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
@@ -51,7 +61,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = True
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -59,6 +72,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_called_once()
+        mock_throttler.wait_if_needed.assert_called_once()
 
         self.assertTrue(result)
 
@@ -75,6 +89,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_hl7_sender_client,
             mock_event_logger,
             mock_metric_sender,
+            mock_throttler,
         ) = _setup()
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
@@ -82,7 +97,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = False  # Negative ACK
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -90,6 +108,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_not_called()
+        mock_throttler.wait_if_needed.assert_called_once()
 
         self.assertFalse(result)
 
@@ -110,17 +129,19 @@ class TestProcessMessage(unittest.TestCase):
                     mock_hl7_sender_client,
                     mock_event_logger,
                     mock_metric_sender,
+                    mock_throttler,
                 ) = _setup()
                 mock_parse_message.return_value = hl7_message
                 mock_hl7_sender_client.send_message.side_effect = case["error"]
 
                 # Act
                 result = _process_message(
-                    service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender
+                    service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler
                 )
 
                 # Assert
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
+                mock_throttler.wait_if_needed.assert_called_once()
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_unexpected_error(self, mock_parse_message: Mock) -> None:
@@ -132,14 +153,19 @@ class TestProcessMessage(unittest.TestCase):
             mock_hl7_sender_client,
             mock_event_logger,
             mock_metric_sender,
+            mock_throttler,
         ) = _setup()
         mock_parse_message.side_effect = Exception("Unexpected error")
 
         # Act
-        result = _process_message(service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender)
+        result = _process_message(
+            service_bus_message, mock_hl7_sender_client, mock_event_logger,
+            mock_metric_sender, mock_throttler
+        )
 
         # Assert
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
+        mock_throttler.wait_if_needed.assert_not_called()
 
     @patch("hl7_sender.application.ConnectionConfig")
     @patch("hl7_sender.application.ServiceBusClientFactory")
@@ -169,7 +195,8 @@ class TestProcessMessage(unittest.TestCase):
             microservice_id="test_microservice_id",
             health_board="test-health-board",
             peer_service="test-service",
-            ack_timeout_seconds=30
+            ack_timeout_seconds=30,
+            max_messages_per_minute=None
         )
         # Mock ProcessorManager to exit the loop immediately
         with patch("hl7_sender.application.ProcessorManager") as mock_processor_manager:
@@ -183,6 +210,24 @@ class TestProcessMessage(unittest.TestCase):
             mock_health_check.assert_called_once_with("localhost", 9000)
             mock_health_server.start.assert_called_once()
             mock_health_check_ctx.__exit__.assert_called_once()
+
+
+class TestBatchSizing(unittest.TestCase):
+
+    def test_uses_max_batch_when_no_throttle(self) -> None:
+        throttler = MagicMock(interval_seconds=None)
+
+        batch_size = _calculate_batch_size(throttler)
+
+        self.assertEqual(batch_size, MAX_BATCH_SIZE)
+
+    def test_reduces_batch_when_interval_exceeds_lock_window(self) -> None:
+        throttler = MagicMock(interval_seconds=60.0)  # one message per minute
+
+        with patch("hl7_sender.application.MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS", 900):
+            batch_size = _calculate_batch_size(throttler)
+
+        self.assertEqual(batch_size, 15)  # (900-30)/60 = 14 intervals => 15 messages
 
 
 if __name__ == '__main__':
