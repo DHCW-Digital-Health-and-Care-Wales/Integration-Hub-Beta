@@ -65,7 +65,6 @@ class EventLogger:
             credential = self._get_credential()
             configure_azure_monitor(
                 credential=credential,
-                logger_name=__name__,
             )
             EventLogger._azure_monitor_initialized = True
 
