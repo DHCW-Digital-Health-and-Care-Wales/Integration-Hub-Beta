@@ -39,6 +39,20 @@ class EventLogger:
             )
             return
 
+        # Check if this library should initialize Azure Monitor
+        azure_monitor_owner = (
+            os.getenv("AZURE_MONITOR_OWNER", "event_logger").strip().lower()
+        )
+        if azure_monitor_owner != "event_logger":
+            logger.info(
+                f"Azure Monitor initialization skipped - AZURE_MONITOR_OWNER is '{azure_monitor_owner}', "
+                "not 'event_logger'"
+            )
+            EventLogger._azure_monitor_initialized = (
+                True  # Mark as handled to prevent retries
+            )
+            return
+
         try:
             # DIAGNOSTIC: Log handler count BEFORE configure_azure_monitor
             root_logger = logging.getLogger()
