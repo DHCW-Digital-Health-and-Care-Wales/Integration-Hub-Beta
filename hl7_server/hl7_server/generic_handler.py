@@ -34,6 +34,15 @@ class GenericHandler(AbstractHandler):
         self.validator = validator
         self.flow_name: str | None = flow_name
 
+        # DIAGNOSTIC: Log handler count on first handler instantiation
+        if not hasattr(GenericHandler, '_diagnostic_logged'):
+            root_logger = logging.getLogger()
+            logger.warning(
+                f"[DIAGNOSTIC] First GenericHandler created: Root logger has {len(root_logger.handlers)} handlers: "
+                f"{[type(h).__name__ for h in root_logger.handlers]}"
+            )
+            GenericHandler._diagnostic_logged = True
+
     def reply(self) -> str:
         try:
             self.event_logger.log_message_received(self.incoming_message)
