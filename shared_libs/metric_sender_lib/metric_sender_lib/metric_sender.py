@@ -53,24 +53,8 @@ class MetricSender:
             return
 
         try:
-            # DIAGNOSTIC: Log handler count BEFORE configure_azure_monitor
-            root_logger = logging.getLogger()
-            logger.warning(
-                f"[DIAGNOSTIC MetricSender] BEFORE configure_azure_monitor: "
-                f"Root logger has {len(root_logger.handlers)} handlers: "
-                f"{[type(h).__name__ for h in root_logger.handlers]}"
-            )
-
             credential = self._get_credential()
             configure_azure_monitor(credential=credential)
-
-            # DIAGNOSTIC: Log handler count AFTER configure_azure_monitor
-            logger.warning(
-                f"[DIAGNOSTIC MetricSender] AFTER configure_azure_monitor: "
-                f"Root logger has {len(root_logger.handlers)} handlers: "
-                f"{[type(h).__name__ for h in root_logger.handlers]}"
-            )
-
             self._meter = metrics.get_meter(__name__)
             logger.info("Azure Monitor metrics initialized successfully")
         except Exception as e:

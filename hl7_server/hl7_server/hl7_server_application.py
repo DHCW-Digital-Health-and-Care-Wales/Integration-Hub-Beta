@@ -61,24 +61,8 @@ class Hl7ServerApplication:
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
         logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")
 
-        # DIAGNOSTIC: Check handler count after EventLogger initialization
-        root_logger = logging.getLogger()
-        logger.warning(
-            f"[DIAGNOSTIC] After EventLogger init: Root logger has {len(root_logger.handlers)} handlers: "
-            f"{[type(h).__name__ for h in root_logger.handlers]}"
-        )
-
         self.metric_sender = MetricSender(
-            app_config.workflow_id,
-            app_config.microservice_id,
-            app_config.health_board,
-            app_config.peer_service
-        )
-
-        # DIAGNOSTIC: Check handler count after MetricSender initialization
-        logger.warning(
-            f"[DIAGNOSTIC] After MetricSender init: Root logger has {len(root_logger.handlers)} handlers: "
-            f"{[type(h).__name__ for h in root_logger.handlers]}"
+            app_config.workflow_id, app_config.microservice_id, app_config.health_board, app_config.peer_service
         )
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)

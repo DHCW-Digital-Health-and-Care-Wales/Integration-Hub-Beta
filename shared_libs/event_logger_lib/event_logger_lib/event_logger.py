@@ -54,26 +54,11 @@ class EventLogger:
             return
 
         try:
-            # DIAGNOSTIC: Log handler count BEFORE configure_azure_monitor
-            root_logger = logging.getLogger()
-            logger.warning(
-                f"[DIAGNOSTIC EventLogger] BEFORE configure_azure_monitor: "
-                f"Root logger has {len(root_logger.handlers)} handlers: "
-                f"{[type(h).__name__ for h in root_logger.handlers]}"
-            )
-
             credential = self._get_credential()
             configure_azure_monitor(
                 credential=credential,
             )
             EventLogger._azure_monitor_initialized = True
-
-            # DIAGNOSTIC: Log handler count AFTER configure_azure_monitor
-            logger.warning(
-                f"[DIAGNOSTIC EventLogger] AFTER configure_azure_monitor: "
-                f"Root logger has {len(root_logger.handlers)} handlers: "
-                f"{[type(h).__name__ for h in root_logger.handlers]}"
-            )
             logger.info("Azure Monitor initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Azure Monitor: {e}")
