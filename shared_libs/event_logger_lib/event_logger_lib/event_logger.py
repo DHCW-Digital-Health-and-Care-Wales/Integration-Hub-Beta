@@ -107,6 +107,7 @@ class EventLogger:
 
             if self.azure_monitor_enabled:
                 logger.info("Integration Hub Event", extra=event_dict)
+                logger.debug(f"Event logged to Azure Monitor: {event.event_type.value}")
             else:
                 logger.info(f"Integration Hub Event: {event_dict}")
 

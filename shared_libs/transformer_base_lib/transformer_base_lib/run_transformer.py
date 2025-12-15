@@ -5,6 +5,7 @@ import os
 from typing import TYPE_CHECKING
 
 from azure.servicebus import ServiceBusMessage
+from azure_monitor_lib import AzureMonitorFactory
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from message_bus_lib.connection_config import ConnectionConfig
@@ -35,7 +36,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
         config.connection_string, config.service_bus_namespace
     )
     factory = ServiceBusClientFactory(client_config)
-    event_logger = EventLogger(config.workflow_id, config.microservice_id)
+    event_logger = EventLogger(config.workflow_id, config.microservice_id, AzureMonitorFactory)
 
     with (
         factory.create_queue_sender_client(
