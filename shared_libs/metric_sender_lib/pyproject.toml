@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "azure-monitor-lib @ file://../azure_monitor_lib",
+    "azure-monitor-lib @ file:///mnt/vss/_work/1/s/shared_libs/azure_monitor_lib",
     "setuptools==80.9.0",
 ]
 
