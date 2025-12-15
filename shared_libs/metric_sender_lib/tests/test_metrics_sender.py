@@ -24,12 +24,14 @@ class TestMetricSender(unittest.TestCase):
     def _create_metric_sender_with_azure_monitor(
         self, health_board: Optional[str] = None, peer_service: Optional[str] = None
     ) -> MetricSender:
+        from azure_monitor_lib import AzureMonitorFactory
         with patch.object(MetricSender, "_initialize_azure_monitor"):
             return MetricSender(
                 self.workflow_id,
                 self.microservice_id,
                 health_board or self.health_board,
                 peer_service or self.peer_service,
+                AzureMonitorFactory,
             )
 
     def _get_expected_attributes(
@@ -68,51 +70,51 @@ class TestMetricSender(unittest.TestCase):
                     "Metrics will be logged to standard logger."
                 )
                 with patch.dict("os.environ", test_case["env"], clear=True):
-                    mock_logger.reset_mock()
+                    with patch("azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=False):
+                        mock_logger.reset_mock()
 
-                    # Act
-                    metric_sender = MetricSender(
-                        self.workflow_id,
-                        self.microservice_id,
-                        self.health_board,
-                        self.peer_service,
-                    )
+                        # Act
+                        from azure_monitor_lib import AzureMonitorFactory
+                        metric_sender = MetricSender(
+                            self.workflow_id,
+                            self.microservice_id,
+                            self.health_board,
+                            self.peer_service,
+                            AzureMonitorFactory,
+                        )
 
-                    # Assert
-                    self.assertEqual(metric_sender.workflow_id, self.workflow_id)
-                    self.assertEqual(
-                        metric_sender.microservice_id, self.microservice_id
-                    )
-                    self.assertEqual(metric_sender.health_board, self.health_board)
-                    self.assertEqual(metric_sender.peer_service, self.peer_service)
-                    self.assertEqual(metric_sender.azure_monitor_enabled, False)
-                    self.assertEqual(metric_sender._counters, {})
-                    mock_logger.info.assert_called_once_with(log_message)
+                        # Assert
+                        self.assertEqual(metric_sender.workflow_id, self.workflow_id)
+                        self.assertEqual(
+                            metric_sender.microservice_id, self.microservice_id
+                        )
+                        self.assertEqual(metric_sender.health_board, self.health_board)
+                        self.assertEqual(metric_sender.peer_service, self.peer_service)
+                        self.assertEqual(metric_sender.azure_monitor_enabled, False)
+                        self.assertEqual(metric_sender._counters, {})
+                        self.assertIsNone(metric_sender._meter)
+                        mock_logger.info.assert_called_once_with(log_message)
 
     @patch("metric_sender_lib.metric_sender.logger")
-    @patch("metric_sender_lib.metric_sender.configure_azure_monitor")
-    @patch("metric_sender_lib.metric_sender.metrics.get_meter")
+    @patch("azure_monitor_lib.AzureMonitorFactory.get_meter")
+    @patch("azure_monitor_lib.AzureMonitorFactory.ensure_initialized", return_value=True)
     @patch.dict(
         "os.environ",
         {
             "APPLICATIONINSIGHTS_CONNECTION_STRING": "test-connection-string",
-            "AZURE_MONITOR_OWNER": "metric_sender",
         },
     )
     def test_init_with_connection_string_success(
         self,
+        mock_ensure_initialized: MagicMock,
         mock_get_meter: MagicMock,
-        mock_configure: MagicMock,
         mock_logger: MagicMock,
     ) -> None:
         # Arrange
         mock_meter = MagicMock()
         mock_get_meter.return_value = mock_meter
 
-        with patch.object(MetricSender, "_get_credential") as mock_get_credential:
-            mock_credential = MagicMock()
-            mock_get_credential.return_value = mock_credential
-
+        with patch("azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=True):
             # Act
             metric_sender = MetricSender(
                 self.workflow_id,
@@ -124,38 +126,36 @@ class TestMetricSender(unittest.TestCase):
             # Assert
             self.assertTrue(metric_sender.azure_monitor_enabled)
             self.assertEqual(metric_sender._meter, mock_meter)
-            mock_get_credential.assert_called_once()
-            mock_configure.assert_called_once_with(credential=mock_credential)
-            mock_get_meter.assert_called_once_with("metric_sender_lib.metric_sender")
+            mock_ensure_initialized.assert_called_once()
+            mock_get_meter.assert_called_once()
             mock_logger.info.assert_called_with(
                 "Azure Monitor metrics initialized successfully"
             )
 
     @patch("metric_sender_lib.metric_sender.logger")
-    @patch("metric_sender_lib.metric_sender.configure_azure_monitor")
+    @patch("azure_monitor_lib.AzureMonitorFactory.ensure_initialized")
     @patch.dict(
         "os.environ",
         {
             "APPLICATIONINSIGHTS_CONNECTION_STRING": "test-connection-string",
-            "AZURE_MONITOR_OWNER": "metric_sender",
         },
     )
     def test_init_with_azure_monitor_failure(
-        self, mock_configure: MagicMock, mock_logger: MagicMock
+        self, mock_ensure_initialized: MagicMock, mock_logger: MagicMock
     ) -> None:
         # Arrange
-        mock_configure.side_effect = Exception("Azure Monitor setup failed")
+        mock_ensure_initialized.side_effect = Exception("Azure Monitor setup failed")
 
-        with patch.object(MetricSender, "_get_credential") as mock_get_credential:
-            mock_get_credential.return_value = MagicMock()
-
+        with patch("azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=True):
             # Act & Assert
+            from azure_monitor_lib import AzureMonitorFactory
             with self.assertRaises(Exception) as context:
                 MetricSender(
                     self.workflow_id,
                     self.microservice_id,
                     self.health_board,
                     self.peer_service,
+                    AzureMonitorFactory,
                 )
 
             self.assertEqual(str(context.exception), "Azure Monitor setup failed")
@@ -163,67 +163,6 @@ class TestMetricSender(unittest.TestCase):
                 "Failed to initialize Azure Monitor metrics: Azure Monitor setup failed"
             )
 
-    @patch("metric_sender_lib.metric_sender.logger")
-    @patch("metric_sender_lib.metric_sender.ManagedIdentityCredential")
-    @patch.dict("os.environ", {"INSIGHTS_UAMI_CLIENT_ID": "test-client-id"})
-    def test_get_credential_with_uami_client_id(
-        self, mock_managed_identity: MagicMock, mock_logger: MagicMock
-    ) -> None:
-        # Arrange
-        mock_credential = MagicMock()
-        mock_managed_identity.return_value = mock_credential
-        metric_sender = MetricSender(
-            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
-        )
-
-        # Act
-        credential = metric_sender._get_credential()
-
-        # Assert
-        self.assertEqual(credential, mock_credential)
-        mock_managed_identity.assert_called_once_with(client_id="test-client-id")
-        mock_logger.info.assert_called_with(
-            "Using ManagedIdentityCredential with client_id: test-client-id"
-        )
-
-    @patch("metric_sender_lib.metric_sender.logger")
-    @patch("metric_sender_lib.metric_sender.DefaultAzureCredential")
-    def test_get_credential_without_uami_client_id_scenarios(
-        self, mock_default_credential: MagicMock, mock_logger: MagicMock
-    ) -> None:
-        test_cases = [
-            {
-                "name": "with_empty_uami_client_id",
-                "env": {"INSIGHTS_UAMI_CLIENT_ID": "   "},
-            },
-            {"name": "without_uami_client_id", "env": {}},
-        ]
-
-        for test_case in test_cases:
-            with self.subTest(test_case["name"]):
-                # Arrange
-                with patch.dict("os.environ", test_case["env"], clear=True):
-                    mock_credential = MagicMock()
-                    mock_default_credential.reset_mock()
-                    mock_default_credential.return_value = mock_credential
-                    mock_logger.reset_mock()
-
-                    metric_sender = MetricSender(
-                        self.workflow_id,
-                        self.microservice_id,
-                        self.health_board,
-                        self.peer_service,
-                    )
-
-                    # Act
-                    credential = metric_sender._get_credential()
-
-                    # Assert
-                    self.assertEqual(credential, mock_credential)
-                    mock_default_credential.assert_called_once()
-                    mock_logger.info.assert_called_with(
-                        "Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)"
-                    )
 
     @patch("metric_sender_lib.metric_sender.logger")
     @patch.dict(
@@ -306,8 +245,9 @@ class TestMetricSender(unittest.TestCase):
         self, mock_logger: MagicMock
     ) -> None:
         # Arrange
+        from azure_monitor_lib import AzureMonitorFactory
         metric_sender = MetricSender(
-            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
+            self.workflow_id, self.microservice_id, self.health_board, self.peer_service, AzureMonitorFactory
         )
         test_attributes = {"custom_attr": "test_value"}
         expected_attributes = self._get_expected_attributes(test_attributes)
@@ -325,8 +265,9 @@ class TestMetricSender(unittest.TestCase):
         self, mock_logger: MagicMock
     ) -> None:
         # Arrange
+        from azure_monitor_lib import AzureMonitorFactory
         metric_sender = MetricSender(
-            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
+            self.workflow_id, self.microservice_id, self.health_board, self.peer_service, AzureMonitorFactory
         )
         expected_attributes = self._get_expected_attributes()
 
@@ -421,6 +362,31 @@ class TestMetricSender(unittest.TestCase):
                     mock_send_metric.assert_called_once_with(
                         key="messages_sent", value=1, attributes=test_case["attributes"]
                     )
+
+    def test_dependency_injection_with_custom_factory(self):
+        """Test that MetricSender uses the injected factory instead of the global one."""
+        from unittest.mock import MagicMock
+
+        mock_factory = MagicMock()
+        mock_factory.is_enabled.return_value = True
+        mock_factory.ensure_initialized.return_value = True
+        mock_factory.get_meter.return_value = MagicMock()
+
+        metric_sender = MetricSender(
+            "test-workflow",
+            "test-service",
+            "test-health-board",
+            "test-peer-service",
+            azure_monitor_factory=mock_factory
+        )
+
+        # Verify the injected factory was used
+        mock_factory.is_enabled.assert_called_once()
+        mock_factory.ensure_initialized.assert_called_once()
+        mock_factory.get_meter.assert_called_once()
+
+        self.assertEqual(metric_sender._azure_monitor_factory, mock_factory)
+        self.assertTrue(metric_sender.azure_monitor_enabled)
 
 
 if __name__ == "__main__":

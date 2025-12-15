@@ -10,7 +10,6 @@ from event_logger_lib.log_event import EventType
 
 class TestEventLogger(unittest.TestCase):
     def setUp(self):
-        EventLogger._azure_monitor_initialized = False
         self.workflow_id = "test-workflow"
         self.microservice_id = "test-service"
 
@@ -18,17 +17,14 @@ class TestEventLogger(unittest.TestCase):
             os.environ,
             {
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
-                "AZURE_MONITOR_OWNER": "event_logger",
             },
         ):
-            with patch("event_logger_lib.event_logger.configure_azure_monitor"):
-                with patch("event_logger_lib.event_logger.DefaultAzureCredential"):
+            with patch("azure_monitor_lib.AzureMonitorFactory.ensure_initialized", return_value=True):
+                with patch("azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=True):
+                    from azure_monitor_lib import AzureMonitorFactory
                     self.event_logger = EventLogger(
-                        self.workflow_id, self.microservice_id
+                        self.workflow_id, self.microservice_id, AzureMonitorFactory
                     )
-
-    def tearDown(self):
-        EventLogger._azure_monitor_initialized = False
 
     def _assert_log_event(
         self,
@@ -64,57 +60,58 @@ class TestEventLogger(unittest.TestCase):
         with patch.dict(
             os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True
         ):
-            logger = EventLogger("test-workflow", "test-service")
+            from azure_monitor_lib import AzureMonitorFactory
+            logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
             self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_disabled_no_env_var(self):
         with patch.dict(os.environ, {}, clear=True):
-            logger = EventLogger("test-workflow", "test-service")
+            from azure_monitor_lib import AzureMonitorFactory
+            logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
             self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_disabled_whitespace_only(self):
         with patch.dict(
             os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": "   "}, clear=True
         ):
-            logger = EventLogger("test-workflow", "test-service")
+            from azure_monitor_lib import AzureMonitorFactory
+            logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
             self.assertFalse(logger.azure_monitor_enabled)
 
     def test_initialization_with_logging_enabled(self):
-        EventLogger._azure_monitor_initialized = False
         with patch.dict(
             os.environ,
             {
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
-                "AZURE_MONITOR_OWNER": "event_logger",
             },
         ):
             with patch(
-                "event_logger_lib.event_logger.configure_azure_monitor"
-            ) as mock_configure:
+                "azure_monitor_lib.AzureMonitorFactory.ensure_initialized"
+            ) as mock_ensure:
                 with patch(
-                    "event_logger_lib.event_logger.DefaultAzureCredential"
-                ) as mock_cred:
-                    logger = EventLogger("test-workflow", "test-service")
+                    "azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=True
+                ) as mock_is_enabled:
+                    from azure_monitor_lib import AzureMonitorFactory
+                    logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
                     self.assertTrue(logger.azure_monitor_enabled)
-                    mock_configure.assert_called_once()
-                    mock_cred.assert_called_once()
+                    mock_ensure.assert_called_once()
+                    mock_is_enabled.assert_called_once()
 
     def test_initialization_with_azure_monitor_failure(self):
-        EventLogger._azure_monitor_initialized = False
         with patch.dict(
             os.environ,
             {
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
-                "AZURE_MONITOR_OWNER": "event_logger",
             },
         ):
             with patch(
-                "event_logger_lib.event_logger.configure_azure_monitor",
+                "azure_monitor_lib.AzureMonitorFactory.ensure_initialized",
                 side_effect=Exception("Connection failed"),
             ):
-                with patch("event_logger_lib.event_logger.DefaultAzureCredential"):
+                with patch("azure_monitor_lib.AzureMonitorFactory.is_enabled", return_value=True):
+                    from azure_monitor_lib import AzureMonitorFactory
                     with self.assertRaises(Exception):
-                        EventLogger("test-workflow", "test-service")
+                        EventLogger("test-workflow", "test-service", AzureMonitorFactory)
 
     @patch("event_logger_lib.event_logger.datetime")
     @patch("event_logger_lib.event_logger.logger")
@@ -151,7 +148,8 @@ class TestEventLogger(unittest.TestCase):
         with patch.dict(
             os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True
         ):
-            event_logger = EventLogger(self.workflow_id, self.microservice_id)
+            from azure_monitor_lib import AzureMonitorFactory
+            event_logger = EventLogger(self.workflow_id, self.microservice_id, AzureMonitorFactory)
         mock_logger.info.reset_mock()
         mock_datetime.now.return_value = datetime(
             2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
@@ -325,26 +323,25 @@ class TestEventLogger(unittest.TestCase):
         self.assertEqual(event.error_details, error_details)
 
     def test_initialization_with_managed_identity_credential(self):
-        EventLogger._azure_monitor_initialized = False
+        from azure_monitor_lib import AzureMonitorFactory
         insights_uami_client_id = "test-client-id-123"
         with patch.dict(
             os.environ,
             {
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
                 "INSIGHTS_UAMI_CLIENT_ID": insights_uami_client_id,
-                "AZURE_MONITOR_OWNER": "event_logger",
             },
         ):
             with patch(
-                "event_logger_lib.event_logger.configure_azure_monitor"
+                "azure_monitor_lib.azure_monitor_factory.configure_azure_monitor"
             ) as mock_configure:
                 with patch(
-                    "event_logger_lib.event_logger.ManagedIdentityCredential"
+                    "azure_monitor_lib.azure_monitor_factory.ManagedIdentityCredential"
                 ) as mock_managed_cred:
                     with patch(
-                        "event_logger_lib.event_logger.DefaultAzureCredential"
+                        "azure_monitor_lib.azure_monitor_factory.DefaultAzureCredential"
                     ) as mock_default_cred:
-                        logger = EventLogger("test-workflow", "test-service")
+                        logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
 
                         self.assertTrue(logger.azure_monitor_enabled)
                         mock_configure.assert_called_once()
@@ -352,6 +349,26 @@ class TestEventLogger(unittest.TestCase):
                             client_id=insights_uami_client_id
                         )
                         mock_default_cred.assert_not_called()
+
+    def test_dependency_injection_with_custom_factory(self):
+        """Test that EventLogger uses the injected factory instead of the global one."""
+        from unittest.mock import MagicMock
+
+        # Create a mock factory
+        mock_factory = MagicMock()
+        mock_factory.is_enabled.return_value = True
+        mock_factory.ensure_initialized.return_value = True
+
+        # Create EventLogger with injected factory
+        logger = EventLogger("test-workflow", "test-service", azure_monitor_factory=mock_factory)
+
+        # Verify the injected factory was used
+        mock_factory.is_enabled.assert_called_once()
+        mock_factory.ensure_initialized.assert_called_once()
+
+        # Verify the injected factory is stored
+        self.assertEqual(logger._azure_monitor_factory, mock_factory)
+        self.assertTrue(logger.azure_monitor_enabled)
 
     def test_initialization_with_default_credential_scenarios(self):
         test_cases = [
@@ -368,11 +385,9 @@ class TestEventLogger(unittest.TestCase):
 
         for case in test_cases:
             with self.subTest(msg=case["name"]):
-                # Reset flag for each subtest iteration
-                EventLogger._azure_monitor_initialized = False
+                from azure_monitor_lib import AzureMonitorFactory
                 env_vars = {
                     "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
-                    "AZURE_MONITOR_OWNER": "event_logger",
                 }
                 if case["insights_uami_client_id"] is not None:
                     env_vars["INSIGHTS_UAMI_CLIENT_ID"] = case[
@@ -383,16 +398,16 @@ class TestEventLogger(unittest.TestCase):
                 with patch.dict(os.environ, env_vars, clear=True):
                     with (
                         patch(
-                            "event_logger_lib.event_logger.configure_azure_monitor"
+                            "azure_monitor_lib.azure_monitor_factory.configure_azure_monitor"
                         ) as mock_configure,
                         patch(
-                            "event_logger_lib.event_logger.ManagedIdentityCredential"
+                            "azure_monitor_lib.azure_monitor_factory.ManagedIdentityCredential"
                         ) as mock_managed_cred,
                         patch(
-                            "event_logger_lib.event_logger.DefaultAzureCredential"
+                            "azure_monitor_lib.azure_monitor_factory.DefaultAzureCredential"
                         ) as mock_default_cred,
                     ):
-                        logger = EventLogger("test-workflow", "test-service")
+                        logger = EventLogger("test-workflow", "test-service", AzureMonitorFactory)
 
                         self.assertTrue(logger.azure_monitor_enabled)
                         mock_configure.assert_called_once()

@@ -1,10 +1,7 @@
 import logging
-import os
 from typing import Dict, Any, Optional
 
-from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
-from azure.monitor.opentelemetry import configure_azure_monitor
-from opentelemetry import metrics
+from azure_monitor_lib import AzureMonitorFactory
 from opentelemetry.metrics import Counter
 
 logger = logging.getLogger(__name__)
@@ -17,70 +14,37 @@ class MetricSender:
         microservice_id: str,
         health_board: str,
         peer_service: str,
+        azure_monitor_factory: AzureMonitorFactory,
     ):
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
         self.health_board = health_board
         self.peer_service = peer_service
         self._counters: Dict[str, Counter] = {}
-
-        connection_string = os.getenv(
-            "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
-        ).strip()
-        self.azure_monitor_enabled = bool(connection_string)
+        self._azure_monitor_factory = azure_monitor_factory
+        self.azure_monitor_enabled = self._azure_monitor_factory.is_enabled()
 
         if self.azure_monitor_enabled:
-            self._initialize_azure_monitor()
+            self._azure_monitor_factory.ensure_initialized()
+            self._meter = self._azure_monitor_factory.get_meter()
         else:
             logger.info(
                 "Azure Monitor metrics is disabled - APPLICATIONINSIGHTS_CONNECTION_STRING not set or empty. "
                 "Metrics will be logged to standard logger."
             )
+            self._meter = None
 
-    def _initialize_azure_monitor(self) -> None:
-        # Check if this library should initialize Azure Monitor
-        # AZURE_MONITOR_OWNER needs set to 'metric_sender' on components where only metric_sender_lib is used
-        azure_monitor_owner = (
-            os.getenv("AZURE_MONITOR_OWNER", "event_logger").strip().lower()
-        )
-        if azure_monitor_owner != "metric_sender":
-            logger.info(
-                f"Azure Monitor initialization skipped - AZURE_MONITOR_OWNER is '{azure_monitor_owner}', "
-                "not 'metric_sender'. Metrics will still be collected if Azure Monitor is initialized elsewhere."
-            )
-            # Don't initialize, but metrics can still be sent if EventLogger initialized Azure Monitor
-            self._meter = metrics.get_meter(__name__)
-            return
-
-        try:
-            credential = self._get_credential()
-            configure_azure_monitor(credential=credential)
-            self._meter = metrics.get_meter(__name__)
-            logger.info("Azure Monitor metrics initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Azure Monitor metrics: {e}")
-            raise
-
-    def _get_credential(self):
-        uami_client_id = os.getenv("INSIGHTS_UAMI_CLIENT_ID", "").strip()
-        if uami_client_id:
-            logger.info(
-                f"Using ManagedIdentityCredential with client_id: {uami_client_id}"
-            )
-            return ManagedIdentityCredential(client_id=uami_client_id)
-        else:
-            logger.info(
-                "Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)"
-            )
-            return DefaultAzureCredential()
 
     def _get_or_create_counter(self, key: str) -> Counter:
-        if key not in self._counters:
-            self._counters[key] = self._meter.create_counter(
+        # Optimized: Use dict.get() to avoid double lookup
+        counter = self._counters.get(key)
+        if counter is None:
+            counter = self._meter.create_counter(
                 name=key, description=f"Counter for {key}"
             )
+            self._counters[key] = counter
             logger.debug(f"Created new counter for metric: {key}")
-        return self._counters[key]
+        return counter
 
     def send_metric(
         self, key: str, value: int = 1, attributes: Optional[Dict[str, Any]] = None
@@ -94,22 +58,27 @@ class MetricSender:
             attributes: Optional dictionary of attributes to include with the metric.
         """
         try:
-            metric_attributes = {
-                "workflow_id": self.workflow_id,
-                "microservice_id": self.microservice_id,
-                "health_board": self.health_board,
-                "peer_service": self.peer_service,
-            }
-
+            # Optimized: Pre-allocate dict with known size and merge efficiently
             if attributes:
-                metric_attributes.update(attributes)
+                metric_attributes = {
+                    "workflow_id": self.workflow_id,
+                    "microservice_id": self.microservice_id,
+                    "health_board": self.health_board,
+                    "peer_service": self.peer_service,
+                    **attributes  # Merge additional attributes
+                }
+            else:
+                metric_attributes = {
+                    "workflow_id": self.workflow_id,
+                    "microservice_id": self.microservice_id,
+                    "health_board": self.health_board,
+                    "peer_service": self.peer_service,
+                }
 
-            if self.azure_monitor_enabled and self._meter:
+            # Optimized: Single condition check for enabled state
+            if self.azure_monitor_enabled and self._meter is not None:
                 counter = self._get_or_create_counter(key)
                 counter.add(value, attributes=metric_attributes)
-                logger.debug(
-                    f"Metric sent to Azure Monitor: {key}={value} with attributes: {metric_attributes}"
-                )
             else:
                 logger.info(
                     f"Integration Hub Metric (local log): {key}={value}, attributes: {metric_attributes}"
