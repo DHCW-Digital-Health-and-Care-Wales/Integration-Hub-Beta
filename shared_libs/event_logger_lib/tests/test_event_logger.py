@@ -394,6 +394,13 @@ class TestEventLogger(unittest.TestCase):
         for case in test_cases:
             with self.subTest(msg=case["name"]):
                 from azure_monitor_lib import AzureMonitorFactory
+                # Reset factory state for each subtest
+                AzureMonitorFactory._initialized = False
+                AzureMonitorFactory._meter = None
+                AzureMonitorFactory._is_enabled = None
+                AzureMonitorFactory._connection_string = None
+                AzureMonitorFactory._uami_client_id = None
+
                 env_vars = {
                     "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
                 }

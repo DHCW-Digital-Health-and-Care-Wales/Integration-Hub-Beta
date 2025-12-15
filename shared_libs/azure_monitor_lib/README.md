@@ -27,3 +27,4 @@ enabled = AzureMonitorFactory.is_enabled()
 - azure-monitor-opentelemetry
 - opentelemetry-api
 - opentelemetry-sdk
+
