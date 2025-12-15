@@ -63,7 +63,11 @@ class Hl7ServerApplication:
         logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")
 
         self.metric_sender = MetricSender(
-            app_config.workflow_id, app_config.microservice_id, app_config.health_board, app_config.peer_service, AzureMonitorFactory
+            app_config.workflow_id,
+            app_config.microservice_id,
+            app_config.health_board,
+            app_config.peer_service,
+            AzureMonitorFactory,
         )
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)

@@ -26,6 +26,14 @@ class TestEventLogger(unittest.TestCase):
                         self.workflow_id, self.microservice_id, AzureMonitorFactory
                     )
 
+    def tearDown(self):
+        from azure_monitor_lib import AzureMonitorFactory
+        AzureMonitorFactory._initialized = False
+        AzureMonitorFactory._meter = None
+        AzureMonitorFactory._is_enabled = None
+        AzureMonitorFactory._connection_string = None
+        AzureMonitorFactory._uami_client_id = None
+
     def _assert_log_event(
         self,
         mock_logger: MagicMock,

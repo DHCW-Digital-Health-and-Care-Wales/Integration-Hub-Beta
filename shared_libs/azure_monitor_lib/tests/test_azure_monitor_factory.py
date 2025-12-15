@@ -7,7 +7,6 @@ from azure_monitor_lib.azure_monitor_factory import AzureMonitorFactory
 
 class TestAzureMonitorFactory(unittest.TestCase):
     def setUp(self):
-        # Reset factory state for each test
         AzureMonitorFactory._initialized = False
         AzureMonitorFactory._meter = None
         AzureMonitorFactory._is_enabled = None
@@ -25,12 +24,11 @@ class TestAzureMonitorFactory(unittest.TestCase):
         test_cases = [
             {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""},
             {"APPLICATIONINSIGHTS_CONNECTION_STRING": "   "},
-            {},  # Not set at all
+            {},
         ]
 
         for env_vars in test_cases:
             with self.subTest(env_vars=env_vars):
-                # Reset cached values
                 AzureMonitorFactory._is_enabled = None
                 AzureMonitorFactory._connection_string = None
 
