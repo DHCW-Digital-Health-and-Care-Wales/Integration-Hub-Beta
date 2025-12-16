@@ -4,6 +4,7 @@ import signal
 import threading
 from typing import Any
 
+from azure_monitor_lib import AzureMonitorFactory
 from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from message_bus_lib.connection_config import ConnectionConfig
@@ -58,12 +59,15 @@ class Hl7ServerApplication:
             )
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
-        self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
+        self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id, AzureMonitorFactory)
+        logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")
+
         self.metric_sender = MetricSender(
             app_config.workflow_id,
             app_config.microservice_id,
             app_config.health_board,
-            app_config.peer_service
+            app_config.peer_service,
+            AzureMonitorFactory,
         )
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
@@ -98,11 +102,7 @@ class Hl7ServerApplication:
 
         try:
             self._server = SizeLimitedMLLPServer(
-                self.HOST,
-                self.PORT,
-                handlers,
-                app_config.max_message_size_bytes,
-                self.event_logger
+                self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger
             )
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
