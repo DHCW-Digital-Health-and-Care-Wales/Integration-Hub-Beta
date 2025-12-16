@@ -15,7 +15,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "azure-monitor-lib @ file:///mnt/vss/_work/1/s/shared_libs/azure_monitor_lib",
+    "azure-monitor-opentelemetry==1.6.13",
+    "azure-identity==1.23.0",
     "setuptools==80.9.0",
 ]
 
@@ -27,5 +28,5 @@ include = ["metric_sender_lib*"]
 dev = [
     "bandit>=1.9.1",
     "mypy>=1.18.2",
-    "ruff>=0.14.8",
+    "ruff>=0.14.5",
 ]

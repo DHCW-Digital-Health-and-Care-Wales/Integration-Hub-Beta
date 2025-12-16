@@ -55,25 +55,6 @@ wheels = [
 ]
 
 [[package]]
-name = "azure-monitor-lib"
-version = "0.1.0"
-source = { directory = "../azure_monitor_lib" }
-dependencies = [
-    { name = "azure-identity" },
-    { name = "azure-monitor-opentelemetry" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "azure-identity", specifier = ">=1.15.0" },
-    { name = "azure-monitor-opentelemetry", specifier = ">=1.2.0" },
-    { name = "opentelemetry-api", specifier = ">=1.24.0" },
-    { name = "opentelemetry-sdk", specifier = ">=1.24.0" },
-]
-
-[[package]]
 name = "azure-monitor-opentelemetry"
 version = "1.6.13"
 source = { registry = "https://pypi.org/simple" }
@@ -216,13 +197,15 @@ name = "event-logger-lib"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "azure-monitor-lib" },
+    { name = "azure-identity" },
+    { name = "azure-monitor-opentelemetry" },
     { name = "setuptools" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "azure-monitor-lib", directory = "../azure_monitor_lib" },
+    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "setuptools", specifier = "==80.9.0" },
 ]
 

@@ -3,7 +3,6 @@ import logging
 import os
 
 from azure.servicebus import ServiceBusMessage
-from azure_monitor_lib import AzureMonitorFactory
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
@@ -62,9 +61,9 @@ def main() -> None:
     app_config = AppConfig.read_env_config()
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
-    event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id, AzureMonitorFactory)
+    event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
     metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
-                                 app_config.peer_service, AzureMonitorFactory)
+                                 app_config.peer_service)
     throttler = MessageThrottler(app_config.max_messages_per_minute)
 
     with (
