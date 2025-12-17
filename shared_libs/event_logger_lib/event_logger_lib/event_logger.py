@@ -1,8 +1,11 @@
 import logging
+import os
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Optional
 
-from azure_monitor_lib import AzureMonitorFactory
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+from azure.monitor.opentelemetry import configure_azure_monitor
 
 from .log_event import LogEvent, EventType
 
@@ -10,19 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 class EventLogger:
-    def __init__(
-        self,
-        workflow_id: str,
-        microservice_id: str,
-        azure_monitor_factory: AzureMonitorFactory
-    ) -> None:
+    _azure_monitor_initialized: bool = False
+
+    def __init__(self, workflow_id: str, microservice_id: str) -> None:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
-        self._azure_monitor_factory = azure_monitor_factory
-        self.azure_monitor_enabled = self._azure_monitor_factory.is_enabled()
+        connection_string = os.getenv(
+            "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
+        ).strip()
+        self.azure_monitor_enabled = bool(connection_string)
 
         if self.azure_monitor_enabled:
-            self._azure_monitor_factory.ensure_initialized()
+            self._initialize_azure_monitor()
         else:
             logger.info(
                 "Azure Monitor logging is disabled - "
@@ -30,6 +32,51 @@ class EventLogger:
                 "Standard logger will be used."
             )
 
+    def _initialize_azure_monitor(self) -> None:
+        if EventLogger._azure_monitor_initialized:
+            logger.debug(
+                "Azure Monitor already initialized, skipping re-initialization"
+            )
+            return
+
+        # Check if this library should initialize Azure Monitor
+        azure_monitor_owner = (
+            os.getenv("AZURE_MONITOR_OWNER", "event_logger").strip().lower()
+        )
+        if azure_monitor_owner != "event_logger":
+            logger.info(
+                f"Azure Monitor initialization skipped - AZURE_MONITOR_OWNER is '{azure_monitor_owner}', "
+                "not 'event_logger'"
+            )
+            EventLogger._azure_monitor_initialized = (
+                True  # Mark as handled to prevent retries
+            )
+            return
+
+        try:
+            credential = self._get_credential()
+            configure_azure_monitor(
+                credential=credential,
+            )
+            EventLogger._azure_monitor_initialized = True
+            logger.info("Azure Monitor initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Azure Monitor: {e}")
+            self.azure_monitor_enabled = False
+            raise
+
+    def _get_credential(self):
+        uami_client_id = os.getenv("INSIGHTS_UAMI_CLIENT_ID", "").strip()
+        if uami_client_id:
+            logger.info(
+                f"Using ManagedIdentityCredential with client_id: {uami_client_id}"
+            )
+            return ManagedIdentityCredential(client_id=uami_client_id)
+        else:
+            logger.info(
+                "Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)"
+            )
+            return DefaultAzureCredential()
 
     def _create_log_event(
         self,
@@ -96,13 +143,9 @@ class EventLogger:
     def _send_log_event(self, event: LogEvent) -> None:
         try:
             event_dict = {
-                "workflow_id": event.workflow_id,
-                "microservice_id": event.microservice_id,
+                **asdict(event),
                 "event_type": event.event_type.value,
                 "timestamp": event.timestamp.isoformat(),
-                "message_content": event.message_content,
-                "validation_result": event.validation_result,
-                "error_details": event.error_details,
             }
 
             if self.azure_monitor_enabled:
