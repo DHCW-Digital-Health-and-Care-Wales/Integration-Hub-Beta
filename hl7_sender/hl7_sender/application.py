@@ -18,6 +18,9 @@ from hl7_sender.hl7_sender_client import HL7SenderClient
 from hl7_sender.message_throttler import MessageThrottler
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
+azure_log_level_str = os.environ.get("AZURE_LOG_LEVEL", "WARN").upper()
+azure_log_level = getattr(logging, azure_log_level_str, logging.WARN)
+logging.getLogger("azure").setLevel(azure_log_level)
 logger = logging.getLogger(__name__)
 
 config = configparser.ConfigParser()
@@ -33,9 +36,7 @@ def _calculate_batch_size(throttler: MessageThrottler) -> int:
     if interval is None:
         return MAX_BATCH_SIZE
 
-    max_processing_window = (
-        MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS - LOCK_RENEWAL_BUFFER_SECONDS
-    )
+    max_processing_window = MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS - LOCK_RENEWAL_BUFFER_SECONDS
     if max_processing_window <= 0:
         return 1
 
@@ -62,12 +63,14 @@ def main() -> None:
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-    metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
-                                 app_config.peer_service)
+    metric_sender = MetricSender(
+        app_config.workflow_id, app_config.microservice_id, app_config.health_board, app_config.peer_service
+    )
     throttler = MessageThrottler(app_config.max_messages_per_minute)
 
     with (
-        factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id
+        factory.create_message_receiver_client(
+            app_config.ingress_queue_name, app_config.ingress_session_id
         ) as receiver_client,
         HL7SenderClient(
             app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds

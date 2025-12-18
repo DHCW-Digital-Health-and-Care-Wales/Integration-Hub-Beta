@@ -24,6 +24,11 @@ log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# Configure Azure SDK logging
+azure_log_level_str = os.environ.get("AZURE_LOG_LEVEL", "WARN").upper()
+azure_log_level = getattr(logging, azure_log_level_str, logging.WARN)
+logging.getLogger("azure").setLevel(azure_log_level)
+
 
 class Hl7ServerApplication:
     def __init__(self) -> None:
