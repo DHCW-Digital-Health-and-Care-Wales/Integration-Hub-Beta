@@ -48,6 +48,7 @@ stages:
                   appImageName: ${{ app.appImageName }}
                   appFunctionMidfix: ${{ app.appFunctionMidfix }}
                   resourceGroupName: ${{ env.resourceGroup }}
+                  environmentName: ${{ env.environmentName }}
                   azureLocation: ${{ parameters.azureLocation }}
                   environment: ${{ env.name }}
                   acrName: ${{ parameters.acrName }}
