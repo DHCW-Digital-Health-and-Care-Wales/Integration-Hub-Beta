@@ -30,8 +30,8 @@ include = ["transformer_base_lib*"]
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
-    "ruff>=0.6.0",
-    "bandit>=1.8.0",
+    "ruff>=0.14.8",
+    "bandit>=1.9.1",
 ]
 
 [tool.uv.sources]

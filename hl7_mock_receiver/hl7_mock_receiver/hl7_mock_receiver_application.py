@@ -16,16 +16,17 @@ from .generic_handler import GenericHandler
 log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
 log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(message)s")
+azure_log_level_str = os.environ.get("AZURE_LOG_LEVEL", "WARN").upper()
+azure_log_level = getattr(logging, azure_log_level_str, logging.WARN)
+logging.getLogger("azure").setLevel(azure_log_level)
 logger = logging.getLogger(__name__)
 
-GENERIC_HANDLER_KEY = 'generic'
-ERROR_HANDLER_KEY = 'ERR'
+GENERIC_HANDLER_KEY = "generic"
+ERROR_HANDLER_KEY = "ERR"
 
 
 class CustomMLLPRequestHandler(MLLPRequestHandler):
-
     def _route_message(self, msg: Message) -> Any:
-
         try:
             generic_handler_config = self.handlers.get(GENERIC_HANDLER_KEY)
             if not generic_handler_config:
@@ -82,12 +83,7 @@ class Hl7MockReceiver:
         }
 
         try:
-            self._server = MLLPServer(
-                self.HOST,
-                self.PORT,
-                handlers,
-                request_handler_class=CustomMLLPRequestHandler
-            )
+            self._server = MLLPServer(self.HOST, self.PORT, handlers, request_handler_class=CustomMLLPRequestHandler)
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
             logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT} (accepting all message types)")

@@ -24,6 +24,11 @@ log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# Configure Azure SDK logging
+azure_log_level_str = os.environ.get("AZURE_LOG_LEVEL", "WARN").upper()
+azure_log_level = getattr(logging, azure_log_level_str, logging.WARN)
+logging.getLogger("azure").setLevel(azure_log_level)
+
 
 class Hl7ServerApplication:
     def __init__(self) -> None:
@@ -59,11 +64,10 @@ class Hl7ServerApplication:
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
+        logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")
+
         self.metric_sender = MetricSender(
-            app_config.workflow_id,
-            app_config.microservice_id,
-            app_config.health_board,
-            app_config.peer_service
+            app_config.workflow_id, app_config.microservice_id, app_config.health_board, app_config.peer_service
         )
         self.validator = HL7Validator(app_config.hl7_version, app_config.sending_app, app_config.hl7_validation_flow)
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
@@ -98,11 +102,7 @@ class Hl7ServerApplication:
 
         try:
             self._server = SizeLimitedMLLPServer(
-                self.HOST,
-                self.PORT,
-                handlers,
-                app_config.max_message_size_bytes,
-                self.event_logger
+                self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger
             )
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()

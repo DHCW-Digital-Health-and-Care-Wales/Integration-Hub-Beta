@@ -7,6 +7,7 @@ from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
 from processor_manager_lib import ProcessorManager
@@ -14,8 +15,12 @@ from processor_manager_lib import ProcessorManager
 from hl7_sender.ack_processor import get_ack_result
 from hl7_sender.app_config import AppConfig
 from hl7_sender.hl7_sender_client import HL7SenderClient
+from hl7_sender.message_throttler import MessageThrottler
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
+azure_log_level_str = os.environ.get("AZURE_LOG_LEVEL", "WARN").upper()
+azure_log_level = getattr(logging, azure_log_level_str, logging.WARN)
+logging.getLogger("azure").setLevel(azure_log_level)
 logger = logging.getLogger(__name__)
 
 config = configparser.ConfigParser()
@@ -23,6 +28,32 @@ config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
+LOCK_RENEWAL_BUFFER_SECONDS = 30
+
+
+def _calculate_batch_size(throttler: MessageThrottler) -> int:
+    interval = throttler.interval_seconds
+    if interval is None:
+        return MAX_BATCH_SIZE
+
+    max_processing_window = MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS - LOCK_RENEWAL_BUFFER_SECONDS
+    if max_processing_window <= 0:
+        return 1
+
+    # Number of messages that fit into the renewal window, accounting for intervals between sends.
+    allowable_messages = int(max_processing_window // interval) + 1
+    batch_size = max(1, min(MAX_BATCH_SIZE, allowable_messages))
+
+    if batch_size < MAX_BATCH_SIZE:
+        logger.warning(
+            "Reducing batch size from %d to %d to stay within the lock renewal window (%ds limit, %.2fs interval).",
+            MAX_BATCH_SIZE,
+            batch_size,
+            MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS,
+            interval,
+        )
+
+    return batch_size
 
 
 def main() -> None:
@@ -32,11 +63,14 @@ def main() -> None:
     client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-    metric_sender = MetricSender(app_config.workflow_id, app_config.microservice_id, app_config.health_board,
-                                 app_config.peer_service)
+    metric_sender = MetricSender(
+        app_config.workflow_id, app_config.microservice_id, app_config.health_board, app_config.peer_service
+    )
+    throttler = MessageThrottler(app_config.max_messages_per_minute)
 
     with (
-        factory.create_message_receiver_client(app_config.ingress_queue_name, app_config.ingress_session_id
+        factory.create_message_receiver_client(
+            app_config.ingress_queue_name, app_config.ingress_session_id
         ) as receiver_client,
         HL7SenderClient(
             app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
@@ -46,10 +80,12 @@ def main() -> None:
         logger.info("Processor started.")
         health_check_server.start()
 
+        batch_size = _calculate_batch_size(throttler)
+
         while processor_manager.is_running:
             receiver_client.receive_messages(
-                MAX_BATCH_SIZE,
-                lambda message: _process_message(message, hl7_sender_client, event_logger, metric_sender),
+                batch_size,
+                lambda message: _process_message(message, hl7_sender_client, event_logger, metric_sender, throttler),
             )
 
 
@@ -58,6 +94,7 @@ def _process_message(
     hl7_sender_client: HL7SenderClient,
     event_logger: EventLogger,
     metric_sender: MetricSender,
+    throttler: MessageThrottler,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     logger.info("Received message")
@@ -70,15 +107,16 @@ def _process_message(
         message_id = msh_segment.msh_10.value
         logger.info(f"Message ID: {message_id}")
 
+        throttler.wait_if_needed()
         ack_response = hl7_sender_client.send_message(message_body)
-
-        event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
-        logger.info(f"Sent message: {message_id}")
 
         ack_success = get_ack_result(ack_response)
 
         if ack_success:
             metric_sender.send_message_sent_metric()
+
+        event_logger.log_message_processed(message_body, f"Message sent successfully, received ACK: {ack_response}")
+        logger.info(f"Sent message: {message_id}")
 
         return ack_success
 
