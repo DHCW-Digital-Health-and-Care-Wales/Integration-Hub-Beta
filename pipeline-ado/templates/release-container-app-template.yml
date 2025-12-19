@@ -5,6 +5,7 @@ parameters:
   resourceGroupName: ''
   azureLocation: ''
   environment: ''
+  environmentName: '' # Azure DevOps Environment name for RBAC
   acrName: ''
   acrRepository: ''
   jobName: ''
@@ -13,8 +14,9 @@ parameters:
   resourcePipelineName: '' # Name of the pipeline that builds the image tag artifact
 
 jobs:
-- job: ${{ parameters.jobName }}
+- deployment: ${{ parameters.jobName }}
   displayName: ${{ parameters.displayName }}
+  environment: ${{ parameters.environmentName }}
   pool:
       ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
         vmImage: 'ubuntu-latest'
@@ -29,127 +31,129 @@ jobs:
     ${{ else }}:
       appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appImageName }}-ca'
       imageTagWithFlow: '${{ parameters.appImageName }}:${{ parameters.environment }}'
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
 
-  steps:
-    - checkout: self
-      displayName: 'Checkout Repository'
+          - download: ${{ parameters.resourcePipelineName }}
+            artifact: imageTag
 
-    - download: ${{ parameters.resourcePipelineName }}
-      artifact: imageTag
+          - task: AzureCLI@2
+            displayName: 'Azure CLI Login'
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az --version
 
-    - task: AzureCLI@2
-      displayName: 'Azure CLI Login'
-      inputs:
-        azureSubscription: ${{ parameters.azureServiceConnection }}
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az --version
+          - task: AzureCLI@2
+            displayName: 'Update Image Tag'
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                # Read the image tag and set it as a pipeline variable
+                IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/imageTag/imageTag.txt")
+                echo "Image tag is: $IMAGE_TAG"
+                
+                # Set the variable for use in subsequent steps
+                echo "##vso[task.setvariable variable=IMAGE_TAG]$IMAGE_TAG"
 
-    - task: AzureCLI@2
-      displayName: 'Update Image Tag'
-      inputs:
-        azureSubscription: ${{ parameters.azureServiceConnection }}
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          set -e
-          # Read the image tag and set it as a pipeline variable
-          IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/imageTag/imageTag.txt")
-          echo "Image tag is: $IMAGE_TAG"
-          
-          # Set the variable for use in subsequent steps
-          echo "##vso[task.setvariable variable=IMAGE_TAG]$IMAGE_TAG"
+                echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG"
+                az acr login --name ${{ parameters.acrName }}
+                
+                # Use pre-computed image tag from template variables
+                IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
+                
+                # Set ACR Subscription
+                echo "Finding ACR subscription..."
+                ACR_SUBSCRIPTION=$(az account list --query "[].id" -o tsv | while read sub; do
+                  if az acr show --name ${{ parameters.acrName }} --subscription "$sub" --query id -o tsv 2>/dev/null >/dev/null; then
+                    echo "$sub"
+                    break
+                  fi
+                done)
+                
+                if [ -z "$ACR_SUBSCRIPTION" ]; then
+                  echo "ERROR: Could not find ACR ${{ parameters.acrName }} in any accessible subscription"
+                  exit 1
+                fi
+                
+                CURRENT_SUBSCRIPTION=$(az account show --query id -o tsv)
+                
+                echo "ACR found in subscription: $ACR_SUBSCRIPTION"
+                echo "Current subscription: $CURRENT_SUBSCRIPTION"
+                
+                if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
+                  echo "Switching to ACR subscription..."
+                  az account set --subscription "$ACR_SUBSCRIPTION"
+                fi
+                
+                # Import preserves the digest
+                az acr import \
+                  --name ${{ parameters.acrName }} \
+                  --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
+                  --image $IMAGE_TAG_WITH_FLOW \
+                  --force
+                
+                # Switch back to original subscription if we changed it
+                if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
+                  echo "Switching back to original subscription..."
+                  az account set --subscription "$CURRENT_SUBSCRIPTION"
+                fi
 
-          echo "Adding ${{ parameters.environment }} tag to the image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG"
-          az acr login --name ${{ parameters.acrName }}
-          
-          # Use pre-computed image tag from template variables
-          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
-          
-          # Set ACR Subscription
-          echo "Finding ACR subscription..."
-          ACR_SUBSCRIPTION=$(az account list --query "[].id" -o tsv | while read sub; do
-            if az acr show --name ${{ parameters.acrName }} --subscription "$sub" --query id -o tsv 2>/dev/null >/dev/null; then
-              echo "$sub"
-              break
-            fi
-          done)
-          
-          if [ -z "$ACR_SUBSCRIPTION" ]; then
-            echo "ERROR: Could not find ACR ${{ parameters.acrName }} in any accessible subscription"
-            exit 1
-          fi
-          
-          CURRENT_SUBSCRIPTION=$(az account show --query id -o tsv)
-          
-          echo "ACR found in subscription: $ACR_SUBSCRIPTION"
-          echo "Current subscription: $CURRENT_SUBSCRIPTION"
-          
-          if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
-            echo "Switching to ACR subscription..."
-            az account set --subscription "$ACR_SUBSCRIPTION"
-          fi
-          
-          # Import preserves the digest
-          az acr import \
-            --name ${{ parameters.acrName }} \
-            --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
-            --image $IMAGE_TAG_WITH_FLOW \
-            --force
-          
-          # Switch back to original subscription if we changed it
-          if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
-            echo "Switching back to original subscription..."
-            az account set --subscription "$CURRENT_SUBSCRIPTION"
-          fi
+                echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
 
-          echo "Tag ${{ parameters.environment }} added to  ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG as $IMAGE_TAG_WITH_FLOW"
+          - task: AzureCLI@2
+            displayName: 'Update Azure Container App'
+            continueOnError: true
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                # Use pre-computed values from template variables
+                appFullName="$(appFullName)"
+                IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
+                
+                # Use the IMAGE_TAG variable set in the previous step
+                echo "Using image tag: $(IMAGE_TAG)"
+                echo "Using app full name: $appFullName"
+                echo "Using image with flow: $IMAGE_TAG_WITH_FLOW"
+                
+                # Create revision suffix using the same value as IMAGE_TAG but with dashes
+                REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//' | sed 's/^-//')
+                
+                echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
+                echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
+                
+                # Check if container app exists first
+                if az containerapp show --name $appFullName --resource-group ${{ parameters.resourceGroupName }} --output none 2>/dev/null; then
+                  echo "Container app $appFullName found. Proceeding with update..."
+                  
+                  # Create a new revision by updating the container app with semantic version as suffix
+                  az containerapp update \
+                    --name $appFullName \
+                    --resource-group ${{ parameters.resourceGroupName }} \
+                    --revision-suffix $REVISION_SUFFIX \
+                    --image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
 
-    - task: AzureCLI@2
-      displayName: 'Update Azure Container App'
-      continueOnError: true
-      inputs:
-        azureSubscription: ${{ parameters.azureServiceConnection }}
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          set -e
-          # Use pre-computed values from template variables
-          appFullName="$(appFullName)"
-          IMAGE_TAG_WITH_FLOW="$(imageTagWithFlow)"
-          
-          # Use the IMAGE_TAG variable set in the previous step
-          echo "Using image tag: $(IMAGE_TAG)"
-          echo "Using app full name: $appFullName"
-          echo "Using image with flow: $IMAGE_TAG_WITH_FLOW"
-          
-          # Create revision suffix using the same value as IMAGE_TAG but with dashes
-          REVISION_SUFFIX=$(echo "$(IMAGE_TAG)" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | sed 's/-$//' | sed 's/^-//')
-          
-          echo "Forcing new revision for $appFullName with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
-          echo "Using revision suffix: $REVISION_SUFFIX (based on image tag: $(IMAGE_TAG))"
-          
-          # Check if container app exists first
-          if az containerapp show --name $appFullName --resource-group ${{ parameters.resourceGroupName }} --output none 2>/dev/null; then
-            echo "Container app $appFullName found. Proceeding with update..."
-            
-            # Create a new revision by updating the container app with semantic version as suffix
-            az containerapp update \
-              --name $appFullName \
-              --resource-group ${{ parameters.resourceGroupName }} \
-              --revision-suffix $REVISION_SUFFIX \
-              --image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW
-
-            echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
-          else
-            echo "##vso[task.logissue type=warning]Container app $appFullName not found in resource group ${{ parameters.resourceGroupName }}. Skipping update."
-            echo "##vso[task.logissue type=warning]Please ensure the container app is created before running this pipeline, or this step will be skipped."
-            echo "Container app $appFullName does not exist yet. This is expected for first-time deployments."
-            echo "The image has been tagged and is ready for deployment when the container app is created."
-            
-            # Set task result to warning to make it visually apparent in the pipeline
-            echo "##vso[task.complete result=SucceededWithIssues]Container app not found - task completed with warnings"
-          fi
+                  echo "$appFullName updated with image ${{ parameters.acrName }}.azurecr.io/$IMAGE_TAG_WITH_FLOW"
+                else
+                  echo "##vso[task.logissue type=warning]Container app $appFullName not found in resource group ${{ parameters.resourceGroupName }}. Skipping update."
+                  echo "##vso[task.logissue type=warning]Please ensure the container app is created before running this pipeline, or this step will be skipped."
+                  echo "Container app $appFullName does not exist yet. This is expected for first-time deployments."
+                  echo "The image has been tagged and is ready for deployment when the container app is created."
+                  
+                  # Set task result to warning to make it visually apparent in the pipeline
+                  echo "##vso[task.complete result=SucceededWithIssues]Container app not found - task completed with warnings"
+                fi
 
           
