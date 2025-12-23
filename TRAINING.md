@@ -317,8 +317,9 @@ Example:
 A hospital in Cardiff sends patient admission data
 
 1. The data arrives at, for example, the PHW HL7 server via TCP/MLLP protocol
-2. The server receives the message and sends back an acknowledgment: "Got it!"
-3. The server places the raw message onto the Azure Service Bus for further processing
+2. The server receives, parses, and validates the message
+3. If valid, the server places the raw message onto the Azure Service Bus for further processing
+4. Finally, the server sends back an acknowledgment (ACK): "Got it!"
 
 The primary purpose of the HL7 server is to act as a reliable interface between external healthcare systems and our internal Azure-based integration platform. It ensures that:
 
@@ -341,7 +342,16 @@ The primary purpose of the HL7 server is to act as a reliable interface between 
 If validation fails, the process changes at step 4, where:
 
 4. An error is logged with specific details
-5. The sending system receives information about why the message was rejected
+5. The connection is closed without sending an acknowledgment, signaling to the sending system that the message was not accepted
+
+### Protection Mechanisms
+
+To protect the system from being overwhelmed or attacked, the server implements:
+
+- **Message Size Limiting**: The server enforces a maximum message size (configurable, e.g., 1MB). If a message exceeds this limit:
+  - The connection is immediately closed to prevent resource exhaustion.
+  - The event is logged for security monitoring.
+  - No acknowledgment is sent.
 
 ## Azure Service Bus
 
@@ -357,20 +367,33 @@ Example:
 
 These are the "specialists" that understand how to convert data from one hospital/healthcare provider format to a standard format everyone can understand. In our case that’s HL7v2.5.
 
-### hl7_transformer/ (PHW Transformer):
+All transformers are built upon a **Shared Base Library** (`transformer_base_lib`) which provides a standardized interface and handles common tasks like:
 
-- What it does
-  - converts Public Health Wales messages to HL7 v2.5 standard
-- Specific transformations
+- **Audit Logging**: Automatically generating audit text for received and processed messages.
+- **Configuration Management**: Loading configuration from environment variables and files.
+- **Execution**: Managing the service lifecycle, including connection to Azure Service Bus and health checks.
+
+Each specific transformer inherits from this base and implements its own `transform_message` logic using specialized mappers.
+
+### hl7_phw_transformer/ (PHW Transformer):
+
+converts Public Health Wales messages to the HL7v2.5 standard.
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Uses `map_msh`, `map_pid`, and `map_non_specific_segments` to perform transformations.
+- **Audit**: Overrides `get_processed_audit_text` to provide specific details about datetime and date of death transformations.
+- **Specific transformations**:
   - **Transforms datetime fields to match MPI requirements**
-- Scenario
+- **Scenario**:
   - PHW sends a patient's birth date as "19850315" but MPI needs "1985-03-15T00:00:00Z"
 
 ### hl7_chemo_transformer/ (Chemocare Transformer):
 
-- What it does
-  - converts cancer treatment system data to HL7 v2.5 standard
-- Specific transformations
+converts cancert treatment system data to the HL7v2.5 standard
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Orchestrates a sequence of mappers: `map_msh`, `map_evn`, `map_pid`, `map_pd1`, `map_nk1`, and `map_non_specific_segments`.
+- **Specific transformations**:
   - Direct one to one mappings – a subset below, Chemocare source on the LHS, MPI target on the RHS.
 
 | Chemocare source field | MPI Target field       |
@@ -395,9 +418,11 @@ These are the "specialists" that understand how to convert data from one hospita
 
 ### hl7_pims_transformer/ (PIMS Transformer):
 
-- What it does
-  - converts Patient Information Management System data to HL7 v2.5 standard
-- Specific transformations
+converts Patient Information Management System data to the HL7v2.5 standard
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Orchestrates a comprehensive set of mappers: `map_msh`, `map_evn`, `map_pid`, `map_pd1`, `map_pv1`, `map_mrg`, and `map_non_specific_segments`.
+- **Specific transformations**:
   - Direct one to one mappings - a subset below, PIMS source on the LHS, MPI target on the RHS.
 
 |              |              |
@@ -444,6 +469,8 @@ Features:
 - Retry logic - keeps trying if MPI is temporarily down
 - Delivery confirmation - ensures messages actually arrived
 - Error handling - logs problems for investigation
+- **Socket Health Checks**: Proactively checks if the connection to the destination is still open before sending a message.
+- **Message Throttling**: Controls the rate of message sending to prevent overwhelming the destination system.
 
 How it works:
 
