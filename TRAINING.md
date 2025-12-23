@@ -317,8 +317,9 @@ Example:
 A hospital in Cardiff sends patient admission data
 
 1. The data arrives at, for example, the PHW HL7 server via TCP/MLLP protocol
-2. The server receives the message and sends back an acknowledgment: "Got it!"
-3. The server places the raw message onto the Azure Service Bus for further processing
+2. The server receives, parses, and validates the message
+3. If valid, the server places the raw message onto the Azure Service Bus for further processing
+4. Finally, the server sends back an acknowledgment (ACK): "Got it!"
 
 The primary purpose of the HL7 server is to act as a reliable interface between external healthcare systems and our internal Azure-based integration platform. It ensures that:
 
@@ -341,7 +342,16 @@ The primary purpose of the HL7 server is to act as a reliable interface between 
 If validation fails, the process changes at step 4, where:
 
 4. An error is logged with specific details
-5. The sending system receives information about why the message was rejected
+5. The connection is closed without sending an acknowledgment, signaling to the sending system that the message was not accepted
+
+### Protection Mechanisms
+
+To protect the system from being overwhelmed or attacked, the server implements:
+
+- **Message Size Limiting**: The server enforces a maximum message size (configurable, e.g., 1MB). If a message exceeds this limit:
+  - The connection is immediately closed to prevent resource exhaustion.
+  - The event is logged for security monitoring.
+  - No acknowledgment is sent.
 
 ## Azure Service Bus
 
@@ -357,20 +367,33 @@ Example:
 
 These are the "specialists" that understand how to convert data from one hospital/healthcare provider format to a standard format everyone can understand. In our case that’s HL7v2.5.
 
-### hl7_transformer/ (PHW Transformer):
+All transformers are built upon a **Shared Base Library** (`transformer_base_lib`) which provides a standardized interface and handles common tasks like:
 
-- What it does
-  - converts Public Health Wales messages to HL7 v2.5 standard
-- Specific transformations
+- **Audit Logging**: Automatically generating audit text for received and processed messages.
+- **Configuration Management**: Loading configuration from environment variables and files.
+- **Execution**: Managing the service lifecycle, including connection to Azure Service Bus and health checks.
+
+Each specific transformer inherits from this base and implements its own `transform_message` logic using specialized mappers.
+
+### hl7_phw_transformer/ (PHW Transformer):
+
+converts Public Health Wales messages to the HL7v2.5 standard.
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Uses `map_msh`, `map_pid`, and `map_non_specific_segments` to perform transformations.
+- **Audit**: Overrides `get_processed_audit_text` to provide specific details about datetime and date of death transformations.
+- **Specific transformations**:
   - **Transforms datetime fields to match MPI requirements**
-- Scenario
+- **Scenario**:
   - PHW sends a patient's birth date as "19850315" but MPI needs "1985-03-15T00:00:00Z"
 
 ### hl7_chemo_transformer/ (Chemocare Transformer):
 
-- What it does
-  - converts cancer treatment system data to HL7 v2.5 standard
-- Specific transformations
+converts cancert treatment system data to the HL7v2.5 standard
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Orchestrates a sequence of mappers: `map_msh`, `map_evn`, `map_pid`, `map_pd1`, `map_nk1`, and `map_non_specific_segments`.
+- **Specific transformations**:
   - Direct one to one mappings – a subset below, Chemocare source on the LHS, MPI target on the RHS.
 
 | Chemocare source field | MPI Target field       |
@@ -395,9 +418,11 @@ These are the "specialists" that understand how to convert data from one hospita
 
 ### hl7_pims_transformer/ (PIMS Transformer):
 
-- What it does
-  - converts Patient Information Management System data to HL7 v2.5 standard
-- Specific transformations
+converts Patient Information Management System data to the HL7v2.5 standard
+
+- **Inheritance**: Inherits from `BaseTransformer`.
+- **Logic**: Orchestrates a comprehensive set of mappers: `map_msh`, `map_evn`, `map_pid`, `map_pd1`, `map_pv1`, `map_mrg`, and `map_non_specific_segments`.
+- **Specific transformations**:
   - Direct one to one mappings - a subset below, PIMS source on the LHS, MPI target on the RHS.
 
 |              |              |
@@ -444,17 +469,41 @@ Features:
 - Retry logic - keeps trying if MPI is temporarily down
 - Delivery confirmation - ensures messages actually arrived
 - Error handling - logs problems for investigation
+- **Socket Health Checks**: Proactively checks if the connection to the destination is still open before sending a message.
+- **Message Throttling**: Controls the rate of message sending to prevent overwhelming the destination system.
 
 How it works:
 
 Sending transformed Chemocare patient data to MPI (more or less the same for other flows, bar transformation and the post-transform queue)
 
-1. Sender Picks up processed message from post-transform queue
-2. Establishes secure connection to MPI system
+1. Sender Picks up a processed message from post-transform queue
+2. Before sending, it verifies if the existing TCP connection is still valid. If not, it creates a new one.
 3. Sends the message using HL7 protocol
-4. Waits for confirmation from MPI
-5. If delivery fails, automatically retries with backoff strategy
+4. Waits for confirmation from MPI (ACK)
+5. If delivery fails (e.g., timeout or connection error):
+   - It attempts an immediate retry with a fresh connection.
+   - If that fails, the message is returned to the queue for a later retry (using the Service Bus exponential backoff).
 6. Logs success/failure for audit purposes
+
+### Socket Handling and Retries
+
+The sender is designed to be robust against network instability.
+
+- **Proactive Socket Check**: Before every send, the client checks if the socket is "readable". If it is readable but has 0 bytes, it means the other end has closed the connection. In this case, the sender automatically reconnects before trying to send.
+- **Timeout Handling**: If an ACK is not received within the configured timeout, the sender assumes the connection is dead, closes it, and attempts one immediate retry with a new connection.
+- **Connection Errors**: Any connection error triggers a reconnection attempt.
+
+### Message Throttling
+
+To protect downstream systems (like MPI) from being overwhelmed, the sender implements a throttling mechanism.
+
+- **Rate Limiting**: It calculates a minimum interval between messages based on the configured `max_messages_per_minute`. For example, if set to 60, it will try to ensure ~1 second passes between each message send.
+
+Note that this gap between messages can fluctuate, therefore the guarantee is on the number of messages per minute not the time between them.
+
+- **Dynamic Batch Sizing**: It automatically adjusts the number of messages it picks up from the queue (batch size) to ensure that the total time spent processing the batch (including throttling delays) does not exceed the Service Bus lock renewal duration.
+  - This prevents a scenario where the sender holds onto messages for too long while waiting to send them, causing the Service Bus to think the processing failed and re-deliver the messages to another instance.
+  - Example: If the lock duration is 5 minutes and we are throttled to 1 message per minute, the batch size will be reduced to ensure we don't pick up more than ~4 messages at a time.
 
 ## Aside – Retry backoff strategy
 
@@ -570,6 +619,20 @@ Second failure: Wait 10 seconds (5 \* 2)
 Third failure: Wait 20 seconds (10 \* 2)
 
 Maximum delay: Caps at 15 minutes to prevent excessive delays
+
+### Transformer Base Library
+
+The `transformer_base_lib` simplifies the creation of HL7 message transformers. It abstracts away the common boilerplate code required to create a transformer service in the Integration Hub.
+
+#### Key Features
+
+1.  **Standardized Interface**: Defines a `BaseTransformer` abstract class that all transformers must inherit from. This ensures consistency across different transformer implementations.
+2.  **Lifecycle Management**: Handles the initialization of the service, connection to Azure Service Bus, and the main processing loop.
+3.  **Audit Logging**: Provides built-in methods for generating standardized audit text for received and processed messages, ensuring consistent logging across the platform.
+4.  **Configuration**: Automatically loads configuration from environment variables and configuration files, simplifying deployment.
+5.  **Health Checks**: Integrates with the Health Check Library to provide a TCP health check server out of the box.
+
+By using this library, developers can focus solely on the specific transformation logic (the "mappers") without worrying about the underlying infrastructure code.
 
 ### Event logger library
 
@@ -696,186 +759,91 @@ In hl7_server
   - On failure: It calls log_message_failed when something goes wrong, including detailed error information
 - This creates a complete audit trail of what happens to each message as it flows through the system.
 
-### Validation library
+### HL7 Validation Library
 
-a comprehensive system designed to validate HL7 messages against predefined XML schemas to ensure they conform to expected standards and structures.
+The `hl7_validation` library is a comprehensive system designed to validate HL7 messages against predefined XML schemas (XSD) to ensure they conform to expected standards and structures.
 
-Analogy - having a universal language for healthcare computers to talk to each other. Just as we need proper grammar and structure when writing a letter, HL7 messages need proper structure so receiving systems can correctly interpret patient data.
+Think of it as a universal grammar checker for healthcare data - HL7 messages need proper structure so receiving systems can correctly interpret patient data.
 
-The validation library serves as a quality control system that checks incoming HL7 messages to ensure they meet the required standards before processing them. This prevents several critical problems:
+#### Purpose
 
-1. Data Corruption - malformed messages could cause systems to misinterpret patient data
-2. System Crashes - invalid data structures might cause receiving systems to fail
-3. Compliance Issues - healthcare systems must meet regulatory requirements for data handling
-4. Integration Failures - different healthcare systems need consistent data formats to communicate
+The library serves as a quality control gate that checks incoming HL7 messages before they are processed. This prevents:
 
-Key benefits:
+1.  **Data Corruption** - Malformed messages could cause systems to misinterpret patient data.
+2.  **System Crashes** - Invalid data structures might cause receiving systems to fail.
+3.  **Compliance Issues** - Healthcare systems must meet regulatory requirements for data handling.
+4.  **Integration Failures** - Different healthcare systems need consistent data formats to communicate.
 
-1. Data Quality Assurance
+#### Key Features
 
-By validating every message against strict schemas, the system ensures that only properly formatted, complete healthcare data enters the system. This prevents scenarios where incomplete patient records could lead to medical errors.
+1.  **ER7 to XML Conversion**: Converts standard pipe-delimited HL7 (ER7) messages into HL7 v2 XML format.
+2.  **Schema Validation**: Validates the generated XML against strict XSD schemas.
+3.  **Flow-Based Validation**: Supports different validation rules for different data flows (e.g., `phw`, `chemo`, `pims`).
+4.  **Automatic Schema Discovery**: Automatically maps message types (e.g., ADT^A05) to the correct schema structure.
 
-2. System Interoperability and regulatory compliance
+#### Library Structure
 
-Different healthcare systems (hospitals, labs, pharmacies) can trust that messages they receive will be in the expected format adhering to the HL7 standard, making integration between systems much more reliable.
+The library is organized into resources and core logic:
 
-3. Error Prevention
+##### Schema Resources (`resources/`)
 
-Catching validation errors early prevents them from propagating through the healthcare system where they could cause more serious problems downstream.
+Contains XSD files organized by "flow" (e.g., `resources/paris/`). Each flow directory includes:
 
-4. Audit trail
+- **Structure XSDs**: Named by message structure (e.g., `ADT_A05.xsd`). Defines the complete message hierarchy.
+- **Base HL7 XSDs**: Version-specific definitions for fields, types, and segments (e.g., `2_5_fields.xsd`, `2_5_segments.xsd`).
 
-The integration with the event logger creates a complete audit trail of message validation, which is crucial for healthcare compliance and troubleshooting.
+##### Core Functions
 
-#### Structure
+- `validate.py`: The main entry point. Contains `validate_er7_with_flow` which orchestrates the validation.
+- `convert.py`: Handles the complex transformation of ER7 (pipe-delimited) text into XML.
+- `schemas.py`: Manages schema loading and path resolution.
 
-3 key components – see subheadings underneath.
+#### Validation Process (Step-by-Step)
 
-##### Schema resources
+1.  **Message Analysis**: The system parses the incoming ER7 message to identify its type (e.g., ADT), trigger event (e.g., A05), and structure.
+2.  **Schema Selection**: Based on the flow name (e.g., "paris") and the identified structure, the correct XSD file is selected.
+3.  **ER7 to XML Conversion**: The message is transformed into an XML representation. This involves parsing the pipe-delimited format, handling repetitions, and creating the correct XML hierarchy.
+4.  **XML Schema Validation**: The generated XML is validated against the XSD using the `xmlschema` library. This checks structure, data types, cardinality, and value sets.
+5.  **Error Reporting**: If validation fails, a detailed `XmlValidationError` is raised, explaining exactly what went wrong (e.g., "Required segment PV1 is missing").
 
-The library contains XML Schema Definition (XSD) files that define the exact structure and rules for different types of HL7 messages. These schemas are organized by "flow" which represents different healthcare organizations or systems – PIMS, Chemocare, PHW, Paris.
+#### Developer Guide: Adding New Schemas
 
-Each flow has the following types of schema files, for instance for Paris:
+To add support for a new message flow or type:
 
-- **Fields Schema (2_5_1_fields.xsd) -** Defines individual data elements like patient names, dates, identifiers. Act as a vocabulary - what each piece of data should look like.
-- **Types Schema (2_5_1_types.xsd)** - Defines complex data types that combine multiple fields. For example, a patient name might combine first name, last name, and title into one complex type.
-- **Segments Schema (2_5_1_segments.xsd)** - Defines larger blocks of related information like patient demographics (PID segment) or message header information (MSH segment).
-- **Message Structure Schemas (ADT_A05.xsd, ADT_A39.xsd)** - Define complete message types like admission notifications or patient merge messages. These specify which segments are required, optional, and in what order they should appear.
+1.  Create a new directory under `hl7_validation/resources/` (e.g., `my_new_flow`).
+2.  Add the appropriate HL7 base XSDs for your HL7 version.
+3.  Add structure XSDs named by the trigger event (e.g., `ADT_A05.xsd`).
+4.  **No code changes are required** - the library automatically discovers the new schemas based on the directory structure.
 
-##### Core validation functions
+#### Usage Example
 
-`validate.py` - the main entry point that orchestrates the entire validation process. When you want to validate a message, you call functions in this file.
+```python
+from hl7_validation import validate_er7_with_flow, XmlValidationError
 
-`convert.py` - converts HL7's native ER7 format (pipe and hat delimited text) into XML format so it can be validated against XML schemas. This is like translating from one language to another while preserving all the meaning.
-
-`schemas.py` - manages access to all the different schema files and helps determine which schema should be used for which message type.
-
-##### Helper/utility functions
-
-The utils folder contains helper functions that handle specific tasks, such as:
-
-- analysing the message structures to understand the organization and hierarchy of different message components.
-- creating mappings between different schema elements to understand relationships and inheritance between data types.
-- extracting key information from messages like message type, trigger events, and structure identifiers.
-
-#### Validation step by step
-
-**Step 1: Message Analysis**
-
-First, the system examines the incoming message to determine:
-
-- What type of message it is (like an admission, discharge, or transfer)
-- What trigger event occurred (like A28 for adding person information)
-- What message structure should be used for validation
-
-This information is typically found in the `MSH` (Message Header) segment of the HL7 message.
-
-For example, a message might be identified as `"ADT^A28^ADT_A05"` meaning it's an ADT (Admission, Discharge, Transfer) message with **trigger event A28** using the **ADT_A05** structure.
-
-**Step 2: Schema Selection**
-
-Based on the message analysis and the specified flow, for example Paris, the system selects the appropriate XSD schema file. For example, if validating a Paris flow ADT_A05 message, it would use the file at resources/paris/ADT_A05.xsd.
-
-Step 3: ER7 to XML Conversion
-
-HL7 messages typically arrive in ER7 format, which looks like this:
-
-```
-MSH|^~\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230901120000||ADT^A28^ADT_A05|MSG001|P|2.5.1
-EVN||20230901120000
-PID|1||123456789^^^MRN||DOE^JOHN^M||19800101|M|||123 MAIN ST^^ANYTOWN^ST^12345
+try:
+    validate_er7_with_flow(raw_hl7_message, "phw")
+    print("Message is valid!")
+except XmlValidationError as e:
+    print(f"Validation failed: {e}")
 ```
 
-The convert.py module transforms this into structured XML that looks like:
+#### Integration with HL7 Server
 
-```xml
-<ADT_A05 xmlns="urn:hl7-org:v2xml">
+When the HL7 server receives a message:
 
-<MSH>
-<MSH.1>|</MSH.1>
-<MSH.2>^~\&</MSH.2>
-<MSH.3>
-<HD.1>SENDING_APP</HD.1>
-</MSH.3>
-<!-- ... more fields -->
-</MSH>
-
-<EVN>
-<EVN.2>
-<TS.1>20230901120000</TS.1>
-</EVN.2>
-</EVN>
-
-<PID>
-<!-- patient information fields -->
-</PID>
-</ADT_A05>
-```
-
-This conversion process is fairly complex because it must:
-
-- Parse the pipe-delimited format correctly
-- Handle repeated fields and components
-- Create proper XML hierarchy
-- Insert required but missing segments (e.g. EVN if required)
-- Map field positions to XML element names
-- Handle different data types appropriately
-
-**Step 4: XML Schema Validation**
-
-Once the message is in XML format, the system uses the Python xmlschema library to validate it against the selected XSD file. This validation checks:
-
-- Structure - Are all required segments present? Are they in the correct order?
-- Data Types - Do dates look like dates? Do numbers contain only numeric characters?
-- Cardinality - Are there the right number of repetitions for repeating fields?
-- Value Sets - Do coded values match allowed values?
-- Dependencies - Are conditional fields present when required?
-
-**Step 5: Error Reporting**
-
-If validation fails, the system provides detailed error messages explaining exactly what went wrong, such as:
-
-- `"Required segment PV1 is missing"`
-- `"Field PID.7 (Date of Birth) contains invalid date format"`
-- `"Invalid segment XYZ"`
-
-#### Usage in HL7 server
-
-Here’s how the validation library integrates into a real healthcare message processing system:
-
-When the HL7 server receives a message, it first logs that a message was received using the event logger.
-The system uses the hl7apy library to do basic parsing and extract key information like message type and control ID.
-The system performs standard HL7 validation using the HL7Validator class to check basic message structure.
-If a flow name is specified (like "paris"), the system calls the validation library.
-
-If validation fails, the system:
-
-- Logs detailed error information
-- Records the validation failure in the event logger
-- Raises an exception to stop processing the invalid message
-
-If validation succeeds:
-
-- The message is sent to the service bus for further processing
-- An ACK (acknowledgment) message is generated
-- Success is logged in the event logger
-
-#### Why this approach
-
-The decision to use XSD schema validation for HL7 message validation was primarily driven by the fact that comprehensive XML Schema Definition files were already available from healthcare standards organisations and could be directly utilised without manual recreation.
-
-Python's robust ecosystem of XML processing libraries, particularly xmlschema and defusedxml, provided mature, well-tested tools for parsing and validating against these schemas with minimal implementation effort.
-
-The resulting solution is inherently self-documenting, version-controlled through schema updates, and provides precise, standardized error messages that directly reference official HL7 specification terminology, making it immediately familiar to healthcare IT professionals who already understand XSD-based validation approaches.
+1.  It performs basic parsing using `hl7apy`.
+2.  If a `HL7_VALIDATION_FLOW` is configured (e.g., "paris"), it calls `validate_er7_with_flow`.
+3.  **Failure**: If validation fails, the error is logged, and the connection is closed (no ACK sent).
+4.  **Success**: If valid, the message proceeds to the Service Bus, and an ACK is returned.
 
 > [!NOTE]
-> Using the existing HL7 XSD schemas avoids re‑implementing hundreds of structural rules in code. The schemas double as authoritative documentation and validation logic, accelerating adaptation to HL7 updates, reducing maintenance, and allowing for precise error feedback.
+> Using existing HL7 XSD schemas avoids re‑implementing hundreds of structural rules in code. The schemas double as authoritative documentation and validation logic, accelerating adaptation to HL7 updates.
 
 # Tech Stack
 
 - Hosting: Azure Cloud
 - Code development: Python 3.13
-- dependency management: PIP (planned migration to [UV](https://github.com/astral-sh/uv) )
+- dependency management: [UV](https://github.com/astral-sh/uv)
 - infrastructure: Terraform
 - testing tools
   - functional testing: Python 3.13, Framework: **pytest**
