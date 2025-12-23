@@ -476,12 +476,34 @@ How it works:
 
 Sending transformed Chemocare patient data to MPI (more or less the same for other flows, bar transformation and the post-transform queue)
 
-1. Sender Picks up processed message from post-transform queue
-2. Establishes secure connection to MPI system
+1. Sender Picks up a processed message from post-transform queue
+2. Before sending, it verifies if the existing TCP connection is still valid. If not, it creates a new one.
 3. Sends the message using HL7 protocol
-4. Waits for confirmation from MPI
-5. If delivery fails, automatically retries with backoff strategy
+4. Waits for confirmation from MPI (ACK)
+5. If delivery fails (e.g., timeout or connection error):
+   - It attempts an immediate retry with a fresh connection.
+   - If that fails, the message is returned to the queue for a later retry (using the Service Bus exponential backoff).
 6. Logs success/failure for audit purposes
+
+### Socket Handling and Retries
+
+The sender is designed to be robust against network instability.
+
+- **Proactive Socket Check**: Before every send, the client checks if the socket is "readable". If it is readable but has 0 bytes, it means the other end has closed the connection. In this case, the sender automatically reconnects before trying to send.
+- **Timeout Handling**: If an ACK is not received within the configured timeout, the sender assumes the connection is dead, closes it, and attempts one immediate retry with a new connection.
+- **Connection Errors**: Any connection error triggers a reconnection attempt.
+
+### Message Throttling
+
+To protect downstream systems (like MPI) from being overwhelmed, the sender implements a throttling mechanism.
+
+- **Rate Limiting**: It calculates a minimum interval between messages based on the configured `max_messages_per_minute`. For example, if set to 60, it will try to ensure ~1 second passes between each message send.
+
+Note that this gap between messages can fluctuate, therefore the guarantee is on the number of messages per minute not the time between them.
+
+- **Dynamic Batch Sizing**: It automatically adjusts the number of messages it picks up from the queue (batch size) to ensure that the total time spent processing the batch (including throttling delays) does not exceed the Service Bus lock renewal duration.
+  - This prevents a scenario where the sender holds onto messages for too long while waiting to send them, causing the Service Bus to think the processing failed and re-deliver the messages to another instance.
+  - Example: If the lock duration is 5 minutes and we are throttled to 1 message per minute, the batch size will be reduced to ensure we don't pick up more than ~4 messages at a time.
 
 ## Aside – Retry backoff strategy
 
@@ -597,6 +619,20 @@ Second failure: Wait 10 seconds (5 \* 2)
 Third failure: Wait 20 seconds (10 \* 2)
 
 Maximum delay: Caps at 15 minutes to prevent excessive delays
+
+### Transformer Base Library
+
+The `transformer_base_lib` simplifies the creation of HL7 message transformers. It abstracts away the common boilerplate code required to create a transformer service in the Integration Hub.
+
+#### Key Features
+
+1.  **Standardized Interface**: Defines a `BaseTransformer` abstract class that all transformers must inherit from. This ensures consistency across different transformer implementations.
+2.  **Lifecycle Management**: Handles the initialization of the service, connection to Azure Service Bus, and the main processing loop.
+3.  **Audit Logging**: Provides built-in methods for generating standardized audit text for received and processed messages, ensuring consistent logging across the platform.
+4.  **Configuration**: Automatically loads configuration from environment variables and configuration files, simplifying deployment.
+5.  **Health Checks**: Integrates with the Health Check Library to provide a TCP health check server out of the box.
+
+By using this library, developers can focus solely on the specific transformation logic (the "mappers") without worrying about the underlying infrastructure code.
 
 ### Event logger library
 
@@ -902,7 +938,7 @@ The resulting solution is inherently self-documenting, version-controlled throug
 
 - Hosting: Azure Cloud
 - Code development: Python 3.13
-- dependency management: PIP (planned migration to [UV](https://github.com/astral-sh/uv) )
+- dependency management: [UV](https://github.com/astral-sh/uv)
 - infrastructure: Terraform
 - testing tools
   - functional testing: Python 3.13, Framework: **pytest**
