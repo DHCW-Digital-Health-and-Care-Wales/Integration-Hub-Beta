@@ -75,7 +75,7 @@ python := "python3"
 @install:
     echo "📦 Installing Python dependencies..."
     echo ""
-    pip install hl7
+    {{python}} -m pip install hl7
     echo ""
     echo "✅ Installation complete!"
     echo "💡 Next steps:"
