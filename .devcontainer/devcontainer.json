@@ -10,7 +10,7 @@
     "DOCKER_API_VERSION": "1.43"
   },
   // Forward 'server' ports to allow sending of HL7 messages from the local machine
-  "forwardPorts": [2575, 2577, 2579, 2580],
+  "forwardPorts": [2575, 2577, 2578, 2579],
   "features": {
     "ghcr.io/devcontainers/features/docker-from-docker:1": {
       "moby": false
