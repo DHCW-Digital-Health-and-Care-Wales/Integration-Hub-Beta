@@ -153,8 +153,8 @@ python := "python3"
     echo "💡 Profile specific ports:"
     echo "   - 2575 (PHW)"
     echo "   - 2577 (PARIS)"
-    echo "   - 2579 (Chemo)"
-    echo "   - 2580 (PIMS)"
+    echo "   - 2578 (Chemo)"
+    echo "   - 2579 (PIMS)"
 
 # Follow logs from Docker containers (optionally filter by service name)
 @logs *services:
