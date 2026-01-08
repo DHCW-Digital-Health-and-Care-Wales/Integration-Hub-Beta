@@ -45,7 +45,7 @@ The Integration Hub follows a microservices architecture with event-driven messa
 - **Legacy System Bridge**: Enables gradual migration from legacy data centres to cloud-native solutions
 
 > [!NOTE]
-> For a more detailed overview of the architecture, see the [wiki](https://dev.azure.com/NHS-Wales-Digital/INSE/_wiki/wikis/INSE.wiki/4403/Architecture)
+> For a more detailed overview of the architecture, see the [wiki](https://dev.azure.com/NHS-Wales-Digital/Integration%20Hub/_wiki/wikis/Integration-Hub.wiki/5205/Architecture) **(Internal-only resource)**
 
 ### How it works (high-level)
 
@@ -180,6 +180,10 @@ The `shared_libs/` directory contains common functionality:
 - **`message_bus_lib/`** - Azure Service Bus integration and messaging patterns
 - **`processor_manager_lib/`** - Message processing orchestration and error handling
 - **`event_logger_lib/`** - Azure Monitor / Application Insights event logging library
+- **`field_utils_lib/`** - Reusable utilities for parsing and formatting HL7 message fields
+- **`hl7_validation/`** - HL7 message validation helpers and schema checks
+- **`metric_sender_lib/`** - Helpers for sending metrics to Azure Monitor Insights
+- **`transformer_base_lib/`** - Base classes and helpers for initialising new HL7 message transformer services including message processing via Service Bus
 
 ### Service Structure
 
@@ -218,7 +222,7 @@ The `pipeline-ado/` directory contains build pipelines for the [services listed]
 
 ### Environment Configuration
 
-Each service can be configured through environment files in the `local/` directory:
+Each service can be configured through environment files in the `local/` directory, such as:
 
 - `phw-hl7-server.env`
 - `phw-hl7-transformer.env`
