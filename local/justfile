@@ -1,0 +1,210 @@
+# Integration Hub - Local Development Commands
+# ============================================
+#
+# A modern command runner for Integration Hub local development.
+#
+# Quick Start Guide:
+# -----------------
+# 1. List all available commands:     just --list
+# 2. Install dependencies:            just install
+# 3. Generate secrets:                just secrets
+# 4. Build a profile:                 just build phw-to-mpi
+# 5. Start services:                  just start phw-to-mpi
+# 6. Send a test message:             just send test_message.hl7
+# 7. View logs:                       just logs mpi-hl7-mock-receiver
+# 8. Stop all services:               just stop
+#
+# Available Profiles:
+# ------------------
+# - phw-to-mpi     : Public Health Wales to MPI integration
+# - paris-to-mpi   : PARIS to MPI integration
+# - chemo-to-mpi   : Chemo to MPI integration
+# - pims-to-mpi    : PIMS to MPI integration
+#
+# Tips:
+# -----
+# - Most commands provide detailed feedback with next steps
+# - Dependencies are handled automatically (e.g., secrets are generated when needed)
+# - Use 'just run' as a shortcut to install, generate secrets, and start services
+# - Pass multiple profiles by repeating commands or use "*" for all profiles
+#
+# For more information, see local/README.md
+
+# ============================================
+# Configuration Variables
+# ============================================
+
+# Default MLLP port for sending HL7 messages
+default_port := "2575"
+
+# Secrets file path
+secrets_file := ".secrets"
+
+# Python interpreter
+python := "python3"
+
+# ============================================
+# Default Recipe (shows help)
+# ============================================
+
+# Show this help message with all available commands
+@default:
+    just --list --unsorted
+
+# ============================================
+# Profiles
+# ============================================
+
+# Lists the available profiles
+@profiles:
+    echo "Available profiles for use with other commands:"
+    echo ""
+    echo "  - phw-to-mpi     : Public Health Wales to MPI integration"
+    echo "  - paris-to-mpi   : PARIS to MPI integration"
+    echo "  - chemo-to-mpi   : Chemo to MPI integration"
+    echo "  - pims-to-mpi    : PIMS to MPI integration"
+    echo ""
+    echo "💡 Run 'just start <profile>' to start services"
+
+# ============================================
+# Setup & Installation
+# ============================================
+
+# Install Python dependencies (hl7 library for MLLP operations)
+@install:
+    echo "📦 Installing Python dependencies..."
+    echo ""
+    {{python}} -m pip install hl7
+    echo ""
+    echo "✅ Installation complete!"
+    echo "💡 Next steps:"
+    echo "   - Run 'just secrets' to generate required secrets"
+    echo "   - Run 'just start <profile>' to start services"
+
+# Generate the .secrets file with random values (required for Docker containers)
+@secrets:
+    echo "🔒 Generating secrets file..."
+    echo ""
+    {{python}} generate_secrets.py > {{secrets_file}}
+    echo "✅ Secrets file created at: ./{{secrets_file}}"
+    echo "💡 This file contains randomly generated secrets for local development"
+    echo "💡 Next step: Run 'just start <profile>' to launch services"
+
+# ============================================
+# Docker Container Management
+# ============================================
+
+# Build (or rebuild) Docker containers for a specific profile
+@build profile:
+    echo "⚒️  Building Docker containers for profile: {{profile}}"
+    echo ""
+    echo "📋 Profile selected: {{profile}}"
+    echo "🔨 This may take a few minutes on first build..."
+    echo ""
+    docker compose --profile {{profile}} build
+    echo ""
+    echo "✅ Build complete for profile: {{profile}}"
+    echo "💡 Next step: Run 'just start {{profile}}' to start the services"
+
+# Start Docker containers for a specific profile (auto-generates secrets if needed)
+@start profile: (_ensure-secrets)
+    echo "▶️  Starting Docker Compose services..."
+    echo ""
+    echo "📋 Profile: {{profile}}"
+    echo "🚀 Launching containers in detached mode..."
+    echo ""
+    docker compose --profile {{profile}} up -d
+    echo ""
+    echo "✅ Services started successfully!"
+    echo "📍 Running containers for profile: {{profile}}"
+    echo ""
+    echo "💡 Next steps examples:"
+    echo "   - Check status: docker ps"
+    echo "   - View logs: just logs phw-hl7-server"
+    echo "   - Send test message: just send phw-to-mpi.sample.hl7"
+    echo "   - Stop services: just stop"
+
+# Stop all Docker containers across all profiles
+@stop:
+    echo "⏹️  Stopping all Docker Compose services..."
+    echo ""
+    docker compose --profile "*" down
+    echo ""
+    echo "✅ All services stopped"
+    echo "💡 To restart: just start <profile>"
+
+# ============================================
+# Testing & Debugging
+# ============================================
+
+# Send a HL7 message to a specific port (default: 2575)
+@send file port=default_port:
+    echo "🧪 Sending HL7 message..."
+    echo ""
+    echo "📄 File: {{file}}"
+    echo "🔌 Port: {{port}}"
+    echo "🎯 Target: 127.0.0.1:{{port}}"
+    echo ""
+    mllp_send --loose --file {{file}} --port {{port}} 127.0.0.1
+    echo ""
+    echo "✅ Message sent!"
+    echo "💡 Check logs with: just logs <service-name>"
+    echo "💡 Profile specific ports:"
+    echo "   - 2575 (PHW)"
+    echo "   - 2577 (PARIS)"
+    echo "   - 2578 (Chemo)"
+    echo "   - 2579 (PIMS)"
+
+# Follow logs from Docker containers (optionally filter by service name)
+@logs *services:
+    echo "📖 Following container logs..."
+    echo ""
+    {{ if services == "" { "echo '📋 Showing logs for all services'" } else { "echo '📋 Filtering logs for: " + services + "'" } }}
+    echo "💡 Press Ctrl+C to stop following logs"
+    echo ""
+    docker compose logs -f {{services}}
+
+# ============================================
+# Convenience Recipes
+# ============================================
+
+# Complete setup: install dependencies, generate secrets, and optionally start services
+@run *profile:
+    echo "🚀 Running complete setup..."
+    echo ""
+    just install
+    echo ""
+    just secrets
+    {{ if profile != "" { "echo ''\njust start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just start <profile>' to launch a specific profile\"" } }}
+
+# Rebuild containers and restart services for a profile (useful after code changes)
+@restart profile:
+    echo "🔄 Rebuilding and restarting services..."
+    echo ""
+    just build {{profile}}
+    echo ""
+    just stop
+    echo ""
+    just start {{profile}}
+    echo ""
+    echo "✅ Services rebuilt and restarted!"
+
+# Clean up: stop all containers and remove the secrets file
+@clean:
+    echo "🧹 Cleaning up local environment..."
+    echo ""
+    just stop
+    echo ""
+    echo "🗑️  Removing secrets file..."
+    rm -f {{secrets_file}}
+    echo ""
+    echo "✅ Cleanup complete!"
+    echo "💡 Run 'just run' to set up the environment again"
+
+# ============================================
+# Internal Helper Recipes (prefixed with _)
+# ============================================
+
+# Internal: Ensure secrets file exists, generate if missing
+@_ensure-secrets:
+    {{ if path_exists(secrets_file) == "false" { "echo '🔒 Secrets file not found, generating...'\necho ''\njust secrets\necho ''" } else { "" } }}

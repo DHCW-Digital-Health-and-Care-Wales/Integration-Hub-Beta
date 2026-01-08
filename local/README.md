@@ -69,6 +69,18 @@ or from selected container
 docker compose logs -f ${CONTAINER_NAME}
 ```
 
+### Rebuilding Containers
+
+If you make changes to a service after the containers have previously been
+built, you may need to rebuild the containers in order for those changes to be
+incorporated:
+
+```
+docker compose --profile <profile-name> build
+```
+
+Then re-start the containers as per [Build and start containers](#build-and-start-containers)
+
 ### Interact with Azure Service Bus emulator
 
 You can connect to Azure Service Bus emulator from the local machine using following connection string:
@@ -76,6 +88,22 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 ```
 "Endpoint=sb://127.0.0.1;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
 ```
+
+### Using Python MLLP Send to test
+
+**Pre-requisites**
+
+- [python-hl7](https://pypi.org/project/hl7/) installed locally
+- Docker containers need to be running with the profile of the service(s) desired - see [Build and start containers](#build-and-start-containers)
+
+**Steps**
+
+* Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
+* Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
+* Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
+* Check the Docker logs to show whether the request succeeded.
+
+See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
 
 ### Using the HAPI test panel to connect to the Service Bus Emulator (macOS)
 
@@ -109,5 +137,72 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 To terminate the containers you can proceed with the following command in the `/local` directory:
 
 ```
-docker compose down
+docker compose --profile "*" down
 ```
+
+## Using Just
+
+There is a `justfile` to streamline common tasks for local development using [Just](https://github.com/casey/just), a modern command runner.
+
+### Installation
+
+Install Just, see the [Just installation guide](https://github.com/casey/just#installation).
+
+### Available Commands
+
+Execute `just --list` to see all available commands. Key commands include:
+
+```
+  install          Install Python dependencies (hl7).
+  secrets          Generate the .secrets file.
+  build <profile>  Build (or rebuild) Docker containers for a profile.
+  start <profile>  Start Docker containers for a profile.
+  send <file> [port=<port>]  Send a HL7 message (default port: 2575).
+  logs [service]   Follow logs from services (all or specific service).
+  stop             Stop all Docker containers.
+  run [profile]    Complete setup: install, generate secrets, and optionally start services.
+  restart <profile> Rebuild and restart services.
+  clean            Stop all containers and remove secrets file.
+```
+
+Examples:
+```bash
+  just start phw-to-mpi
+  just send phw-to-mpi.sample.hl7
+  just send phw-to-mpi.sample.hl7 2576
+  just logs mpi-hl7-mock-receiver
+  just stop
+  just build phw-to-mpi
+  just run phw-to-mpi     # Complete setup and start in one command
+```
+
+## DevContainer Usage
+
+It is possible to run 'locally` using GitHub Dev Containers:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta/?quickstart=1)
+
+Note: It can take a few minutes to fully launch Codespaces the first time, but
+is faster on subsequent launches as the environment is then cached.
+
+This provides:
+
+* A pre-configured VS Code environment (with useful extensions installed - such as Container Management)
+* Ability to work in a 'Browser` based UI e.g. via Edge/Chrome or the desktop VS Code application.
+* A virtual development environment, removing the need to install any software locally.
+* Access to a Linux `Terminal` with `Docker` and `Just` installed to manage containers.
+* The ability to run and test the whole system.
+
+### Quick Start with DevContainer
+
+Once you have successfully launched a Codespace:
+
+1. **Just is automatically installed** in the DevContainer (no manual installation needed)
+2. **Discover available commands**: Run `just --list` to see all available commands
+3. **Quick start**: Run `just run phw-to-mpi` to install dependencies, generate secrets, and start services in one command
+4. **Manual setup** (if preferred):
+   - Install dependencies: `just install`
+   - Generate secrets: `just secrets`
+   - Start a profile: `just start <profile-name>`
+
+For more details, see [Using Just](#using-just).
