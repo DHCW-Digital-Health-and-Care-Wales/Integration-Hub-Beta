@@ -2,7 +2,6 @@
 # ============================================
 #
 # A modern command runner for Integration Hub local development.
-# This replaces the old Makefile with a more intuitive and powerful tool.
 #
 # Quick Start Guide:
 # -----------------
