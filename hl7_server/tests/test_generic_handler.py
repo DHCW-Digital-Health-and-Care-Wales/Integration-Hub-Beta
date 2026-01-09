@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 from hl7_server.generic_handler import GenericHandler
 from hl7_server.hl7_validator import HL7Validator, ValidationException
+from hl7_validation import XmlValidationError
 
 # Sample valid HL7 message (pipe & hat, type A28)
 VALID_A28_MESSAGE = (
@@ -185,7 +186,6 @@ class TestGenericHandler(unittest.TestCase):
     def test_standard_validation_failure_logs_and_raises(
         self, mock_logger: MagicMock, mock_validate_standard: MagicMock
     ) -> None:
-        from hl7_validation import XmlValidationError
 
         mock_validate_standard.side_effect = XmlValidationError("Standard HL7 v2.5 validation failed: Missing PV1")
 
