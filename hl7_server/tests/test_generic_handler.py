@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
+from hl7_validation import XmlValidationError
+
 from hl7_server.generic_handler import GenericHandler
 from hl7_server.hl7_validator import HL7Validator, ValidationException
-from hl7_validation import XmlValidationError
 
 # Sample valid HL7 message (pipe & hat, type A28)
 VALID_A28_MESSAGE = (
