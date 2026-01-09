@@ -73,6 +73,7 @@ class Hl7ServerApplication:
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
         flow_name = app_config.hl7_validation_flow
+        standard_version = app_config.hl7_validation_standard
 
         generic_handler_args = (
             GenericHandler,
@@ -81,6 +82,7 @@ class Hl7ServerApplication:
             self.metric_sender,
             self.validator,
             flow_name,
+            standard_version,
         )
 
         handlers = {

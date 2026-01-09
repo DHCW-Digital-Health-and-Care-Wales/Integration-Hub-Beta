@@ -1,7 +1,11 @@
 import logging
 
 from event_logger_lib.event_logger import EventLogger
-from hl7_validation import XmlValidationError, validate_er7_with_flow
+from hl7_validation import (
+    XmlValidationError,
+    validate_parsed_message_with_flow,
+    validate_parsed_message_with_standard,
+)
 from hl7apy.core import Message
 from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
@@ -26,6 +30,7 @@ class GenericHandler(AbstractHandler):
         metric_sender: MetricSender,
         validator: HL7Validator,
         flow_name: str | None = None,
+        standard_version: str | None = None,
     ):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
@@ -33,6 +38,7 @@ class GenericHandler(AbstractHandler):
         self.metric_sender = metric_sender
         self.validator = validator
         self.flow_name: str | None = flow_name
+        self.standard_version: str | None = standard_version
 
     def reply(self) -> str:
         try:
@@ -49,9 +55,10 @@ class GenericHandler(AbstractHandler):
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
 
+            # Optimized: pass pre-parsed message to avoid redundant parsing
             if self.flow_name and self.flow_name != "mpi":
                 try:
-                    validate_er7_with_flow(self.incoming_message, self.flow_name)
+                    validate_parsed_message_with_flow(msg, self.incoming_message, self.flow_name)
                     self.event_logger.log_validation_result(
                         self.incoming_message,
                         f"XML validation passed for flow '{self.flow_name}'",
@@ -63,6 +70,23 @@ class GenericHandler(AbstractHandler):
                     self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
                     self.event_logger.log_message_failed(
                         self.incoming_message, error_msg, "XML schema validation failed"
+                    )
+                    raise
+
+            if self.standard_version:
+                try:
+                    validate_parsed_message_with_standard(msg, self.standard_version)
+                    self.event_logger.log_validation_result(
+                        self.incoming_message,
+                        f"Standard HL7 v{self.standard_version} validation passed",
+                        is_success=True,
+                    )
+                except XmlValidationError as e:
+                    error_msg = f"Standard validation error: {e}"
+                    logger.error(error_msg)
+                    self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
+                    self.event_logger.log_message_failed(
+                        self.incoming_message, error_msg, "Standard HL7 validation failed"
                     )
                     raise
 

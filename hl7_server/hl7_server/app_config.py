@@ -23,6 +23,7 @@ class AppConfig:
     health_check_hostname: str | None
     health_check_port: int | None
     hl7_validation_flow: str | None = None
+    hl7_validation_standard: str | None = None
     max_message_size_bytes: int = DEFAULT_MAX_MESSAGE_SIZE_BYTES
 
     @staticmethod
@@ -52,6 +53,7 @@ class AppConfig:
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
             hl7_validation_flow=_read_env("HL7_VALIDATION_FLOW"),
+            hl7_validation_standard=_read_env("HL7_VALIDATION_STANDARD"),
             max_message_size_bytes=_read_and_validate_message_size(),
         )
 

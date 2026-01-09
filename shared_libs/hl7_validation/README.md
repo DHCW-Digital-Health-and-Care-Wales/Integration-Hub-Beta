@@ -66,6 +66,71 @@ The library supports multiple integration flows, each with their own set of HL7 
 - `paris` - Paris integration
 - `pims` - Patient Information Management System
 
+### Standard Validation
+
+The library also supports standard HL7 validation using the hl7apy library, which validates messages against the official HL7 v2 specification:
+
+```python
+from hl7_validation import validate_er7_with_standard, XmlValidationError
+
+# Your HL7 v2 ER7 message
+er7_message = "\r".join([
+    "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A05^ADT_A05|MSG123|P|2.5",
+    "EVN|A05|20250101010101",
+    "PID|||123456^^^MR||DOE^JOHN||19800101|M",
+    "PV1||I",
+])
+
+# Validate against standard HL7 v2.5 specification
+try:
+    validate_er7_with_standard(er7_message, "2.5")
+    print("Message is valid!")
+except XmlValidationError as e:
+    print(f"Validation failed: {e}")
+```
+
+**Supported HL7 versions:**
+- `2.4` - HL7 v2.4
+- `2.5` - HL7 v2.5
+- `2.6` - HL7 v2.6
+
+Note: HL7 v2.7 and v2.8 have significant schema changes that require version-specific message structures. Support for these versions may be added in the future with appropriate test coverage.
+
+**Difference between Flow-based and Standard Validation:**
+
+- **Flow-based validation** (`validate_er7_with_flow`): Validates messages against custom XSD schemas specific to your integration flow. Useful for enforcing flow-specific business rules and constraints.
+
+- **Standard validation** (`validate_er7_with_standard`): Validates messages against the official HL7 v2 specification using hl7apy. Validates segment order, required fields, data types, and value constraints as defined in the HL7 standard.
+
+Both validation methods can be used together - a message must pass both validations if both are configured.
+
+#### Performance Optimization
+
+For high-throughput scenarios, use the optimized variants that accept pre-parsed messages to avoid redundant parsing:
+
+```python
+from hl7_validation import (
+    validate_parsed_message_with_flow,
+    validate_parsed_message_with_standard,
+    XmlValidationError
+)
+from hl7apy.parser import parse_message
+
+# Parse once
+er7_message = "MSH|^~\\&|..."
+msg = parse_message(er7_message, find_groups=False)
+
+# Validate multiple times without re-parsing
+try:
+    validate_parsed_message_with_flow(msg, er7_message, "phw")
+    validate_parsed_message_with_standard(msg, "2.5")
+    print("All validations passed!")
+except XmlValidationError as e:
+    print(f"Validation failed: {e}")
+```
+
+**Performance benefit:** ~2-3× faster when using both flow and standard validation by eliminating redundant parsing.
+
 ### Advanced Usage
 
 #### Convert ER7 to XML
@@ -131,8 +196,8 @@ except ValueError as e:
 ```
 
 Common error types:
-- `XmlValidationError`: Message doesn't conform to schema
-- `ValueError`: Invalid flow name or missing schema mapping
+- `XmlValidationError`: Message doesn't conform to schema or standard specification
+- `ValueError`: Invalid flow name, missing schema mapping, or unsupported HL7 version
 
 ## Dependencies
 

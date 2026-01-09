@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import xmlschema
+from hl7apy.core import Message
 
+from .constants import PARSE_ERROR_MSG
 from .convert import er7_to_hl7v2xml
 from .schemas import get_schema_xsd_path_for
 from .utils.message_utils import (
@@ -12,7 +14,11 @@ from .utils.message_utils import (
     parse_er7_message,
 )
 
-PARSE_ERROR_MSG = "Unable to parse ER7 message"
+_TRIGGER_MAPPING: dict[tuple[str, str], str] = {
+    ("ADT", "A28"): "ADT_A05",
+    ("ADT", "A31"): "ADT_A05",
+    ("ADT", "A40"): "ADT_A39",
+}
 
 
 @dataclass
@@ -42,24 +48,37 @@ def validate_er7_with_flow(er7_string: str, flow_name: str) -> None:
     except Exception:
         raise XmlValidationError(PARSE_ERROR_MSG)
 
+    _validate_flow_logic(msg, er7_string, flow_name)
+
+
+def validate_parsed_message_with_flow(msg: Message, er7_string: str, flow_name: str) -> None:
+    """
+    Validate already-parsed HL7 message against flow-specific XSD schema.
+
+    Optimized version that accepts pre-parsed message to avoid redundant parsing.
+
+    Args:
+        msg: Already parsed HL7 message object
+        er7_string: Original ER7 string (needed for XML conversion)
+        flow_name: Flow identifier for schema selection
+
+    Raises:
+        XmlValidationError: If validation fails
+    """
+    _validate_flow_logic(msg, er7_string, flow_name)
+
+
+def _validate_flow_logic(msg: Message, er7_string: str, flow_name: str) -> None:
     structure = extract_message_structure(msg)
     trigger = extract_message_trigger(msg)
     msg_type = extract_message_type(msg)
-
-    def _map_trigger_to_structure_id(message_type: str, trig: str) -> str | None:
-        mapping: dict[tuple[str, str], str] = {
-            ("ADT", "A28"): "ADT_A05",
-            ("ADT", "A31"): "ADT_A05",
-            ("ADT", "A40"): "ADT_A39",
-        }
-        return mapping.get((message_type, trig))
 
     if structure:
         structure_id = structure
         override_structure = None
     elif trigger:
         if msg_type:
-            mapped = _map_trigger_to_structure_id(msg_type, trigger)
+            mapped = _TRIGGER_MAPPING.get((msg_type, trigger))
             structure_id = mapped or f"{msg_type}_{trigger}"
         else:
             structure_id = trigger
