@@ -17,6 +17,16 @@ class TestStandardValidation(unittest.TestCase):
 
         validate_er7_with_standard(er7, "2.5")
 
+    def test_standard_validation_v251_successful(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A05^ADT_A05|MSG123|P|2.5.1",
+            "EVN|A05|20250101010101",
+            "PID|||123456^^^MR||DOE^JOHN||19800101|M",
+            "PV1||I",
+        ])
+
+        validate_er7_with_standard(er7, "2.5.1")
+
     def test_standard_validation_v24_successful(self) -> None:
         er7 = "\r".join([
             "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A05^ADT_A05|MSG123|P|2.4",
@@ -69,6 +79,17 @@ class TestStandardValidation(unittest.TestCase):
 
         msg = parse_message(er7, find_groups=False)
         validate_parsed_message_with_standard(msg, "2.5")
+
+    def test_parsed_message_standard_validation_v251_successful(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A05^ADT_A05|MSG123|P|2.5.1",
+            "EVN|A05|20250101010101",
+            "PID|||123456^^^MR||DOE^JOHN||19800101|M",
+            "PV1||I",
+        ])
+
+        msg = parse_message(er7, find_groups=False)
+        validate_parsed_message_with_standard(msg, "2.5.1")
 
     def test_parsed_message_standard_validation_v24_successful(self) -> None:
         er7 = "\r".join([

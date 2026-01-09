@@ -6,8 +6,8 @@ from hl7apy.parser import parse_message
 from .constants import PARSE_ERROR_MSG
 from .validate import XmlValidationError
 
-SUPPORTED_VERSIONS = frozenset({"2.4", "2.5", "2.6"})
-_VERSIONS_STR = "2.4, 2.5, 2.6"
+SUPPORTED_VERSIONS = frozenset({"2.4", "2.5", "2.5.1", "2.6"})
+_VERSIONS_STR = "2.4, 2.5, 2.5.1, 2.6"
 
 def validate_er7_with_standard(er7_string: str, version: str) -> None:
     """
@@ -15,7 +15,7 @@ def validate_er7_with_standard(er7_string: str, version: str) -> None:
 
     Args:
         er7_string: The HL7 message in ER7 format
-        version: HL7 version string ("2.4", "2.5", or "2.6")
+        version: HL7 version string ("2.4", "2.5", "2.5.1", or "2.6")
 
     Raises:
         XmlValidationError: If validation fails or version is unsupported
@@ -44,7 +44,7 @@ def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
 
     Args:
         msg: Already parsed HL7 message object
-        version: HL7 version string ("2.4", "2.5", or "2.6")
+        version: HL7 version string ("2.4", "2.5", "2.5.1", or "2.6")
 
     Raises:
         XmlValidationError: If validation fails, version is unsupported, or version mismatch

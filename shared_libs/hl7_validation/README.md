@@ -92,6 +92,7 @@ except XmlValidationError as e:
 **Supported HL7 versions:**
 - `2.4` - HL7 v2.4
 - `2.5` - HL7 v2.5
+- `2.5.1` - HL7 v2.5.1
 - `2.6` - HL7 v2.6
 
 Note: HL7 v2.7 and v2.8 have significant schema changes that require version-specific message structures. Support for these versions may be added in the future with appropriate test coverage.
