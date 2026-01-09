@@ -1,0 +1,53 @@
+# pyproject.toml - Python project configuration file
+# This file defines the project metadata, dependencies, and tool settings
+
+[project]
+# Basic project information
+name = "training-hl7-server"
+version = "0.1.0"
+description = "Training HL7 Server - MVP for learning MLLP protocol"
+requires-python = ">=3.13"
+
+# Runtime dependencies - packages required to run the application
+dependencies = [
+    # hl7apy: Python library for parsing and creating HL7 messages
+    # Provides MLLP server, message parsing, and HL7 object model
+    "hl7apy==1.3.5",
+]
+
+# Development dependencies - packages only needed during development
+[dependency-groups]
+dev = [
+  # ruff: Fast Python linter and code formatter
+  "ruff==0.14.9",
+  
+  # mypy: Static type checker for Python
+  "mypy==1.18.2",
+  
+  # pytest: Testing framework
+  "pytest>=7.0.0",
+]
+
+# ===================================================================
+# Tool Configuration
+# ===================================================================
+
+# mypy configuration - static type checking
+[tool.mypy]
+python_version = "3.13"
+# Require type hints on all function definitions
+disallow_untyped_defs = true
+
+# ruff configuration - linting and formatting
+[tool.ruff]
+# Maximum line length before wrapping
+line-length = 120
+
+# Configure which linting rules to enable
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes (unused imports, undefined variables, etc.)
+  "W",   # pycodestyle warnings
+  "I"    # isort (import sorting)
+]
