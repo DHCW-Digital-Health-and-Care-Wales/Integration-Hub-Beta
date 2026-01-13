@@ -25,6 +25,7 @@ ENV_VARS_TOPIC: Dict[str, str] = {
     "HOST": "127.0.0.1",
     "PORT": "2576",
     "EGRESS_TOPIC_NAME": "egress_topic",
+    "EGRESS_SESSION_ID": "egress_session",
     "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
     "AUDIT_QUEUE_NAME": "audit_queue",
     "WORKFLOW_ID": "test-workflow",
@@ -46,10 +47,7 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         self.app = Hl7ServerApplication()
 
     def _setup_mocks(
-        self,
-        mock_thread: MagicMock,
-        mock_mllp_server: SizeLimitedMLLPServer,
-        mock_health_check: MagicMock
+        self, mock_thread: MagicMock, mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock
     ) -> tuple[MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
@@ -70,7 +68,7 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         mock_thread: MagicMock,
         mock_factory: MagicMock,
         mock_mllp_server: SizeLimitedMLLPServer,
-        mock_health_check: MagicMock
+        mock_health_check: MagicMock,
     ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
@@ -79,8 +77,13 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self._assert_shutdown(server, thread, health_check)
 
-    def test_signal_handler_shutdown(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                     mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
+    def test_signal_handler_shutdown(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock,
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
@@ -88,9 +91,13 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self._assert_shutdown(server, thread, health_check)
 
-    def test_server_exception_handling(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                       mock_mllp_server: SizeLimitedMLLPServer,
-                                       mock_health_check: MagicMock) -> None:
+    def test_server_exception_handling(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock,
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         thread.start.side_effect = RuntimeError("Simulated server error")
 
@@ -102,8 +109,13 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         thread.join.assert_called_once()
         health_check.stop.assert_called_once()
 
-    def test_health_check_initialization(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                         mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
+    def test_health_check_initialization(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock,
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
 
         self.app.start_server()
@@ -114,8 +126,13 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         self.app.stop_server()
         self._assert_shutdown(server, thread, health_check)
 
-    def test_creates_queue_sender_client(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                         mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
+    def test_creates_queue_sender_client(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock,
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         mock_factory_instance = mock_factory.return_value
 
@@ -139,10 +156,7 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         self.app = Hl7ServerApplication()
 
     def _setup_mocks(
-        self,
-        mock_thread: MagicMock,
-        mock_mllp_server: SizeLimitedMLLPServer,
-        mock_health_check: MagicMock
+        self, mock_thread: MagicMock, mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock
     ) -> tuple[MagicMock, MagicMock, MagicMock]:
         mock_server_instance = MagicMock()
         mock_thread_instance = MagicMock()
@@ -158,14 +172,19 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         thread.join.assert_called_once()
         health_check.stop.assert_called_once()
 
-    def test_creates_topic_sender_client(self, mock_thread: MagicMock, mock_factory: MagicMock,
-                                        mock_mllp_server: SizeLimitedMLLPServer, mock_health_check: MagicMock) -> None:
+    def test_creates_topic_sender_client(
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_mllp_server: SizeLimitedMLLPServer,
+        mock_health_check: MagicMock,
+    ) -> None:
         server, thread, health_check = self._setup_mocks(mock_thread, mock_mllp_server, mock_health_check)
         mock_factory_instance = mock_factory.return_value
 
         self.app.start_server()
 
-        mock_factory_instance.create_topic_sender_client.assert_called_once_with("egress_topic")
+        mock_factory_instance.create_topic_sender_client.assert_called_once_with("egress_topic", "egress_session")
         mock_factory_instance.create_queue_sender_client.assert_not_called()
 
         self.app.stop_server()
