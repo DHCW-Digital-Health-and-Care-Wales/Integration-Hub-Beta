@@ -1,12 +1,13 @@
 """Main server application for the Training HL7 Server."""
 
-import os
 import signal
 import sys
 import threading
 
 from hl7apy.mllp import MLLPServer
 
+from training_hl7_server.app_config import AppConfig
+from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
 
 
@@ -15,41 +16,48 @@ class TrainingHl7ServerApplication:
     The main application class for the Training HL7 Server.
 
     This class:
-    1. Loads configuration from environment variables
+    1. Loads configuration from environment variables (EXERCISE 1)
     2. Sets up the MLLP server with message handlers
-    3. Handles graceful shutdown on SIGINT/SIGTERM
+    3. Registers handlers for multiple message types (EXERCISE 3)
+    4. Includes a fallback error handler (EXERCISE 2)
+    5. Handles graceful shutdown on SIGINT/SIGTERM
+
+    EXERCISE SOLUTIONS INTEGRATED HERE:
+    ----------------------------------
+    - Exercise 1: Uses AppConfig class for centralized config management
+    - Exercise 2: ErrorHandler registered with "ERR" key
+    - Exercise 3: ADT^A28 and ADT^A40 added to handlers dictionary
+    - Exercise 4: allowed_senders passed to MessageHandler from AppConfig
     """
 
     def __init__(self) -> None:
         """Initialize the server application."""
-        # ===================================================================
-        # Load configuration from environment variables
-        # ===================================================================
-        # Environment variables allow us to configure the server without
-        # changing code - useful for different environments (dev, test, prod)
+        # =====================================================================
+        # EXERCISE 1 SOLUTION: Load configuration using AppConfig
+        # =====================================================================
+        # Instead of reading environment variables directly throughout the code,
+        # we load all configuration into a single AppConfig object.
+        # This pattern provides:
+        # - Centralized configuration management
+        # - Type safety and validation
+        # - Easy testing (can mock the config object)
+        # - Clear documentation of all config options
+        #
+        # Production Reference:
+        # See hl7_server/hl7_server/app_config.py and how it's used in
+        # hl7_server_application.py start_server() method.
 
-        # HOST: The network interface to bind to
-        # "0.0.0.0" means accept connections from any network interface
-        # "localhost" would only accept connections from the same machine
-        self.host = os.environ.get("HOST", "0.0.0.0")
+        self.config = AppConfig.read_env_config()
 
-        # PORT: The TCP port number to listen on
-        # Each service needs a unique port number
-        self.port = int(os.environ.get("PORT", "2575"))
-
-        # HL7_VERSION: The expected HL7 version for incoming messages
-        # We'll validate that messages match this version
-        self.expected_version = os.environ.get("HL7_VERSION", "2.3.1")
-
-        # ===================================================================
+        # =====================================================================
         # Server instance (will be set when the server starts)
-        # ===================================================================
+        # =====================================================================
         self.server: MLLPServer | None = None
         self.server_thread: threading.Thread | None = None
 
-        # ===================================================================
+        # =====================================================================
         # Set up signal handlers for graceful shutdown
-        # ===================================================================
+        # =====================================================================
         # When the user presses Ctrl+C or the container is stopped,
         # we want to shut down gracefully instead of abruptly terminating
 
@@ -81,46 +89,99 @@ class TrainingHl7ServerApplication:
         This method sets up the MLLP server with message handlers and
         begins listening for incoming HL7 messages. It blocks until
         the server is stopped.
+
+        This method demonstrates all 4 exercise solutions:
+        - Exercise 1: Config loaded from AppConfig in __init__
+        - Exercise 2: ErrorHandler registered with "ERR" key
+        - Exercise 3: ADT^A28 and ADT^A40 handlers added
+        - Exercise 4: allowed_senders passed to MessageHandler
         """
-        # ===================================================================
+        # =====================================================================
         # Print startup information
-        # ===================================================================
+        # =====================================================================
+        # Show configuration so operators can verify settings are correct
         print("=" * 60)
         print("TRAINING HL7 SERVER")
         print("=" * 60)
-        print(f"Host: {self.host}")
-        print(f"Port: {self.port}")
-        print(f"Expected HL7 Version: {self.expected_version}")
+        print(f"Host: {self.config.host}")
+        print(f"Port: {self.config.port}")
+        print(f"Expected HL7 Version: {self.config.hl7_version or '(any)'}")
+        print(f"Allowed Senders: {self.config.allowed_senders or '(any)'}")
         print("=" * 60)
         print("Waiting for HL7 messages...")
         print("Press Ctrl+C to stop the server")
         print()
 
-        # ===================================================================
-        # Define message handlers
-        # ===================================================================
+        # =====================================================================
+        # Define message handlers (EXERCISES 2, 3, 4)
+        # =====================================================================
         # The handlers dictionary maps message types to handler classes.
         # Format: "MESSAGE_TYPE^TRIGGER_EVENT": (HandlerClass, *args)
         #
         # When a message with type "ADT^A31" is received, the server will:
         # 1. Create an instance of MessageHandler
-        # 2. Pass the message and self.expected_version as arguments
+        # 2. Pass the message and handler arguments
         # 3. Call the handler's reply() method to get the ACK response
+        #
+        # EXERCISE 4 SOLUTION:
+        # The allowed_senders is passed from config to the MessageHandler.
+        # This enables validation of sending applications (MSH-3).
+
+        # Arguments passed to MessageHandler for each message type
+        # Tuple format: (HandlerClass, arg1, arg2, ...)
+        # MessageHandler expects: (message, expected_version, allowed_senders)
+        # Note: 'message' is passed automatically by the MLLP library
+        message_handler_args = (
+            MessageHandler,
+            self.config.hl7_version,  # expected_version parameter
+            self.config.allowed_senders,  # EXERCISE 4: allowed_senders parameter
+        )
 
         handlers = {
-            "ADT^A31": (MessageHandler, self.expected_version),
+            # =================================================================
+            # EXERCISE 3 SOLUTION: Support multiple message types
+            # =================================================================
+            # Register the same handler for different ADT message types.
+            # Each of these message types will be processed identically.
+            #
+            # Production Reference:
+            # See hl7_server/hl7_server/hl7_server_application.py handlers dict
+            # which supports even more message types including PIMS and Chemocare
+            # specific formats like "ADT^A31^ADT_A05" (with message structure)
+            "ADT^A31": message_handler_args,
+            "ADT^A28": message_handler_args,  # EXERCISE 3: Added A28 support
+            "ADT^A40": message_handler_args,  # EXERCISE 3: Added A40 support
+            # =================================================================
+            # EXERCISE 2 SOLUTION: Fallback error handler
+            # =================================================================
+            # The special key "ERR" registers a fallback handler that catches
+            # any message type not explicitly listed above.
+            #
+            # When to use an error handler:
+            # - A message type arrives that we don't have a handler for
+            # - The message cannot be parsed
+            # - An exception occurs during processing
+            #
+            # Without this handler, unsupported messages would cause the
+            # connection to drop without sending a response. With it, we
+            # can return a proper error ACK (NACK) to the sender.
+            #
+            # Production Reference:
+            # See hl7_server/hl7_server/error_handler.py and how it's registered
+            # in hl7_server_application.py with the event_logger for audit trails.
+            "ERR": (ErrorHandler,),  # EXERCISE 2: Fallback error handler
         }
 
-        # ===================================================================
+        # =====================================================================
         # Create and start the MLLP server
-        # ===================================================================
+        # =====================================================================
         # MLLPServer is a TCP server that implements the MLLP protocol
         # MLLP (Minimum Lower Layer Protocol) wraps HL7 messages for
         # transmission over TCP/IP networks
 
         self.server = MLLPServer(
-            host=self.host,  # Network interface to bind to
-            port=self.port,  # TCP port to listen on
+            host=self.config.host,  # Network interface to bind to
+            port=self.config.port,  # TCP port to listen on
             handlers=handlers,  # Message handlers dictionary
             timeout=10,  # Socket timeout in seconds
         )
