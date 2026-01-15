@@ -8,7 +8,18 @@ from training_hl7_server.constants import Hl7Constants
 
 
 class ValidationError(Exception):
-    """Raised when HL7 message validation fails."""
+    """
+    Raised when HL7 message validation fails.
+
+    This custom exception is used to distinguish validation errors from
+    other types of errors. When we catch this exception, we know the
+    message was well-formed but failed our business rules.
+
+    Examples of validation errors:
+    - Wrong HL7 version in MSH-12
+    - Sending application not in allowed list
+    - Missing required fields
+    """
 
     pass
 
@@ -20,17 +31,30 @@ class MessageHandler(AbstractHandler):
     This handler:
     1. Parses the incoming HL7 message
     2. Validates the HL7 version (MSH-12)
-    3. Prints message contents for debugging
-    4. Returns an ACK response
+    3. Validates the sending application (MSH-3) - EXERCISE 4 SOLUTION
+    4. Prints message contents for debugging
+    5. Returns an ACK response
 
     Inherits from AbstractHandler which is part of the hl7apy MLLP framework.
     The reply() method is called automatically when a message is received.
+
+    EXERCISE 4 SOLUTION - Allowed Senders Validation:
+    ------------------------------------------------
+    This handler now validates that the sending application (MSH-3) is in
+    an allowed list configured via environment variable. This mirrors the
+    production server's SENDING_APP validation in hl7_validator.py.
+
+    Why validate sending applications?
+    1. Security: Only accept messages from known, trusted systems
+    2. Data integrity: Ensure messages come from expected sources
+    3. Debugging: Quickly identify rogue systems sending to wrong endpoint
     """
 
     def __init__(
         self,
         incoming_message: str,
-        expected_version: str = "2.3.1",
+        expected_version: str | None = None,
+        allowed_senders: str | None = None,
     ) -> None:
         """
         Initialize the message handler.
@@ -38,12 +62,33 @@ class MessageHandler(AbstractHandler):
         Args:
             incoming_message: The raw HL7 message string.
             expected_version: The expected HL7 version in MSH-12.
+                              If None, version validation is skipped.
+            allowed_senders: Comma-separated list of allowed sending app codes.
+                             If None, all senders are accepted.
+                             Example: "169,245" allows only apps 169 and 245.
         """
         # Call parent class constructor to set up the handler
         super().__init__(incoming_message)
 
-        # Store the expected HL7 version for validation
+        # Store the expected HL7 version for validation (can be None to skip)
         self.expected_version = expected_version
+
+        # =====================================================================
+        # EXERCISE 4: Store allowed senders list
+        # =====================================================================
+        # Parse the comma-separated string into a list of allowed sender codes.
+        # If allowed_senders is None or empty, we accept all senders.
+        #
+        # Production Reference:
+        # See hl7_server/hl7_server/hl7_validator.py _validate_sending_app()
+        # which implements this same pattern.
+        if allowed_senders:
+            # Split by comma and strip whitespace from each item
+            # "169, 245" becomes ["169", "245"]
+            self.allowed_senders = [app.strip() for app in allowed_senders.split(",")]
+        else:
+            # None means accept all senders (validation disabled)
+            self.allowed_senders = None
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
@@ -107,10 +152,16 @@ class MessageHandler(AbstractHandler):
             print("=" * 60 + "\n")
 
             # ===================================================================
-            # STEP 4: Validate the HL7 version
+            # STEP 4: Validate the message
             # ===================================================================
-            # Ensure the message uses the expected HL7 version
+            # Run all validation checks. If any fail, a ValidationError is raised
+            # and we return an error ACK (AE) to the sender.
+
+            # 4a. Validate HL7 version (original validation)
             self._validate_version(hl7_version)
+
+            # 4b. EXERCISE 4 SOLUTION: Validate sending application
+            self._validate_sending_app(sending_app)
 
             # ===================================================================
             # STEP 5: Build and return a success ACK
@@ -170,6 +221,65 @@ class MessageHandler(AbstractHandler):
         Raises:
             ValidationError: If the version doesn't match expected.
         """
+        # Skip validation if no expected version is configured
+        # This allows the server to accept any HL7 version when HL7_VERSION is not set
+        if self.expected_version is None:
+            print("  (HL7 version validation skipped - no version configured)")
+            return
+
         if message_version != self.expected_version:
             raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
+
+    def _validate_sending_app(self, sending_app: str) -> None:
+        """
+        Validate the sending application from MSH-3 (EXERCISE 4 SOLUTION).
+
+        This ensures we only accept messages from authorized systems. In
+        healthcare integration, it's crucial to know exactly which systems
+        are sending data and to reject messages from unknown sources.
+
+        Production Reference:
+        --------------------
+        See hl7_server/hl7_server/hl7_validator.py _validate_sending_app()
+        which implements this same pattern. In production, the allowed
+        senders are configured via the SENDING_APP environment variable.
+
+        Why validate sending applications?
+        ---------------------------------
+        1. SECURITY: Prevent unauthorized systems from injecting data
+        2. DATA INTEGRITY: Ensure data comes from known, trusted sources
+        3. DEBUGGING: Quickly identify misconfigured systems
+        4. COMPLIANCE: Healthcare regulations often require message tracing
+
+        Configuration:
+        -------------
+        Set ALLOWED_SENDERS="169,245" in the environment to only accept
+        messages from sending applications 169 and 245.
+
+        Args:
+            sending_app: The sending application code from MSH-3.
+
+        Raises:
+            ValidationError: If the sending app is not in the allowed list.
+
+        Example:
+            # Message with MSH-3 = "169" when ALLOWED_SENDERS="169,245"
+            # -> Validation passes ✓
+
+            # Message with MSH-3 = "999" when ALLOWED_SENDERS="169,245"
+            # -> ValidationError raised, AE ACK returned
+        """
+        # Skip validation if no allowed senders list is configured
+        # This is the "open" mode where any sender is accepted
+        if self.allowed_senders is None:
+            print("  (Sending app validation skipped - no allowed list configured)")
+            return
+
+        # Check if the sending app is in our allowed list
+        if sending_app not in self.allowed_senders:
+            # Build a helpful error message that includes the allowed apps
+            allowed_list = ", ".join(self.allowed_senders)
+            raise ValidationError(f"Sending application '{sending_app}' is not in allowed list: [{allowed_list}]")
+
+        print(f"✓ Sending application validated: {sending_app} (in allowed list)")

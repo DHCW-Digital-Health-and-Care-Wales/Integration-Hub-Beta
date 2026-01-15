@@ -24,5 +24,23 @@ class Hl7Constants:
     ACK_MESSAGE_TYPE = "ACK"
 
     # ACK Codes - indicate the result of message processing
-    ACK_CODE_ACCEPT = "AA"  # Application Accept - message was successfully processed
-    ACK_CODE_ERROR = "AE"  # Application Error - message had validation errors
+    # These codes are returned in the MSA-1 field of ACK messages
+    #
+    # AA (Application Accept):
+    #   The message was received and successfully processed. This is the
+    #   "happy path" response that indicates everything went well.
+    #
+    # AE (Application Error):
+    #   The message was received but failed validation. This indicates a
+    #   problem with the message content (e.g., wrong HL7 version, invalid
+    #   data format, business rule violation). The sender should fix the
+    #   message and potentially resend it.
+    #
+    # AR (Application Reject):
+    #   The message could not be processed due to a system error. This
+    #   indicates a problem with the receiving system rather than the
+    #   message itself (e.g., database unavailable, queue full). The
+    #   sender may retry sending the same message later.
+    ACK_CODE_ACCEPT = "AA"
+    ACK_CODE_ERROR = "AE"
+    ACK_CODE_REJECT = "AR"
