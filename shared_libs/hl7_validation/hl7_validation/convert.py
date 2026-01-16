@@ -487,7 +487,7 @@ def _extract_text_from_element(elem: XElem) -> str:
         if text:
             return text
 
-    children_texts = []
+    children_texts: list[str] = []
     append = children_texts.append
     for child in elem:
         child_text = _extract_text_from_element(child)
