@@ -10,6 +10,7 @@ dependencies = [
   "azure-identity==1.23.0",
   "hl7apy==1.3.5",
   "hl7==0.4.5",
+  "urllib3>=2.6.3",
   "message-bus-lib",
   "health-check-lib",
   "processor-manager-lib",
