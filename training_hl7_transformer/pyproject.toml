@@ -1,32 +1,45 @@
-# pyproject.toml - Python project configuration file
+# pyproject.toml - Training HL7 Transformer Configuration
+# =========================================================
 # This file defines the project metadata, dependencies, and tool settings
+# for the Week 2 training transformer component.
 
 [project]
 # Basic project information
-name = "training-hl7-server"
+name = "training-hl7-transformer"
 version = "0.1.0"
-description = "Training HL7 Server - MVP for learning MLLP protocol"
+description = "Training HL7 Transformer - MVP for learning message transformation"
 requires-python = ">=3.13"
 
 # Runtime dependencies - packages required to run the application
 dependencies = [
     # hl7apy: Python library for parsing and creating HL7 messages
-    # Provides MLLP server, message parsing, and HL7 object model
+    # Used to parse incoming messages and build transformed output
     "hl7apy==1.3.5",
     
-    # Azure Service Bus - for publishing messages to Service Bus queues
-    # WEEK 2 ADDITION: Required to send HL7 messages to the transformer queue
+    # Azure Service Bus - for reading from ingress queue and publishing to egress queue
     "azure-servicebus==7.14.2",
     
-    # Shared library for Service Bus client management
-    # WEEK 2 ADDITION: Provides ServiceBusClientFactory and MessageSenderClient
+    # Shared libraries from the Integration Hub project
+    # These provide common functionality used across all transformers
+    
+    # message-bus-lib: Service Bus client factory and sender/receiver clients
+    # Provides ServiceBusClientFactory, MessageSenderClient, MessageReceiverClient
     "message-bus-lib",
+    
+    # transformer-base-lib: Base class for transformers (NOT USED IN TRAINING)
+    # We'll build our own simpler version to understand the pattern
+    # "transformer-base-lib",  # Uncomment for Stretch Exercise 5
+    
+    # field-utils-lib: Utilities for copying and manipulating HL7 fields
+    # Provides get_hl7_field_value, copy_segment_fields_in_range
+    "field-utils-lib",
 ]
 
-# WEEK 2 ADDITION: Tell uv where to find the shared_libs
+# Tell uv where to find the shared_libs
 # These path references allow uv to install local packages from the shared_libs folder
 [tool.uv.sources]
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
+field-utils-lib = { path = "../shared_libs/field_utils_lib" }
 
 # Development dependencies - packages only needed during development
 [dependency-groups]
