@@ -59,16 +59,15 @@ wheels = [
 
 [[package]]
 name = "azure-core"
-version = "1.35.0"
+version = "1.38.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
-    { name = "six" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/89/f53968635b1b2e53e4aad2dd641488929fef4ca9dfb0b97927fa7697ddf3/azure_core-1.35.0.tar.gz", hash = "sha256:c0be528489485e9ede59b6971eb63c1eaacf83ef53001bfe3904e475e972be5c", size = 339689, upload-time = "2025-07-03T00:55:23.496Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/1b/e503e08e755ea94e7d3419c9242315f888fc664211c90d032e40479022bf/azure_core-1.38.0.tar.gz", hash = "sha256:8194d2682245a3e4e3151a667c686464c3786fed7918b394d035bdcd61bb5993", size = 363033, upload-time = "2026-01-12T17:03:05.535Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/78/bf94897361fdd650850f0f2e405b2293e2f12808239046232bdedf554301/azure_core-1.35.0-py3-none-any.whl", hash = "sha256:8db78c72868a58f3de8991eb4d22c4d368fae226dac1002998d6c50437e7dad1", size = 210708, upload-time = "2025-07-03T00:55:25.238Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/d8/b8fcba9464f02b121f39de2db2bf57f0b216fe11d014513d666e8634380d/azure_core-1.38.0-py3-none-any.whl", hash = "sha256:ab0c9b2cd71fecb1842d52c965c95285d3cfb38902f6766e4a471f1cd8905335", size = 217825, upload-time = "2026-01-12T17:03:07.291Z" },
 ]
 
 [[package]]
@@ -306,16 +305,20 @@ name = "event-logger-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/event_logger_lib" }
 dependencies = [
+    { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [[package]]
@@ -324,10 +327,14 @@ version = "0.1.0"
 source = { directory = "../shared_libs/field_utils_lib" }
 dependencies = [
     { name = "hl7apy" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "hl7apy", specifier = "==1.3.5" }]
+requires-dist = [
+    { name = "hl7apy", specifier = "==1.3.5" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -360,10 +367,14 @@ version = "0.1.0"
 source = { directory = "../shared_libs/health_check_lib" }
 dependencies = [
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "setuptools", specifier = "==80.9.0" }]
+requires-dist = [
+    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
 
 [[package]]
 name = "hishel"
@@ -389,6 +400,7 @@ name = "hl7-phw-transformer"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
     { name = "event-logger-lib" },
@@ -398,6 +410,7 @@ dependencies = [
     { name = "message-bus-lib" },
     { name = "processor-manager-lib" },
     { name = "transformer-base-lib" },
+    { name = "urllib3" },
 ]
 
 [package.dev-dependencies]
@@ -410,6 +423,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
@@ -419,6 +433,7 @@ requires-dist = [
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
     { name = "processor-manager-lib", directory = "../shared_libs/processor_manager_lib" },
     { name = "transformer-base-lib", directory = "../shared_libs/transformer_base_lib" },
+    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -544,16 +559,20 @@ name = "message-bus-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/message_bus_lib" }
 dependencies = [
+    { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -961,10 +980,14 @@ version = "0.1.0"
 source = { directory = "../shared_libs/processor_manager_lib" }
 dependencies = [
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "setuptools", specifier = "==80.9.0" }]
+requires-dist = [
+    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
 
 [[package]]
 name = "psutil"
@@ -1164,15 +1187,6 @@ wheels = [
 ]
 
 [[package]]
-name = "six"
-version = "1.17.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
-]
-
-[[package]]
 name = "sniffio"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1219,6 +1233,7 @@ name = "transformer-base-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/transformer_base_lib" }
 dependencies = [
+    { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
     { name = "event-logger-lib" },
@@ -1226,10 +1241,12 @@ dependencies = [
     { name = "hl7apy" },
     { name = "message-bus-lib" },
     { name = "processor-manager-lib" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
@@ -1237,6 +1254,7 @@ requires-dist = [
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
     { name = "processor-manager-lib", directory = "../shared_libs/processor_manager_lib" },
+    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [package.metadata.requires-dev]
