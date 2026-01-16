@@ -66,6 +66,15 @@ class AppConfig:
         allowed_senders: Comma-separated list of allowed sending application
                          codes (MSH-3). If None, all senders are accepted.
                          Example: "169,245" allows only apps 169 and 245.
+
+        connection_string: Azure Service Bus connection string.
+                           WEEK 2 ADDITION: Used to connect to Service Bus.
+
+        egress_queue_name: Queue to publish HL7 messages to for transformer.
+                           WEEK 2 ADDITION: Messages go here after ACK.
+
+        egress_session_id: Session ID for the egress queue (if session-enabled).
+                           WEEK 2 ADDITION: Used for ordered message processing.
     """
 
     # =========================================================================
@@ -79,6 +88,13 @@ class AppConfig:
     # =========================================================================
     hl7_version: str | None
     allowed_senders: str | None
+
+    # =========================================================================
+    # WEEK 2 ADDITION: Service Bus Configuration
+    # =========================================================================
+    connection_string: str | None
+    egress_queue_name: str | None
+    egress_session_id: str | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -115,6 +131,18 @@ class AppConfig:
             # ALLOWED_SENDERS: If set, reject messages from unknown senders
             # This is the training equivalent of SENDING_APP in production
             allowed_senders=_read_env("ALLOWED_SENDERS"),
+            # =====================================================================
+            # WEEK 2 ADDITION: Service Bus settings
+            # =====================================================================
+            # SERVICE_BUS_CONNECTION_STRING: Connection string for Azure Service Bus
+            # For local development, this connects to the Service Bus Emulator
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            # EGRESS_QUEUE_NAME: Queue where validated messages are published
+            # The transformer component reads from this queue
+            egress_queue_name=_read_env("EGRESS_QUEUE_NAME"),
+            # EGRESS_SESSION_ID: Session ID for ordered message processing
+            # Session-enabled queues ensure messages are processed in order
+            egress_session_id=_read_env("EGRESS_SESSION_ID"),
         )
 
 

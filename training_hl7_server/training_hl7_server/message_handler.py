@@ -3,6 +3,9 @@
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 
+# WEEK 2 ADDITION: Import MessageSenderClient for type hints
+from message_bus_lib.message_sender_client import MessageSenderClient
+
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import Hl7Constants
 
@@ -55,6 +58,7 @@ class MessageHandler(AbstractHandler):
         incoming_message: str,
         expected_version: str | None = None,
         allowed_senders: str | None = None,
+        sender_client: MessageSenderClient | None = None,
     ) -> None:
         """
         Initialize the message handler.
@@ -66,6 +70,9 @@ class MessageHandler(AbstractHandler):
             allowed_senders: Comma-separated list of allowed sending app codes.
                              If None, all senders are accepted.
                              Example: "169,245" allows only apps 169 and 245.
+            sender_client: WEEK 2 ADDITION - Service Bus sender client.
+                           If provided, validated messages are published to the queue.
+                           If None, messages are only processed locally (Week 1 mode).
         """
         # Call parent class constructor to set up the handler
         super().__init__(incoming_message)
@@ -89,6 +96,13 @@ class MessageHandler(AbstractHandler):
         else:
             # None means accept all senders (validation disabled)
             self.allowed_senders = None
+
+        # =====================================================================
+        # WEEK 2 ADDITION: Store the Service Bus sender client
+        # =====================================================================
+        # If configured, this client will be used to publish validated messages
+        # to Azure Service Bus for the transformer to process.
+        self.sender_client = sender_client
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
@@ -164,7 +178,22 @@ class MessageHandler(AbstractHandler):
             self._validate_sending_app(sending_app)
 
             # ===================================================================
-            # STEP 5: Build and return a success ACK
+            # STEP 5: Publish to Service Bus (WEEK 2 ADDITION)
+            # ===================================================================
+            # If Service Bus is configured, publish the validated message to
+            # the egress queue. The transformer component will pick it up.
+            if self.sender_client:
+                print("-" * 60)
+                print("PUBLISHING TO SERVICE BUS (Week 2)")
+                # Publish the raw HL7 message as UTF-8 text
+                # The transformer will parse and transform this message
+                self.sender_client.send_text_message(self.incoming_message)
+                print(f"✓ Message published to egress queue: {message_control_id}")
+            else:
+                print("  (Service Bus publishing skipped - sender not configured)")
+
+            # ===================================================================
+            # STEP 6: Build and return a success ACK
             # ===================================================================
             # If we got here, validation passed - send an AA (Application Accept) ACK
             ack = self.ack_builder.build_ack(

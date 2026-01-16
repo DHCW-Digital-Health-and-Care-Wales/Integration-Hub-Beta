@@ -6,6 +6,12 @@ import threading
 
 from hl7apy.mllp import MLLPServer
 
+# WEEK 2 ADDITION: Import Service Bus components from shared_libs
+# These are used to publish validated HL7 messages to Azure Service Bus queues
+from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+
 from training_hl7_server.app_config import AppConfig
 from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
@@ -48,6 +54,13 @@ class TrainingHl7ServerApplication:
         # hl7_server_application.py start_server() method.
 
         self.config = AppConfig.read_env_config()
+
+        # =====================================================================
+        # WEEK 2 ADDITION: Service Bus sender client
+        # =====================================================================
+        # This will be initialized in start_server() if Service Bus is configured
+        # The sender_client is used to publish validated HL7 messages to a queue
+        self.sender_client: MessageSenderClient | None = None
 
         # =====================================================================
         # Server instance (will be set when the server starts)
@@ -107,6 +120,41 @@ class TrainingHl7ServerApplication:
         print(f"Port: {self.config.port}")
         print(f"Expected HL7 Version: {self.config.hl7_version or '(any)'}")
         print(f"Allowed Senders: {self.config.allowed_senders or '(any)'}")
+
+        # =====================================================================
+        # WEEK 2 ADDITION: Initialize Service Bus sender
+        # =====================================================================
+        # If Service Bus is configured, create a sender client to publish
+        # validated messages to the egress queue. The transformer component
+        # will read from this queue.
+        if self.config.connection_string and self.config.egress_queue_name:
+            print("-" * 60)
+            print("SERVICE BUS INTEGRATION ENABLED (Week 2)")
+            print(f"Egress Queue: {self.config.egress_queue_name}")
+            print(f"Session ID: {self.config.egress_session_id or '(none)'}")
+
+            # Create connection configuration for Service Bus
+            # Uses connection string for local emulator, namespace for Azure
+            client_config = ConnectionConfig(
+                connection_string=self.config.connection_string,
+                service_bus_namespace=None,  # Not used when connection_string is set
+            )
+
+            # Create the factory that builds Service Bus clients
+            factory = ServiceBusClientFactory(client_config)
+
+            # Create a queue sender client for publishing messages
+            # The session_id ensures ordered processing in session-enabled queues
+            self.sender_client = factory.create_queue_sender_client(
+                queue_name=self.config.egress_queue_name,
+                session_id=self.config.egress_session_id,
+            )
+            print("✓ Service Bus sender initialized")
+        else:
+            print("-" * 60)
+            print("SERVICE BUS INTEGRATION DISABLED")
+            print("(Set SERVICE_BUS_CONNECTION_STRING and EGRESS_QUEUE_NAME to enable)")
+
         print("=" * 60)
         print("Waiting for HL7 messages...")
         print("Press Ctrl+C to stop the server")
@@ -129,12 +177,15 @@ class TrainingHl7ServerApplication:
 
         # Arguments passed to MessageHandler for each message type
         # Tuple format: (HandlerClass, arg1, arg2, ...)
-        # MessageHandler expects: (message, expected_version, allowed_senders)
+        # MessageHandler expects: (message, expected_version, allowed_senders, sender_client)
         # Note: 'message' is passed automatically by the MLLP library
+        #
+        # WEEK 2 ADDITION: sender_client is now passed to publish messages to Service Bus
         message_handler_args = (
             MessageHandler,
             self.config.hl7_version,  # expected_version parameter
             self.config.allowed_senders,  # EXERCISE 4: allowed_senders parameter
+            self.sender_client,  # WEEK 2: Service Bus sender client (can be None)
         )
 
         handlers = {
@@ -242,3 +293,11 @@ class TrainingHl7ServerApplication:
         if self.server_thread:
             self.server_thread.join(timeout=5)
             print("Server thread cleaned up.")
+
+        # =====================================================================
+        # WEEK 2 ADDITION: Close the Service Bus sender client
+        # =====================================================================
+        if self.sender_client:
+            print("Closing Service Bus sender...")
+            self.sender_client.close()
+            print("Service Bus sender closed.")
