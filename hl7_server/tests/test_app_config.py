@@ -23,7 +23,8 @@ class TestAppConfig(unittest.TestCase):
                 "SENDING_APP": "test_app",
                 "HEALTH_CHECK_HOST": "localhost",
                 "HEALTH_CHECK_PORT": "8080",
-                "HL7_VALIDATION_FLOW": "test_flow"
+                "HL7_VALIDATION_FLOW": "test_flow",
+                "HL7_VALIDATION_STANDARD": "2.5"
                 # MAX_MESSAGE_SIZE_BYTES intentionally omitted to test default
             }
             return values.get(name)
@@ -43,6 +44,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.health_check_hostname, "localhost")
         self.assertEqual(config.health_check_port, 8080)
         self.assertEqual(config.hl7_validation_flow, "test_flow")
+        self.assertEqual(config.hl7_validation_standard, "2.5")
 
         # Verify default message size is applied when not configured
         self.assertEqual(config.max_message_size_bytes, DEFAULT_MAX_MESSAGE_SIZE_BYTES)
@@ -160,6 +162,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertIsNone(config.health_check_hostname)
         self.assertIsNone(config.health_check_port)
         self.assertIsNone(config.hl7_validation_flow)
+        self.assertIsNone(config.hl7_validation_standard)
 
         # Verify message size uses default when not configured
         self.assertEqual(config.max_message_size_bytes, DEFAULT_MAX_MESSAGE_SIZE_BYTES)
