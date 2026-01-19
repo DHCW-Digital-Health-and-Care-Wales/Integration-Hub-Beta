@@ -95,7 +95,7 @@ jobs:
                   az account set --subscription "$ACR_SUBSCRIPTION"
                 fi
 
-                az acr show \
+                az acr repository show \
                   --name ${{ parameters.acrName }} \
                   --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}
                 
