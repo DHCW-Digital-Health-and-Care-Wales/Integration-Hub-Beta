@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 from xml.etree.ElementTree import Element as XElem  # nosec B405
 
@@ -83,7 +84,10 @@ def _emit_element(
             elem.text = raw_value
         return
 
-    components = raw_value.split("^") if raw_value else []
+    if raw_value:
+        components = raw_value.split("^")
+    else:
+        components = []
     for idx, child_element_name in enumerate(children):
         component_value = components[idx] if idx < len(components) else ""
         _emit_element(elem, child_element_name, component_value, element_to_type, type_children, type_base)
@@ -111,7 +115,10 @@ def _emit_field(
         return
 
     max_occurs = element_max_occurs.get(field_element_name, 1)
-    reps = raw_value.split("~") if raw_value and _allows_repetition(max_occurs) else [raw_value or ""]
+    if raw_value and "~" in raw_value and _allows_repetition(max_occurs):
+        reps = raw_value.split("~")
+    else:
+        reps = [raw_value or ""]
 
     for rep in reps:
         _emit_element(parent, field_element_name, rep, element_to_type, type_children, type_base)
@@ -130,8 +137,10 @@ def _extract_field_data(segment: Any) -> Dict[int, str]:
     field_map = defaultdict(list)
     for child in segment.children:
         try:
-            field_index = int(str(child.name).split("_")[1])
-            field_map[field_index].append(_get_field_text(child))
+            child_name_str = str(child.name)
+            if "_" in child_name_str:
+                field_index = int(child_name_str.split("_")[1])
+                field_map[field_index].append(_get_field_text(child))
         except (ValueError, IndexError):
             continue
     return {idx: "~".join(vals) for idx, vals in field_map.items()}
@@ -310,6 +319,7 @@ def _resolve_structure_id(hl7_msg: Any, override_structure_id: Optional[str]) ->
     return structure_id
 
 
+@lru_cache(maxsize=64)
 def _compute_structure_requirements(
     structure_xsd_path: Optional[str],
     structure_id: str,
