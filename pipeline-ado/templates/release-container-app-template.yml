@@ -96,7 +96,7 @@ jobs:
                 fi
 
                 az acr show \
-                  - name ${{ parameters.acrName }} \
+                  --name ${{ parameters.acrName }} \
                   --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}
                 
                 # # Import preserves the digest
