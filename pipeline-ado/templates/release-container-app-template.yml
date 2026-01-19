@@ -94,13 +94,17 @@ jobs:
                   echo "Switching to ACR subscription..."
                   az account set --subscription "$ACR_SUBSCRIPTION"
                 fi
+
+                az acr show \
+                  - name ${{ parameters.acrName }} \
+                  --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}
                 
-                # Import preserves the digest
-                az acr import \
-                  --name ${{ parameters.acrName }} \
-                  --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
-                  --image $IMAGE_TAG_WITH_FLOW \
-                  --force
+                # # Import preserves the digest
+                # az acr import \
+                #   --name ${{ parameters.acrName }} \
+                #   --source ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}:$IMAGE_TAG \
+                #   --image $IMAGE_TAG_WITH_FLOW \
+                #   --force
                 
                 # Switch back to original subscription if we changed it
                 if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
