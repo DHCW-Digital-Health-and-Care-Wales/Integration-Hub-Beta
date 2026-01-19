@@ -20,6 +20,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
+      - Network Test App
       
   - name: selectedEnvironment
     displayName: 'Select Environment'
@@ -70,6 +71,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'Network Test App - Build'
+      source: 'Network Test App - Build'
       trigger: none
 
 stages:
@@ -146,6 +150,12 @@ stages:
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
+
+        # Network Test App
+        - name: 'Network Test App'
+          appImageName: 'networktestapp'
+          appFunctionMidfix: ''
+          buildPipeline: 'Network Test App - Build'
       
       # Environment configurations
       environments:

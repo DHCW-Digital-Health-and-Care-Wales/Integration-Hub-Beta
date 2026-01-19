@@ -1,0 +1,40 @@
+# Network Test App Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - network_test_app/*
+      - pipeline-ado/templates/*
+      - ca-certs/*
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: BuildAndPushNetworkTestApp
+    displayName: 'Build and Push Network Test App'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushNetworkTestApp'
+          displayName: 'Build and Push Network Test App'
+          appName: 'networktestapp'
+          dockerfilePath: 'network_test_app/Dockerfile'
+          buildContext: 'network_test_app'
+          additionalContexts: "ca-certs=ca-certs"
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          poolName: ${{ variables.POOL_NAME }}
+          semanticVersion: ${{ parameters.SEMANTIC_VERSION }}
