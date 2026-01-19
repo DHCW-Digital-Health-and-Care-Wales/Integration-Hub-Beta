@@ -36,5 +36,5 @@ stages:
           additionalContexts: "ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
-          poolName: ${{ variables.POOL_NAME }}
-          semanticVersion: ${{ parameters.SEMANTIC_VERSION }}
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
