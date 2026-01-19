@@ -95,9 +95,14 @@ jobs:
                   az account set --subscription "$ACR_SUBSCRIPTION"
                 fi
 
-                az acr repository show \
-                  --name ${{ parameters.acrName }} \
-                  --image ${{ parameters.acrName }}.azurecr.io/${{ parameters.appImageName }}
+                echo "List repositories"
+                az acr repository list --name ${{ parameters.acrName }} --output table
+
+                echo "ACR show tags"
+                az acr repository show-tags \
+                --name ${{ parameters.acrName }} \
+                --repository ${{ parameters.appImageName }} \
+                --detail
                 
                 # # Import preserves the digest
                 # az acr import \
