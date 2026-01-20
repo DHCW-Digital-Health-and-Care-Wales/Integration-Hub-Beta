@@ -38,6 +38,8 @@ variables:
   - name: POOL_NAME_PROD
     value: 'UKS-DHCW-IH-PPD-ADOManagedPool'
 
+resources:
+
 stages:
   # Define applications metadata inline
   - template: templates/list-app-version-dynamic-stages-template.yml
