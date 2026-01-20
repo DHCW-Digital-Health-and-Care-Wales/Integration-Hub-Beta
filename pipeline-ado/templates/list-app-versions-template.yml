@@ -18,7 +18,6 @@ jobs:
         name: ${{ parameters.POOL_NAME }}
       ${{ else }}:
         vmImage: 'ubuntu-latest'
-  variables:
   strategy:
     runOnce:
       deploy:
