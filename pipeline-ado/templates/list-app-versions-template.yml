@@ -1,0 +1,87 @@
+parameters:
+  azureServiceConnection: '' # Azure Service Connection name
+  appImageName: ''
+  acrName: ''
+  acrRepository: ''
+  jobName: ''
+  displayName: ''
+  POOL_NAME: '' # Pool name for the agent
+
+jobs:
+- deployment: ${{ parameters.jobName }}
+  displayName: ${{ parameters.displayName }}
+  # environment: Integration-Hub-Release-Container-Apps-dev
+  pool:
+      ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
+        vmImage: 'ubuntu-latest'
+      ${{ elseif ne(parameters.POOL_NAME, '') }}:
+        name: ${{ parameters.POOL_NAME }}
+      ${{ else }}:
+        vmImage: 'ubuntu-latest'
+  variables:
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
+
+          - task: AzureCLI@2
+            displayName: 'Azure CLI Login'
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az --version
+
+          - task: AzureCLI@2
+            displayName: 'List Repository Tags'
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                az acr login --name ${{ parameters.acrName }}
+                
+                # Set ACR Subscription
+                echo "Finding ACR subscription..."
+                ACR_SUBSCRIPTION=$(az account list --query "[].id" -o tsv | while read sub; do
+                  if az acr show --name ${{ parameters.acrName }} --subscription "$sub" --query id -o tsv 2>/dev/null >/dev/null; then
+                    echo "$sub"
+                    break
+                  fi
+                done)
+                
+                if [ -z "$ACR_SUBSCRIPTION" ]; then
+                  echo "ERROR: Could not find ACR ${{ parameters.acrName }} in any accessible subscription"
+                  exit 1
+                fi
+                
+                CURRENT_SUBSCRIPTION=$(az account show --query id -o tsv)
+                
+                echo "ACR found in subscription: $ACR_SUBSCRIPTION"
+                echo "Current subscription: $CURRENT_SUBSCRIPTION"
+                
+                if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
+                  echo "Switching to ACR subscription..."
+                  az account set --subscription "$ACR_SUBSCRIPTION"
+                fi
+
+                echo "ACR show tags"
+                az acr repository show-tags \
+                --name ${{ parameters.acrName }} \
+                --repository ${{ parameters.appImageName }} \
+                --detail
+                
+                # Switch back to original subscription if we changed it
+                if [ "$ACR_SUBSCRIPTION" != "$CURRENT_SUBSCRIPTION" ]; then
+                  echo "Switching back to original subscription..."
+                  az account set --subscription "$CURRENT_SUBSCRIPTION"
+                fi
+
+                echo "Tags listed"
+
+
+          

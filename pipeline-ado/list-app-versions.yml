@@ -21,19 +21,6 @@ parameters:
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
       
-  - name: selectedEnvironment
-    displayName: 'Select Environment'
-    type: string
-    default: 'all'
-    values:
-      - all
-      - dev
-      - dte
-      - tst
-      - uat
-      - ppd
-      - prd
-
 variables:
   # Shared Configuration
   - name: acrName
@@ -51,35 +38,13 @@ variables:
   - name: POOL_NAME_PROD
     value: 'UKS-DHCW-IH-PPD-ADOManagedPool'
 
-resources:
-  pipelines:
-    - pipeline: 'HL7 Server - Build'
-      source: 'HL7 Server - Build'
-      trigger: none
-    - pipeline: 'HL7 Phw Transformer - Build'
-      source: 'HL7 Phw Transformer - Build'
-      trigger: none
-    - pipeline: 'HL7 Chemo Transformer - Build'
-      source: 'HL7 Chemo Transformer - Build'
-      trigger: none
-    - pipeline: 'HL7 Pims Transformer - Build'
-      source: 'HL7 Pims Transformer - Build'
-      trigger: none
-    - pipeline: 'HL7 Sender - Build'
-      source: 'HL7 Sender - Build'
-      trigger: none
-    - pipeline: 'HL7 Mock Receiver - Build'
-      source: 'HL7 Mock Receiver - Build'
-      trigger: none
-
 stages:
   # Define applications metadata inline
-  - template: pipeline-ado/templates/release-apps-dynamic-stages-template.yml
+  - template: pipeline-ado/templates/list-app-version-dynamic-stages-template.yml
     parameters:
       selectedApp: ${{ parameters.selectedApp }}
-      selectedEnvironment: ${{ parameters.selectedEnvironment }}
-      azureLocation: $(azureLocation)
       acrName: $(acrName)
+      azureServiceConnection: $(azureServiceConnectionNonProd)
       
       # Application configurations
       appConfig:
@@ -146,53 +111,4 @@ stages:
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
-      
-      # Environment configurations
-      environments:
-        - name: 'dev'
-          environmentName: 'Integration-Hub-Release-Container-Apps-dev'
-          displayName: 'Development'
-          resourceGroup: 'UK-South-DHCW-IntHub-DEV-RG'
-          poolName: $(POOL_NAME_NON_PROD)
-          azureServiceConnection: $(azureServiceConnectionNonProd)
-          dependsOnPrevious: false
-          
-        - name: 'dte'
-          environmentName: 'Integration-Hub-Release-Container-Apps-dte'
-          displayName: 'DTE'
-          resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
-          poolName: $(POOL_NAME_NON_PROD)
-          azureServiceConnection: $(azureServiceConnectionNonProd)
-          dependsOnPrevious: true
-          
-        - name: 'tst'
-          environmentName: 'Integration-Hub-Release-Container-Apps-tst'
-          displayName: 'Test'
-          resourceGroup: 'UK-South-DHCW-IntHub-TST-App-RG'
-          poolName: $(POOL_NAME_NON_PROD)
-          azureServiceConnection: $(azureServiceConnectionNonProd)
-          dependsOnPrevious: true
-          
-        - name: 'uat'
-          environmentName: 'Integration-Hub-Release-Container-Apps-uat'
-          displayName: 'UAT'
-          resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
-          poolName: $(POOL_NAME_NON_PROD)
-          azureServiceConnection: $(azureServiceConnectionNonProd)
-          dependsOnPrevious: true
-          
-        - name: 'ppd'
-          environmentName: 'Integration-Hub-Release-Container-Apps-ppd'
-          displayName: 'Pre-Production'
-          resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
-          poolName: $(POOL_NAME_PROD)
-          azureServiceConnection: $(azureServiceConnectionProd)
-          dependsOnPrevious: true
-          
-        - name: 'prd'
-          environmentName: 'Integration-Hub-Release-Container-Apps-prd'
-          displayName: 'Production'
-          resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
-          poolName: $(POOL_NAME_PROD)
-          azureServiceConnection: $(azureServiceConnectionProd)
-          dependsOnPrevious: true
+

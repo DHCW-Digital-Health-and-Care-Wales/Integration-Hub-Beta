@@ -1,0 +1,28 @@
+parameters:
+  - name: appConfig
+    type: object
+  - name: acrName
+    type: string
+  - name: selectedApp
+    type: string
+    default: 'all'
+  - name: azureServiceConnection
+    type: string
+
+stages:
+  # Loop through each application
+  - ${{ each app in parameters.appConfig }}:
+    # Check if app is selected
+    - ${{ if or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)) }}:
+      - stage: ListVersions_${{ replace(replace(app.name, ' ', ''), '-', '') }}
+        displayName: 'List versions for ${{ app.name }}'
+                
+        jobs:
+          - template: list-app-versions-template.yml
+            parameters:
+              jobName: ListVersions_${{ replace(replace(app.name, ' ', ''), '-', '') }}
+              displayName: List versions for ${{ app.name }}
+              appImageName: ${{ app.appImageName }}
+              acrName: ${{ parameters.acrName }}
+              azureServiceConnection: ${{ parameters.azureServiceConnection }}
+              POOL_NAME: ${{ env.poolName }}
