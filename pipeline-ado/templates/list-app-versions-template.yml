@@ -10,7 +10,7 @@ parameters:
 jobs:
 - deployment: ${{ parameters.jobName }}
   displayName: ${{ parameters.displayName }}
-  # environment: Integration-Hub-Release-Container-Apps-dev
+  environment: Integration-Hub-Release-Container-Apps-dev
   pool:
       ${{ if eq(parameters.POOL_NAME, 'Azure Pipelines') }}:
         vmImage: 'ubuntu-latest'
