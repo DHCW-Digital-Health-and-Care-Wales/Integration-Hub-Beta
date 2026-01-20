@@ -45,6 +45,7 @@ stages:
       selectedApp: ${{ parameters.selectedApp }}
       acrName: $(acrName)
       azureServiceConnection: $(azureServiceConnectionNonProd)
+      poolName: $(POOL_NAME_NON_PROD)
       
       # Application configurations
       appConfig:

@@ -8,6 +8,8 @@ parameters:
     default: 'all'
   - name: azureServiceConnection
     type: string
+  - name: poolName
+    type: string
 
 stages:
   # Loop through each application
@@ -25,4 +27,4 @@ stages:
               appImageName: ${{ app.appImageName }}
               acrName: ${{ parameters.acrName }}
               azureServiceConnection: ${{ parameters.azureServiceConnection }}
-              POOL_NAME: ${{ env.poolName }}
+              POOL_NAME: ${{ parameters.poolName }}
