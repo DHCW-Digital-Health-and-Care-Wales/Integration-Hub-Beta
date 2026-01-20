@@ -40,7 +40,7 @@ variables:
 
 stages:
   # Define applications metadata inline
-  - template: pipeline-ado/templates/list-app-version-dynamic-stages-template.yml
+  - template: templates/list-app-version-dynamic-stages-template.yml
     parameters:
       selectedApp: ${{ parameters.selectedApp }}
       acrName: $(acrName)
