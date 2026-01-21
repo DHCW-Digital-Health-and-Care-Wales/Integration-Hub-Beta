@@ -7,7 +7,7 @@ from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
 
 from training_hl7_server.ack_builder import AckBuilder
-from training_hl7_server.constants import Hl7Constants
+from training_hl7_server.training_hl_server.constants import Hl7Constants
 
 
 class ValidationError(Exception):
