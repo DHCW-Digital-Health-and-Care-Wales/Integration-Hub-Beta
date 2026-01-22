@@ -55,9 +55,11 @@ class Hl7ServerApplication:
         factory = ServiceBusClientFactory(client_config)
 
         if app_config.egress_topic_name:
-            self.sender_client = factory.create_topic_sender_client(app_config.egress_topic_name)
+            self.sender_client = factory.create_topic_sender_client(
+                app_config.egress_topic_name, app_config.egress_session_id
+            )
             logger.info(f"Configured to send messages to topic: {app_config.egress_topic_name}")
-        else:
+        elif app_config.egress_queue_name:
             self.sender_client = factory.create_queue_sender_client(
                 app_config.egress_queue_name, app_config.egress_session_id
             )
