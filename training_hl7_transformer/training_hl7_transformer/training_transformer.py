@@ -52,6 +52,12 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from training_hl7_transformer.app_config import TransformerConfig
 from training_hl7_transformer.mappers.msh_mapper import map_msh
 
+# ===========================================================================
+# WEEK 2 EXERCISE 2 & 3 SOLUTIONS: Import additional mappers
+# ===========================================================================
+from training_hl7_transformer.mappers.evn_mapper import map_evn
+from training_hl7_transformer.mappers.pid_mapper import map_pid
+
 
 class TrainingTransformer:
     """
@@ -130,14 +136,28 @@ class TrainingTransformer:
         new_message = Message(version="2.3.1")
 
         # Apply MSH mapper to transform the Message Header segment
+        # WEEK 2 EXERCISE 1 SOLUTION: MSH mapper now includes datetime transformation
         _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
 
         # =====================================================================
-        # STRETCH EXERCISE 2: Add more segment mappers here
+        # WEEK 2 EXERCISE 2 SOLUTION: Add EVN segment mapping
         # =====================================================================
-        # Example:
-        # from training_hl7_transformer.mappers.pid_mapper import map_pid
-        # pid_details = map_pid(hl7_msg, new_message)
+        # The EVN (Event Type) segment contains event information.
+        # We use a try/except block because EVN might not exist in all messages.
+        try:
+            _ = map_evn(hl7_msg, new_message)
+        except AttributeError:
+            print("EVN segment not present in original message (skipping)")
+
+        # =====================================================================
+        # WEEK 2 EXERCISE 3 SOLUTION: Add PID segment mapping
+        # =====================================================================
+        # The PID (Patient Identification) segment contains patient demographics.
+        # This mapper also transforms the patient name to uppercase.
+        try:
+            _ = map_pid(hl7_msg, new_message)
+        except AttributeError:
+            print("PID segment not present in original message (skipping)")
 
         return new_message
 
