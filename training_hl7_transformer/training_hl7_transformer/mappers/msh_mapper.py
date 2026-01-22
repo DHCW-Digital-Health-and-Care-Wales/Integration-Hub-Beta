@@ -6,34 +6,25 @@ This module demonstrates how to map/transform the MSH (Message Header) segment.
 The MSH segment is the first segment in every HL7 message and contains metadata
 about the message itself.
 
-LEARNING OBJECTIVES:
--------------------
-1. Understand the structure of the MSH segment
-2. Learn to use field_utils_lib for copying/reading fields
-3. Practice making simple transformations
-
-KEY MSH FIELDS:
---------------
-MSH-3:  Sending Application - identifies the source system
-MSH-4:  Sending Facility - the organization/hospital sending
-MSH-5:  Receiving Application - the target system
-MSH-6:  Receiving Facility - the receiving organization
-MSH-7:  Date/Time of Message - when the message was created
-MSH-9:  Message Type - e.g., "ADT^A31" (Patient Update)
-MSH-10: Message Control ID - unique identifier for this message
-MSH-12: Version ID - HL7 version, e.g., "2.3.1"
-
 PRODUCTION REFERENCE:
 --------------------
 See hl7_phw_transformer/hl7_phw_transformer/mappers/msh_mapper.py
 for a production example that also transforms the datetime format.
+
+===========================================================================
+WEEK 2 EXERCISE 1 SOLUTION: DateTime Transformation
+===========================================================================
+This mapper now includes datetime transformation for MSH-7.
+See the transform_datetime_to_readable() function imported from datetime_transformer.py
 """
 
+from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
 from hl7apy.core import Message
 
-# Import field utilities from shared_libs
-# These provide helper functions for working with HL7 fields
-from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
+# ===========================================================================
+# WEEK 2 EXERCISE 1 SOLUTION: Import datetime transformer
+# ===========================================================================
+from training_hl7_transformer.datetime_transformer import transform_datetime_to_readable
 
 
 def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
@@ -106,11 +97,32 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     new_msh.msh_3.value = new_sending_app
 
     # =========================================================================
+    # WEEK 2 EXERCISE 1 SOLUTION: Transform MSH-7 DateTime
+    # =========================================================================
+    # MSH-7 contains the message creation datetime
+    # We transform from compact HL7 format (YYYYMMDDHHMMSS) to readable format
+    #
+    # Get the original datetime value from MSH-7.TS-1 (timestamp component 1)
+    original_datetime = get_hl7_field_value(msh_segment, "msh_7.ts_1")
+    transformed_datetime = None
+
+    if original_datetime:
+        # Apply datetime transformation
+        transformed_datetime = transform_datetime_to_readable(original_datetime)
+
+        if transformed_datetime and transformed_datetime != original_datetime:
+            # Set the transformed datetime on the new message
+            new_msh.msh_7.ts_1.value = transformed_datetime
+            print(f"MSH-7 transformed: '{original_datetime}' -> '{transformed_datetime}'")
+        else:
+            print(f"MSH-7 unchanged: '{original_datetime}'")
+
+    # =========================================================================
     # STEP 4: Print transformation details (local logging)
     # =========================================================================
     # In production, we'd use the event_logger library for structured logging.
     # For training, we use print() to see what's happening.
-    print(f"  MSH-3 transformed: '{original_sending_app}' -> '{new_sending_app}'")
+    print(f"MSH-3 transformed: '{original_sending_app}' -> '{new_sending_app}'")
 
     # =========================================================================
     # STEP 5: Return transformation details
@@ -119,4 +131,7 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     return {
         "original_sending_app": original_sending_app or "",
         "new_sending_app": new_sending_app,
+        # WEEK 2 EXERCISE 1 SOLUTION: Include datetime transformation details
+        "original_datetime": original_datetime or "",
+        "transformed_datetime": transformed_datetime or "",
     }
