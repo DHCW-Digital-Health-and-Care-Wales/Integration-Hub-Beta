@@ -396,15 +396,15 @@ requires-dist = [
 
 [[package]]
 name = "hishel"
-version = "1.1.7"
+version = "1.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "msgpack" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/cf/4e1d09cc81c48ff7498398fd82c87fb21800c85e631d03831703d8594506/hishel-1.1.7.tar.gz", hash = "sha256:32c625be581e94dc50b773a8cfb9a65cba487660561950fe976ae49945455179", size = 61473, upload-time = "2025-12-03T09:32:28.524Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/77/584ce02fea76e9193c17f7129858757050f03356797bef62af4c63fdec1c/hishel-1.1.8.tar.gz", hash = "sha256:bcd15ad282bd530e97a676b2d16a58e5034750e8a6955e77babfea69fc5b4ad8", size = 61755, upload-time = "2026-01-11T18:40:15.203Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/2a/8134de761e4fd9d0a3b301b897b8c5ce9ccb17af7f846d66c676d8c03fd8/hishel-1.1.7-py3-none-any.whl", hash = "sha256:436c2a5a62d705528e581cbeba85b10d130c47c861906b21262a07ac02463a9f", size = 70569, upload-time = "2025-12-03T09:32:27.144Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/cc/3b9924c537937d511770a661f688305852f12635baacd5ad62a6348c938f/hishel-1.1.8-py3-none-any.whl", hash = "sha256:29e45e090c647920b666e9d2b21e494c97dc12f49e7d88fd31d9e4e7e4b75d4d", size = 70885, upload-time = "2026-01-11T18:40:13.552Z" },
 ]
 
 [package.optional-dependencies]
@@ -424,6 +424,7 @@ dependencies = [
     { name = "event-logger-lib" },
     { name = "field-utils-lib" },
     { name = "health-check-lib" },
+    { name = "hishel" },
     { name = "hl7-validation-lib" },
     { name = "hl7apy" },
     { name = "message-bus-lib" },
@@ -447,6 +448,7 @@ requires-dist = [
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
     { name = "field-utils-lib", directory = "../shared_libs/field_utils_lib" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
+    { name = "hishel", specifier = "==1.1.8" },
     { name = "hl7-validation-lib", directory = "../shared_libs/hl7_validation" },
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
