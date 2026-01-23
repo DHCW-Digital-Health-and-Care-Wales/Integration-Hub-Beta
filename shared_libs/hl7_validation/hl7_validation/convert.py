@@ -5,6 +5,7 @@ from xml.etree.ElementTree import Element as XElem  # nosec B405
 
 from defusedxml import defuse_stdlib
 from defusedxml.ElementTree import fromstring, tostring
+from hl7apy.core import Message
 
 from .utils.extract_string import _get_field_text
 from .utils.message_utils import (
@@ -431,8 +432,12 @@ def er7_to_hl7v2xml(
     er7_message: str,
     structure_xsd_path: Optional[str] = None,
     override_structure_id: Optional[str] = None,
+    parsed_message: Optional[Message] = None,
 ) -> str:
-    hl7_msg = parse_er7_message(er7_message, find_groups=False)
+    if parsed_message is not None:
+        hl7_msg = parsed_message
+    else:
+        hl7_msg = parse_er7_message(er7_message, find_groups=False)
 
     (
         element_to_type,
