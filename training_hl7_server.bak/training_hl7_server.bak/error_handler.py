@@ -47,7 +47,7 @@ from hl7apy.mllp import AbstractErrorHandler, UnsupportedMessageType
 from hl7apy.parser import parse_message
 
 from training_hl7_server.ack_builder import AckBuilder
-from training_hl7_server.training_hl_server.constants import Hl7Constants
+from training_hl7_server.training_hl7_server.constants import Hl7Constants
 
 
 class ErrorHandler(AbstractErrorHandler):
