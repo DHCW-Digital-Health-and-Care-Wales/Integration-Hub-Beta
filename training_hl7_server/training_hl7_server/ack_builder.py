@@ -5,7 +5,7 @@ from datetime import datetime
 from hl7apy.consts import VALIDATION_LEVEL
 from hl7apy.core import Message, Segment
 
-from training_hl7_server.training_hl7_server.constants import Hl7Constants
+from training_hl7_server.constants import Hl7Constants
 
 
 class AckBuilder:

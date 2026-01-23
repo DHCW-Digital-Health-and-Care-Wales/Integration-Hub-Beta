@@ -265,30 +265,21 @@ services:
           - "mpi-hl7-server"
 
   # ========================================
-  # TRAINING SERVERS (Week 1 & Week 2)
+  # TRAINING SERVERS
   # ========================================
   # Training server for learning HL7 MLLP protocol
   # Uses profile "training" so it only starts when explicitly requested
-  #
-  # Week 1: Basic MLLP server that receives and validates HL7 messages
-  # Week 2: Added Service Bus integration to publish to transformer queue
   training-hl7-server:
     container_name: training-hl7-server
     build:
       context: ../training_hl7_server
       dockerfile: ./Dockerfile
-      # additional_contexts:
-      #   # Week 2 addition: shared_libs for message_bus_lib
-      #   - shared_libs=../shared_libs
     env_file:
       - ./training-hl7-server.env
     ports:
       # Expose port 2590 for HL7 message testing
       - "2590:2590"
     restart: on-failure
-    # depends_on:
-    #   # Week 2 addition: Wait for Service Bus emulator to be ready
-    #   - sb-emulator
     profiles:
       # Profile ensures this only starts with: docker compose --profile training up
       - training
@@ -296,28 +287,6 @@ services:
       integration-hub:
         aliases:
           - "training-hl7-server"
-
-  # Training transformer for learning HL7 message transformation (Week 2)
-  # Reads from training-transformer-ingress queue, transforms MSH segment,
-  # publishes to training-egress queue
-  # training-hl7-transformer:
-  #   container_name: training-hl7-transformer
-  #   build:
-  #     context: ../training_hl7_transformer
-  #     dockerfile: ./Dockerfile
-  #     additional_contexts:
-  #       - shared_libs=../shared_libs
-  #   env_file:
-  #     - ./training-hl7-transformer.env
-  #   restart: on-failure
-  #   depends_on:
-  #     - sb-emulator
-  #   profiles:
-  #     - training
-  #   networks:
-  #     integration-hub:
-  #       aliases:
-  #         - "training-hl7-transformer"
 
 networks:
   integration-hub:

@@ -35,12 +35,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Copy the project configuration file
 COPY pyproject.toml uv.lock ./
 
-# WEEK 2 ADDITION: Copy shared_libs for message_bus_lib dependency
-# The pyproject.toml references "../shared_libs/message_bus_lib"
-# In docker-compose, this comes from additional_contexts
-# The COPY uses the context name "shared_libs" which docker-compose maps
-COPY --from=shared_libs . /shared_libs
-
 # ===================================================================
 # Install Python dependencies (two-stage process)
 # ===================================================================
