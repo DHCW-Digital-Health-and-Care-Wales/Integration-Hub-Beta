@@ -89,7 +89,7 @@ class TestGenericHandler(unittest.TestCase):
 
         self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE, None)
 
-    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow")
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
         self, mock_validate_flow_xml: MagicMock
     ) -> None:
@@ -123,7 +123,7 @@ class TestGenericHandler(unittest.TestCase):
             },
         )
 
-    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow")
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_rejects_invalid_messages(self, mock_validate_flow_xml: MagicMock) -> None:
         exception_scenarios = [
             ("unsupported_message_type", INVALID_MPI_OUTBOUND_MESSAGE_TYPE),
@@ -212,7 +212,7 @@ class TestGenericHandler(unittest.TestCase):
         self.mock_sender.send_text_message.assert_not_called()
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
-    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow")
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_both_flow_and_standard_validation_called(
         self, mock_validate_flow: MagicMock, mock_validate_standard: MagicMock
     ) -> None:

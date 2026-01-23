@@ -5,9 +5,9 @@ from hl7apy.parser import parse_message
 from hl7_validation import (
     ValidationResult,
     XmlValidationError,
-    convert_er7_to_xml_with_flow,
-    validate_and_convert_er7_with_flow,
-    validate_and_convert_parsed_message_with_flow,
+    convert_er7_to_xml_with_flow_schema,
+    validate_and_convert_er7_with_flow_schema,
+    validate_and_convert_parsed_message_with_flow_schema,
 )
 
 
@@ -47,7 +47,7 @@ class TestValidateAndConvert(unittest.TestCase):
         ])
 
     def test_validate_and_convert_valid_message(self) -> None:
-        result = validate_and_convert_er7_with_flow(self.valid_er7, "phw")
+        result = validate_and_convert_er7_with_flow_schema(self.valid_er7, "phw")
 
         self.assertTrue(result.is_valid)
         self.assertIsNone(result.error_message)
@@ -59,7 +59,7 @@ class TestValidateAndConvert(unittest.TestCase):
         self.assertIn("urn:hl7-org:v2xml", result.xml_string)
 
     def test_validate_and_convert_invalid_message_returns_result_with_error(self) -> None:
-        result = validate_and_convert_er7_with_flow(self.invalid_er7, "phw")
+        result = validate_and_convert_er7_with_flow_schema(self.invalid_er7, "phw")
 
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.error_message)
@@ -69,18 +69,18 @@ class TestValidateAndConvert(unittest.TestCase):
 
     def test_validate_and_convert_invalid_er7_raises(self) -> None:
         with self.assertRaises(XmlValidationError):
-            validate_and_convert_er7_with_flow("NOT_VALID_HL7", "phw")
+            validate_and_convert_er7_with_flow_schema("NOT_VALID_HL7", "phw")
 
     def test_validate_and_convert_parsed_message_valid(self) -> None:
         msg = parse_message(self.valid_er7, find_groups=False)
-        result = validate_and_convert_parsed_message_with_flow(msg, self.valid_er7, "phw")
+        result = validate_and_convert_parsed_message_with_flow_schema(msg, self.valid_er7, "phw")
 
         self.assertTrue(result.is_valid)
         self.assertEqual(result.message_control_id, "MSGID123")
 
     def test_validate_and_convert_parsed_message_invalid(self) -> None:
         msg = parse_message(self.invalid_er7, find_groups=False)
-        result = validate_and_convert_parsed_message_with_flow(msg, self.invalid_er7, "phw")
+        result = validate_and_convert_parsed_message_with_flow_schema(msg, self.invalid_er7, "phw")
 
         self.assertFalse(result.is_valid)
         self.assertIsNotNone(result.error_message)
@@ -94,7 +94,7 @@ class TestConvertWithoutValidation(unittest.TestCase):
             "PID|||8888888^^^252^PI||SURNAME^FORENAME",
             "PV1||",
         ])
-        xml_str = convert_er7_to_xml_with_flow(er7, "phw")
+        xml_str = convert_er7_to_xml_with_flow_schema(er7, "phw")
 
         self.assertIn("<", xml_str)
         self.assertIn("urn:hl7-org:v2xml", xml_str)
@@ -102,7 +102,7 @@ class TestConvertWithoutValidation(unittest.TestCase):
 
     def test_convert_er7_to_xml_invalid_er7_raises(self) -> None:
         with self.assertRaises(XmlValidationError):
-            convert_er7_to_xml_with_flow("NOT_VALID_HL7", "phw")
+            convert_er7_to_xml_with_flow_schema("NOT_VALID_HL7", "phw")
 
     def test_convert_er7_to_xml_unknown_flow_raises(self) -> None:
         er7 = "\r".join([
@@ -112,7 +112,7 @@ class TestConvertWithoutValidation(unittest.TestCase):
             "PV1||",
         ])
         with self.assertRaises(ValueError):
-            convert_er7_to_xml_with_flow(er7, "unknown_flow")
+            convert_er7_to_xml_with_flow_schema(er7, "unknown_flow")
 
 
 if __name__ == "__main__":

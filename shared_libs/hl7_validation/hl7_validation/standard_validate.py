@@ -8,7 +8,7 @@ from .convert import xml_to_er7
 from .validate import XmlValidationError
 
 SUPPORTED_VERSIONS = frozenset({"2.4", "2.5", "2.5.1", "2.6"})
-_VERSIONS_STR = "2.4, 2.5, 2.5.1, 2.6"
+_VERSIONS_STR = ", ".join(sorted(SUPPORTED_VERSIONS))
 
 
 def _check_version_supported(version: str) -> None:
@@ -31,7 +31,7 @@ def validate_er7_with_standard(er7_string: str, version: str) -> None:
 
     Args:
         er7_string: The HL7 message in ER7 format
-        version: HL7 version string ("2.4", "2.5", "2.5.1", or "2.6")
+        version: HL7 version string (must be in SUPPORTED_VERSIONS)
 
     Raises:
         XmlValidationError: If validation fails or version is unsupported
@@ -45,10 +45,8 @@ def validate_er7_with_standard(er7_string: str, version: str) -> None:
 
     try:
         msg.validate()
-    except ValidationError as e:
+    except (ValidationError, HL7apyException) as e:
         raise XmlValidationError(f"Standard HL7 v{version} validation failed: {e}") from e
-    except HL7apyException as e:
-        raise XmlValidationError(f"Standard HL7 v{version} validation error: {e}") from e
 
 
 def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
@@ -59,7 +57,7 @@ def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
 
     Args:
         msg: Already parsed HL7 message object
-        version: HL7 version string ("2.4", "2.5", "2.5.1", or "2.6")
+        version: HL7 version string (must be in SUPPORTED_VERSIONS)
 
     Raises:
         XmlValidationError: If validation fails, version is unsupported, or version mismatch
@@ -74,10 +72,8 @@ def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
 
     try:
         msg.validate()
-    except ValidationError as e:
+    except (ValidationError, HL7apyException) as e:
         raise XmlValidationError(f"Standard HL7 v{version} validation failed: {e}") from e
-    except HL7apyException as e:
-        raise XmlValidationError(f"Standard HL7 v{version} validation error: {e}") from e
 
 
 def validate_xml_with_hl7apy(xml_string: str, version: str) -> None:
@@ -89,7 +85,7 @@ def validate_xml_with_hl7apy(xml_string: str, version: str) -> None:
 
     Args:
         xml_string: The HL7 message in HL7v2 XML format
-        version: HL7 version string ("2.4", "2.5", "2.5.1", or "2.6")
+        version: HL7 version string (must be in SUPPORTED_VERSIONS)
 
     Raises:
         XmlValidationError: If validation fails, version is unsupported, or XML conversion fails

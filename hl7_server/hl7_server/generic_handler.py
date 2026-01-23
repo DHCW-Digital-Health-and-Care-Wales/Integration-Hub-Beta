@@ -3,7 +3,7 @@ import logging
 from event_logger_lib.event_logger import EventLogger
 from hl7_validation import (
     XmlValidationError,
-    validate_parsed_message_with_flow,
+    validate_parsed_message_with_flow_schema,
     validate_parsed_message_with_standard,
 )
 from hl7apy.core import Message
@@ -58,7 +58,7 @@ class GenericHandler(AbstractHandler):
             # Optimized: pass pre-parsed message to avoid redundant parsing
             if self.flow_name and self.flow_name != "mpi":
                 try:
-                    validate_parsed_message_with_flow(msg, self.incoming_message, self.flow_name)
+                    validate_parsed_message_with_flow_schema(msg, self.incoming_message, self.flow_name)
                     self.event_logger.log_validation_result(
                         self.incoming_message,
                         f"XML validation passed for flow '{self.flow_name}'",

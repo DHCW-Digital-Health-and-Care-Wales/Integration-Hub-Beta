@@ -45,16 +45,16 @@ def validate_xml(xml_string: str, xsd_path: str) -> None:
         raise XmlValidationError(str(e))
 
 
-def validate_er7_with_flow(er7_string: str, flow_name: str) -> None:
+def validate_er7_with_flow_schema(er7_string: str, flow_name: str) -> None:
     try:
         msg = parse_er7_message(er7_string, find_groups=False)
     except Exception:
         raise XmlValidationError(PARSE_ERROR_MSG)
 
-    _validate_flow_logic(msg, er7_string, flow_name)
+    _validate_flow_schema_logic(msg, er7_string, flow_name)
 
 
-def validate_parsed_message_with_flow(msg: Message, er7_string: str, flow_name: str) -> None:
+def validate_parsed_message_with_flow_schema(msg: Message, er7_string: str, flow_name: str) -> None:
     """
     Validate already-parsed HL7 message against flow-specific XSD schema.
 
@@ -68,10 +68,10 @@ def validate_parsed_message_with_flow(msg: Message, er7_string: str, flow_name: 
     Raises:
         XmlValidationError: If validation fails
     """
-    _validate_flow_logic(msg, er7_string, flow_name)
+    _validate_flow_schema_logic(msg, er7_string, flow_name)
 
 
-def _validate_flow_logic(msg: Message, er7_string: str, flow_name: str) -> None:
+def _validate_flow_schema_logic(msg: Message, er7_string: str, flow_name: str) -> None:
     structure = extract_message_structure(msg)
     trigger = extract_message_trigger(msg)
     msg_type = extract_message_type(msg)
@@ -81,8 +81,7 @@ def _validate_flow_logic(msg: Message, er7_string: str, flow_name: str) -> None:
         override_structure = None
     elif trigger:
         if msg_type:
-            mapped = _TRIGGER_MAPPING.get((msg_type, trigger))
-            structure_id = mapped or f"{msg_type}_{trigger}"
+            structure_id = _TRIGGER_MAPPING.get((msg_type, trigger), f"{msg_type}_{trigger}")
         else:
             structure_id = trigger
         override_structure = structure_id
@@ -114,8 +113,7 @@ def _resolve_structure_info(
         override_structure = None
     elif trigger:
         if msg_type:
-            mapped = _TRIGGER_MAPPING.get((msg_type, trigger))
-            structure_id = mapped or f"{msg_type}_{trigger}"
+            structure_id = _TRIGGER_MAPPING.get((msg_type, trigger), f"{msg_type}_{trigger}")
         else:
             structure_id = trigger
         override_structure = structure_id
@@ -130,7 +128,7 @@ def _extract_message_control_id(msg: Message) -> Optional[str]:
     return get_message_field_value(msg, "msh.msh_10")
 
 
-def validate_and_convert_er7_with_flow(er7_string: str, flow_name: str) -> ValidationResult:
+def validate_and_convert_er7_with_flow_schema(er7_string: str, flow_name: str) -> ValidationResult:
     """
     Validate ER7 message against flow-specific XSD schema and return the XML.
 
@@ -153,10 +151,10 @@ def validate_and_convert_er7_with_flow(er7_string: str, flow_name: str) -> Valid
     except Exception:
         raise XmlValidationError(PARSE_ERROR_MSG)
 
-    return validate_and_convert_parsed_message_with_flow(msg, er7_string, flow_name)
+    return validate_and_convert_parsed_message_with_flow_schema(msg, er7_string, flow_name)
 
 
-def validate_and_convert_parsed_message_with_flow(
+def validate_and_convert_parsed_message_with_flow_schema(
     msg: Message, er7_string: str, flow_name: str
 ) -> ValidationResult:
     """
@@ -204,7 +202,7 @@ def validate_and_convert_parsed_message_with_flow(
         )
 
 
-def convert_er7_to_xml_with_flow(er7_string: str, flow_name: str) -> str:
+def convert_er7_to_xml_with_flow_schema(er7_string: str, flow_name: str) -> str:
     """
     Convert ER7 message to XML using flow-specific schema without validation.
 
