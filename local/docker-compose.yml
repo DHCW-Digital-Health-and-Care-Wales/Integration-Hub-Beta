@@ -319,5 +319,66 @@ services:
         aliases:
           - "training-hl7-transformer"
 
+  # ========================================
+  # TRAINING SENDER AND RECEIVER (Week 3)
+  # ========================================
+  # Training sender reads from training-egress queue and forwards via MLLP
+  # to the mock receiver.
+  #
+  # SESSION ID EXPLANATION:
+  # ----------------------
+  # Session IDs ensure ordered message processing within a queue.
+  # Different session IDs are used at different stages:
+  #
+  #   Server → Transformer:  session = "training-session"
+  #   Transformer → Sender:  session = "training"
+  #
+  # Why different? Each queue has its own session namespace. When crossing
+  # queue boundaries, a new session scope begins
+  training-hl7-sender:
+    container_name: training-hl7-sender
+    build:
+      context: ../training_hl7_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - shared_libs=../shared_libs
+    env_file:
+      - ./training-hl7-sender.env
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+      - training-hl7-mock-receiver
+    profiles:
+      - training
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7-sender"
+
+  # Training mock receiver - simulates a downstream HL7 system
+  # Reuses the production hl7_mock_receiver image with training config
+  training-hl7-mock-receiver:
+    container_name: training-hl7-mock-receiver
+    build:
+      context: ../hl7_mock_receiver
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./training-hl7-mock-receiver.env
+    ports:
+      # Expose port 2591 for direct testing (optional)
+      - "2591:2591"
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - training
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7-mock-receiver"
+
 networks:
   integration-hub:
