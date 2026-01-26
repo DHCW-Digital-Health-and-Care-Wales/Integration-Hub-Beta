@@ -8,7 +8,7 @@ import threading
 from hl7apy.mllp import MLLPServer
 
 from training_hl7_server.message_handler import MessageHandler
-
+from .error_handler import ErrorHandler
 
 class TrainingHl7ServerApplication:
     """
@@ -109,6 +109,7 @@ class TrainingHl7ServerApplication:
 
         handlers = {
             "ADT^A31": (MessageHandler, self.expected_version),
+            "ERR": (ErrorHandler, ),
         }
 
         # ===================================================================

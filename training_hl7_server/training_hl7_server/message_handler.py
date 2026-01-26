@@ -64,6 +64,9 @@ class MessageHandler(AbstractHandler):
         print("=" * 60)
 
         try:
+            # STEP 0: Validate HL7 version BEFORE parsing
+            raw_version = self._extract_version_raw(self.incoming_message)
+            self._validate_version(raw_version)
             # ===================================================================
             # STEP 1: Parse the incoming message
             # ===================================================================
@@ -110,7 +113,7 @@ class MessageHandler(AbstractHandler):
             # STEP 4: Validate the HL7 version
             # ===================================================================
             # Ensure the message uses the expected HL7 version
-            self._validate_version(hl7_version)
+   #         self._validate_version(hl7_version)
 
             # ===================================================================
             # STEP 5: Build and return a success ACK
@@ -134,9 +137,9 @@ class MessageHandler(AbstractHandler):
 
             # Try to build an error ACK if we can parse enough of the message
             try:
+                """
                 msg = parse_message(self.incoming_message, find_groups=False)
                 message_control_id = msg.msh.msh_10.value
-
                 # Build an AE (Application Error) ACK with error details
                 ack = self.ack_builder.build_ack(
                     message_control_id=message_control_id,
@@ -144,7 +147,22 @@ class MessageHandler(AbstractHandler):
                     ack_code=Hl7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
+                """
+                """"
+                control_id = self._extract_control_id_raw(self.incoming_message)
+                ack = self.ack_builder.build_minimal_error_ack(
+                    message_control_id=control_id,
+                    error_message=str(e),
+                )
+                """
+                
+                control_id = self._extract_control_id_raw(self.incoming_message)
+                ack = self.ack_builder.build_minimal_error_ack(
+                message_control_id=control_id,
+                ack_code=Hl7Constants.ACK_CODE_ERROR,
+            )
                 return ack.to_er7()
+
             except Exception:
                 # If we can't even parse the message, re-raise the original error
                 raise
@@ -153,7 +171,8 @@ class MessageHandler(AbstractHandler):
             # ===================================================================
             # Handle unexpected errors (e.g., malformed messages)
             # ===================================================================
-            print(f"✗ Error processing message: {e}")
+            print(f"✗ Error processing message: {e}")    
+
             raise
 
     def _validate_version(self, message_version: str) -> None:
@@ -173,3 +192,26 @@ class MessageHandler(AbstractHandler):
         if message_version != self.expected_version:
             raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
+
+    def _extract_version_raw(self, message: str) -> str:
+            try:
+                msh = message.split("\r")[0]
+                fields = msh.split("|")
+                return fields[11]  # MSH-12 (0-based index)
+            except Exception:
+                return ""
+            
+
+    def _extract_control_id_raw(self, message: str) -> str:
+        """
+        Extract MSH-10 (Message Control ID) without fully parsing the HL7 message.
+
+        This is used as a fallback when hl7apy parsing fails.
+        """
+        try:
+            msh = message.split("\r")[0]        # First segment
+            fields = msh.split("|")
+            return fields[9]                    # MSH-10 (0-based index)
+        except Exception:
+            return ""
+          

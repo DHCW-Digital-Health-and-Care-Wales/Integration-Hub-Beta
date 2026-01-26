@@ -32,6 +32,8 @@ dev = [
 # Tool Configuration
 # ===================================================================
 
+
+
 # mypy configuration - static type checking
 [tool.mypy]
 python_version = "3.13"
