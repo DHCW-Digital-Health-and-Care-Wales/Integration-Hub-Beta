@@ -3,7 +3,6 @@ from functools import lru_cache
 from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 from xml.etree.ElementTree import Element as XElem  # nosec B405
 
-from defusedxml import defuse_stdlib
 from defusedxml.ElementTree import fromstring, tostring
 from hl7apy.core import Message
 
@@ -23,8 +22,6 @@ from .utils.xml_schema_maps import (
     _load_segment_occurs_map,
     _load_segment_sequences,
 )
-
-defuse_stdlib()
 
 HL7_XML_NAMESPACE = "urn:hl7-org:v2xml"
 
@@ -579,8 +576,25 @@ def _process_segment_element(seg_elem: XElem, seg_name: str) -> str:
 
 
 def _is_segment_tag(tag: str) -> bool:
-    """Check if tag represents a segment (MSH or 3-letter segment code)."""
-    return tag.startswith("MSH") or (len(tag) == 3 and tag.isalpha())
+    """
+    Check if tag represents an HL7 segment.
+
+    HL7 segments are typically 3 characters starting with uppercase letters,
+    and may contain digits (e.g., MSH, PID, PV1, NK1, IN1, GT1, OBX, etc.).
+
+    Args:
+        tag: The XML tag name to check
+
+    Returns:
+        True if the tag looks like an HL7 segment identifier
+    """
+    if len(tag) != 3:
+        return False
+    # First two characters must be uppercase letters
+    if not (tag[0].isupper() and tag[1].isupper()):
+        return False
+    # Third character can be uppercase letter or digit
+    return tag[2].isupper() or tag[2].isdigit()
 
 
 def _process_group_element(group_elem: XElem) -> List[str]:
