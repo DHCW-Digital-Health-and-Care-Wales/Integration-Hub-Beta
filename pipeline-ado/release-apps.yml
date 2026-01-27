@@ -33,6 +33,7 @@ parameters:
       - tst
       - uat
       - ppd
+      - load
       - prd
 
 variables:
@@ -163,6 +164,14 @@ stages:
           environmentName: 'Integration-Hub-Release-Container-Apps-dev'
           displayName: 'Development'
           resourceGroup: 'UK-South-DHCW-IntHub-DEV-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: false
+          
+        - name: 'load'
+          environmentName: 'Integration-Hub-Release-Container-Apps-load'
+          displayName: 'Load Testing'
+          resourceGroup: 'UK-South-DHCW-IntHub-LOAD-App-RG'
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: false
