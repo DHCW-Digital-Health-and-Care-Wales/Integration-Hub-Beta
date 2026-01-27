@@ -2,6 +2,25 @@
 
 PHW (Public Health Wales) message transformation service. Subscribes to PHW-specific messages (SENDING_APP: 252) to MPI format. Transforms relevant datetime fields to an MPI format.
 
+## Transformation Details
+
+This transformer converts PHW HL7 messages to MPI-compatible format through the following key transformations:
+
+### DateTime Field Transformation (MSH-7)
+- **From**: `YYYY-MM-DD HH:MM:SS` (e.g., `2023-01-15 09:45:30`)
+- **To**: `YYYYMMDDHHMMSS` (e.g., `20230115094530`)
+- **Applied to**: MSH.7 (Message creation timestamp)
+
+### Date of Death Handling (PID-29)
+- **Special handling only**: The value `RESURREC` (case-insensitive) is transformed to `""` (empty string) to indicate resurrection/correction
+- **All other values**: Passed through unchanged (only trimmed of whitespace)
+- **Applied to**: PID.29 (Patient death date and time)
+
+### Other Mappings
+- **MSH segment**: Fields 3-21 are copied directly from source to target
+- **PID segment**: Fields 1-28 and 30-39 are copied directly
+- **Additional segments**: All other segments are copied without transformation
+
 ## Development
 
 ### Dependencies
@@ -49,14 +68,14 @@ You can run transformer directly with python or build docker image and run it in
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HEALTH_CHECK_HOST** - default 127.0.0.1
-- **health_check_port** - default 9000
+- **HEALTH_CHECK_PORT** - default 9000
 
 ### Running directly
 
-From the [hl7_sender](.) folder run:
+From the hl7_phw_transformer folder run:
 
 ```sh
-python -m hl7_sender.application
+python -m hl7_phw_transformer.application
 ```
 
 ### Running in docker

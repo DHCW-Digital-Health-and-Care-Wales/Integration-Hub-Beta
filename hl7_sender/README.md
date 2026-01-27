@@ -51,7 +51,7 @@ Destination host and port should be configured using environment variables confi
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HEALTH_CHECK_HOST** - default 127.0.0.1
-- **health_check_port** - default 9000
+- **HEALTH_CHECK_PORT** - default 9000
 
 ### Running directly
 

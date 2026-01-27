@@ -13,9 +13,11 @@ HL7 Chemocare to MPI Transformer Service - transforms messages from Chemocare sy
 ## Transformation Details
 
 ### Processed SENDING_APP Values
+
 - 245, 212, 192, 224
 
 ### Key Transformations
+
 - **MSH.9/MSG.3** → Hardcoded "ADT_A05"
 - **MSH.12/VID.1** → Hardcoded "2.5"
 - **PID.3** → Restructured with NHS and Hospital identifier formats
@@ -67,12 +69,17 @@ uv run python -m unittest discover tests
 ## Running
 
 ### Locally
+
 ```bash
 python -m hl7_chemo_transformer.application
 ```
 
 ### Docker
+
+You can build the docker image with provided [Dockerfile](./Dockerfile) or you can run selected workflow
+using Docker compose configuration in [local](../local/README.md).
+
 ```bash
 docker build -t hl7-chemo-transformer .
 docker run --env-file .env hl7-chemo-transformer
-``` 
+```
