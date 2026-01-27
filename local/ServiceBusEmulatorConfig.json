@@ -101,8 +101,50 @@
               "RequiresDuplicateDetection": false,
               "RequiresSession": false
             }
-          }
-        ],
+          },
+          {
+            "Name": "local-inthub-training-transformer-ingress",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": false,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 10,
+              "RequiresDuplicateDetection": false,
+              "RequiresSession": true
+            }
+          },
+          {
+            "Name": "local-inthub-training-egress",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": false,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 10,
+              "RequiresDuplicateDetection": false,
+              "RequiresSession": false
+            }
+          },
+          {
+              "Name": "local-inthub-training-mock-receiver",
+              "Properties": {
+                "DeadLetteringOnMessageExpiration": false,
+                "DefaultMessageTimeToLive": "PT1H",
+                "DuplicateDetectionHistoryTimeWindow": "PT20S",
+                "ForwardDeadLetteredMessagesTo": "",
+                "ForwardTo": "",
+                "LockDuration": "PT1M",
+                "MaxDeliveryCount": 10,
+                "RequiresDuplicateDetection": false,
+                "RequiresSession": false
+              }
+            }
+          ],   
         "Topics": [
           {
             "Name": "mpihl7input",

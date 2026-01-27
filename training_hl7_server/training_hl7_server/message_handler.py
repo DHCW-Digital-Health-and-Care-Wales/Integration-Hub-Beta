@@ -3,6 +3,7 @@
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 
+from message_bus_lib.message_sender_client import MessageSenderClient
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import Hl7Constants
 
@@ -30,7 +31,10 @@ class MessageHandler(AbstractHandler):
     def __init__(
         self,
         incoming_message: str,
-        expected_version: str = "2.3.1",
+        expected_version: str | None = None,
+        allowed_senders: str | None = None,
+        sender_client: MessageSenderClient | None = None,
+
     ) -> None:
         """
         Initialize the message handler.
@@ -44,6 +48,13 @@ class MessageHandler(AbstractHandler):
 
         # Store the expected HL7 version for validation
         self.expected_version = expected_version
+
+        if allowed_senders:
+            self.allowed_senders = [sender.strip() for sender in allowed_senders.split(",")]
+        else:
+            self.allowed_senders = None
+        
+        self.sender_client = sender_client
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
@@ -106,16 +117,32 @@ class MessageHandler(AbstractHandler):
             print(self.incoming_message)
             print("=" * 60 + "\n")
 
+            if self.sender_client:
+                print("-" * 60)
+                print("PUBLISHING TO SERVICE BUS (Week 2)")
+                self.sender_client.send_text_message(self.incoming_message)
+                print(f"✓ Message published to egress queue: {message_control_id}")
+            else:
+                print("  (Service Bus publishing skipped - sender not configured)")
+
             # ===================================================================
             # STEP 4: Validate the HL7 version
             # ===================================================================
             # Ensure the message uses the expected HL7 version
             self._validate_version(hl7_version)
+            self._validate_sending_app(sending_app)
 
-            # ===================================================================
-            # STEP 5: Build and return a success ACK
-            # ===================================================================
-            # If we got here, validation passed - send an AA (Application Accept) ACK
+
+            if self.sender_client:
+                            print("-" * 60)
+                            print("PUBLISHING TO SERVICE BUS (Week 2)")
+                            # Publish the raw HL7 message as UTF-8 text
+                            # The transformer will parse and transform this message
+                            self.sender_client.send_text_message(self.incoming_message)
+                            print(f"✓ Message published to egress queue: {message_control_id}")
+            else:
+                print("  (Service Bus publishing skipped - sender not configured)")
+
             ack = self.ack_builder.build_ack(
                 message_control_id=message_control_id,
                 original_msg=msg,
@@ -157,19 +184,21 @@ class MessageHandler(AbstractHandler):
             raise
 
     def _validate_version(self, message_version: str) -> None:
-        """
-        Validate the HL7 version from MSH-12.
+        if self.expected_version is None:
+                    print("  (HL7 version validation skipped - no version configured)")
+                    return
 
-        This ensures we only accept messages with the expected HL7 version.
-        Different HL7 versions can have different field definitions and
-        requirements, so it's important to validate this.
-
-        Args:
-            message_version: The HL7 version from the message.
-
-        Raises:
-            ValidationError: If the version doesn't match expected.
-        """
         if message_version != self.expected_version:
             raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
+
+    def _validate_sending_app(self, sending_app: str):
+        if self.allowed_senders is None:
+            print("  (Sending app validation skipped - no allowed list configured)")
+            return
+
+        if sending_app not in self.allowed_senders:
+            allowed_list = ", ".join(self.allowed_senders)
+            raise ValidationError(f"Sending application '{sending_app}' is not in allowed list: [{allowed_list}]")
+
+        print(f"✓ Sending application validated: {sending_app} (in allowed list)")
