@@ -7,6 +7,7 @@
 | 0.2     | 11/09/2025 | Added heading numbering and a high level business flow diagram in section 6 | CI     |
 | 0.3     | 12/09/2025 | New section on integration hub platform                                     | LJ     |
 | 0.4     | 29/09/2025 | Update diagrams, streamline content and add panels for key info             | CI     |
+| 0.5     | 27/01/2026 | Add environment variables quick reference                                   | CI     |
 
 Table of Contents
 
@@ -32,7 +33,7 @@ Table of Contents
   - [HL7 Server Components - The Reception Desks](#hl7-server-components---the-reception-desks)
   - [Azure Service Bus](#azure-service-bus)
   - [Transformers](#transformers)
-    - [hl7_transformer/ (PHW Transformer)](#hl7_transformer-phw-transformer)
+    - [hl7_phw_transformer/ (PHW Transformer)](#hl7_phw_transformer-phw-transformer)
     - [hl7_chemo_transformer/ (Chemocare Transformer)](#hl7_chemo_transformer-chemocare-transformer)
     - [hl7_pims_transformer/ (PIMS Transformer)](#hl7_pims_transformer-pims-transformer)
   - [Senders](#senders)
@@ -41,19 +42,20 @@ Table of Contents
     - [Health check library](#health-check-library)
       - [Why use TCP for health checks in Azure](#why-use-tcp-for-health-checks-in-azure)
     - [Message bus library](#message-bus-library)
+    - [Transformer Base Library](#transformer-base-library)
     - [Event logger library](#event-logger-library)
       - [Why?](#why-1)
       - [Deep dive](#deep-dive)
       - [How logging works](#how-logging-works)
       - [Azure Monitor](#azure-monitor)
-    - [Validation library](#validation-library)
-      - [Structure](#structure)
-        - [Schema resources](#schema-resources)
-        - [Core validation functions](#core-validation-functions)
-        - [Helper/utility functions](#helperutility-functions)
-      - [Validation step by step](#validation-step-by-step)
-      - [Usage in HL7 server](#usage-in-hl7-server)
-      - [Why this approach](#why-this-approach)
+    - [HL7 Validation Library](#hl7-validation-library)
+      - [Purpose](#purpose)
+      - [Key Features](#key-features-1)
+      - [Library Structure](#library-structure)
+      - [Validation Process (Step-by-Step)](#validation-process-step-by-step)
+      - [Developer Guide: Adding New Schemas](#developer-guide-adding-new-schemas)
+      - [Usage Example](#usage-example)
+      - [Integration with HL7 Server](#integration-with-hl7-server)
 - [Tech Stack](#tech-stack)
   - [UV and Python](#uv-and-python)
   - [Local development](#local-development)
@@ -62,6 +64,7 @@ Table of Contents
     - [Docker compose structure](#docker-compose-structure)
     - [Secrets and security management, corporate networks](#secrets-and-security-management-corporate-networks)
     - [Dev workflow](#dev-workflow)
+  - [Environment Variables Quick Reference](#environment-variables-quick-reference)
 - [Integration Hub Platform](#integration-hub-platform)
   - [Azure Resources](#azure-resources)
     - [Applications in Azure Container Apps](#applications-in-azure-container-apps)
@@ -309,7 +312,7 @@ graph LR
 
 Fig.1 A high level overview of how the components link together to form the 4 flows to date (24 Sept 2025)
 
-## HL7 Server Components
+## HL7 Server Components - The Reception Desks
 
 These are the "front doors" that receive patient data from different healthcare systems.
 
@@ -969,6 +972,62 @@ The "-d" flag runs services in the background so developers can continue working
 
 > [!NOTE]
 > For more information about runing the services locally including running the HAPI TestPanel, follow the steps in the [README in `local/` ](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Beta/tree/main/local)
+
+## Environment Variables Quick Reference
+
+The following environment variables are used across the Integration Hub services. They can be configured via `.env` files in the `local/` directory for local development, or via Azure Container Apps configuration in production.
+
+### Common Variables (All Services)
+
+| Variable                                | Description                                   | Example                          |
+| --------------------------------------- | --------------------------------------------- | -------------------------------- |
+| `SERVICE_BUS_CONNECTION_STRING`         | Azure Service Bus connection string           | `Endpoint=sb://...`              |
+| `SERVICE_BUS_NAMESPACE`                 | Alternative to connection string (production) | `sb-inthub-prod`                 |
+| `LOG_LEVEL`                             | Application logging verbosity                 | `INFO`, `DEBUG`, `ERROR`         |
+| `AZURE_LOG_LEVEL`                       | Azure SDK logging verbosity                   | `WARN`, `ERROR`                  |
+| `AUDIT_QUEUE_NAME`                      | Queue name for audit messages                 | `audit-queue`                    |
+| `WORKFLOW_ID`                           | Identifies the business workflow              | `phw-to-mpi`, `chemocare-to-mpi` |
+| `MICROSERVICE_ID`                       | Unique identifier for the service instance    | `phw_hl7_server`                 |
+| `HEALTH_BOARD`                          | Health board identifier for metrics           | `PHW`, `CHEMO`, `PIMS`           |
+| `PEER_SERVICE`                          | Target system identifier                      | `MPI`                            |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure Application Insights connection         | `InstrumentationKey=...`         |
+
+### HL7 Server Variables
+
+| Variable                  | Description                           | Example                                |
+| ------------------------- | ------------------------------------- | -------------------------------------- |
+| `HOST`                    | Binding address for MLLP listener     | `0.0.0.0`                              |
+| `PORT`                    | Port for MLLP listener                | `2575`                                 |
+| `EGRESS_QUEUE_NAME`       | Queue to send validated messages to   | `local-inthub-phw-transformer-ingress` |
+| `EGRESS_SESSION_ID`       | Service Bus session ID for ordering   | `phw-to-mpi`                           |
+| `HL7_VERSION`             | Expected HL7 version                  | `2.5`                                  |
+| `HL7_VALIDATION_FLOW`     | Validation schema flow to use         | `phw`, `chemo`, `pims`, `paris`        |
+| `HL7_VALIDATION_STANDARD` | HL7 version for validation (optional) | `2.4`, `2.5`                           |
+| `SENDING_APP`             | Expected sending application code     | `252`                                  |
+| `MAX_MESSAGE_SIZE_BYTES`  | Maximum allowed message size          | `1048576` (1MB)                        |
+
+### Transformer Variables
+
+| Variable             | Description                           | Example                                |
+| -------------------- | ------------------------------------- | -------------------------------------- |
+| `INGRESS_QUEUE_NAME` | Queue to receive messages from        | `local-inthub-phw-transformer-ingress` |
+| `INGRESS_SESSION_ID` | Service Bus session ID for input      | `phw-to-mpi`                           |
+| `EGRESS_QUEUE_NAME`  | Queue to send transformed messages to | `local-inthub-mpi-sender-ingress`      |
+| `EGRESS_SESSION_ID`  | Service Bus session ID for output     | `mpi`                                  |
+
+### Sender Variables
+
+| Variable                  | Description                        | Example                           |
+| ------------------------- | ---------------------------------- | --------------------------------- |
+| `INGRESS_QUEUE_NAME`      | Queue to receive messages from     | `local-inthub-mpi-sender-ingress` |
+| `INGRESS_SESSION_ID`      | Service Bus session ID for input   | `mpi`                             |
+| `RECEIVER_MLLP_HOST`      | Target system hostname             | `mpi-hl7-mock-receiver`           |
+| `RECEIVER_MLLP_PORT`      | Target system port                 | `2576`                            |
+| `ACK_TIMEOUT_SECONDS`     | Timeout waiting for acknowledgment | `30`                              |
+| `MAX_MESSAGES_PER_MINUTE` | Rate limit for outgoing messages   | `30`, `60`                        |
+
+> [!TIP]
+> In production, use `SERVICE_BUS_NAMESPACE` with managed identity authentication instead of `SERVICE_BUS_CONNECTION_STRING` with shared access keys. See the common environment variables shared across all container apps in the [Integration Hub Terraform repository](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Terraform/blob/50ca9c12f579867ba09d0eed7b83efcf7d5adbaf/components/app-platform/locals.tf#L107)
 
 # Integration Hub Platform
 
