@@ -264,5 +264,29 @@ services:
         aliases:
           - "mpi-hl7-server"
 
+  # ========================================
+  # TRAINING SERVERS
+  # ========================================
+  # Training server for learning HL7 MLLP protocol
+  # Uses profile "training" so it only starts when explicitly requested
+  training-hl7-server:
+    container_name: training-hl7-server
+    build:
+      context: ../training_hl7_server
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./training-hl7-server.env
+    ports:
+      # Expose port 2590 for HL7 message testing
+      - "2590:2590"
+    restart: on-failure
+    profiles:
+      # Profile ensures this only starts with: docker compose --profile training up
+      - training
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7-server"
+
 networks:
   integration-hub:
