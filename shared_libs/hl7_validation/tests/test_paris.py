@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_validation import validate_er7_with_flow
+from hl7_validation import validate_er7_with_flow_schema
 from hl7_validation.validate import XmlValidationError
 
 
@@ -13,7 +13,7 @@ class TestParisValidation(unittest.TestCase):
             "PV1||N"
         ])
 
-        validate_er7_with_flow(er7, "paris")
+        validate_er7_with_flow_schema(er7, "paris")
 
     def test_paris_a39_schema_validation_sucessfull(self) -> None:
         er7 = "\r".join([
@@ -23,7 +23,7 @@ class TestParisValidation(unittest.TestCase):
             "MRG|700001^^^169^PI"
         ])
 
-        validate_er7_with_flow(er7, "paris")
+        validate_er7_with_flow_schema(er7, "paris")
 
     def test_paris_a05_incorrectly_structured_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -35,7 +35,7 @@ class TestParisValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "paris")
+            validate_er7_with_flow_schema(er7, "paris")
         error_message = str(context.exception)
         self.assertIn("Unable to parse ER7 message", error_message)
 
@@ -48,6 +48,6 @@ class TestParisValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "paris")
+            validate_er7_with_flow_schema(er7, "paris")
         error_message = str(context.exception)
         self.assertIn("PV1", error_message)

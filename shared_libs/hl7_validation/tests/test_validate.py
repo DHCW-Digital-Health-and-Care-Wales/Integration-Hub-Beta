@@ -2,6 +2,7 @@ import os
 import unittest
 
 from defusedxml import ElementTree as ET
+from hl7apy.parser import parse_message
 
 from hl7_validation.convert import er7_to_hl7v2xml
 from hl7_validation.schemas import (
@@ -11,7 +12,8 @@ from hl7_validation.schemas import (
 )
 from hl7_validation.validate import (
     XmlValidationError,
-    validate_er7_with_flow,
+    validate_er7_with_flow_schema,
+    validate_parsed_message_with_flow_schema,
 )
 
 
@@ -29,7 +31,7 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
         ])
 
         try:
-            validate_er7_with_flow(er7, "phw")
+            validate_er7_with_flow_schema(er7, "phw")
         except XmlValidationError as e:
             self.fail(f"Validation should succeed with fallback: {e}")
 
@@ -76,3 +78,36 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
         self.assertEqual(cx1_2, "6666666666")
         self.assertEqual(hd1_2, "NHS")
         self.assertEqual(cx5_2, "NH")
+
+    def test_parsed_message_flow_validation_successful(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A31|MSGID|P|2.5",
+            "EVN|A31|20250101010101",
+            "PID|||8888888^^^252^PI||SURNAME^FORENAME",
+            "PV1||",
+        ])
+
+        msg = parse_message(er7, find_groups=False)
+        validate_parsed_message_with_flow_schema(msg, er7, "phw")
+
+    def test_parsed_message_flow_validation_invalid_raises(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A31|MSGID|P|2.5",
+            "EVN|A31|20250101010101",
+        ])
+
+        msg = parse_message(er7, find_groups=False)
+        with self.assertRaises(XmlValidationError):
+            validate_parsed_message_with_flow_schema(msg, er7, "phw")
+
+    def test_parsed_message_flow_validation_unknown_flow_raises(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SND|FAC|RCV|FAC|20250101010101||ADT^A31|MSGID|P|2.5",
+            "EVN|A31|20250101010101",
+            "PID|||8888888^^^252^PI||SURNAME^FORENAME",
+            "PV1||",
+        ])
+
+        msg = parse_message(er7, find_groups=False)
+        with self.assertRaises(ValueError):
+            validate_parsed_message_with_flow_schema(msg, er7, "unknown_flow")

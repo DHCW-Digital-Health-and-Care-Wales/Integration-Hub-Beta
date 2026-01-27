@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_validation import validate_er7_with_flow
+from hl7_validation import validate_er7_with_flow_schema
 from hl7_validation.validate import XmlValidationError
 
 
@@ -14,7 +14,7 @@ class TestPhwMessages(unittest.TestCase):
             "PV1||"
         ])
 
-        validate_er7_with_flow(er7, "phw")
+        validate_er7_with_flow_schema(er7, "phw")
 
     def test_phw_a39_schema_validation_successful(self) -> None:
         er7 = "\r".join([
@@ -27,7 +27,7 @@ class TestPhwMessages(unittest.TestCase):
             "PV1||"
         ])
 
-        validate_er7_with_flow(er7, "phw")
+        validate_er7_with_flow_schema(er7, "phw")
 
     def test_phw_a05_incorrectly_structured_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -40,7 +40,7 @@ class TestPhwMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "phw")
+            validate_er7_with_flow_schema(er7, "phw")
         error_message = str(context.exception)
         self.assertIn("Unable to parse ER7 message", error_message)
 
@@ -57,7 +57,7 @@ class TestPhwMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "phw")
+            validate_er7_with_flow_schema(er7, "phw")
         error_message = str(context.exception)
         self.assertIn("Unable to parse ER7 message", error_message)
 
@@ -71,7 +71,7 @@ class TestPhwMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "phw")
+            validate_er7_with_flow_schema(er7, "phw")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}PV1' expected", error_message)
 
@@ -86,6 +86,6 @@ class TestPhwMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "phw")
+            validate_er7_with_flow_schema(er7, "phw")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}MRG' expected", error_message)

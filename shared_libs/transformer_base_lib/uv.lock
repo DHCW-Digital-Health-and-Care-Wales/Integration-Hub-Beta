@@ -404,7 +404,7 @@ dev = [
     { name = "bandit", specifier = "==1.9.2" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
-    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.11.1" },
+    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.14.4" },
 ]
 
 [[package]]

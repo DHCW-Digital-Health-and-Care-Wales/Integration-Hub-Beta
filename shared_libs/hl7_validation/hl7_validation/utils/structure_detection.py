@@ -34,6 +34,7 @@ def _detect_base_prefix(structure_xsd_path: Optional[str]) -> str:
     )
 
 
+@lru_cache(maxsize=64)
 def _load_message_structure(
     structure_xsd_path: str,
     structure_id: str,
