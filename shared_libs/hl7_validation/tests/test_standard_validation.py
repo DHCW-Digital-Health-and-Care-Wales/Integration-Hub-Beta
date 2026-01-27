@@ -197,21 +197,11 @@ class TestXmlValidationWithHl7apy(unittest.TestCase):
     </PV1>
 </ADT_A05>"""
 
-    def test_xml_validation_v25_successful(self) -> None:
-        xml = self._create_valid_xml("2.5")
-        validate_xml_with_hl7apy(xml, "2.5")
-
-    def test_xml_validation_v251_successful(self) -> None:
-        xml = self._create_valid_xml("2.5.1")
-        validate_xml_with_hl7apy(xml, "2.5.1")
-
-    def test_xml_validation_v24_successful(self) -> None:
-        xml = self._create_valid_xml("2.4")
-        validate_xml_with_hl7apy(xml, "2.4")
-
-    def test_xml_validation_v26_successful(self) -> None:
-        xml = self._create_valid_xml("2.6")
-        validate_xml_with_hl7apy(xml, "2.6")
+    def test_xml_validation_successful_for_supported_versions(self) -> None:
+        for version in ("2.4", "2.5", "2.5.1", "2.6"):
+            with self.subTest(version=version):
+                xml = self._create_valid_xml(version)
+                validate_xml_with_hl7apy(xml, version)
 
     def test_xml_validation_invalid_version_raises(self) -> None:
         xml = self._create_valid_xml("2.5")
