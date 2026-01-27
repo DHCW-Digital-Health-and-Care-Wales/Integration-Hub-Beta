@@ -24,6 +24,7 @@ def _check_version_supported(version: str) -> None:
     if version not in SUPPORTED_VERSIONS:
         raise XmlValidationError(f"Unsupported HL7 version '{version}'. Supported versions: {_VERSIONS_STR}")
 
+
 def validate_er7_with_standard(er7_string: str, version: str) -> None:
     """
     Validate HL7 ER7 message against standard HL7 specification using hl7apy.
@@ -63,11 +64,9 @@ def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
     """
     _check_version_supported(version)
 
-    msg_version = getattr(msg, 'version', None)
+    msg_version = getattr(msg, "version", None)
     if msg_version and msg_version != version:
-        raise XmlValidationError(
-            f"Message version {msg_version} does not match requested version {version}"
-        )
+        raise XmlValidationError(f"Message version {msg_version} does not match requested version {version}")
 
     try:
         msg.validate()
