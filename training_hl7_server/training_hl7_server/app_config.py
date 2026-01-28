@@ -40,6 +40,17 @@ import os
 from dataclasses import dataclass
 
 
+def _read_env(name: str) -> str | None:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return None
+    return value
+
+def _read_env_with_default(name: str, default) -> str:
+    value = _read_env(name)
+    return value if value is not None else default
+
+
 @dataclass
 class AppConfig:
     """
@@ -66,15 +77,6 @@ class AppConfig:
         allowed_senders: Comma-separated list of allowed sending application
                          codes (MSH-3). If None, all senders are accepted.
                          Example: "169,245" allows only apps 169 and 245.
-
-        connection_string: Azure Service Bus connection string.
-                           WEEK 2 ADDITION: Used to connect to Service Bus.
-
-        egress_queue_name: Queue to publish HL7 messages to for transformer.
-                           WEEK 2 ADDITION: Messages go here after ACK.
-
-        egress_session_id: Session ID for the egress queue (if session-enabled).
-                           WEEK 2 ADDITION: Used for ordered message processing.
     """
 
     # =========================================================================
@@ -113,8 +115,8 @@ class AppConfig:
         """
 
         return AppConfig(
-            host = os.environ.get("HOST", "0.0.0.0"),
-            port = int(os.environ.get("PORT", "2575")),
-            hl7_version = os.environ.get("HL7_VERSION", "2.3.1"),
-            allowed_senders = os.environ.get("ALLOWED_SENDERS")
+            host = _read_env_with_default("HOST", "0.0.0.0"),   #os.environ.get("HOST", "0.0.0.0"),
+            port = int(_read_env_with_default("PORT", 2575)),   #int(os.environ.get("PORT", "2575")),
+            hl7_version = _read_env("HL7_VERSION"),             #os.environ.get("HL7_VERSION", "2.3.1"),
+            allowed_senders = _read_env("ALLOWED_SENDERS")      #os.environ.get("ALLOWED_SENDERS")
         )

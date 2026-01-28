@@ -94,6 +94,7 @@ class TrainingHl7ServerApplication:
         print(f"Host: {self.app_config.host}")
         print(f"Port: {self.app_config.port}")
         print(f"Expected HL7 Version: {self.app_config.hl7_version or 'Any'}")
+        print(f"Allowed Senders: {self.app_config.allowed_senders or 'Any'}")
         print("=" * 60)
         print("Waiting for HL7 messages...")
         print("Press Ctrl+C to stop the server")
