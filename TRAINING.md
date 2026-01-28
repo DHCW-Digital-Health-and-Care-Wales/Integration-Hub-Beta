@@ -7,7 +7,7 @@
 | 0.2     | 11/09/2025 | Added heading numbering and a high level business flow diagram in section 6 | CI     |
 | 0.3     | 12/09/2025 | New section on integration hub platform                                     | LJ     |
 | 0.4     | 29/09/2025 | Update diagrams, streamline content and add panels for key info             | CI     |
-| 0.5     | 27/01/2026 | Add environment variables quick reference                                   | CI     |
+| 0.5     | 27/01/2026 | Add environment variables quick reference, some content updates             | CI     |
 
 Table of Contents
 
@@ -522,6 +522,8 @@ Further example - in the [Message bus library](#message-bus-library)
 
 ### Health check library
 
+> For complete documentation and usage examples, see [shared_libs/health_check_lib/README.md](shared_libs/health_check_lib/README.md).
+
 Provides a standardized way for all services to report their status - a piece of software that helps monitor whether your application is running correctly.
 
 Example: Operations team can check if for example the Chemocare transformer is running properly.
@@ -579,6 +581,8 @@ The load balancer needs to know which container instances are healthy so it can 
 
 ### Message bus library
 
+> For complete documentation and usage examples, see [shared_libs/message_bus_lib/README.md](shared_libs/message_bus_lib/README.md).
+
 The message bus library is a comprehensive Azure Service Bus wrapper designed specifically for healthcare data processing in Azure environments. It provides a simplified, standardized interface for sending and receiving messages while handling complex Azure Service Bus operations, error recovery, audit logging, and compliance tracking automatically.
 
 The library is built around the concept of reliable message processing with full audit trails.
@@ -625,6 +629,8 @@ Maximum delay: Caps at 15 minutes to prevent excessive delays
 
 ### Transformer Base Library
 
+> For complete documentation and usage examples, see [shared_libs/transformer_base_lib/README.md](shared_libs/transformer_base_lib/README.md).
+
 The `transformer_base_lib` simplifies the creation of HL7 message transformers. It abstracts away the common boilerplate code required to create a transformer service in the Integration Hub.
 
 #### Key Features
@@ -638,6 +644,8 @@ The `transformer_base_lib` simplifies the creation of HL7 message transformers. 
 By using this library, developers can focus solely on the specific transformation logic (the "mappers") without worrying about the underlying infrastructure code.
 
 ### Event logger library
+
+> For complete documentation and usage examples, see [shared_libs/event_logger_lib/README.md](shared_libs/event_logger_lib/README.md).
 
 The event logger library is a shared component that standardises how different microservices in the Integration Hub log important events and activities.
 
@@ -763,6 +771,8 @@ In hl7_server
 - This creates a complete audit trail of what happens to each message as it flows through the system.
 
 ### HL7 Validation Library
+
+> For complete documentation and usage examples, see [shared_libs/hl7_validation/README.md](shared_libs/hl7_validation/README.md).
 
 The `hl7_validation` library is a comprehensive system designed to validate HL7 messages against predefined XML schemas (XSD) to ensure they conform to expected standards and structures.
 
