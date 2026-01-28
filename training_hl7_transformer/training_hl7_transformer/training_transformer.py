@@ -51,6 +51,7 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from training_hl7_transformer.app_config import TransformerConfig
 from training_hl7_transformer.mappers.msh_mapper import map_msh
+from training_hl7_transformer.mappers.pid_mapper import map_pid
 
 
 class TrainingTransformer:
@@ -131,6 +132,9 @@ class TrainingTransformer:
 
         # Apply MSH mapper to transform the Message Header segment
         _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
+        
+        # Apply PID mapper
+        _ = map_pid(hl7_msg,new_message)
 
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
