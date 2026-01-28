@@ -29,6 +29,7 @@ See hl7_phw_transformer/hl7_phw_transformer/mappers/msh_mapper.py
 for a production example that also transforms the datetime format.
 """
 
+import datetime
 from hl7apy.core import Message
 
 # Import field utilities from shared_libs
@@ -104,6 +105,11 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     # - Change datetime formats (see PHW transformer)
     new_sending_app = "TRAINING_TRANSFORMER"
     new_msh.msh_3.value = new_sending_app
+    date_time = "20260127113000"
+    required_format = "%Y-%m-%d %H:%M:%S" 
+    dt = datetime.datetime.strptime(date_time, "%Y%m%d%H%M%S")
+    dt = dt.strftime(required_format)
+    new_msh.msh_7.value = dt  # Static datetime for training
 
     # =========================================================================
     # STEP 4: Print transformation details (local logging)
@@ -111,6 +117,7 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     # In production, we'd use the event_logger library for structured logging.
     # For training, we use print() to see what's happening.
     print(f"  MSH-3 transformed: '{original_sending_app}' -> '{new_sending_app}'")
+    print(f"  MSH-7 set to static datetime: '{new_msh.msh_7.value}'")
 
     # =========================================================================
     # STEP 5: Return transformation details
