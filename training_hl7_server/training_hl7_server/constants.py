@@ -26,3 +26,4 @@ class Hl7Constants:
     # ACK Codes - indicate the result of message processing
     ACK_CODE_ACCEPT = "AA"  # Application Accept - message was successfully processed
     ACK_CODE_ERROR = "AE"  # Application Error - message had validation errors
+    ACK_CODE_REJECT = "AR"  # Application Reject - message was rejected

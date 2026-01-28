@@ -1,7 +1,7 @@
 """Message handler for processing incoming HL7 messages."""
 
-from hl7apy.mllp import AbstractHandler
-from hl7apy.parser import parse_message
+from hl7apy.mllp import AbstractHandler  # type: ignore[import-untyped]
+from hl7apy.parser import parse_message  # type: ignore[import-untyped]
 
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import Hl7Constants
@@ -78,20 +78,20 @@ class MessageHandler(AbstractHandler):
             # The MSH (Message Header) segment contains metadata about the message
 
             # MSH-10: Message Control ID - unique identifier for this message
-            message_control_id = msg.msh.msh_10.value
+            message_control_id = msg.msh.msh_10.value # type: ignore
 
             # MSH-9: Message Type - format is "MessageType^TriggerEvent"
             # Example: "ADT^A31" means ADT message with trigger event A31
-            message_type = msg.msh.msh_9.to_er7()
+            message_type = msg.msh.msh_9.to_er7() # type: ignore
 
             # MSH-12: Version ID - the HL7 version (e.g., "2.3.1")
-            hl7_version = msg.msh.msh_12.value
+            hl7_version = msg.msh.msh_12.value # type: ignore
 
             # MSH-3: Sending Application - the system that sent this message
-            sending_app = msg.msh.msh_3.value
+            sending_app = msg.msh.msh_3.value # type: ignore
 
             # MSH-4: Sending Facility - the facility/hospital that sent the message
-            sending_facility = msg.msh.msh_4.value
+            sending_facility = msg.msh.msh_4.value # type: ignore
 
             # ===================================================================
             # STEP 3: Print message details for debugging
@@ -135,7 +135,7 @@ class MessageHandler(AbstractHandler):
             # Try to build an error ACK if we can parse enough of the message
             try:
                 msg = parse_message(self.incoming_message, find_groups=False)
-                message_control_id = msg.msh.msh_10.value
+                message_control_id = msg.msh.msh_10.value # type: ignore
 
                 # Build an AE (Application Error) ACK with error details
                 ack = self.ack_builder.build_ack(

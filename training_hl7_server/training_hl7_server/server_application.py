@@ -1,5 +1,3 @@
-"""Main server application for the Training HL7 Server."""
-
 import signal
 import sys
 import threading
@@ -7,84 +5,29 @@ import threading
 from hl7apy.mllp import MLLPServer  # type: ignore[import-untyped]
 
 from training_hl7_server.app_config import AppConfig
+from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
 
 
 class TrainingHl7ServerApplication:
-    """
-    The main application class for the Training HL7 Server.
-
-    This class:
-    1. Loads configuration from environment variables (EXERCISE 1)
-    2. Sets up the MLLP server with message handlers
-    3. Registers handlers for multiple message types (EXERCISE 3)
-    4. Includes a fallback error handler (EXERCISE 2)
-    5. Handles graceful shutdown on SIGINT/SIGTERM
-
-    EXERCISE SOLUTIONS INTEGRATED HERE:
-    ----------------------------------
-    - Exercise 1: Uses AppConfig class for centralized config management
-    - Exercise 2: ErrorHandler registered with "ERR" key
-    - Exercise 3: ADT^A28 and ADT^A40 added to handlers dictionary
-    - Exercise 4: allowed_senders passed to MessageHandler from AppConfig
-    """
+    """Main server application for the Training HL7 Server"""
 
     def __init__(self) -> None:
-        """Initialize the server application."""
-
-        # ===================================================================
-        #Exercise 1: Uses AppConfig class for centralized config management
-        # ===================================================================
+        """entry point for the Training HL7 Server application."""
         self.app_config = AppConfig.read_env_config()
-
-        # ===================================================================
-        # Server instance (will be set when the server starts)
-        # ===================================================================
         self.server: MLLPServer | None = None
         self.server_thread: threading.Thread | None = None
 
-        # ===================================================================
-        # Set up signal handlers for graceful shutdown
-        # ===================================================================
-        # When the user presses Ctrl+C or the container is stopped,
-        # we want to shut down gracefully instead of abruptly terminating
-
-        # SIGINT: Signal sent when Ctrl+C is pressed
         signal.signal(signal.SIGINT, self._signal_handler)
-
-        # SIGTERM: Signal sent when the process is asked to terminate
-        # (e.g., by Docker when stopping a container)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
     def _signal_handler(self, signum: int, frame: object) -> None:
-        """
-        Handle shutdown signals gracefully.
-
-        This method is called when the process receives SIGINT or SIGTERM.
-
-        Args:
-            signum: The signal number that was received.
-            frame: The current stack frame (not used here).
-        """
         print(f"\nReceived signal {signum}, shutting down...")
         self.stop_server()
         sys.exit(0)
 
     def start_server(self) -> None:
-        """
-        Start the MLLP server and listen for connections.
-
-        This method sets up the MLLP server with message handlers and
-        begins listening for incoming HL7 messages. It blocks until
-        the server is stopped.
-
-        This method demonstrates all 4 exercise solutions:
-        - Exercise 1: Config loaded from AppConfig in __init__
-        - Exercise 2: ErrorHandler registered with "ERR" key
-        - Exercise 3: ADT^A28 and ADT^A40 handlers added
-        - Exercise 4: allowed_senders passed to MessageHandler
-        """
-
+        """start_server starts the MLLP HL7 server."""
         # ===================================================================
         # Print startup information
         # ===================================================================
@@ -111,7 +54,8 @@ class TrainingHl7ServerApplication:
         # 3. Call the handler's reply() method to get the ACK response
 
         handlers = {
-            "ADT^A31": (MessageHandler, self.app_config.hl7_version)
+            "ADT^A31": (MessageHandler, self.app_config.hl7_version),
+            "ERR": (ErrorHandler),
         }
 
         # ===================================================================
@@ -143,8 +87,9 @@ class TrainingHl7ServerApplication:
         self.server_thread.daemon = True  # Thread will exit when main thread exits
         self.server_thread.start()
 
+        print("=" * 60)
         print("✓ Server started successfully!")
-        print()
+        print("=" * 60)
 
         # ===================================================================
         # Keep the main thread alive
@@ -169,12 +114,7 @@ class TrainingHl7ServerApplication:
             self.stop_server()
 
     def stop_server(self) -> None:
-        """
-        Stop the MLLP server.
-
-        This method is called during graceful shutdown to cleanly stop
-        the server and close all connections.
-        """
+        """Stop the MLLP server."""
         if self.server:
             print("Stopping server...")
             self.server.shutdown()
