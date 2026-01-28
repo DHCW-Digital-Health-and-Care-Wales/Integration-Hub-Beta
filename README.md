@@ -89,15 +89,22 @@ flowchart LR
 ```
 Integration-Hub-Beta/
 ├── README.md                    # This file
+├── TRAINING.md                  # Comprehensive training documentation
 ├── .gitignore                   # Git ignore rules
 ├── .github/                     # GitHub workflows and configurations
 ├── ca-certs/                    # Custom CA certificates for corporate networks
 ├── shared_libs/                 # Shared libraries used across services
+│   ├── event_logger_lib/        # Azure Monitor event logging
+│   ├── field_utils_lib/         # HL7 field parsing utilities
 │   ├── health_check_lib/        # Common health check functionality
+│   ├── hl7_validation/          # HL7 schema validation
 │   ├── message_bus_lib/         # Service Bus communication library
-│   └── processor_manager_lib/   # Message processing management
+│   ├── metric_sender_lib/       # Azure Monitor metrics
+│   ├── processor_manager_lib/   # Message processing management
+│   └── transformer_base_lib/    # Base transformer classes
 ├── local/                       # Local development environment
 ├── pipeline-ado/                # Azure DevOps pipeline configurations
+├── network_test_app/            # Network connectivity testing utility
 └── [Service Components]/        # Individual microservices (see below)
 ```
 
@@ -137,6 +144,12 @@ The platform handles HL7 message processing through specialized microservices:
 - Mock receiver for testing and development.
 - Simulates target system endpoints (e.g. MPI).
 - Provides a realistic testing environment for end-to-end validation.
+
+**`network_test_app/`**
+
+- Network connectivity testing utility.
+- Used for validating network paths, firewall rules, and endpoint accessibility.
+- Helps diagnose connectivity issues in Azure Container Apps environments.
 
 Each transformer is specialized for its source system's data format and business rules, while the server and sender provide common ingestion and delivery capabilities across all integration profiles.
 
