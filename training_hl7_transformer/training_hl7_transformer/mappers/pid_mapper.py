@@ -18,6 +18,12 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
 
     if is_a31_message:
         print("Picked A31 message for PID Transformation")
+        for index, pid_3_rep in enumerate(original_pid.pid_3):
+            if get_hl7_field_value(pid_3_rep, "cx_5") == "NH":
+                nh_number = get_hl7_field_value(original_pid, f"pid_3[{index}].cx_1")
+                print(f"NHS Number {nh_number} on index {index}")
+
+
 
     original_pid_3_rep1_cx_1 = get_hl7_field_value(original_pid, "pid_3[0].cx_1")
     pid3_rep1 = new_message.pid.add_field("pid_3")
