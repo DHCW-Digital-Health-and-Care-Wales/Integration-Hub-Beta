@@ -105,7 +105,7 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     # - Change datetime formats (see PHW transformer)
     new_sending_app = "TRAINING_TRANSFORMER"
     new_msh.msh_3.value = new_sending_app
-    date_time = "20260127113000"
+    date_time = get_hl7_field_value(msh_segment,"msh_7")
     required_format = "%Y-%m-%d %H:%M:%S" 
     dt = datetime.datetime.strptime(date_time, "%Y%m%d%H%M%S")
     dt = dt.strftime(required_format)
