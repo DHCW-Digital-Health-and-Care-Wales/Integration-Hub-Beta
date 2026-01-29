@@ -1,7 +1,7 @@
 import unittest
+import uuid
 from datetime import datetime
 from unittest.mock import MagicMock, patch
-import uuid
 
 from hl7apy.core import Message
 
