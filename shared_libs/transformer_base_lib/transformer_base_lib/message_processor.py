@@ -25,7 +25,24 @@ def process_message(
 
     incoming_props = {}
     if message.application_properties:
-        incoming_props = {str(k): str(v) for k, v in message.application_properties.items()}
+        incoming_props = {}
+        for k, v in message.application_properties.items():
+            key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
+            value = v.decode("utf-8") if isinstance(v, bytes) else str(v)
+            incoming_props[key] = value
+        logger.info("application_properties keys found: %s", list(incoming_props.keys()) if incoming_props else "none")
+        if incoming_props:
+            logger.info(
+                "Received message with metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+                incoming_props.get("EventId", "N/A"),
+                incoming_props.get("WorkflowID", "N/A"),
+                incoming_props.get("SourceSystem", "N/A"),
+                incoming_props.get("MessageReceivedAt", "N/A"),
+            )
+        else:
+            logger.warning("application_properties exists but is empty after processing")
+    else:
+        logger.warning("No application_properties found on message")
 
     try:
         event_logger.log_message_received(message_body, received_audit_text)
@@ -37,6 +54,13 @@ def process_message(
         transformed_hl7_message = transform(hl7_msg)
 
         sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props if incoming_props else None)
+        if incoming_props:
+            logger.info(
+                "Forwarded message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s",
+                incoming_props.get("EventId", "N/A"),
+                incoming_props.get("WorkflowID", "N/A"),
+                incoming_props.get("SourceSystem", "N/A"),
+            )
 
         event_logger.log_message_processed(
             message_body,

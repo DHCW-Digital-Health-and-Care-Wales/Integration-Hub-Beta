@@ -101,9 +101,13 @@ def _process_message(
 
     metadata = {}
     if message.application_properties:
-        metadata = {str(k): str(v) for k, v in message.application_properties.items()}
+        metadata = {}
+        for k, v in message.application_properties.items():
+            key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
+            value = v.decode("utf-8") if isinstance(v, bytes) else str(v)
+            metadata[key] = value
         if metadata:
-            logger.debug(
+            logger.info(
                 "Message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
                 metadata.get("EventId", "N/A"),
                 metadata.get("WorkflowID", "N/A"),

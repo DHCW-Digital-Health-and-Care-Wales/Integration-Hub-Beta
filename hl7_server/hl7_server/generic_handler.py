@@ -139,6 +139,14 @@ class GenericHandler(AbstractHandler):
         try:
             self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
+            if custom_properties:
+                logger.info(
+                    "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+                    custom_properties.get("EventId", "N/A"),
+                    custom_properties.get("WorkflowID", "N/A"),
+                    custom_properties.get("SourceSystem", "N/A"),
+                    custom_properties.get("MessageReceivedAt", "N/A"),
+                )
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
