@@ -7,6 +7,7 @@ from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.metadata_utils import extract_metadata, get_metadata_log_values
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
@@ -99,21 +100,16 @@ def _process_message(
     message_body = b"".join(message.body).decode("utf-8")
     logger.info("Received message")
 
-    metadata = {}
-    if message.application_properties:
-        metadata = {}
-        for k, v in message.application_properties.items():
-            key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
-            value = v.decode("utf-8") if isinstance(v, bytes) else str(v)
-            metadata[key] = value
-        if metadata:
-            logger.info(
-                "Message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-                metadata.get("EventId", "N/A"),
-                metadata.get("WorkflowID", "N/A"),
-                metadata.get("SourceSystem", "N/A"),
-                metadata.get("MessageReceivedAt", "N/A"),
-            )
+    metadata: dict[str, str] | None = extract_metadata(message)
+    if metadata:
+        event_id, workflow_id, source_system, received_at = get_metadata_log_values(metadata)
+        logger.info(
+            "Message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+            event_id,
+            workflow_id,
+            source_system,
+            received_at,
+        )
 
     try:
         event_logger.log_message_received(message_body, "Message received for HL7 sending")

@@ -11,6 +11,7 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.metadata_utils import get_metadata_log_values
 from metric_sender_lib.metric_sender import MetricSender
 
 from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, build_common_properties
@@ -139,14 +140,14 @@ class GenericHandler(AbstractHandler):
         try:
             self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
-            if custom_properties:
-                logger.info(
-                    "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-                    custom_properties.get("EventId", "N/A"),
-                    custom_properties.get("WorkflowID", "N/A"),
-                    custom_properties.get("SourceSystem", "N/A"),
-                    custom_properties.get("MessageReceivedAt", "N/A"),
-                )
+            event_id, workflow_id, source_system, received_at = get_metadata_log_values(custom_properties)
+            logger.info(
+                "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+                event_id,
+                workflow_id,
+                source_system,
+                received_at,
+            )
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise

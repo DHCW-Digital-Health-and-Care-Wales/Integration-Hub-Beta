@@ -60,7 +60,7 @@ class TestProcessPimsMessage(unittest.TestCase):
 
         self.assertTrue(result)
         mock_transform_pims.assert_called_once()
-        self.mock_sender.send_message.assert_called_once_with(expected_message)
+        self.mock_sender.send_message.assert_called_once_with(expected_message, custom_properties=None)
         self.mock_event_logger.log_message_received.assert_called_once()
         self.mock_event_logger.log_message_processed.assert_called_once_with(
             self.hl7_string, "PIMS transformation applied for SENDING_APP: PIMS"

@@ -6,6 +6,7 @@ from event_logger_lib import EventLogger
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.metadata_utils import extract_metadata, get_metadata_log_values
 
 logger = logging.getLogger(__name__)
 
@@ -23,24 +24,16 @@ def process_message(
     message_body = b"".join(message.body).decode("utf-8")
     logger.debug("Received message")
 
-    incoming_props = {}
-    if message.application_properties:
-        incoming_props = {}
-        for k, v in message.application_properties.items():
-            key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
-            value = v.decode("utf-8") if isinstance(v, bytes) else str(v)
-            incoming_props[key] = value
-        logger.info("application_properties keys found: %s", list(incoming_props.keys()) if incoming_props else "none")
-        if incoming_props:
-            logger.info(
-                "Received message with metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-                incoming_props.get("EventId", "N/A"),
-                incoming_props.get("WorkflowID", "N/A"),
-                incoming_props.get("SourceSystem", "N/A"),
-                incoming_props.get("MessageReceivedAt", "N/A"),
-            )
-        else:
-            logger.warning("application_properties exists but is empty after processing")
+    incoming_props: dict[str, str] | None = extract_metadata(message)
+    if incoming_props:
+        event_id, workflow_id, source_system, received_at = get_metadata_log_values(incoming_props)
+        logger.info(
+            "Received message with metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+            event_id,
+            workflow_id,
+            source_system,
+            received_at,
+        )
     else:
         logger.warning("No application_properties found on message")
 
@@ -53,13 +46,14 @@ def process_message(
 
         transformed_hl7_message = transform(hl7_msg)
 
-        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props if incoming_props else None)
+        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props)
         if incoming_props:
+            event_id, workflow_id, source_system, _ = get_metadata_log_values(incoming_props)
             logger.info(
                 "Forwarded message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s",
-                incoming_props.get("EventId", "N/A"),
-                incoming_props.get("WorkflowID", "N/A"),
-                incoming_props.get("SourceSystem", "N/A"),
+                event_id,
+                workflow_id,
+                source_system,
             )
 
         event_logger.log_message_processed(

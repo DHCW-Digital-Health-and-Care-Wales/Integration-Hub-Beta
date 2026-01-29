@@ -46,7 +46,7 @@ class TestMessageProcessor(unittest.TestCase):
 
     def test_process_message_handles_empty_properties(self) -> None:
         test_message_body = "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5\r"
-        empty_property_cases = [None, {}]
+        empty_property_cases: list[dict[str, str] | None] = [None, {}]
 
         for empty_props in empty_property_cases:
             with self.subTest(empty_props=empty_props):
