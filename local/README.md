@@ -20,7 +20,46 @@ Integration Hub services can be run locally using [Azure Service Bus emulator](h
 python3 generate_secrets.py > .secrets
 ```
 
-- Amend queues, topics and subscriptions configuration when needed in [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json).
+### Service Bus Emulator Configuration
+
+The [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json) file defines the queues and topics used by the local Service Bus emulator. This configuration creates the message routing infrastructure that connects all the services.
+
+**What's inside:**
+
+- **Queues**: Named channels where messages wait to be processed (e.g., `local-inthub-phw-transformer-ingress`)
+- **Queue Properties**: Settings like message retention time (`DefaultMessageTimeToLive`), lock duration, and session support
+
+**Adding a new queue:**
+
+1. Open `ServiceBusEmulatorConfig.json`
+2. Add a new queue entry under `Namespaces[0].Queues[]`:
+
+```json
+{
+  "Name": "local-inthub-my-new-queue",
+  "Properties": {
+    "DeadLetteringOnMessageExpiration": false,
+    "DefaultMessageTimeToLive": "PT1H",
+    "DuplicateDetectionHistoryTimeWindow": "PT20S",
+    "ForwardDeadLetteredMessagesTo": "",
+    "ForwardTo": "",
+    "LockDuration": "PT1M",
+    "MaxDeliveryCount": 10,
+    "RequiresDuplicateDetection": false,
+    "RequiresSession": true
+  }
+}
+```
+
+3. Rebuild the Service Bus emulator container: `docker compose build sb-emulator`
+4. Restart the stack with your desired profile
+
+**Common queue naming pattern:** `local-inthub-{service}-{ingress|egress}`
+
+> [!NOTE]
+> **RequiresSession**: Set to `true` when you need guaranteed FIFO (First-In-First-Out) message ordering. Session-enabled queues ensure messages with the same session ID are processed in order. This applies to both the local emulator and Azure Service Bus in production.
+
+### SSL Certificates (Corporate Networks)
 
 - **For machines on corporate networks**: Configure SSL certificates to allow uv and Docker to work with corporate proxies:
 
@@ -48,6 +87,35 @@ Profiles:
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
+
+#### Profiles Reference
+
+Each profile starts a complete integration flow with all required services:
+
+| Profile          | Services Started                                                                            | Use Case                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                    |
+| **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)  |
+| **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                             |
+| **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow |
+
+#### Environment Files Reference
+
+Each service is configured via a corresponding `.env` file in the `local/` directory:
+
+| File                          | Configures            | Key Variables                                                             |
+| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
+| **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
+| **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
+| **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
+| **chemo-hl7-server.env**      | Chemocare HL7 Server  | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`             |
+| **chemo-hl7-transformer.env** | Chemocare Transformer | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi` |
+| **pims-hl7-server.env**       | PIMS HL7 Server       | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`              |
+| **pims-hl7-transformer.env**  | PIMS Transformer      | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`      |
+| **mpi-hl7-sender.env**        | MPI HL7 Sender        | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`  |
+| **mpi-hl7-mock-receiver.env** | MPI Mock Receiver     | `PORT=2576`, `EGRESS_QUEUE_NAME`                                          |
+
+> **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 
 The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "\*"
 
@@ -98,10 +166,10 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 
 **Steps**
 
-* Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
-* Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
-* Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
-* Check the Docker logs to show whether the request succeeded.
+- Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
+- Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
+- Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
+- Check the Docker logs to show whether the request succeeded.
 
 See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
 
@@ -166,6 +234,7 @@ Execute `just --list` to see all available commands. Key commands include:
 ```
 
 Examples:
+
 ```bash
   just start phw-to-mpi
   just send phw-to-mpi.sample.hl7
@@ -187,11 +256,11 @@ is faster on subsequent launches as the environment is then cached.
 
 This provides:
 
-* A pre-configured VS Code environment (with useful extensions installed - such as Container Management)
-* Ability to work in a 'Browser` based UI e.g. via Edge/Chrome or the desktop VS Code application.
-* A virtual development environment, removing the need to install any software locally.
-* Access to a Linux `Terminal` with `Docker` and `Just` installed to manage containers.
-* The ability to run and test the whole system.
+- A pre-configured VS Code environment (with useful extensions installed - such as Container Management)
+- Ability to work in a 'Browser` based UI e.g. via Edge/Chrome or the desktop VS Code application.
+- A virtual development environment, removing the need to install any software locally.
+- Access to a Linux `Terminal` with `Docker` and `Just` installed to manage containers.
+- The ability to run and test the whole system.
 
 ### Quick Start with DevContainer
 

@@ -55,7 +55,7 @@ To define host and port the server should bind to use environment variables conf
 - **HL7_VERSION** - hl7v2 version, if provided will be used to validate MSH-12.1 field
 - **SENDING_APP** - sending application id, optional, if provided will be used to validate MSH-3.1 field
 - **HEALTH_CHECK_HOST** - default 127.0.0.1
-- **health_check_port** - default 9000
+- **HEALTH_CHECK_PORT** - default 9000
 
 ### Running directly
 
