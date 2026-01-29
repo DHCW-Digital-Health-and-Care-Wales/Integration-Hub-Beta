@@ -21,6 +21,7 @@ The production hl7_sender/application.py includes:
 
 import logging
 import os
+import time
 
 from azure.servicebus import ServiceBusMessage
 from message_bus_lib.connection_config import ConnectionConfig
@@ -54,6 +55,17 @@ logger = logging.getLogger(__name__)
 # Maximum number of messages to receive in one batch
 # Larger batches are more efficient but use more memory
 MAX_BATCH_SIZE = 10
+
+# =============================================================================
+# WEEK 3 - EXERCISE 1 SOLUTION: Retry Configuration
+# =============================================================================
+# Number of times to retry sending a message before giving up.
+# This provides resilience against transient network issues.
+MAX_SEND_RETRIES = 3
+
+# Time to wait between retry attempts (in seconds).
+# This gives the network/receiver time to recover from temporary issues.
+RETRY_DELAY_SECONDS = 1
 
 
 def main() -> None:
@@ -144,13 +156,20 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
     It must return True if the message was processed successfully (complete it),
     or False if processing failed (abandon it for retry).
 
+    WEEK 3 - EXERCISE 1 SOLUTION:
+    -----------------------------
+    This function now includes retry logic. If sending fails due to a timeout
+    or connection error, we retry up to MAX_SEND_RETRIES times (3 by default)
+    with a small delay between attempts. This provides resilience against
+    transient network issues without immediately abandoning the message.
+
     Args:
         message: The Service Bus message containing the HL7 content
         hl7_sender_client: The MLLP client for sending
 
     Returns:
         True if message was sent and ACK was positive
-        False if sending failed or ACK was negative
+        False if sending failed or ACK was negative (after all retries exhausted)
     """
     # Decode the message body from bytes to string
     message_body = b"".join(message.body).decode("utf-8")
@@ -169,37 +188,82 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
     print(f"    Control ID: {control_id}")
     logger.info(f"Received message from queue, Control ID: {control_id}")
 
-    try:
-        # Send the message via MLLP
-        print(
-            f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}:{hl7_sender_client.receiver_mllp_port}..."
-        )
-        ack_response = hl7_sender_client.send_message(message_body)
+    # =========================================================================
+    # WEEK 3 - EXERCISE 1 SOLUTION: Retry Loop
+    # =========================================================================
+    # We use a for loop to attempt sending up to MAX_SEND_RETRIES times.
+    # The loop variable 'attempt' tells us which attempt we're on (0, 1, 2).
+    # We only return False (abandon message) after ALL retries are exhausted.
+    # =========================================================================
+    for attempt in range(MAX_SEND_RETRIES):
+        # Calculate attempt number for display (1-based for readability)
+        attempt_number = attempt + 1
 
-        # Validate the ACK response
-        ack_success = get_ack_result(ack_response)
+        try:
+            # Send the message via MLLP
+            print(
+                f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}:"
+                f"{hl7_sender_client.receiver_mllp_port}... (attempt {attempt_number}/{MAX_SEND_RETRIES})"
+            )
+            ack_response = hl7_sender_client.send_message(message_body)
 
-        if ack_success:
-            logger.info("Message sent successfully, ACK validated")
-            return True
-        else:
-            logger.warning("Message sent but ACK indicates failure")
+            # Validate the ACK response
+            ack_success = get_ack_result(ack_response)
+
+            if ack_success:
+                logger.info(f"Message sent successfully on attempt {attempt_number}, ACK validated")
+                return True
+            else:
+                # Negative ACK - don't retry, the receiver explicitly rejected it
+                # Retrying won't help because the receiver will reject it again
+                logger.warning(f"Message sent but ACK indicates failure (attempt {attempt_number})")
+                return False
+
+        except TimeoutError as e:
+            # =====================================================================
+            # WEEK 3 - EXERCISE 1 SOLUTION: Retry on Timeout
+            # =====================================================================
+            # Timeout means the receiver didn't respond in time. This could be
+            # a temporary issue, so we retry. We only give up after all attempts.
+            # =====================================================================
+            print(f"Timeout on attempt {attempt_number}/{MAX_SEND_RETRIES}: {e}")
+            logger.error(f"Timeout sending message (attempt {attempt_number}): {e}")
+
+            # Check if there are more retries left
+            if attempt_number < MAX_SEND_RETRIES:
+                print(f"Waiting {RETRY_DELAY_SECONDS} second(s) before retry...")
+                time.sleep(RETRY_DELAY_SECONDS)
+            # If no more retries left, the loop will exit and  False will be returned below
+
+        except ConnectionError as e:
+            # =====================================================================
+            # WEEK 3 - EXERCISE 1 SOLUTION: Retry on Connection Error
+            # =====================================================================
+            # Connection error means we couldn't connect to the receiver.
+            # This is often temporary (receiver restarting, network blip), so retry.
+            # =====================================================================
+            print(f"Connection error on attempt {attempt_number}/{MAX_SEND_RETRIES}: {e}")
+            logger.error(f"Connection error (attempt {attempt_number}): {e}")
+
+            if attempt_number < MAX_SEND_RETRIES:
+                print(f"Waiting {RETRY_DELAY_SECONDS} second(s) before retry...")
+                time.sleep(RETRY_DELAY_SECONDS)
+
+        except Exception as e:
+            # Unexpected errors - log and don't retry (could be a bug)
+            print(f"Unexpected error: {e}")
+            logger.exception("Unexpected error processing message")
             return False
 
-    except TimeoutError as e:
-        print(f"Timeout: {e}")
-        logger.error(f"Timeout sending message: {e}")
-        return False
-
-    except ConnectionError as e:
-        print(f"Connection error: {e}")
-        logger.error(f"Connection error: {e}")
-        return False
-
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        logger.exception("Unexpected error processing message")
-        return False
+    # =========================================================================
+    # WEEK 3 - EXERCISE 1 SOLUTION: All Retries Exhausted
+    # =========================================================================
+    # If we reach here, all retry attempts failed. Return False to abandon
+    # the message back to the queue for later retry (by Service Bus).
+    # =========================================================================
+    print(f"All {MAX_SEND_RETRIES} retry attempts exhausted. Abandoning message (returned back to the queue)")
+    logger.error(f"Failed to send message after {MAX_SEND_RETRIES} attempts, abandoning")
+    return False
 
 
 if __name__ == "__main__":
