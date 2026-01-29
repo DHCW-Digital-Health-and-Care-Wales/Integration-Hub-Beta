@@ -95,11 +95,15 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
+            try:
+                message_sending_app = msg.msh.msh_3.value if msg.msh.msh_3.value else None
+            except (AttributeError, IndexError):
+                message_sending_app = None
             custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if custom_properties_builder:
-                custom_properties = custom_properties_builder(msg, self.workflow_id, self.sending_app)
+                custom_properties = custom_properties_builder(msg, self.workflow_id, message_sending_app)
             else:
-                custom_properties = build_common_properties(self.workflow_id, self.sending_app)
+                custom_properties = build_common_properties(self.workflow_id, message_sending_app)
 
             self._send_to_service_bus(message_control_id, custom_properties)
 
