@@ -34,7 +34,13 @@ class TestGenericHandler(unittest.TestCase):
         self.mock_metric_sender = MagicMock()
         self.validator = MagicMock()
         self.handler = GenericHandler(
-            VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, self.validator
+            VALID_A28_MESSAGE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="252",
         )
 
     def test_valid_a28_message_returns_ack(self) -> None:
@@ -76,7 +82,15 @@ class TestGenericHandler(unittest.TestCase):
 
         validator = MagicMock()
         validator.validate = MagicMock(side_effect=exception)
-        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, validator)
+        handler = GenericHandler(
+            message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+        )
 
         with self.assertRaises(ValidationException):
             handler.reply()
@@ -87,7 +101,14 @@ class TestGenericHandler(unittest.TestCase):
     def test_message_sent_to_service_bus(self) -> None:
         self.handler.reply()
 
-        self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE, None)
+        call_args = self.mock_sender.send_text_message.call_args
+        self.assertEqual(call_args[0][0], VALID_A28_MESSAGE)
+        custom_properties = call_args[0][1]
+        self.assertIsNotNone(custom_properties)
+        self.assertIn("MessageReceivedAt", custom_properties)
+        self.assertIn("EventId", custom_properties)
+        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(custom_properties["SourceSystem"], "252")
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
@@ -105,23 +126,27 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_sender,
                 self.mock_event_logger,
                 self.mock_metric_sender,
+                validator,
+                workflow_id="test-workflow",
+                sending_app="252",
                 flow_name="mpi",
-                validator=validator,
             )
 
             handler.reply()
 
         mock_validate_flow_xml.assert_not_called()
-        self.mock_sender.send_text_message.assert_called_once_with(
-            VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
-            {
-                "MessageType": "A28",
-                "UpdateSource": "108",
-                "AssigningAuthority": "NHS",
-                "DateDeath": "2023-01-15",
-                "ReasonDeath": "",
-            },
-        )
+        call_args = self.mock_sender.send_text_message.call_args
+        self.assertEqual(call_args[0][0], VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE)
+        custom_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", custom_properties)
+        self.assertIn("EventId", custom_properties)
+        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(custom_properties["SourceSystem"], "252")
+        self.assertEqual(custom_properties["MessageType"], "A28")
+        self.assertEqual(custom_properties["UpdateSource"], "108")
+        self.assertEqual(custom_properties["AssigningAuthority"], "NHS")
+        self.assertEqual(custom_properties["DateDeath"], "2023-01-15")
+        self.assertEqual(custom_properties["ReasonDeath"], "")
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_rejects_invalid_messages(self, mock_validate_flow_xml: MagicMock) -> None:
@@ -139,8 +164,10 @@ class TestGenericHandler(unittest.TestCase):
                     self.mock_sender,
                     self.mock_event_logger,
                     self.mock_metric_sender,
+                    validator,
+                    workflow_id="test-workflow",
+                    sending_app="252",
                     flow_name="mpi",
-                    validator=validator,
                 )
 
                 with self.assertRaises(ValidationException):
@@ -170,6 +197,8 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_event_logger,
                 self.mock_metric_sender,
                 self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
                 standard_version="2.5",
             )
 
@@ -196,6 +225,8 @@ class TestGenericHandler(unittest.TestCase):
             self.mock_event_logger,
             self.mock_metric_sender,
             self.validator,
+            workflow_id="test-workflow",
+            sending_app="252",
             standard_version="2.5",
         )
 
@@ -228,6 +259,8 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_event_logger,
                 self.mock_metric_sender,
                 self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
                 flow_name="phw",
                 standard_version="2.5",
             )
@@ -251,6 +284,8 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_event_logger,
                 self.mock_metric_sender,
                 self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
             )
 
             handler.reply()

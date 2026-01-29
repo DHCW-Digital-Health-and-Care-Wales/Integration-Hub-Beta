@@ -23,6 +23,10 @@ def process_message(
     message_body = b"".join(message.body).decode("utf-8")
     logger.debug("Received message")
 
+    incoming_props = {}
+    if message.application_properties:
+        incoming_props = {str(k): str(v) for k, v in message.application_properties.items()}
+
     try:
         event_logger.log_message_received(message_body, received_audit_text)
 
@@ -32,7 +36,7 @@ def process_message(
 
         transformed_hl7_message = transform(hl7_msg)
 
-        sender_client.send_message(transformed_hl7_message.to_er7())
+        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props if incoming_props else None)
 
         event_logger.log_message_processed(
             message_body,

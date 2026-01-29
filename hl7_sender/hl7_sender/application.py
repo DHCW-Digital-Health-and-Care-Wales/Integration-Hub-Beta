@@ -99,6 +99,18 @@ def _process_message(
     message_body = b"".join(message.body).decode("utf-8")
     logger.info("Received message")
 
+    metadata = {}
+    if message.application_properties:
+        metadata = {str(k): str(v) for k, v in message.application_properties.items()}
+        if metadata:
+            logger.debug(
+                "Message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+                metadata.get("EventId", "N/A"),
+                metadata.get("WorkflowID", "N/A"),
+                metadata.get("SourceSystem", "N/A"),
+                metadata.get("MessageReceivedAt", "N/A"),
+            )
+
     try:
         event_logger.log_message_received(message_body, "Message received for HL7 sending")
 

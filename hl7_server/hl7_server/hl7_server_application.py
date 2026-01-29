@@ -83,6 +83,8 @@ class Hl7ServerApplication:
             self.event_logger,
             self.metric_sender,
             self.validator,
+            app_config.workflow_id,
+            app_config.sending_app,
             flow_name,
             standard_version,
         )

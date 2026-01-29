@@ -13,7 +13,7 @@ from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
 from metric_sender_lib.metric_sender import MetricSender
 
-from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS
+from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, build_common_properties
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
@@ -29,6 +29,8 @@ class GenericHandler(AbstractHandler):
         event_logger: EventLogger,
         metric_sender: MetricSender,
         validator: HL7Validator,
+        workflow_id: str,
+        sending_app: str | None,
         flow_name: str | None = None,
         standard_version: str | None = None,
     ):
@@ -37,6 +39,8 @@ class GenericHandler(AbstractHandler):
         self.event_logger = event_logger
         self.metric_sender = metric_sender
         self.validator = validator
+        self.workflow_id = workflow_id
+        self.sending_app = sending_app
         self.flow_name: str | None = flow_name
         self.standard_version: str | None = standard_version
 
@@ -91,7 +95,10 @@ class GenericHandler(AbstractHandler):
                     raise
 
             custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
-            custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
+            if custom_properties_builder:
+                custom_properties = custom_properties_builder(msg, self.workflow_id, self.sending_app)
+            else:
+                custom_properties = build_common_properties(self.workflow_id, self.sending_app)
 
             self._send_to_service_bus(message_control_id, custom_properties)
 
@@ -128,7 +135,7 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str] | None) -> None:
+    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str]) -> None:
         try:
             self.sender_client.send_text_message(self.incoming_message, custom_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
