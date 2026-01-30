@@ -134,7 +134,7 @@ class TrainingTransformer:
         _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
         
         # Apply PID mapper
-        _ = map_pid(hl7_msg,new_message)
+        #_ = map_pid(hl7_msg,new_message)
 
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
