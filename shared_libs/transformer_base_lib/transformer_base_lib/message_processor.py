@@ -47,14 +47,6 @@ def process_message(
         transformed_hl7_message = transform(hl7_msg)
 
         sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props)
-        if incoming_props:
-            event_id, workflow_id, source_system, _ = get_metadata_log_values(incoming_props)
-            logger.info(
-                "Forwarded message metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s",
-                event_id,
-                workflow_id,
-                source_system,
-            )
 
         event_logger.log_message_processed(
             message_body,

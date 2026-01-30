@@ -1,6 +1,7 @@
 import logging
 
 from event_logger_lib.event_logger import EventLogger
+from field_utils_lib import get_hl7_field_value
 from hl7_validation import (
     XmlValidationError,
     validate_parsed_message_with_flow_schema,
@@ -95,10 +96,7 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
-            try:
-                message_sending_app = msg.msh.msh_3.value if msg.msh.msh_3.value else None
-            except (AttributeError, IndexError):
-                message_sending_app = None
+            message_sending_app = get_hl7_field_value(msg, "msh.msh_3") or None
             custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if custom_properties_builder:
                 custom_properties = custom_properties_builder(msg, self.workflow_id, message_sending_app)
