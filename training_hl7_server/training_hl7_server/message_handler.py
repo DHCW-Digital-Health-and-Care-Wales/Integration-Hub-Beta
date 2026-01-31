@@ -29,7 +29,7 @@ class MessageHandler(AbstractHandler):
     def __init__(
         self,
         incoming_message: str,
-        expected_version: str | None = None,
+        expected_version: str = "2.3.1",
         allowed_senders: str | None = None,
     ) -> None:
         """
