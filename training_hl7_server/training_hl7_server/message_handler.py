@@ -9,7 +9,6 @@ from training_hl7_server.constants import Hl7Constants
 
 class ValidationError(Exception):
     """Raised when HL7 message validation fails."""
-
     pass
 
 
@@ -31,13 +30,16 @@ class MessageHandler(AbstractHandler):
         self,
         incoming_message: str,
         expected_version: str = "2.3.1",
+        allowed_senders: str | None = None,
     ) -> None:
         """
         Initialize the message handler.
 
         Args:
             incoming_message: The raw HL7 message string.
-            expected_version: The expected HL7 version in MSH-12.
+            expected_version: The expected HL7 version in MSH-12. If None ver validation is skipped.
+            allowed_senders: Comma-separated list of allowed sending applications/facilities.
+            If None, all senders accepted. e.g. "169,125"
         """
         # Call parent class constructor to set up the handler
         super().__init__(incoming_message)
@@ -45,7 +47,9 @@ class MessageHandler(AbstractHandler):
         # Store the expected HL7 version for validation
         self.expected_version = expected_version
 
-        # Create an instance of AckBuilder to construct ACK responses
+        self.allowed_senders = allowed_senders
+
+          # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
 
     def reply(self) -> str:
@@ -109,8 +113,13 @@ class MessageHandler(AbstractHandler):
             # ===================================================================
             # STEP 4: Validate the HL7 version
             # ===================================================================
-            # Ensure the message uses the expected HL7 version
+            # 4a: Ensure the message uses the expected HL7 version
             self._validate_version(hl7_version)
+            # ===================================================================
+            # STEP 4: Validate the senders
+            # ===================================================================
+            # 4b: Ensure the sending application is in the allowed list
+            self._validate_sending_app(sending_app)
 
             # ===================================================================
             # STEP 5: Build and return a success ACK
@@ -170,6 +179,33 @@ class MessageHandler(AbstractHandler):
         Raises:
             ValidationError: If the version doesn't match expected.
         """
+        if self.expected_version is None:
+            print("✓ HL7 version validation skipped")
+            return
+
         if message_version != self.expected_version:
             raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
+
+    def _validate_sending_app(self, sending_app: str) -> None:
+        """
+        Validate the sending application against allowed senders list.
+        Args:
+            sending_app: The sending application from MSH-3.
+        Raises:
+            ValidationError: If the sending application is not in the allowed list.
+        """
+        # If no allowed_senders configured, skip validation
+        if self.allowed_senders is None:
+            print("✖ Sending application validation skipped - no allowed_senders configured")
+            return
+
+        # Parse comma-separated list of allowed senders and strip whitespace
+        senders = [app.strip() for app in self.allowed_senders.split(",")]
+
+        # Validate that the sending application is in the allowed list
+        if sending_app and sending_app not in senders:
+            print("✖ Sending application validation failed - not in allowed_senders")
+            raise ValidationError(f"Sending application '{sending_app}' is not in the allowed senders {senders}.")
+
+        print(f"✓ Sending application validated: {sending_app}")

@@ -115,8 +115,17 @@ class AppConfig:
         """
 
         return AppConfig(
-            host = _read_env_with_default("HOST", "0.0.0.0"),   #os.environ.get("HOST", "0.0.0.0"),
-            port = int(_read_env_with_default("PORT", 2575)),   #int(os.environ.get("PORT", "2575")),
-            hl7_version = _read_env("HL7_VERSION"),             #os.environ.get("HL7_VERSION", "2.3.1"),
-            allowed_senders = _read_env("ALLOWED_SENDERS")      #os.environ.get("ALLOWED_SENDERS")
+            # =====================================================================
+            # Network settings - these have sensible defaults for development
+            # =====================================================================
+
+            host = _read_env_with_default("HOST", "0.0.0.0"),
+            port = int(_read_env_with_default("PORT", 2575)),
+
+            # =====================================================================
+            # Validation settings - optional, None means no validation
+            # =====================================================================
+
+            hl7_version = _read_env("HL7_VERSION"),
+            allowed_senders = _read_env("ALLOWED_SENDERS"),
         )

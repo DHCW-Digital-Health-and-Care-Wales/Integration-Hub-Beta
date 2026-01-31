@@ -53,8 +53,16 @@ class TrainingHl7ServerApplication:
         # 2. Pass the message and self.expected_version as arguments
         # 3. Call the handler's reply() method to get the ACK response
 
+        handler_args = (
+            MessageHandler,
+            self.app_config.hl7_version,
+            self.app_config.allowed_senders,
+        )
+
         handlers = {
-            "ADT^A31": (MessageHandler, self.app_config.hl7_version),
+            "ADT^A31": handler_args,
+            "ADT^A28": handler_args,
+            "ADT^A40": handler_args,
             "ERR": (ErrorHandler),
         }
 
