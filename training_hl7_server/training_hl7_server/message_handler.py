@@ -9,6 +9,7 @@ from training_hl7_server.constants import Hl7Constants
 
 class ValidationError(Exception):
     """Raised when HL7 message validation fails."""
+
     pass
 
 
@@ -49,7 +50,7 @@ class MessageHandler(AbstractHandler):
 
         self.allowed_senders = allowed_senders
 
-          # Create an instance of AckBuilder to construct ACK responses
+        # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
 
     def reply(self) -> str:
@@ -64,8 +65,7 @@ class MessageHandler(AbstractHandler):
         """
         # Print a header to make the console output easier to read
         print("\n" + "=" * 60)
-        print("RECEIVED HL7 MESSAGE")
-        print("=" * 60)
+        print("RECEIVED HL7 MESSAGE\n")
 
         try:
             # ===================================================================
@@ -82,20 +82,20 @@ class MessageHandler(AbstractHandler):
             # The MSH (Message Header) segment contains metadata about the message
 
             # MSH-10: Message Control ID - unique identifier for this message
-            message_control_id = msg.msh.msh_10.value # type: ignore
+            message_control_id = msg.msh.msh_10.value  # type: ignore
 
             # MSH-9: Message Type - format is "MessageType^TriggerEvent"
             # Example: "ADT^A31" means ADT message with trigger event A31
-            message_type = msg.msh.msh_9.to_er7() # type: ignore
+            message_type = msg.msh.msh_9.to_er7()  # type: ignore
 
             # MSH-12: Version ID - the HL7 version (e.g., "2.3.1")
-            hl7_version = msg.msh.msh_12.value # type: ignore
+            hl7_version = msg.msh.msh_12.value  # type: ignore
 
             # MSH-3: Sending Application - the system that sent this message
-            sending_app = msg.msh.msh_3.value # type: ignore
+            sending_app = msg.msh.msh_3.value  # type: ignore
 
             # MSH-4: Sending Facility - the facility/hospital that sent the message
-            sending_facility = msg.msh.msh_4.value # type: ignore
+            sending_facility = msg.msh.msh_4.value  # type: ignore
 
             # ===================================================================
             # STEP 3: Print message details for debugging
@@ -106,9 +106,6 @@ class MessageHandler(AbstractHandler):
             print(f"Sending App: {sending_app}")
             print(f"Sending Facility: {sending_facility}")
             print("-" * 60)
-            print("Raw Message:")
-            print(self.incoming_message)
-            print("=" * 60 + "\n")
 
             # ===================================================================
             # STEP 4: Validate the HL7 version
@@ -120,6 +117,8 @@ class MessageHandler(AbstractHandler):
             # ===================================================================
             # 4b: Ensure the sending application is in the allowed list
             self._validate_sending_app(sending_app)
+
+            print(f"Raw Message: {self.incoming_message}\n" + "=" * 60 + "\n")
 
             # ===================================================================
             # STEP 5: Build and return a success ACK
@@ -143,17 +142,19 @@ class MessageHandler(AbstractHandler):
 
             # Try to build an error ACK if we can parse enough of the message
             try:
-                msg = parse_message(self.incoming_message, find_groups=False)
-                message_control_id = msg.msh.msh_10.value # type: ignore
+                # No need to re-parse, we already have 'msg'
+                # msg = parse_message(self.incoming_message, find_groups=False)
+                message_control_id = msg.msh.msh_10.value  # type: ignore
 
                 # Build an AE (Application Error) ACK with error details
                 ack = self.ack_builder.build_ack(
                     message_control_id=message_control_id,
-                    original_msg=msg,
+                    original_msg=msg,  # type: ignore
                     ack_code=Hl7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
                 return ack.to_er7()
+
             except Exception:
                 # If we can't even parse the message, re-raise the original error
                 raise
@@ -184,7 +185,13 @@ class MessageHandler(AbstractHandler):
             return
 
         if message_version != self.expected_version:
-            raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
+            print("✗ HL7 version validation failed - Invalid version")
+            error_msg = (
+                f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'\n"
+                f"\nRaw Message:\n{self.incoming_message}\n" + "=" * 60 + "\n"
+            )
+            raise ValidationError(error_msg)
+
         print(f"✓ HL7 version validated: {message_version}")
 
     def _validate_sending_app(self, sending_app: str) -> None:
@@ -197,7 +204,7 @@ class MessageHandler(AbstractHandler):
         """
         # If no allowed_senders configured, skip validation
         if self.allowed_senders is None:
-            print("✖ Sending application validation skipped - no allowed_senders configured")
+            print("✓ Sending application validation skipped - no allowed_senders configured")
             return
 
         # Parse comma-separated list of allowed senders and strip whitespace
@@ -205,7 +212,11 @@ class MessageHandler(AbstractHandler):
 
         # Validate that the sending application is in the allowed list
         if sending_app and sending_app not in senders:
-            print("✖ Sending application validation failed - not in allowed_senders")
-            raise ValidationError(f"Sending application '{sending_app}' is not in the allowed senders {senders}.")
+            print("✗ Sending application validation failed - Sender not in allowed_senders")
+            error_msg = (
+                f"Sending application '{sending_app}' is not in Allowed Senders '{senders}'.\n"
+                f"\nRaw Message:\n{self.incoming_message}\n" + "=" * 60 + "\n"
+            )
+            raise ValidationError(error_msg)
 
         print(f"✓ Sending application validated: {sending_app}")

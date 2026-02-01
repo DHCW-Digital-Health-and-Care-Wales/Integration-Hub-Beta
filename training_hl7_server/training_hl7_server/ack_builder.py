@@ -34,6 +34,9 @@ class AckBuilder:
         Returns:
             A constructed ACK message ready to be sent.
         """
+
+        print(f"\n✓ Building ACK message with ACK code: '{ack_code}'")
+
         # Create a new ACK message using hl7apy
         # VALIDATION_LEVEL.STRICT ensures the message follows HL7 standards
         ack = Message("ACK", validation_level=VALIDATION_LEVEL.STRICT)
@@ -82,7 +85,7 @@ class AckBuilder:
         ack.msh.msh_11 = Hl7Constants.PROCESSING_ID_PRODUCTION
 
         # MSH-12: Version ID - must match the original message version
-        ack.msh.msh_12 = original_msg.msh.msh_12.value
+        ack.msh.msh_12 = original_msg.msh.msh_12.value  # pyright: ignore[reportOptionalMemberAccess]
 
         # ===================================================================
         # Build MSA (Message Acknowledgment) segment
