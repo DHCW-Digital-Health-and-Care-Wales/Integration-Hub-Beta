@@ -1,7 +1,8 @@
 """Message handler for processing incoming HL7 messages."""
 
-from hl7apy.mllp import AbstractHandler  # type: ignore[import-untyped]
-from hl7apy.parser import parse_message  # type: ignore[import-untyped]
+from hl7apy.mllp import AbstractHandler
+from hl7apy.parser import parse_message
+from message_bus_lib.message_sender_client import MessageSenderClient
 
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import Hl7Constants
@@ -32,6 +33,7 @@ class MessageHandler(AbstractHandler):
         incoming_message: str,
         expected_version: str | None = None,
         allowed_senders: str | None = None,
+        sender_client: MessageSenderClient | None = None,
     ) -> None:
         """
         Initialize the message handler.
@@ -49,6 +51,9 @@ class MessageHandler(AbstractHandler):
         self.expected_version = expected_version
 
         self.allowed_senders = allowed_senders
+
+        # WEEK 2 ADDITION: Store the Service Bus Sender Client for sending messages if configured
+        self.sender_client = sender_client
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
@@ -112,6 +117,7 @@ class MessageHandler(AbstractHandler):
             # ===================================================================
             # 4a: Ensure the message uses the expected HL7 version
             self._validate_version(hl7_version)
+
             # ===================================================================
             # STEP 4: Validate the senders
             # ===================================================================
@@ -119,6 +125,15 @@ class MessageHandler(AbstractHandler):
             self._validate_sending_app(sending_app)
 
             print(f"Raw Message: {self.incoming_message}\n" + "=" * 60 + "\n")
+
+            # WEEK 2 ADDITION: Publish the message to the Service Bus Egress Queue
+            # The Transformer component will pick it up from there
+            if self.sender_client:
+                print("=" * 60 + f"/nPublishing message {message_control_id} to Service Bus...")
+                self.sender_client.send_text_message(self.incoming_message)
+                print("✓ Message published to Service Bus Egress Queue\n")
+            else:
+                print("! No Service Bus Sender Client configured - skipping publish step\n")
 
             # ===================================================================
             # STEP 5: Build and return a success ACK

@@ -1,6 +1,7 @@
 {
     "python.analysis.extraPaths": [
         "./shared_libs/event_logger_lib",
-        "./shared_libs/event_logger_lib/build/lib"
+        "./shared_libs/event_logger_lib/build/lib",
+        "./shared_libs/message_bus_lib"
     ]
 }

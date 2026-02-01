@@ -91,6 +91,16 @@ class AppConfig:
     hl7_version: str | None
     allowed_senders: str | None
 
+    # =========================================================================
+    # WEEK 2 ADDITION: Service Bus Configuration
+    # =========================================================================
+    # For local development: use connection_string
+    # For Azure deployment: use service_bus_namespace (with managed identity)
+    connection_string: str | None
+    service_bus_namespace: str | None
+    egress_queue_name: str | None
+    egress_session_id: str | None
+
     @staticmethod
     def read_env_config() -> AppConfig:
 
