@@ -18,6 +18,9 @@ dependencies = [
     
     # Azure Service Bus - for reading from ingress queue and publishing to egress queue
     "azure-servicebus==7.14.2",
+
+    # Azure Identity - for authentication (used with Service Bus)
+    "azure-identity>=1.23.0",
     
     # Shared libraries from the Integration Hub project
     # These provide common functionality used across all transformers
@@ -26,9 +29,8 @@ dependencies = [
     # Provides ServiceBusClientFactory, MessageSenderClient, MessageReceiverClient
     "message-bus-lib",
     
-    # transformer-base-lib: Base class for transformers (NOT USED IN TRAINING)
-    # We'll build our own simpler version to understand the pattern
-    # "transformer-base-lib",  # Uncomment for Stretch Exercise 5
+    # Note that the transformer-base-lib (used as a base class for prod transformers) is NOT USED IN TRAINING.
+    # We'll build our own simpler version to understand the pattern.
     
     # field-utils-lib: Utilities for copying and manipulating HL7 fields
     # Provides get_hl7_field_value, copy_segment_fields_in_range

@@ -17,6 +17,9 @@ dependencies = [
     # Azure Service Bus - for publishing messages to Service Bus queues
     # WEEK 2 ADDITION: Required to send HL7 messages to the transformer queue
     "azure-servicebus==7.14.2",
+
+    # Azure Identity - for authentication (used with Service Bus)
+    "azure-identity>=1.23.0",
     
     # Shared library for Service Bus client management
     # WEEK 2 ADDITION: Provides ServiceBusClientFactory and MessageSenderClient

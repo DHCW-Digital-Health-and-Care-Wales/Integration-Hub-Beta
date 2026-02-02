@@ -21,7 +21,10 @@ parameters:
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
       - Network Test App
-      
+      - Training HL7 Server
+      - Training HL7 Sender
+      - Training HL7 Transformer
+
   - name: selectedEnvironment
     displayName: 'Select Environment'
     type: string
@@ -46,7 +49,7 @@ variables:
     value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
   - name: azureLocation
     value: 'uks'
-    
+
   # Pool Configuration
   - name: POOL_NAME_NON_PROD
     value: 'UKS-DHCW-IH-DEV-ADOManagedPool'
@@ -76,6 +79,15 @@ resources:
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
       trigger: none
+    - pipeline: 'Training HL7 Server - Build'
+      source: 'Training HL7 Server - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Sender - Build'
+      source: 'Training HL7 Sender - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Transformer - Build'
+      source: 'Training HL7 Transformer - Build'
+      trigger: none
 
 stages:
   # Define applications metadata inline
@@ -85,7 +97,7 @@ stages:
       selectedEnvironment: ${{ parameters.selectedEnvironment }}
       azureLocation: $(azureLocation)
       acrName: $(acrName)
-      
+
       # Application configurations
       appConfig:
         # HL7 Server Variants
@@ -93,22 +105,22 @@ stages:
           appImageName: 'hl7server'
           appFunctionMidfix: 'phw'
           buildPipeline: 'HL7 Server - Build'
-          
+
         - name: 'PIMS HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Server - Build'
-          
+
         - name: 'Paris HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'paris'
           buildPipeline: 'HL7 Server - Build'
-          
+
         - name: 'Chemocare HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Server - Build'
-          
+
         - name: 'MPI HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'mpi'
@@ -119,12 +131,12 @@ stages:
           appImageName: 'phw-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Phw Transformer - Build'
-          
+
         - name: 'HL7 Chemo Transformer'
           appImageName: 'chemo-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Chemo Transformer - Build'
-          
+
         - name: 'HL7 Pims Transformer'
           appImageName: 'pims-hl7transformer'
           appFunctionMidfix: ''
@@ -135,12 +147,12 @@ stages:
           appImageName: 'hl7sender'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Sender - Build'
-          
+
         - name: 'PIMS HL7 Sender'
           appImageName: 'hl7sender'
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Sender - Build'
-          
+
         - name: 'Chemocare HL7 Sender'
           appImageName: 'hl7sender'
           appFunctionMidfix: 'chemo'
@@ -157,7 +169,25 @@ stages:
           appImageName: 'networktestapp'
           appFunctionMidfix: ''
           buildPipeline: 'Network Test App - Build'
-      
+
+        # Training HL7 Server
+        - name: 'Training HL7 Server'
+          appImageName: 'trn-hl7server'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Server - Build'
+
+        # Training HL7 Sender
+        - name: 'Training HL7 Sender'
+          appImageName: 'trn-hl7sender'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Sender - Build'
+
+        # Training HL7 Transformer
+        - name: 'Training HL7 Transformer'
+          appImageName: 'trn-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Transformer - Build'
+
       # Environment configurations
       environments:
         - name: 'dev'
@@ -167,7 +197,7 @@ stages:
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: false
-          
+
         - name: 'load'
           environmentName: 'Integration-Hub-Release-Container-Apps-load'
           displayName: 'Load Testing'
@@ -175,7 +205,7 @@ stages:
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: false
-          
+
         - name: 'dte'
           environmentName: 'Integration-Hub-Release-Container-Apps-dte'
           displayName: 'DTE'
@@ -183,7 +213,7 @@ stages:
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: true
-          
+
         - name: 'tst'
           environmentName: 'Integration-Hub-Release-Container-Apps-tst'
           displayName: 'Test'
@@ -191,7 +221,7 @@ stages:
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: true
-          
+
         - name: 'uat'
           environmentName: 'Integration-Hub-Release-Container-Apps-uat'
           displayName: 'UAT'
@@ -199,7 +229,7 @@ stages:
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: true
-          
+
         - name: 'ppd'
           environmentName: 'Integration-Hub-Release-Container-Apps-ppd'
           displayName: 'Pre-Production'
@@ -207,7 +237,7 @@ stages:
           poolName: $(POOL_NAME_PROD)
           azureServiceConnection: $(azureServiceConnectionProd)
           dependsOnPrevious: true
-          
+
         - name: 'prd'
           environmentName: 'Integration-Hub-Release-Container-Apps-prd'
           displayName: 'Production'

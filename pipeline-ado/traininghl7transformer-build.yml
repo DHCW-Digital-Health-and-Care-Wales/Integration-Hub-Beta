@@ -1,0 +1,52 @@
+# Training HL7 Transformer Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - training_hl7_transformer/*
+      - shared_libs/*
+      - pipeline-ado/templates/*
+      - ca-certs/*
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_transformer'
+          appDisplayName: 'Training HL7 Transformer'
+          pythonVersion: '3.13'
+          poolName: ${{ variables.POOL_NAME }}
+
+  - stage: BuildAndPushTrainingHL7Transformer
+    displayName: 'Build and Push Training HL7 Transformer'
+    dependsOn: CodeQuality
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushTrainingHL7Transformer'
+          displayName: 'Build and Push Training HL7 Transformer'
+          appName: 'trn-hl7transformer'
+          dockerfilePath: 'training_hl7_transformer/Dockerfile'
+          buildContext: 'training_hl7_transformer'
+          additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
