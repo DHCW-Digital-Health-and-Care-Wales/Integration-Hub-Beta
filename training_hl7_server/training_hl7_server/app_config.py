@@ -92,7 +92,10 @@ class AppConfig:
     # =========================================================================
     # WEEK 2 ADDITION: Service Bus Configuration
     # =========================================================================
+    # For local development: use connection_string
+    # For Azure deployment: use service_bus_namespace (with managed identity)
     connection_string: str | None
+    service_bus_namespace: str | None
     egress_queue_name: str | None
     egress_session_id: str | None
 
@@ -121,7 +124,7 @@ class AppConfig:
             # =====================================================================
             # Network settings - these have sensible defaults for development
             # =====================================================================
-            host=_read_env_with_default("HOST", "0.0.0.0"),
+            host=_read_env_with_default("HOST", "127.0.0.1"),
             port=_read_int_env_with_default("PORT", 2575),
             # =====================================================================
             # Validation settings - optional, None means no validation
@@ -134,9 +137,11 @@ class AppConfig:
             # =====================================================================
             # WEEK 2 ADDITION: Service Bus settings
             # =====================================================================
-            # SERVICE_BUS_CONNECTION_STRING: Connection string for Azure Service Bus
-            # For local development, this connects to the Service Bus Emulator
+            # SERVICE_BUS_CONNECTION_STRING: Connection string for local dev (emulator)
+            # SERVICE_BUS_NAMESPACE: Namespace for Azure deployment (managed identity)
+            # One of these should be set when using Service Bus
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             # EGRESS_QUEUE_NAME: Queue where validated messages are published
             # The transformer component reads from this queue
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME"),

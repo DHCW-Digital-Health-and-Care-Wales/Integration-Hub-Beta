@@ -45,7 +45,10 @@ class TransformerConfig:
     # =========================================================================
     # Service Bus Configuration
     # =========================================================================
-    connection_string: str
+    # For local development: use connection_string
+    # For Azure deployment: use service_bus_namespace (with managed identity)
+    connection_string: str | None
+    service_bus_namespace: str | None
 
     # Ingress queue settings - where we READ messages from
     ingress_queue_name: str
@@ -85,8 +88,11 @@ class TransformerConfig:
             # ===================================================================
             # Service Bus Connection
             # ===================================================================
-            # The connection string is REQUIRED - fail fast if not set
-            connection_string=_read_required_env("SERVICE_BUS_CONNECTION_STRING"),
+            # LOCAL: Use SERVICE_BUS_CONNECTION_STRING for local dev with emulator
+            # AZURE: Use SERVICE_BUS_NAMESPACE for cloud deployment (managed identity)
+            # One of these must be set
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             # ===================================================================
             # Ingress Queue - where we READ messages from
             # ===================================================================

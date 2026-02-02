@@ -41,6 +41,7 @@ for a production transformer that inherits from BaseTransformer.
 import os
 import signal
 import sys
+from collections.abc import Callable
 
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
@@ -50,12 +51,12 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from training_hl7_transformer.app_config import TransformerConfig
-from training_hl7_transformer.mappers.msh_mapper import map_msh
 
 # ===========================================================================
 # WEEK 2 EXERCISE 2 & 3 SOLUTIONS: Import additional mappers
 # ===========================================================================
 from training_hl7_transformer.mappers.evn_mapper import map_evn
+from training_hl7_transformer.mappers.msh_mapper import map_msh
 from training_hl7_transformer.mappers.pid_mapper import map_pid
 
 
@@ -80,7 +81,6 @@ class TrainingTransformer:
     Attributes:
         name: Display name for logging
         config_path: Path to config.ini file
-        config: TransformerConfig instance
         running: Flag to control the main loop
     """
 
@@ -90,9 +90,6 @@ class TrainingTransformer:
 
         # Path to config.ini in the same directory as this module
         self.config_path = os.path.join(os.path.dirname(__file__), "config.ini")
-
-        # Will be loaded when run() is called
-        self.config: TransformerConfig | None = None
 
         # Flag to control the main processing loop
         # Set to False when shutdown signal is received
@@ -161,16 +158,33 @@ class TrainingTransformer:
 
         return new_message
 
-    def _create_message_processor(self, sender_client: MessageSenderClient):
+    def _create_message_processor(
+        self, sender_client: MessageSenderClient, config: TransformerConfig
+    ) -> Callable[[ServiceBusMessage], bool]:
         """
         Create a message processor callback function.
 
-        This is the production pattern used by all transformers.
-        The MessageReceiverClient calls this function for each message,
-        and handles completion/abandonment based on the return value.
+        PRODUCTION PATTERN EXPLANATION FOR BEGINNERS:
+        ---------------------------------------------
+        This method demonstrates a key pattern used in all production transformers:
+        creating a "closure" - a nested function that has access to variables from
+        its parent scope.
+
+        Why use this pattern?
+        1. The message processor needs access to both sender_client AND config
+        2. But the MessageReceiverClient only passes the message to the callback
+        3. By defining process_message inside this method, it can "capture"
+           sender_client and config from the outer scope
+        4. This is cleaner than using class instance variables
+
+        In production code (transformer_base_lib/run_transformer.py), this same
+        pattern is used - message_processor is defined as a nested function inside
+        run_transformer_app(), giving it access to sender_client, event_logger,
+        transformer, and config.
 
         Args:
             sender_client: The sender client for publishing transformed messages.
+            config: The loaded configuration (passed in, not an instance variable).
 
         Returns:
             A callback function that processes a single message.
@@ -179,6 +193,11 @@ class TrainingTransformer:
         def process_message(message: ServiceBusMessage) -> bool:
             """
             Process a single message from the queue.
+
+            IMPORTANT: This nested function has access to 'config' and 'sender_client'
+            from the parent scope - this is called a "closure" in Python.
+            Even though these aren't passed as parameters, they're captured from
+            the _create_message_processor method above.
 
             This callback:
             1. Extracts the HL7 content from the Service Bus message
@@ -199,7 +218,8 @@ class TrainingTransformer:
             """
             try:
                 # Log that we picked up a message from the queue
-                print(f"\n>>> PICKED UP MESSAGE from queue: {self.config.ingress_queue_name}")
+                # Note: 'config' is accessible here even though it's not a parameter!
+                print(f"\n>>> PICKED UP MESSAGE from queue: {config.ingress_queue_name}")
 
                 # Get the raw message body as string
                 raw_body = str(message)
@@ -228,7 +248,8 @@ class TrainingTransformer:
                 # =============================================================
                 # PUBLISH transformed message to egress queue
                 # =============================================================
-                print(f">>> PUBLISHING to queue: {self.config.egress_queue_name}")
+                # Again, 'config' is accessible from the closure
+                print(f">>> PUBLISHING to queue: {config.egress_queue_name}")
                 try:
                     sender_client.send_text_message(transformed_body)
                     print(f"✓ Published to egress: {message_control_id}")
@@ -250,60 +271,81 @@ class TrainingTransformer:
 
     def run(self) -> None:
         """
-        Run the transformer main loop.
+        Main entry point for the transformer.
 
-        This method:
-        1. Loads configuration from environment and config file
-        2. Creates Service Bus clients for ingress and egress queues
-        3. Enters a loop that receives and processes messages
-        4. Publishes transformed messages and completes originals
-        5. Exits gracefully on shutdown signal
+        PRODUCTION PATTERN EXPLANATION FOR BEGINNERS:
+        ---------------------------------------------
+        This method follows the exact pattern used in transformer_base_lib/run_transformer.py:
+
+        1. Load config as a LOCAL VARIABLE (not an instance variable)
+           - This is key! In production, config lives in run_transformer_app() scope
+           - We don't store it as self.config because we don't need it after run()
+
+        2. Create Service Bus clients with the config
+           - ConnectionConfig wraps connection settings
+           - ServiceBusClientFactory creates sender and receiver clients
+
+        3. Define message_processor as a nested function
+           - The nested function can access 'config' from this method's scope
+           - This is cleaner than passing config through self
+
+        4. Enter the message processing loop
+           - Receive messages in batches
+           - Process each with the callback
+           - Loop continues until shutdown signal
 
         The loop continues until self.running is set to False
         (by the signal handler) or an unrecoverable error occurs.
         """
         # =====================================================================
-        # STEP 1: Load configuration
+        # STEP 1: Load configuration as a LOCAL variable
         # =====================================================================
+        # IMPORTANT: In production (transformer_base_lib/run_transformer.py),
+        # config is loaded as a local variable in run_transformer_app().
+        # It's NOT stored as an instance variable (self.config).
+        # This means we don't need Optional types or type guards!
         print("=" * 60)
         print("TRAINING HL7 TRANSFORMER")
         print("=" * 60)
         print("Loading configuration...")
 
-        self.config = TransformerConfig.from_env_and_config_file(self.config_path)
+        config = TransformerConfig.from_env_and_config_file(self.config_path)
 
-        print(f"Ingress Queue: {self.config.ingress_queue_name}")
-        print(f"Ingress Session ID: {self.config.ingress_session_id or '(none)'}")
-        print(f"Egress Queue: {self.config.egress_queue_name}")
-        print(f"Egress Session ID: {self.config.egress_session_id or '(none)'}")
-        print(f"Max Batch Size: {self.config.max_batch_size}")
+        print(f"Ingress Queue: {config.ingress_queue_name}")
+        print(f"Ingress Session ID: {config.ingress_session_id or '(none)'}")
+        print(f"Egress Queue: {config.egress_queue_name}")
+        print(f"Egress Session ID: {config.egress_session_id or '(none)'}")
+        print(f"Max Batch Size: {config.max_batch_size}")
         print("=" * 60)
 
         # =====================================================================
         # STEP 2: Create Service Bus clients
         # =====================================================================
-        # This is the production pattern used by all transformers:
-        # 1. ConnectionConfig holds connection settings
-        # 2. ServiceBusClientFactory creates sender and receiver clients
-        # 3. MessageSenderClient wraps the Azure SDK sender
-        # 4. MessageReceiverClient wraps the Azure SDK receiver
+        # PRODUCTION PATTERN: This matches transformer_base_lib/run_transformer.py
+        # exactly. We create:
+        # 1. ConnectionConfig - holds connection settings
+        # 2. ServiceBusClientFactory - creates sender and receiver clients
+        # 3. sender_client - publishes transformed messages to egress queue
+        # 4. receiver_client - receives messages from ingress queue
+        # LOCAL: Uses connection_string for Service Bus emulator
+        # AZURE: Uses service_bus_namespace with managed identity
 
-        client_config = ConnectionConfig(
-            connection_string=self.config.connection_string,
-            service_bus_namespace=None,  # Not used when connection_string is set
+        connection_config = ConnectionConfig(
+            connection_string=config.connection_string,
+            service_bus_namespace=config.service_bus_namespace,
         )
-        factory = ServiceBusClientFactory(client_config)
 
-        # Create sender client for egress queue
+        factory = ServiceBusClientFactory(connection_config)
+
+        # Create sender for egress queue (where transformed messages go)
         sender_client = factory.create_queue_sender_client(
-            queue_name=self.config.egress_queue_name,
-            session_id=self.config.egress_session_id,
+            queue_name=config.egress_queue_name,
+            session_id=config.egress_session_id,
         )
 
-        # Create receiver client for ingress queue
+        # Create receiver for ingress queue (where raw messages come from)
         receiver_client = factory.create_message_receiver_client(
-            queue_name=self.config.ingress_queue_name,
-            session_id=self.config.ingress_session_id,
+            queue_name=config.ingress_queue_name, session_id=config.ingress_session_id
         )
 
         print("✓ Service Bus clients initialized")
@@ -314,15 +356,21 @@ class TrainingTransformer:
         # =====================================================================
         # STEP 3: Main processing loop (PRODUCTION PATTERN)
         # =====================================================================
+        # PRODUCTION PATTERN: This matches transformer_base_lib/run_transformer.py
         # The MessageReceiverClient uses a callback pattern:
-        # - We provide a function that processes one message
+        # - We create a function (message_processor) that processes one message
         # - The function returns True for success, False for failure
         # - The client automatically handles completion/abandonment
         # - The client also handles retry delays and session locking
+        #
+        # KEY POINT: message_processor is created by _create_message_processor()
+        # as a nested function that has access to both sender_client AND config
+        # from this scope. This is the "closure" pattern.
 
         try:
-            # Create the message processor callback with access to sender_client
-            message_processor = self._create_message_processor(sender_client)
+            # Create the message processor callback
+            # We pass both sender_client and config so the nested function can access them
+            message_processor = self._create_message_processor(sender_client, config)
 
             with sender_client:
                 # Note: receiver_client creates new connections on each receive_messages() call
@@ -338,7 +386,7 @@ class TrainingTransformer:
                     # Note: This call creates and destroys receiver connections internally
                     # so idle timeout won't affect the receiver
                     receiver_client.receive_messages(
-                        num_of_messages=self.config.max_batch_size,
+                        num_of_messages=config.max_batch_size,
                         message_processor=message_processor,
                     )
 

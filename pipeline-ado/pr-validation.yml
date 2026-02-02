@@ -16,6 +16,9 @@ pr:
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
+      - training_hl7_server/*
+      - training_hl7_sender/*
+      - training_hl7_transformer/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -75,6 +78,30 @@ stages:
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
+      # Training HL7 Server validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_server'
+          appDisplayName: 'Training HL7 Server'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # Training HL7 Sender validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_sender'
+          appDisplayName: 'Training HL7 Sender'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # Training HL7 Transformer validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_transformer'
+          appDisplayName: 'Training HL7 Transformer'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
       # Shared Libraries validation
       - template: templates/code-quality-template.yml
         parameters:
@@ -114,7 +141,7 @@ stages:
           appDisplayName: 'Processor Manager Library'
           banditSourceDir: 'processor_manager_lib'
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
-         
+
       - template: templates/code-quality-template.yml
         parameters:
           appName: 'shared_libs/transformer_base_lib'

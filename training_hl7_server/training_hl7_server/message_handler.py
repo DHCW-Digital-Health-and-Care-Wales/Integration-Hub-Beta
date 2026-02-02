@@ -1,5 +1,7 @@
 """Message handler for processing incoming HL7 messages."""
 
+from typing import Optional
+
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 
@@ -56,9 +58,9 @@ class MessageHandler(AbstractHandler):
     def __init__(
         self,
         incoming_message: str,
-        expected_version: str | None = None,
-        allowed_senders: str | None = None,
-        sender_client: MessageSenderClient | None = None,
+        expected_version: Optional[str] = None,
+        allowed_senders: Optional[str] = None,
+        sender_client: Optional[MessageSenderClient] = None,
     ) -> None:
         """
         Initialize the message handler.
@@ -78,7 +80,7 @@ class MessageHandler(AbstractHandler):
         super().__init__(incoming_message)
 
         # Store the expected HL7 version for validation (can be None to skip)
-        self.expected_version = expected_version
+        self.expected_version: Optional[str] = expected_version
 
         # =====================================================================
         # EXERCISE 4: Store allowed senders list
@@ -92,9 +94,9 @@ class MessageHandler(AbstractHandler):
         if allowed_senders:
             # Split by comma and strip whitespace from each item
             # "169, 245" becomes ["169", "245"]
-            self.allowed_senders = [app.strip() for app in allowed_senders.split(",")]
+            self.allowed_senders: Optional[list[str]] = [app.strip() for app in allowed_senders.split(",")]
         else:
-            # None means accept all senders (validation disabled)
+            # If no allowed senders configured, set to None (accept all)
             self.allowed_senders = None
 
         # =====================================================================
@@ -203,8 +205,9 @@ class MessageHandler(AbstractHandler):
             )
             print(f"✓ Sending ACK (AA) for message {message_control_id}")
 
-            # Convert the ACK Message object to ER7 format (pipe-delimited string)
-            return ack.to_er7()
+            # Convert the ACK Message object to MLLP format (ER7 with framing bytes)
+            # MLLP requires start byte (\x0b) and end bytes (\x1c\x0d)
+            return ack.to_mllp()
 
         except ValidationError as e:
             # ===================================================================
@@ -224,7 +227,7 @@ class MessageHandler(AbstractHandler):
                     ack_code=Hl7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
-                return ack.to_er7()
+                return ack.to_mllp()
             except Exception:
                 # If we can't even parse the message, re-raise the original error
                 raise
@@ -294,7 +297,7 @@ class MessageHandler(AbstractHandler):
 
         Example:
             # Message with MSH-3 = "169" when ALLOWED_SENDERS="169,245"
-            # -> Validation passes ✓
+            # -> Validation passes
 
             # Message with MSH-3 = "999" when ALLOWED_SENDERS="169,245"
             # -> ValidationError raised, AE ACK returned
@@ -302,7 +305,7 @@ class MessageHandler(AbstractHandler):
         # Skip validation if no allowed senders list is configured
         # This is the "open" mode where any sender is accepted
         if self.allowed_senders is None:
-            print("  (Sending app validation skipped - no allowed list configured)")
+            print("(Sending app validation skipped - no allowed list configured)")
             return
 
         # Check if the sending app is in our allowed list
@@ -311,4 +314,4 @@ class MessageHandler(AbstractHandler):
             allowed_list = ", ".join(self.allowed_senders)
             raise ValidationError(f"Sending application '{sending_app}' is not in allowed list: [{allowed_list}]")
 
-        print(f"✓ Sending application validated: {sending_app} (in allowed list)")
+        print(f"Sending application validated: {sending_app} (in allowed list)")

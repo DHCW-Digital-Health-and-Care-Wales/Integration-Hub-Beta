@@ -255,16 +255,20 @@ name = "message-bus-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/message_bus_lib" }
 dependencies = [
+    { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -272,7 +276,7 @@ dev = [
     { name = "bandit", specifier = "==1.9.2" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
-    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.11.1" },
+    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.14.4" },
 ]
 
 [[package]]
@@ -369,10 +373,14 @@ version = "0.1.0"
 source = { directory = "../shared_libs/processor_manager_lib" }
 dependencies = [
     { name = "setuptools" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "setuptools", specifier = "==80.9.0" }]
+requires-dist = [
+    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
 
 [[package]]
 name = "pycparser"
