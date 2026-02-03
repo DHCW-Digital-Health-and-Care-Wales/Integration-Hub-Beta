@@ -129,7 +129,7 @@ class MessageHandler(AbstractHandler):
             # WEEK 2 ADDITION: Publish the message to the Service Bus Egress Queue
             # The Transformer component will pick it up from there
             if self.sender_client:
-                print("=" * 60 + f"/nPublishing message {message_control_id} to Service Bus...")
+                print("=" * 60 + f"\nPublishing message {message_control_id} to Service Bus...")
                 self.sender_client.send_text_message(self.incoming_message)
                 print("✓ Message published to Service Bus Egress Queue\n")
             else:

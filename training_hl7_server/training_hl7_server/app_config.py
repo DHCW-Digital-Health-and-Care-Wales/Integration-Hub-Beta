@@ -77,25 +77,24 @@ class AppConfig:
         allowed_senders: Comma-separated list of allowed sending application
                          codes (MSH-3). If None, all senders are accepted.
                          Example: "169,245" allows only apps 169 and 245.
+
+        connection_string: Used for local development.
+
+        service_bus_namespace: For Azure Development - the Azure Service Bus namespace.
+
+        egress_queue_name: Queue where validated messages are published.
+                           The transformer component reads from this queue
+
+        egress_session_id: Session ID for ordered message processing.
+                           Session-enabled queues ensure messages are processed in order
     """
 
-    # =========================================================================
-    # Server Network Configuration
-    # =========================================================================
     host: str
     port: int
-
-    # =========================================================================
-    # HL7 Validation Settings
-    # =========================================================================
     hl7_version: str | None
     allowed_senders: str | None
 
-    # =========================================================================
     # WEEK 2 ADDITION: Service Bus Configuration
-    # =========================================================================
-    # For local development: use connection_string
-    # For Azure deployment: use service_bus_namespace (with managed identity)
     connection_string: str | None
     service_bus_namespace: str | None
     egress_queue_name: str | None
@@ -103,7 +102,6 @@ class AppConfig:
 
     @staticmethod
     def read_env_config() -> AppConfig:
-
         """
         Read configuration from environment variables.
 
@@ -125,17 +123,12 @@ class AppConfig:
         """
 
         return AppConfig(
-            # =====================================================================
-            # Network settings - these have sensible defaults for development
-            # =====================================================================
-
-            host = _read_env_with_default("HOST", "0.0.0.0"),
-            port = int(_read_env_with_default("PORT", 2575)),
-
-            # =====================================================================
-            # Validation settings - optional, None means no validation
-            # =====================================================================
-
-            hl7_version = _read_env("HL7_VERSION"),
-            allowed_senders = _read_env("ALLOWED_SENDERS"),
+            host=_read_env_with_default("HOST", "127,0,0,1"),
+            port=int(_read_env_with_default("PORT", "2775")),
+            hl7_version=_read_env("HL7_VERSION"),
+            allowed_senders=_read_env("ALLOWED_SENDERS"),
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
+            egress_queue_name=_read_env("EGRESS_QUEUE_NAME"),
+            egress_session_id=_read_env("EGRESS_SESSION_ID"),
         )

@@ -274,12 +274,17 @@ services:
     build:
       context: ../training_hl7_server
       dockerfile: ./Dockerfile
+      additional_contexts:
+        # - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
     env_file:
       - ./training-hl7-server.env
     ports:
       # Expose port 2590 for HL7 message testing
       - "2590:2590"
     restart: on-failure
+    depends_on:
+      - sb-emulator
     profiles:
       # Profile ensures this only starts with: docker compose --profile training up
       - training
@@ -287,6 +292,31 @@ services:
       integration-hub:
         aliases:
           - "training-hl7-server"
+  
+  # ========================================
+  # TRAINING TRANSFORMERS
+  # ========================================
+  # Training transformer for learning HL7 message transformation (Week 2)
+  # Reads from training-transformer-ingress queue, transforms MSH segment,
+  # publishes to training-egress queue
+  training-hl7-transformer:
+    container_name: training-hl7-transformer
+    build:
+      context: ../training_hl7_transformer
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - shared_libs=../shared_libs
+    env_file:
+      - ./training-hl7-transformer.env
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - training
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7-transformer"
 
 networks:
   integration-hub:
