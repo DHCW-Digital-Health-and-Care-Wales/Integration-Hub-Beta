@@ -160,7 +160,8 @@ class HL7SenderClient:
         if is_socket_closed(self.mllp_client.socket):
             logger.info("Creating new MLLP client connection (socket was closed)")
             self.mllp_client = self._close_and_create_new_mllp_client()
-
+        print("HL7 Sender sending message:")
+        print(message)
         try:
             # Send message and receive ACK
             # The MLLPClient.send_message() handles MLLP framing automatically

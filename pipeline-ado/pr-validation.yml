@@ -15,6 +15,7 @@ pr:
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
+      - training_hl7_server/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -128,5 +129,13 @@ stages:
           appDisplayName: 'Field Utils Library'
           banditSourceDir: 'field_utils_lib'
 
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          
+# Training HL7 Server validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_server'
+          appDisplayName: 'Training HL7 Server'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}

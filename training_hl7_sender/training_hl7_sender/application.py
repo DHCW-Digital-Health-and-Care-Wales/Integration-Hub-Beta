@@ -21,6 +21,7 @@ The production hl7_sender/application.py includes:
 
 import logging
 import os
+import time
 
 from azure.servicebus import ServiceBusMessage
 from message_bus_lib.connection_config import ConnectionConfig
@@ -169,38 +170,54 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
     print(f"    Control ID: {control_id}")
     logger.info(f"Received message from queue, Control ID: {control_id}")
 
-    try:
-        # Send the message via MLLP
-        print(
-            f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}:{hl7_sender_client.receiver_mllp_port}..."
-        )
-        ack_response = hl7_sender_client.send_message(message_body)
+    for attempt in range(1,4):
 
-        # Validate the ACK response
-        ack_success = get_ack_result(ack_response)
+        try:
+            # Send the message via MLLP
+            print(
+                f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}:{hl7_sender_client.receiver_mllp_port}..."
+            )
+            logger.info("Sending via MLLP (attempt %d/3)", attempt)
 
-        if ack_success:
-            logger.info("Message sent successfully, ACK validated")
-            return True
-        else:
-            logger.warning("Message sent but ACK indicates failure")
-            return False
+            ack_response = hl7_sender_client.send_message(message_body)
 
-    except TimeoutError as e:
-        print(f"Timeout: {e}")
-        logger.error(f"Timeout sending message: {e}")
-        return False
+            # Validate the ACK response
+            ack_success = get_ack_result(ack_response)
 
-    except ConnectionError as e:
-        print(f"Connection error: {e}")
-        logger.error(f"Connection error: {e}")
-        return False
+            if ack_success:
+                logger.info(
+                    "Message sent successfully, ACK validated (attempt %d)",
+                    attempt
+                )
+                return True
+            else:
+                logger.warning("ACK indicated failure (attempt %d/3)", attempt)
+                return False
 
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        logger.exception("Unexpected error processing message")
-        return False
 
+        except TimeoutError as e:
+            print(f"Timeout: {e}, attempt {attempt}/3")
+            logger.error(f"Timeout sending message: {e}, attempt {attempt}/3")
+            if attempt < 3:
+                print(f"Waiting {RETRY_DELAY_SECONDS} second(s) before retry...")
+                time.sleep(RETRY_DELAY_SECONDS)
+
+        except ConnectionError as e:
+            print(f"Connection error: {e}, attempt {attempt}/3")
+            logger.error(f"Connection error: {e}, attempt {attempt}/3")
+
+        except Exception as e:
+            print(f"Unexpected error: {e}, attempt {attempt}/3")
+            logger.exception("Unexpected error processing message, attempt %d/3", attempt)
+
+        if attempt < 3:
+            time.sleep(1)
+        
+    logger.error(
+        "Abandoning message after 3 failed MLLP send attempts. Control ID: %s",
+        control_id,
+    )
+    return False
 
 if __name__ == "__main__":
     main()

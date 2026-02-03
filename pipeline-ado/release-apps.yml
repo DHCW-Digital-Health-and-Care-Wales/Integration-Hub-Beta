@@ -20,6 +20,8 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
+      - Training HL7 Server
+
       
   - name: selectedEnvironment
     displayName: 'Select Environment'
@@ -70,6 +72,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Transformer - Build'
+      source: 'Training HL7 Transformer - Build'
       trigger: none
 
 stages:
@@ -146,6 +151,12 @@ stages:
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
+
+        # Training HL7 Server
+        - name: 'Training HL7 Server'
+          appImageName: 'trn-hl7server'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Server - Build'
       
       # Environment configurations
       environments:

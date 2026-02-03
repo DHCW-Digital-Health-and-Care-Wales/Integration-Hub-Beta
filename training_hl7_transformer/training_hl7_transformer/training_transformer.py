@@ -129,18 +129,24 @@ class TrainingTransformer:
         # Create a new HL7 message with version 2.3.1
         # This ensures consistent output regardless of input version
         new_message = Message(version="2.3.1")
+        _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
 
         # Apply MSH mapper to transform the Message Header segment
-        _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
-        _ = map_evn(hl7_msg, new_message)
-        _ = map_pid(hl7_msg, new_message)
+        try:
+            _ = map_evn(hl7_msg, new_message)
+        except AttributeError:
+            new_message.add_segment("EVN")
+            print("EVN segment not present in original message (skipping)")
 
-        # =====================================================================
-        # STRETCH EXERCISE 2: Add more segment mappers here
-        # =====================================================================
-        # Example:
-        # from training_hl7_transformer.mappers.pid_mapper import map_pid
-        # pid_details = map_pid(hl7_msg, new_message)
+        try:
+            _ = map_pid(hl7_msg, new_message)
+        except AttributeError:
+            new_message.add_segment("PID")
+            print("PID segment not present in original message (skipping)")
+
+
+        print()
+        print(new_message.msh.to_er7())
         print()
 
         print(new_message.to_er7())
