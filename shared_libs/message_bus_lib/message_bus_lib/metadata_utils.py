@@ -20,12 +20,23 @@ def extract_metadata(message: ServiceBusMessage) -> dict[str, str] | None:
     return result if result else None
 
 
-def get_metadata_log_values(metadata: dict[str, str] | None) -> tuple[str, str, str, str]:
+def get_metadata_log_values(metadata: dict[str, str] | None) -> dict[str, str]:
     if not metadata:
-        return ("N/A", "N/A", "N/A", "N/A")
-    return (
-        metadata.get(EVENT_ID_KEY, "N/A"),
-        metadata.get(WORKFLOW_ID_KEY, "N/A"),
-        metadata.get(SOURCE_SYSTEM_KEY, "N/A"),
-        metadata.get(MESSAGE_RECEIVED_AT_KEY, "N/A"),
-    )
+        return {
+            "event_id": "N/A",
+            "workflow_id": "N/A",
+            "source_system": "N/A",
+            "message_received_at": "N/A",
+        }
+    return {
+        "event_id": metadata.get(EVENT_ID_KEY, "N/A"),
+        "workflow_id": metadata.get(WORKFLOW_ID_KEY, "N/A"),
+        "source_system": metadata.get(SOURCE_SYSTEM_KEY, "N/A"),
+        "message_received_at": metadata.get(MESSAGE_RECEIVED_AT_KEY, "N/A"),
+    }
+
+
+def event_id_for_logger(meta: dict[str, str]) -> str | None:
+    """Return event_id for EventLogger (None when missing or N/A)."""
+    v = meta.get("event_id", "N/A")
+    return v if v != "N/A" else None
