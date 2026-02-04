@@ -32,6 +32,7 @@ stages:
           mkdir -p acr-tags
 
           echo "Listing tags from registry: $ACR_NAME"
+          az acr login --name $(acrName)
 
           if [ -n "$REPOSITORY" ]; then
             echo "Listing tags for repository: $REPOSITORY"
