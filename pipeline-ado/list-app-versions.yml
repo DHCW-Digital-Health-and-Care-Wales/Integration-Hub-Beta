@@ -16,7 +16,7 @@ stages:
   - job: list
     displayName: List tags
     pool:
-      vmImage: ubuntu-latest
+      name: 'UKS-DHCW-IH-DEV-ADOManagedPool'
     steps:
     - task: AzureCLI@2
       displayName: List ACR tags (Azure CLI)
