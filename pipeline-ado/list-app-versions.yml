@@ -7,7 +7,7 @@ variables:
   - name: repositoryName
     value: '' # optional, when empty will list tags for all repos
   - name: azureSubscription
-    value: 'NHSWales-DHCW-NonProd-IntegrationHub-Subscription'
+    value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
 
 stages:
 - stage: ListTags
