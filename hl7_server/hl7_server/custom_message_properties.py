@@ -14,17 +14,17 @@ from message_bus_lib.metadata_utils import (
 FlowPropertyBuilder = Callable[[Message, str, str | None], dict[str, str]]
 
 
-def build_common_properties(workflow_id: str, sending_app: str | None) -> dict[str, str]:
+def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> dict[str, str]:
     return {
         MESSAGE_RECEIVED_AT_KEY: datetime.now(timezone.utc).isoformat(),
         EVENT_ID_KEY: str(uuid.uuid4()),
         WORKFLOW_ID_KEY: workflow_id,
-        SOURCE_SYSTEM_KEY: sending_app if sending_app else "",
+        SOURCE_SYSTEM_KEY: msg_sending_app if msg_sending_app else "",
     }
 
 
-def build_mpi_properties(msg: Message, workflow_id: str, sending_app: str | None) -> dict[str, str]:
-    common_props = build_common_properties(workflow_id, sending_app)
+def build_mpi_properties(msg: Message, workflow_id: str, msg_sending_app: str | None) -> dict[str, str]:
+    common_props = build_common_properties(workflow_id, msg_sending_app)
     flow_specific_props = {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
         "UpdateSource": get_hl7_field_value(msg, "pid.pid_2.cx_4.hd_1"),
