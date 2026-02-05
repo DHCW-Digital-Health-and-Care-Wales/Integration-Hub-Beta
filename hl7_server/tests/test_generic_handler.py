@@ -110,7 +110,10 @@ class TestGenericHandler(unittest.TestCase):
         self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
         self.assertEqual(custom_properties["SourceSystem"], "252")
 
-    @patch("hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS", {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))})
+    @patch(
+        "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
+        {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},
+    )
     def test_flow_property_builder_failure_does_not_prevent_common_properties(self) -> None:
         validator = HL7Validator(flow_name="mpi")
         handler = GenericHandler(

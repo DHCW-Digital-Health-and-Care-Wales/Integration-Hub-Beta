@@ -52,8 +52,6 @@ class TestCustomMessageProperties(unittest.TestCase):
 
     def test_build_mpi_properties_returns_flow_specific_properties_only(self) -> None:
         mock_msg = MagicMock(spec=Message)
-        workflow_id = "test-workflow"
-        sending_app = "252"
 
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
