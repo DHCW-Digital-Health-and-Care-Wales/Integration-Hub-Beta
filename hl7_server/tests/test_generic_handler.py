@@ -110,6 +110,29 @@ class TestGenericHandler(unittest.TestCase):
         self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
         self.assertEqual(custom_properties["SourceSystem"], "252")
 
+    @patch("hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS", {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))})
+    def test_flow_property_builder_failure_does_not_prevent_common_properties(self) -> None:
+        validator = HL7Validator(flow_name="mpi")
+        handler = GenericHandler(
+            VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+            flow_name="mpi",
+        )
+
+        handler.reply()
+
+        call_args = self.mock_sender.send_text_message.call_args
+        custom_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", custom_properties)
+        self.assertIn("EventId", custom_properties)
+        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(custom_properties["SourceSystem"], "252")
+
     @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
         self, mock_validate_flow_xml: MagicMock

@@ -97,15 +97,17 @@ class GenericHandler(AbstractHandler):
                     raise
 
             message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
+            common_properties = build_common_properties(self.workflow_id, message_sending_app)
+
             custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
-            try:
-                if custom_properties_builder:
-                    custom_properties = custom_properties_builder(msg, self.workflow_id, message_sending_app)
-                else:
-                    custom_properties = build_common_properties(self.workflow_id, message_sending_app)
-            except Exception as e:
-                logger.warning("Failed to build flow-specific tracking properties, using common defaults: %s", e)
-                custom_properties = build_common_properties(self.workflow_id, message_sending_app)
+            custom_properties = dict(common_properties)
+
+            if custom_properties_builder:
+                try:
+                    flow_specific_properties = custom_properties_builder(msg)
+                    custom_properties.update(flow_specific_properties)
+                except Exception as e:
+                    logger.warning("Failed to build flow-specific routing properties: %s", e)
 
             self._send_to_service_bus(message_control_id, custom_properties)
 

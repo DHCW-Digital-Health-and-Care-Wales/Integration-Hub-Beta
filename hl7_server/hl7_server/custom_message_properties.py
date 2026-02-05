@@ -11,7 +11,7 @@ from message_bus_lib.metadata_utils import (
     WORKFLOW_ID_KEY,
 )
 
-FlowPropertyBuilder = Callable[[Message, str, str | None], dict[str, str]]
+FlowPropertyBuilder = Callable[[Message], dict[str, str]]
 
 
 def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> dict[str, str]:
@@ -23,17 +23,14 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
     }
 
 
-def build_mpi_properties(msg: Message, workflow_id: str, msg_sending_app: str | None) -> dict[str, str]:
-    common_props = build_common_properties(workflow_id, msg_sending_app)
-    flow_specific_props = {
+def build_mpi_properties(msg: Message) -> dict[str, str]:
+    return {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
         "UpdateSource": get_hl7_field_value(msg, "pid.pid_2.cx_4.hd_1"),
         "AssigningAuthority": get_hl7_field_value(msg, "pid.pid_3.cx_4.hd_1"),
         "DateDeath": get_hl7_field_value(msg, "pid.pid_29.ts_1"),
         "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
     }
-    common_props.update(flow_specific_props)
-    return common_props
 
 
 FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {

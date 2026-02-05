@@ -50,7 +50,7 @@ class TestCustomMessageProperties(unittest.TestCase):
         except ValueError:
             self.fail("EventId is not a valid UUID")
 
-    def test_build_mpi_properties_includes_common_and_flow_specific(self) -> None:
+    def test_build_mpi_properties_returns_flow_specific_properties_only(self) -> None:
         mock_msg = MagicMock(spec=Message)
         workflow_id = "test-workflow"
         sending_app = "252"
@@ -64,17 +64,18 @@ class TestCustomMessageProperties(unittest.TestCase):
                 "pid.pid_30": "",
             }.get(path, "")
 
-            props = build_mpi_properties(mock_msg, workflow_id, sending_app)
+            props = build_mpi_properties(mock_msg)
 
-            self.assertIn("MessageReceivedAt", props)
-            self.assertIn("EventId", props)
-            self.assertEqual(props["WorkflowID"], workflow_id)
-            self.assertEqual(props["SourceSystem"], sending_app)
             self.assertEqual(props["MessageType"], "A28")
             self.assertEqual(props["UpdateSource"], "108")
             self.assertEqual(props["AssigningAuthority"], "NHS")
             self.assertEqual(props["DateDeath"], "2023-01-15")
             self.assertEqual(props["ReasonDeath"], "")
+
+            self.assertNotIn("MessageReceivedAt", props)
+            self.assertNotIn("EventId", props)
+            self.assertNotIn("WorkflowID", props)
+            self.assertNotIn("SourceSystem", props)
 
 
 if __name__ == "__main__":
