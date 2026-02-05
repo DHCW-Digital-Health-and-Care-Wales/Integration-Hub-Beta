@@ -77,6 +77,8 @@ class AckBuilder:
         # MSH-10: Message Control ID - same as the original message
         # This links the ACK to the specific message it's acknowledging
         ack.msh.msh_10 = message_control_id
+        ack_control_id = datetime.now().strftime("%Y%m%d%H%M%S%f")  # Unique control ID for the ACK
+        #ack.msh.msh_10 = ack_control_id
 
         # MSH-11: Processing ID (P=Production, T=Training, D=Debugging)
         ack.msh.msh_11 = Hl7Constants.PROCESSING_ID_PRODUCTION
@@ -108,5 +110,13 @@ class AckBuilder:
 
         # Add the MSA segment to the ACK message
         ack.add(msa)
+        ack_str = ack.to_er7()
+
+        print("RAW ACK repr():")
+        print(repr(ack_str))
+
+        print("VISIBLE ACK:")
+        print(ack_str.replace("\r", "\n"))
 
         return ack
+        

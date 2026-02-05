@@ -78,7 +78,8 @@ class MessageHandler(AbstractHandler):
         super().__init__(incoming_message)
 
         # Store the expected HL7 version for validation (can be None to skip)
-        self.expected_version = expected_version
+        # self.expected_version = expected_version
+        self.expected_version = [app.strip() for app in expected_version.split(",")]
 
         # =====================================================================
         # EXERCISE 4: Store allowed senders list
@@ -204,8 +205,9 @@ class MessageHandler(AbstractHandler):
             print(f"✓ Sending ACK (AA) for message {message_control_id}")
 
             # Convert the ACK Message object to ER7 format (pipe-delimited string)
-            return ack.to_er7()
-
+            #return ack.to_er7()
+            ack_str = ack.to_er7()
+            return (ack_str.replace("\r", "\n"))
         except ValidationError as e:
             # ===================================================================
             # Handle validation errors (e.g., wrong HL7 version)
@@ -224,7 +226,9 @@ class MessageHandler(AbstractHandler):
                     ack_code=Hl7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
-                return ack.to_er7()
+                #return ack.to_er7()
+                ack_str = ack.to_er7()
+                return (ack_str.replace("\r", "\n"))
             except Exception:
                 # If we can't even parse the message, re-raise the original error
                 raise
@@ -256,8 +260,9 @@ class MessageHandler(AbstractHandler):
             print("  (HL7 version validation skipped - no version configured)")
             return
 
-        if message_version != self.expected_version:
-            raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
+        if message_version not in self.expected_version:
+            allowed_versions = ", ".join(self.expected_version)
+            raise ValidationError(f"Invalid HL7 version: expected one of [{allowed_versions}], got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
 
     def _validate_sending_app(self, sending_app: str) -> None:

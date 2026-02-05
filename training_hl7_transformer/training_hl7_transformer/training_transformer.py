@@ -128,13 +128,16 @@ class TrainingTransformer:
         """
         # Create a new HL7 message with version 2.3.1
         # This ensures consistent output regardless of input version
-        new_message = Message(version="2.3.1")
+        new_message = Message(version="2.5.1")
 
         # Apply MSH mapper to transform the Message Header segment
         _ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
         
         # Apply PID mapper
-        #_ = map_pid(hl7_msg,new_message)
+        try:
+            _ = map_pid(hl7_msg, new_message)
+        except AttributeError:
+            print("PID segment not present in original message (skipping)")
 
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
