@@ -97,19 +97,17 @@ class GenericHandler(AbstractHandler):
                     raise
 
             message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
-            common_properties = build_common_properties(self.workflow_id, message_sending_app)
+            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
 
-            custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
-            custom_properties = dict(common_properties)
-
-            if custom_properties_builder:
+            flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
+            if flow_property_builder:
                 try:
-                    flow_specific_properties = custom_properties_builder(msg)
-                    custom_properties.update(flow_specific_properties)
+                    flow_specific_properties = flow_property_builder(msg)
+                    tracking_metadata_properties.update(flow_specific_properties)
                 except Exception as e:
                     logger.warning("Failed to build flow-specific routing properties: %s", e)
 
-            self._send_to_service_bus(message_control_id, custom_properties)
+            self._send_to_service_bus(message_control_id, tracking_metadata_properties)
 
             ack_message = self.create_ack(message_control_id, msg)
 
@@ -144,11 +142,11 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str]) -> None:
+    def _send_to_service_bus(self, message_control_id: str, tracking_metadata_properties: dict[str, str]) -> None:
         try:
-            self.sender_client.send_text_message(self.incoming_message, custom_properties)
+            self.sender_client.send_text_message(self.incoming_message, tracking_metadata_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
-            meta = get_metadata_log_values(custom_properties)
+            meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
                 "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
                 meta["event_id"],

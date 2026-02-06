@@ -103,18 +103,18 @@ class TestGenericHandler(unittest.TestCase):
 
         call_args = self.mock_sender.send_text_message.call_args
         self.assertEqual(call_args[0][0], VALID_A28_MESSAGE)
-        custom_properties = call_args[0][1]
-        self.assertIsNotNone(custom_properties)
-        self.assertIn("MessageReceivedAt", custom_properties)
-        self.assertIn("EventId", custom_properties)
-        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
-        self.assertEqual(custom_properties["SourceSystem"], "252")
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIsNotNone(tracking_metadata_properties)
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
 
     @patch(
         "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
         {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},
     )
-    def test_flow_property_builder_failure_does_not_prevent_common_properties(self) -> None:
+    def test_flow_property_builder_failure_does_not_prevent_tracking_metadata(self) -> None:
         validator = HL7Validator(flow_name="mpi")
         handler = GenericHandler(
             VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
@@ -130,14 +130,14 @@ class TestGenericHandler(unittest.TestCase):
         handler.reply()
 
         call_args = self.mock_sender.send_text_message.call_args
-        custom_properties = call_args[0][1]
-        self.assertIn("MessageReceivedAt", custom_properties)
-        self.assertIn("EventId", custom_properties)
-        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
-        self.assertEqual(custom_properties["SourceSystem"], "252")
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
-    def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
+    def test_mpi_outbound_flow_sets_tracking_metadata_with_update_source(
         self, mock_validate_flow_xml: MagicMock
     ) -> None:
         validator = HL7Validator(flow_name="mpi")
@@ -163,16 +163,16 @@ class TestGenericHandler(unittest.TestCase):
         mock_validate_flow_xml.assert_not_called()
         call_args = self.mock_sender.send_text_message.call_args
         self.assertEqual(call_args[0][0], VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE)
-        custom_properties = call_args[0][1]
-        self.assertIn("MessageReceivedAt", custom_properties)
-        self.assertIn("EventId", custom_properties)
-        self.assertEqual(custom_properties["WorkflowID"], "test-workflow")
-        self.assertEqual(custom_properties["SourceSystem"], "252")
-        self.assertEqual(custom_properties["MessageType"], "A28")
-        self.assertEqual(custom_properties["UpdateSource"], "108")
-        self.assertEqual(custom_properties["AssigningAuthority"], "NHS")
-        self.assertEqual(custom_properties["DateDeath"], "2023-01-15")
-        self.assertEqual(custom_properties["ReasonDeath"], "")
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
+        self.assertEqual(tracking_metadata_properties["MessageType"], "A28")
+        self.assertEqual(tracking_metadata_properties["UpdateSource"], "108")
+        self.assertEqual(tracking_metadata_properties["AssigningAuthority"], "NHS")
+        self.assertEqual(tracking_metadata_properties["DateDeath"], "2023-01-15")
+        self.assertEqual(tracking_metadata_properties["ReasonDeath"], "")
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_rejects_invalid_messages(self, mock_validate_flow_xml: MagicMock) -> None:
