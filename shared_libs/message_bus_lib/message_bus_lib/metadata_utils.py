@@ -2,11 +2,16 @@ from azure.servicebus import ServiceBusMessage
 
 NA = "N/A"
 
+EVENT_ID_KEY = "EventId"
+MESSAGE_RECEIVED_AT_KEY = "MessageReceivedAt"
+SOURCE_SYSTEM_KEY = "SourceSystem"
+WORKFLOW_ID_KEY = "WorkflowID"
+
 METADATA_FIELD_MAP = {
-    "event_id": "EventId",
-    "workflow_id": "WorkflowID",
-    "source_system": "SourceSystem",
-    "message_received_at": "MessageReceivedAt",
+    "event_id": EVENT_ID_KEY,
+    "workflow_id": WORKFLOW_ID_KEY,
+    "source_system": SOURCE_SYSTEM_KEY,
+    "message_received_at": MESSAGE_RECEIVED_AT_KEY,
 }
 
 
