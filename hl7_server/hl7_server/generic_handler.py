@@ -1,6 +1,7 @@
 import logging
 
 from event_logger_lib.event_logger import EventLogger
+from field_utils_lib import get_hl7_field_value
 from hl7_validation import (
     XmlValidationError,
     validate_parsed_message_with_flow_schema,
@@ -11,9 +12,10 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.metadata_utils import get_metadata_log_values
 from metric_sender_lib.metric_sender import MetricSender
 
-from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS
+from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, build_common_properties
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
@@ -29,6 +31,8 @@ class GenericHandler(AbstractHandler):
         event_logger: EventLogger,
         metric_sender: MetricSender,
         validator: HL7Validator,
+        workflow_id: str,
+        sending_app: str | None,
         flow_name: str | None = None,
         standard_version: str | None = None,
     ):
@@ -37,6 +41,8 @@ class GenericHandler(AbstractHandler):
         self.event_logger = event_logger
         self.metric_sender = metric_sender
         self.validator = validator
+        self.workflow_id = workflow_id
+        self.sending_app = sending_app
         self.flow_name: str | None = flow_name
         self.standard_version: str | None = standard_version
 
@@ -90,10 +96,18 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
-            custom_properties_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
-            custom_properties = custom_properties_builder(msg) if custom_properties_builder else None
+            message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
+            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
 
-            self._send_to_service_bus(message_control_id, custom_properties)
+            flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
+            if flow_property_builder:
+                try:
+                    flow_specific_properties = flow_property_builder(msg)
+                    tracking_metadata_properties.update(flow_specific_properties)
+                except Exception as e:
+                    logger.warning("Failed to build flow-specific routing properties: %s", e)
+
+            self._send_to_service_bus(message_control_id, tracking_metadata_properties)
 
             ack_message = self.create_ack(message_control_id, msg)
 
@@ -128,10 +142,18 @@ class GenericHandler(AbstractHandler):
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
 
-    def _send_to_service_bus(self, message_control_id: str, custom_properties: dict[str, str] | None) -> None:
+    def _send_to_service_bus(self, message_control_id: str, tracking_metadata_properties: dict[str, str]) -> None:
         try:
-            self.sender_client.send_text_message(self.incoming_message, custom_properties)
+            self.sender_client.send_text_message(self.incoming_message, tracking_metadata_properties)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
+            meta = get_metadata_log_values(tracking_metadata_properties)
+            logger.info(
+                "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+                meta["event_id"],
+                meta["workflow_id"],
+                meta["source_system"],
+                meta["message_received_at"],
+            )
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
