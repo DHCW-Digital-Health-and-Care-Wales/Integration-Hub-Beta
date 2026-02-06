@@ -41,14 +41,27 @@ from dataclasses import dataclass
 
 
 def _read_env(name: str) -> str | None:
-    value = os.environ.get(name)
+    value = os.getenv(name)
     if value is None or value.strip() == "":
         return None
     return value
 
+def _read_required_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        raise RuntimeError(f"Missing required configuration: {name}")
+    else:
+        return value
+
 def _read_env_with_default(name: str, default) -> str:
     value = _read_env(name)
     return value if value is not None else default
+
+def _read_int_env(name: str) -> int | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return int(value)
 
 
 @dataclass
@@ -123,8 +136,8 @@ class AppConfig:
         """
 
         return AppConfig(
-            host=_read_env_with_default("HOST", "127,0,0,1"),
-            port=int(_read_env_with_default("PORT", "2775")),
+            host=_read_env_with_default("HOST", "127.0.0.1"),
+            port=int(_read_env_with_default("PORT", "2575")),
             hl7_version=_read_env("HL7_VERSION"),
             allowed_senders=_read_env("ALLOWED_SENDERS"),
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),

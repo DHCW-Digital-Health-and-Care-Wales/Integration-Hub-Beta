@@ -1,6 +1,5 @@
-from field_utils_lib import copy_segment_fields_in_range
-from field_utils_lib.field_utils import get_hl7_field_value
-from hl7apy.core import Message  # type: ignore[import-untyped]
+from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
+from hl7apy.core import Message
 
 
 def map_pid(original_message: Message, new_message: Message) -> dict[str, str] | None:

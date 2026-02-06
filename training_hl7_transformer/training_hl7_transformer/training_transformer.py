@@ -54,11 +54,11 @@ class TrainingTransformer:
 
         trans_datetime = map_msh(hl7_msg, new_msg)
         if trans_datetime:
-            print(f"Transformed MSH Datetime details: {trans_datetime}\n")
+            print(f"Transformed MSH Datetime details: {trans_datetime}")
 
         trans_evn = map_evn(hl7_msg, new_msg)
         if trans_evn:
-            print(f"Transformed EVN details: {trans_evn}\n")
+            print(f"Transformed EVN details: {trans_evn}")
 
         trans_pid = map_pid(hl7_msg, new_msg)
         if trans_pid:
@@ -109,7 +109,7 @@ class TrainingTransformer:
                 print(f"\n>>> PICKED UP MESSAGE from queue: {config.ingress_queue_name}")
 
                 raw_body = str(message)
-                print("Raw message body:", raw_body)
+                print("Raw message body:\n",raw_body)
 
                 print("\n" + "=" * 60 + "\nPROCESSING MESSAGE FROM QUEUE\n" + "=" * 60)
 
@@ -128,17 +128,17 @@ class TrainingTransformer:
                 transformed_msg = self.transform_message(hl7_msg)
                 transformed_body = transformed_msg.to_er7()
 
-                print(f"\n✓ Transformation complete for {message_control_id}")
+                print(f"✓ Transformation complete for {message_control_id}")
 
                 # =============================================================
                 # PUBLISH transformed message to egress queue
                 # =============================================================
                 # Again, 'config' is accessible from the closure
-                print(f"\n>>> PUBLISHING to queue: {config.egress_queue_name}")
+                print(f">>> PUBLISHING to queue: {config.egress_queue_name}")
 
                 try:
                     sender_client.send_text_message(transformed_body)
-                    print(f"\n✓ Published transformed message {message_control_id} to {config.egress_queue_name}")
+                    print(f"✓ Published transformed message {message_control_id} to {config.egress_queue_name}")
 
                 except Exception as send_error:
                     # If send fails (e.g., connection timeout), log and re-raise

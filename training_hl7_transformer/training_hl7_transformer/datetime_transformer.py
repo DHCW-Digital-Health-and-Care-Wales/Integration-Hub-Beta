@@ -34,3 +34,24 @@ def transform_datetime_to_readable(dt_str: str) -> str | None:
         print(f"Error transforming datetime string '{dt_str}': {e}")
         raise ValueError(f"✗ Error transforming datetime '{dt_str}': {e}")
 
+
+
+def transform_datetime_to_hl7(date_time: str) -> str | None:
+    """Transform datetime from human-readable format to HL7 compact format."""
+    if not date_time:
+        return None
+
+    hl7_format = "%Y%m%d%H%M%S"
+    readable_format = "%Y-%m-%d %H:%M:%S"
+
+    # Check if already in HL7 format
+    try:
+        datetime.strptime(date_time, hl7_format)
+        return date_time  # Already in HL7 format
+    except ValueError:
+        pass
+
+    # Parse readable format and convert to HL7 format
+    dt = datetime.strptime(date_time, readable_format)
+    return dt.strftime(hl7_format)
+
