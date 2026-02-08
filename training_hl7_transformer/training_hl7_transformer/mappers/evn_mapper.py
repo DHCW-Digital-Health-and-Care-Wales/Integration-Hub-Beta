@@ -1,7 +1,7 @@
 
 
+from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
 from hl7apy.core import Message
-from shared_libs.field_utils_lib.field_utils_lib.field_utils import copy_segment_fields_in_range, get_hl7_field_value
 
 
 def map_evn(original_message: Message, new_message: Message) -> dict[str, str| None] | None:

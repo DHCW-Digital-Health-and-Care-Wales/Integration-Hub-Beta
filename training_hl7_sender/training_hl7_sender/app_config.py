@@ -49,7 +49,7 @@ class AppConfig:
     ack_timeout_seconds: int
 
     @staticmethod
-    def from_env_config() -> AppConfig:
+    def read_env_config() -> AppConfig:
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),

@@ -9,6 +9,7 @@
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
     "python.analysis.extraPaths": [
-        "./shared_libs/field_utils_lib"
+        "./shared_libs/field_utils_lib",
+        "./shared_libs/processor_manager_lib"
     ]
 }
