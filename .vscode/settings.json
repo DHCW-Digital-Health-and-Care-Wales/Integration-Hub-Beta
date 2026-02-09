@@ -2,7 +2,7 @@
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        "./training_hl7_transformer",
+        "./training_hl7_sender",
         "-p",
         "test_*.py"
     ],

@@ -21,7 +21,7 @@ def get_ack_result(response: str) -> bool:
 
         if not response_message.MSA:
             print("Recieved a non-ACK - message does not contain MSA segment.")
-            logger.error("recieved non-ACK message.")
+            logger.error("Missing MSA segment.")
             return False
 
         ack_code = response_message.MSA.acknowledgment_code.value
