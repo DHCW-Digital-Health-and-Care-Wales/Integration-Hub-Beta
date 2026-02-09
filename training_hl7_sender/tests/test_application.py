@@ -1,13 +1,17 @@
 """
+===========================================================================
+Unit tests for the application Logic (Training HL7 Sender)
+===========================================================================
+
 These tests verify the main application logic without actually connecting
-to Service Bus or an MLLP receiver.
+to Service Bus or a real MLLP receiver.
 
 TESTING STRATEGY:
 ----------------
-We mock:
-- ServiceBusClientFactory: Don't connect to real Service Bus
-- HL7SenderClient: Don't connect to real MLLP receiver
-- ProcessorManager: Control the processing loop
+We use mocks so that no network calls are made:
+- ServiceBusClientFactory: avoids a real Service Bus connection
+- HL7SenderClient: avoids a real MLLP connection
+- ProcessorManager: lets us control the processing loop
 
 This allows us to test the logic without external dependencies.
 
@@ -60,19 +64,20 @@ class TestProcessMessage(unittest.TestCase):
         """
         Test that a successful send and positive ACK returns True.
         """
-        # Arrange: Create mock objects
+        # Arrange: Create mock objects and a mock queue message body
         mock_message = MagicMock()
         mock_message.body = [self.sample_hl7.encode("utf-8")]
 
+        # The sender returns a positive ACK (AA)
         mock_sender = MagicMock()
         mock_sender.send_message.return_value = self.sample_ack_success
         mock_sender.receiver_mllp_hostname = "mock-receiver"
         mock_sender.receiver_mllp_port = 2591
 
-        # Act: Process the message
+        # Act: Process the message through the callback
         result = _process_message(mock_message, mock_sender)
 
-        # Assert: Should return True for success
+        # Assert: Should return True for success and call send_message once
         self.assertTrue(result)
         mock_sender.send_message.assert_called_once_with(self.sample_hl7)
 
@@ -80,7 +85,7 @@ class TestProcessMessage(unittest.TestCase):
         """
         Test that a negative ACK (AE) returns False.
         """
-        # Arrange
+        # Arrange: Negative ACK (AE) from receiver
         mock_message = MagicMock()
         mock_message.body = [self.sample_hl7.encode("utf-8")]
 
@@ -89,17 +94,17 @@ class TestProcessMessage(unittest.TestCase):
         mock_sender.receiver_mllp_hostname = "mock-receiver"
         mock_sender.receiver_mllp_port = 2591
 
-        # Act
+        # Act: Process the message
         result = _process_message(mock_message, mock_sender)
 
-        # Assert: Should return False for negative ACK
+        # Assert: Should return False for a negative ACK
         self.assertFalse(result)
 
     def test_process_message_timeout(self) -> None:
         """
         Test that a timeout error returns False.
         """
-        # Arrange
+        # Arrange: Simulate a timeout while waiting for ACK
         mock_message = MagicMock()
         mock_message.body = [self.sample_hl7.encode("utf-8")]
 
@@ -108,17 +113,17 @@ class TestProcessMessage(unittest.TestCase):
         mock_sender.receiver_mllp_hostname = "mock-receiver"
         mock_sender.receiver_mllp_port = 2591
 
-        # Act
+        # Act: Process the message
         result = _process_message(mock_message, mock_sender)
 
-        # Assert: Should return False for timeout
+        # Assert: Should return False on timeout
         self.assertFalse(result)
 
     def test_process_message_connection_error(self) -> None:
         """
         Test that a connection error returns False.
         """
-        # Arrange
+        # Arrange: Simulate a connection failure to the receiver
         mock_message = MagicMock()
         mock_message.body = [self.sample_hl7.encode("utf-8")]
 
@@ -127,7 +132,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_sender.receiver_mllp_hostname = "mock-receiver"
         mock_sender.receiver_mllp_port = 2591
 
-        # Act
+        # Act: Process the message
         result = _process_message(mock_message, mock_sender)
 
         # Assert: Should return False for connection error
@@ -142,12 +147,17 @@ class TestApplicationMain(unittest.TestCase):
     resources, and handles the processing loop properly.
     """
 
+    # We use patch to replace real classes inside training_hl7_sender.application.
+    # Each patch avoids real network or process work and gives us controllable mocks.
+    # There are several patch decorators because main() builds multiple dependencies
+    # (config, sender, Service Bus receiver, and the processor loop).
     @patch("training_hl7_sender.application.ProcessorManager")
     @patch("training_hl7_sender.application.ServiceBusClientFactory")
     @patch("training_hl7_sender.application.HL7SenderClient")
     @patch("training_hl7_sender.application.AppConfig")
     def test_main_exits_on_signal(
         self,
+        # Mocks are injected in reverse order of the decorators above.
         mock_app_config_class: MagicMock,
         mock_sender_class: MagicMock,
         mock_factory_class: MagicMock,
@@ -156,7 +166,7 @@ class TestApplicationMain(unittest.TestCase):
         """
         Test that main() exits cleanly when ProcessorManager.is_running becomes False.
         """
-        # Arrange: Set up mocks
+        # Arrange: Set up a fully mocked configuration
         mock_config = MagicMock()
         mock_config.connection_string = "test-connection"
         mock_config.service_bus_namespace = None
@@ -167,12 +177,12 @@ class TestApplicationMain(unittest.TestCase):
         mock_config.ack_timeout_seconds = 30
         mock_app_config_class.read_env_config.return_value = mock_config
 
-        # Processor manager returns False on first check (simulates signal)
+        # ProcessorManager returns False immediately to simulate a shutdown signal
         mock_processor = MagicMock()
         mock_processor.is_running = False  # Exit immediately
         mock_processor_class.return_value = mock_processor
 
-        # Mock the factory and its receiver
+        # Mock the Service Bus receiver client context manager
         mock_receiver = MagicMock()
         mock_receiver.__enter__ = MagicMock(return_value=mock_receiver)
         mock_receiver.__exit__ = MagicMock(return_value=None)
@@ -180,18 +190,18 @@ class TestApplicationMain(unittest.TestCase):
         mock_factory.create_message_receiver_client.return_value = mock_receiver
         mock_factory_class.return_value = mock_factory
 
-        # Mock the sender client
+        # Mock the HL7 sender client context manager
         mock_sender = MagicMock()
         mock_sender.__enter__ = MagicMock(return_value=mock_sender)
         mock_sender.__exit__ = MagicMock(return_value=None)
         mock_sender_class.return_value = mock_sender
 
-        # Act: Run main (should exit immediately due to is_running=False)
+        # Act: Run main (exits immediately because is_running is False)
         from training_hl7_sender.application import main
 
         main()
 
-        # Assert: Verify setup was called
+        # Assert: Verify main performed setup work
         mock_app_config_class.read_env_config.assert_called_once()
         mock_factory.create_message_receiver_client.assert_called_once()
 

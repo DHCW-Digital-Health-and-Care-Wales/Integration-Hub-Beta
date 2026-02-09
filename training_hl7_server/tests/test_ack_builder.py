@@ -1,4 +1,14 @@
-"""Unit tests for ack_builder module."""
+"""
+===========================================================================
+Unit tests for the ACK Builder (Training HL7 Server)
+===========================================================================
+
+These tests verify that AckBuilder creates valid HL7 ACK messages.
+
+Key ideas for beginners:
+- An ACK confirms whether the receiver accepted the message.
+- The ACK should copy key fields and swap sender/receiver details.
+"""
 
 import unittest
 
@@ -26,24 +36,26 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_creates_valid_ack_message(self) -> None:
         """Test that build_ack creates a valid ACK message."""
+        # Act: Build the ACK using the message control ID and original message
         ack = self.ack_builder.build_ack("MSG001", self.original_msg)
 
-        # Verify message type is ACK
+        # Assert: Message type is ACK
         self.assertEqual(str(ack.msh.msh_9.msh_9_1.value), "ACK")
 
-        # Verify MSH field separator and encoding characters
+        # Assert: Standard HL7 separators are preserved
         self.assertEqual(str(ack.msh.msh_1.value), Hl7Constants.FIELD_SEPARATOR)
         self.assertEqual(str(ack.msh.msh_2.value), Hl7Constants.ENCODING_CHARACTERS)
 
-        # Verify message control ID matches
+        # Assert: Message control ID is echoed back
         self.assertEqual(str(ack.msh.msh_10.value), "MSG001")
 
-        # Verify default ACK code is AA (Accept)
+        # Assert: Default ACK code is AA (Accept)
         self.assertEqual(str(ack.msa.msa_1.value), Hl7Constants.ACK_CODE_ACCEPT)
         self.assertEqual(str(ack.msa.msa_2.value), "MSG001")
 
     def test_build_ack_with_error_code(self) -> None:
         """Test that build_ack can create an error ACK (AE)."""
+        # Act: Build an error ACK with a message
         ack = self.ack_builder.build_ack(
             "MSG002",
             self.original_msg,
@@ -51,14 +63,15 @@ class TestAckBuilder(unittest.TestCase):
             error_message="Invalid message version",
         )
 
-        # Verify ACK code is AE (Error)
+        # Assert: ACK code is AE (Error)
         self.assertEqual(str(ack.msa.msa_1.value), Hl7Constants.ACK_CODE_ERROR)
 
-        # Verify error message is included
+        # Assert: Error message is included for debugging
         self.assertEqual(str(ack.msa.msa_3.value), "Invalid message version")
 
     def test_build_ack_swaps_sender_and_receiver(self) -> None:
         """Test that build_ack correctly swaps sending and receiving applications."""
+        # Act: Build an ACK and inspect MSH-3 to MSH-6 fields
         ack = self.ack_builder.build_ack("MSG001", self.original_msg)
 
         # Original: Sending App = 169, Sending Facility = 169
@@ -71,18 +84,20 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_includes_timestamp(self) -> None:
         """Test that build_ack includes a timestamp in MSH-7."""
+        # Act
         ack = self.ack_builder.build_ack("MSG001", self.original_msg)
 
-        # Verify timestamp field is not empty
+        # Assert: Timestamp field is not empty
         timestamp = str(ack.msh.msh_7)
         self.assertIsNotNone(timestamp)
         self.assertTrue(len(timestamp) > 0)
 
     def test_build_ack_includes_processing_id(self) -> None:
         """Test that build_ack includes processing ID from original message."""
+        # Act
         ack = self.ack_builder.build_ack("MSG001", self.original_msg)
 
-        # Verify processing ID matches original (P for Production)
+        # Assert: Processing ID matches original (P for Production)
         self.assertEqual(str(ack.msh.msh_11.value), "P")
 
 

@@ -1,4 +1,13 @@
-"""Unit tests for app_config module."""
+"""
+===========================================================================
+Unit tests for the AppConfig (Training HL7 Server)
+===========================================================================
+
+These tests verify that AppConfig reads environment variables correctly
+and applies sensible defaults when values are missing.
+
+We mock os.getenv so no real environment settings are required.
+"""
 
 import unittest
 from typing import Dict, Optional
@@ -15,6 +24,7 @@ class TestAppConfig(unittest.TestCase):
         """Test that read_env_config applies default values when environment variables are not set."""
 
         def getenv_side_effect(name: str) -> Optional[str]:
+            # Only these variables are provided; anything else should be treated as missing.
             values: Dict[str, str] = {
                 # Required environment variables
                 "HOST": "127.0.0.1",
@@ -27,17 +37,18 @@ class TestAppConfig(unittest.TestCase):
 
         mock_getenv.side_effect = getenv_side_effect
 
+        # Act: Read config from environment variables
         config = AppConfig.read_env_config()
 
-        # Verify network settings
+        # Assert: Network settings come from environment
         self.assertEqual(config.host, "127.0.0.1")
         self.assertEqual(config.port, 2575)
 
-        # Verify validation settings
+        # Assert: Validation settings are read when provided
         self.assertEqual(config.hl7_version, "2.3.1")
         self.assertEqual(config.allowed_senders, "169,245")
 
-        # Verify Service Bus settings are None when not provided
+        # Assert: Service Bus settings are None when not provided
         self.assertIsNone(config.connection_string)
         self.assertIsNone(config.egress_queue_name)
         self.assertIsNone(config.egress_session_id)
@@ -47,6 +58,7 @@ class TestAppConfig(unittest.TestCase):
         """Test that Service Bus configuration is properly loaded."""
 
         def getenv_side_effect(name: str) -> Optional[str]:
+            # Provide Service Bus settings in addition to host/port
             values: Dict[str, str] = {
                 "HOST": "127.0.0.1",
                 "PORT": "2576",
@@ -58,9 +70,10 @@ class TestAppConfig(unittest.TestCase):
 
         mock_getenv.side_effect = getenv_side_effect
 
+        # Act
         config = AppConfig.read_env_config()
 
-        # Verify Service Bus settings
+        # Assert: Service Bus values are populated
         self.assertEqual(config.connection_string, "Endpoint=sb://localhost")
         self.assertEqual(config.egress_queue_name, "training_queue")
         self.assertEqual(config.egress_session_id, "session_123")
@@ -70,15 +83,16 @@ class TestAppConfig(unittest.TestCase):
         """Test that default values are applied when optional env vars are missing."""
 
         def getenv_side_effect(name: str) -> Optional[str]:
-            # Only provide minimal required values
+            # Provide nothing so AppConfig uses its defaults
             values: Dict[str, str] = {}
             return values.get(name)
 
         mock_getenv.side_effect = getenv_side_effect
 
+        # Act
         config = AppConfig.read_env_config()
 
-        # Verify defaults are applied
+        # Assert: Defaults are applied for missing values
         self.assertEqual(config.host, "127.0.0.1")
         self.assertEqual(config.port, 2575)
         self.assertIsNone(config.hl7_version)
