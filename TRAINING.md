@@ -859,7 +859,7 @@ When the HL7 server receives a message:
 - dependency management: [UV](https://github.com/astral-sh/uv)
 - infrastructure: Terraform
 - testing tools
-  - functional testing: Python 3.13, Framework: **pytest**
+  - functional testing: Python 3.13, Framework: **unittest**
   - performance testing: **TBD**
   - HAPI test panel
 - code quality tools
