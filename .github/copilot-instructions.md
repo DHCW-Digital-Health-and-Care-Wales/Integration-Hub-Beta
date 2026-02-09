@@ -50,7 +50,7 @@ Azure Service Bus, with shared libraries in `shared_libs/` providing common capa
 ## Server Component Rules
 
 - Do not introduce thread pools or asynchronous request handling for message processing unless explicitly requested.
-- Sending to Service Bus should happen async inside the handler; ACK should only be returned after the message is sent.
+- Send to Service Bus inside the handler synchronously and return ACK only after the send completes successfully.
 
 ## Anti Patterns to Avoid
 
