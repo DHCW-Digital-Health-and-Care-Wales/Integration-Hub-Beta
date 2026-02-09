@@ -12,7 +12,7 @@ Key ideas for beginners:
 
 import unittest
 
-from hl7apy.parser import parse_message
+from hl7apy.parser import parse_message  # type: ignore[import-untyped]
 
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import Hl7Constants

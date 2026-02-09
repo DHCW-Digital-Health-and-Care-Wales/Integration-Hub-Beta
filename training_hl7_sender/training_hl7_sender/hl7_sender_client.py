@@ -27,8 +27,8 @@ import select
 import socket
 from typing import Any, Optional, Type
 
-from hl7.client import MLLPClient
-from hl7apy.consts import MLLP_ENCODING_CHARS
+from hl7.client import MLLPClient  # type: ignore[import-untyped]
+from hl7apy.consts import MLLP_ENCODING_CHARS  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 

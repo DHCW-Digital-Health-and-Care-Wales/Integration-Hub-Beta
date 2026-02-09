@@ -16,9 +16,9 @@ See hl7_phw_transformer/tests/test_msh_mapper.py for production examples.
 
 import unittest
 
-from field_utils_lib import get_hl7_field_value
-from hl7apy.core import Message
-from hl7apy.parser import parse_message
+from field_utils_lib import get_hl7_field_value  # type: ignore[import-untyped]
+from hl7apy.core import Message  # type: ignore[import-untyped]
+from hl7apy.parser import parse_message  # type: ignore[import-untyped]
 
 from training_hl7_transformer.mappers.msh_mapper import map_msh
 

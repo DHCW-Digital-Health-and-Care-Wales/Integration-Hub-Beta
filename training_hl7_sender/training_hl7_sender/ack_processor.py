@@ -15,8 +15,8 @@ See hl7_sender/ack_processor.py for the production version which includes:
 
 import logging
 
-from hl7apy.core import Message
-from hl7apy.parser import parse_message
+from hl7apy.core import Message  # type: ignore[import-untyped]
+from hl7apy.parser import parse_message  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 

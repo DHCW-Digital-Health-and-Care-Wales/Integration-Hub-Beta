@@ -24,9 +24,9 @@ import os
 import time
 
 from azure.servicebus import ServiceBusMessage
-from message_bus_lib.connection_config import ConnectionConfig
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
-from processor_manager_lib import ProcessorManager
+from message_bus_lib.connection_config import ConnectionConfig  # type: ignore[import-untyped]
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory  # type: ignore[import-untyped]
+from processor_manager_lib import ProcessorManager  # type: ignore[import-untyped]
 
 from training_hl7_sender.ack_processor import get_ack_result
 from training_hl7_sender.app_config import AppConfig
