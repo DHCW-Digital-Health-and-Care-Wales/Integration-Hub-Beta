@@ -1,8 +1,7 @@
-from field_utils_lib import get_hl7_field_value
+from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
 from hl7apy.core import Message
 
 from ..date_of_death_transformer import transform_date_of_death
-from ..segment_utils import copy_segment_fields_with_repetitions
 
 
 def map_pid(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
@@ -14,8 +13,8 @@ def map_pid(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
     new_pid = new_msg.add_segment("PID")
 
     # Copy all PID fields except PID.29 (date of death), preserving repetitions.
-    copy_segment_fields_with_repetitions(pid_segment, new_pid, "pid", start=1, end=28)
-    copy_segment_fields_with_repetitions(pid_segment, new_pid, "pid", start=30, end=39)
+    copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=1, end=28)
+    copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=30, end=39)
 
     dod_field_value = getattr(pid_segment, "pid_29", None)
 
