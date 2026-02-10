@@ -105,28 +105,80 @@ def copy_segment_fields_in_range(
     target_segment: Any,
     field_prefix: str,
     start: int,
-    end: int
+    end: int,
 ) -> None:
     """
     Copies fields from source_segment to target_segment for the given field range (inclusive).
-    
+
     This utility simplifies copying multiple fields from a source HL7 segment to a target segment
     by automating the common pattern of iterating through field ranges.
-    
+
     Args:
         source_segment: The source HL7 segment object to copy fields from
         target_segment: The target HL7 segment object to copy fields to
         field_prefix: The field prefix (e.g., "msh", "pid") used to construct field names
         start: The starting field index (inclusive)
         end: The ending field index (inclusive)
-    
+
     Example usage:
     - copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=21)
     - copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=1, end=39)
     """
     # +1 to range so that all segments from start to end (inclusive) are copied
-    for i in range(start, end + 1):
-        field_name = f"{field_prefix}_{i}"
-        set_nested_field(source_segment, target_segment, field_name)
+    for index in range(start, end + 1):
+        field_name = f"{field_prefix}_{index}"
 
+        # Try to get the field from the source segment; if it doesn't exist, skip it.
+        try:
+            source_field = getattr(source_segment, field_name)
+        except Exception:
+            # hl7apy may raise ChildNotFound or AttributeError when a field is missing
+            continue
+
+        # Determine whether this is a repeating field. hl7apy repeating fields are
+        # list-like, so len() succeeds. Non-repeating fields raise TypeError here.
+        try:
+            repetitions = len(source_field)  # type: ignore[arg-type]
+        except (TypeError, AttributeError):
+            # Single field: copy the value directly if it is non-empty.
+            value = getattr(source_field, "value", None)
+            if value:
+                try:
+                    target_field = getattr(target_segment, field_name)
+                except Exception:
+                    # If the target field cannot be accessed, skip it rather than failing.
+                    continue
+                setattr(target_field, "value", value)
+            continue
+
+        # Repeating field: copy each repetition's value. For the first repetition,
+        # reuse any existing default repetition on the target if present to avoid
+        # creating a leading empty repetition. For subsequent repetitions, append.
+        try:
+            target_field = getattr(target_segment, field_name)
+        except Exception:
+            # If the target field cannot be accessed, skip the entire field.
+            continue
+
+        try:
+            target_reps = len(target_field)  # type: ignore[arg-type]
+        except (TypeError, AttributeError):
+            target_reps = 0
+
+        for i in range(repetitions):
+            # Skip empty repetitions to avoid creating meaningless entries.
+            value = getattr(source_field[i], "value", None)
+            if not value:
+                continue
+
+            if i == 0 and target_reps > 0:
+                try:
+                    first_rep = target_field[0]
+                except Exception:
+                    # Fall back to add_field if indexing fails.
+                    first_rep = target_segment.add_field(field_name)
+                first_rep.value = value
+            else:
+                new_rep = target_segment.add_field(field_name)
+                new_rep.value = value
 
