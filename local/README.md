@@ -59,6 +59,40 @@ The [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json) file define
 > [!NOTE]
 > **RequiresSession**: Set to `true` when you need guaranteed FIFO (First-In-First-Out) message ordering. Session-enabled queues ensure messages with the same session ID are processed in order. This applies to both the local emulator and Azure Service Bus in production.
 
+### Local SQL Server
+
+A local SQL Server instance is available for development and testing. The container uses Microsoft SQL Server 2022 Express and automatically initializes the `IntegrationHub` database with the required schema.
+
+**Connection Details:**
+
+| Property          | Value                                      |
+| ----------------- | ------------------------------------------ |
+| **Host**          | `localhost`                                |
+| **Port**          | `1433`                                     |
+| **Database**      | `IntegrationHub`                           |
+| **Username**      | `sa`                                       |
+| **Password**      | Value of `MSSQL_SA_PASSWORD` in `.secrets` |
+
+**Connection String:**
+
+```
+Server=localhost,1433;Database=IntegrationHub;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True;
+```
+
+**What's initialized:**
+
+- Database: `IntegrationHub`
+- Schema: `monitoring`
+- Table: `monitoring.Messages` - stores message tracking data including payloads, timestamps, and workflow identifiers
+
+**Customizing initialization:**
+
+To modify the database schema or add seed data, edit the SQL script at `sql-scripts/init-db.sql`. The script is executed automatically when the container starts and uses idempotent `IF NOT EXISTS` checks, making it safe to run multiple times.
+
+**Starting SQL Server:**
+
+The SQL Server container starts automatically when using any profile (e.g., `just start phw-to-mpi` or `docker compose --profile phw-to-mpi up -d`).
+
 ### SSL Certificates (Corporate Networks)
 
 - **For machines on corporate networks**: Configure SSL certificates to allow uv and Docker to work with corporate proxies:
