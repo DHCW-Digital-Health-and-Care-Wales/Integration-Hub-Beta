@@ -5,6 +5,7 @@ from hl7apy.core import Message
 from transformer_base_lib import BaseTransformer
 
 from .mappers.additional_segment_mapper import map_non_specific_segments
+from .mappers.evn_mapper import map_evn
 from .mappers.msh_mapper import map_msh
 from .mappers.pid_mapper import map_pid
 
@@ -20,6 +21,7 @@ class PhwTransformer(BaseTransformer):
     def transform_message(self, hl7_msg: Message) -> Message:
         new_message = Message(version="2.5")
         self._current_datetime_transformation = map_msh(hl7_msg, new_message)
+        map_evn(hl7_msg, new_message)
         self._current_dod_transformation = map_pid(hl7_msg, new_message)
         map_non_specific_segments(hl7_msg, new_message)
         return new_message
