@@ -35,7 +35,7 @@ def process_message(
         sender_client.send_message(transformed_hl7_message.to_er7())
 
         event_logger.log_message_processed(
-            message_body,
+            transformed_hl7_message.to_er7(),
             processed_audit_text_builder(hl7_msg),
         )
 

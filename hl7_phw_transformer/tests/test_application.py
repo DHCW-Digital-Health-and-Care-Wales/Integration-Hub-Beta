@@ -47,6 +47,13 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
 
+        # Build the expected transformed message
+        transformed_hl7_message = Message("ADT_A01")
+        transformed_hl7_message.msh.msh_7 = "20250522103000"
+        transformed_hl7_message.msh.msh_10 = "MSGID1234"
+        transformed_hl7_message.pid.pid_29 = '""'
+        transformed_hl7_string = transformed_hl7_message.to_er7()
+
         # Act
         result = process_message(self.service_bus_message, **self.process_message_kwargs)
 
@@ -67,7 +74,7 @@ class TestProcessPhwMessage(unittest.TestCase):
             'Date of death transformed from RESURREC to ""'
         )
         self.mock_event_logger.log_message_processed.assert_called_once_with(
-            self.hl7_string,
+            transformed_hl7_string,
             audit_message,
         )
 
