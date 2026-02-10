@@ -6,6 +6,32 @@ from hl7_phw_transformer.phw_transformer import PhwTransformer
 
 
 class TestPhwTransformer(unittest.TestCase):
+    def setUp(self) -> None:
+        self.maxDiff = None
+
+    def test_map_pid_all_direct_mappings(self) -> None:
+        base_hl7_message = (
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|"
+            "202505052323364444444444|P|2.5|||||GBR||EN\r"
+            "EVN||20250502092900|20250505232332|||20250505232332\r"
+            "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||"
+            "19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||"
+            "^^^~||||||||||||||||2024-12-31|||01\r"
+            "PD1|||^^W00000^|G999999\r"
+            "PV1||U"
+        )
+
+        transformer = PhwTransformer()
+
+        original_message = parse_message(base_hl7_message)
+        result_message = transformer.transform_message(original_message).to_er7()
+
+        expected_message = base_hl7_message.replace("2025-05-05 23:23:32", "20250505232332")
+        self.assertEqual(
+            expected_message.split("\r"),
+            result_message.split("\r"),
+        )
+
     def test_transform_message_segment_order(self) -> None:
         base_hl7_message = (
             "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:28||ADT^A28^ADT_A05|"
