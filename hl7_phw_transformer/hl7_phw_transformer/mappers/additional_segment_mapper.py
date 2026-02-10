@@ -3,7 +3,7 @@ from hl7apy.core import Message
 
 def map_non_specific_segments(original_msg: Message, new_msg: Message) -> None:
 
-    handled_segments = {"MSH", "PID"}
+    handled_segments = {"MSH", "EVN", "PID"}
 
     for segment in original_msg.children:
         segment_name = segment.name
