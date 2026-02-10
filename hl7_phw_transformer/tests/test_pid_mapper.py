@@ -99,6 +99,16 @@ class TestPIDMapper(unittest.TestCase):
         self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), "")
         self.assertIsNone(result)
 
+    def test_map_pid_3_preserves_all_repetitions(self) -> None:
+        map_pid(self.original_message, self.new_message)
+        self.assertEqual(len(self.original_message.pid.pid_3), len(self.new_message.pid.pid_3))
+        for i in range(len(self.original_message.pid.pid_3)):
+            self.assertEqual(
+                self.original_message.pid.pid_3[i].value,
+                self.new_message.pid.pid_3[i].value,
+                f"PID.3 repetition {i} mismatch",
+            )
+
     def test_map_pid_no_pid_segment(self) -> None:
         original_message = parse_message(
             "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|"
@@ -110,7 +120,7 @@ class TestPIDMapper(unittest.TestCase):
 
         self.assertIsNone(result)
         segments = [s.name for s in new_message.children]
-        self.assertEqual(segments, ['MSH'])
+        self.assertEqual(segments, ["MSH"])
 
 
 if __name__ == "__main__":
