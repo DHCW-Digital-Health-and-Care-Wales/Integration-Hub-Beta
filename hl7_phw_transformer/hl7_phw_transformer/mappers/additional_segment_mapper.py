@@ -9,13 +9,8 @@ def map_non_specific_segments(original_msg: Message, new_msg: Message) -> None:
         segment_name = segment.name
         if segment_name not in handled_segments:
             new_segment = new_msg.add_segment(segment_name)
-            processed_fields: set[str] = set()
             for field in segment.children:
                 field_name = field.name.lower()
-                if field_name in processed_fields:
-                    continue
-                processed_fields.add(field_name)
-
                 source_field = getattr(segment, field_name, None)
                 if source_field is None:
                     continue
