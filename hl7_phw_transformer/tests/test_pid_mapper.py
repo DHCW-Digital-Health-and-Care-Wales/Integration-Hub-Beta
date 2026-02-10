@@ -1,6 +1,5 @@
-import os
-import re
 import unittest
+from pathlib import Path
 
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
@@ -11,10 +10,8 @@ from hl7_phw_transformer.mappers.pid_mapper import map_pid
 
 class TestPIDMapper(unittest.TestCase):
     def setUp(self) -> None:
-        test_dir = os.path.dirname(__file__)
-        hl7_path = os.path.join(test_dir, "phw-valid-message.hl7")
-        with open(hl7_path, "r", encoding="utf-8") as f:
-            self.base_hl7_message = f.read()
+        hl7_path = Path(__file__).with_name("phw-valid-message.hl7")
+        self.base_hl7_message = hl7_path.read_text(encoding="utf-8")
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
 
