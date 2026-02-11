@@ -45,7 +45,7 @@ The Integration Hub follows a microservices architecture with event-driven messa
 - **Legacy System Bridge**: Enables gradual migration from legacy data centres to cloud-native solutions
 
 > [!NOTE]
-> For a more detailed overview of the architecture, see the [wiki](https://dev.azure.com/NHS-Wales-Digital/INSE/_wiki/wikis/INSE.wiki/4403/Architecture)
+> For a more detailed overview of the architecture, see the [wiki](https://dev.azure.com/NHS-Wales-Digital/Integration%20Hub/_wiki/wikis/Integration-Hub.wiki/5205/Architecture) **(Internal-only resource)**
 
 ### How it works (high-level)
 
@@ -89,15 +89,22 @@ flowchart LR
 ```
 Integration-Hub-Beta/
 ├── README.md                    # This file
+├── TRAINING.md                  # Comprehensive training documentation
 ├── .gitignore                   # Git ignore rules
 ├── .github/                     # GitHub workflows and configurations
 ├── ca-certs/                    # Custom CA certificates for corporate networks
 ├── shared_libs/                 # Shared libraries used across services
+│   ├── event_logger_lib/        # Azure Monitor event logging
+│   ├── field_utils_lib/         # HL7 field parsing utilities
 │   ├── health_check_lib/        # Common health check functionality
+│   ├── hl7_validation/          # HL7 schema validation
 │   ├── message_bus_lib/         # Service Bus communication library
-│   └── processor_manager_lib/   # Message processing management
+│   ├── metric_sender_lib/       # Azure Monitor metrics
+│   ├── processor_manager_lib/   # Message processing management
+│   └── transformer_base_lib/    # Base transformer classes
 ├── local/                       # Local development environment
 ├── pipeline-ado/                # Azure DevOps pipeline configurations
+├── network_test_app/            # Network connectivity testing utility
 └── [Service Components]/        # Individual microservices (see below)
 ```
 
@@ -137,6 +144,12 @@ The platform handles HL7 message processing through specialized microservices:
 - Mock receiver for testing and development.
 - Simulates target system endpoints (e.g. MPI).
 - Provides a realistic testing environment for end-to-end validation.
+
+**`network_test_app/`**
+
+- Network connectivity testing utility.
+- Used for validating network paths, firewall rules, and endpoint accessibility.
+- Helps diagnose connectivity issues in Azure Container Apps environments.
 
 Each transformer is specialized for its source system's data format and business rules, while the server and sender provide common ingestion and delivery capabilities across all integration profiles.
 
@@ -180,6 +193,10 @@ The `shared_libs/` directory contains common functionality:
 - **`message_bus_lib/`** - Azure Service Bus integration and messaging patterns
 - **`processor_manager_lib/`** - Message processing orchestration and error handling
 - **`event_logger_lib/`** - Azure Monitor / Application Insights event logging library
+- **`field_utils_lib/`** - Reusable utilities for parsing and formatting HL7 message fields
+- **`hl7_validation/`** - HL7 message validation helpers and schema checks
+- **`metric_sender_lib/`** - Helpers for sending metrics to Azure Monitor Insights
+- **`transformer_base_lib/`** - Base classes and helpers for initialising new HL7 message transformer services including message processing via Service Bus
 
 ### Service Structure
 
@@ -218,7 +235,7 @@ The `pipeline-ado/` directory contains build pipelines for the [services listed]
 
 ### Environment Configuration
 
-Each service can be configured through environment files in the `local/` directory:
+Each service can be configured through environment files in the `local/` directory, such as:
 
 - `phw-hl7-server.env`
 - `phw-hl7-transformer.env`

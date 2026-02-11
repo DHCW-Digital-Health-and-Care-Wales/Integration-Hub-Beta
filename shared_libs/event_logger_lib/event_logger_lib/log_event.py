@@ -23,3 +23,4 @@ class LogEvent:
     message_content: str
     validation_result: Optional[str] = None
     error_details: Optional[str] = None
+    event_id: Optional[str] = None

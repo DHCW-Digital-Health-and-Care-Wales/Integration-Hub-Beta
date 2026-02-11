@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_validation import validate_er7_with_flow
+from hl7_validation import validate_er7_with_flow_schema
 from hl7_validation.validate import XmlValidationError
 
 
@@ -15,7 +15,7 @@ class TestChemoMessages(unittest.TestCase):
             "PV1||U"
         ])
 
-        validate_er7_with_flow(er7, "chemo")
+        validate_er7_with_flow_schema(er7, "chemo")
 
     def test_chemo_a28_schema_validation_successful(self) -> None:
         er7 = "\r".join([
@@ -27,7 +27,7 @@ class TestChemoMessages(unittest.TestCase):
             "PV1||U"
         ])
 
-        validate_er7_with_flow(er7, "chemo")
+        validate_er7_with_flow_schema(er7, "chemo")
 
     def test_chemo_a31_incorrectly_structured_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -41,7 +41,7 @@ class TestChemoMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "chemo")
+            validate_er7_with_flow_schema(er7, "chemo")
         error_message = str(context.exception)
         self.assertIn("Unable to parse ER7 message", error_message)
 
@@ -56,6 +56,6 @@ class TestChemoMessages(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "chemo")
+            validate_er7_with_flow_schema(er7, "chemo")
         error_message = str(context.exception)
         self.assertIn("PV1' expected", error_message)

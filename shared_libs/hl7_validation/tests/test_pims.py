@@ -1,6 +1,6 @@
 import unittest
 
-from hl7_validation import validate_er7_with_flow
+from hl7_validation import validate_er7_with_flow_schema
 from hl7_validation.validate import XmlValidationError
 
 
@@ -18,7 +18,7 @@ class TestPPimsValidation(unittest.TestCase):
             ]
         )
 
-        validate_er7_with_flow(er7, "pims")
+        validate_er7_with_flow_schema(er7, "pims")
 
     def test_pims_a04_convert_and_validate(self) -> None:
         er7 = "\r".join(
@@ -33,7 +33,7 @@ class TestPPimsValidation(unittest.TestCase):
             ]
         )
 
-        validate_er7_with_flow(er7, "pims")
+        validate_er7_with_flow_schema(er7, "pims")
 
     def test_pims_a08_convert_and_validate(self) -> None:
         er7 = "\r".join(
@@ -48,7 +48,7 @@ class TestPPimsValidation(unittest.TestCase):
             ]
         )
 
-        validate_er7_with_flow(er7, "pims")
+        validate_er7_with_flow_schema(er7, "pims")
 
     def test_pims_a40_missing_required_mrg_segment_validation_failure(self) -> None:
         er7 = "\r".join([
@@ -62,7 +62,7 @@ class TestPPimsValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "pims")
+            validate_er7_with_flow_schema(er7, "pims")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}MRG' expected", error_message)
 
@@ -78,7 +78,7 @@ class TestPPimsValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "pims")
+            validate_er7_with_flow_schema(er7, "pims")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}PV1' expected", error_message)
 
@@ -92,7 +92,7 @@ class TestPPimsValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "pims")
+            validate_er7_with_flow_schema(er7, "pims")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}ADT_A39.PIDPD1MRGPV1' expected", error_message)
 
@@ -106,7 +106,7 @@ class TestPPimsValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "pims")
+            validate_er7_with_flow_schema(er7, "pims")
         error_message = str(context.exception)
         self.assertIn("Tag '{urn:hl7-org:v2xml}PID' expected", error_message)
 
@@ -121,6 +121,6 @@ class TestPPimsValidation(unittest.TestCase):
         ])
 
         with self.assertRaises(XmlValidationError) as context:
-            validate_er7_with_flow(er7, "pims")
+            validate_er7_with_flow_schema(er7, "pims")
         error_message = str(context.exception)
         self.assertIn("Unable to parse ER7 message", error_message)

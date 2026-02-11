@@ -1,0 +1,27 @@
+{
+  "name": "Integration Hub Dev Container",
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:3",
+  "remoteEnv": {
+    // the original host directory which is needed for volume 
+    // mount commands from inside the container (Docker in Docker)
+    "HOST_WORKSPACE_PATH": "${localWorkspaceFolder}",
+
+    // Force DOCKER API version as Docker daemon and client aren't on the same version yet
+    "DOCKER_API_VERSION": "1.43"
+  },
+  // Forward 'server' ports to allow sending of HL7 messages from the local machine
+  "forwardPorts": [2575, 2577, 2578, 2579],
+  "features": {
+    "ghcr.io/devcontainers/features/docker-from-docker:1": {
+      "moby": false
+    },
+    "ghcr.io/guiyomh/features/just:0": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

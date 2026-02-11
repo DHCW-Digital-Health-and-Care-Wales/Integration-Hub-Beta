@@ -67,7 +67,7 @@ class TestProcessPhwMessage(unittest.TestCase):
 
         # Verify audit logging
         self.mock_event_logger.log_message_received.assert_called_once_with(
-            self.hl7_string, "Message received for PHW transformation"
+            self.hl7_string, "Message received for PHW transformation", event_id=None
         )
         audit_message = (
             "HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; "
@@ -76,6 +76,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.mock_event_logger.log_message_processed.assert_called_once_with(
             transformed_hl7_string,
             audit_message,
+            event_id=None,
         )
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
@@ -151,12 +152,13 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.mock_sender.send_message.assert_not_called()
 
         self.mock_event_logger.log_message_received.assert_called_once_with(
-            hl7_string, "Message received for PHW transformation"
+            hl7_string, "Message received for PHW transformation", event_id=None
         )
         self.mock_event_logger.log_message_failed.assert_called_once_with(
             hl7_string,
             f"Failed to transform PHW message: {error_reason}",
             "PHW transformation failed",
+            event_id=None,
         )
         self.mock_event_logger.log_message_processed.assert_not_called()
 

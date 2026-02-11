@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
+from hl7_validation import XmlValidationError
+
 from hl7_server.generic_handler import GenericHandler
 from hl7_server.hl7_validator import HL7Validator, ValidationException
 
@@ -32,7 +34,13 @@ class TestGenericHandler(unittest.TestCase):
         self.mock_metric_sender = MagicMock()
         self.validator = MagicMock()
         self.handler = GenericHandler(
-            VALID_A28_MESSAGE, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, self.validator
+            VALID_A28_MESSAGE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="252",
         )
 
     def test_valid_a28_message_returns_ack(self) -> None:
@@ -74,7 +82,15 @@ class TestGenericHandler(unittest.TestCase):
 
         validator = MagicMock()
         validator.validate = MagicMock(side_effect=exception)
-        handler = GenericHandler(message, self.mock_sender, self.mock_event_logger, self.mock_metric_sender, validator)
+        handler = GenericHandler(
+            message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+        )
 
         with self.assertRaises(ValidationException):
             handler.reply()
@@ -85,10 +101,43 @@ class TestGenericHandler(unittest.TestCase):
     def test_message_sent_to_service_bus(self) -> None:
         self.handler.reply()
 
-        self.mock_sender.send_text_message.assert_called_once_with(VALID_A28_MESSAGE, None)
+        call_args = self.mock_sender.send_text_message.call_args
+        self.assertEqual(call_args[0][0], VALID_A28_MESSAGE)
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIsNotNone(tracking_metadata_properties)
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
 
-    @patch("hl7_server.generic_handler.validate_er7_with_flow")
-    def test_mpi_outbound_flow_sets_custom_properties_with_update_source(
+    @patch(
+        "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
+        {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},
+    )
+    def test_flow_property_builder_failure_does_not_prevent_tracking_metadata(self) -> None:
+        validator = HL7Validator(flow_name="mpi")
+        handler = GenericHandler(
+            VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+            flow_name="mpi",
+        )
+
+        handler.reply()
+
+        call_args = self.mock_sender.send_text_message.call_args
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
+
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
+    def test_mpi_outbound_flow_sets_tracking_metadata_with_update_source(
         self, mock_validate_flow_xml: MagicMock
     ) -> None:
         validator = HL7Validator(flow_name="mpi")
@@ -103,25 +152,29 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_sender,
                 self.mock_event_logger,
                 self.mock_metric_sender,
+                validator,
+                workflow_id="test-workflow",
+                sending_app="252",
                 flow_name="mpi",
-                validator=validator,
             )
 
             handler.reply()
 
         mock_validate_flow_xml.assert_not_called()
-        self.mock_sender.send_text_message.assert_called_once_with(
-            VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
-            {
-                "MessageType": "A28",
-                "UpdateSource": "108",
-                "AssigningAuthority": "NHS",
-                "DateDeath": "2023-01-15",
-                "ReasonDeath": "",
-            },
-        )
+        call_args = self.mock_sender.send_text_message.call_args
+        self.assertEqual(call_args[0][0], VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE)
+        tracking_metadata_properties = call_args[0][1]
+        self.assertIn("MessageReceivedAt", tracking_metadata_properties)
+        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
+        self.assertEqual(tracking_metadata_properties["MessageType"], "A28")
+        self.assertEqual(tracking_metadata_properties["UpdateSource"], "108")
+        self.assertEqual(tracking_metadata_properties["AssigningAuthority"], "NHS")
+        self.assertEqual(tracking_metadata_properties["DateDeath"], "2023-01-15")
+        self.assertEqual(tracking_metadata_properties["ReasonDeath"], "")
 
-    @patch("hl7_server.generic_handler.validate_er7_with_flow")
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
     def test_mpi_outbound_flow_rejects_invalid_messages(self, mock_validate_flow_xml: MagicMock) -> None:
         exception_scenarios = [
             ("unsupported_message_type", INVALID_MPI_OUTBOUND_MESSAGE_TYPE),
@@ -137,8 +190,10 @@ class TestGenericHandler(unittest.TestCase):
                     self.mock_sender,
                     self.mock_event_logger,
                     self.mock_metric_sender,
+                    validator,
+                    workflow_id="test-workflow",
+                    sending_app="252",
                     flow_name="mpi",
-                    validator=validator,
                 )
 
                 with self.assertRaises(ValidationException):
@@ -153,6 +208,115 @@ class TestGenericHandler(unittest.TestCase):
         self.handler.reply()
 
         self.mock_metric_sender.send_message_received_metric.assert_called_once()
+
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
+    def test_standard_validation_called_when_version_set(self, mock_validate_standard: MagicMock) -> None:
+        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
+            mock_ack_instance = mock_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bACK\x1c\r"
+            mock_ack_instance.build_ack.return_value = mock_ack_message
+
+            handler = GenericHandler(
+                VALID_A28_MESSAGE,
+                self.mock_sender,
+                self.mock_event_logger,
+                self.mock_metric_sender,
+                self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
+                standard_version="2.5",
+            )
+
+            handler.reply()
+
+        mock_validate_standard.assert_called_once_with(ANY, "2.5")
+        self.mock_event_logger.log_validation_result.assert_any_call(
+            VALID_A28_MESSAGE,
+            "Standard HL7 v2.5 validation passed",
+            is_success=True,
+        )
+
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
+    @patch("hl7_server.generic_handler.logger")
+    def test_standard_validation_failure_logs_and_raises(
+        self, mock_logger: MagicMock, mock_validate_standard: MagicMock
+    ) -> None:
+
+        mock_validate_standard.side_effect = XmlValidationError("Standard HL7 v2.5 validation failed: Missing PV1")
+
+        handler = GenericHandler(
+            VALID_A28_MESSAGE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+            standard_version="2.5",
+        )
+
+        with self.assertRaises(XmlValidationError):
+            handler.reply()
+
+        mock_logger.error.assert_called()
+        self.mock_event_logger.log_validation_result.assert_any_call(
+            VALID_A28_MESSAGE,
+            "Standard validation error: Standard HL7 v2.5 validation failed: Missing PV1",
+            is_success=False,
+        )
+        self.assertEqual(self.mock_event_logger.log_message_failed.call_count, 2)
+        self.mock_sender.send_text_message.assert_not_called()
+
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_flow_schema")
+    def test_both_flow_and_standard_validation_called(
+        self, mock_validate_flow: MagicMock, mock_validate_standard: MagicMock
+    ) -> None:
+        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
+            mock_ack_instance = mock_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bACK\x1c\r"
+            mock_ack_instance.build_ack.return_value = mock_ack_message
+
+            handler = GenericHandler(
+                VALID_A28_MESSAGE,
+                self.mock_sender,
+                self.mock_event_logger,
+                self.mock_metric_sender,
+                self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
+                flow_name="phw",
+                standard_version="2.5",
+            )
+
+            handler.reply()
+
+        mock_validate_flow.assert_called_once_with(ANY, VALID_A28_MESSAGE, "phw")
+        mock_validate_standard.assert_called_once_with(ANY, "2.5")
+
+    @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
+    def test_standard_validation_not_called_when_version_not_set(self, mock_validate_standard: MagicMock) -> None:
+        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
+            mock_ack_instance = mock_builder.return_value
+            mock_ack_message = MagicMock()
+            mock_ack_message.to_mllp.return_value = "\x0bACK\x1c\r"
+            mock_ack_instance.build_ack.return_value = mock_ack_message
+
+            handler = GenericHandler(
+                VALID_A28_MESSAGE,
+                self.mock_sender,
+                self.mock_event_logger,
+                self.mock_metric_sender,
+                self.validator,
+                workflow_id="test-workflow",
+                sending_app="252",
+            )
+
+            handler.reply()
+
+        mock_validate_standard.assert_not_called()
 
 
 if __name__ == "__main__":

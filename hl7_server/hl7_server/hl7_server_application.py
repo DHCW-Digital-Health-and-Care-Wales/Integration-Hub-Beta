@@ -55,9 +55,11 @@ class Hl7ServerApplication:
         factory = ServiceBusClientFactory(client_config)
 
         if app_config.egress_topic_name:
-            self.sender_client = factory.create_topic_sender_client(app_config.egress_topic_name)
+            self.sender_client = factory.create_topic_sender_client(
+                app_config.egress_topic_name, app_config.egress_session_id
+            )
             logger.info(f"Configured to send messages to topic: {app_config.egress_topic_name}")
-        else:
+        elif app_config.egress_queue_name:
             self.sender_client = factory.create_queue_sender_client(
                 app_config.egress_queue_name, app_config.egress_session_id
             )
@@ -73,6 +75,7 @@ class Hl7ServerApplication:
         self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
 
         flow_name = app_config.hl7_validation_flow
+        standard_version = app_config.hl7_validation_standard
 
         generic_handler_args = (
             GenericHandler,
@@ -80,7 +83,10 @@ class Hl7ServerApplication:
             self.event_logger,
             self.metric_sender,
             self.validator,
+            app_config.workflow_id,
+            app_config.sending_app,
             flow_name,
+            standard_version,
         )
 
         handlers = {

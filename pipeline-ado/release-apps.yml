@@ -20,6 +20,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
+      - Network Test App
       
   - name: selectedEnvironment
     displayName: 'Select Environment'
@@ -32,6 +33,7 @@ parameters:
       - tst
       - uat
       - ppd
+      - load
       - prd
 
 variables:
@@ -70,6 +72,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'Network Test App - Build'
+      source: 'Network Test App - Build'
       trigger: none
 
 stages:
@@ -146,17 +151,33 @@ stages:
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
+
+        # Network Test App
+        - name: 'Network Test App'
+          appImageName: 'networktestapp'
+          appFunctionMidfix: ''
+          buildPipeline: 'Network Test App - Build'
       
       # Environment configurations
       environments:
         - name: 'dev'
+          environmentName: 'Integration-Hub-Release-Container-Apps-dev'
           displayName: 'Development'
           resourceGroup: 'UK-South-DHCW-IntHub-DEV-RG'
           poolName: $(POOL_NAME_NON_PROD)
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: false
           
+        - name: 'load'
+          environmentName: 'Integration-Hub-Release-Container-Apps-load'
+          displayName: 'Load Testing'
+          resourceGroup: 'UK-South-DHCW-IntHub-LOAD-App-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: false
+          
         - name: 'dte'
+          environmentName: 'Integration-Hub-Release-Container-Apps-dte'
           displayName: 'DTE'
           resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
           poolName: $(POOL_NAME_NON_PROD)
@@ -164,6 +185,7 @@ stages:
           dependsOnPrevious: true
           
         - name: 'tst'
+          environmentName: 'Integration-Hub-Release-Container-Apps-tst'
           displayName: 'Test'
           resourceGroup: 'UK-South-DHCW-IntHub-TST-App-RG'
           poolName: $(POOL_NAME_NON_PROD)
@@ -171,6 +193,7 @@ stages:
           dependsOnPrevious: true
           
         - name: 'uat'
+          environmentName: 'Integration-Hub-Release-Container-Apps-uat'
           displayName: 'UAT'
           resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
           poolName: $(POOL_NAME_NON_PROD)
@@ -178,6 +201,7 @@ stages:
           dependsOnPrevious: true
           
         - name: 'ppd'
+          environmentName: 'Integration-Hub-Release-Container-Apps-ppd'
           displayName: 'Pre-Production'
           resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
           poolName: $(POOL_NAME_PROD)
@@ -185,6 +209,7 @@ stages:
           dependsOnPrevious: true
           
         - name: 'prd'
+          environmentName: 'Integration-Hub-Release-Container-Apps-prd'
           displayName: 'Production'
           resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
           poolName: $(POOL_NAME_PROD)
