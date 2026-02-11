@@ -63,7 +63,7 @@ class TestProcessPimsMessage(unittest.TestCase):
         self.mock_sender.send_message.assert_called_once_with(expected_message, custom_properties=None)
         self.mock_event_logger.log_message_received.assert_called_once()
         self.mock_event_logger.log_message_processed.assert_called_once_with(
-            self.hl7_string, "PIMS transformation applied for SENDING_APP: PIMS", event_id=None
+            expected_message, "PIMS transformation applied for SENDING_APP: PIMS", event_id=None
         )
         self.mock_event_logger.log_message_failed.assert_not_called()
 

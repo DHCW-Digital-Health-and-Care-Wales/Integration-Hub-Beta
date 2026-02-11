@@ -105,28 +105,61 @@ def copy_segment_fields_in_range(
     target_segment: Any,
     field_prefix: str,
     start: int,
-    end: int
+    end: int,
 ) -> None:
     """
     Copies fields from source_segment to target_segment for the given field range (inclusive).
-    
-    This utility simplifies copying multiple fields from a source HL7 segment to a target segment
-    by automating the common pattern of iterating through field ranges.
-    
+    Repeating fields are copied rep-by-rep; all repetitions are preserved (including empty).
+
     Args:
         source_segment: The source HL7 segment object to copy fields from
         target_segment: The target HL7 segment object to copy fields to
         field_prefix: The field prefix (e.g., "msh", "pid") used to construct field names
         start: The starting field index (inclusive)
         end: The ending field index (inclusive)
-    
+
     Example usage:
     - copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=21)
     - copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=1, end=39)
     """
-    # +1 to range so that all segments from start to end (inclusive) are copied
-    for i in range(start, end + 1):
-        field_name = f"{field_prefix}_{i}"
-        set_nested_field(source_segment, target_segment, field_name)
+    for index in range(start, end + 1):
+        field_name = f"{field_prefix}_{index}"
+        try:
+            source_field = getattr(source_segment, field_name)
+        except Exception:
+            continue
 
+        try:
+            repetitions = len(source_field)  # type: ignore[arg-type]
+        except (TypeError, AttributeError):
+            value = getattr(source_field, "value", None)
+            if value:
+                try:
+                    target_field = getattr(target_segment, field_name)
+                except Exception:
+                    continue
+                setattr(target_field, "value", value)
+            continue
+
+        try:
+            target_field = getattr(target_segment, field_name)
+        except Exception:
+            continue
+
+        try:
+            target_reps = len(target_field)  # type: ignore[arg-type]
+        except (TypeError, AttributeError):
+            target_reps = 0
+
+        for i in range(repetitions):
+            value = getattr(source_field[i], "value", None)
+            if i == 0 and target_reps > 0:
+                try:
+                    first_rep = target_field[0]
+                except Exception:
+                    first_rep = target_segment.add_field(field_name)
+                first_rep.value = value
+            else:
+                new_rep = target_segment.add_field(field_name)
+                new_rep.value = value
 

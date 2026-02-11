@@ -67,6 +67,26 @@ class TestMSHMapper(unittest.TestCase):
         self.assertEqual(get_hl7_field_value(self.new_message.msh, "msh_7.ts_1"), original_msh7_value)
         self.assertIsNone(result)
 
+    def test_map_msh_repeating_fields_are_copied(self) -> None:
+        repeating_msh_header = (
+            "MSH|^~\\&|PHW~PHW2|PHW HL7Sender|EMPI~EMPI2|EMPI|2024-12-31 10:10:53||"
+            "ADT^A08^ADT_A01|48209024|P|2.3.1\r"
+        )
+        original_message = parse_message(repeating_msh_header)
+        new_message = Message(version="2.5")
+
+        map_msh(original_message, new_message)
+
+        # All repetitions for repeating fields should be preserved
+        self.assertEqual(
+            get_hl7_field_value(original_message.msh, "msh_3"),
+            get_hl7_field_value(new_message.msh, "msh_3"),
+        )
+        self.assertEqual(
+            get_hl7_field_value(original_message.msh, "msh_5"),
+            get_hl7_field_value(new_message.msh, "msh_5"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

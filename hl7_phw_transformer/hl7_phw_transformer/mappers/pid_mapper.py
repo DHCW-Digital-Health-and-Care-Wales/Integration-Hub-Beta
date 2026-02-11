@@ -6,12 +6,13 @@ from ..date_of_death_transformer import transform_date_of_death
 
 def map_pid(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
     segment_names = [s.name for s in original_msg.children]
-    if 'PID' not in segment_names:
+    if "PID" not in segment_names:
         return None
 
     pid_segment = original_msg.pid
     new_pid = new_msg.add_segment("PID")
 
+    # Copy all PID fields except PID.29 (date of death), preserving repetitions.
     copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=1, end=28)
     copy_segment_fields_in_range(pid_segment, new_pid, "pid", start=30, end=39)
 

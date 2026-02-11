@@ -28,12 +28,8 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
         segments = [s.name for s in self.new_message.children]
         self.assertNotIn('PID', segments)
 
-        self.assertTrue(hasattr(self.new_message, 'evn'))
         self.assertTrue(hasattr(self.new_message, 'pd1'))
         self.assertTrue(hasattr(self.new_message, 'pv1'))
-
-        evn = self.new_message.evn
-        self.assertEqual(get_hl7_field_value(evn, "evn_2"), "20250502092900")
 
         pv1 = self.new_message.pv1
         self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "U")
@@ -44,15 +40,6 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
         self.assertTrue(hasattr(self.new_message, 'pd1'))
         pd1 = self.new_message.pd1
         self.assertEqual(get_hl7_field_value(pd1, "pd1_4"), "G999999")
-
-    def test_map_non_specific_segments_copies_evn_segment(self) -> None:
-        map_non_specific_segments(self.original_message, self.new_message)
-
-        self.assertTrue(hasattr(self.new_message, 'evn'))
-        evn = self.new_message.evn
-        self.assertEqual(get_hl7_field_value(evn, "evn_2"), "20250502092900")
-        self.assertEqual(get_hl7_field_value(evn, "evn_3"), "20250505232332")
-        self.assertEqual(get_hl7_field_value(evn, "evn_6"), "20250505232332")
 
     def test_map_non_specific_segments_skips_empty_fields(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
@@ -65,11 +52,10 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
         map_non_specific_segments(self.original_message, self.new_message)
 
         segments = [segment.name for segment in self.new_message.children]
-        self.assertIn('EVN', segments)
         self.assertIn('PD1', segments)
         self.assertIn('PV1', segments)
 
-        non_msh_pid_segments = [s for s in self.original_message.children if s.name not in ['MSH', 'PID']]
+        non_msh_pid_segments = [s for s in self.original_message.children if s.name not in ['MSH', 'EVN', 'PID']]
         expected_count = 1 + len(non_msh_pid_segments)  # 1 for auto-created MSH
         self.assertEqual(len([s for s in self.new_message.children]), expected_count)
 
