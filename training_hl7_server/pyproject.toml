@@ -16,6 +16,9 @@ dependencies = [
 
     # Azure Service Bus - for publishing messages to Service Bus queues
     "azure-servicebus==7.14.2",
+
+    # Azure Identity - for authentication (used with Service Bus)
+    "azure-identity>=1.23.0",
     
     # Shared library for Service Bus client management
     "message-bus-lib",

@@ -21,6 +21,7 @@ parameters:
       - Chemocare HL7 Sender
       - HL7 Mock Receiver
       - Network Test App
+      - Training HL7 Server
       
   - name: selectedEnvironment
     displayName: 'Select Environment'
@@ -74,6 +75,9 @@ resources:
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Server - Build'
+      source: 'Training HL7 Server - Build'
       trigger: none
 
 stages:
@@ -156,6 +160,12 @@ stages:
           appImageName: 'networktestapp'
           appFunctionMidfix: ''
           buildPipeline: 'Network Test App - Build'
+
+        # Training HL7 Server
+        - name: 'Training HL7 Server'
+          appImageName: 'trn-hl7server'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Server - Build'
       
       # Environment configurations
       environments:

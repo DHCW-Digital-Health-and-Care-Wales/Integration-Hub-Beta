@@ -46,7 +46,13 @@ class TrainingHl7ServerApplication:
         print(f"Expected HL7 Version: {self.app_config.hl7_version or 'Any'}")
         print(f"Allowed Senders: {self.app_config.allowed_senders or 'Any'}")
 
-        if self.app_config.connection_string and self.app_config.egress_queue_name:
+        if (
+            (
+                self.app_config.connection_string
+                or self.app_config.service_bus_namespace
+            )
+            and self.app_config.egress_queue_name
+        ):
             print("--- Service Bus Integration Enabled ---")
             print(f"Egress Queue: {self.app_config.egress_queue_name}")
             print(f"Session Id: {self.app_config.egress_session_id or '(none)'}")

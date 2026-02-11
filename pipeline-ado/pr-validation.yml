@@ -17,6 +17,7 @@ pr:
       - hl7_pims_transformer/*
       - shared_libs/*
       - pipeline-ado/*
+      - training_hl7_server/*
 
 variables:
   pythonVersion: '3.13'
@@ -74,6 +75,14 @@ stages:
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
+      # Training HL7 Server validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_hl7_server'
+          appDisplayName: 'Training HL7 Server'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
       # Shared Libraries validation
       - template: templates/code-quality-template.yml
         parameters:
@@ -127,6 +136,6 @@ stages:
           appName: 'shared_libs/field_utils_lib'
           appDisplayName: 'Field Utils Library'
           banditSourceDir: 'field_utils_lib'
-
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          

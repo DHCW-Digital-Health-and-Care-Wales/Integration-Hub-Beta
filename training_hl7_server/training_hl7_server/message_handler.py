@@ -147,7 +147,7 @@ class MessageHandler(AbstractHandler):
             print(f"✓ Sending ACK (AA) for message {message_control_id}")
 
             # Convert the ACK Message object to ER7 format (pipe-delimited string)
-            return ack.to_er7()
+            return ack.to_mllp()
 
         except ValidationError as e:
             # ===================================================================
@@ -168,7 +168,7 @@ class MessageHandler(AbstractHandler):
                     ack_code=Hl7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
-                return ack.to_er7()
+                return ack.to_mllp()
 
             except Exception:
                 # If we can't even parse the message, re-raise the original error
