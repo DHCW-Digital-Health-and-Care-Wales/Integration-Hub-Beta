@@ -282,6 +282,27 @@ services:
       integration-hub:
         aliases:
           - "mpi-hl7-server"
-
+  wds-hl7-server:
+    container_name: wds-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./wds-hl7-server.env
+    ports:
+      - "2582:2582"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - wds-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "wds-hl7-server"
 networks:
   integration-hub:
