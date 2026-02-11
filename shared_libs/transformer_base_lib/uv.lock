@@ -39,7 +39,7 @@ wheels = [
 
 [[package]]
 name = "azure-identity"
-version = "1.23.0"
+version = "1.25.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
@@ -48,9 +48,9 @@ dependencies = [
     { name = "msal-extensions" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/52/458c1be17a5d3796570ae2ed3c6b7b55b134b22d5ef8132b4f97046a9051/azure_identity-1.23.0.tar.gz", hash = "sha256:d9cdcad39adb49d4bb2953a217f62aec1f65bbb3c63c9076da2be2a47e53dde4", size = 265280, upload-time = "2025-05-14T00:18:30.408Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/3a/439a32a5e23e45f6a91f0405949dc66cfe6834aba15a430aebfc063a81e7/azure_identity-1.25.2.tar.gz", hash = "sha256:030dbaa720266c796221c6cdbd1999b408c079032c919fef725fcc348a540fe9", size = 284709, upload-time = "2026-02-11T01:55:42.323Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/16/a51d47780f41e4b87bb2d454df6aea90a44a346e918ac189d3700f3d728d/azure_identity-1.23.0-py3-none-any.whl", hash = "sha256:dbbeb64b8e5eaa81c44c565f264b519ff2de7ff0e02271c49f3cb492762a50b0", size = 186097, upload-time = "2025-05-14T00:18:32.734Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/77/f658c76f9e9a52c784bd836aaca6fd5b9aae176f1f53273e758a2bcda695/azure_identity-1.25.2-py3-none-any.whl", hash = "sha256:1b40060553d01a72ba0d708b9a46d0f61f56312e215d8896d836653ffdc6753d", size = 191423, upload-time = "2026-02-11T01:55:44.245Z" },
 ]
 
 [[package]]
@@ -288,7 +288,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
-    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-identity", specifier = "==1.25.2" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "setuptools", specifier = "==80.9.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -393,7 +393,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
-    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-identity", specifier = "==1.25.2" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "setuptools", specifier = "==80.9.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -952,7 +952,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
-    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-identity", specifier = "==1.25.2" },
     { name = "azure-servicebus", specifier = "==7.14.2" },
     { name = "event-logger-lib", directory = "../event_logger_lib" },
     { name = "health-check-lib", directory = "../health_check_lib" },

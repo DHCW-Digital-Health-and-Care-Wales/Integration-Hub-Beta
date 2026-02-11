@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [  
     "azure-core>=1.38.0",
     "azure-servicebus==7.14.2",  
-    "azure-identity==1.23.0",  
+    "azure-identity==1.25.2",  
     "urllib3>=2.6.3",
     "setuptools==80.9.0",  
 ]  
