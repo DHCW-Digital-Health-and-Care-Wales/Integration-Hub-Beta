@@ -379,6 +379,30 @@ services:
       integration-hub:
         aliases:
           - "training-hl7-mock-receiver"
+  # Alternative: Dedicated training receiver to avoid port conflicts and allow independent testing
+  training-hl7v2-receiver:
+    container_name: training-hl7v2-receiver
+    build:
+      context: ../training_hl7v2_receiver
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - shared_libs=../shared_libs
+    env_file:
+      - ./training-hl7v2-receiver.env
+    ports:
+      # Expose port 2591 for HL7 message testing
+      - "2591:2591"
+    restart: on-failure
+    depends_on:
+      # Week 2 addition: Wait for Service Bus emulator to be ready
+      - sb-emulator
+    profiles:
+      # Profile ensures this only starts with: docker compose --profile training up
+      - training-hl7v2
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7v2-receiver"
 
 networks:
   integration-hub:

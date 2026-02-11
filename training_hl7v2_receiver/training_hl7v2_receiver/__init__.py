@@ -1,0 +1,2 @@
+"""Training HL7v2 Receiver. A simple HL7 v2 message receiver that listens for incoming HL7 messages, validates them, and sends back appropriate ACK responses. 
+This is designed for training and testing purposes, not for production use."""
