@@ -1,5 +1,4 @@
 import unittest
-from pathlib import Path
 
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
