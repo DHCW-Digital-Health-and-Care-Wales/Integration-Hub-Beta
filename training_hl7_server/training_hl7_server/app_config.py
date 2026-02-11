@@ -53,7 +53,7 @@ def _read_required_env(name: str) -> str:
     else:
         return value
 
-def _read_env_with_default(name: str, default) -> str:
+def _read_env_with_default(name: str, default: str) -> str:
     value = _read_env(name)
     return value if value is not None else default
 
