@@ -79,6 +79,12 @@ resources:
     - pipeline: 'Training HL7 Server - Build'
       source: 'Training HL7 Server - Build'
       trigger: none
+    - pipeline: 'Training HL7 Sender - Build'
+      source: 'Training HL7 Sender - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Transformer - Build'
+      source: 'Training HL7 Transformer - Build'
+      trigger: none
 
 stages:
   # Define applications metadata inline
@@ -166,6 +172,18 @@ stages:
           appImageName: 'trn-hl7server'
           appFunctionMidfix: ''
           buildPipeline: 'Training HL7 Server - Build'
+
+          # Training HL7 Sender
+        - name: 'Training HL7 Sender'
+          appImageName: 'trn-hl7sender'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Sender - Build'
+
+          # Training HL7 Transformer
+        - name: 'Training HL7 Transformer'
+          appImageName: 'trn-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Transformer - Build'
       
       # Environment configurations
       environments:
