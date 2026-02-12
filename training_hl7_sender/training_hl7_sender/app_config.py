@@ -27,7 +27,7 @@ def _read_int_env(name: str) -> int | None:
     return int(value)
 
 
-def read_required_int_env(name) -> int:
+def read_required_int_env(name: str) -> int:
     value = _read_required_env(name)
     try:
         return int(value)
