@@ -140,7 +140,7 @@ class TestMessageSenderClient(unittest.TestCase):
         )
 
         num_threads = 5
-        operations = [lambda: self.message_sender_client.close()] * num_threads
+        operations = [self.message_sender_client.close] * num_threads
 
         # Act
         errors = self._run_concurrent_operations(operations)
