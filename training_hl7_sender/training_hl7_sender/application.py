@@ -100,11 +100,12 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: Hl7SenderCli
                 print(f"  ACK received with status: {ack_success}. Completing message in Service Bus.")
                 logger.info(f"Message with Control ID {control_id} processed successfully. ACK status: {ack_success}")
                 return True
-                # raise TimeoutError("Simulated timeout after successful ACK to trigger retry logic for testing purposes.")
+            # raise TimeoutError("Simulated timeout after successful ACK to trigger retry logic for testing purposes.")
             else:
                 print(f"  ACK received with status: {ack_success} indicates failure.")
                 logger.warning(
-                    f"Message with Control ID {control_id} processed but ACK indicates failure. ACK status: {ack_success}"
+                    f"Message with Control ID {control_id} processed but ACK indicates "
+                    f"failure. ACK status: {ack_success}"
                 )
                 return False
 
