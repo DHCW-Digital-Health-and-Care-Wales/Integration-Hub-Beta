@@ -147,6 +147,7 @@ class MessageHandler(AbstractHandler):
             # MSH-9: Message Type - format is "MessageType^TriggerEvent"
             # Example: "ADT^A31" means ADT message with trigger event A31
             message_type = msg.msh.msh_9.to_er7()
+            message_code = msg.msh.msh_9.message_code.value  # MSH-9-1
 
             # MSH-12: Version ID - the HL7 version (e.g., "2.3.1")
             hl7_version = msg.msh.msh_12.value
@@ -183,19 +184,12 @@ class MessageHandler(AbstractHandler):
             self._validate_sending_app(sending_app)
 
             # ===================================================================
-            # STEP 5: Publish to Service Bus (WEEK 2 ADDITION)
+            # STEP 5: Content-Based Routing to Service Bus (WEEK 2 ADDITION)
             # ===================================================================
-            # If Service Bus is configured, publish the validated message to
-            # the egress queue. The transformer component will pick it up.
-            if self.sender_client:
-                print("-" * 60)
-                print("PUBLISHING TO SERVICE BUS (Week 2)")
-                # Publish the raw HL7 message as UTF-8 text
-                # The transformer will parse and transform this message
-                self.sender_client.send_text_message(self.incoming_message)
-                print(f"✓ Message published to egress queue: {message_control_id}")
-            else:
-                print("  (Service Bus publishing skipped - sender not configured)")
+            # Route the validated message to the appropriate queue based on
+            # message type (MSH-9-1). The message is published with custom
+            # properties that downstream topic subscriptions can filter on.
+            self._route_message(msg, message_code)
 
             # ===================================================================
             # STEP 6: Build and return a success ACK
@@ -244,6 +238,33 @@ class MessageHandler(AbstractHandler):
             print(f"✗ Error processing message: {e}")
             raise
 
+    # ==========================================================
+    # CONTENT-BASED ROUTING
+    # ==========================================================
+    def _route_message(self, msg, message_code: str) -> None:
+
+        if not self.sender_client:
+            print("(Routing skipped - sender client not configured)")
+            return
+
+        print(f"Routing decision based on MSH-9-1: {message_code}")
+
+        ROUTE_MAP = {
+            "ADT": "ADT_QUEUE",
+            "MDM": "MDM_QUEUE",
+            "ORM": "ORDERS_QUEUE",
+            "ORU": "RESULTS_QUEUE",
+        }
+
+        destination = ROUTE_MAP.get(message_code, "DEFAULT_QUEUE")
+
+        print(f"✓ Routing to: {destination}")
+
+        # Pass routing destination as custom property
+        self.sender_client.send_text_message(
+            self.incoming_message,
+            custom_properties={"subject": destination}
+        )
     def _validate_version(self, message_version: str) -> None:
         """
         Validate the HL7 version from MSH-12.

@@ -404,5 +404,27 @@ services:
         aliases:
           - "training-hl7v2-receiver"
 
+   # Training verification for learning HL7 message transformation (Week 2)
+  # Reads from training-hl7v2-xform-ingress queue, transforms MSH segment,
+  # publishes to training-hl7v2-xform-egress queue
+  training-hl7-verification:
+    container_name: training-hl7-verification
+    build:
+      context: ../training_hl7_verification
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - shared_libs=../shared_libs
+    env_file:
+      - ./training-hl7-verification.env
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - training-hl7v2
+    networks:
+      integration-hub:
+        aliases:
+          - "training-hl7-verification"         
+
 networks:
   integration-hub:

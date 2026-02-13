@@ -157,6 +157,20 @@
               "RequiresDuplicateDetection": false,
               "RequiresSession": true
             }
+          },
+          {
+            "Name": "local-inthub-training-hl7v2-xform-egress",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": false,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 10,
+              "RequiresDuplicateDetection": false,
+              "RequiresSession": true
+            }
           }
         ],
         "Topics": [
