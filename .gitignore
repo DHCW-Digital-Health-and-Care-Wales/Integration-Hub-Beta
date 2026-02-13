@@ -175,3 +175,5 @@ cython_debug/
 .secrets
 tmp
 .DS_Store
+local/test.hl7
+local/wds-hl7-server.env
