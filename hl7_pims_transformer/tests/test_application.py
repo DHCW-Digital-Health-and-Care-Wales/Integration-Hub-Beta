@@ -63,7 +63,7 @@ class TestProcessPimsMessage(unittest.TestCase):
         self.mock_sender.send_message.assert_called_once_with(expected_message, custom_properties=None)
         self.mock_event_logger.log_message_received.assert_called_once()
         self.mock_event_logger.log_message_processed.assert_called_once_with(
-            expected_message, "PIMS transformation applied for SENDING_APP: PIMS", event_id=None
+            expected_message, "PIMS transformation applied for SENDING_APP: PIMS", correlation_id=None
         )
         self.mock_event_logger.log_message_failed.assert_not_called()
 
@@ -85,13 +85,13 @@ class TestProcessPimsMessage(unittest.TestCase):
         process_message(self.service_bus_message, **self.process_message_kwargs)
 
         self.mock_event_logger.log_message_received.assert_called_once_with(
-            self.hl7_string, "Message received for PIMS transformation", event_id=None
+            self.hl7_string, "Message received for PIMS transformation", correlation_id=None
         )
         self.mock_event_logger.log_message_failed.assert_called_once_with(
             self.hl7_string,
             f"Failed to transform PIMS message: {error_reason}",
             "PIMS transformation failed",
-            event_id=None,
+            correlation_id=None,
         )
         self.mock_event_logger.log_message_processed.assert_not_called()
 

@@ -2,13 +2,13 @@ from azure.servicebus import ServiceBusMessage
 
 NA = "N/A"
 
-EVENT_ID_KEY = "EventId"
+CORRELATION_ID_KEY = "CorrelationId"
 MESSAGE_RECEIVED_AT_KEY = "MessageReceivedAt"
 SOURCE_SYSTEM_KEY = "SourceSystem"
 WORKFLOW_ID_KEY = "WorkflowID"
 
 METADATA_FIELD_MAP = {
-    "event_id": EVENT_ID_KEY,
+    "correlation_id": CORRELATION_ID_KEY,
     "workflow_id": WORKFLOW_ID_KEY,
     "source_system": SOURCE_SYSTEM_KEY,
     "message_received_at": MESSAGE_RECEIVED_AT_KEY,
@@ -37,9 +37,9 @@ def get_metadata_log_values(metadata: dict[str, str] | None) -> dict[str, str]:
     return {log_key: metadata.get(app_prop_key, NA) for log_key, app_prop_key in METADATA_FIELD_MAP.items()}
 
 
-def event_id_for_logger(meta: dict[str, str]) -> str | None:
+def correlation_id_for_logger(meta: dict[str, str]) -> str | None:
     """
-    Return event_id for EventLogger (None when missing or N/A).
+    Return correlation_id for EventLogger (None when missing or N/A).
     """
-    value = meta.get("event_id", NA)
+    value = meta.get("correlation_id", NA)
     return None if value == NA else value

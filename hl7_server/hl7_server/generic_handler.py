@@ -148,8 +148,9 @@ class GenericHandler(AbstractHandler):
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
             meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
-                "Message metadata attached - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-                meta["event_id"],
+                "Message metadata attached - CorrelationId: %s, WorkflowID: %s, "
+                "SourceSystem: %s, MessageReceivedAt: %s",
+                meta["correlation_id"],
                 meta["workflow_id"],
                 meta["source_system"],
                 meta["message_received_at"],

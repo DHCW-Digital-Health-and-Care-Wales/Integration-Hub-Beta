@@ -106,7 +106,7 @@ class TestGenericHandler(unittest.TestCase):
         tracking_metadata_properties = call_args[0][1]
         self.assertIsNotNone(tracking_metadata_properties)
         self.assertIn("MessageReceivedAt", tracking_metadata_properties)
-        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertIn("CorrelationId", tracking_metadata_properties)
         self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
 
@@ -132,7 +132,7 @@ class TestGenericHandler(unittest.TestCase):
         call_args = self.mock_sender.send_text_message.call_args
         tracking_metadata_properties = call_args[0][1]
         self.assertIn("MessageReceivedAt", tracking_metadata_properties)
-        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertIn("CorrelationId", tracking_metadata_properties)
         self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
 
@@ -165,7 +165,7 @@ class TestGenericHandler(unittest.TestCase):
         self.assertEqual(call_args[0][0], VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE)
         tracking_metadata_properties = call_args[0][1]
         self.assertIn("MessageReceivedAt", tracking_metadata_properties)
-        self.assertIn("EventId", tracking_metadata_properties)
+        self.assertIn("CorrelationId", tracking_metadata_properties)
         self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
         self.assertEqual(tracking_metadata_properties["MessageType"], "A28")

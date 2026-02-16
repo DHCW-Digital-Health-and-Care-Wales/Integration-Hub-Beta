@@ -6,7 +6,7 @@ from event_logger_lib import EventLogger
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.metadata_utils import extract_metadata, event_id_for_logger, get_metadata_log_values
+from message_bus_lib.metadata_utils import extract_metadata, correlation_id_for_logger, get_metadata_log_values
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ def process_message(
     meta = get_metadata_log_values(incoming_props)
     if incoming_props:
         logger.info(
-            "Received message with metadata - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-            meta["event_id"],
+            "Received message with metadata - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+            meta["correlation_id"],
             meta["workflow_id"],
             meta["source_system"],
             meta["message_received_at"],
@@ -35,9 +35,9 @@ def process_message(
     else:
         logger.warning("No application_properties found on message")
 
-    event_id_opt = event_id_for_logger(meta)
+    correlation_id_opt = correlation_id_for_logger(meta)
     try:
-        event_logger.log_message_received(message_body, received_audit_text, event_id=event_id_opt)
+        event_logger.log_message_received(message_body, received_audit_text, correlation_id=correlation_id_opt)
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
@@ -50,7 +50,7 @@ def process_message(
         event_logger.log_message_processed(
             transformed_hl7_message.to_er7(),
             processed_audit_text_builder(hl7_msg),
-            event_id=event_id_opt,
+            correlation_id=correlation_id_opt,
         )
 
         return True
@@ -60,7 +60,7 @@ def process_message(
         logger.error(error_msg)
 
         event_logger.log_message_failed(
-            message_body, error_msg, failed_audit_text, event_id=event_id_opt
+            message_body, error_msg, failed_audit_text, correlation_id=correlation_id_opt
         )
 
         return False
@@ -70,7 +70,7 @@ def process_message(
         logger.error(error_msg)
 
         event_logger.log_message_failed(
-            message_body, error_msg, "Unexpected processing error", event_id=event_id_opt
+            message_body, error_msg, "Unexpected processing error", correlation_id=correlation_id_opt
         )
 
         return False

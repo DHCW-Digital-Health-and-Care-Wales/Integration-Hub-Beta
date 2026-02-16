@@ -8,7 +8,7 @@ from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
-from message_bus_lib.metadata_utils import event_id_for_logger, extract_metadata, get_metadata_log_values
+from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_metadata, get_metadata_log_values
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
 from processor_manager_lib import ProcessorManager
@@ -100,17 +100,19 @@ def _process_message(
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
     meta = get_metadata_log_values(metadata)
-    event_id_opt = event_id_for_logger(meta)
+    correlation_id_opt = correlation_id_for_logger(meta)
     logger.info(
-        "Message received for HL7 sending - EventId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
-        meta["event_id"],
+        "Message received for HL7 sending - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+        meta["correlation_id"],
         meta["workflow_id"],
         meta["source_system"],
         meta["message_received_at"],
     )
 
     try:
-        event_logger.log_message_received(message_body, "Message received for HL7 sending", event_id=event_id_opt)
+        event_logger.log_message_received(
+            message_body, "Message received for HL7 sending", correlation_id=correlation_id_opt
+        )
 
         hl7_msg = parse_message(message_body)
         msh_segment = hl7_msg.msh
@@ -128,7 +130,7 @@ def _process_message(
         event_logger.log_message_processed(
             message_body,
             f"Message sent successfully, received ACK: {ack_response}",
-            event_id=event_id_opt,
+            correlation_id=correlation_id_opt,
         )
         logger.info(f"Sent message: {message_id}")
 
@@ -142,7 +144,7 @@ def _process_message(
             message_body,
             error_msg,
             "Message sending failed - connection/timeout error",
-            event_id=event_id_opt,
+            correlation_id=correlation_id_opt,
         )
 
         return False
@@ -155,7 +157,7 @@ def _process_message(
             message_body,
             error_msg,
             "Unexpected processing error",
-            event_id=event_id_opt,
+            correlation_id=correlation_id_opt,
         )
 
         return False
