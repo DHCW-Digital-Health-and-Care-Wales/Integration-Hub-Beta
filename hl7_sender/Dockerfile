@@ -1,5 +1,5 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
-FROM python:3.13-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 # Install uv by copying from image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
