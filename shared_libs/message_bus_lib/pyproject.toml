@@ -27,7 +27,7 @@ dev = [
   "ruff==0.15.0",
   "bandit==1.9.2",
   "mypy==1.18.2",
-  "uv-secure[faster-async]==0.14.4",
+  "uv-secure[faster-async]==0.16.0",
 ]
 
 [tool.mypy]
