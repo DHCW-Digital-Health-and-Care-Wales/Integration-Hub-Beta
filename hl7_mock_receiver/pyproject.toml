@@ -19,7 +19,7 @@ dev = [
   "ruff==0.14.9",
   "bandit==1.9.2",
   "mypy==1.18.2",
-  "uv-secure[faster-async]==0.14.4",
+  "uv-secure[faster-async]==0.16.0",
 ]
 
 [tool.uv.sources]
