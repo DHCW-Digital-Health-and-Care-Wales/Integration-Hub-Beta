@@ -51,6 +51,7 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from training_hl7_verification.app_config import VerificationConfig
+from lxml import etree
 #from training_hl7_transformer.mappers.msh_mapper import map_msh
 #from training_hl7_transformer.mappers.pid_mapper import map_pid
 
@@ -149,9 +150,6 @@ class TrainingVerification:
         """
 
         def process_message(message: ServiceBusMessage) -> bool:
-
-
-
             """
             Process a single message from the queue.
 
@@ -172,42 +170,16 @@ class TrainingVerification:
             Returns:
                 True if transformation succeeded, False otherwise.
             """
+            print("-" * 60)
+            print("PROCESSING MESSAGE FROM QUEUE")
+            print("-" * 60)
+            
             try:
-                # Debug: Print all application properties
-                if message.application_properties:
-                    print(f"Application properties: {dict(message.application_properties)}")
-                    # Handle both bytes and string keys/values
-                    subject = message.application_properties.get(b"subject", b"DEFAULT_QUEUE")
-                    if isinstance(subject, bytes):
-                        subject = subject.decode("utf-8")
-                else:
-                    print("No application properties found on message")
-                    subject = "DEFAULT_QUEUE"
-                
-                if subject == "ADT_QUEUE":
-                    print("✓ Detected subject: ADT_QUEUE")
-                if subject == "MDM_QUEUE":
-                    print("✓ Detected subject: MDM_QUEUE")
-                if subject == "ORDERS_QUEUE":
-                    print("✓ Detected subject: ORDERS_QUEUE")
-                if subject == "RESULTS_QUEUE":
-                    print("✓ Detected subject: RESULTS_QUEUE")
-                else:
-                    print(f"✓ Detected subject: {subject} (not ADT_QUEUE)")
-            finally:
-                print("-" * 60)
-                print("PROCESSING MESSAGE FROM QUEUE")
-                print("-" * 60)
-            try:               
                 # Log that we picked up a message from the queue
                 print(f"\n>>> PICKED UP MESSAGE from queue: {self.config.ingress_queue_name}")
 
                 # Get the raw message body as string
                 raw_body = str(message)
-
-                print("-" * 60)
-                print("PROCESSING MESSAGE FROM QUEUE")
-                print("-" * 60)
 
                 # Parse the HL7 message
                 # find_groups=False simplifies parsing (no group structures)
@@ -219,6 +191,66 @@ class TrainingVerification:
 
                 print(f"Message Control ID: {message_control_id}")
                 print(f"Message Type: {message_type}")
+
+                # Debug: Print all application properties
+                subject = "DEFAULT_QUEUE"
+                if message.application_properties:
+                    print(f"Application properties: {dict(message.application_properties)}")
+                    # Handle both bytes and string keys/values
+                    subject = message.application_properties.get(b"subject", b"DEFAULT_QUEUE")
+                    if isinstance(subject, bytes):
+                        subject = subject.decode("utf-8")
+                else:
+                    print("No application properties found on message")
+                
+                if subject == "ADT_QUEUE":
+                    print("✓ Detected subject: ADT_QUEUE")
+                elif subject == "MDM_QUEUE":
+                    print("✓ Detected subject: MDM_QUEUE")
+                elif subject == "ORDERS_QUEUE":
+                    print("✓ Detected subject: ORDERS_QUEUE")
+                elif subject == "RESULTS_QUEUE":
+                    print("✓ Detected subject: RESULTS_QUEUE")
+                    # Do strict schema validation with the customised ORU_R01 xsd schema for training
+                    schema_path = os.path.join(
+                        os.path.dirname(__file__),
+                        "schemas",
+                        "oru_r01_training.xsd"
+                    )
+
+                    try:
+                        # Load and validate against XSD schema
+                        # hl7apy provides XML conversion through its serialization methods
+                        schema_doc = etree.parse(schema_path)
+                        schema = etree.XMLSchema(schema_doc)
+                        
+                        # Get XML representation of the HL7 message
+                        # Use hl7apy's built-in XML generation
+                        xml_str = hl7_msg.serialize(encoding='utf-8', pretty_print=True)
+                        xml_doc = etree.fromstring(xml_str)
+                        
+                        # Validate against schema
+                        if schema.validate(xml_doc):
+                            print(f"✓ Message validation passed for {message_control_id}")
+                        else:
+                            # Print detailed validation errors
+                            error_log = schema.error_log
+                            print(f"✗ Message validation failed for {message_control_id}")
+                            for error in error_log:
+                                print(f"  - {error}")
+                            return False
+                            
+                    except FileNotFoundError:
+                        print(f"✗ Schema file not found: {schema_path}")
+                        return False
+                    except etree.XMLSyntaxError as xml_error:
+                        print(f"✗ XML parsing error: {xml_error}")
+                        return False
+                    except Exception as schema_error:
+                        print(f"✗ Schema validation error: {schema_error}")
+                        return False
+                else:
+                    print(f"✓ Detected subject: {subject} (Non Defined QUEUE)")
 
                 # Apply transformations
                 transformed_msg = self.transform_message(hl7_msg)

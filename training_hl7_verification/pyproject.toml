@@ -16,6 +16,10 @@ dependencies = [
     # Used to parse incoming messages and build transformed output
     "hl7apy==1.3.5",
     
+    # lxml: XML processing library required by XSD schema validation
+    # Used to parse and validate HL7 messages against XSD schemas
+    "lxml>=4.9.0",
+    
     # Azure Service Bus - for reading from ingress queue and publishing to egress queue
     "azure-servicebus==7.14.2",
     

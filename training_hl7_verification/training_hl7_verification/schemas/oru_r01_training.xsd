@@ -1,0 +1,1463 @@
+<!-- edited with XMLSpy v2009 sp1 (http://www.altova.com) by gareth williams (Informing Healthcare - Strategy Implementation Pro) -->
+<!-- The schema attributes 
+		 xmlns="urn:hl7-org:v2xml" elementFormDefault="qualified" targetNamespace="urn:hl7-org:v2xml" 
+	have to be added manually
+-->
+<!-- This schema is updated for WVT pathology results - REH01 for MSH.4.2 and added CE,FT,SN on OBX.2
+-->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="urn:hl7-org:v2xml" targetNamespace="urn:hl7-org:v2xml" elementFormDefault="qualified" version="1.4.2">
+	<xsd:element name="ORU_R01">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="MSH" type="MSH">
+					<xsd:annotation>
+						<xsd:appinfo>thi sis app info<potato/>
+						</xsd:appinfo>
+					</xsd:annotation>
+				</xsd:element>
+				<xsd:element name="ORU_R01.PATIENT_RESULT" maxOccurs="unbounded">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="ORU_R01.PATIENT" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="PID" type="PID"/>
+										<xsd:element name="ORU_R01.VISIT" minOccurs="0">
+											<xsd:complexType>
+												<xsd:sequence>
+													<xsd:element name="PV1" type="PV1"/>
+													<xsd:element name="PV2" type="PV2" minOccurs="0"/>
+												</xsd:sequence>
+											</xsd:complexType>
+										</xsd:element>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element name="ORU_R01.ORDER_OBSERVATION" maxOccurs="unbounded">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="ORC" type="ORC" minOccurs="0"/>
+										<xsd:element name="OBR" type="OBR"/>
+										<xsd:element name="NTE" type="NTE" minOccurs="0" maxOccurs="unbounded"/>
+										<xsd:element name="ORU_R01.TIMING_QTY" minOccurs="0" maxOccurs="unbounded">
+											<xsd:complexType>
+												<xsd:sequence>
+													<xsd:element name="TQ1" type="TQ1"/>
+													<xsd:element name="TQ2" type="TQ2" minOccurs="0" maxOccurs="unbounded"/>
+												</xsd:sequence>
+											</xsd:complexType>
+										</xsd:element>
+										<xsd:element name="CTD" type="CTD" minOccurs="0"/>
+										<xsd:element name="ORU_R01.OBSERVATION" maxOccurs="unbounded">
+											<xsd:complexType>
+												<xsd:sequence>
+													<xsd:element name="OBX" type="OBX"/>
+													<xsd:element name="NTE" type="NTE" minOccurs="0" maxOccurs="unbounded"/>
+												</xsd:sequence>
+											</xsd:complexType>
+										</xsd:element>
+										<xsd:element name="FT1" type="FT1" minOccurs="0" maxOccurs="unbounded"/>
+										<xsd:element name="CTI" type="CTI" minOccurs="0" maxOccurs="unbounded"/>
+										<xsd:element name="ORU_R01.SPECIMEN" minOccurs="0" maxOccurs="unbounded">
+											<xsd:complexType>
+												<xsd:sequence>
+													<xsd:element name="SPM" type="SPM"/>
+													<xsd:element name="OBX" type="OBX" minOccurs="0" maxOccurs="unbounded"/>
+												</xsd:sequence>
+											</xsd:complexType>
+										</xsd:element>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:complexType name="CTD">
+		<xsd:sequence>
+			<xsd:element name="CTD.1" type="CE" maxOccurs="unbounded"/>
+			<xsd:element name="CTD.2" type="XPN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="CTD.3" type="XAD" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="CTD.4" type="PL" minOccurs="0"/>
+			<xsd:element name="CTD.5" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="CTD.6" type="CE" minOccurs="0"/>
+			<xsd:element name="CTD.7" type="PLN" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CTI">
+		<xsd:sequence>
+			<xsd:element name="CTI.1" type="EI"/>
+			<xsd:element name="CTI.2" type="CE" minOccurs="0"/>
+			<xsd:element name="CTI.3" type="CE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DSC">
+		<xsd:sequence>
+			<xsd:element name="DSC.1" type="ST" minOccurs="0"/>
+			<xsd:element name="DSC.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="FT1">
+		<xsd:sequence>
+			<xsd:element name="FT1.1" type="SI" minOccurs="0"/>
+			<xsd:element name="FT1.2" type="ST" minOccurs="0"/>
+			<xsd:element name="FT1.3" type="ST" minOccurs="0"/>
+			<xsd:element name="FT1.4" type="DR"/>
+			<xsd:element name="FT1.5" type="TS" minOccurs="0"/>
+			<xsd:element name="FT1.6" type="IS"/>
+			<xsd:element name="FT1.7" type="CE"/>
+			<xsd:element name="FT1.8" type="ST" minOccurs="0"/>
+			<xsd:element name="FT1.9" type="ST" minOccurs="0"/>
+			<xsd:element name="FT1.10" type="NM" minOccurs="0"/>
+			<xsd:element name="FT1.11" type="CP" minOccurs="0"/>
+			<xsd:element name="FT1.12" type="CP" minOccurs="0"/>
+			<xsd:element name="FT1.13" type="CE" minOccurs="0"/>
+			<xsd:element name="FT1.14" type="CE" minOccurs="0"/>
+			<xsd:element name="FT1.15" type="CP" minOccurs="0"/>
+			<xsd:element name="FT1.16" type="PL" minOccurs="0"/>
+			<xsd:element name="FT1.17" type="IS" minOccurs="0"/>
+			<xsd:element name="FT1.18" type="IS" minOccurs="0"/>
+			<xsd:element name="FT1.19" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="FT1.20" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="FT1.21" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="FT1.22" type="CP" minOccurs="0"/>
+			<xsd:element name="FT1.23" type="EI" minOccurs="0"/>
+			<xsd:element name="FT1.24" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="FT1.25" type="CE" minOccurs="0"/>
+			<xsd:element name="FT1.26" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="FT1.27" type="CE" minOccurs="0"/>
+			<xsd:element name="FT1.28" type="CWE" minOccurs="0"/>
+			<xsd:element name="FT1.29" type="CNE" minOccurs="0"/>
+			<xsd:element name="FT1.30" type="CX" minOccurs="0"/>
+			<xsd:element name="FT1.31" type="SI" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="MSH">
+		<xsd:annotation>
+			<xsd:documentation>hello world</xsd:documentation>
+			<xsd:appinfo>hi</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="MSH.1" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Field seperator</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.2" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Encoding Characters</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.3" type="NWIS.MSH3.HD">
+				<xsd:annotation>
+					<xsd:documentation>Sending Application: HD.2 and H2.3 are Mandatory.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.4" type="NWIS.MSH4.HD">
+				<xsd:annotation>
+					<xsd:documentation>Sending Facility: 5 Digit Site code provides health board and location : 7A5B1 Royal Glamorgan Hospital</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.5" type="NWIS.MSH5.HD">
+				<xsd:annotation>
+					<xsd:documentation>Receiving Application - INSE OID</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.6" type="NWIS.MSH6.HD">
+				<xsd:annotation>
+					<xsd:documentation>Receiving Facility</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.7" type="NWIS.MSH7.TS">
+				<xsd:annotation>
+					<xsd:documentation>DateTime of Message</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.8" type="ST" minOccurs="0"/>
+			<xsd:element name="MSH.9" type="MSG">
+				<xsd:annotation>
+					<xsd:documentation>Message Type</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSH.10">
+				<xsd:simpleType>
+					<xsd:restriction base="ST">
+						<xsd:maxLength value="20"/>
+						<xsd:minLength value="1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="MSH.11" type="PT"/>
+			<xsd:element name="MSH.12" type="VID"/>
+			<xsd:element name="MSH.13" type="NM" minOccurs="0"/>
+			<xsd:element name="MSH.14" type="ST" minOccurs="0"/>
+			<xsd:element name="MSH.15" type="ID" minOccurs="0"/>
+			<xsd:element name="MSH.16" type="ID" minOccurs="0"/>
+			<xsd:element name="MSH.17" type="ID" minOccurs="0"/>
+			<xsd:element name="MSH.18" type="ID" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="MSH.19" type="CE" minOccurs="0"/>
+			<xsd:element name="MSH.20" type="ID" minOccurs="0"/>
+			<xsd:element name="MSH.21" type="EI" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NK1">
+		<xsd:sequence>
+			<xsd:element name="NK1.1" type="SI"/>
+			<xsd:element name="NK1.2" type="XPN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.3" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.4" type="XAD" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.5" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.6" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.7" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.8" type="DT" minOccurs="0"/>
+			<xsd:element name="NK1.9" type="DT" minOccurs="0"/>
+			<xsd:element name="NK1.10" type="ST" minOccurs="0"/>
+			<xsd:element name="NK1.11" type="JCC" minOccurs="0"/>
+			<xsd:element name="NK1.12" type="CX" minOccurs="0"/>
+			<xsd:element name="NK1.13" type="XON" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.14" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.15" type="IS" minOccurs="0"/>
+			<xsd:element name="NK1.16" type="TS" minOccurs="0"/>
+			<xsd:element name="NK1.17" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.18" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.19" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.20" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.21" type="IS" minOccurs="0"/>
+			<xsd:element name="NK1.22" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.23" type="ID" minOccurs="0"/>
+			<xsd:element name="NK1.24" type="IS" minOccurs="0"/>
+			<xsd:element name="NK1.25" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.26" type="XPN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.27" type="CE" minOccurs="0"/>
+			<xsd:element name="NK1.28" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.29" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.30" type="XPN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.31" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.32" type="XAD" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.33" type="CX" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.34" type="IS" minOccurs="0"/>
+			<xsd:element name="NK1.35" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NK1.36" type="IS" minOccurs="0"/>
+			<xsd:element name="NK1.37" type="ST" minOccurs="0"/>
+			<xsd:element name="NK1.38" type="ST" minOccurs="0"/>
+			<xsd:element name="NK1.39" type="IS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NTE">
+		<xsd:sequence>
+			<xsd:element name="NTE.1" type="SI" minOccurs="0"/>
+			<xsd:element name="NTE.2" type="ID" minOccurs="0"/>
+			<xsd:element name="NTE.3" type="xsd:anyType" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="NTE.4" type="CE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="OBR">
+		<xsd:sequence>
+			<xsd:element name="OBR.1" type="SI" minOccurs="0"/>
+			<xsd:element name="OBR.2" type="EI" minOccurs="0"/>
+			<xsd:element name="OBR.3" type="EI" minOccurs="0"/>
+			<xsd:element name="OBR.4" type="CE"/>
+			<xsd:element name="OBR.5" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.6" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.7" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.8" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.9" type="CQ" minOccurs="0"/>
+			<xsd:element name="OBR.10" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.11" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.12" type="CE" minOccurs="0"/>
+			<xsd:element name="OBR.13" type="ST" minOccurs="0"/>
+			<xsd:element name="OBR.14" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.15" type="SPS" minOccurs="0"/>
+			<xsd:element name="OBR.16" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.17" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.18" type="ST" minOccurs="0"/>
+			<xsd:element name="OBR.19" type="ST" minOccurs="0"/>
+			<xsd:element name="OBR.20" type="ST" minOccurs="0"/>
+			<xsd:element name="OBR.21" type="ST" minOccurs="0"/>
+			<xsd:element name="OBR.22" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.23" type="MOC" minOccurs="0"/>
+			<xsd:element name="OBR.24" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.25" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.26" type="PRL" minOccurs="0"/>
+			<xsd:element name="OBR.27" type="TQ" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.28" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.29" type="EIP" minOccurs="0"/>
+			<xsd:element name="OBR.30" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.31" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.32" type="NDL" minOccurs="0"/>
+			<xsd:element name="OBR.33" type="NDL" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.34" type="NDL" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.35" type="NDL" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.36" type="TS" minOccurs="0"/>
+			<xsd:element name="OBR.37" type="NM" minOccurs="0"/>
+			<xsd:element name="OBR.38" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.39" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.40" type="CE" minOccurs="0"/>
+			<xsd:element name="OBR.41" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.42" type="ID" minOccurs="0"/>
+			<xsd:element name="OBR.43" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.44" type="CE" minOccurs="0"/>
+			<xsd:element name="OBR.45" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.46" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.47" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBR.48" type="CWE" minOccurs="0"/>
+			<xsd:element name="OBR.49" type="IS" minOccurs="0"/>
+			<xsd:element name="OBR.50" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="OBX">
+		<xsd:sequence>
+			<xsd:element name="OBX.1" type="SI" minOccurs="0"/>
+			<xsd:element name="OBX.2">
+				<xsd:simpleType>
+					<xsd:restriction base="NWIS.OBX2.ID">
+						<xsd:enumeration value="ED"/>
+						<xsd:enumeration value="ST"/>
+						<xsd:enumeration value="NM"/>
+						<xsd:enumeration value="TX"/>
+						<xsd:enumeration value="CE"/>
+						<xsd:enumeration value="FT"/>
+						<xsd:enumeration value="SN"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="OBX.3" type="CE"/>
+			<xsd:element name="OBX.4" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.5" minOccurs="0" maxOccurs="unbounded">
+				<xsd:annotation>
+					<xsd:documentation>OBX.5 is a variable data type, content is based on OBX.2 Value Type. So we've set this to ANY type. 7Edit schema wants to based this on ED, or ST etc, which we can't. validating this content via a schema could be taxing.</xsd:documentation>
+				</xsd:annotation>
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="CE" type="CE" minOccurs="0"/>
+						<xsd:element name="SN" type="SN" minOccurs="0"/>
+					</xsd:sequence>
+				</xsd:complexType>
+			</xsd:element>
+			<xsd:element name="OBX.6" type="CE" minOccurs="0"/>
+			<xsd:element name="OBX.7" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.8" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBX.9" type="NM" minOccurs="0"/>
+			<xsd:element name="OBX.10" type="ID" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBX.11" type="ID"/>
+			<xsd:element name="OBX.12" type="TS" minOccurs="0"/>
+			<xsd:element name="OBX.13" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.14" type="TS" minOccurs="0"/>
+			<xsd:element name="OBX.15" type="CE" minOccurs="0"/>
+			<xsd:element name="OBX.16" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBX.17" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBX.18" type="EI" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="OBX.19" type="TS" minOccurs="0"/>
+			<xsd:element name="OBX.20" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.21" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.22" type="ST" minOccurs="0"/>
+			<xsd:element name="OBX.23" type="XON" minOccurs="0"/>
+			<xsd:element name="OBX.24" type="XAD" minOccurs="0"/>
+			<xsd:element name="OBX.25" type="XCN" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ORC">
+		<xsd:sequence>
+			<xsd:element name="ORC.1" type="ID"/>
+			<xsd:element name="ORC.2" type="EI" minOccurs="0"/>
+			<xsd:element name="ORC.3" type="EI" minOccurs="0"/>
+			<xsd:element name="ORC.4" type="EI" minOccurs="0"/>
+			<xsd:element name="ORC.5" type="ID" minOccurs="0"/>
+			<xsd:element name="ORC.6" type="ID" minOccurs="0"/>
+			<xsd:element name="ORC.7" type="TQ" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.8" type="EIP" minOccurs="0"/>
+			<xsd:element name="ORC.9" type="TS" minOccurs="0"/>
+			<xsd:element name="ORC.10" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.11" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.12" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.13" type="PL" minOccurs="0"/>
+			<xsd:element name="ORC.14" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.15" type="TS" minOccurs="0"/>
+			<xsd:element name="ORC.16" type="CE" minOccurs="0"/>
+			<xsd:element name="ORC.17" type="CE" minOccurs="0"/>
+			<xsd:element name="ORC.18" type="CE" minOccurs="0"/>
+			<xsd:element name="ORC.19" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.20" type="CE" minOccurs="0"/>
+			<xsd:element name="ORC.21" type="XON" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.22" type="XAD" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.23" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.24" type="XAD" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="ORC.25" type="CWE" minOccurs="0"/>
+			<xsd:element name="ORC.26" type="CWE" minOccurs="0"/>
+			<xsd:element name="ORC.27" type="TS" minOccurs="0"/>
+			<xsd:element name="ORC.28" type="CWE" minOccurs="0"/>
+			<xsd:element name="ORC.29" type="CWE" minOccurs="0"/>
+			<xsd:element name="ORC.30" type="CNE" minOccurs="0"/>
+			<xsd:element name="ORC.31" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PD1">
+		<xsd:sequence>
+			<xsd:element name="PD1.1" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PD1.2" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.3" type="NWIS.PD1.3.XON" minOccurs="0" maxOccurs="unbounded">
+				<xsd:annotation>
+					<xsd:documentation>GP Pracitce Code?</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PD1.4" type="XCN" minOccurs="0" maxOccurs="unbounded">
+				<xsd:annotation>
+					<xsd:documentation>GP Name and Code</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PD1.5" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.6" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.7" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.8" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.9" type="ID" minOccurs="0"/>
+			<xsd:element name="PD1.10" type="CX" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PD1.11" type="CE" minOccurs="0"/>
+			<xsd:element name="PD1.12" type="ID" minOccurs="0"/>
+			<xsd:element name="PD1.13" type="DT" minOccurs="0"/>
+			<xsd:element name="PD1.14" type="XON" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PD1.15" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PD1.16" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.17" type="DT" minOccurs="0"/>
+			<xsd:element name="PD1.18" type="DT" minOccurs="0"/>
+			<xsd:element name="PD1.19" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.20" type="IS" minOccurs="0"/>
+			<xsd:element name="PD1.21" type="IS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PID">
+		<xsd:sequence>
+			<xsd:element name="PID.1" type="SI" minOccurs="0"/>
+			<xsd:element name="PID.2" type="CX" minOccurs="0"/>
+			<xsd:element name="PID.3" type="NWIS.PID3.CX" maxOccurs="unbounded">
+				<xsd:annotation>
+					<xsd:documentation>Patient Identifier List</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PID.4" type="CX" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.5" type="XPN" maxOccurs="unbounded"/>
+			<xsd:element name="PID.6" type="XPN" minOccurs="0" maxOccurs="unbounded">
+				<xsd:annotation>
+					<xsd:documentation>not required</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PID.7" type="NWIS.TS.DOB">
+				<xsd:annotation>
+					<xsd:documentation>optional but must be Date</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PID.8" type="IS" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>optional but if provided has to be one of the values as in data dictionary</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PID.9" type="XPN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.10" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.11" type="NWIS.XAD.PostCode" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.12" type="IS" minOccurs="0"/>
+			<xsd:element name="PID.13" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.14" type="XTN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.15" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.16" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.17" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.18" type="CX" minOccurs="0"/>
+			<xsd:element name="PID.19" type="ST" minOccurs="0"/>
+			<xsd:element name="PID.20" type="DLN" minOccurs="0"/>
+			<xsd:element name="PID.21" type="CX" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.22" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.23" type="ST" minOccurs="0"/>
+			<xsd:element name="PID.24" type="ID" minOccurs="0"/>
+			<xsd:element name="PID.25" type="NM" minOccurs="0"/>
+			<xsd:element name="PID.26" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.27" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.28" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.29" type="TS" minOccurs="0"/>
+			<xsd:element name="PID.30" type="ID" minOccurs="0"/>
+			<xsd:element name="PID.31" type="ID" minOccurs="0"/>
+			<xsd:element name="PID.32" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PID.33" type="TS" minOccurs="0"/>
+			<xsd:element name="PID.34" type="HD" minOccurs="0"/>
+			<xsd:element name="PID.35" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.36" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.37" type="ST" minOccurs="0"/>
+			<xsd:element name="PID.38" type="CE" minOccurs="0"/>
+			<xsd:element name="PID.39" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PV1">
+		<xsd:sequence>
+			<xsd:element name="PV1.1" type="SI" minOccurs="0"/>
+			<xsd:element name="PV1.2" type="IS"/>
+			<xsd:element name="PV1.3" type="PL"/>
+			<xsd:element name="PV1.4" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.5" type="CX" minOccurs="0"/>
+			<xsd:element name="PV1.6" type="PL" minOccurs="0"/>
+			<xsd:element name="PV1.7" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.8" type="NWIS.PV1.8.XCN" maxOccurs="unbounded">
+				<xsd:annotation id="ID_1">
+					<xsd:documentation>requestor - lead clinician</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="PV1.9" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.10" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.11" type="PL" minOccurs="0"/>
+			<xsd:element name="PV1.12" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.13" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.14" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.15" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.16" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.17" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.18" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.19" type="CX" minOccurs="0"/>
+			<xsd:element name="PV1.20" type="FC" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.21" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.22" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.23" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.24" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.25" type="DT" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.26" type="NM" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.27" type="NM" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.28" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.29" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.30" type="DT" minOccurs="0"/>
+			<xsd:element name="PV1.31" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.32" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.33" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.34" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.35" type="DT" minOccurs="0"/>
+			<xsd:element name="PV1.36" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.37" type="DLD" minOccurs="0"/>
+			<xsd:element name="PV1.38" type="CE" minOccurs="0"/>
+			<xsd:element name="PV1.39" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.40" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.41" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.42" type="PL" minOccurs="0"/>
+			<xsd:element name="PV1.43" type="PL" minOccurs="0"/>
+			<xsd:element name="PV1.44" type="TS" minOccurs="0"/>
+			<xsd:element name="PV1.45" type="TS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV1.46" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.47" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.48" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.49" type="NM" minOccurs="0"/>
+			<xsd:element name="PV1.50" type="CX" minOccurs="0"/>
+			<xsd:element name="PV1.51" type="IS" minOccurs="0"/>
+			<xsd:element name="PV1.52" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PV2">
+		<xsd:sequence>
+			<xsd:element name="PV2.1" type="PL" minOccurs="0"/>
+			<xsd:element name="PV2.2" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.3" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.4" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.5" type="ST" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.6" type="ST" minOccurs="0"/>
+			<xsd:element name="PV2.7" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.8" type="TS" minOccurs="0"/>
+			<xsd:element name="PV2.9" type="TS" minOccurs="0"/>
+			<xsd:element name="PV2.10" type="NM" minOccurs="0"/>
+			<xsd:element name="PV2.11" type="NM" minOccurs="0"/>
+			<xsd:element name="PV2.12" type="ST" minOccurs="0"/>
+			<xsd:element name="PV2.13" type="XCN" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.14" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.15" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.16" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.17" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.18" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.19" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.20" type="NM" minOccurs="0"/>
+			<xsd:element name="PV2.21" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.22" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.23" type="XON" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.24" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.25" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.26" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.27" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.28" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.29" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.30" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.31" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.32" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.33" type="TS" minOccurs="0"/>
+			<xsd:element name="PV2.34" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.35" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.36" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.37" type="ID" minOccurs="0"/>
+			<xsd:element name="PV2.38" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.39" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.40" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.41" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.42" type="CE" minOccurs="0"/>
+			<xsd:element name="PV2.43" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.44" type="IS" minOccurs="0"/>
+			<xsd:element name="PV2.45" type="CE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="PV2.46" type="DT" minOccurs="0"/>
+			<xsd:element name="PV2.47" type="TS" minOccurs="0"/>
+			<xsd:element name="PV2.48" type="TS" minOccurs="0"/>
+			<xsd:element name="PV2.49" type="IS" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="SFT">
+		<xsd:sequence>
+			<xsd:element name="SFT.1" type="XON"/>
+			<xsd:element name="SFT.2" type="ST"/>
+			<xsd:element name="SFT.3" type="ST"/>
+			<xsd:element name="SFT.4" type="ST"/>
+			<xsd:element name="SFT.5" type="TX" minOccurs="0"/>
+			<xsd:element name="SFT.6" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="SPM">
+		<xsd:sequence>
+			<xsd:element name="SPM.1" type="SI" minOccurs="0"/>
+			<xsd:element name="SPM.2" type="EIP" minOccurs="0"/>
+			<xsd:element name="SPM.3" type="EIP" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.4" type="CWE"/>
+			<xsd:element name="SPM.5" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.6" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.7" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.8" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.9" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.10" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.11" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.12" type="CQ" minOccurs="0"/>
+			<xsd:element name="SPM.13" type="NM" minOccurs="0"/>
+			<xsd:element name="SPM.14" type="ST" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.15" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.16" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.17" type="DR" minOccurs="0"/>
+			<xsd:element name="SPM.18" type="TS" minOccurs="0"/>
+			<xsd:element name="SPM.19" type="TS" minOccurs="0"/>
+			<xsd:element name="SPM.20" type="ID" minOccurs="0"/>
+			<xsd:element name="SPM.21" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.22" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.23" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.24" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="SPM.25" type="CQ" minOccurs="0"/>
+			<xsd:element name="SPM.26" type="NM" minOccurs="0"/>
+			<xsd:element name="SPM.27" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.28" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPM.29" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="TQ1">
+		<xsd:sequence>
+			<xsd:element name="TQ1.1" type="SI" minOccurs="0"/>
+			<xsd:element name="TQ1.2" type="CQ" minOccurs="0"/>
+			<xsd:element name="TQ1.3" type="RPT" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ1.4" type="TM" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ1.5" type="CQ" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ1.6" type="CQ" minOccurs="0"/>
+			<xsd:element name="TQ1.7" type="TS" minOccurs="0"/>
+			<xsd:element name="TQ1.8" type="TS" minOccurs="0"/>
+			<xsd:element name="TQ1.9" type="CWE" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ1.10" type="TX" minOccurs="0"/>
+			<xsd:element name="TQ1.11" type="TX" minOccurs="0"/>
+			<xsd:element name="TQ1.12" type="ID" minOccurs="0"/>
+			<xsd:element name="TQ1.13" type="CQ" minOccurs="0"/>
+			<xsd:element name="TQ1.14" type="NM" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="TQ2">
+		<xsd:sequence>
+			<xsd:element name="TQ2.1" type="SI" minOccurs="0"/>
+			<xsd:element name="TQ2.2" type="ID" minOccurs="0"/>
+			<xsd:element name="TQ2.3" type="EI" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ2.4" type="EI" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ2.5" type="EI" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element name="TQ2.6" type="ID" minOccurs="0"/>
+			<xsd:element name="TQ2.7" type="ID" minOccurs="0"/>
+			<xsd:element name="TQ2.8" type="CQ" minOccurs="0"/>
+			<xsd:element name="TQ2.9" type="NM" minOccurs="0"/>
+			<xsd:element name="TQ2.10" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CE">
+		<xsd:sequence>
+			<xsd:element name="CE.1" type="ST" minOccurs="0"/>
+			<xsd:element name="CE.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CE.3" type="ID" minOccurs="0"/>
+			<xsd:element name="CE.4" type="ST" minOccurs="0"/>
+			<xsd:element name="CE.5" type="ST" minOccurs="0"/>
+			<xsd:element name="CE.6" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="SN">
+		<xsd:sequence>
+			<xsd:element name="SN.1" type="ST" minOccurs="0"/>
+			<xsd:element name="SN.2" type="NM" minOccurs="0"/>
+			<xsd:element name="SN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="SN.4" type="NM" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	
+	<xsd:complexType name="CNE">
+		<xsd:sequence>
+			<xsd:element name="CNE.1" type="ST"/>
+			<xsd:element name="CNE.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CNE.3" type="ID" minOccurs="0"/>
+			<xsd:element name="CNE.4" type="ST" minOccurs="0"/>
+			<xsd:element name="CNE.5" type="ST" minOccurs="0"/>
+			<xsd:element name="CNE.6" type="ID" minOccurs="0"/>
+			<xsd:element name="CNE.7" type="ST" minOccurs="0"/>
+			<xsd:element name="CNE.8" type="ST" minOccurs="0"/>
+			<xsd:element name="CNE.9" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CNN">
+		<xsd:sequence>
+			<xsd:element name="CNN.1" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.5" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.6" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.7" type="IS" minOccurs="0"/>
+			<xsd:element name="CNN.8" type="IS" minOccurs="0"/>
+			<xsd:element name="CNN.9" type="IS" minOccurs="0"/>
+			<xsd:element name="CNN.10" type="ST" minOccurs="0"/>
+			<xsd:element name="CNN.11" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CP">
+		<xsd:sequence>
+			<xsd:element name="CP.1" type="MO"/>
+			<xsd:element name="CP.2" type="ID" minOccurs="0"/>
+			<xsd:element name="CP.3" type="NM" minOccurs="0"/>
+			<xsd:element name="CP.4" type="NM" minOccurs="0"/>
+			<xsd:element name="CP.5" type="CE" minOccurs="0"/>
+			<xsd:element name="CP.6" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CQ">
+		<xsd:sequence>
+			<xsd:element name="CQ.1" type="NM" minOccurs="0"/>
+			<xsd:element name="CQ.2" type="CE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CWE">
+		<xsd:sequence>
+			<xsd:element name="CWE.1" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.3" type="ID" minOccurs="0"/>
+			<xsd:element name="CWE.4" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.5" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.6" type="ID" minOccurs="0"/>
+			<xsd:element name="CWE.7" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.8" type="ST" minOccurs="0"/>
+			<xsd:element name="CWE.9" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PID3.CX">
+		<xsd:sequence>
+			<xsd:element name="CX.1" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Identifier: A999999, 0123456789, ABC123</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="CX.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CX.3" type="ID" minOccurs="0"/>
+			<xsd:element name="CX.4" type="NWIS.PID3.CX4.HD">
+				<xsd:annotation>
+					<xsd:documentation>Assgning Authority</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="CX.5" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Identifier Type Code: MR. NH, PI</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="ID">
+						<xsd:enumeration value="MR"/>
+						<xsd:enumeration value="PI"/>
+						<xsd:enumeration value="NH"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="CX.6" type="HD" minOccurs="0"/>
+			<xsd:element name="CX.7" type="DT" minOccurs="0"/>
+			<xsd:element name="CX.8" type="DT" minOccurs="0"/>
+			<xsd:element name="CX.9" type="CWE" minOccurs="0"/>
+			<xsd:element name="CX.10" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CX">
+		<xsd:sequence>
+			<xsd:element name="CX.1" type="ST"/>
+			<xsd:element name="CX.2" type="ST" minOccurs="0"/>
+			<xsd:element name="CX.3" type="ID" minOccurs="0"/>
+			<xsd:element name="CX.4" type="HD" minOccurs="0"/>
+			<xsd:element name="CX.5" type="ID" minOccurs="0"/>
+			<xsd:element name="CX.6" type="HD" minOccurs="0"/>
+			<xsd:element name="CX.7" type="DT" minOccurs="0"/>
+			<xsd:element name="CX.8" type="DT" minOccurs="0"/>
+			<xsd:element name="CX.9" type="CWE" minOccurs="0"/>
+			<xsd:element name="CX.10" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DLD">
+		<xsd:sequence>
+			<xsd:element name="DLD.1" type="IS"/>
+			<xsd:element name="DLD.2" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DLN">
+		<xsd:sequence>
+			<xsd:element name="DLN.1" type="ST"/>
+			<xsd:element name="DLN.2" type="IS" minOccurs="0"/>
+			<xsd:element name="DLN.3" type="DT" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DR">
+		<xsd:sequence>
+			<xsd:element name="DR.1" type="TS" minOccurs="0"/>
+			<xsd:element name="DR.2" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="DT">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:simpleType name="DTM">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="ED">
+		<xsd:sequence>
+			<xsd:element name="ED.1" type="HD" minOccurs="0"/>
+			<xsd:element name="ED.2" type="ID"/>
+			<xsd:element name="ED.3" type="ID" minOccurs="0"/>
+			<xsd:element name="ED.4" type="ID"/>
+			<xsd:element name="ED.5" type="TX"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="EI">
+		<xsd:sequence>
+			<xsd:element name="EI.1" type="ST" minOccurs="0"/>
+			<xsd:element name="EI.2" type="IS" minOccurs="0"/>
+			<xsd:element name="EI.3" type="ST" minOccurs="0"/>
+			<xsd:element name="EI.4" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="EIP">
+		<xsd:sequence>
+			<xsd:element name="EIP.1" type="EI" minOccurs="0"/>
+			<xsd:element name="EIP.2" type="EI" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="FC">
+		<xsd:sequence>
+			<xsd:element name="FC.1" type="IS"/>
+			<xsd:element name="FC.2" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="FN">
+		<xsd:sequence>
+			<xsd:element name="FN.1" type="ST"/>
+			<xsd:element name="FN.2" type="ST" minOccurs="0"/>
+			<xsd:element name="FN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="FN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="FN.5" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="FT">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:simpleType name="GTS">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<!-- NWIS MSH3 -->
+	<xsd:complexType name="NWIS.MSH3.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" minOccurs="0">
+				<xsd:simpleType>
+					<xsd:restriction base="IS"/>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.2">
+				<xsd:annotation>
+					<xsd:documentation>oid</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="ST">
+						<xsd:pattern value="([0-2])((\.)|(\.[1-9][0-9]*))*"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.3" type="ID"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.MSH4.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" minOccurs="0">
+				<xsd:simpleType>
+					<xsd:restriction base="IS"/>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.2">
+				<xsd:simpleType>
+					<xsd:restriction base="ST">
+						<xsd:enumeration value="7A4BV"/>
+						<xsd:enumeration value="7A5B1"/>
+						<xsd:enumeration value="REH01"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.3" type="ID"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PID3.CX4.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" type="IS">
+				<xsd:annotation>
+					<xsd:documentation>Namespace Id: </xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HD.2" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Universal Id: OID</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HD.3" type="ID" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Univseral Id Type: ISO</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" type="IS" minOccurs="0"/>
+			<xsd:element name="HD.2" type="ST" minOccurs="0"/>
+			<xsd:element name="HD.3" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PD1.4.9.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" type="IS">
+				<xsd:annotation>
+					<xsd:documentation>Namespace Id: GMC, GPC?</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HD.2" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Universal Id: e.g. GMC OID?</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HD.3" type="ID" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Universal ID Type: OID?</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<!-- NWIS MSH5 -->
+	<xsd:complexType name="NWIS.MSH5.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" default="cymru.nhs.uk" minOccurs="0">
+				<xsd:simpleType>
+					<xsd:restriction base="IS"/>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.2" fixed="2.16.840.1.113883.2.1.8.1.5.200">
+				<xsd:annotation>
+					<xsd:documentation>INSE OID</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="ST">
+						<xsd:pattern value="([0-2])((\.)|(\.[1-9][0-9]*))*"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.3" default="ISO">
+				<xsd:annotation>
+					<xsd:documentation>ISO</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="ID">
+						<xsd:enumeration value="ISO"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.MSH6.HD">
+		<xsd:sequence>
+			<xsd:element name="HD.1" default="cymru.nhs.uk" minOccurs="0">
+				<xsd:simpleType>
+					<xsd:restriction base="IS"/>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="HD.2" type="ST" default="RQFW3"/>
+			<xsd:element name="HD.3" default="L">
+				<xsd:simpleType>
+					<xsd:restriction base="ID">
+						<xsd:enumeration value="L"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="NWIS.OBX2.ID">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:simpleType name="ID">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:simpleType name="IS">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="JCC">
+		<xsd:sequence>
+			<xsd:element name="JCC.1" type="IS" minOccurs="0"/>
+			<xsd:element name="JCC.2" type="IS" minOccurs="0"/>
+			<xsd:element name="JCC.3" type="TX" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="MO">
+		<xsd:sequence>
+			<xsd:element name="MO.1" type="NM" minOccurs="0"/>
+			<xsd:element name="MO.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="MOC">
+		<xsd:sequence>
+			<xsd:element name="MOC.1" type="MO" minOccurs="0"/>
+			<xsd:element name="MOC.2" type="CE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="MSG">
+		<xsd:sequence>
+			<xsd:element name="MSG.1" type="ID">
+				<xsd:annotation>
+					<xsd:documentation>Message Code</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSG.2" type="ID" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Trigger Event</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MSG.3" type="ID" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Message Structure</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NDL">
+		<xsd:sequence>
+			<xsd:element name="NDL.1" type="CNN" minOccurs="0"/>
+			<xsd:element name="NDL.2" type="TS" minOccurs="0"/>
+			<xsd:element name="NDL.3" type="TS" minOccurs="0"/>
+			<xsd:element name="NDL.4" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.5" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.6" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.7" type="HD" minOccurs="0"/>
+			<xsd:element name="NDL.8" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.9" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.10" type="IS" minOccurs="0"/>
+			<xsd:element name="NDL.11" type="IS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="NM">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="OSD">
+		<xsd:sequence>
+			<xsd:element name="OSD.1" type="ID"/>
+			<xsd:element name="OSD.2" type="ST"/>
+			<xsd:element name="OSD.3" type="IS" minOccurs="0"/>
+			<xsd:element name="OSD.4" type="ST"/>
+			<xsd:element name="OSD.5" type="IS" minOccurs="0"/>
+			<xsd:element name="OSD.6" type="ST" minOccurs="0"/>
+			<xsd:element name="OSD.7" type="NM" minOccurs="0"/>
+			<xsd:element name="OSD.8" type="ST"/>
+			<xsd:element name="OSD.9" type="ID" minOccurs="0"/>
+			<xsd:element name="OSD.10" type="ST"/>
+			<xsd:element name="OSD.11" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PL">
+		<xsd:sequence>
+			<xsd:element name="PL.1" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.2" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.3" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.4" type="HD" minOccurs="0"/>
+			<xsd:element name="PL.5" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.6" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.7" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.8" type="IS" minOccurs="0"/>
+			<xsd:element name="PL.9" type="ST" minOccurs="0"/>
+			<xsd:element name="PL.10" type="EI" minOccurs="0"/>
+			<xsd:element name="PL.11" type="HD" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PLN">
+		<xsd:sequence>
+			<xsd:element name="PLN.1" type="ST"/>
+			<xsd:element name="PLN.2" type="IS"/>
+			<xsd:element name="PLN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="PLN.4" type="DT" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PRL">
+		<xsd:sequence>
+			<xsd:element name="PRL.1" type="CE"/>
+			<xsd:element name="PRL.2" type="ST" minOccurs="0"/>
+			<xsd:element name="PRL.3" type="TX" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PT">
+		<xsd:sequence>
+			<xsd:element name="PT.1" type="ID" minOccurs="0"/>
+			<xsd:element name="PT.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="RI">
+		<xsd:sequence>
+			<xsd:element name="RI.1" type="IS" minOccurs="0"/>
+			<xsd:element name="RI.2" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="RPT">
+		<xsd:sequence>
+			<xsd:element name="RPT.1" type="CWE"/>
+			<xsd:element name="RPT.2" type="ID" minOccurs="0"/>
+			<xsd:element name="RPT.3" type="NM" minOccurs="0"/>
+			<xsd:element name="RPT.4" type="NM" minOccurs="0"/>
+			<xsd:element name="RPT.5" type="NM" minOccurs="0"/>
+			<xsd:element name="RPT.6" type="IS" minOccurs="0"/>
+			<xsd:element name="RPT.7" type="ID" minOccurs="0"/>
+			<xsd:element name="RPT.8" type="ID" minOccurs="0"/>
+			<xsd:element name="RPT.9" type="NM" minOccurs="0"/>
+			<xsd:element name="RPT.10" type="IS" minOccurs="0"/>
+			<xsd:element name="RPT.11" type="GTS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="SAD">
+		<xsd:sequence>
+			<xsd:element name="SAD.1" type="ST" minOccurs="0"/>
+			<xsd:element name="SAD.2" type="ST" minOccurs="0"/>
+			<xsd:element name="SAD.3" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="SI">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="SPS">
+		<xsd:sequence>
+			<xsd:element name="SPS.1" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPS.2" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPS.3" type="TX" minOccurs="0"/>
+			<xsd:element name="SPS.4" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPS.5" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPS.6" type="CWE" minOccurs="0"/>
+			<xsd:element name="SPS.7" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="ST">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:simpleType name="TM">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="TQ">
+		<xsd:sequence>
+			<xsd:element name="TQ.1" type="CQ" minOccurs="0"/>
+			<xsd:element name="TQ.2" type="RI" minOccurs="0"/>
+			<xsd:element name="TQ.3" type="ST" minOccurs="0"/>
+			<xsd:element name="TQ.4" type="TS" minOccurs="0"/>
+			<xsd:element name="TQ.5" type="TS" minOccurs="0"/>
+			<xsd:element name="TQ.6" type="ST" minOccurs="0"/>
+			<xsd:element name="TQ.7" type="ST" minOccurs="0"/>
+			<xsd:element name="TQ.8" type="TX" minOccurs="0"/>
+			<xsd:element name="TQ.9" type="ID" minOccurs="0"/>
+			<xsd:element name="TQ.10" type="OSD" minOccurs="0"/>
+			<xsd:element name="TQ.11" type="CE" minOccurs="0"/>
+			<xsd:element name="TQ.12" type="NM" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.TS.DOB">
+		<xsd:sequence>
+			<xsd:element name="TS.1">
+				<xsd:simpleType>
+					<xsd:restriction base="DTM">
+						<xsd:maxLength value="12"/>
+						<xsd:minLength value="8"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="TS.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="TS">
+		<xsd:sequence>
+			<xsd:element name="TS.1">
+				<xsd:simpleType>
+					<xsd:restriction base="DTM"/>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="TS.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.MSH7.TS">
+		<xsd:sequence>
+			<xsd:element name="TS.1">
+				<xsd:annotation>
+					<xsd:documentation>20190426022240</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="DTM">
+						<xsd:pattern value="[0-9]{1,8}|([0-9]{9,14}|[0-9]{14,14}.[0-9]+)([+-][0-9]{1,4})?"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="TS.2" type="ID" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="TX">
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="VID">
+		<xsd:sequence>
+			<xsd:element name="VID.1" fixed="2.5.1">
+				<xsd:simpleType>
+					<xsd:restriction base="ID">
+						<xsd:enumeration value="2.5.1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="VID.2" type="CE" minOccurs="0"/>
+			<xsd:element name="VID.3" type="CE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.XAD.PostCode">
+		<xsd:sequence>
+			<xsd:element name="XAD.1" type="SAD" minOccurs="0"/>
+			<xsd:element name="XAD.2" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.3" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.5" minOccurs="0">
+				<xsd:simpleType>
+					<xsd:restriction base="ST">
+						<xsd:pattern value="([Gg][Ii][Rr] 0[Aa]{2})|((([A-Za-z][0-9]{1,2})|(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|(([A-Za-z][0-9][A-Za-z])|([A-Za-z][A-Ha-hJ-Yj-y][0-9][A-Za-z]?))))\s?[0-9][A-Za-z]{2})"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="XAD.6" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.7" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.8" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.9" type="IS" minOccurs="0"/>
+			<xsd:element name="XAD.10" type="IS" minOccurs="0"/>
+			<xsd:element name="XAD.11" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.12" type="DR" minOccurs="0"/>
+			<xsd:element name="XAD.13" type="TS" minOccurs="0"/>
+			<xsd:element name="XAD.14" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="XAD">
+		<xsd:sequence>
+			<xsd:element name="XAD.1" type="SAD" minOccurs="0"/>
+			<xsd:element name="XAD.2" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.3" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.5" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.6" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.7" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.8" type="ST" minOccurs="0"/>
+			<xsd:element name="XAD.9" type="IS" minOccurs="0"/>
+			<xsd:element name="XAD.10" type="IS" minOccurs="0"/>
+			<xsd:element name="XAD.11" type="ID" minOccurs="0"/>
+			<xsd:element name="XAD.12" type="DR" minOccurs="0"/>
+			<xsd:element name="XAD.13" type="TS" minOccurs="0"/>
+			<xsd:element name="XAD.14" type="TS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PV1.8.XCN">
+		<xsd:sequence>
+			<xsd:element name="XCN.1" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Code</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.2" type="FN">
+				<xsd:annotation>
+					<xsd:documentation>Family Name</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.3" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Given Name or Initials</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.5" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.6" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Prefix: Dr, Mr</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.7" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.8" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.9" type="NWIS.PD1.4.9.HD">
+				<xsd:annotation>
+					<xsd:documentation>Assigning Authority</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.10" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.11" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.12" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.13" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.14" type="HD" minOccurs="0"/>
+			<xsd:element name="XCN.15" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.16" type="CE" minOccurs="0"/>
+			<xsd:element name="XCN.17" type="DR" minOccurs="0"/>
+			<xsd:element name="XCN.18" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.19" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.20" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.21" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.22" type="CWE" minOccurs="0"/>
+			<xsd:element name="XCN.23" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="XCN">
+		<xsd:sequence>
+			<xsd:element name="XCN.1" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Code</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.2" type="FN" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Family Name</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.3" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Given Name or Initials</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.5" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.6" type="ST" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Prefix: Dr, Mr</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.7" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.8" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.9" type="NWIS.PD1.4.9.HD" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Assigning Authority</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="XCN.10" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.11" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.12" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.13" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.14" type="HD" minOccurs="0"/>
+			<xsd:element name="XCN.15" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.16" type="CE" minOccurs="0"/>
+			<xsd:element name="XCN.17" type="DR" minOccurs="0"/>
+			<xsd:element name="XCN.18" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.19" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.20" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.21" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.22" type="CWE" minOccurs="0"/>
+			<xsd:element name="XCN.23" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PD1.4.XCN">
+		<xsd:sequence>
+			<xsd:element name="XCN.1" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.2" type="FN" minOccurs="0"/>
+			<xsd:element name="XCN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.5" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.6" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.7" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.8" type="IS" minOccurs="0"/>
+			<xsd:element name="XCN.9" type="HD" minOccurs="0"/>
+			<xsd:element name="XCN.10" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.11" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.12" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.13" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.14" type="HD" minOccurs="0"/>
+			<xsd:element name="XCN.15" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.16" type="CE" minOccurs="0"/>
+			<xsd:element name="XCN.17" type="DR" minOccurs="0"/>
+			<xsd:element name="XCN.18" type="ID" minOccurs="0"/>
+			<xsd:element name="XCN.19" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.20" type="TS" minOccurs="0"/>
+			<xsd:element name="XCN.21" type="ST" minOccurs="0"/>
+			<xsd:element name="XCN.22" type="CWE" minOccurs="0"/>
+			<xsd:element name="XCN.23" type="CWE" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="NWIS.PD1.3.XON">
+		<xsd:sequence>
+			<xsd:element name="XON.1" type="ST" minOccurs="0"/>
+			<xsd:element name="XON.2" type="IS" minOccurs="0"/>
+			<xsd:element name="XON.3" type="NM" minOccurs="0"/>
+			<xsd:element name="XON.4" type="NM" minOccurs="0"/>
+			<xsd:element name="XON.5" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.6" type="HD" minOccurs="0"/>
+			<xsd:element name="XON.7" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.8" type="HD" minOccurs="0"/>
+			<xsd:element name="XON.9" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.10" type="ST">
+				<xsd:annotation>
+					<xsd:documentation>Practice Code: e.g. W95046.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="XON">
+		<xsd:sequence>
+			<xsd:element name="XON.1" type="ST" minOccurs="0"/>
+			<xsd:element name="XON.2" type="IS" minOccurs="0"/>
+			<xsd:element name="XON.3" type="NM" minOccurs="0"/>
+			<xsd:element name="XON.4" type="NM" minOccurs="0"/>
+			<xsd:element name="XON.5" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.6" type="HD" minOccurs="0"/>
+			<xsd:element name="XON.7" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.8" type="HD" minOccurs="0"/>
+			<xsd:element name="XON.9" type="ID" minOccurs="0"/>
+			<xsd:element name="XON.10" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="XPN">
+		<xsd:sequence>
+			<xsd:element name="XPN.1" type="FN"/>
+			<xsd:element name="XPN.2" type="ST"/>
+			<xsd:element name="XPN.3" type="ST" minOccurs="0"/>
+			<xsd:element name="XPN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XPN.5" type="ST" minOccurs="0"/>
+			<xsd:element name="XPN.6" type="IS" minOccurs="0"/>
+			<xsd:element name="XPN.7" type="ID" minOccurs="0"/>
+			<xsd:element name="XPN.8" type="ID" minOccurs="0"/>
+			<xsd:element name="XPN.9" type="CE" minOccurs="0"/>
+			<xsd:element name="XPN.10" type="DR" minOccurs="0"/>
+			<xsd:element name="XPN.11" type="ID" minOccurs="0"/>
+			<xsd:element name="XPN.12" type="TS" minOccurs="0"/>
+			<xsd:element name="XPN.13" type="TS" minOccurs="0"/>
+			<xsd:element name="XPN.14" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="XTN">
+		<xsd:sequence>
+			<xsd:element name="XTN.1" type="ST" minOccurs="0"/>
+			<xsd:element name="XTN.2" type="ID" minOccurs="0"/>
+			<xsd:element name="XTN.3" type="ID" minOccurs="0"/>
+			<xsd:element name="XTN.4" type="ST" minOccurs="0"/>
+			<xsd:element name="XTN.5" type="NM" minOccurs="0"/>
+			<xsd:element name="XTN.6" type="NM" minOccurs="0"/>
+			<xsd:element name="XTN.7" type="NM" minOccurs="0"/>
+			<xsd:element name="XTN.8" type="NM" minOccurs="0"/>
+			<xsd:element name="XTN.9" type="ST" minOccurs="0"/>
+			<xsd:element name="XTN.10" type="ST" minOccurs="0"/>
+			<xsd:element name="XTN.11" type="ST" minOccurs="0"/>
+			<xsd:element name="XTN.12" type="ST" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+</xsd:schema>

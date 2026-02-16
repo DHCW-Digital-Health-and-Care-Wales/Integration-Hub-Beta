@@ -1,0 +1,13 @@
+MSH|^~\&|ILAB^2.16.840.1.113883.2.1.3.103^ISO|RLQ^REH01^L|OCS^2.16.840.1.113883.2.1.8.1.5.200^ISO|RLQ^RQFW3^L|20250220143128||ORU^R01|31181|P|2.5.1|||AL|NE|GBR 
+PID|1||9732253000^^^NHS^NH~RLQ2124622^^^2.16.840.1.113883.2.1.3.103^MR||JONES^VIRGIL^ANTONY^^^^U||19691231|M|||DIGITAL HEALTH AND CARE WALES^21 COWBRIDGE ROAD^CARDIFF^^CF11 9AD^^C 
+PV1|1|U|^^^^^^^^Wye Valley Trust - Lugg Ward^RLQ01|||||4336880^Dr Jake Burdsall^.^^^.^^^GMC||301 
+ORC|RE||2502201425CC882002Y|UNKNOWN57060530807^ILAB|CM|||||||C4336880^Dr Jake Burdsall 
+OBR|1||2502201425CC882002Y|LF##B^LIVER FUNCTION^LOCAL^B|||20250220|||||||202502201425|B^^^""|C4336880^Dr Jake Burdsall||||CC882002Y||202502201431||BS|F|||||||Rob Davenport&Rob Davenport 
+NTE|1||LIVER FUNCTION : This is an LTG .\.br\ LDH: This test is not accredited to the ISO15189 standard.\.br\ Note change in reference range for LDH (28/03/23) following internal review.\.br\  
+NTE|||Authorised by: Rob Davenport 
+OBX|1|NM|AST^Aspartate transaminase^L^44HB.||2|IU/L|0 - 40||||F|||202502200000|||PSM 
+OBX|2|ST|ALT^Alanine transaminase^L^44GB.||Not tested.||||||F|||202502200000|||PSM 
+NTE|1||couldn't be bothered to test this. 
+OBX|3|NM|LDH2^Lactate dehydrogenase^L^44HF.||3|U/L|0 - 250||||F|||202502200000|||PSM 
+OBX|4|NM|GGT^Gamma-GT^L^44G9.||4|IU/L|1 - 60||||F|||202502200000|||PSM 
+OBX|5|NM|BIL^Total bilirubin^L^44EC.||6|umol/L|0 - 21||||F|||202502200000|||PSM
