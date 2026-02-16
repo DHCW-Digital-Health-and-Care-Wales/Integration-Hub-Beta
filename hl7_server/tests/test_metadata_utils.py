@@ -4,11 +4,11 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from message_bus_lib.metadata_utils import (
-    EVENT_ID_KEY,
+    CORRELATION_ID_KEY,
     MESSAGE_RECEIVED_AT_KEY,
     SOURCE_SYSTEM_KEY,
     WORKFLOW_ID_KEY,
-    event_id_for_logger,
+    correlation_id_for_logger,
     extract_metadata,
     get_metadata_log_values,
 )
@@ -32,7 +32,7 @@ class TestExtractMetadata(unittest.TestCase):
         u = uuid.uuid4()
         cases: list[tuple[dict[Any, Any], dict[str, str]]] = [
             ({"key": "evt-123"}, {"key": "evt-123"}),
-            ({b"EventId": b"evt-456"}, {"EventId": "evt-456"}),
+            ({b"CorrelationId": b"evt-456"}, {"CorrelationId": "evt-456"}),
             ({"Count": 42}, {"Count": "42"}),
             ({"Score": 3.14}, {"Score": "3.14"}),
             ({"Flag": True}, {"Flag": "True"}),
@@ -69,7 +69,7 @@ class TestExtractMetadata(unittest.TestCase):
 
 class TestGetMetadataLogValues(unittest.TestCase):
     _NA_DEFAULTS = {
-        "event_id": "N/A",
+        "correlation_id": "N/A",
         "workflow_id": "N/A",
         "source_system": "N/A",
         "message_received_at": "N/A",
@@ -83,7 +83,7 @@ class TestGetMetadataLogValues(unittest.TestCase):
 
     def test_populated_metadata(self) -> None:
         meta = {
-            EVENT_ID_KEY: "e1",
+            CORRELATION_ID_KEY: "e1",
             WORKFLOW_ID_KEY: "w1",
             SOURCE_SYSTEM_KEY: "src",
             MESSAGE_RECEIVED_AT_KEY: "2025-01-01T00:00:00",
@@ -91,7 +91,7 @@ class TestGetMetadataLogValues(unittest.TestCase):
         self.assertEqual(
             get_metadata_log_values(meta),
             {
-                "event_id": "e1",
+                "correlation_id": "e1",
                 "workflow_id": "w1",
                 "source_system": "src",
                 "message_received_at": "2025-01-01T00:00:00",
@@ -99,13 +99,13 @@ class TestGetMetadataLogValues(unittest.TestCase):
         )
 
 
-class TestEventIdForLogger(unittest.TestCase):
-    def test_event_id_for_logger_cases(self) -> None:
+class TestCorrelationIdForLogger(unittest.TestCase):
+    def test_correlation_id_for_logger_cases(self) -> None:
         cases = [
             ({}, None),
-            ({"event_id": "N/A"}, None),
-            ({"event_id": "evt-1"}, "evt-1"),
+            ({"correlation_id": "N/A"}, None),
+            ({"correlation_id": "evt-1"}, "evt-1"),
         ]
         for meta, expected in cases:
             with self.subTest(meta=meta):
-                self.assertEqual(event_id_for_logger(meta), expected)
+                self.assertEqual(correlation_id_for_logger(meta), expected)

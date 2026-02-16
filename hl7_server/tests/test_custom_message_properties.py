@@ -16,7 +16,7 @@ class TestCustomMessageProperties(unittest.TestCase):
         props = build_common_properties(workflow_id, sending_app)
 
         self.assertIn("MessageReceivedAt", props)
-        self.assertIn("EventId", props)
+        self.assertIn("CorrelationId", props)
         self.assertEqual(props["WorkflowID"], workflow_id)
         self.assertEqual(props["SourceSystem"], sending_app)
 
@@ -39,16 +39,16 @@ class TestCustomMessageProperties(unittest.TestCase):
         except ValueError:
             self.fail("MessageReceivedAt is not in valid ISO format")
 
-    def test_build_common_properties_event_id_is_valid_uuid(self) -> None:
+    def test_build_common_properties_correlation_id_is_valid_uuid(self) -> None:
         workflow_id = "test-workflow"
         sending_app = "252"
 
         props = build_common_properties(workflow_id, sending_app)
 
         try:
-            uuid.UUID(props["EventId"])
+            uuid.UUID(props["CorrelationId"])
         except ValueError:
-            self.fail("EventId is not a valid UUID")
+            self.fail("CorrelationId is not a valid UUID")
 
     def test_build_mpi_properties_returns_flow_specific_properties_only(self) -> None:
         mock_msg = MagicMock(spec=Message)
@@ -71,7 +71,7 @@ class TestCustomMessageProperties(unittest.TestCase):
             self.assertEqual(props["ReasonDeath"], "")
 
             self.assertNotIn("MessageReceivedAt", props)
-            self.assertNotIn("EventId", props)
+            self.assertNotIn("CorrelationId", props)
             self.assertNotIn("WorkflowID", props)
             self.assertNotIn("SourceSystem", props)
 

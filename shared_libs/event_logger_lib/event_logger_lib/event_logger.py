@@ -84,7 +84,7 @@ class EventLogger:
         message_content: str,
         validation_result: Optional[str] = None,
         error_details: Optional[str] = None,
-        event_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> LogEvent:
         return LogEvent(
             workflow_id=self.workflow_id,
@@ -94,20 +94,20 @@ class EventLogger:
             message_content=message_content,
             validation_result=validation_result,
             error_details=error_details,
-            event_id=event_id,
+            correlation_id=correlation_id,
         )
 
     def log_message_received(
         self,
         message_content: str,
         validation_result: Optional[str] = None,
-        event_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> None:
         event = self._create_log_event(
             EventType.MESSAGE_RECEIVED,
             message_content,
             validation_result=validation_result,
-            event_id=event_id,
+            correlation_id=correlation_id,
         )
         self._send_log_event(event)
 
@@ -115,13 +115,13 @@ class EventLogger:
         self,
         message_content: str,
         validation_result: Optional[str] = None,
-        event_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> None:
         event = self._create_log_event(
             EventType.MESSAGE_PROCESSED,
             message_content,
             validation_result=validation_result,
-            event_id=event_id,
+            correlation_id=correlation_id,
         )
         self._send_log_event(event)
 
@@ -130,14 +130,14 @@ class EventLogger:
         message_content: str,
         error_details: str,
         validation_result: Optional[str] = None,
-        event_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> None:
         event = self._create_log_event(
             EventType.MESSAGE_FAILED,
             message_content,
             validation_result=validation_result,
             error_details=error_details,
-            event_id=event_id,
+            correlation_id=correlation_id,
         )
         self._send_log_event(event)
 
@@ -146,7 +146,7 @@ class EventLogger:
         message_content: str,
         validation_result: str,
         is_success: bool,
-        event_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
     ) -> None:
         event_type = (
             EventType.VALIDATION_SUCCESS if is_success else EventType.VALIDATION_FAILED
@@ -155,7 +155,7 @@ class EventLogger:
             event_type,
             message_content,
             validation_result=validation_result,
-            event_id=event_id,
+            correlation_id=correlation_id,
         )
         self._send_log_event(event)
 

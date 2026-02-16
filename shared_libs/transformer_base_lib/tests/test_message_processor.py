@@ -18,7 +18,7 @@ class TestMessageProcessor(unittest.TestCase):
         test_message_body = "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5\r"
         test_properties = {
             "MessageReceivedAt": "2025-01-01T12:00:00+00:00",
-            "EventId": "123e4567-e89b-12d3-a456-426614174000",
+            "CorrelationId": "123e4567-e89b-12d3-a456-426614174000",
             "WorkflowID": "test-workflow",
             "SourceSystem": "252",
         }

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 
 [[package]]
@@ -607,7 +607,7 @@ requires-dist = [
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
     { name = "mypy", specifier = "==1.18.2" },
-    { name = "ruff", specifier = "==0.14.9" },
+    { name = "ruff", specifier = "==0.15.0" },
     { name = "uv-secure", extras = ["faster-async"], specifier = "==0.14.4" },
 ]
 
