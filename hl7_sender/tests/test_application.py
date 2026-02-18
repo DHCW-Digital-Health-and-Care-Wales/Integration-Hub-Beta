@@ -15,7 +15,7 @@ from hl7_sender.application import (
 
 def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock, MagicMock]:
     hl7_message = Message("ADT_A01")
-    hl7_message.msh.msh_10 = 'MSGID1234'
+    hl7_message.msh.msh_10 = "MSGID1234"
     hl7_string = hl7_message.to_er7()
     service_bus_message = ServiceBusMessage(body=hl7_string)
     mock_hl7_sender_client = MagicMock()
@@ -24,13 +24,17 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
     mock_throttler = MagicMock()
 
     return (
-        service_bus_message, hl7_message, hl7_string, mock_hl7_sender_client,
-        mock_event_logger, mock_metric_sender, mock_throttler
+        service_bus_message,
+        hl7_message,
+        hl7_string,
+        mock_hl7_sender_client,
+        mock_event_logger,
+        mock_metric_sender,
+        mock_throttler,
     )
 
 
 class TestProcessMessage(unittest.TestCase):
-
     def _assert_error_handling(
         self,
         result: bool,
@@ -62,8 +66,7 @@ class TestProcessMessage(unittest.TestCase):
 
         # Act
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger,
-            mock_metric_sender, mock_throttler
+            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler
         )
 
         # Assert
@@ -98,8 +101,7 @@ class TestProcessMessage(unittest.TestCase):
 
         # Act
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger,
-            mock_metric_sender, mock_throttler
+            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler
         )
 
         # Assert
@@ -159,8 +161,7 @@ class TestProcessMessage(unittest.TestCase):
 
         # Act
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger,
-            mock_metric_sender, mock_throttler
+            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler
         )
 
         # Assert
@@ -174,8 +175,14 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.HL7SenderClient")
     @patch("hl7_sender.application.EventLogger")
     def test_health_check_server_starts_and_stops(
-        self, mock_event_logger: Mock, mock_hl7_sender: Mock, mock_health_check: Mock,
-            mock_app_config: Mock, mock_factory: Mock, mock_connection_config: Mock) -> None:
+        self,
+        mock_event_logger: Mock,
+        mock_hl7_sender: Mock,
+        mock_health_check: Mock,
+        mock_app_config: Mock,
+        mock_factory: Mock,
+        mock_connection_config: Mock,
+    ) -> None:
         # Arrange
         mock_health_server = MagicMock()
         mock_health_check_ctx = MagicMock()
@@ -190,13 +197,13 @@ class TestProcessMessage(unittest.TestCase):
             receiver_mllp_port=2575,
             health_check_hostname="localhost",
             health_check_port=9000,
-            audit_queue_name="test_audit_queue",
+            message_store_queue_name="test-messagestore-queue",
             workflow_id="test_workflow_id",
             microservice_id="test_microservice_id",
             health_board="test-health-board",
             peer_service="test-service",
             ack_timeout_seconds=30,
-            max_messages_per_minute=None
+            max_messages_per_minute=None,
         )
         # Mock ProcessorManager to exit the loop immediately
         with patch("hl7_sender.application.ProcessorManager") as mock_processor_manager:
@@ -213,7 +220,6 @@ class TestProcessMessage(unittest.TestCase):
 
 
 class TestBatchSizing(unittest.TestCase):
-
     def test_uses_max_batch_when_no_throttle(self) -> None:
         throttler = MagicMock(interval_seconds=None)
 
@@ -230,5 +236,5 @@ class TestBatchSizing(unittest.TestCase):
         self.assertEqual(batch_size, 15)  # (900-30)/60 = 14 intervals => 15 messages
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

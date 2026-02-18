@@ -49,7 +49,7 @@ To define host and port the server should bind to use environment variables conf
 - **EGRESS_QUEUE_NAME** - service bus queue name to store received messages
 - **EGRESS_TOPIC_NAME** - service bus topic name to store received messages
 - **EGRESS_SESSION_ID** - service bus queue FIFO session name (optional, sessions not used if not set)
-- **AUDIT_QUEUE_NAME** - service bus queue name for storing audit events
+- **MESSAGE_STORE_QUEUE_NAME** - Message store service bus queue
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HL7_VERSION** - hl7v2 version, if provided will be used to validate MSH-12.1 field
