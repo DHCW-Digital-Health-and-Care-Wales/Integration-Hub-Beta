@@ -32,6 +32,7 @@ class TestGenericHandler(unittest.TestCase):
         self.mock_sender = MagicMock()
         self.mock_event_logger = MagicMock()
         self.mock_metric_sender = MagicMock()
+        self.mock_message_store = MagicMock()
         self.validator = MagicMock()
         self.handler = GenericHandler(
             VALID_A28_MESSAGE,
@@ -41,6 +42,7 @@ class TestGenericHandler(unittest.TestCase):
             self.validator,
             workflow_id="test-workflow",
             sending_app="252",
+            message_store_client=self.mock_message_store,
         )
 
     def test_valid_a28_message_returns_ack(self) -> None:
@@ -90,6 +92,7 @@ class TestGenericHandler(unittest.TestCase):
             validator,
             workflow_id="test-workflow",
             sending_app="252",
+            message_store_client=self.mock_message_store,
         )
 
         with self.assertRaises(ValidationException):
@@ -124,6 +127,7 @@ class TestGenericHandler(unittest.TestCase):
             validator,
             workflow_id="test-workflow",
             sending_app="252",
+            message_store_client=self.mock_message_store,
             flow_name="mpi",
         )
 
@@ -155,6 +159,7 @@ class TestGenericHandler(unittest.TestCase):
                 validator,
                 workflow_id="test-workflow",
                 sending_app="252",
+                message_store_client=self.mock_message_store,
                 flow_name="mpi",
             )
 
@@ -193,6 +198,7 @@ class TestGenericHandler(unittest.TestCase):
                     validator,
                     workflow_id="test-workflow",
                     sending_app="252",
+                    message_store_client=self.mock_message_store,
                     flow_name="mpi",
                 )
 
@@ -225,6 +231,7 @@ class TestGenericHandler(unittest.TestCase):
                 self.validator,
                 workflow_id="test-workflow",
                 sending_app="252",
+                message_store_client=self.mock_message_store,
                 standard_version="2.5",
             )
 
@@ -253,6 +260,7 @@ class TestGenericHandler(unittest.TestCase):
             self.validator,
             workflow_id="test-workflow",
             sending_app="252",
+            message_store_client=self.mock_message_store,
             standard_version="2.5",
         )
 
@@ -287,6 +295,7 @@ class TestGenericHandler(unittest.TestCase):
                 self.validator,
                 workflow_id="test-workflow",
                 sending_app="252",
+                message_store_client=self.mock_message_store,
                 flow_name="phw",
                 standard_version="2.5",
             )
@@ -312,11 +321,32 @@ class TestGenericHandler(unittest.TestCase):
                 self.validator,
                 workflow_id="test-workflow",
                 sending_app="252",
+                message_store_client=self.mock_message_store,
             )
 
             handler.reply()
 
         mock_validate_standard.assert_not_called()
+
+    def test_message_sent_to_message_store(self) -> None:
+        self.handler.reply()
+
+        self.mock_message_store.send_to_store.assert_called_once()
+        call_kwargs = self.mock_message_store.send_to_store.call_args
+        self.assertEqual(call_kwargs.kwargs["raw_payload"], VALID_A28_MESSAGE)
+        self.assertIn("message_received_at", call_kwargs.kwargs)
+        self.assertIn("correlation_id", call_kwargs.kwargs)
+        self.assertIn("source_system", call_kwargs.kwargs)
+
+    @patch("hl7_server.generic_handler.logger")
+    def test_message_store_failure_does_not_block_ack(self, mock_logger: MagicMock) -> None:
+        self.mock_message_store.send_to_store.side_effect = Exception("Store unavailable")
+
+        # Should still return ACK without raising
+        result = self.handler.reply()
+        self.assertIsNotNone(result)
+
+        mock_logger.error.assert_any_call("Failed to send to message store: %s", self.mock_message_store.send_to_store.side_effect)
 
 
 if __name__ == "__main__":
