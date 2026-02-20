@@ -8,6 +8,7 @@ from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.message_store_client import MessageStoreClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
 
@@ -33,6 +34,7 @@ logging.getLogger("azure").setLevel(azure_log_level)
 class Hl7ServerApplication:
     def __init__(self) -> None:
         self.sender_client: MessageSenderClient = None
+        self.message_store_client: MessageStoreClient = None
         self.event_logger: EventLogger = None
         self.metric_sender: MetricSender = None
         self._server_thread: threading.Thread | None = None
@@ -65,6 +67,12 @@ class Hl7ServerApplication:
             )
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
+        message_store_sender = factory.create_queue_sender_client(app_config.message_store_queue_name)
+        self.message_store_client = MessageStoreClient(
+            message_store_sender, app_config.microservice_id, app_config.peer_service
+        )
+        logger.info(f"Configured message store queue: {app_config.message_store_queue_name}")
+
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
         logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")
 
@@ -85,6 +93,7 @@ class Hl7ServerApplication:
             self.validator,
             app_config.workflow_id,
             app_config.sending_app,
+            self.message_store_client,
             flow_name,
             standard_version,
         )
@@ -128,6 +137,10 @@ class Hl7ServerApplication:
         if self.sender_client:
             self.sender_client.close()
             logger.info("Service Bus sender client shut down.")
+
+        if self.message_store_client:
+            self.message_store_client.close()
+            logger.info("Message store client shut down.")
 
         if self.health_check_server:
             self.health_check_server.stop()

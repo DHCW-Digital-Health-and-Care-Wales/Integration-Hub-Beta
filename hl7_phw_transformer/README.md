@@ -69,7 +69,6 @@ You can run transformer directly with python or build docker image and run it in
 - **EGRESS_SESSION_ID** - service bus queue FIFO session name (optional, sessions not used if not set)
 - **INGRESS_QUEUE_NAME** - service bus queue name to read messages from
 - **INGRESS_SESSION_ID** - service bus queue FIFO session name (optional, sessions not used if not set)
-- **AUDIT_QUEUE_NAME** - service bus queue name for storing audit events
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HEALTH_CHECK_HOST** - default 127.0.0.1

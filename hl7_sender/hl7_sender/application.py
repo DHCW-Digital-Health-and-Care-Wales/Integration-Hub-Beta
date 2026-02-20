@@ -5,10 +5,19 @@ import os
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
+from hl7_validation import convert_er7_to_xml
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
-from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_metadata, get_metadata_log_values
+from message_bus_lib.message_store_client import MessageStoreClient
+from message_bus_lib.metadata_utils import (
+    CORRELATION_ID_KEY,
+    MESSAGE_RECEIVED_AT_KEY,
+    SOURCE_SYSTEM_KEY,
+    correlation_id_for_logger,
+    extract_metadata,
+    get_metadata_log_values,
+)
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
 from processor_manager_lib import ProcessorManager
@@ -69,6 +78,10 @@ def main() -> None:
     )
     throttler = MessageThrottler(app_config.max_messages_per_minute)
 
+    message_store_sender = factory.create_queue_sender_client(app_config.message_store_queue_name)
+    message_store_client = MessageStoreClient(message_store_sender, app_config.microservice_id, app_config.peer_service)
+    logger.info(f"Configured message store queue: {app_config.message_store_queue_name}")
+
     with (
         factory.create_message_receiver_client(
             app_config.ingress_queue_name, app_config.ingress_session_id
@@ -77,6 +90,7 @@ def main() -> None:
             app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
         ) as hl7_sender_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
+        message_store_client,
     ):
         logger.info("Processor started.")
         health_check_server.start()
@@ -86,7 +100,9 @@ def main() -> None:
         while processor_manager.is_running:
             receiver_client.receive_messages(
                 batch_size,
-                lambda message: _process_message(message, hl7_sender_client, event_logger, metric_sender, throttler),
+                lambda message: _process_message(
+                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client
+                ),
             )
 
 
@@ -96,6 +112,7 @@ def _process_message(
     event_logger: EventLogger,
     metric_sender: MetricSender,
     throttler: MessageThrottler,
+    message_store_client: MessageStoreClient,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
@@ -126,6 +143,8 @@ def _process_message(
 
         if ack_success:
             metric_sender.send_message_sent_metric()
+
+        _send_to_message_store(message_store_client, message_body, metadata)
 
         event_logger.log_message_processed(
             message_body,
@@ -161,6 +180,31 @@ def _process_message(
         )
 
         return False
+
+
+def _send_to_message_store(
+    message_store_client: MessageStoreClient,
+    message_body: str,
+    metadata: dict[str, str] | None,
+) -> None:
+    """Send a message to the message store queue with XML payload."""
+    try:
+        xml_payload: str | None = None
+        try:
+            xml_payload = convert_er7_to_xml(message_body)
+        except Exception as e:
+            logger.warning("Failed to generate XML payload for message store: %s", e)
+
+        incoming_metadata = metadata or {}
+        message_store_client.send_to_store(
+            message_received_at=incoming_metadata.get(MESSAGE_RECEIVED_AT_KEY, ""),
+            correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
+            source_system=incoming_metadata.get(SOURCE_SYSTEM_KEY, ""),
+            raw_payload=message_body,
+            xml_payload=xml_payload,
+        )
+    except Exception as e:
+        logger.error("Failed to send to message store: %s", e)
 
 
 if __name__ == "__main__":

@@ -995,7 +995,6 @@ The following environment variables are used across the Integration Hub services
 | `SERVICE_BUS_NAMESPACE`                 | Alternative to connection string (production) | `sb-inthub-prod`                 |
 | `LOG_LEVEL`                             | Application logging verbosity                 | `INFO`, `DEBUG`, `ERROR`         |
 | `AZURE_LOG_LEVEL`                       | Azure SDK logging verbosity                   | `WARN`, `ERROR`                  |
-| `AUDIT_QUEUE_NAME`                      | Queue name for audit messages                 | `audit-queue`                    |
 | `WORKFLOW_ID`                           | Identifies the business workflow              | `phw-to-mpi`, `chemocare-to-mpi` |
 | `MICROSERVICE_ID`                       | Unique identifier for the service instance    | `phw_hl7_server`                 |
 | `HEALTH_BOARD`                          | Health board identifier for metrics           | `PHW`, `CHEMO`, `PIMS`           |
@@ -1004,17 +1003,18 @@ The following environment variables are used across the Integration Hub services
 
 ### HL7 Server Variables
 
-| Variable                  | Description                           | Example                                |
-| ------------------------- | ------------------------------------- | -------------------------------------- |
-| `HOST`                    | Binding address for MLLP listener     | `0.0.0.0`                              |
-| `PORT`                    | Port for MLLP listener                | `2575`                                 |
-| `EGRESS_QUEUE_NAME`       | Queue to send validated messages to   | `local-inthub-phw-transformer-ingress` |
-| `EGRESS_SESSION_ID`       | Service Bus session ID for ordering   | `phw-to-mpi`                           |
-| `HL7_VERSION`             | Expected HL7 version                  | `2.5`                                  |
-| `HL7_VALIDATION_FLOW`     | Validation schema flow to use         | `phw`, `chemo`, `pims`, `paris`        |
-| `HL7_VALIDATION_STANDARD` | HL7 version for validation (optional) | `2.4`, `2.5`                           |
-| `SENDING_APP`             | Expected sending application code     | `252`                                  |
-| `MAX_MESSAGE_SIZE_BYTES`  | Maximum allowed message size          | `1048576` (1MB)                        |
+| Variable                   | Description                           | Example                                |
+| -------------------------- | ------------------------------------- | -------------------------------------- |
+| `HOST`                     | Binding address for MLLP listener     | `0.0.0.0`                              |
+| `PORT`                     | Port for MLLP listener                | `2575`                                 |
+| `EGRESS_QUEUE_NAME`        | Queue to send validated messages to   | `local-inthub-phw-transformer-ingress` |
+| `EGRESS_SESSION_ID`        | Service Bus session ID for ordering   | `phw-to-mpi`                           |
+| `HL7_VERSION`              | Expected HL7 version                  | `2.5`                                  |
+| `HL7_VALIDATION_FLOW`      | Validation schema flow to use         | `phw`, `chemo`, `pims`, `paris`        |
+| `HL7_VALIDATION_STANDARD`  | HL7 version for validation (optional) | `2.4`, `2.5`                           |
+| `SENDING_APP`              | Expected sending application code     | `252`                                  |
+| `MAX_MESSAGE_SIZE_BYTES`   | Maximum allowed message size          | `1048576` (1MB)                        |
+| `MESSAGE_STORE_QUEUE_NAME` | Message store queue name              | `local-messagestore`                   |
 
 ### Transformer Variables
 
@@ -1027,14 +1027,15 @@ The following environment variables are used across the Integration Hub services
 
 ### Sender Variables
 
-| Variable                  | Description                        | Example                           |
-| ------------------------- | ---------------------------------- | --------------------------------- |
-| `INGRESS_QUEUE_NAME`      | Queue to receive messages from     | `local-inthub-mpi-sender-ingress` |
-| `INGRESS_SESSION_ID`      | Service Bus session ID for input   | `mpi`                             |
-| `RECEIVER_MLLP_HOST`      | Target system hostname             | `mpi-hl7-mock-receiver`           |
-| `RECEIVER_MLLP_PORT`      | Target system port                 | `2576`                            |
-| `ACK_TIMEOUT_SECONDS`     | Timeout waiting for acknowledgment | `30`                              |
-| `MAX_MESSAGES_PER_MINUTE` | Rate limit for outgoing messages   | `30`, `60`                        |
+| Variable                   | Description                        | Example                           |
+| -------------------------- | ---------------------------------- | --------------------------------- |
+| `INGRESS_QUEUE_NAME`       | Queue to receive messages from     | `local-inthub-mpi-sender-ingress` |
+| `INGRESS_SESSION_ID`       | Service Bus session ID for input   | `mpi`                             |
+| `RECEIVER_MLLP_HOST`       | Target system hostname             | `mpi-hl7-mock-receiver`           |
+| `RECEIVER_MLLP_PORT`       | Target system port                 | `2576`                            |
+| `ACK_TIMEOUT_SECONDS`      | Timeout waiting for acknowledgment | `30`                              |
+| `MAX_MESSAGES_PER_MINUTE`  | Rate limit for outgoing messages   | `30`, `60`                        |
+| `MESSAGE_STORE_QUEUE_NAME` | Message store queue name           | `local-messagestore`              |
 
 > [!TIP]
 > In production, use `SERVICE_BUS_NAMESPACE` with managed identity authentication instead of `SERVICE_BUS_CONNECTION_STRING` with shared access keys. See the common environment variables shared across all container apps in the [Integration Hub Terraform repository](https://github.com/DHCW-Digital-Health-and-Care-Wales/Integration-Hub-Terraform/blob/50ca9c12f579867ba09d0eed7b83efcf7d5adbaf/components/app-platform/locals.tf#L107)

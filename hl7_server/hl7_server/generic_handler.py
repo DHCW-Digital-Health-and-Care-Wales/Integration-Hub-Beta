@@ -4,7 +4,7 @@ from event_logger_lib.event_logger import EventLogger
 from field_utils_lib import get_hl7_field_value
 from hl7_validation import (
     XmlValidationError,
-    validate_parsed_message_with_flow_schema,
+    validate_and_convert_parsed_message_with_flow_schema,
     validate_parsed_message_with_standard,
 )
 from hl7apy.core import Message
@@ -12,7 +12,13 @@ from hl7apy.exceptions import HL7apyException
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.metadata_utils import get_metadata_log_values
+from message_bus_lib.message_store_client import MessageStoreClient
+from message_bus_lib.metadata_utils import (
+    CORRELATION_ID_KEY,
+    MESSAGE_RECEIVED_AT_KEY,
+    SOURCE_SYSTEM_KEY,
+    get_metadata_log_values,
+)
 from metric_sender_lib.metric_sender import MetricSender
 
 from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, build_common_properties
@@ -33,6 +39,7 @@ class GenericHandler(AbstractHandler):
         validator: HL7Validator,
         workflow_id: str,
         sending_app: str | None,
+        message_store_client: MessageStoreClient,
         flow_name: str | None = None,
         standard_version: str | None = None,
     ):
@@ -43,6 +50,7 @@ class GenericHandler(AbstractHandler):
         self.validator = validator
         self.workflow_id = workflow_id
         self.sending_app = sending_app
+        self.message_store_client = message_store_client
         self.flow_name: str | None = flow_name
         self.standard_version: str | None = standard_version
 
@@ -61,15 +69,24 @@ class GenericHandler(AbstractHandler):
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
 
-            # Optimized: pass pre-parsed message to avoid redundant parsing
+            xml_payload: str | None = None
+
+            # Flow validation also generates XML, used for the message store
             if self.flow_name and self.flow_name != "mpi":
                 try:
-                    validate_parsed_message_with_flow_schema(msg, self.incoming_message, self.flow_name)
+                    validation_result = validate_and_convert_parsed_message_with_flow_schema(
+                        msg, self.incoming_message, self.flow_name
+                    )
+                    if not validation_result.is_valid:
+                        raise XmlValidationError(validation_result.error_message or "Unknown XML validation error")
+
                     self.event_logger.log_validation_result(
                         self.incoming_message,
                         f"XML validation passed for flow '{self.flow_name}'",
                         is_success=True,
                     )
+
+                    xml_payload = validation_result.xml_string
                 except XmlValidationError as e:
                     error_msg = f"XML validation failed for flow '{self.flow_name}': {e}"
                     logger.error(error_msg)
@@ -111,6 +128,9 @@ class GenericHandler(AbstractHandler):
 
             ack_message = self.create_ack(message_control_id, msg)
 
+            # Treat as non-blocking, send to message store after ACK generation to avoid delaying ACK response to sender
+            self._send_to_message_store(tracking_metadata_properties, xml_payload)
+
             self.event_logger.log_message_processed(self.incoming_message, "ACK generated successfully")
 
             logger.info("ACK generated successfully")
@@ -141,6 +161,18 @@ class GenericHandler(AbstractHandler):
         ack_builder = HL7AckBuilder()
         ack_msg = ack_builder.build_ack(message_control_id, msg)
         return ack_msg.to_mllp()
+
+    def _send_to_message_store(self, tracking_metadata_properties: dict[str, str], xml_payload: str | None) -> None:
+        try:
+            self.message_store_client.send_to_store(
+                message_received_at=tracking_metadata_properties.get(MESSAGE_RECEIVED_AT_KEY, ""),
+                correlation_id=tracking_metadata_properties.get(CORRELATION_ID_KEY, ""),
+                source_system=tracking_metadata_properties.get(SOURCE_SYSTEM_KEY, ""),
+                raw_payload=self.incoming_message,
+                xml_payload=xml_payload,
+            )
+        except Exception as e:
+            logger.error("Failed to send to message store: %s", e)
 
     def _send_to_service_bus(self, message_control_id: str, tracking_metadata_properties: dict[str, str]) -> None:
         try:
