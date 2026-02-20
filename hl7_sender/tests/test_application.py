@@ -9,7 +9,6 @@ from hl7_sender.application import (
     MAX_BATCH_SIZE,
     _calculate_batch_size,
     _process_message,
-    _send_to_message_store,
     main,
 )
 
@@ -68,8 +67,12 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = True
 
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -102,8 +105,12 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.return_value = False
 
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -138,8 +145,12 @@ class TestProcessMessage(unittest.TestCase):
                 mock_hl7_sender_client.send_message.side_effect = case["error"]
 
                 result = _process_message(
-                    service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-                    mock_message_store
+                    service_bus_message,
+                    mock_hl7_sender_client,
+                    mock_event_logger,
+                    mock_metric_sender,
+                    mock_throttler,
+                    mock_message_store,
                 )
 
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -160,8 +171,12 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.side_effect = Exception("Unexpected error")
 
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -241,8 +256,12 @@ class TestProcessMessage(unittest.TestCase):
         mock_convert_xml.return_value = "<xml>content</xml>"
 
         _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -274,8 +293,12 @@ class TestProcessMessage(unittest.TestCase):
         mock_convert_xml.side_effect = ValueError("Cannot parse")
 
         _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -306,12 +329,64 @@ class TestProcessMessage(unittest.TestCase):
         mock_message_store.send_to_store.side_effect = Exception("Store unavailable")
 
         result = _process_message(
-            service_bus_message, mock_hl7_sender_client, mock_event_logger, mock_metric_sender, mock_throttler,
-            mock_message_store
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
         )
 
         self.assertTrue(result)
         mock_event_logger.log_message_processed.assert_called_once()
+
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
+    @patch("hl7_sender.application.convert_er7_to_xml")
+    def test_message_store_forwards_upstream_metadata(
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+
+        # Add metadata to service bus message
+        original_timestamp = "2025-05-05T10:30:00+00:00"
+        original_correlation_id = "upstream-correlation-id-123"
+        service_bus_message.application_properties = {
+            "MessageReceivedAt": original_timestamp,
+            "CorrelationId": original_correlation_id,
+            "SourceSystem": "PHW",
+        }
+
+        mock_parse_message.return_value = hl7_message
+        mock_hl7_sender_client.send_message.return_value = "ACK"
+        mock_ack_processor.return_value = True
+        mock_convert_xml.return_value = "<xml/>"
+
+        _process_message(
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        )
+
+        mock_message_store.send_to_store.assert_called_once()
+        call_kwargs = mock_message_store.send_to_store.call_args.kwargs
+
+        # Verify upstream metadata is forwarded, not regenerated
+        self.assertEqual(call_kwargs["message_received_at"], original_timestamp)
+        self.assertEqual(call_kwargs["correlation_id"], original_correlation_id)
+        self.assertEqual(call_kwargs["source_system"], "PHW")
 
 
 class TestBatchSizing(unittest.TestCase):
