@@ -65,13 +65,13 @@ A local SQL Server instance is available for development and testing. The contai
 
 **Connection Details:**
 
-| Property          | Value                                      |
-| ----------------- | ------------------------------------------ |
-| **Host**          | `localhost`                                |
-| **Port**          | `1433`                                     |
-| **Database**      | `IntegrationHub`                           |
-| **Username**      | `sa`                                       |
-| **Password**      | Value of `MSSQL_SA_PASSWORD` in `.secrets` |
+| Property     | Value                                      |
+| ------------ | ------------------------------------------ |
+| **Host**     | `localhost`                                |
+| **Port**     | `1433`                                     |
+| **Database** | `IntegrationHub`                           |
+| **Username** | `sa`                                       |
+| **Password** | Value of `MSSQL_SA_PASSWORD` in `.secrets` |
 
 **Connection String:**
 
@@ -201,8 +201,8 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 **Steps**
 
 - Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
-- Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
-- Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
+- Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file in `local/sample_messages/`)
+- Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file /sample_messages/phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
 - Check the Docker logs to show whether the request succeeded.
 
 See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
@@ -271,8 +271,8 @@ Examples:
 
 ```bash
   just start phw-to-mpi
-  just send phw-to-mpi.sample.hl7
-  just send phw-to-mpi.sample.hl7 2576
+  just send ./sample_messages/phw-to-mpi.sample.hl7
+  just send ./sample_messages/chemocare-to-mpi.sample.hl7 2578
   just logs mpi-hl7-mock-receiver
   just stop
   just build phw-to-mpi

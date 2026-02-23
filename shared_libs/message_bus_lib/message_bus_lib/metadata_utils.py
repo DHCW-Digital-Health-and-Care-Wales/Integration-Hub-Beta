@@ -13,6 +13,7 @@ METADATA_FIELD_MAP = {
     "workflow_id": WORKFLOW_ID_KEY,
     "source_system": SOURCE_SYSTEM_KEY,
     "message_received_at": MESSAGE_RECEIVED_AT_KEY,
+    "flow_name": FLOW_NAME_KEY,
 }
 
 
