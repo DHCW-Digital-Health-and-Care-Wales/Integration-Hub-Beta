@@ -114,7 +114,9 @@ class GenericHandler(AbstractHandler):
                     raise
 
             message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
-            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
+            tracking_metadata_properties = build_common_properties(
+                self.workflow_id, message_sending_app, self.flow_name
+            )
 
             flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if flow_property_builder:
@@ -181,11 +183,12 @@ class GenericHandler(AbstractHandler):
             meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
                 "Message metadata attached - CorrelationId: %s, WorkflowID: %s, "
-                "SourceSystem: %s, MessageReceivedAt: %s",
+                "SourceSystem: %s, MessageReceivedAt: %s, FlowName: %s",
                 meta["correlation_id"],
                 meta["workflow_id"],
                 meta["source_system"],
                 meta["message_received_at"],
+                meta["flow_name"],
             )
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))

@@ -6,6 +6,7 @@ CORRELATION_ID_KEY = "CorrelationId"
 MESSAGE_RECEIVED_AT_KEY = "MessageReceivedAt"
 SOURCE_SYSTEM_KEY = "SourceSystem"
 WORKFLOW_ID_KEY = "WorkflowID"
+FLOW_NAME_KEY = "FlowName"
 
 METADATA_FIELD_MAP = {
     "correlation_id": CORRELATION_ID_KEY,

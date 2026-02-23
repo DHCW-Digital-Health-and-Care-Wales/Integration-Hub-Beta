@@ -5,13 +5,14 @@ import os
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
-from hl7_validation import convert_er7_to_xml
+from hl7_validation import convert_er7_to_xml_with_flow_schema
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_store_client import MessageStoreClient
 from message_bus_lib.metadata_utils import (
     CORRELATION_ID_KEY,
+    FLOW_NAME_KEY,
     MESSAGE_RECEIVED_AT_KEY,
     SOURCE_SYSTEM_KEY,
     correlation_id_for_logger,
@@ -119,11 +120,13 @@ def _process_message(
     meta = get_metadata_log_values(metadata)
     correlation_id_opt = correlation_id_for_logger(meta)
     logger.info(
-        "Message received for HL7 sending - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+        "Message received for HL7 sending - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, "
+        "MessageReceivedAt: %s, FlowName: %s",
         meta["correlation_id"],
         meta["workflow_id"],
         meta["source_system"],
         meta["message_received_at"],
+        meta["flow_name"],
     )
 
     try:
@@ -189,13 +192,16 @@ def _send_to_message_store(
 ) -> None:
     """Send a message to the message store queue with XML payload."""
     try:
-        xml_payload: str | None = None
-        try:
-            xml_payload = convert_er7_to_xml(message_body)
-        except Exception as e:
-            logger.warning("Failed to generate XML payload for message store: %s", e)
-
         incoming_metadata = metadata or {}
+        flow_name = incoming_metadata.get(FLOW_NAME_KEY, "") or None
+
+        xml_payload: str | None = None
+        if flow_name:
+            try:
+                xml_payload = convert_er7_to_xml_with_flow_schema(message_body, flow_name)
+            except Exception as e:
+                logger.warning("Failed to generate XML payload for message store: %s", e)
+
         message_store_client.send_to_store(
             message_received_at=incoming_metadata.get(MESSAGE_RECEIVED_AT_KEY, ""),
             correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
