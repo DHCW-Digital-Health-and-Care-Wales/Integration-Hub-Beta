@@ -1,6 +1,8 @@
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
+from collections.abc import Iterable
+from typing import Any, cast
 
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
@@ -24,8 +26,6 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
 
 
 def build_mpi_properties(msg: Message) -> dict[str, str]:
-    pid3_codes = _get_pid3_4_1_codes(msg)
-    assigning_authorities = f"|{'|'.join(pid3_codes)}|" if pid3_codes else ""
 
     pid2_codes = _get_pid2_4_1_codes(msg)
     update_sources = f"|{'|'.join(pid2_codes)}|" if pid2_codes else ""
@@ -36,33 +36,29 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
         "UpdateSource": get_hl7_field_value(msg, "pid.pid_2.cx_4.hd_1"),
         "UpdateSources": update_sources,
         "AssigningAuthority": get_hl7_field_value(msg, "pid.pid_3.cx_4.hd_1"),
-        "AssigningAuthorities": assigning_authorities,
         "DateDeath": get_hl7_field_value(msg, "pid.pid_29.ts_1"),
         "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
     }
 
-def _get_pid3_4_1_codes(msg: Message) -> list[str]:
-    pid = getattr(msg, "pid", None)
-    pid3 = getattr(pid, "pid_3", None) if pid else None
 
-    codes = []
-
-    for code in pid3:
-        aa_code = (code.cx_4.hd_1.value.value or "").strip()
-        if aa_code not in codes:
-            codes.append(aa_code)
-
-    return codes
 
 def _get_pid2_4_1_codes(msg: Message) -> list[str]:
-    pid = getattr(msg, "pid", None)
-    pid2 = getattr(pid, "pid_2", None) if pid else None
+    pid2 = getattr(getattr(msg, "pid", None), "pid_2", None)
 
-    codes = []
+    pid2_reps: Iterable[Any]
+    if pid2 is None:
+        pid2_reps = []
+    elif isinstance(pid2, (str, bytes)):
+        pid2_reps = [pid2]
+    elif isinstance(pid2, Iterable):
+        pid2_reps = cast(Iterable[Any], pid2)
+    else:
+        pid2_reps = [pid2]
 
-    for code in pid2:
-        aa_code = (code.cx_4.hd_1.value.value or "").strip()
-        if aa_code not in codes:
+    codes: list[str] = []
+    for rep in pid2_reps:
+        aa_code = (rep.cx_4.hd_1.value.value or "").strip()
+        if aa_code and aa_code not in codes:
             codes.append(aa_code)
 
     return codes
