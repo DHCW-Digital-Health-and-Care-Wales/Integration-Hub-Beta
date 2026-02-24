@@ -4,6 +4,7 @@ from event_logger_lib.event_logger import EventLogger
 from field_utils_lib import get_hl7_field_value
 from hl7_validation import (
     XmlValidationError,
+    convert_er7_to_xml,
     validate_and_convert_parsed_message_with_flow_schema,
     validate_parsed_message_with_standard,
 )
@@ -96,6 +97,13 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
+            # For flows without schema-aware XML (e.g. MPI) or no flow, try and generate basic XML
+            if xml_payload is None:
+                try:
+                    xml_payload = convert_er7_to_xml(self.incoming_message)
+                except Exception as e:
+                    logger.warning("Failed to generate XML payload: %s", e)
+
             if self.standard_version:
                 try:
                     validate_parsed_message_with_standard(msg, self.standard_version)
@@ -114,9 +122,7 @@ class GenericHandler(AbstractHandler):
                     raise
 
             message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
-            tracking_metadata_properties = build_common_properties(
-                self.workflow_id, message_sending_app, self.flow_name
-            )
+            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
 
             flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if flow_property_builder:
@@ -183,12 +189,11 @@ class GenericHandler(AbstractHandler):
             meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
                 "Message metadata attached - CorrelationId: %s, WorkflowID: %s, "
-                "SourceSystem: %s, MessageReceivedAt: %s, FlowName: %s",
+                "SourceSystem: %s, MessageReceivedAt: %s",
                 meta["correlation_id"],
                 meta["workflow_id"],
                 meta["source_system"],
                 meta["message_received_at"],
-                meta["flow_name"],
             )
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))

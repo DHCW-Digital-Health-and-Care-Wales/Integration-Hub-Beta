@@ -236,7 +236,7 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    @patch("hl7_sender.application.convert_er7_to_xml_with_flow_schema")
+    @patch("hl7_sender.application.convert_er7_to_xml")
     def test_process_message_sends_to_message_store(
         self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:
@@ -250,7 +250,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        service_bus_message.application_properties = {"FlowName": "phw"}
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
@@ -274,7 +273,7 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    @patch("hl7_sender.application.convert_er7_to_xml_with_flow_schema")
+    @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_xml_generation_failure_still_sends(
         self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:
@@ -288,7 +287,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        service_bus_message.application_properties = {"FlowName": "phw"}
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
@@ -310,7 +308,7 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    @patch("hl7_sender.application.convert_er7_to_xml_with_flow_schema")
+    @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_failure_does_not_block_result(
         self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:
@@ -324,7 +322,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        service_bus_message.application_properties = {"FlowName": "phw"}
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
@@ -345,7 +342,7 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    @patch("hl7_sender.application.convert_er7_to_xml_with_flow_schema")
+    @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_forwards_upstream_metadata(
         self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:

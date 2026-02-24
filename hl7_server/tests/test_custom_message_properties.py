@@ -19,7 +19,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         self.assertIn("CorrelationId", props)
         self.assertEqual(props["WorkflowID"], workflow_id)
         self.assertEqual(props["SourceSystem"], sending_app)
-        self.assertEqual(props["FlowName"], "")
 
     def test_build_common_properties_with_none_sending_app(self) -> None:
         workflow_id = "test-workflow"
@@ -28,14 +27,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         props = build_common_properties(workflow_id, sending_app)
 
         self.assertEqual(props["SourceSystem"], "")
-
-    def test_build_common_properties_includes_flow_name(self) -> None:
-        props = build_common_properties("workflow", "252", flow_name="phw")
-        self.assertEqual(props["FlowName"], "phw")
-
-    def test_build_common_properties_flow_name_defaults_to_empty(self) -> None:
-        props = build_common_properties("workflow", "252")
-        self.assertEqual(props["FlowName"], "")
 
     def test_build_common_properties_message_received_at_is_iso_format(self) -> None:
         workflow_id = "test-workflow"

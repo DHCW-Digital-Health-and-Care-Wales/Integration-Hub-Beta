@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 from message_bus_lib.metadata_utils import (
     CORRELATION_ID_KEY,
-    FLOW_NAME_KEY,
     MESSAGE_RECEIVED_AT_KEY,
     SOURCE_SYSTEM_KEY,
     WORKFLOW_ID_KEY,
@@ -74,7 +73,6 @@ class TestGetMetadataLogValues(unittest.TestCase):
         "workflow_id": "N/A",
         "source_system": "N/A",
         "message_received_at": "N/A",
-        "flow_name": "N/A",
     }
 
     def test_none_or_empty_returns_na_defaults(self) -> None:
@@ -89,7 +87,6 @@ class TestGetMetadataLogValues(unittest.TestCase):
             WORKFLOW_ID_KEY: "w1",
             SOURCE_SYSTEM_KEY: "src",
             MESSAGE_RECEIVED_AT_KEY: "2025-01-01T00:00:00",
-            FLOW_NAME_KEY: "phw",
         }
         self.assertEqual(
             get_metadata_log_values(meta),
@@ -98,7 +95,6 @@ class TestGetMetadataLogValues(unittest.TestCase):
                 "workflow_id": "w1",
                 "source_system": "src",
                 "message_received_at": "2025-01-01T00:00:00",
-                "flow_name": "phw",
             },
         )
 

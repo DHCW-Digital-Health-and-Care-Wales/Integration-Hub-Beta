@@ -280,12 +280,6 @@ class TestGenericHandler(unittest.TestCase):
     def test_both_flow_and_standard_validation_called(
         self, mock_validate_flow: MagicMock, mock_validate_standard: MagicMock
     ) -> None:
-        # Mock ValidationResult returned by validate_and_convert
-        mock_validation_result = MagicMock()
-        mock_validation_result.is_valid = True
-        mock_validation_result.xml_string = "<xml>test</xml>"
-        mock_validate_flow.return_value = mock_validation_result
-
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
             mock_ack_instance = mock_builder.return_value
             mock_ack_message = MagicMock()
@@ -342,8 +336,6 @@ class TestGenericHandler(unittest.TestCase):
         self.assertIn("message_received_at", call_kwargs.kwargs)
         self.assertIn("correlation_id", call_kwargs.kwargs)
         self.assertIn("source_system", call_kwargs.kwargs)
-        # xml_payload should be present (may be None or XML string depending on flow/validation)
-        self.assertIn("xml_payload", call_kwargs.kwargs)
 
     @patch("hl7_server.generic_handler.logger")
     def test_message_store_failure_does_not_block_ack(self, mock_logger: MagicMock) -> None:
@@ -356,59 +348,6 @@ class TestGenericHandler(unittest.TestCase):
         mock_logger.error.assert_any_call(
             "Failed to send to message store: %s", self.mock_message_store.send_to_store.side_effect
         )
-
-    @patch("hl7_server.generic_handler.validate_and_convert_parsed_message_with_flow_schema")
-    def test_message_store_receives_xml_from_flow_validation(self, mock_validate_flow: MagicMock) -> None:
-        mock_validation_result = MagicMock()
-        mock_validation_result.is_valid = True
-        mock_validation_result.xml_string = "<HL7Message><MSH>test</MSH></HL7Message>"
-        mock_validate_flow.return_value = mock_validation_result
-
-        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
-            mock_builder.return_value.build_ack.return_value.to_mllp.return_value = "\x0bACK\x1c\r"
-
-            handler = GenericHandler(
-                VALID_A28_MESSAGE,
-                self.mock_sender,
-                self.mock_event_logger,
-                self.mock_metric_sender,
-                self.validator,
-                workflow_id="test-workflow",
-                sending_app="252",
-                message_store_client=self.mock_message_store,
-                flow_name="phw",
-            )
-
-            handler.reply()
-
-        self.mock_message_store.send_to_store.assert_called_once()
-        call_kwargs = self.mock_message_store.send_to_store.call_args.kwargs
-        self.assertEqual(call_kwargs["xml_payload"], "<HL7Message><MSH>test</MSH></HL7Message>")
-
-    def test_message_store_mpi_flow_receives_no_xml(self) -> None:
-        # MPI flow has no XSD schema, so xml_payload should be None
-        with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
-            mock_builder.return_value.build_ack.return_value.to_mllp.return_value = "\x0bACK\x1c\r"
-
-            handler = GenericHandler(
-                VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
-                self.mock_sender,
-                self.mock_event_logger,
-                self.mock_metric_sender,
-                HL7Validator(flow_name="mpi"),
-                workflow_id="test-workflow",
-                sending_app="252",
-                message_store_client=self.mock_message_store,
-                flow_name="mpi",
-            )
-
-            handler.reply()
-
-        call_kwargs = self.mock_message_store.send_to_store.call_args.kwargs
-        self.assertIsNone(call_kwargs["xml_payload"])
-
-        call_kwargs = self.mock_message_store.send_to_store.call_args.kwargs
-        self.assertIsNone(call_kwargs["xml_payload"])
 
 
 if __name__ == "__main__":
