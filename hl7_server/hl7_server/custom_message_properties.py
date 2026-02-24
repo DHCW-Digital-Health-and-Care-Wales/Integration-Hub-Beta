@@ -1,7 +1,6 @@
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
-from collections.abc import Iterable
 from typing import Any, cast
 
 from field_utils_lib import get_hl7_field_value
