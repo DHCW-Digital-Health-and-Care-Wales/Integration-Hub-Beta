@@ -72,6 +72,55 @@ class MessageReceiverClient:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
 
+    def receive_messages_batch(
+        self, num_of_messages: int, batch_processor: Callable[[list[ServiceBusReceivedMessage]], bool]
+    ) -> None:
+
+        if not self._apply_delay_and_check_if_its_retry_time():
+            return
+
+        try:
+            autolock_renewer = AutoLockRenewer() if self.session_id else None
+            with self.sb_client.get_queue_receiver(
+                queue_name=self.queue_name,
+                session_id=self.session_id,
+                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+                auto_lock_renewer=autolock_renewer,
+                max_wait_time=self.MAX_WAIT_TIME_SECONDS,
+            ) as receiver:
+
+                messages = receiver.receive_messages(
+                    max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
+                )
+
+                if not messages:
+                    if autolock_renewer:
+                        autolock_renewer.close()
+                    return
+
+                try:
+                    is_success = batch_processor(list(messages))
+                    if is_success:
+                        for msg in messages:
+                            receiver.complete_message(msg)
+                            logger.debug("Message completed: %s", msg.message_id)
+                        self._clear_retry_state()
+                        logger.debug("Batch of %d message(s) completed", len(messages))
+                    else:
+                        logger.error("Batch processing failed, abandoning %d message(s)", len(messages))
+                        self._abort_message_processing(receiver, messages)
+                        self._set_delay_before_retry()
+                except Exception as e:
+                    logger.error("Unexpected error processing batch, abandoning %d message(s)", len(messages), exc_info=e)
+                    self._abort_message_processing(receiver, messages)
+                    self._set_delay_before_retry()
+
+                if autolock_renewer:
+                    autolock_renewer.close()
+        except SessionCannotBeLockedError:
+            logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
+            time.sleep(self.MAX_WAIT_TIME_SECONDS)
+
     def _apply_delay_and_check_if_its_retry_time(self) -> bool:
         if self.next_retry_time:
             sleep_time = min(self.next_retry_time - time.time(), self.MAX_WAIT_TIME_SECONDS)

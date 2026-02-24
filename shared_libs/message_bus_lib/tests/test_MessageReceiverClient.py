@@ -193,5 +193,118 @@ class TestMessageReceiverClient(unittest.TestCase):
         # there should be no retry planned
         self.assertIsNone(self.message_receiver_client.next_retry_time)
 
+
+class TestReceiveMessagesBatch(unittest.TestCase):
+    """Tests for MessageReceiverClient.receive_messages_batch with batch callback."""
+
+    def setUp(self) -> None:
+        self.service_bus_client = MagicMock()
+        self.sb_receiver = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        self.message_receiver_client = MessageReceiverClient(self.service_bus_client, "test-queue")
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_completes_all_on_success(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor returns True, all messages should be completed."""
+        messages = [create_message("1"), create_message("2"), create_message("3")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            self.assertEqual(len(msgs), 3)
+            return True
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.complete_message.call_count, 3)
+        self.sb_receiver.complete_message.assert_any_call(messages[0])
+        self.sb_receiver.complete_message.assert_any_call(messages[1])
+        self.sb_receiver.complete_message.assert_any_call(messages[2])
+        self.sb_receiver.abandon_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_abandons_all_on_failure(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor returns False, all messages should be abandoned."""
+        messages = [create_message("1"), create_message("2")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            return False
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.abandon_message.call_count, 2)
+        self.sb_receiver.abandon_message.assert_any_call(messages[0])
+        self.sb_receiver.abandon_message.assert_any_call(messages[1])
+        self.sb_receiver.complete_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_abandons_all_on_exception(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor raises an exception, all messages should be abandoned."""
+        messages = [create_message("1"), create_message("2")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            raise RuntimeError("Processing failed")
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.abandon_message.call_count, 2)
+        self.sb_receiver.complete_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_skips_processing_when_no_messages(self, sleep_mock: MagicMock) -> None:
+        """When no messages are received, batch_processor should not be called."""
+        self.sb_receiver.receive_messages.return_value = []
+
+        processor = MagicMock(return_value=True)
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        processor.assert_not_called()
+        self.sb_receiver.complete_message.assert_not_called()
+        self.sb_receiver.abandon_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_skips_during_retry_delay(self, sleep_mock: MagicMock) -> None:
+        """When retry delay hasn't elapsed, receive_messages_batch should skip processing."""
+        import time as real_time
+        # Set next_retry_time far in the future
+        self.message_receiver_client.next_retry_time = real_time.time() + 9999
+
+        processor = MagicMock(return_value=True)
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        processor.assert_not_called()
+        self.sb_receiver.receive_messages.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_clears_retry_state_on_success(self, sleep_mock: MagicMock) -> None:
+        """After successful batch processing, retry state should be cleared."""
+        # Simulate previous failure
+        self.message_receiver_client.retry_attempt = 2
+        self.message_receiver_client.delay = 20
+        self.message_receiver_client.next_retry_time = TIMESTAMP_IN_PAST
+
+        messages = [create_message("1")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=lambda msgs: True)
+
+        self.assertEqual(self.message_receiver_client.retry_attempt, 0)
+        self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS)
+        self.assertIsNone(self.message_receiver_client.next_retry_time)
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_sets_retry_delay_on_failure(self, sleep_mock: MagicMock) -> None:
+        """After batch processing failure, retry delay should be set."""
+        messages = [create_message("1")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=lambda msgs: False)
+
+        self.assertIsNotNone(self.message_receiver_client.next_retry_time)
+        self.assertGreater(self.message_receiver_client.retry_attempt, 0)
+
+
 if __name__ == '__main__':
     unittest.main()

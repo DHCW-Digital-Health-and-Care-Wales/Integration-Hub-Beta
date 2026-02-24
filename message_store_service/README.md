@@ -2,15 +2,6 @@
 
 Message storage service that reads HL7 messages from an Azure Service Bus queue and stores them in an Azure database for auditing and compliance purposes.
 
-## Current Status
-
-This is a skeleton implementation that currently:
-- ✅ Reads messages from Azure Service Bus queue
-- ✅ Logs received messages using EventLogger
-- ⏳ TODO: Store messages in Azure Database (not yet implemented)
-
-The service follows the same patterns as other Integration Hub services and is ready for database integration.
-
 ## Development
 
 ### Dependencies
