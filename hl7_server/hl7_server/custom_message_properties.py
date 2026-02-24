@@ -29,7 +29,7 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
     pid2_codes = _get_pid2_4_1_codes(msg)
     update_sources = f"|{'|'.join(pid2_codes)}|" if pid2_codes else ""
 
-    pid2_codes = _get_pid3_4_1_codes(msg)
+    pid3_codes = _get_pid3_4_1_codes(msg)
     assigning_authorities = f"|{'|'.join(pid3_codes)}|" if pid3_codes else ""
 
     return {
@@ -65,25 +65,21 @@ def _get_pid2_4_1_codes(msg: Message) -> list[str]:
 
     return codes
 
-FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {
-    "mpi": build_mpi_properties,
-}
-
 def _get_pid3_4_1_codes(msg: Message) -> list[str]:
-    pid2 = getattr(getattr(msg, "pid", None), "pid_2", None)
+    pid3 = getattr(getattr(msg, "pid", None), "pid_3", None)
 
-    pid2_reps: Iterable[Any]
-    if pid2 is None:
-        pid2_reps = []
-    elif isinstance(pid2, (str, bytes)):
-        pid2_reps = [pid2]
-    elif isinstance(pid2, Iterable):
-        pid2_reps = cast(Iterable[Any], pid2)
+    pid3_reps: Iterable[Any]
+    if pid3 is None:
+        pid3_reps = []
+    elif isinstance(pid3, (str, bytes)):
+        pid3_reps = [pid3]
+    elif isinstance(pid3, Iterable):
+        pid3_reps = cast(Iterable[Any], pid3)
     else:
-        pid2_reps = [pid2]
+        pid3_reps = [pid3]
 
     codes: list[str] = []
-    for rep in pid2_reps:
+    for rep in pid3_reps:
         aa_code = (rep.cx_4.hd_1.value.value or "").strip()
         if aa_code and aa_code not in codes:
             codes.append(aa_code)
