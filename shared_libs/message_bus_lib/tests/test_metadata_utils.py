@@ -20,6 +20,15 @@ def _message_with_properties(props: dict[Any, Any] | None) -> MagicMock:
     return message
 
 
+def _message_with_raw_properties(raw_props: dict[Any, Any] | None) -> MagicMock:
+    message = MagicMock()
+    message.application_properties = None
+    raw_amqp_message = MagicMock()
+    raw_amqp_message.application_properties = raw_props
+    message.raw_amqp_message = raw_amqp_message
+    return message
+
+
 class TestExtractMetadata(unittest.TestCase):
     def test_returns_none_when_no_or_empty_properties(self) -> None:
         props: dict[str, Any] | None
@@ -65,6 +74,26 @@ class TestExtractMetadata(unittest.TestCase):
             "uuid_val": str(u),
         }
         self.assertEqual(result, expected)
+
+    def test_falls_back_to_raw_amqp_application_properties(self) -> None:
+        message = _message_with_raw_properties(
+            {
+                b"CorrelationId": b"evt-raw-123",
+                "WorkflowID": "phw-to-mpi",
+            }
+        )
+
+        self.assertEqual(
+            extract_metadata(message),
+            {
+                "CorrelationId": "evt-raw-123",
+                "WorkflowID": "phw-to-mpi",
+            },
+        )
+
+    def test_returns_none_when_no_direct_or_raw_properties(self) -> None:
+        message = _message_with_raw_properties(None)
+        self.assertIsNone(extract_metadata(message))
 
 
 class TestGetMetadataLogValues(unittest.TestCase):

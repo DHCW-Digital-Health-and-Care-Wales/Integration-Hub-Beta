@@ -1,3 +1,5 @@
+from typing import Any
+
 from azure.servicebus import ServiceBusMessage
 
 NA = "N/A"
@@ -21,8 +23,21 @@ def _to_str(value: str | bytes | int | float | bool | object) -> str:
     return str(value)
 
 
+def _read_application_properties(message: ServiceBusMessage) -> dict[Any, Any] | None:
+    direct_props = getattr(message, "application_properties", None)
+    if direct_props:
+        return direct_props
+
+    raw_amqp_message = getattr(message, "raw_amqp_message", None)
+    if raw_amqp_message is None:
+        return None
+
+    raw_props = getattr(raw_amqp_message, "application_properties", None)
+    return raw_props if raw_props else None
+
+
 def extract_metadata(message: ServiceBusMessage) -> dict[str, str] | None:
-    props = message.application_properties or {}
+    props = _read_application_properties(message) or {}
     if not props:
         return None
 
