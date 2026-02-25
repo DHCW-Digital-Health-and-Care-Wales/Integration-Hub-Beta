@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from types import TracebackType
 from typing import List
 
@@ -94,6 +95,8 @@ class DatabaseClient:
             return
 
         connection = self._get_connection()
+        stored_at = datetime.now(timezone.utc)
+
         try:
             cursor = connection.cursor()
             # Enable fast_executemany for batch performance
@@ -102,7 +105,7 @@ class DatabaseClient:
             rows = [
                 (
                     msg.received_at,
-                    msg.stored_at,
+                    stored_at,
                     msg.correlation_id,
                     msg.source_system,
                     msg.processing_component,

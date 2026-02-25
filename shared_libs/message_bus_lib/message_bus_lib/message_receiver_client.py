@@ -31,51 +31,65 @@ class MessageReceiverClient:
         self.next_retry_time: Optional[float] = None
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
-        if not self._apply_delay_and_check_if_its_retry_time():
-            return
+        """Process messages one at a time, stopping and abandoning on the first failure."""
 
-        try:
-            autolock_renewer = AutoLockRenewer() if self.session_id else None
-            with self.sb_client.get_queue_receiver(
-                queue_name = self.queue_name,
-                session_id = self.session_id,
-                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
-                auto_lock_renewer = autolock_renewer,
-                max_wait_time = self.MAX_WAIT_TIME_SECONDS
-            ) as receiver:
+        def per_message_adapter(
+            receiver: ServiceBusReceiver, messages: list[ServiceBusReceivedMessage]
+        ) -> bool:
+            for i, msg in enumerate(messages):
+                try:
+                    is_success = message_processor(msg)
+                except Exception:
+                    logger.exception("Unexpected error processing message: %s", msg.message_id)
+                    self._abort_message_processing(receiver, messages[i:])
+                    return False
+                if is_success:
+                    receiver.complete_message(msg)
+                    logger.debug("Message processed and completed: %s", msg.message_id)
+                else:
+                    logger.error(
+                        "Message processing failed, abandoning subsequent messages: %s", msg.message_id
+                    )
+                    self._abort_message_processing(receiver, messages[i:])
+                    return False
+            return True
 
-                messages = receiver.receive_messages(max_message_count=num_of_messages,
-                                                      max_wait_time=self.MAX_WAIT_TIME_SECONDS)
-                for i, msg in enumerate(messages):
-                    try:
-                        is_success = message_processor(msg)
-                        if is_success:
-                            receiver.complete_message(msg)
-                            logger.debug("Message processed and completed: %s", msg.message_id)
-                            self._clear_retry_state()
-                        else:
-                            logger.error(
-                                "Message processing failed, abandoning subsequent messages: %s",
-                                msg.message_id
-                            )
-                            self._abort_message_processing(receiver, messages[i:])
-                            self._set_delay_before_retry()
-                            break
-                    except Exception as e:
-                        logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
-                        self._abort_message_processing(receiver, messages[i:])
-                        self._set_delay_before_retry()
-                        break
-
-                autolock_renewer.close() if autolock_renewer else None
-        except SessionCannotBeLockedError:
-            logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
-            time.sleep(self.MAX_WAIT_TIME_SECONDS)
+        self._receive_and_process(num_of_messages, per_message_adapter)
 
     def receive_messages_batch(
         self, num_of_messages: int, batch_processor: Callable[[list[ServiceBusReceivedMessage]], bool]
     ) -> None:
+        """Process all received messages together as a single batch."""
 
+        def batch_adapter(
+            receiver: ServiceBusReceiver, messages: list[ServiceBusReceivedMessage]
+        ) -> bool:
+            is_success = batch_processor(messages)
+            if is_success:
+                for msg in messages:
+                    receiver.complete_message(msg)
+                    logger.debug("Message completed: %s", msg.message_id)
+                logger.debug("Batch of %d message(s) completed", len(messages))
+            else:
+                logger.error("Batch processing failed, abandoning %d message(s)", len(messages))
+                self._abort_message_processing(receiver, messages)
+            return is_success
+
+        self._receive_and_process(num_of_messages, batch_adapter)
+
+    def _receive_and_process(
+        self,
+        num_of_messages: int,
+        processor: Callable[[ServiceBusReceiver, list[ServiceBusReceivedMessage]], bool],
+    ) -> None:
+        """
+        Shared scaffolding for both receive_messages and receive_messages_batch.
+
+        Handles receiver lifecycle, auto-lock renewal, empty-queue short-circuit,
+        retry scheduling, and SessionCannotBeLockedError recovery. The caller
+        supplies a `processor` that performs the actual complete/abandon logic and
+        returns True on success or False on failure.
+        """
         if not self._apply_delay_and_check_if_its_retry_time():
             return
 
@@ -88,32 +102,23 @@ class MessageReceiverClient:
                 auto_lock_renewer=autolock_renewer,
                 max_wait_time=self.MAX_WAIT_TIME_SECONDS,
             ) as receiver:
-
                 messages = receiver.receive_messages(
                     max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
                 )
 
-                if not messages:
-                    if autolock_renewer:
-                        autolock_renewer.close()
-                    return
-
-                try:
-                    is_success = batch_processor(list(messages))
-                    if is_success:
-                        for msg in messages:
-                            receiver.complete_message(msg)
-                            logger.debug("Message completed: %s", msg.message_id)
-                        self._clear_retry_state()
-                        logger.debug("Batch of %d message(s) completed", len(messages))
-                    else:
-                        logger.error("Batch processing failed, abandoning %d message(s)", len(messages))
+                if messages:
+                    try:
+                        is_success = processor(receiver, messages)
+                        if is_success:
+                            self._clear_retry_state()
+                        else:
+                            self._set_delay_before_retry()
+                    except Exception:
+                        logger.exception(
+                            "Unexpected error processing %d message(s)", len(messages)
+                        )
                         self._abort_message_processing(receiver, messages)
                         self._set_delay_before_retry()
-                except Exception as e:
-                    logger.error("Unexpected error processing batch, abandoning %d message(s)", len(messages), exc_info=e)
-                    self._abort_message_processing(receiver, messages)
-                    self._set_delay_before_retry()
 
                 if autolock_renewer:
                     autolock_renewer.close()

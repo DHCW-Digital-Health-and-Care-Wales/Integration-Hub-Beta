@@ -69,9 +69,9 @@ class MessageStoreService:
                 logger.info("Batch of %d message(s) stored successfully", len(records))
                 return True
             except Exception as e:
-                logger.error("Failed to process batch of %d message(s): %s", len(messages), e)
+                logger.exception("Failed to process batch of %d message(s): %s", len(messages), e)
                 event_logger.log_message_failed(
-                    "<batch>",
+                    f"Batch of {len(messages)} message(s)",
                     f"Batch processing failed: {e}",
                     "Batch insert failed",
                 )

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 
@@ -6,8 +7,7 @@ from typing import Optional
 class MessageRecord:
     """Represents a message destined for persistent storage in the monitoring.Message table."""
 
-    received_at: str
-    stored_at: str
+    received_at: datetime
     correlation_id: str
     source_system: str
     processing_component: str

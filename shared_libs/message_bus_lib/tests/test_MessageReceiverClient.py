@@ -263,47 +263,6 @@ class TestReceiveMessagesBatch(unittest.TestCase):
         self.sb_receiver.complete_message.assert_not_called()
         self.sb_receiver.abandon_message.assert_not_called()
 
-    @patch("time.sleep", return_value=None)
-    def test_receive_messages_batch_skips_during_retry_delay(self, sleep_mock: MagicMock) -> None:
-        """When retry delay hasn't elapsed, receive_messages_batch should skip processing."""
-        import time as real_time
-        # Set next_retry_time far in the future
-        self.message_receiver_client.next_retry_time = real_time.time() + 9999
-
-        processor = MagicMock(return_value=True)
-
-        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
-
-        processor.assert_not_called()
-        self.sb_receiver.receive_messages.assert_not_called()
-
-    @patch("time.sleep", return_value=None)
-    def test_receive_messages_batch_clears_retry_state_on_success(self, sleep_mock: MagicMock) -> None:
-        """After successful batch processing, retry state should be cleared."""
-        # Simulate previous failure
-        self.message_receiver_client.retry_attempt = 2
-        self.message_receiver_client.delay = 20
-        self.message_receiver_client.next_retry_time = TIMESTAMP_IN_PAST
-
-        messages = [create_message("1")]
-        self.sb_receiver.receive_messages.return_value = messages
-
-        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=lambda msgs: True)
-
-        self.assertEqual(self.message_receiver_client.retry_attempt, 0)
-        self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS)
-        self.assertIsNone(self.message_receiver_client.next_retry_time)
-
-    @patch("time.sleep", return_value=None)
-    def test_receive_messages_batch_sets_retry_delay_on_failure(self, sleep_mock: MagicMock) -> None:
-        """After batch processing failure, retry delay should be set."""
-        messages = [create_message("1")]
-        self.sb_receiver.receive_messages.return_value = messages
-
-        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=lambda msgs: False)
-
-        self.assertIsNotNone(self.message_receiver_client.next_retry_time)
-        self.assertGreater(self.message_receiver_client.retry_attempt, 0)
 
 
 if __name__ == '__main__':

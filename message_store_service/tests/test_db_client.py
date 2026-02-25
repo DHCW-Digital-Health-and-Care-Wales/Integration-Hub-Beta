@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
@@ -7,8 +8,7 @@ from message_store_service.message_record import MessageRecord
 
 
 def _make_record(
-    received_at: str = "2025-06-01T10:00:00+00:00",
-    stored_at: str = "2025-06-01T10:00:01+00:00",
+    received_at: datetime = datetime.now(timezone.utc),
     correlation_id: str = "corr-1",
     source_system: str = "SRC",
     processing_component: str = "message_store_service",
@@ -19,7 +19,6 @@ def _make_record(
     """Helper to create a MessageRecord with sensible defaults."""
     return MessageRecord(
         received_at=received_at,
-        stored_at=stored_at,
         correlation_id=correlation_id,
         source_system=source_system,
         processing_component=processing_component,
@@ -81,15 +80,32 @@ class TestDatabaseClient(unittest.TestCase):
         # Connection is kept alive for reuse — must NOT be closed here.
         mock_conn.close.assert_not_called()
 
+    @patch("message_store_service.db_client.datetime")
     @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_batch_inserts_multiple_records(self, mock_pyodbc: MagicMock) -> None:
-        """Verify multiple records are passed as a single executemany batch."""
+    def test_store_messages_batch_inserts_multiple_records(
+        self, mock_pyodbc: MagicMock, mock_dt: MagicMock
+    ) -> None:
+        """Verify multiple records are inserted as a single executemany batch with correct per-row values."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_pyodbc.connect.return_value = mock_conn
 
-        records = [_make_record(correlation_id=f"corr-{i}") for i in range(5)]
+        fixed_stored_at = datetime(2025, 6, 1, 10, 0, 1, tzinfo=timezone.utc)
+        mock_dt.now.return_value = fixed_stored_at
+
+        records = [
+            MessageRecord(
+                received_at=datetime(2025, 6, 1, 9, 0, i, tzinfo=timezone.utc),
+                correlation_id=f"corr-{i}",
+                source_system=f"SRC-{i}",
+                processing_component=f"comp-{i}",
+                target_system=f"tgt-{i}" if i % 2 == 0 else None,
+                raw_payload=f"MSH|payload-{i}",
+                xml_payload=f"<msg id='{i}'/>" if i % 2 == 0 else None,
+            )
+            for i in range(5)
+        ]
 
         self.client.store_messages(records)
 
@@ -97,6 +113,16 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertEqual(len(rows_arg), 5)
         mock_conn.commit.assert_called_once()
         mock_conn.close.assert_not_called()
+
+        for i, (row, record) in enumerate(zip(rows_arg, records)):
+            self.assertEqual(row[0], record.received_at, f"row {i}: received_at mismatch")
+            self.assertEqual(row[1], fixed_stored_at, f"row {i}: stored_at must equal the batch timestamp")
+            self.assertEqual(row[2], record.correlation_id, f"row {i}: correlation_id mismatch")
+            self.assertEqual(row[3], record.source_system, f"row {i}: source_system mismatch")
+            self.assertEqual(row[4], record.processing_component, f"row {i}: processing_component mismatch")
+            self.assertEqual(row[5], record.target_system, f"row {i}: target_system mismatch")
+            self.assertEqual(row[6], record.raw_payload, f"row {i}: raw_payload mismatch")
+            self.assertEqual(row[7], record.xml_payload, f"row {i}: xml_payload mismatch")
 
     # ------------------------------------------------------------------
     # Connection reuse
@@ -288,17 +314,24 @@ class TestDatabaseClient(unittest.TestCase):
     # Row content correctness
     # ------------------------------------------------------------------
 
+    @patch("message_store_service.db_client.datetime")
     @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_row_tuple_matches_column_order(self, mock_pyodbc: MagicMock) -> None:
-        """Verify the tuple order matches the INSERT column order."""
+    def test_store_messages_row_tuple_matches_column_order(
+        self, mock_pyodbc: MagicMock, mock_dt: MagicMock
+    ) -> None:
+        """Verify the tuple order matches the INSERT column order and stored_at is injected by db_client."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_pyodbc.connect.return_value = mock_conn
 
+        fixed_stored_at = datetime(2025, 6, 1, 10, 0, 1, tzinfo=timezone.utc)
+        mock_dt.now.return_value = fixed_stored_at
+
+        received_at = datetime(2025, 6, 1, 9, 59, 0, tzinfo=timezone.utc)
+
         record = MessageRecord(
-            received_at="rcv",
-            stored_at="st",
+            received_at=received_at,
             correlation_id="cid",
             source_system="src",
             processing_component="comp",
@@ -312,7 +345,7 @@ class TestDatabaseClient(unittest.TestCase):
         row = mock_cursor.executemany.call_args[0][1][0]
         # Column order: ReceivedAt, StoredAt, CorrelationId, SourceSystem,
         #               ProcessingComponent, TargetSystem, RawPayload, XmlPayload
-        self.assertEqual(row, ("rcv", "st", "cid", "src", "comp", "tgt", "raw", "<xml/>"))
+        self.assertEqual(row, (received_at, fixed_stored_at, "cid", "src", "comp", "tgt", "raw", "<xml/>"))
 
     # ------------------------------------------------------------------
     # Context manager
@@ -341,5 +374,4 @@ class TestDatabaseClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 
