@@ -31,6 +31,9 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
 
     pid3_codes = _get_pid3_4_1_codes(msg)
     assigning_authorities = f"|{'|'.join(pid3_codes)}|" if pid3_codes else ""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("MPI properties debug: pid3_codes=%r assigning_authorities=%r", pid3_codes, assigning_authorities)
 
     return {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
