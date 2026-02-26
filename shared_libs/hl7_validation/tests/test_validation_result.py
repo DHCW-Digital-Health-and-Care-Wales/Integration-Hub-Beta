@@ -125,10 +125,7 @@ class TestConvertWithoutValidation(unittest.TestCase):
 
 
 class TestConvertEr7ToXmlComprehensive(unittest.TestCase):
-    """Comprehensive test of convert_er7_to_xml with full field assertions"""
-
     def test_convert_er7_to_xml_comprehensive_field_mapping(self) -> None:
-        """Test complete ER7 to XML conversion with all message fields"""
         er7_message = "\r".join(
             [
                 "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505444444|P|2.5|||||GBR||EN",
@@ -141,7 +138,6 @@ class TestConvertEr7ToXmlComprehensive(unittest.TestCase):
             ]
         )
 
-        # Use flow schema conversion (convert_er7_to_xml requires XSD files)
         xml_string = convert_er7_to_xml_with_flow_schema(er7_message, "phw")
 
         # Parse XML
