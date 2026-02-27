@@ -174,8 +174,8 @@ class TestGenericHandler(unittest.TestCase):
         self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
         self.assertEqual(tracking_metadata_properties["MessageType"], "A28")
-        self.assertEqual(tracking_metadata_properties["UpdateSource"], "108")
-        self.assertEqual(tracking_metadata_properties["AssigningAuthority"], "NHS")
+        self.assertEqual(tracking_metadata_properties["UpdateSources"], "|108|")
+        self.assertEqual(tracking_metadata_properties["AssigningAuthorities"], "|NHS|")
         self.assertEqual(tracking_metadata_properties["DateDeath"], "2023-01-15")
         self.assertEqual(tracking_metadata_properties["ReasonDeath"], "")
 
