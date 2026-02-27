@@ -298,7 +298,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        service_bus_message.delivery_count = 2
+        service_bus_message.delivery_count = 1  # Simulate a retry delivery attempt
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True

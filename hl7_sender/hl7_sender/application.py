@@ -190,9 +190,9 @@ def _process_message(
 
 
 def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
-    delivery_count = getattr(message, "delivery_count", 1)
+    delivery_count = getattr(message, "delivery_count", 0)
     try:
-        return int(delivery_count) <= 1
+        return int(delivery_count) <= 0
     except (TypeError, ValueError):
         return True
 
