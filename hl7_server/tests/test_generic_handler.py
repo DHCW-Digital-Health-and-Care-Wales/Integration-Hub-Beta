@@ -337,6 +337,23 @@ class TestGenericHandler(unittest.TestCase):
         self.assertIn("correlation_id", call_kwargs.kwargs)
         self.assertIn("source_system", call_kwargs.kwargs)
 
+    def test_message_stored_before_service_bus_send(self) -> None:
+        message_stored = {"value": False}
+
+        def _store_side_effect(*args: object, **kwargs: object) -> None:
+            message_stored["value"] = True
+
+        def _send_side_effect(*args: object, **kwargs: object) -> None:
+            self.assertTrue(message_stored["value"], "Message should be stored before sending to Service Bus")
+
+        self.mock_message_store.send_to_store.side_effect = _store_side_effect
+        self.mock_sender.send_text_message.side_effect = _send_side_effect
+
+        self.handler.reply()
+
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.mock_sender.send_text_message.assert_called_once()
+
     @patch("hl7_server.generic_handler.logger")
     def test_message_store_failure_does_not_block_ack(self, mock_logger: MagicMock) -> None:
         self.mock_message_store.send_to_store.side_effect = Exception("Store unavailable")

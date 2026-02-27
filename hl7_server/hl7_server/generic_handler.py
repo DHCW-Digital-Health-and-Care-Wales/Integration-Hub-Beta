@@ -138,12 +138,12 @@ class GenericHandler(AbstractHandler):
                 except Exception as e:
                     logger.warning("Failed to build flow-specific routing properties: %s", e)
 
+            # Non-blocking: attempt to store first so there is a persisted copy before forwarding.
+            self._send_to_message_store(tracking_metadata_properties, xml_payload)
+
             self._send_to_service_bus(message_control_id, tracking_metadata_properties)
 
             ack_message = self.create_ack(message_control_id, msg)
-
-            # Treat as non-blocking, send to message store after ACK generation to avoid delaying ACK response to sender
-            self._send_to_message_store(tracking_metadata_properties, xml_payload)
 
             self.event_logger.log_message_processed(self.incoming_message, "ACK generated successfully")
 
@@ -177,6 +177,11 @@ class GenericHandler(AbstractHandler):
         return ack_msg.to_mllp()
 
     def _send_to_message_store(self, tracking_metadata_properties: dict[str, str], xml_payload: str | None) -> None:
+        """
+        Send a message to the message store queue with XML payload.
+        NOTE: This is designed to be non-blocking and any exceptions are caught and logged only
+        to avoid impacting the ACK response to the sender.
+        """
         try:
             self.message_store_client.send_to_store(
                 message_received_at=tracking_metadata_properties.get(MESSAGE_RECEIVED_AT_KEY, ""),
