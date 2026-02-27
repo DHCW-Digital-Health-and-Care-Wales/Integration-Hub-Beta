@@ -237,7 +237,7 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
-    def test_process_message_sends_to_message_store(
+    def test_process_message_sends_to_message_store_before_sending(
         self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:
         (
@@ -251,9 +251,19 @@ class TestProcessMessage(unittest.TestCase):
             mock_message_store,
         ) = _setup()
         mock_parse_message.return_value = hl7_message
-        mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
         mock_convert_xml.return_value = "<xml>content</xml>"
+        message_stored = {"value": False}
+
+        def _store_side_effect(*args: object, **kwargs: object) -> None:
+            message_stored["value"] = True
+
+        def _send_side_effect(*args: object, **kwargs: object) -> str:
+            self.assertTrue(message_stored["value"], "Message should be stored before sending")
+            return "ACK"
+
+        mock_message_store.send_to_store.side_effect = _store_side_effect
+        mock_hl7_sender_client.send_message.side_effect = _send_side_effect
 
         _process_message(
             service_bus_message,
@@ -265,11 +275,47 @@ class TestProcessMessage(unittest.TestCase):
         )
 
         mock_message_store.send_to_store.assert_called_once()
+        mock_hl7_sender_client.send_message.assert_called_once_with(hl7_string)
         call_kwargs = mock_message_store.send_to_store.call_args.kwargs
         self.assertEqual(call_kwargs["raw_payload"], hl7_string)
         self.assertEqual(call_kwargs["xml_payload"], "<xml>content</xml>")
         self.assertIn("message_received_at", call_kwargs)
         self.assertIn("correlation_id", call_kwargs)
+
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
+    @patch("hl7_sender.application.convert_er7_to_xml")
+    def test_message_store_skipped_on_retry_delivery(
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+        service_bus_message.delivery_count = 2
+        mock_parse_message.return_value = hl7_message
+        mock_hl7_sender_client.send_message.return_value = "ACK"
+        mock_ack_processor.return_value = True
+        mock_convert_xml.return_value = "<xml/>"
+
+        result = _process_message(
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        )
+
+        self.assertTrue(result)
+        mock_message_store.send_to_store.assert_not_called()
+        mock_hl7_sender_client.send_message.assert_called_once_with(hl7_string)
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")

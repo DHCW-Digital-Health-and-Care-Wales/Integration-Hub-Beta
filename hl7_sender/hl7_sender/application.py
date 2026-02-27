@@ -136,6 +136,15 @@ def _process_message(
         message_id = msh_segment.msh_10.value
         logger.info(f"Message ID: {message_id}")
 
+        if _is_first_delivery_attempt(message):
+            _send_to_message_store(message_store_client, message_body, metadata)
+        else:
+            logger.info(
+                "Skipping message store send on retry attempt - CorrelationId: %s, DeliveryCount: %s",
+                meta["correlation_id"],
+                getattr(message, "delivery_count", "N/A"),
+            )
+
         throttler.wait_if_needed()
         ack_response = hl7_sender_client.send_message(message_body)
 
@@ -143,8 +152,6 @@ def _process_message(
 
         if ack_success:
             metric_sender.send_message_sent_metric()
-
-        _send_to_message_store(message_store_client, message_body, metadata)
 
         event_logger.log_message_processed(
             message_body,
@@ -182,6 +189,14 @@ def _process_message(
         return False
 
 
+def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
+    delivery_count = getattr(message, "delivery_count", 1)
+    try:
+        return int(delivery_count) <= 1
+    except (TypeError, ValueError):
+        return True
+
+
 def _send_to_message_store(
     message_store_client: MessageStoreClient,
     message_body: str,
@@ -195,7 +210,7 @@ def _send_to_message_store(
         try:
             xml_payload = convert_er7_to_xml(message_body)
         except Exception as e:
-            logger.warning("Failed to generate XML payload for message store: %s", e)
+            logger.error("Failed to generate XML payload for message store: %s", e)
 
         message_store_client.send_to_store(
             message_received_at=incoming_metadata.get(MESSAGE_RECEIVED_AT_KEY, ""),
