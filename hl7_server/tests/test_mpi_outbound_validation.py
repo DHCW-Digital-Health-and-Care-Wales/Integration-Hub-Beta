@@ -35,7 +35,7 @@ class TestMpiOutboundValidation(unittest.TestCase):
         message = parse_message(BASE_MPI_OUTBOUND_MESSAGE)
         message.pid.pid_2.cx_4.hd_1.value = ""
 
-        with self.assertRaisesRegex(ValidationException, "PID.2.4.1 UpdateSource is missing"):
+        with self.assertRaisesRegex(ValidationException, "PID.2.4.1 UpdateSources is missing"):
             _validate_mpi_outbound_specific_fields(message)
 
 
