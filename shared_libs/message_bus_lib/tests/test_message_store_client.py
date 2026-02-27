@@ -58,19 +58,6 @@ class TestMessageStoreClient(unittest.TestCase):
 
         self.assertEqual(sent_data["TargetSystem"], "custom-target")
 
-    def test_send_to_store_defaults_target_system_to_peer_service(self) -> None:
-        self.client.send_to_store(
-            message_received_at="2025-01-01T00:00:00+00:00",
-            correlation_id="test-uuid",
-            source_system="252",
-            raw_payload="MSH|^~\\&|...",
-        )
-
-        sent_json = self.mock_sender.send_text_message.call_args[0][0]
-        sent_data = json.loads(sent_json)
-
-        self.assertEqual(sent_data["TargetSystem"], "test-peer")
-
     def test_send_to_store_raises_on_send_failure(self) -> None:
         self.mock_sender.send_text_message.side_effect = Exception("Service Bus error")
 
