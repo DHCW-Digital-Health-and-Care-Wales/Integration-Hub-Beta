@@ -349,6 +349,25 @@ class TestGenericHandler(unittest.TestCase):
             "Failed to send to message store: %s", self.mock_message_store.send_to_store.side_effect
         )
 
+    @patch("hl7_server.generic_handler.convert_er7_to_xml")
+    @patch("hl7_server.generic_handler.logger")
+    def test_xml_payload_generation_failure_logs_error_and_emits_event(
+        self, mock_logger: MagicMock, mock_convert_xml: MagicMock
+    ) -> None:
+        mock_convert_xml.side_effect = Exception("Bad HL7")
+
+        result = self.handler.reply()
+
+        self.assertIsNotNone(result)
+        mock_logger.error.assert_any_call("Failed to generate XML payload for message store: Bad HL7")
+        self.mock_event_logger.log_validation_result.assert_any_call(
+            VALID_A28_MESSAGE,
+            "Failed to generate XML payload for message store: Bad HL7",
+            is_success=False,
+        )
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.assertIsNone(self.mock_message_store.send_to_store.call_args.kwargs["xml_payload"])
+
 
 if __name__ == "__main__":
     unittest.main()

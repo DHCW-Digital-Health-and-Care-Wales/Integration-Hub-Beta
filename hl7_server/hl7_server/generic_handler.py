@@ -102,7 +102,13 @@ class GenericHandler(AbstractHandler):
                 try:
                     xml_payload = convert_er7_to_xml(self.incoming_message)
                 except Exception as e:
-                    logger.warning("Failed to generate XML payload: %s", e)
+                    error_msg = f"Failed to generate XML payload for message store: {e}"
+                    logger.error(error_msg)
+                    self.event_logger.log_validation_result(
+                        self.incoming_message,
+                        error_msg,
+                        is_success=False,
+                    )
 
             if self.standard_version:
                 try:

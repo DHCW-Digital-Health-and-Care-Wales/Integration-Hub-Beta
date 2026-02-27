@@ -137,7 +137,7 @@ def _process_message(
         logger.info(f"Message ID: {message_id}")
 
         if _is_first_delivery_attempt(message):
-            _send_to_message_store(message_store_client, message_body, metadata)
+            _send_to_message_store(message_store_client, event_logger, message_body, metadata)
         else:
             logger.info(
                 "Skipping message store send on retry attempt - CorrelationId: %s, DeliveryCount: %s",
@@ -199,6 +199,7 @@ def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
 
 def _send_to_message_store(
     message_store_client: MessageStoreClient,
+    event_logger: EventLogger,
     message_body: str,
     metadata: dict[str, str] | None,
 ) -> None:
@@ -210,7 +211,13 @@ def _send_to_message_store(
         try:
             xml_payload = convert_er7_to_xml(message_body)
         except Exception as e:
-            logger.error("Failed to generate XML payload for message store: %s", e)
+            error_msg = f"Failed to generate XML payload for message store: {e}"
+            logger.error(error_msg)
+            event_logger.log_validation_result(
+                message_body,
+                error_msg,
+                is_success=False,
+            )
 
         message_store_client.send_to_store(
             message_received_at=incoming_metadata.get(MESSAGE_RECEIVED_AT_KEY, ""),

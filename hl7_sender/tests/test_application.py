@@ -351,6 +351,11 @@ class TestProcessMessage(unittest.TestCase):
         call_kwargs = mock_message_store.send_to_store.call_args.kwargs
         self.assertIsNone(call_kwargs["xml_payload"])
         self.assertEqual(call_kwargs["raw_payload"], hl7_string)
+        mock_event_logger.log_validation_result.assert_called_once_with(
+            hl7_string,
+            "Failed to generate XML payload for message store: Cannot parse",
+            is_success=False,
+        )
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
