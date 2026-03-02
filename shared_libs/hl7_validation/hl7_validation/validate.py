@@ -51,6 +51,7 @@ def validate_er7_with_flow(er7_string: str, flow_name: str) -> None:
             ("ADT", "A28"): "ADT_A05",
             ("ADT", "A31"): "ADT_A05",
             ("ADT", "A40"): "ADT_A39",
+            ("ORU", "R01"): "ORU_R01",
         }
         return mapping.get((message_type, trig))
 

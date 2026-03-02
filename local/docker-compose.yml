@@ -274,6 +274,7 @@ services:
   # Week 2: Added Service Bus integration to publish to transformer queue
   training-hl7-server:
     container_name: training-hl7-server
+    image: training-hl7-server:local
     build:
       context: ../training_hl7_server
       dockerfile: ./Dockerfile
@@ -302,6 +303,7 @@ services:
   # publishes to training-egress queue
   training-hl7-transformer:
     container_name: training-hl7-transformer
+    image: training-hl7-transformer:local
     build:
       context: ../training_hl7_transformer
       dockerfile: ./Dockerfile
@@ -337,6 +339,7 @@ services:
   # queue boundaries, a new session scope begins
   training-hl7-sender:
     container_name: training-hl7-sender
+    image: training-hl7-sender:local
     build:
       context: ../training_hl7_sender
       dockerfile: ./Dockerfile
@@ -359,6 +362,7 @@ services:
   # Reuses the production hl7_mock_receiver image with training config
   training-hl7-mock-receiver:
     container_name: training-hl7-mock-receiver
+    image: training-hl7-mock-receiver:local
     build:
       context: ../hl7_mock_receiver
       dockerfile: ./Dockerfile
@@ -382,6 +386,7 @@ services:
   # Alternative: Dedicated training receiver to avoid port conflicts and allow independent testing
   training-hl7v2-receiver:
     container_name: training-hl7v2-receiver
+    image: training-hl7v2-receiver:local
     build:
       context: ../training_hl7v2_receiver
       dockerfile: ./Dockerfile
@@ -409,6 +414,7 @@ services:
   # publishes to training-hl7v2-xform-egress queue
   training-hl7-verification:
     container_name: training-hl7-verification
+    image: training-hl7-verification:local
     build:
       context: ../training_hl7_verification
       dockerfile: ./Dockerfile

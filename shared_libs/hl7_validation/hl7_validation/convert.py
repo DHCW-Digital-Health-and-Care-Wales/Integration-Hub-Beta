@@ -14,10 +14,12 @@ from .utils.message_utils import (
 from .utils.structure_detection import (
     _detect_base_prefix,
     _load_message_structure,
+    _load_segment_group_paths,
     _resolve_base_dir,
 )
 from .utils.xml_schema_maps import (
     _load_hl7_type_maps,
+    _load_maps_from_structure_xsd,
     _load_segment_occurs_map,
     _load_segment_sequences,
 )
@@ -275,19 +277,25 @@ def _load_schema_maps(
     Dict[str, List[Tuple[str, Union[int, str], Union[int, str]]]],
 ]:
     base_dir = _resolve_base_dir(structure_xsd_path)
-    base_prefix = _detect_base_prefix(structure_xsd_path)
-    element_to_type, type_children, type_base = _load_hl7_type_maps(
-        base_dir, base_prefix
-    )
-    element_max_occurs = _load_segment_occurs_map(base_dir, base_prefix)
-    segment_sequences = _load_segment_sequences(base_dir, base_prefix)
-    return (
-        element_to_type,
-        type_children,
-        type_base,
-        element_max_occurs,
-        segment_sequences,
-    )
+    try:
+        base_prefix = _detect_base_prefix(structure_xsd_path)
+        element_to_type, type_children, type_base = _load_hl7_type_maps(
+            base_dir, base_prefix
+        )
+        element_max_occurs = _load_segment_occurs_map(base_dir, base_prefix)
+        segment_sequences = _load_segment_sequences(base_dir, base_prefix)
+        return (
+            element_to_type,
+            type_children,
+            type_base,
+            element_max_occurs,
+            segment_sequences,
+        )
+    except (FileNotFoundError, ValueError):
+        # Some flows provide self-contained structure XSDs with all types inline.
+        if not structure_xsd_path:
+            raise
+        return _load_maps_from_structure_xsd(structure_xsd_path)
 
 
 def _resolve_structure_id(
@@ -310,16 +318,26 @@ def _compute_structure_requirements(
     List[str],
     Dict[str, bool],
     Optional[int],
+    Dict[str, List[List[str]]],
+    Dict[Tuple[str, ...], str],
 ]:
     group_children_map: Dict[str, List[str]] = {}
     group_first_child: Dict[str, str] = {}
     root_order: List[str] = []
     required: Dict[str, bool] = {"EVN": False, "PV1": False}
+    segment_group_paths: Dict[str, List[List[str]]] = {}
+    group_path_first_segment: Dict[Tuple[str, ...], str] = {}
 
     if structure_xsd_path:
         root_sequence, group_children_map = _load_message_structure(
             structure_xsd_path, structure_id
         )
+        # Standalone schemas may define groups inline and not expose .CONTENT types.
+        if not group_children_map:
+            (
+                segment_group_paths,
+                group_path_first_segment,
+            ) = _load_segment_group_paths(structure_xsd_path, structure_id)
         group_first_child = {
             gname: children[0]
             for gname, children in group_children_map.items()
@@ -345,7 +363,15 @@ def _compute_structure_requirements(
         except ValueError:
             pv1_idx = None
 
-    return group_children_sets, group_first_child, root_order, required, pv1_idx
+    return (
+        group_children_sets,
+        group_first_child,
+        root_order,
+        required,
+        pv1_idx,
+        segment_group_paths,
+        group_path_first_segment,
+    )
 
 
 def _build_message_xml_tree(
@@ -361,27 +387,78 @@ def _build_message_xml_tree(
     root_order: List[str],
     required: Dict[str, bool],
     pv1_idx: Optional[int],
+    segment_group_paths: Dict[str, List[List[str]]],
+    group_path_first_segment: Dict[Tuple[str, ...], str],
 ) -> XElem:
     root = XElem(_qname(structure_id))
     current_group_name, current_group_node = None, None
     seen: DefaultDict[str, bool] = defaultdict(bool)
     msh7_value = extract_msh7_datetime(hl7_msg)
 
+    group_path_nodes: Dict[Tuple[str, ...], XElem] = {}
+    last_group_path: List[str] = []
+
     for segment in hl7_msg.children:
         seg_tag = str(segment.name)
 
-        new_group_name, new_group_node = _update_group_context(
-            seg_tag, group_children_sets, group_first_child, current_group_name
-        )
+        if segment_group_paths:
+            candidate_paths = segment_group_paths.get(seg_tag, [])
+            path: List[str] = []
+            if len(candidate_paths) == 1:
+                path = candidate_paths[0]
+            elif len(candidate_paths) > 1:
+                # Prefer path that best matches current context when segment exists in multiple groups.
+                path = max(
+                    candidate_paths,
+                    key=lambda p: sum(
+                        1
+                        for idx, name in enumerate(p)
+                        if idx < len(last_group_path) and last_group_path[idx] == name
+                    ),
+                )
 
-        if new_group_node is not None:
-            current_group_node = new_group_node
-            root.append(current_group_node)
-        elif new_group_name != current_group_name:
-            current_group_node = None
+            target_parent = root
+            if path:
+                restart_from_idx = None
+                for idx in range(len(path)):
+                    key = tuple(path[: idx + 1])
+                    if (
+                        key in group_path_nodes
+                        and group_path_first_segment.get(key) == seg_tag
+                    ):
+                        restart_from_idx = idx
+                        break
 
-        current_group_name = new_group_name
-        target_parent = current_group_node if current_group_node is not None else root
+                if restart_from_idx is not None:
+                    restart_prefix = tuple(path[: restart_from_idx + 1])
+                    for key in list(group_path_nodes.keys()):
+                        if key[: len(restart_prefix)] == restart_prefix:
+                            group_path_nodes.pop(key, None)
+
+                for idx, group_name in enumerate(path):
+                    key = tuple(path[: idx + 1])
+                    if key not in group_path_nodes:
+                        node = XElem(_qname(group_name))
+                        parent = root if idx == 0 else group_path_nodes[tuple(path[:idx])]
+                        parent.append(node)
+                        group_path_nodes[key] = node
+                    target_parent = group_path_nodes[key]
+                last_group_path = path
+            else:
+                last_group_path = []
+        else:
+            new_group_name, new_group_node = _update_group_context(
+                seg_tag, group_children_sets, group_first_child, current_group_name
+            )
+
+            if new_group_node is not None:
+                current_group_node = new_group_node
+                root.append(current_group_node)
+            elif new_group_name != current_group_name:
+                current_group_node = None
+
+            current_group_name = new_group_name
+            target_parent = current_group_node if current_group_node is not None else root
 
         insert_missing_required_segments(
             root,
@@ -441,6 +518,8 @@ def er7_to_hl7v2xml(
         root_order,
         required,
         pv1_idx,
+        segment_group_paths,
+        group_path_first_segment,
     ) = _compute_structure_requirements(structure_xsd_path, structure_id)
 
     root = _build_message_xml_tree(
@@ -456,6 +535,8 @@ def er7_to_hl7v2xml(
         root_order,
         required,
         pv1_idx,
+        segment_group_paths,
+        group_path_first_segment,
     )
 
     return tostring(root, encoding="unicode")

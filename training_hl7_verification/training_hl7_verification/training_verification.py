@@ -49,6 +49,8 @@ from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from hl7_validation import XmlValidationError, validate_er7_with_flow
+from hl7_validation.convert import er7_to_hl7v2xml
 
 from training_hl7_verification.app_config import VerificationConfig
 from lxml import etree
@@ -205,11 +207,13 @@ class TrainingVerification:
                 
                 if subject == "ADT_QUEUE":
                     print("✓ Detected subject: ADT_QUEUE")
+                    validate_er7_with_flow(raw_body, "phw")
                 elif subject == "MDM_QUEUE":
                     print("✓ Detected subject: MDM_QUEUE")
                 elif subject == "ORDERS_QUEUE":
                     print("✓ Detected subject: ORDERS_QUEUE")
                 elif subject == "RESULTS_QUEUE":
+                    #validate_er7_with_flow(raw_body, "wrrs")
                     print("✓ Detected subject: RESULTS_QUEUE")
                     # Do strict schema validation with the customised ORU_R01 xsd schema for training
                     schema_path = os.path.join(
@@ -224,9 +228,12 @@ class TrainingVerification:
                         schema_doc = etree.parse(schema_path)
                         schema = etree.XMLSchema(schema_doc)
                         
-                        # Get XML representation of the HL7 message
-                        # Use hl7apy's built-in XML generation
-                        xml_str = hl7_msg.serialize(encoding='utf-8', pretty_print=True)
+                        # Convert ER7 to HL7 v2 XML using shared validator converter.
+                        xml_str = er7_to_hl7v2xml(
+                            raw_body,
+                            structure_xsd_path=schema_path,
+                            override_structure_id="ORU_R01",
+                        )
                         xml_doc = etree.fromstring(xml_str)
                         
                         # Validate against schema

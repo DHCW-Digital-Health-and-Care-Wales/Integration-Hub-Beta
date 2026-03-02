@@ -37,6 +37,9 @@ dependencies = [
     # field-utils-lib: Utilities for copying and manipulating HL7 fields
     # Provides get_hl7_field_value, copy_segment_fields_in_range
     "field-utils-lib",
+
+    # hl7_validation_lib: HL7 ER7/XML validation utilities and exceptions
+    "hl7_validation_lib",
 ]
 
 # Tell uv where to find the shared_libs
@@ -44,6 +47,7 @@ dependencies = [
 [tool.uv.sources]
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 field-utils-lib = { path = "../shared_libs/field_utils_lib" }
+hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
 
 # Development dependencies - packages only needed during development
 [dependency-groups]

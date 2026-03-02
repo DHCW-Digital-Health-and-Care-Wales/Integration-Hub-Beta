@@ -1,0 +1,429 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="urn:hl7-org:v2xml" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="ORU_R01">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="MSH">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:string" name="MSH.1"/>
+              <xs:element type="xs:string" name="MSH.2"/>
+              <xs:element name="MSH.3">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="HD.1"/>
+                    <xs:element type="xs:string" name="HD.2"/>
+                    <xs:element type="xs:string" name="HD.3"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.4">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="HD.1"/>
+                    <xs:element type="xs:string" name="HD.2"/>
+                    <xs:element type="xs:string" name="HD.3"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.5">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="HD.1"/>
+                    <xs:element type="xs:string" name="HD.2"/>
+                    <xs:element type="xs:string" name="HD.3"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.6">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="HD.1"/>
+                    <xs:element type="xs:string" name="HD.2"/>
+                    <xs:element type="xs:string" name="HD.3"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.7">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:long" name="TS.1"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.9">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="MSG.1"/>
+                    <xs:element type="xs:string" name="MSG.2"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:short" name="MSH.10"/>
+              <xs:element name="MSH.11">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="PT.1"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="MSH.12">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="VID.1"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="MSH.15"/>
+              <xs:element type="xs:string" name="MSH.16"/>
+              <xs:element type="xs:string" name="MSH.17"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="ORU_R01.PATIENT_RESULT">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ORU_R01.PATIENT">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="PID">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:byte" name="PID.1"/>
+                          <xs:element name="PID.3" maxOccurs="unbounded" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="CX.1"/>
+                                <xs:element name="CX.4">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="HD.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:string" name="CX.5"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="PID.5">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="XPN.1">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="FN.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:string" name="XPN.2"/>
+                                <xs:element type="xs:string" name="XPN.3"/>
+                                <xs:element type="xs:string" name="XPN.7"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="PID.7">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:int" name="TS.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="PID.8"/>
+                          <xs:element name="PID.11">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="XAD.1">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="SAD.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:string" name="XAD.2"/>
+                                <xs:element type="xs:string" name="XAD.3"/>
+                                <xs:element type="xs:string" name="XAD.5"/>
+                                <xs:element type="xs:string" name="XAD.7"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="ORU_R01.VISIT">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="PV1">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:byte" name="PV1.1"/>
+                                <xs:element type="xs:string" name="PV1.2"/>
+                                <xs:element name="PV1.3">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="PL.9"/>
+                                      <xs:element name="PL.10">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element type="xs:string" name="EI.1"/>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="PV1.8">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:int" name="XCN.1"/>
+                                      <xs:element name="XCN.2">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element type="xs:string" name="FN.1"/>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="xs:string" name="XCN.3"/>
+                                      <xs:element type="xs:string" name="XCN.6"/>
+                                      <xs:element name="XCN.9">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element type="xs:string" name="HD.1"/>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:float" name="PV1.10"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="ORU_R01.ORDER_OBSERVATION">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="ORC">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="ORC.1"/>
+                          <xs:element name="ORC.3">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="EI.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="ORC.4">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="EI.1"/>
+                                <xs:element type="xs:string" name="EI.2"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="ORC.5"/>
+                          <xs:element name="ORC.12">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="XCN.1"/>
+                                <xs:element name="XCN.2">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="FN.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="OBR">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:byte" name="OBR.1"/>
+                          <xs:element name="OBR.3">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="EI.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="OBR.4">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="CE.1"/>
+                                <xs:element type="xs:string" name="CE.2"/>
+                                <xs:element type="xs:string" name="CE.3"/>
+                                <xs:element type="xs:string" name="CE.4"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="OBR.7">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:int" name="TS.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="OBR.14">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:long" name="TS.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="OBR.15">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="SPS.1">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CWE.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="SPS.4">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CWE.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="OBR.16">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="XCN.1"/>
+                                <xs:element name="XCN.2">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="FN.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="OBR.20"/>
+                          <xs:element name="OBR.22">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:long" name="TS.1"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="OBR.24"/>
+                          <xs:element type="xs:string" name="OBR.25"/>
+                          <xs:element name="OBR.32">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="NDL.1">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CNN.1"/>
+                                      <xs:element type="xs:string" name="CNN.2"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="NTE" maxOccurs="unbounded" minOccurs="0">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:byte" name="NTE.1" minOccurs="0"/>
+                          <xs:element name="NTE.3">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element name="escape" maxOccurs="unbounded" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="xs:string">
+                                        <xs:attribute type="xs:string" name="V" use="optional"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="ORU_R01.OBSERVATION" maxOccurs="unbounded" minOccurs="0">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="OBX">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:byte" name="OBX.1"/>
+                                <xs:element type="xs:string" name="OBX.2"/>
+                                <xs:element name="OBX.3">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CE.1"/>
+                                      <xs:element type="xs:string" name="CE.2"/>
+                                      <xs:element type="xs:string" name="CE.3"/>
+                                      <xs:element type="xs:string" name="CE.4"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:string" name="OBX.5"/>
+                                <xs:element name="OBX.6" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CE.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element type="xs:string" name="OBX.7" minOccurs="0"/>
+                                <xs:element type="xs:string" name="OBX.11"/>
+                                <xs:element name="OBX.14">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:long" name="TS.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="OBX.17">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="CE.1"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="NTE" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:byte" name="NTE.1"/>
+                                <xs:element type="xs:string" name="NTE.3"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -86,3 +86,65 @@ def _load_message_structure(
     return root_sequence, group_children_map
 
 
+def _load_segment_group_paths(
+    structure_xsd_path: str,
+    structure_id: str,
+) -> Tuple[Dict[str, List[List[str]]], Dict[Tuple[str, ...], str]]:
+    """
+    Build a segment->group path map for standalone structure XSDs that use nested
+    inline group elements (e.g. ORU_R01.PATIENT_RESULT).
+    """
+    tree = ET.parse(structure_xsd_path)
+    root = tree.getroot()
+    xs = "{http://www.w3.org/2001/XMLSchema}"
+
+    top = None
+    for el in root.findall(f"{xs}element"):
+        if el.get("name") == structure_id:
+            top = el
+            break
+    if top is None:
+        return {}
+
+    top_seq = top.find(f"{xs}complexType/{xs}sequence")
+    if top_seq is None:
+        return {}
+
+    segment_group_paths: Dict[str, List[List[str]]] = {}
+    group_first_segment: Dict[Tuple[str, ...], str] = {}
+
+    def _first_descendant_segment(sequence_el) -> str | None:
+        for child in sequence_el.findall(f"{xs}element"):
+            child_name = child.get("name") or child.get("ref")
+            if not child_name:
+                continue
+            nested_seq = child.find(f"{xs}complexType/{xs}sequence")
+            if "." not in child_name:
+                return child_name
+            if nested_seq is not None:
+                nested_first = _first_descendant_segment(nested_seq)
+                if nested_first:
+                    return nested_first
+        return None
+
+    def _walk(sequence_el, group_path: List[str]) -> None:
+        for child in sequence_el.findall(f"{xs}element"):
+            child_name = child.get("name") or child.get("ref")
+            if not child_name:
+                continue
+
+            nested_seq = child.find(f"{xs}complexType/{xs}sequence")
+
+            if "." in child_name and nested_seq is not None:
+                new_path = [*group_path, child_name]
+                first_segment = _first_descendant_segment(nested_seq)
+                if first_segment:
+                    group_first_segment[tuple(new_path)] = first_segment
+                _walk(nested_seq, new_path)
+                continue
+
+            if "." not in child_name:
+                segment_group_paths.setdefault(child_name, []).append(group_path.copy())
+
+    _walk(top_seq, [])
+    return segment_group_paths, group_first_segment
