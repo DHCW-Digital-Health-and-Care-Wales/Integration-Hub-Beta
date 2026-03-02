@@ -79,7 +79,6 @@ uv run python -m unittest discover tests
 - **SERVICE_BUS_NAMESPACE** - Service bus namespace (optional)
 - **INGRESS_QUEUE_NAME** - Queue to receive messages from (required)
 - **EGRESS_QUEUE_NAME** - Queue to send transformed messages to (required)
-- **AUDIT_QUEUE_NAME** - Audit logging queue (required)
 - **WORKFLOW_ID** - Workflow identifier (required)
 - **MICROSERVICE_ID** - Service identifier (required)
 - **HEALTH_CHECK_HOST** - Health check hostname (optional, default: 127.0.0.1)

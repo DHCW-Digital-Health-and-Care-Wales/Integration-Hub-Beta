@@ -38,11 +38,7 @@ class TestProcessPhwMessage(unittest.TestCase):
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
     @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
-    def test_process_message_success(
-        self,
-        mock_transform_dod: MagicMock,
-        mock_transform_datetime: MagicMock
-    ) -> None:
+    def test_process_message_success(self, mock_transform_dod: MagicMock, mock_transform_datetime: MagicMock) -> None:
         # Arrange
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
@@ -82,9 +78,7 @@ class TestProcessPhwMessage(unittest.TestCase):
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
     @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
     def test_process_message_with_valid_date_of_death(
-        self,
-        mock_transform_dod: MagicMock,
-        mock_transform_datetime: MagicMock
+        self, mock_transform_dod: MagicMock, mock_transform_datetime: MagicMock
     ) -> None:
         # Arrange
         created_datetime = "2025-05-22 10:30:00"
@@ -118,10 +112,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.assertTrue(result)
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
-    def test_process_message_failure_due_to_transform(
-        self,
-        mock_transform_datetime: MagicMock
-    ) -> None:
+    def test_process_message_failure_due_to_transform(self, mock_transform_datetime: MagicMock) -> None:
         # Arrange
         created_datetime = "invalid_datetime"
         hl7_message = Message("ADT_A01")
@@ -173,7 +164,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_health_check: MagicMock,
         mock_factory: MagicMock,
         mock_read_env_config: MagicMock,
-        mock_event_logger: MagicMock
+        mock_event_logger: MagicMock,
     ) -> None:
         # Arrange
         # Create proper context manager mocks for all clients
@@ -204,7 +195,6 @@ class TestProcessPhwMessage(unittest.TestCase):
             egress_queue_name="egress_queue",
             egress_session_id=None,
             service_bus_namespace="service_bus_namespace",
-            audit_queue_name=None,
             workflow_id="workflow_id",
             microservice_id="microservice_id",
             health_check_hostname="localhost",

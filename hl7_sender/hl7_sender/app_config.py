@@ -14,7 +14,7 @@ class AppConfig:
     receiver_mllp_port: int
     health_check_hostname: str | None
     health_check_port: int | None
-    audit_queue_name: str
+    message_store_queue_name: str
     workflow_id: str
     microservice_id: str
     health_board: str
@@ -33,7 +33,7 @@ class AppConfig:
             receiver_mllp_port=_read_required_int_env("RECEIVER_MLLP_PORT"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
-            audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
+            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),
@@ -46,6 +46,7 @@ class AppConfig:
 def _read_env(name: str) -> str | None:
     return os.getenv(name)
 
+
 def _read_required_env(name: str) -> str:
     value = os.getenv(name)
     if value is None or value.strip() == "":
@@ -53,11 +54,13 @@ def _read_required_env(name: str) -> str:
     else:
         return value
 
+
 def _read_int_env(name: str) -> int | None:
     value = os.getenv(name)
     if value is None:
         return None
     return int(value)
+
 
 def _read_positive_int_env(name: str) -> int | None:
     value = _read_int_env(name)
@@ -66,6 +69,7 @@ def _read_positive_int_env(name: str) -> int | None:
     if value <= 0:
         raise ValueError(f"{name} must be a positive integer when provided")
     return value
+
 
 def _read_required_int_env(name: str) -> int:
     value = _read_required_env(name)

@@ -17,7 +17,6 @@ class AppConfig:
     egress_queue_name: str | None
     egress_session_id: str | None
     service_bus_namespace: str | None
-    audit_queue_name: str | None
     workflow_id: str | None
     microservice_id: str | None
     health_check_hostname: str | None
@@ -34,7 +33,6 @@ class AppConfig:
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
-            audit_queue_name=_read_env("AUDIT_QUEUE_NAME", required=False),
             workflow_id=_read_env("WORKFLOW_ID", required=True),
             microservice_id=_read_env("MICROSERVICE_ID", required=True),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST", required=False),
@@ -64,14 +62,15 @@ class TransformerConfig(AppConfig):
                 MAX_BATCH_SIZE = config.getint("DEFAULT", "MAX_BATCH_SIZE")
                 logger.debug(f"MAX_BATCH_SIZE set to {MAX_BATCH_SIZE} from config file")
             except ValueError as e:
-                logger.warning(f"Failed to parse MAX_BATCH_SIZE from config file, using default value of 1: {e}")
+                logger.warning(
+                    f"Failed to parse MAX_BATCH_SIZE from config file, using default value of 1: {e}"
+                )
         else:
-            logger.debug("MAX_BATCH_SIZE not found in config file, using default value of 1")
+            logger.debug(
+                "MAX_BATCH_SIZE not found in config file, using default value of 1"
+            )
 
-        return cls(
-            **asdict(app_config),
-            MAX_BATCH_SIZE=MAX_BATCH_SIZE
-        )
+        return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
 
 
 def _read_env(name: str, required: bool = False) -> str | None:

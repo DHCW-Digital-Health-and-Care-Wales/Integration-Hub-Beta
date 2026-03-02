@@ -294,6 +294,8 @@ def _load_schema_maps(
     Dict[str, Union[int, str]],
     Dict[str, List[Tuple[str, Union[int, str], Union[int, str]]]],
 ]:
+    if not structure_xsd_path:
+        return ({}, {}, {}, {}, {})
     base_dir = _resolve_base_dir(structure_xsd_path)
     base_prefix = _detect_base_prefix(structure_xsd_path)
     element_to_type, type_children, type_base = _load_hl7_type_maps(base_dir, base_prefix)

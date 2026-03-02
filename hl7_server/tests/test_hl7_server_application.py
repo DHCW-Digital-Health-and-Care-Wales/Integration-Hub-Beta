@@ -12,7 +12,7 @@ ENV_VARS_QUEUE: Dict[str, str] = {
     "PORT": "2576",
     "EGRESS_QUEUE_NAME": "egress_queue",
     "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
-    "AUDIT_QUEUE_NAME": "audit_queue",
+    "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
     "HEALTH_BOARD": "test-health-board",
@@ -27,7 +27,7 @@ ENV_VARS_TOPIC: Dict[str, str] = {
     "EGRESS_TOPIC_NAME": "egress_topic",
     "EGRESS_SESSION_ID": "egress_session",
     "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
-    "AUDIT_QUEUE_NAME": "audit_queue",
+    "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
     "WORKFLOW_ID": "test-workflow",
     "MICROSERVICE_ID": "test-service",
     "HEALTH_BOARD": "test-health-board",
@@ -76,6 +76,7 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
         self.app.stop_server()
 
         self._assert_shutdown(server, thread, health_check)
+        self.assertIsNotNone(self.app.message_store_client)
 
     def test_signal_handler_shutdown(
         self,
@@ -138,7 +139,8 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self.app.start_server()
 
-        mock_factory_instance.create_queue_sender_client.assert_called_once_with("egress_queue", None)
+        mock_factory_instance.create_queue_sender_client.assert_any_call("egress_queue", None)
+        mock_factory_instance.create_queue_sender_client.assert_any_call("messagestore-queue")
         mock_factory_instance.create_topic_sender_client.assert_not_called()
 
         self.app.stop_server()
@@ -185,7 +187,7 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         self.app.start_server()
 
         mock_factory_instance.create_topic_sender_client.assert_called_once_with("egress_topic", "egress_session")
-        mock_factory_instance.create_queue_sender_client.assert_not_called()
+        mock_factory_instance.create_queue_sender_client.assert_called_once_with("messagestore-queue")
 
         self.app.stop_server()
 

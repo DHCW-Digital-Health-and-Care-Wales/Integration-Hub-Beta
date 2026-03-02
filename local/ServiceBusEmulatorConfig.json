@@ -89,7 +89,7 @@
             }
           },
           {
-            "Name": "audit-queue",
+            "Name": "local-inthub-messagestore",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",

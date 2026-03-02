@@ -6,7 +6,6 @@ from hl7_server.app_config import DEFAULT_MAX_MESSAGE_SIZE_BYTES, AppConfig
 
 
 class TestAppConfig(unittest.TestCase):
-
     @patch("hl7_server.app_config.os.getenv")
     def test_read_env_config_returns_config_with_defaults(self, mock_getenv: Mock) -> None:
         def getenv_side_effect(name: str) -> Optional[str]:
@@ -14,7 +13,7 @@ class TestAppConfig(unittest.TestCase):
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 "SERVICE_BUS_NAMESPACE": "namespace",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
@@ -24,7 +23,7 @@ class TestAppConfig(unittest.TestCase):
                 "HEALTH_CHECK_HOST": "localhost",
                 "HEALTH_CHECK_PORT": "8080",
                 "HL7_VALIDATION_FLOW": "test_flow",
-                "HL7_VALIDATION_STANDARD": "2.5"
+                "HL7_VALIDATION_STANDARD": "2.5",
                 # MAX_MESSAGE_SIZE_BYTES intentionally omitted to test default
             }
             return values.get(name)
@@ -36,7 +35,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.connection_string, "conn_str")
         self.assertEqual(config.egress_queue_name, "egress_queue")
         self.assertEqual(config.service_bus_namespace, "namespace")
-        self.assertEqual(config.audit_queue_name, "audit-queue")
+        self.assertEqual(config.message_store_queue_name, "messagestore-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
         self.assertEqual(config.microservice_id, "test-microservice")
         self.assertEqual(config.hl7_version, "2.5.1")
@@ -54,12 +53,12 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
                 "PEER_SERVICE": "test-service",
-                "MAX_MESSAGE_SIZE_BYTES": "2097152"  # 2MB custom size
+                "MAX_MESSAGE_SIZE_BYTES": "2097152",  # 2MB custom size
             }
             return values.get(name)
 
@@ -73,12 +72,12 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
                 "PEER_SERVICE": "test-service",
-                "MAX_MESSAGE_SIZE_BYTES": "104857601"  # 1 byte over 100MB limit
+                "MAX_MESSAGE_SIZE_BYTES": "104857601",  # 1 byte over 100MB limit
             }
             return values.get(name)
 
@@ -97,12 +96,12 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
                 "PEER_SERVICE": "test-service",
-                "MAX_MESSAGE_SIZE_BYTES": "104857600"  # Exactly 100MB
+                "MAX_MESSAGE_SIZE_BYTES": "104857600",  # Exactly 100MB
             }
             return values.get(name)
 
@@ -116,11 +115,11 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
-                # AUDIT_QUEUE_NAME intentionally omitted to test required field validation
+                # MESSAGE_STORE_QUEUE_NAME intentionally omitted to test required field validation
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
-                "PEER_SERVICE": "test-service"
+                "PEER_SERVICE": "test-service",
             }
             return values.get(name)
 
@@ -136,11 +135,11 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             required_values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
-                "PEER_SERVICE": "test-service"
+                "PEER_SERVICE": "test-service",
             }
             return required_values.get(name)  # Returns None for optional fields
 
@@ -150,7 +149,7 @@ class TestAppConfig(unittest.TestCase):
 
         # Verify required fields are loaded
         self.assertEqual(config.egress_queue_name, "egress_queue")
-        self.assertEqual(config.audit_queue_name, "audit-queue")
+        self.assertEqual(config.message_store_queue_name, "messagestore-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
         self.assertEqual(config.microservice_id, "test-microservice")
 

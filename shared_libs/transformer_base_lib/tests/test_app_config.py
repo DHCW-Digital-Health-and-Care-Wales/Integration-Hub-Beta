@@ -16,7 +16,6 @@ class TestAppConfig(unittest.TestCase):
                 "EGRESS_QUEUE_NAME": "topic",
                 "EGRESS_SESSION_ID": "out_session_id",
                 "SERVICE_BUS_NAMESPACE": "namespace",
-                "AUDIT_QUEUE_NAME": "audit_queue",
                 "WORKFLOW_ID": "workflow_id",
                 "MICROSERVICE_ID": "microservice_id",
                 "HEALTH_CHECK_HOST": "localhost",
@@ -33,19 +32,20 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.egress_queue_name, "topic")
         self.assertEqual(config.egress_session_id, "out_session_id")
         self.assertEqual(config.service_bus_namespace, "namespace")
-        self.assertEqual(config.audit_queue_name, "audit_queue")
         self.assertEqual(config.workflow_id, "workflow_id")
         self.assertEqual(config.microservice_id, "microservice_id")
         self.assertEqual(config.health_check_hostname, "localhost")
         self.assertEqual(config.health_check_port, 8080)
 
     @patch("transformer_base_lib.app_config.os.getenv")
-    def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv: MagicMock) -> None:
+    def test_read_env_config_missing_required_env_var_raises_error(
+        self, mock_getenv: MagicMock
+    ) -> None:
         mock_getenv.return_value = None
         with self.assertRaises(RuntimeError) as context:
             AppConfig.read_env_config()
         self.assertIn("Missing required configuration", str(context.exception))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
