@@ -70,6 +70,10 @@ class GenericHandler(AbstractHandler):
                 self.incoming_message, f"Valid HL7 message - Type: {message_type}", is_success=True
             )
 
+            message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
+            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
+            correlation_id = tracking_metadata_properties.get(CORRELATION_ID_KEY, "")
+
             xml_payload: str | None = None
 
             # Flow validation also generates XML, used for the message store
@@ -89,12 +93,17 @@ class GenericHandler(AbstractHandler):
 
                     xml_payload = validation_result.xml_string
                 except XmlValidationError as e:
-                    error_msg = f"XML validation failed for flow '{self.flow_name}': {e}"
-                    logger.error(error_msg)
-                    self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
-                    self.event_logger.log_message_failed(
-                        self.incoming_message, error_msg, "XML schema validation failed"
+                    error_msg = (
+                        f"XML validation failed for flow '{self.flow_name}': {e} (CorrelationId: {correlation_id})"
                     )
+                    logger.error(error_msg)
+                    self.event_logger.log_validation_result(
+                        self.incoming_message, error_msg, is_success=False, correlation_id=correlation_id
+                    )
+                    self.event_logger.log_message_failed(
+                        self.incoming_message, error_msg, "XML schema validation failed", correlation_id=correlation_id
+                    )
+                    self._send_to_message_store(tracking_metadata_properties, xml_payload=None)
                     raise
 
             # For flows without schema-aware XML (e.g. MPI) or no flow, try and generate basic XML
@@ -102,12 +111,15 @@ class GenericHandler(AbstractHandler):
                 try:
                     xml_payload = convert_er7_to_xml(self.incoming_message)
                 except Exception as e:
-                    error_msg = f"Failed to generate XML payload for message store: {e}"
+                    error_msg = (
+                        f"Failed to generate XML payload for message store: {e} (CorrelationId: {correlation_id})"
+                    )
                     logger.error(error_msg)
                     self.event_logger.log_validation_result(
                         self.incoming_message,
                         error_msg,
                         is_success=False,
+                        correlation_id=correlation_id,
                     )
 
             if self.standard_version:
@@ -119,16 +131,18 @@ class GenericHandler(AbstractHandler):
                         is_success=True,
                     )
                 except XmlValidationError as e:
-                    error_msg = f"Standard validation error: {e}"
+                    error_msg = f"Standard validation error: {e} (CorrelationId: {correlation_id})"
                     logger.error(error_msg)
-                    self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
+                    self.event_logger.log_validation_result(
+                        self.incoming_message, error_msg, is_success=False, correlation_id=correlation_id
+                    )
                     self.event_logger.log_message_failed(
-                        self.incoming_message, error_msg, "Standard HL7 validation failed"
+                        self.incoming_message,
+                        error_msg,
+                        "Standard HL7 validation failed",
+                        correlation_id=correlation_id,
                     )
                     raise
-
-            message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
-            tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
 
             flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if flow_property_builder:

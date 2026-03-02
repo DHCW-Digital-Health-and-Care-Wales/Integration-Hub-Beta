@@ -217,6 +217,7 @@ def _send_to_message_store(
                 message_body,
                 error_msg,
                 is_success=False,
+                correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
             )
 
         message_store_client.send_to_store(

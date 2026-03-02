@@ -355,6 +355,7 @@ class TestProcessMessage(unittest.TestCase):
             hl7_string,
             "Failed to generate XML payload for message store: Cannot parse",
             is_success=False,
+            correlation_id=call_kwargs.get("correlation_id", ""),
         )
 
     @patch("hl7_sender.application.parse_message")

@@ -267,10 +267,15 @@ class TestGenericHandler(unittest.TestCase):
             handler.reply()
 
         mock_logger.error.assert_called()
-        self.mock_event_logger.log_validation_result.assert_any_call(
-            VALID_A28_MESSAGE,
-            "Standard validation error: Standard HL7 v2.5 validation failed: Missing PV1",
-            is_success=False,
+        standard_validation_calls = self.mock_event_logger.log_validation_result.call_args_list
+        self.assertTrue(
+            any(
+                call.args[0] == VALID_A28_MESSAGE
+                and call.args[1].startswith("Standard validation error: Standard HL7 v2.5 validation failed")
+                and call.kwargs.get("is_success") is False
+                and call.kwargs.get("correlation_id") is not None
+                for call in standard_validation_calls
+            )
         )
         self.assertEqual(self.mock_event_logger.log_message_failed.call_count, 2)
         self.mock_sender.send_text_message.assert_not_called()
@@ -376,14 +381,53 @@ class TestGenericHandler(unittest.TestCase):
         result = self.handler.reply()
 
         self.assertIsNotNone(result)
-        mock_logger.error.assert_any_call("Failed to generate XML payload for message store: Bad HL7")
-        self.mock_event_logger.log_validation_result.assert_any_call(
-            VALID_A28_MESSAGE,
-            "Failed to generate XML payload for message store: Bad HL7",
-            is_success=False,
+        self.assertTrue(
+            any(
+                call.args and call.args[0].startswith("Failed to generate XML payload for message store: Bad HL7")
+                for call in mock_logger.error.call_args_list
+            )
+        )
+        xml_failure_calls = self.mock_event_logger.log_validation_result.call_args_list
+        self.assertTrue(
+            any(
+                call.args[0] == VALID_A28_MESSAGE
+                and call.args[1].startswith("Failed to generate XML payload for message store: Bad HL7")
+                and call.kwargs.get("is_success") is False
+                and call.kwargs.get("correlation_id") is not None
+                for call in xml_failure_calls
+            )
         )
         self.mock_message_store.send_to_store.assert_called_once()
         self.assertIsNone(self.mock_message_store.send_to_store.call_args.kwargs["xml_payload"])
+
+    @patch("hl7_server.generic_handler.validate_and_convert_parsed_message_with_flow_schema")
+    def test_flow_xml_validation_failure_sends_to_store_and_logs_correlation(
+        self, mock_validate_flow: MagicMock
+    ) -> None:
+        validation_result = MagicMock()
+        validation_result.is_valid = False
+        validation_result.error_message = "Schema mismatch"
+        validation_result.xml_string = None
+        mock_validate_flow.return_value = validation_result
+
+        handler = GenericHandler(
+            VALID_A28_MESSAGE,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="252",
+            message_store_client=self.mock_message_store,
+            flow_name="phw",
+        )
+
+        with self.assertRaises(XmlValidationError):
+            handler.reply()
+
+        self.mock_message_store.send_to_store.assert_called_once()
+        failed_call_args = self.mock_event_logger.log_message_failed.call_args_list[0][0]
+        self.assertIn("CorrelationId:", failed_call_args[1])
 
 
 if __name__ == "__main__":
