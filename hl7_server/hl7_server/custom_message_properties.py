@@ -76,7 +76,7 @@ def _extract_cx_4_hd_1(rep: Any) -> str:
         return (rep.cx_4.hd_1.value.value or "").strip()
     except Exception:
         return ""
-    
+
 def _pipe_wrap(values: list[str]) -> str:
     return f"|{'|'.join(values)}|" if values else ""
 
