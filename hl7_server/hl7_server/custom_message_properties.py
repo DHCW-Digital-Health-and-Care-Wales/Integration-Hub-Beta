@@ -45,7 +45,6 @@ def _get_pid_4_1_codes(msg: Message, pid_field: str) -> list[str]:
     codes: list[str] = []
     seen: set[str] = set()
 
-    # keep compatibility with tests that patch this path
     single = (get_hl7_field_value(msg, f"pid.{pid_field}.cx_4.hd_1") or "").strip()
     if single:
         seen.add(single)
