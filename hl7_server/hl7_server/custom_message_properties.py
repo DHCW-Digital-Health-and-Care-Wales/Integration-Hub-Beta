@@ -24,10 +24,10 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
     }
 
 def build_mpi_properties(msg: Message) -> dict[str, str]:
-    pid2_codes = _get_pid_4_1_codes(msg, "pid_2")
+    pid2_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_2")
     update_sources = _pipe_wrap(pid2_codes)
 
-    pid3_codes = _get_pid_4_1_codes(msg, "pid_3")
+    pid3_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_3")
     assigning_authorities = _pipe_wrap(pid3_codes)
 
     return {
@@ -38,10 +38,10 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
         "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
     }
 
-def get_pid_4_1_codes(msg: Message, pid_field: str = "pid_3") -> list[str]:
-    return _get_pid_4_1_codes(msg, pid_field)
+def get_cx_4_hd_1_segment_codes(msg: Message, pid_field: str = "pid_3") -> list[str]:
+    return _get_cx_4_hd_1_segment_codes(msg, pid_field)
 
-def _get_pid_4_1_codes(msg: Message, pid_field: str) -> list[str]:
+def _get_cx_4_hd_1_segment_codes(msg: Message, pid_field: str) -> list[str]:
     codes: list[str] = []
     seen: set[str] = set()
 
