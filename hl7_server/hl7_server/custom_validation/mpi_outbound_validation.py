@@ -1,7 +1,7 @@
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
 
-from hl7_server.custom_message_properties import get_pid_4_1_codes
+from hl7_server.custom_message_properties import get_cx_4_hd_1_segment_codes
 from hl7_server.exceptions.validation_exception import ValidationException
 
 ALLOWED_MPI_MESSAGE_TYPES: set[str] = {"A28", "A31", "A40"}
@@ -16,6 +16,6 @@ def _validate_mpi_outbound_specific_fields(message: Message) -> None:
     if message_type not in ALLOWED_MPI_MESSAGE_TYPES:
         raise ValidationException(f"Unsupported message type '{message_type}' for MPI outbound flow")
 
-    update_sources = get_pid_4_1_codes(message, "pid_2")
+    update_sources = get_cx_4_hd_1_segment_codes(message, "pid_2")
     if not update_sources:
         raise ValidationException("PID.2.4.1 UpdateSources is missing from the MPI outbound message")
