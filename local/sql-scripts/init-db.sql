@@ -38,3 +38,25 @@ IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'mon
         );
     END;
 GO
+
+-- Create MessageReplayQueue Table
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'monitoring' AND TABLE_NAME = 'MessageReplayQueue')
+    BEGIN
+        CREATE TABLE monitoring.MessageReplayQueue (
+            ReplayId        BIGINT IDENTITY(1,1) PRIMARY KEY,
+            ReplayBatchId   UNIQUEIDENTIFIER NOT NULL,
+            MessageId       BIGINT NOT NULL,
+            Status          VARCHAR(20) NOT NULL DEFAULT 'Pending',
+            CreatedAt       DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+            ProcessedAt     DATETIME2(3) NULL
+        );
+
+        CREATE UNIQUE INDEX IX_ReplayQueue_Batch_Message
+        ON monitoring.MessageReplayQueue (ReplayBatchId, MessageId);
+
+        CREATE INDEX IX_ReplayQueue_Pending
+        ON monitoring.MessageReplayQueue (ReplayBatchId, ReplayId)
+        INCLUDE (MessageId)
+        WHERE Status IN ('Pending', 'Failed');
+    END;
+GO
