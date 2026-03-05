@@ -1,7 +1,5 @@
-from field_utils_lib import get_hl7_field_value
+from field_utils_lib import get_cx_4_hd_1_segment_codes, get_hl7_field_value
 from hl7apy.core import Message
-
-from hl7_server.custom_message_properties import get_cx_4_hd_1_segment_codes
 from hl7_server.exceptions.validation_exception import ValidationException
 
 ALLOWED_MPI_MESSAGE_TYPES: set[str] = {"A28", "A31", "A40"}
