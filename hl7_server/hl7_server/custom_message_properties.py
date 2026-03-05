@@ -30,10 +30,10 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
     }
 
 def build_mpi_properties(msg: Message) -> dict[str, str]:
-    pid2_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_2")
+    pid2_codes = get_cx_4_hd_1_segment_codes(msg, "pid_2")
     update_sources = _pipe_wrap(pid2_codes)
 
-    pid3_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_3")
+    pid3_codes = get_cx_4_hd_1_segment_codes(msg, "pid_3")
     assigning_authorities = _pipe_wrap(pid3_codes)
 
     return {
@@ -137,22 +137,6 @@ def _normalize_repetitions(value: Any | None) -> list[Any]:
         return [value]
     if isinstance(value, Iterable):
         return list(value)
-    return [value]
-
-def build_mpi_properties(msg: Message) -> dict[str, str]:
-    pid2_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_2")
-    update_sources = _pipe_wrap(pid2_codes)
-
-    pid3_codes = _get_cx_4_hd_1_segment_codes(msg, "pid_3")
-    assigning_authorities = _pipe_wrap(pid3_codes)
-
-    return {
-        "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
-        "UpdateSources": update_sources,
-        "AssigningAuthorities": assigning_authorities,
-        "DateDeath": get_hl7_field_value(msg, "pid.pid_29.ts_1"),
-        "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
-    }
-
+    return []
 
 
