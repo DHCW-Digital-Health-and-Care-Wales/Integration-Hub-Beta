@@ -63,6 +63,10 @@ class TestCustomMessageProperties(unittest.TestCase):
 
     def test_build_mpi_properties_returns_flow_specific_properties_only(self) -> None:
         mock_msg = MagicMock(spec=Message)
+        mock_msg.pid = SimpleNamespace(
+            pid_2=[_rep_with_hd1("108")],
+            pid_3=[_rep_with_hd1("NHS")]
+        )
 
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
