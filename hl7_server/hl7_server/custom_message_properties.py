@@ -45,13 +45,10 @@ def _pipe_wrap(values: list[str]) -> str:
     """
     Wrap a list of string values with pipe delimiters.
     Returns an empty string if the input list is empty.
-    The leading and trailing pipes ensure SQL LIKE queries of the form "column LIKE '%|108|%'" match 
-    exact tokens and never partially match a code that is a substring of another (e.g. "|10|" cannot match inside "|108|").
-    Args:
-        values: A list of strings to be pipe-delimited.
-    Returns:
-        A pipe-delimited string in the format "|value1|value2|...|", or an empty
-        string if the input list is empty.
+    The leading and trailing pipes ensure SQL LIKE queries of the
+    form "column LIKE '%|108|%'" match
+    exact tokens and never partially match a code that is a
+    substring of another (e.g. "|10|" cannot match inside "|108|").
     Examples:
         >>> _pipe_wrap(["252", "109"])
         "|252|109|"
