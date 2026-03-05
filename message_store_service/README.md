@@ -104,29 +104,31 @@ You can run the service directly with python or build docker image and run it in
 
 #### SQL database
 
-| Variable                      | Required | Default | Description                                                                                                              |
-|-------------------------------|----------|---------|--------------------------------------------------------------------------------------------------------------------------|
-| `SQL_SERVER`                  | ✅       | —       | SQL Server hostname or FQDN                                                                                              |
-| `SQL_DATABASE`                | ✅       | —       | Target database name                                                                                                     |
-| `SQL_ENCRYPT`                 | ❌       | `Yes`   | Enable TLS encryption — use `Yes` / `No`. Defaults to `Yes` (secure for Azure SQL)                                       |
-| `SQL_TRUST_SERVER_CERTIFICATE`| ❌       | `No`    | Trust self-signed certificates — use `Yes` / `No`. Defaults to `No` (validates cert in prod); set to `Yes` for local dev |
-| `SQL_USERNAME`                | ❌       | —       | SQL username — set for **password auth** (local dev)                                                                     |
-| `MSSQL_SA_PASSWORD`           | ❌       | —       | SQL password — set for **password auth** (local dev); omit to use Managed Identity                                       |
-| `MANAGED_IDENTITY_CLIENT_ID`  | ❌       | —       | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                              |
+| Variable                      | Required | Default | Description                                                                                                                            |
+|-------------------------------|----------|---------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `SQL_SERVER`                  | ✅       | —       | SQL Server hostname or FQDN                                                                                                            |
+| `SQL_DATABASE`                | ✅       | —       | Target database name                                                                                                                   |
+| `SQL_ENCRYPT`                 | ❌       | `Yes`   | Enable TLS encryption — use `Yes` / `No`. Defaults to `Yes` (secure for Azure SQL)                                                     |
+| `SQL_TRUST_SERVER_CERTIFICATE`| ❌       | `No`    | Trust self-signed certificates — use `Yes` / `No`. Defaults to `No` (validates cert in prod); set to `Yes` for local dev               |
+| `SQL_USERNAME`                | ❌       | —       | SQL username — required for **password auth** (local dev); must be set together with `MSSQL_SA_PASSWORD`                               |
+| `MSSQL_SA_PASSWORD`           | ❌       | —       | SQL password — required for **password auth** (local dev); must be set together with `SQL_USERNAME`; omit both to use Managed Identity |
+| `MANAGED_IDENTITY_CLIENT_ID`  | ❌       | —       | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                                            |
 
 **Note:** This service does not use Service Bus sessions.
 
 ### Authentication modes
 
+`SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause startup to fail with a clear error. Omit both to use Managed Identity.
+
 #### Password auth (local development)
 
-Set `SQL_USERNAME` and `MSSQL_SA_PASSWORD`. The service connects via standard SQL Server username/password auth.
+Set both `SQL_USERNAME` and `MSSQL_SA_PASSWORD`. The service connects via standard SQL Server username/password auth.
 
 Also set `SQL_ENCRYPT=No` and `SQL_TRUST_SERVER_CERTIFICATE=Yes` to match the plain local SQL Server container (no TLS certificate configured).
 
 #### Managed Identity auth (production / Azure)
 
-Leave `SQL_USERNAME` and `MSSQL_SA_PASSWORD` unset. The service authenticates via `Authentication=ActiveDirectoryMsi` in the ODBC
+Leave both `SQL_USERNAME` and `MSSQL_SA_PASSWORD` unset. The service authenticates via `Authentication=ActiveDirectoryMsi` in the ODBC
 connection string.
 
 `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` default to `Yes` and `No` respectively.

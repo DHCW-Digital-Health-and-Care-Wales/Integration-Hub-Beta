@@ -39,11 +39,13 @@ class DatabaseClient:
     reconnects (reconnect-on-failure strategy).
 
     Supports two authentication modes:
-    - **Password auth** (local dev): when ``sql_password`` is provided, connects with
-      username/password via the ODBC connection string.
-    - **Managed Identity auth** (production): when ``sql_password`` is ``None``, uses
-      ``Authentication=ActiveDirectoryMsi`` in the ODBC connection string so the
-      driver authenticates directly via Azure Managed Identity
+    - **Password auth** (local dev): when both ``sql_username`` and ``sql_password``
+      are provided, connects with username/password via the ODBC connection string.
+      Both must be supplied together — providing only one raises a ``ValueError``.
+    - **Managed Identity auth** (production): when both ``sql_username`` and
+      ``sql_password`` are ``None``, uses ``Authentication=ActiveDirectoryMsi`` in
+      the ODBC connection string so the driver authenticates directly via Azure
+      Managed Identity.
 
       For a **system-assigned** Managed Identity, omit ``managed_identity_client_id``.
       For a **user-assigned** Managed Identity, set ``managed_identity_client_id`` to
@@ -61,6 +63,17 @@ class DatabaseClient:
         sql_trust_server_certificate: str,
         managed_identity_client_id: str | None = None,
     ) -> None:
+        # Validate that username and password are always provided together.
+        username_provided = bool(sql_username)
+        password_provided = bool(sql_password)
+        if username_provided != password_provided:
+            missing = "sql_password" if username_provided else "sql_username"
+            provided = "sql_username" if username_provided else "sql_password"
+            raise ValueError(
+                f"{missing} must be provided when {provided} is set. "
+                "Password authentication requires both a username and a password."
+            )
+
         self._sql_server = sql_server
         self._sql_database = sql_database
         self._sql_username = sql_username
@@ -159,7 +172,7 @@ class DatabaseClient:
 
     def _connect(self) -> pyodbc.Connection:
         """Create a new pyodbc connection using the appropriate auth mode."""
-        if self._sql_password:
+        if self._sql_username and self._sql_password:
             return self._connect_with_password()
         return self._connect_with_managed_identity()
 

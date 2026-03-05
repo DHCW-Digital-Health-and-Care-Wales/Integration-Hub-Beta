@@ -246,12 +246,58 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertIn("Connection refused", str(ctx.exception))
 
     # ------------------------------------------------------------------
+    # Auth input validation
+    # ------------------------------------------------------------------
+
+    def test_raises_value_error_for_asymmetric_auth_inputs(self) -> None:
+        """DatabaseClient must raise ValueError whenever exactly one of sql_username/sql_password is provided."""
+        # Each tuple: (sql_username, sql_password, expected_missing_field_in_error)
+        invalid_cases = [
+            (None,  "secret", "sql_username", "password set, username is None"),
+            ("",    "secret", "sql_username", "password set, username is empty string"),
+            ("sa",  None,     "sql_password", "username set, password is None"),
+            ("sa",  "",       "sql_password", "username set, password is empty string"),
+        ]
+        for username, password, expected_field, description in invalid_cases:
+            with self.subTest(description):
+                with self.assertRaises(ValueError) as ctx:
+                    DatabaseClient(
+                        sql_server="localhost,1433",
+                        sql_database="IntegrationHub",
+                        sql_username=username,
+                        sql_password=password,
+                        sql_encrypt="yes",
+                        sql_trust_server_certificate="yes",
+                    )
+                self.assertIn(expected_field, str(ctx.exception))
+
+    def test_no_error_for_valid_auth_inputs(self) -> None:
+        """DatabaseClient must construct without error for symmetric auth inputs.
+        Both credentials provided (password auth) and neither provided (Managed Identity) are valid.
+        """
+        valid_cases = [
+            ("sa",  "secret", "both username and password provided"),
+            (None,  None,     "neither username nor password provided (Managed Identity)"),
+        ]
+        for username, password, description in valid_cases:
+            with self.subTest(description):
+                client = DatabaseClient(
+                    sql_server="localhost,1433",
+                    sql_database="IntegrationHub",
+                    sql_username=username,
+                    sql_password=password,
+                    sql_encrypt="yes",
+                    sql_trust_server_certificate="yes",
+                )
+                client.close()
+
+    # ------------------------------------------------------------------
     # Auth mode selection
     # ------------------------------------------------------------------
 
     @patch("message_store_service.db_client.pyodbc")
     def test_connect_uses_password_auth_when_password_set(self, mock_pyodbc: MagicMock) -> None:
-        """When sql_password is provided, connect should use UID/PWD in the connection string."""
+        """When sql_username and sql_password are both provided, connect should use UID/PWD."""
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
         mock_pyodbc.connect.return_value = mock_conn
@@ -264,7 +310,7 @@ class TestDatabaseClient(unittest.TestCase):
 
     @patch("message_store_service.db_client.pyodbc")
     def test_connect_uses_managed_identity_system_assigned_when_no_password(self, mock_pyodbc: MagicMock) -> None:
-        """When sql_password is None and no managed_identity_client_id, uses system-assigned MI (no UID)."""
+        """When both sql_username and sql_password are None, uses system-assigned MI (no UID)."""
         client = DatabaseClient(
             sql_server="myserver.database.windows.net",
             sql_database="IntegrationHub",
