@@ -236,6 +236,32 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.close.assert_called_once()
 
     @patch("message_store_service.db_client.pyodbc")
+    def test_store_messages_raises_original_error_when_rollback_also_fails(
+        self, mock_pyodbc: MagicMock
+    ) -> None:
+        """If rollback itself raises (e.g. broken connection), the *original* insert error must
+        still be re-raised and the stale connection must still be discarded.
+
+        This guards against the rollback failure masking the root cause.
+        """
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        # The original failure
+        mock_cursor.executemany.side_effect = Exception("original DB error")
+        # Rollback also fails (connection is broken)
+        mock_conn.rollback.side_effect = Exception("rollback failed")
+        mock_conn.cursor.return_value = mock_cursor
+        mock_pyodbc.connect.return_value = mock_conn
+
+        with self.assertRaises(Exception) as ctx:
+            self.client.store_messages([_make_record()])
+
+        # The *original* error must propagate, not the rollback error.
+        self.assertIn("original DB error", str(ctx.exception))
+        mock_conn.rollback.assert_called_once()
+        mock_conn.close.assert_called_once()
+
+    @patch("message_store_service.db_client.pyodbc")
     def test_store_messages_raises_on_connection_failure(self, mock_pyodbc: MagicMock) -> None:
         """If pyodbc.connect itself fails, the error propagates."""
         mock_pyodbc.connect.side_effect = Exception("Connection refused")

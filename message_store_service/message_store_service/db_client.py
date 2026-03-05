@@ -133,8 +133,12 @@ class DatabaseClient:
             connection.commit()
             logger.info("Successfully stored %d message(s) in database", len(messages))
         except Exception:
-            connection.rollback()
-            logger.error("Database insert failed — transaction rolled back; discarding connection", exc_info=True)
+            try:
+                connection.rollback()
+                logger.debug("Transaction rolled back successfully")
+            except Exception:
+                logger.warning("Rollback failed", exc_info=True)
+            logger.error("Database insert failed — discarding connection", exc_info=True)
             # Discard the stale connection so the next call reconnects cleanly.
             self._close_connection()
             raise
