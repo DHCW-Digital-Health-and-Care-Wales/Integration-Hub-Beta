@@ -9,7 +9,7 @@ class TestDatabaseClient(unittest.TestCase):
     """Tests for DatabaseClient with mocked pyodbc."""
 
     def setUp(self) -> None:
-        self.client = DatabaseClient(
+        self.client = DatabaseClient(  # nosec B106 — test fixture, not real credentials
             sql_server="localhost,1433",
             sql_database="IntegrationHub",
             sql_username="sa",

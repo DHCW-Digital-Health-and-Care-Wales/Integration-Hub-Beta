@@ -1,9 +1,10 @@
 import threading
 import time
 import unittest
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Sequence
 from unittest.mock import MagicMock
 
+from azure.servicebus import ServiceBusMessage
 from azure.servicebus.exceptions import (
     MessageSizeExceededError,
     OperationTimeoutError,
@@ -214,6 +215,73 @@ class TestMessageSenderClient(unittest.TestCase):
 
         # Assert
         self.service_bus_sender_client.close.assert_called_once()
+
+
+class TestSendMessageBatch(unittest.TestCase):
+    """Tests for the send_message_batch auto-split batching method."""
+
+    def setUp(self) -> None:
+        self.queue_name = "test-queue"
+        self.service_bus_sender = MagicMock()
+        self.client = MessageSenderClient(self.service_bus_sender, self.queue_name)
+
+    @staticmethod
+    def _make_messages(count: int) -> Sequence[ServiceBusMessage]:
+        return [ServiceBusMessage(body=f"payload-{i}") for i in range(count)]
+
+    def test_send_message_batch_sends_all_in_single_batch(self) -> None:
+        mock_batch = MagicMock()
+        self.service_bus_sender.create_message_batch.return_value = mock_batch
+
+        messages = self._make_messages(3)
+        total = self.client.send_message_batch(messages)
+
+        self.assertEqual(mock_batch.add_message.call_count, 3)
+        self.service_bus_sender.send_messages.assert_called_once_with(mock_batch)
+        self.assertEqual(total, 3)
+
+    def test_send_message_batch_auto_splits_when_full(self) -> None:
+        """When add_message raises MessageSizeExceededError, flush and start new batch."""
+        mock_batch_1 = MagicMock()
+        add_call_count = 0
+
+        def add_side_effect(msg: Any) -> None:
+            nonlocal add_call_count
+            add_call_count += 1
+            if add_call_count == 3:
+                raise MessageSizeExceededError()
+
+        mock_batch_1.add_message.side_effect = add_side_effect
+        mock_batch_2 = MagicMock()
+        self.service_bus_sender.create_message_batch.side_effect = [mock_batch_1, mock_batch_2]
+
+        messages = self._make_messages(3)
+        total = self.client.send_message_batch(messages)
+
+        send_calls = self.service_bus_sender.send_messages.call_args_list
+        self.assertEqual(len(send_calls), 2)
+        self.assertEqual(total, 3)
+
+    def test_send_message_batch_raises_when_single_message_too_large(self) -> None:
+        """When a single message exceeds max size on an empty batch, raise ValueError."""
+        mock_batch = MagicMock()
+        mock_batch.add_message.side_effect = MessageSizeExceededError()
+        self.service_bus_sender.create_message_batch.return_value = mock_batch
+
+        messages = self._make_messages(1)
+        with self.assertRaises(ValueError) as ctx:
+            self.client.send_message_batch(messages)
+
+        self.assertIn("exceeds Service Bus max message size", str(ctx.exception))
+
+    def test_send_message_batch_returns_zero_for_empty_list(self) -> None:
+        mock_batch = MagicMock()
+        self.service_bus_sender.create_message_batch.return_value = mock_batch
+
+        total = self.client.send_message_batch([])
+
+        self.assertEqual(total, 0)
+        self.service_bus_sender.send_messages.assert_not_called()
 
 
 if __name__ == "__main__":

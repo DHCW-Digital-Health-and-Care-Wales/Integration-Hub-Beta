@@ -1,9 +1,9 @@
 import logging
 from typing import List
 
-from azure.servicebus import ServiceBusMessage, ServiceBusSender
-from azure.servicebus.exceptions import MessageSizeExceededError
+from azure.servicebus import ServiceBusMessage
 from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from .app_config import AppConfig
@@ -44,9 +44,9 @@ class MessageReplayJob:
             service_bus_namespace=self._config.service_bus_namespace,
         )
         factory = ServiceBusClientFactory(sb_config)
-        sender = factory.servicebus_client.get_queue_sender(queue_name=self._config.priority_queue_name)
+        sender_client = factory.create_queue_sender_client(queue_name=self._config.priority_queue_name)
 
-        with self._db_client, sender:
+        with self._db_client, factory, sender_client:
             batch_number = 0
             while True:
                 batch_number += 1
@@ -70,7 +70,7 @@ class MessageReplayJob:
                     replay_ids[-1],
                 )
 
-                self._send_with_retry(sender, records, replay_ids)
+                self._send_with_retry(sender_client, records, replay_ids)
 
                 # Mark as Loaded — no retry, abort on failure
                 try:
@@ -96,35 +96,27 @@ class MessageReplayJob:
 
     def _send_with_retry(
         self,
-        sender: ServiceBusSender,
+        sender_client: MessageSenderClient,
         records: List[ReplayRecord],
         replay_ids: List[int],
     ) -> None:
         """Send with one retry on failure. Marks batch as Failed on double failure."""
         try:
-            self._send_batch_to_service_bus(sender, records)
+            self._send_batch_to_service_bus(sender_client, records)
         except Exception:
             logger.warning("First send attempt failed, retrying...", exc_info=True)
             try:
-                self._send_batch_to_service_bus(sender, records)
+                self._send_batch_to_service_bus(sender_client, records)
             except Exception:
                 logger.error("Second send attempt failed, marking batch as Failed", exc_info=True)
                 self._db_client.update_statuses(replay_ids, "Failed")
                 raise
 
-    def _send_batch_to_service_bus(self, sender: ServiceBusSender, records: List[ReplayRecord]) -> None:
-        """Send records to Service Bus using SDK-level batching with auto-split.
-
-        Creates a ServiceBusMessageBatch and adds messages one by one. When a message
-        would exceed the batch size limit, the current batch is flushed and a new one
-        is started. If a single message exceeds the max message size, a ValueError
-        is raised.
-        """
-        batch = sender.create_message_batch()
-        messages_in_batch = 0
-
-        for record in records:
-            message = ServiceBusMessage(
+    @staticmethod
+    def _build_messages(records: List[ReplayRecord]) -> List[ServiceBusMessage]:
+        """Build ServiceBusMessage objects from replay records."""
+        return [
+            ServiceBusMessage(
                 body=record.raw_payload,
                 application_properties={
                     "CorrelationId": record.correlation_id,
@@ -132,26 +124,13 @@ class MessageReplayJob:
                     "MessageId": str(record.message_id),
                 },
             )
-            try:
-                batch.add_message(message)
-                messages_in_batch += 1
-            except MessageSizeExceededError:
-                if messages_in_batch == 0:
-                    # Single message exceeds max size — unrecoverable
-                    raise ValueError(
-                        f"Single message (ReplayId={record.replay_id}) exceeds Service Bus max message size"
-                    )
-                # Flush current batch and start a new one
-                sender.send_messages(batch)
-                logger.info("Sent sub-batch of %d messages to Service Bus", messages_in_batch)
-                batch = sender.create_message_batch()
-                batch.add_message(message)
-                messages_in_batch = 1
+            for record in records
+        ]
 
-        # Send remaining messages
-        if messages_in_batch > 0:
-            sender.send_messages(batch)
-            logger.info("Sent final sub-batch of %d messages to Service Bus", messages_in_batch)
+    def _send_batch_to_service_bus(self, sender_client: MessageSenderClient, records: List[ReplayRecord]) -> None:
+        """Build messages from records and delegate batch sending to the shared lib."""
+        messages = self._build_messages(records)
+        sender_client.send_message_batch(messages)
 
 
 __all__ = ["MessageReplayJob"]

@@ -59,8 +59,8 @@ def _read_required_env(name: str) -> str:
 def _validate_uuid(value: str) -> None:
     try:
         uuid.UUID(value)
-    except ValueError:
-        raise RuntimeError(f"REPLAY_BATCH_ID is not a valid UUID: {value}")
+    except ValueError as e:
+        raise RuntimeError(f"REPLAY_BATCH_ID is not a valid UUID: {value}") from e
 
 
 __all__ = ["AppConfig"]
