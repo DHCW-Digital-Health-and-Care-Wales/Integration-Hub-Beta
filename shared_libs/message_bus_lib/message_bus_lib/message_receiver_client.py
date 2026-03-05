@@ -93,8 +93,10 @@ class MessageReceiverClient:
         if not self._apply_delay_and_check_if_its_retry_time():
             return
 
+        autolock_renewer = None
         try:
-            autolock_renewer = AutoLockRenewer() if self.session_id else None
+            if self.session_id:
+                autolock_renewer = AutoLockRenewer()
             with self.sb_client.get_queue_receiver(
                 queue_name=self.queue_name,
                 session_id=self.session_id,
@@ -119,12 +121,12 @@ class MessageReceiverClient:
                         )
                         self._abort_message_processing(receiver, messages)
                         self._set_delay_before_retry()
-
-                if autolock_renewer:
-                    autolock_renewer.close()
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
+        finally:
+            if autolock_renewer:
+                autolock_renewer.close()
 
     def _apply_delay_and_check_if_its_retry_time(self) -> bool:
         if self.next_retry_time:
