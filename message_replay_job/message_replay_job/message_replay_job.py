@@ -17,7 +17,7 @@ class MessageReplayJob:
     """Orchestrates the replay of messages from SQL Server to Service Bus.
 
     Processes one ReplayBatchId per execution. Reads pending rows from the
-    MessageReplayQueue table in batches of 1000, sends them to the priority
+    MessageReplayQueue table in configurable-sized batches, sends them to the priority
     Service Bus queue, and updates their status.
     """
 
@@ -85,11 +85,11 @@ class MessageReplayJob:
     def _fetch_batch_with_retry(self, replay_batch_id: str) -> List[ReplayRecord]:
         """Fetch with one retry on failure. Aborts on double failure."""
         try:
-            return self._db_client.fetch_batch(replay_batch_id)
+            return self._db_client.fetch_batch(replay_batch_id, self._config.replay_batch_size)
         except Exception:
             logger.warning("First fetch attempt failed, retrying...", exc_info=True)
             try:
-                return self._db_client.fetch_batch(replay_batch_id)
+                return self._db_client.fetch_batch(replay_batch_id, self._config.replay_batch_size)
             except Exception:
                 logger.error("Second fetch attempt failed, aborting job", exc_info=True)
                 raise

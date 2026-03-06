@@ -13,10 +13,11 @@ ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 # Fetches the next batch of pending/failed replay rows, joined with the Messages
 # table to retrieve the raw payload and correlation ID for each message.
-# Uses READPAST to skip locked rows (concurrent safety) and TOP(1000) for batching.
+# Uses READPAST to skip locked rows (concurrent safety) and a parameterised TOP (?)
+# for a configurable batch size.
 FETCH_BATCH_SQL = """
 WITH Batch AS (
-    SELECT TOP (1000) ReplayId, MessageId
+    SELECT TOP (?) ReplayId, MessageId
     FROM monitoring.MessageReplayQueue WITH (READPAST)
     WHERE Status IN ('Failed', 'Pending')
     AND ReplayBatchId = ?
@@ -72,14 +73,15 @@ class DatabaseClient:
         # Persistent connection, opened lazily on first use.
         self._connection: pyodbc.Connection | None = None
 
-    def fetch_batch(self, replay_batch_id: str) -> List[ReplayRecord]:
-        """Fetch the next batch of up to 1000 pending replay records.
+    def fetch_batch(self, replay_batch_id: str, batch_size: int) -> List[ReplayRecord]:
+        """Fetch the next batch of pending replay records up to ``batch_size`` rows.
 
         Executes the CTE query ordered by ReplayId, joining with the Messages table
         to retrieve the raw payload and correlation ID for each message.
 
         Args:
             replay_batch_id: The UUID identifying the replay batch.
+            batch_size: Maximum number of rows to fetch in this call.
 
         Returns:
             A list of ReplayRecord objects, empty if no pending rows remain.
@@ -90,7 +92,7 @@ class DatabaseClient:
         connection = self._get_connection()
         try:
             cursor = connection.cursor()
-            cursor.execute(FETCH_BATCH_SQL, (replay_batch_id,))
+            cursor.execute(FETCH_BATCH_SQL, (batch_size, replay_batch_id))
             rows = cursor.fetchall()
             return [
                 ReplayRecord(

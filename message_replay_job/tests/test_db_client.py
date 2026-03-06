@@ -39,7 +39,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_row.CorrelationId = "corr-1"
         mock_cursor.fetchall.return_value = [mock_row]
 
-        result = self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        result = self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ReplayRecord)
@@ -56,7 +56,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
         mock_cursor.fetchall.return_value = []
 
-        result = self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        result = self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         self.assertEqual(result, [])
 
@@ -69,13 +69,14 @@ class TestDatabaseClient(unittest.TestCase):
         mock_cursor.fetchall.return_value = []
 
         batch_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        self.client.fetch_batch(batch_id)
+        self.client.fetch_batch(batch_id, batch_size=100)
 
         sql_arg = mock_cursor.execute.call_args[0][0]
         params_arg = mock_cursor.execute.call_args[0][1]
         self.assertIn("WITH Batch AS", sql_arg)
+        self.assertIn("TOP (?)", sql_arg)
         self.assertIn("ReplayBatchId = ?", sql_arg)
-        self.assertEqual(params_arg, (batch_id,))
+        self.assertEqual(params_arg, (100, batch_id))
 
     @patch("message_replay_job.db_client.pyodbc")
     def test_fetch_batch_closes_connection_on_error(self, mock_pyodbc: MagicMock) -> None:
@@ -86,7 +87,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
 
         with self.assertRaises(Exception):
-            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         mock_conn.close.assert_called_once()
 
@@ -98,10 +99,26 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
         mock_cursor.fetchall.return_value = []
 
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         mock_pyodbc.connect.assert_called_once()
+
+    @patch("message_replay_job.db_client.pyodbc")
+    def test_fetch_batch_passes_custom_batch_size_as_first_param(self, mock_pyodbc: MagicMock) -> None:
+        """batch_size must be passed as the first SQL parameter (TOP ?)."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+        mock_pyodbc.connect.return_value = mock_conn
+        mock_cursor.fetchall.return_value = []
+
+        batch_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        self.client.fetch_batch(batch_id, batch_size=250)
+
+        params_arg = mock_cursor.execute.call_args[0][1]
+        self.assertEqual(params_arg[0], 250)
+        self.assertEqual(params_arg[1], batch_id)
 
     # ------------------------------------------------------------------
     # update_statuses — happy path
@@ -257,7 +274,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
         mock_conn.cursor.return_value.fetchall.return_value = []
 
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         conn_str = mock_pyodbc.connect.call_args[0][0]
         self.assertIn("UID=sa", conn_str)
@@ -278,7 +295,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
         mock_conn.cursor.return_value.fetchall.return_value = []
 
-        client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         conn_str = mock_pyodbc.connect.call_args[0][0]
         self.assertIn("Authentication=ActiveDirectoryMsi", conn_str)
@@ -302,7 +319,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
         mock_conn.cursor.return_value.fetchall.return_value = []
 
-        client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         conn_str = mock_pyodbc.connect.call_args[0][0]
         self.assertIn("Authentication=ActiveDirectoryMsi", conn_str)
@@ -329,11 +346,11 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.side_effect = [mock_conn_1, mock_conn_2]
 
         with self.assertRaises(Exception):
-            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
 
         mock_conn_1.close.assert_called_once()
 
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
         self.assertEqual(mock_pyodbc.connect.call_count, 2)
 
     @patch("message_replay_job.db_client.pyodbc")
@@ -344,7 +361,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn_1.cursor.return_value.fetchall.return_value = []
         mock_pyodbc.connect.return_value = mock_conn_1
 
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
         self.client.close()
         mock_conn_1.close.assert_called_once()
 
@@ -355,7 +372,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn_2.cursor.return_value.fetchall.return_value = []
         mock_pyodbc.connect.return_value = mock_conn_2
 
-        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
         mock_pyodbc.connect.assert_called_once()
 
     # ------------------------------------------------------------------
@@ -374,7 +391,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.cursor.return_value.fetchall.return_value = []
 
         with self.client:
-            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
             mock_conn.close.assert_not_called()
 
         mock_conn.close.assert_called_once()

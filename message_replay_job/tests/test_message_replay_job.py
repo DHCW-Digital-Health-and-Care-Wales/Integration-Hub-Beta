@@ -29,6 +29,7 @@ def _make_config() -> MagicMock:
     config.sql_encrypt = "yes"
     config.sql_trust_server_certificate = "yes"
     config.managed_identity_client_id = None
+    config.replay_batch_size = 100
     return config
 
 
