@@ -892,7 +892,7 @@
                     <xsd:restriction base="ST">
                         <xsd:enumeration value="7A4BV"/>
                         <xsd:enumeration value="7A5B1"/>
-                        <xsd:enumeration value="REH01"/>
+                        <xsd:enumeration value="7A5B3"/>
                     </xsd:restriction>
                 </xsd:simpleType>
             </xsd:element>

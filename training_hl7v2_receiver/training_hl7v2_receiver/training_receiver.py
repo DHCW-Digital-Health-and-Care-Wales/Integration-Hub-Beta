@@ -206,6 +206,7 @@ class TrainingHl7v2ReceiverApplication:
             "MDM^T01": message_handler_args,  # Added MDM^T01 support
             "MDM^T02": message_handler_args,  # Added MDM^T02 support
             "ORU^R01": message_handler_args,  # Added ORU^R01 support
+            "ORU^R01^ORU_R01": message_handler_args,  # Added ORU^R01 with message structure support
             "OMG^O19": message_handler_args,  # Added OMG^O19 support
             "SIU^S12": message_handler_args,  # Added SIU^S12 support
             "SIU^S14": message_handler_args,  # Added SIU^S14 support

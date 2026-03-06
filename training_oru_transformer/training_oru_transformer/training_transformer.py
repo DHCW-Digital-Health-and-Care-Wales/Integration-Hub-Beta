@@ -1,5 +1,5 @@
 """
-Training HL7 Verification
+Training HL7 Transformer
 ========================
 
 This module contains the main transformer class that orchestrates message
@@ -38,7 +38,6 @@ See hl7_phw_transformer/hl7_phw_transformer/phw_transformer.py
 for a production transformer that inherits from BaseTransformer.
 """
 
-from email.mime import message
 import os
 import signal
 import sys
@@ -49,18 +48,16 @@ from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
-from hl7_validation import XmlValidationError, validate_er7_with_flow
-from hl7_validation.convert import er7_to_hl7v2xml
 
-from training_hl7_verification.app_config import VerificationConfig
-from lxml import etree
-#from training_hl7_transformer.mappers.msh_mapper import map_msh
-#from training_hl7_transformer.mappers.pid_mapper import map_pid
+from training_oru_transformer.app_config import TransformerConfig
+from training_oru_transformer.mappers.msh_mapper import map_msh
+from training_oru_transformer.mappers.pid_mapper import map_pid
+from training_oru_transformer.mappers.obx_mapper import map_obx  # Import map_obx
 
 
-class TrainingVerification:
+class TrainingTransformer:
     """
-    A minimal HL7 verification for training purposes.
+    A minimal HL7 transformer for training purposes.
 
     This class demonstrates the core transformer pattern without the
     complexity of the production BaseTransformer class. It:
@@ -84,14 +81,14 @@ class TrainingVerification:
     """
 
     def __init__(self) -> None:
-        """Initialize the verification."""
+        """Initialize the transformer."""
         self.name = "Training"
 
         # Path to config.ini in the same directory as this module
         self.config_path = os.path.join(os.path.dirname(__file__), "config.ini")
 
         # Will be loaded when run() is called
-        self.config: VerificationConfig | None = None
+        self.config: TransformerConfig | None = None
 
         # Flag to control the main processing loop
         # Set to False when shutdown signal is received
@@ -107,24 +104,54 @@ class TrainingVerification:
         self.running = False
         # Force exit after signal to break out of receive_messages blocking call
         sys.exit(0)
-        
+
     def transform_message(self, hl7_msg: Message) -> Message:
- 
+        """
+        Transform an HL7 message.
+
+        This is the core transformation logic. It creates a new HL7 message
+        and applies mappers to transform each segment.
+
+        STRETCH EXERCISE 2: Add PID segment mapping
+        -------------------------------------------
+        Currently, we only transform the MSH segment. Try adding a mapper
+        for the PID (Patient Identification) segment:
+
+        1. Create training_hl7_transformer/mappers/pid_mapper.py
+        2. Import and call map_pid(hl7_msg, new_message) here
+        3. See hl7_phw_transformer/mappers/pid_mapper.py for reference
+
+        Args:
+            hl7_msg: The parsed original HL7 message.
+
+        Returns:
+            A new Message object with transformations applied.
+        """
         # Create a new HL7 message with version 2.3.1
         # This ensures consistent output regardless of input version
-        new_message = Message(version="2.5.1")
-        # Read the custom property we set in _route_message
-    
+        #new_message = Message(version="2.5.1")
+        new_message = Message("ORU_R01")
+        #new_message = new_msg.add_group("ORU_R01_ORDER_OBSERVATION").add_group("ORU_R01_OBSERVATION")
+        #new_message.msh.msh_9.msg_1 = "ORU" # Message Type
+
+
         # Apply MSH mapper to transform the Message Header segment
         #_ = map_msh(hl7_msg, new_message)  # Result used for logging inside the mapper
-        
+
+        '''
         # Apply PID mapper
-        """
         try:
             _ = map_pid(hl7_msg, new_message)
         except AttributeError:
             print("PID segment not present in original message (skipping)")
-        """
+        '''
+        # Apply OBX mapper
+        try:
+            print("Applying OBX mapper...")
+            _ = map_obx(hl7_msg, new_message)
+        except AttributeError:
+            print("OBX segment not present in original message (skipping)")
+
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
         # =====================================================================
@@ -133,8 +160,6 @@ class TrainingVerification:
         # pid_details = map_pid(hl7_msg, new_message)
 
         return new_message
-
-    
 
     def _create_message_processor(self, sender_client: MessageSenderClient):
         """
@@ -172,16 +197,16 @@ class TrainingVerification:
             Returns:
                 True if transformation succeeded, False otherwise.
             """
-            print("-" * 60)
-            print("PROCESSING MESSAGE FROM QUEUE")
-            print("-" * 60)
-            
             try:
                 # Log that we picked up a message from the queue
                 print(f"\n>>> PICKED UP MESSAGE from queue: {self.config.ingress_queue_name}")
 
                 # Get the raw message body as string
                 raw_body = str(message)
+
+                print("-" * 60)
+                print("PROCESSING MESSAGE FROM QUEUE")
+                print("-" * 60)
 
                 # Parse the HL7 message
                 # find_groups=False simplifies parsing (no group structures)
@@ -193,74 +218,6 @@ class TrainingVerification:
 
                 print(f"Message Control ID: {message_control_id}")
                 print(f"Message Type: {message_type}")
-
-                # Debug: Print all application properties
-                subject = "DEFAULT_QUEUE"
-                if message.application_properties:
-                    print(f"Application properties: {dict(message.application_properties)}")
-                    # Handle both bytes and string keys/values
-                    subject = message.application_properties.get(b"subject", b"DEFAULT_QUEUE")
-                    if isinstance(subject, bytes):
-                        subject = subject.decode("utf-8")
-                else:
-                    print("No application properties found on message")
-                
-                if subject == "ADT_QUEUE":
-                    print("✓ Detected subject: ADT_QUEUE")
-                    validate_er7_with_flow(raw_body, "phw")
-                elif subject == "MDM_QUEUE":
-                    print("✓ Detected subject: MDM_QUEUE")
-                elif subject == "ORDERS_QUEUE":
-                    print("✓ Detected subject: ORDERS_QUEUE")
-                elif subject == "RESULTS_QUEUE":
-                    print("✓ Detected subject: RESULTS_QUEUE")
-                    validate_er7_with_flow(raw_body, "wrrs")
-                    print("✓ Basic flow validation passed for RESULTS_QUEUE")
-                    '''
-                    # Do strict schema validation with the customised ORU_R01 xsd schema for training
-                    schema_path = os.path.join(
-                        os.path.dirname(__file__),
-                        "schemas",
-                        "oru_r01_training.xsd"
-                    )
-
-                    try:
-                        # Load and validate against XSD schema
-                        # hl7apy provides XML conversion through its serialization methods
-                        schema_doc = etree.parse(schema_path)
-                        schema = etree.XMLSchema(schema_doc)
-                        
-                        # Convert ER7 to HL7 v2 XML using shared validator converter.
-                        xml_str = er7_to_hl7v2xml(
-                            raw_body,
-                            structure_xsd_path=schema_path,
-                            override_structure_id="ORU_R01",
-                        )
-                        xml_doc = etree.fromstring(xml_str)
-                        
-                        # Validate against schema
-                        if schema.validate(xml_doc):
-                            print(f"✓ Message validation passed for {message_control_id}")
-                        else:
-                            # Print detailed validation errors
-                            error_log = schema.error_log
-                            print(f"✗ Message validation failed for {message_control_id}")
-                            for error in error_log:
-                                print(f"  - {error}")
-                            return False
-                            
-                    except FileNotFoundError:
-                        print(f"✗ Schema file not found: {schema_path}")
-                        return False
-                    except etree.XMLSyntaxError as xml_error:
-                        print(f"✗ XML parsing error: {xml_error}")
-                        return False
-                    except Exception as schema_error:
-                        print(f"✗ Schema validation error: {schema_error}")
-                        return False
-                    '''
-                else:
-                    print(f"✓ Detected subject: {subject} (Non Defined QUEUE)")
 
                 # Apply transformations
                 transformed_msg = self.transform_message(hl7_msg)
@@ -309,11 +266,11 @@ class TrainingVerification:
         # STEP 1: Load configuration
         # =====================================================================
         print("=" * 60)
-        print("TRAINING HL7 VERIFICATION")
+        print("TRAINING HL7 TRANSFORMER")
         print("=" * 60)
         print("Loading configuration...")
 
-        self.config = VerificationConfig.from_env_and_config_file(self.config_path)
+        self.config = TransformerConfig.from_env_and_config_file(self.config_path)
 
         print(f"Ingress Queue: {self.config.ingress_queue_name}")
         print(f"Ingress Session ID: {self.config.ingress_session_id or '(none)'}")
@@ -386,7 +343,7 @@ class TrainingVerification:
                     )
 
         except Exception as e:
-            print(f"Fatal error in verification: {e}")
+            print(f"Fatal error in transformer: {e}")
             sys.exit(1)
 
-        print("Training verification stopped.")
+        print("Transformer stopped.")
