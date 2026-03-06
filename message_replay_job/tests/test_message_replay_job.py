@@ -282,8 +282,6 @@ class TestBuildMessages(unittest.TestCase):
         props_1 = messages[1].application_properties
         self.assertIsNotNone(props_0)
         self.assertIsNotNone(props_1)
-        assert props_0 is not None
-        assert props_1 is not None
         self.assertEqual(props_0["CorrelationId"], "corr-1")
         self.assertEqual(props_0["ReplayId"], "1")
         self.assertEqual(props_0["MessageId"], "100")
@@ -294,6 +292,44 @@ class TestBuildMessages(unittest.TestCase):
     def test_build_messages_returns_empty_for_no_records(self) -> None:
         messages = MessageReplayJob._build_messages([])
         self.assertEqual(messages, [])
+
+
+class TestMessageReplayJobOversizedMessage(unittest.TestCase):
+    """Tests for the oversized-message (unrecoverable ValueError) scenario."""
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_run_aborts_on_oversized_message_error(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """A ValueError from send_message_batch (single message too large) must:
+        - be retried once (send_message_batch called twice total)
+        - mark the batch as 'Failed' before re-raising
+        - cause the job to abort
+        """
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = [_make_record(1, 100)]
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = ValueError(
+            "Single message exceeds Service Bus max message size"
+        )
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        with self.assertRaises(Exception):
+            job.run()
+
+        # Retried once before giving up
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
+        # Batch marked Failed before aborting
+        mock_db.update_statuses.assert_called_once_with([1], "Failed")
 
 
 if __name__ == "__main__":

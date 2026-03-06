@@ -51,6 +51,17 @@ class DatabaseClient:
         sql_trust_server_certificate: str,
         managed_identity_client_id: str | None = None,
     ) -> None:
+        # Validate that username and password are always provided together.
+        username_provided = bool(sql_username)
+        password_provided = bool(sql_password)
+        if username_provided != password_provided:
+            missing = "sql_password" if username_provided else "sql_username"
+            provided = "sql_username" if username_provided else "sql_password"
+            raise ValueError(
+                f"{missing} must be provided when {provided} is set. "
+                "Password authentication requires both a username and a password."
+            )
+
         self._sql_server = sql_server
         self._sql_database = sql_database
         self._sql_username = sql_username
@@ -126,8 +137,12 @@ WHERE ReplayId IN ({placeholders});
             connection.commit()
             logger.info("Updated %d replay record(s) to status '%s'", len(replay_ids), status)
         except Exception:
-            connection.rollback()
-            logger.error("Failed to update statuses — transaction rolled back; discarding connection", exc_info=True)
+            try:
+                connection.rollback()
+                logger.debug("Transaction rolled back successfully")
+            except Exception:
+                logger.warning("Rollback failed", exc_info=True)
+            logger.error("Failed to update statuses — discarding connection", exc_info=True)
             self._close_connection()
             raise
 
@@ -158,7 +173,7 @@ WHERE ReplayId IN ({placeholders});
 
     def _connect(self) -> pyodbc.Connection:
         """Create a new pyodbc connection using the appropriate auth mode."""
-        if self._sql_password:
+        if self._sql_username and self._sql_password:
             return self._connect_with_password()
         return self._connect_with_managed_identity()
 

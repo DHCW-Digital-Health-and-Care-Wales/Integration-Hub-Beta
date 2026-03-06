@@ -167,6 +167,85 @@ class TestDatabaseClient(unittest.TestCase):
         self.client.update_statuses([], "Loaded")
         mock_pyodbc.connect.assert_not_called()
 
+    @patch("message_replay_job.db_client.pyodbc")
+    def test_update_statuses_closes_connection_on_commit_error(self, mock_pyodbc: MagicMock) -> None:
+        """If commit raises, the transaction must be rolled back and the connection discarded."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+        mock_conn.commit.side_effect = Exception("Commit failed")
+        mock_pyodbc.connect.return_value = mock_conn
+
+        with self.assertRaises(Exception):
+            self.client.update_statuses([1], "Loaded")
+
+        mock_conn.rollback.assert_called_once()
+        mock_conn.close.assert_called_once()
+
+    @patch("message_replay_job.db_client.pyodbc")
+    def test_update_statuses_raises_original_error_when_rollback_also_fails(self, mock_pyodbc: MagicMock) -> None:
+        """If rollback itself raises, the *original* error must still propagate.
+
+        This guards against the rollback failure masking the root cause — the
+        behaviour provided by wrapping rollback in its own try/except.
+        """
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.execute.side_effect = Exception("original DB error")
+        mock_conn.rollback.side_effect = Exception("rollback failed")
+        mock_conn.cursor.return_value = mock_cursor
+        mock_pyodbc.connect.return_value = mock_conn
+
+        with self.assertRaises(Exception) as ctx:
+            self.client.update_statuses([1], "Loaded")
+
+        # The *original* error must propagate, not the rollback error.
+        self.assertIn("original DB error", str(ctx.exception))
+        mock_conn.close.assert_called_once()
+
+    # ------------------------------------------------------------------
+    # Auth input validation
+    # ------------------------------------------------------------------
+
+    def test_raises_value_error_for_asymmetric_auth_inputs(self) -> None:
+        """DatabaseClient must raise ValueError whenever exactly one of sql_username/sql_password is provided."""
+        invalid_cases = [
+            (None, "secret", "sql_username", "password set, username is None"),
+            ("", "secret", "sql_username", "password set, username is empty string"),
+            ("sa", None, "sql_password", "username set, password is None"),
+            ("sa", "", "sql_password", "username set, password is empty string"),
+        ]
+        for username, password, expected_field, description in invalid_cases:
+            with self.subTest(description):
+                with self.assertRaises(ValueError) as ctx:
+                    DatabaseClient(
+                        sql_server="localhost,1433",
+                        sql_database="IntegrationHub",
+                        sql_username=username,
+                        sql_password=password,
+                        sql_encrypt="yes",
+                        sql_trust_server_certificate="yes",
+                    )
+                self.assertIn(expected_field, str(ctx.exception))
+
+    def test_no_error_for_valid_auth_inputs(self) -> None:
+        """DatabaseClient must construct without error for symmetric auth inputs."""
+        valid_cases = [
+            ("sa", "secret", "both username and password provided"),  # nosec B106
+            (None, None, "neither username nor password provided (Managed Identity)"),
+        ]
+        for username, password, description in valid_cases:
+            with self.subTest(description):
+                client = DatabaseClient(
+                    sql_server="localhost,1433",
+                    sql_database="IntegrationHub",
+                    sql_username=username,
+                    sql_password=password,
+                    sql_encrypt="yes",
+                    sql_trust_server_certificate="yes",
+                )
+                client.close()
+
     # ------------------------------------------------------------------
     # Auth mode selection
     # ------------------------------------------------------------------
@@ -256,6 +335,28 @@ class TestDatabaseClient(unittest.TestCase):
 
         self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
         self.assertEqual(mock_pyodbc.connect.call_count, 2)
+
+    @patch("message_replay_job.db_client.pyodbc")
+    def test_explicit_close_releases_connection(self, mock_pyodbc: MagicMock) -> None:
+        """Calling close() must close and discard the cached connection; the next call reconnects."""
+        mock_conn_1 = MagicMock()
+        mock_conn_1.cursor.return_value = MagicMock()
+        mock_conn_1.cursor.return_value.fetchall.return_value = []
+        mock_pyodbc.connect.return_value = mock_conn_1
+
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        self.client.close()
+        mock_conn_1.close.assert_called_once()
+
+        # Subsequent call must open a fresh connection
+        mock_pyodbc.connect.reset_mock()
+        mock_conn_2 = MagicMock()
+        mock_conn_2.cursor.return_value = MagicMock()
+        mock_conn_2.cursor.return_value.fetchall.return_value = []
+        mock_pyodbc.connect.return_value = mock_conn_2
+
+        self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        mock_pyodbc.connect.assert_called_once()
 
     # ------------------------------------------------------------------
     # Context manager
