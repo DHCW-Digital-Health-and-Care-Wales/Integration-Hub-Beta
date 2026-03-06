@@ -18,16 +18,16 @@ batch.
 
 ### Database table — `monitoring.Message`
 
-| Column               | Type           | Required | Description                                      |
-|----------------------|----------------|----------|--------------------------------------------------|
-| `ReceivedAt`         | `datetime`     | ✅       | Timestamp the message was originally received    |
-| `StoredAt`           | `datetime`     | ✅       | Timestamp the record was written to the database |
-| `CorrelationId`      | `nvarchar`     | ✅       | Unique identifier for tracing the message        |
-| `SourceSystem`       | `nvarchar`     | ✅       | System that originated the message               |
-| `ProcessingComponent`| `nvarchar`     | ✅       | Microservice that processed the message          |
-| `TargetSystem`       | `nvarchar`     | ❌       | Destination system (if known)                    |
-| `RawPayload`         | `nvarchar(max)`| ✅       | Original HL7 raw message payload                 |
-| `XmlPayload`         | `nvarchar(max)`| ❌       | XML-transformed payload (if available)           |
+| Column                | Type            | Required | Description                                      |
+| --------------------- | --------------- | -------- | ------------------------------------------------ |
+| `ReceivedAt`          | `datetime`      | ✅       | Timestamp the message was originally received    |
+| `StoredAt`            | `datetime`      | ✅       | Timestamp the record was written to the database |
+| `CorrelationId`       | `nvarchar`      | ✅       | Unique identifier for tracing the message        |
+| `SourceSystem`        | `nvarchar`      | ✅       | System that originated the message               |
+| `ProcessingComponent` | `nvarchar`      | ✅       | Microservice that processed the message          |
+| `TargetSystem`        | `nvarchar`      | ❌       | Destination system (if known)                    |
+| `RawPayload`          | `nvarchar(max)` | ✅       | Original HL7 raw message payload                 |
+| `XmlPayload`          | `nvarchar(max)` | ❌       | XML-transformed payload (if available)           |
 
 ### Service Bus message format
 
@@ -86,47 +86,49 @@ You can run the service directly with python or build docker image and run it in
 
 #### Service Bus
 
-| Variable                        | Required | Default | Description                                                               |
-|---------------------------------|----------|---------|---------------------------------------------------------------------------|
-| `SERVICE_BUS_CONNECTION_STRING` | ⚠️       | —       | Service Bus connection string (required when `SERVICE_BUS_NAMESPACE` is empty) |
+| Variable                        | Required | Default | Description                                                                                 |
+| ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------- |
+| `SERVICE_BUS_CONNECTION_STRING` | ⚠️       | —       | Service Bus connection string (required when `SERVICE_BUS_NAMESPACE` is empty)              |
 | `SERVICE_BUS_NAMESPACE`         | ⚠️       | —       | Service Bus namespace (recommended; required when `SERVICE_BUS_CONNECTION_STRING` is empty) |
-| `INGRESS_QUEUE_NAME`            | ✅       | —       | Queue name to read messages from                                          |
+| `INGRESS_QUEUE_NAME`            | ✅       | —       | Queue name to read messages from                                                            |
 
 #### Service identity & health
 
-| Variable             | Required | Default     | Description                             |
-|----------------------|----------|-------------|-----------------------------------------|
-| `MICROSERVICE_ID`    | ✅       | —           | Service ID used for audit logging       |
-| `LOG_LEVEL`          | ❌       | `INFO`      | Python logging level                    |
-| `AZURE_LOG_LEVEL`    | ❌       | `WARN`      | Log level for the Azure SDK             |
-| `HEALTH_CHECK_HOST`  | ❌       | `127.0.0.1` | TCP health-check bind address           |
-| `HEALTH_CHECK_PORT`  | ❌       | `9000`      | TCP health-check port                   |
+| Variable            | Required | Default     | Description                       |
+| ------------------- | -------- | ----------- | --------------------------------- |
+| `MICROSERVICE_ID`   | ✅       | —           | Service ID used for audit logging |
+| `LOG_LEVEL`         | ❌       | `INFO`      | Python logging level              |
+| `AZURE_LOG_LEVEL`   | ❌       | `WARN`      | Log level for the Azure SDK       |
+| `HEALTH_CHECK_HOST` | ❌       | `127.0.0.1` | TCP health-check bind address     |
+| `HEALTH_CHECK_PORT` | ❌       | `9000`      | TCP health-check port             |
 
 #### SQL database
 
-| Variable                      | Required | Default | Description                                                                                                              |
-|-------------------------------|----------|---------|--------------------------------------------------------------------------------------------------------------------------|
-| `SQL_SERVER`                  | ✅       | —       | SQL Server hostname or FQDN                                                                                              |
-| `SQL_DATABASE`                | ✅       | —       | Target database name                                                                                                     |
-| `SQL_ENCRYPT`                 | ❌       | `Yes`   | Enable TLS encryption — use `Yes` / `No`. Defaults to `Yes` (secure for Azure SQL)                                       |
-| `SQL_TRUST_SERVER_CERTIFICATE`| ❌       | `No`    | Trust self-signed certificates — use `Yes` / `No`. Defaults to `No` (validates cert in prod); set to `Yes` for local dev |
-| `SQL_USERNAME`                | ❌       | —       | SQL username — set for **password auth** (local dev)                                                                     |
-| `MSSQL_SA_PASSWORD`           | ❌       | —       | SQL password — set for **password auth** (local dev); omit to use Managed Identity                                       |
-| `MANAGED_IDENTITY_CLIENT_ID`  | ❌       | —       | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                              |
+| Variable                       | Required | Default | Description                                                                                                                            |
+| ------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `SQL_SERVER`                   | ✅       | —       | SQL Server hostname or FQDN                                                                                                            |
+| `SQL_DATABASE`                 | ✅       | —       | Target database name                                                                                                                   |
+| `SQL_ENCRYPT`                  | ❌       | `Yes`   | Enable TLS encryption — use `Yes` / `No`. Defaults to `Yes` (secure for Azure SQL)                                                     |
+| `SQL_TRUST_SERVER_CERTIFICATE` | ❌       | `No`    | Trust self-signed certificates — use `Yes` / `No`. Defaults to `No` (validates cert in prod); set to `Yes` for local dev               |
+| `SQL_USERNAME`                 | ❌       | —       | SQL username — required for **password auth** (local dev); must be set together with `MSSQL_SA_PASSWORD`                               |
+| `MSSQL_SA_PASSWORD`            | ❌       | —       | SQL password — required for **password auth** (local dev); must be set together with `SQL_USERNAME`; omit both to use Managed Identity |
+| `MANAGED_IDENTITY_CLIENT_ID`   | ❌       | —       | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                                            |
 
 **Note:** This service does not use Service Bus sessions.
 
 ### Authentication modes
 
+`SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause startup to fail with a clear error. Omit both to use Managed Identity.
+
 #### Password auth (local development)
 
-Set `SQL_USERNAME` and `MSSQL_SA_PASSWORD`. The service connects via standard SQL Server username/password auth.
+Set both `SQL_USERNAME` and `MSSQL_SA_PASSWORD`. The service connects via standard SQL Server username/password auth.
 
 Also set `SQL_ENCRYPT=No` and `SQL_TRUST_SERVER_CERTIFICATE=Yes` to match the plain local SQL Server container (no TLS certificate configured).
 
 #### Managed Identity auth (production / Azure)
 
-Leave `SQL_USERNAME` and `MSSQL_SA_PASSWORD` unset. The service authenticates via `Authentication=ActiveDirectoryMsi` in the ODBC
+Leave both `SQL_USERNAME` and `MSSQL_SA_PASSWORD` unset. The service authenticates via `Authentication=ActiveDirectoryMsi` in the ODBC
 connection string.
 
 `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` default to `Yes` and `No` respectively.

@@ -93,14 +93,16 @@ To modify the database schema or add seed data, edit the SQL script at `sql-scri
 
 The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
 
-| Variable                       | Value               | Description                                                                                               |
-|--------------------------------|---------------------|-----------------------------------------------------------------------------------------------------------|
-| `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                |
-| `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                             |
-| `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator)                                                                   |
-| `MSSQL_SA_PASSWORD`            | *(from `.secrets`)* | SA password                                                                                               |
-| `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required) |
+| Variable                       | Value               | Description                                                                                                                                      |
+| ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                                                       |
+| `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                                                                    |
+| `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator) — must be set together with `MSSQL_SA_PASSWORD`                                                          |
+| `MSSQL_SA_PASSWORD`            | _(from `.secrets`)_ | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
+| `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required)                                        |
 | `SQL_TRUST_SERVER_CERTIFICATE` | `Yes`               | (Only relevant when `SQL_ENCRYPT=Yes`.) Overrides the default (`No`) — trusts the self-signed certificate used by the local SQL Server container |
+
+> **Note**: `SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause the service to fail at startup with a clear error. Omit both to use Managed Identity (production).
 
 > **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
 
@@ -155,7 +157,7 @@ Each profile starts a complete integration flow with all required services:
 Each service is configured via a corresponding `.env` file in the `local/` directory:
 
 | File                          | Configures            | Key Variables                                                             |
-| ----------------------------- | --------------------- |---------------------------------------------------------------------------|
+| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
 | **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
 | **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
 | **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
