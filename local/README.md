@@ -76,18 +76,37 @@ A local SQL Server instance is available for development and testing. The contai
 **Connection String:**
 
 ```
-Server=localhost,1433;Database=IntegrationHub;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True;
+Server=<localhost|sqlserver>,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;
 ```
 
 **What's initialized:**
 
 - Database: `IntegrationHub`
 - Schema: `monitoring`
-- Table: `monitoring.Messages` - stores message tracking data including payloads, timestamps, and workflow identifiers
+- Table: `monitoring.Message` - stores message tracking data including payloads, timestamps, and workflow identifiers
 
 **Customizing initialization:**
 
 To modify the database schema or add seed data, edit the SQL script at `sql-scripts/init-db.sql`. The script is executed automatically when the container starts and uses idempotent `IF NOT EXISTS` checks, making it safe to run multiple times.
+
+**Message Store Service SQL configuration:**
+
+The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
+
+| Variable                       | Value               | Description                                                                                                                                      |
+|--------------------------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                                                       |
+| `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                                                                    |
+| `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator) — must be set together with `MSSQL_SA_PASSWORD`                                                          |
+| `MSSQL_SA_PASSWORD`            | *(from `.secrets`)* | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
+| `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required)                                        |
+| `SQL_TRUST_SERVER_CERTIFICATE` | `Yes`               | (Only relevant when `SQL_ENCRYPT=Yes`.) Overrides the default (`No`) — trusts the self-signed certificate used by the local SQL Server container |
+
+> **Note**: `SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause the service to fail at startup with a clear error. Omit both to use Managed Identity (production).
+
+> **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
+
+> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`)
 
 **Starting SQL Server:**
 
@@ -138,7 +157,7 @@ Each profile starts a complete integration flow with all required services:
 Each service is configured via a corresponding `.env` file in the `local/` directory:
 
 | File                          | Configures            | Key Variables                                                             |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
+| ----------------------------- | --------------------- |---------------------------------------------------------------------------|
 | **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
 | **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
 | **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
@@ -146,6 +165,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **chemo-hl7-transformer.env** | Chemocare Transformer | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi` |
 | **pims-hl7-server.env**       | PIMS HL7 Server       | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`              |
 | **pims-hl7-transformer.env**  | PIMS Transformer      | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`      |
+| **message-store-service.env** | Message Store Service | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                        |
 | **mpi-hl7-sender.env**        | MPI HL7 Sender        | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`  |
 | **mpi-hl7-mock-receiver.env** | MPI Mock Receiver     | `PORT=2576`, `EGRESS_QUEUE_NAME`                                          |
 

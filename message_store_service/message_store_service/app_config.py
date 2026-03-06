@@ -1,8 +1,8 @@
-import logging
 import os
 from dataclasses import dataclass
 
-logger = logging.getLogger(__name__)
+_DEFAULT_SQL_ENCRYPT = "Yes"
+_DEFAULT_SQL_TRUST_SERVER_CERTIFICATE = "No"
 
 
 @dataclass
@@ -13,6 +13,16 @@ class AppConfig:
     microservice_id: str
     health_check_hostname: str | None
     health_check_port: int | None
+    # SQL database configuration
+    sql_server: str
+    sql_database: str
+    sql_username: str | None
+    sql_password: str | None
+    sql_encrypt: str = _DEFAULT_SQL_ENCRYPT
+    sql_trust_server_certificate: str = _DEFAULT_SQL_TRUST_SERVER_CERTIFICATE
+    # Optional client ID for user-assigned Managed Identity auth.
+    # Leave unset (None) to use the system-assigned identity.
+    managed_identity_client_id: str | None = None
 
     @staticmethod
     def read_env_config() -> "AppConfig":
@@ -23,6 +33,15 @@ class AppConfig:
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
+            sql_server=_read_required_env("SQL_SERVER"),
+            sql_database=_read_required_env("SQL_DATABASE"),
+            sql_username=_read_env("SQL_USERNAME"),
+            sql_password=_read_env("MSSQL_SA_PASSWORD"),
+            sql_encrypt=_read_env("SQL_ENCRYPT") or _DEFAULT_SQL_ENCRYPT,
+            sql_trust_server_certificate=(
+                _read_env("SQL_TRUST_SERVER_CERTIFICATE") or _DEFAULT_SQL_TRUST_SERVER_CERTIFICATE
+            ),
+            managed_identity_client_id=_read_env("MANAGED_IDENTITY_CLIENT_ID"),
         )
 
 

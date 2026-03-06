@@ -61,6 +61,26 @@ services:
         aliases:
           - "sqlserver"
 
+  message-store-service:
+    container_name: message-store-service
+    build:
+      context: ../message_store_service
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./.secrets
+      - ./message-store-service.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+      - sqlserver
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "message-store-service"
+
   phw-hl7-server:
     container_name: phw-hl7-server
     build:
