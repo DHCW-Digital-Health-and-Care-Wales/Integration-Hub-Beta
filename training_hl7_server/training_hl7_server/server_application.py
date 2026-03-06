@@ -7,6 +7,7 @@ import threading
 
 from hl7apy.mllp import MLLPServer
 
+from training_hl7_server.app_config import AppConfig
 from training_hl7_server.message_handler import MessageHandler
 
 from .error_handler import ErrorHandler
@@ -33,15 +34,8 @@ class TrainingHl7ServerApplication:
         # HOST: The network interface to bind to
         # "0.0.0.0" means accept connections from any network interface
         # "localhost" would only accept connections from the same machine
-        self.host = os.environ.get("HOST", "0.0.0.0")
 
-        # PORT: The TCP port number to listen on
-        # Each service needs a unique port number
-        self.port = int(os.environ.get("PORT", "2575"))
-
-        # HL7_VERSION: The expected HL7 version for incoming messages
-        # We'll validate that messages match this version
-        self.expected_version = os.environ.get("HL7_VERSION", "2.3.1")
+        self.config = AppConfig.read_env_config()
 
         # ===================================================================
         # Server instance (will be set when the server starts)
@@ -90,9 +84,10 @@ class TrainingHl7ServerApplication:
         print("=" * 60)
         print("TRAINING HL7 SERVER")
         print("=" * 60)
-        print(f"Host: {self.host}")
-        print(f"Port: {self.port}")
-        print(f"Expected HL7 Version: {self.expected_version}")
+        print(f"Host: {self.config.host}")
+        print(f"Port: {self.config.port}")
+        print(f"Expected HL7 Version: {self.config.hl7_version or '(any)'}")
+        print(f"Allowed Senders: {self.config.allowed_senders or '(any)'}")
         print("=" * 60)
         print("Waiting for HL7 messages...")
         print("Press Ctrl+C to stop the server")
@@ -110,7 +105,7 @@ class TrainingHl7ServerApplication:
         # 3. Call the handler's reply() method to get the ACK response
 
         handlers = {
-            "ADT^A31": (MessageHandler, self.expected_version),
+            "ADT^A31": (MessageHandler, self.config.hl7_version),
             "ERR": (ErrorHandler, ),
         }
 
@@ -122,8 +117,8 @@ class TrainingHl7ServerApplication:
         # transmission over TCP/IP networks
 
         self.server = MLLPServer(
-            host=self.host,  # Network interface to bind to
-            port=self.port,  # TCP port to listen on
+            host=self.config.host,  # Network interface to bind to
+            port=self.config.port,  # TCP port to listen on
             handlers=handlers,  # Message handlers dictionary
             timeout=10,  # Socket timeout in seconds
         )
