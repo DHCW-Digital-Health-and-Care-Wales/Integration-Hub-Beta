@@ -7,6 +7,7 @@ def find_segments(element, segment_name):
     segments = []
 
     for child in element.children:
+        print(f"Checking child: {child.name} of type {type(child).__name__}")
         if child.name == segment_name:
             segments.append(child)
 
