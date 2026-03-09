@@ -66,15 +66,6 @@ class AppConfig:
         allowed_senders: Comma-separated list of allowed sending application
                          codes (MSH-3). If None, all senders are accepted.
                          Example: "169,245" allows only apps 169 and 245.
-
-        connection_string: Azure Service Bus connection string.
-                           WEEK 2 ADDITION: Used to connect to Service Bus.
-
-        egress_queue_name: Queue to publish HL7 messages to for transformer.
-                           WEEK 2 ADDITION: Messages go here after ACK.
-
-        egress_session_id: Session ID for the egress queue (if session-enabled).
-                           WEEK 2 ADDITION: Used for ordered message processing.
     """
 
     # =========================================================================
@@ -88,16 +79,6 @@ class AppConfig:
     # =========================================================================
     hl7_version: str | None
     allowed_senders: str | None
-
-    # =========================================================================
-    # WEEK 2 ADDITION: Service Bus Configuration
-    # =========================================================================
-    # For local development: use connection_string
-    # For Azure deployment: use service_bus_namespace (with managed identity)
-    connection_string: str | None
-    service_bus_namespace: str | None
-    egress_queue_name: str | None
-    egress_session_id: str | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -124,7 +105,7 @@ class AppConfig:
             # =====================================================================
             # Network settings - these have sensible defaults for development
             # =====================================================================
-            host=_read_env_with_default("HOST", "127.0.0.1"),
+            host=_read_env_with_default("HOST", "0.0.0.0"),
             port=_read_int_env_with_default("PORT", 2575),
             # =====================================================================
             # Validation settings - optional, None means no validation
@@ -134,20 +115,6 @@ class AppConfig:
             # ALLOWED_SENDERS: If set, reject messages from unknown senders
             # This is the training equivalent of SENDING_APP in production
             allowed_senders=_read_env("ALLOWED_SENDERS"),
-            # =====================================================================
-            # WEEK 2 ADDITION: Service Bus settings
-            # =====================================================================
-            # SERVICE_BUS_CONNECTION_STRING: Connection string for local dev (emulator)
-            # SERVICE_BUS_NAMESPACE: Namespace for Azure deployment (managed identity)
-            # One of these should be set when using Service Bus
-            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
-            service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
-            # EGRESS_QUEUE_NAME: Queue where validated messages are published
-            # The transformer component reads from this queue
-            egress_queue_name=_read_env("EGRESS_QUEUE_NAME"),
-            # EGRESS_SESSION_ID: Session ID for ordered message processing
-            # Session-enabled queues ensure messages are processed in order
-            egress_session_id=_read_env("EGRESS_SESSION_ID"),
         )
 
 
