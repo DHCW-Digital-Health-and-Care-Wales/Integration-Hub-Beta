@@ -2,6 +2,7 @@ import logging
 from typing import Any, Callable, List
 
 from azure.servicebus import ServiceBusMessage
+from azure.servicebus.exceptions import OperationTimeoutError
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
@@ -70,12 +71,9 @@ class MessageReplayJob:
                     replay_ids[-1],
                 )
 
-                self._send_with_retry(sender_client, records, replay_ids)
+                self._send_to_service_bus_with_retry(sender_client, records, replay_ids)
 
-                self._retry_once(
-                    lambda: self._db_client.update_statuses(replay_ids, "Loaded"),
-                    "mark batch as Loaded in database",
-                )
+                self._update_loaded_status_with_retry(replay_ids)
                 logger.info("Batch %d: %d records marked as Loaded", batch_number, len(replay_ids))
 
         logger.info("Message replay job finished successfully")
@@ -99,19 +97,57 @@ class MessageReplayJob:
             "fetch batch from database",
         )
 
-    def _send_with_retry(
+    def _update_loaded_status_with_retry(self, replay_ids: List[int]) -> None:
+        """Mark records as Loaded with one retry on failure. Aborts on double failure."""
+        self._retry_once(
+            lambda: self._db_client.update_statuses(replay_ids, "Loaded"),
+            "mark batch as Loaded in database",
+        )
+
+    def _send_to_service_bus_with_retry(
         self,
         sender_client: MessageSenderClient,
         records: List[ReplayRecord],
         replay_ids: List[int],
     ) -> None:
-        """Send with one retry on failure. Marks batch as Failed on double failure."""
+        """Send to Service Bus with one retry on failure. Marks batch as Failed on double failure.
+
+        Error-specific behaviour:
+        - ValueError (single message too large): unrecoverable — skip retry.
+        - OperationTimeoutError: broker outcome unknown, messages may already be
+          on the queue. Retry anyway, but warn about potential duplicates.
+        - All other exceptions: transient — retry once normally.
+        """
         try:
-            self._retry_once(
-                lambda: self._send_batch_to_service_bus(sender_client, records),
-                "send batch to Service Bus",
+            self._send_batch_to_service_bus(sender_client, records)
+            return
+        except ValueError:
+            logger.error(
+                "Message exceeds Service Bus size limit, marking batch as Failed",
+                exc_info=True,
+            )
+            self._db_client.update_statuses(replay_ids, "Failed")
+            raise
+        except OperationTimeoutError:
+            logger.warning(
+                "Send timed out — broker outcome is unknown, messages may already "
+                "be on the queue. Retrying, which may produce duplicates.",
+                exc_info=True,
             )
         except Exception:
+            logger.warning(
+                "First send batch to Service Bus attempt failed, retrying...",
+                exc_info=True,
+            )
+
+        # Retry — only reached when first attempt raised OperationTimeoutError or Exception
+        try:
+            self._send_batch_to_service_bus(sender_client, records)
+        except Exception:
+            logger.error(
+                "Retry of send batch to Service Bus failed, marking batch as Failed",
+                exc_info=True,
+            )
             self._db_client.update_statuses(replay_ids, "Failed")
             raise
 

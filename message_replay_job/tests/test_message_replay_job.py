@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, call, patch
 
+from azure.servicebus.exceptions import OperationTimeoutError, ServiceBusError
+
 from message_replay_job.message_replay_job import MessageReplayJob
 from message_replay_job.replay_record import ReplayRecord
 
@@ -330,13 +332,13 @@ class TestMessageReplayJobOversizedMessage(unittest.TestCase):
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
-    def test_run_aborts_on_oversized_message_error(
+    def test_run_aborts_without_retry_on_oversized_message_error(
         self,
         mock_db_client_cls: MagicMock,
         mock_factory_cls: MagicMock,
     ) -> None:
         """A ValueError from send_message_batch (single message too large) must:
-        - be retried once (send_message_batch called twice total)
+        - NOT be retried (send_message_batch called once)
         - mark the batch as 'Failed' before re-raising
         - cause the job to abort
         """
@@ -354,12 +356,128 @@ class TestMessageReplayJobOversizedMessage(unittest.TestCase):
         mock_factory_cls.return_value = mock_factory
 
         job = MessageReplayJob(config)
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             job.run()
 
-        # Retried once before giving up
-        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
+        # NOT retried — only one send attempt
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 1)
         # Batch marked Failed before aborting
+        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+
+
+class TestMessageReplayJobOperationTimeout(unittest.TestCase):
+    """Tests for OperationTimeoutError handling during send."""
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_send_retries_on_operation_timeout_and_succeeds(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """OperationTimeoutError on first send, retry succeeds — batch marked Loaded."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.side_effect = [[_make_record(1, 100)], []]
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = [
+            OperationTimeoutError(message="Send timed out"),
+            None,
+        ]
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        job.run()
+
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
+        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_send_marks_failed_on_operation_timeout_double_failure(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """OperationTimeoutError on both attempts — batch marked Failed."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = [_make_record(1, 100)]
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = OperationTimeoutError(message="Send timed out")
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        with self.assertRaises(OperationTimeoutError):
+            job.run()
+
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
+        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+
+
+class TestMessageReplayJobServiceBusError(unittest.TestCase):
+    """Tests for generic ServiceBusError handling during send."""
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_send_retries_on_service_bus_error_and_succeeds(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """ServiceBusError on first send, retry succeeds — batch marked Loaded."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.side_effect = [[_make_record(1, 100)], []]
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = [
+            ServiceBusError("Transient SB error"),
+            None,
+        ]
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        job.run()
+
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
+        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_send_marks_failed_on_service_bus_error_double_failure(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """ServiceBusError on both attempts — batch marked Failed."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = [_make_record(1, 100)]
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = ServiceBusError("Persistent SB error")
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        with self.assertRaises(ServiceBusError):
+            job.run()
+
+        self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
         mock_db.update_statuses.assert_called_once_with([1], "Failed")
 
 
