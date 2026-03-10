@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, Callable, List
 
 from azure.servicebus import ServiceBusMessage
 from message_bus_lib.connection_config import ConnectionConfig
@@ -72,27 +72,32 @@ class MessageReplayJob:
 
                 self._send_with_retry(sender_client, records, replay_ids)
 
-                # Mark as Loaded — no retry, abort on failure
-                try:
-                    self._db_client.update_statuses(replay_ids, "Loaded")
-                    logger.info("Batch %d: %d records marked as Loaded", batch_number, len(replay_ids))
-                except Exception:
-                    logger.error("Failed to mark records as Loaded, aborting", exc_info=True)
-                    raise
+                self._retry_once(
+                    lambda: self._db_client.update_statuses(replay_ids, "Loaded"),
+                    "mark batch as Loaded in database",
+                )
+                logger.info("Batch %d: %d records marked as Loaded", batch_number, len(replay_ids))
 
         logger.info("Message replay job finished successfully")
 
+    def _retry_once(self, operation: Callable[[], Any], description: str) -> Any:
+        """Execute an operation with one retry on failure."""
+        try:
+            return operation()
+        except Exception:
+            logger.warning("First %s attempt failed, retrying...", description, exc_info=True)
+            try:
+                return operation()
+            except Exception:
+                logger.error("Second %s attempt failed", description, exc_info=True)
+                raise
+
     def _fetch_batch_with_retry(self, replay_batch_id: str) -> List[ReplayRecord]:
         """Fetch with one retry on failure. Aborts on double failure."""
-        try:
-            return self._db_client.fetch_batch(replay_batch_id, self._config.replay_batch_size)
-        except Exception:
-            logger.warning("First fetch attempt failed, retrying...", exc_info=True)
-            try:
-                return self._db_client.fetch_batch(replay_batch_id, self._config.replay_batch_size)
-            except Exception:
-                logger.error("Second fetch attempt failed, aborting job", exc_info=True)
-                raise
+        return self._retry_once(
+            lambda: self._db_client.fetch_batch(replay_batch_id, self._config.replay_batch_size),
+            "fetch batch from database",
+        )
 
     def _send_with_retry(
         self,
@@ -102,15 +107,13 @@ class MessageReplayJob:
     ) -> None:
         """Send with one retry on failure. Marks batch as Failed on double failure."""
         try:
-            self._send_batch_to_service_bus(sender_client, records)
+            self._retry_once(
+                lambda: self._send_batch_to_service_bus(sender_client, records),
+                "send batch to Service Bus",
+            )
         except Exception:
-            logger.warning("First send attempt failed, retrying...", exc_info=True)
-            try:
-                self._send_batch_to_service_bus(sender_client, records)
-            except Exception:
-                logger.error("Second send attempt failed, marking batch as Failed", exc_info=True)
-                self._db_client.update_statuses(replay_ids, "Failed")
-                raise
+            self._db_client.update_statuses(replay_ids, "Failed")
+            raise
 
     @staticmethod
     def _build_messages(records: List[ReplayRecord]) -> List[ServiceBusMessage]:

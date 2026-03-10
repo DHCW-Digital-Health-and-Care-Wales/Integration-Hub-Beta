@@ -248,11 +248,12 @@ class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
-    def test_run_aborts_immediately_on_loaded_update_failure(
+    def test_run_aborts_on_loaded_update_double_failure(
         self,
         mock_db_client_cls: MagicMock,
         mock_factory_cls: MagicMock,
     ) -> None:
+        """update_statuses is retried once, then aborts on the second failure."""
         config = _make_config()
         mock_db = MagicMock()
         mock_db_client_cls.return_value = mock_db
@@ -268,7 +269,36 @@ class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
         with self.assertRaises(Exception):
             job.run()
 
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        # Retried once: two calls total
+        self.assertEqual(mock_db.update_statuses.call_count, 2)
+        for c in mock_db.update_statuses.call_args_list:
+            self.assertEqual(c, call([1], "Loaded"))
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_run_succeeds_when_loaded_update_recovers_on_retry(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """First update_statuses call fails, retry succeeds — job continues."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.side_effect = [[_make_record(1, 100)], []]
+        mock_db.update_statuses.side_effect = [Exception("DB transient"), None]
+
+        mock_sender_client = MagicMock()
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        job.run()
+
+        self.assertEqual(mock_db.update_statuses.call_count, 2)
+        for c in mock_db.update_statuses.call_args_list:
+            self.assertEqual(c, call([1], "Loaded"))
 
 
 class TestBuildMessages(unittest.TestCase):
@@ -331,6 +361,36 @@ class TestMessageReplayJobOversizedMessage(unittest.TestCase):
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
         # Batch marked Failed before aborting
         mock_db.update_statuses.assert_called_once_with([1], "Failed")
+
+
+class TestRetryOnce(unittest.TestCase):
+    """Tests for the _retry_once helper method."""
+
+    def _make_job(self) -> MessageReplayJob:
+        return MessageReplayJob(_make_config())
+
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_retry_once_returns_value_on_first_success(self, _mock_db_cls: MagicMock) -> None:
+        job = self._make_job()
+        result = job._retry_once(lambda: 42, "test-op")
+        self.assertEqual(result, 42)
+
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_retry_once_retries_and_returns_on_second_success(self, _mock_db_cls: MagicMock) -> None:
+        job = self._make_job()
+        op = MagicMock(side_effect=[Exception("transient"), "ok"])
+        result = job._retry_once(op, "test-op")
+        self.assertEqual(result, "ok")
+        self.assertEqual(op.call_count, 2)
+
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_retry_once_raises_on_double_failure(self, _mock_db_cls: MagicMock) -> None:
+        job = self._make_job()
+        op = MagicMock(side_effect=Exception("permanent"))
+        with self.assertRaises(Exception) as ctx:
+            job._retry_once(op, "test-op")
+        self.assertIn("permanent", str(ctx.exception))
+        self.assertEqual(op.call_count, 2)
 
 
 if __name__ == "__main__":
