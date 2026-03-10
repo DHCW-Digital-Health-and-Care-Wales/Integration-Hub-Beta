@@ -76,6 +76,7 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertIn("WITH Batch AS", sql_arg)
         self.assertIn("TOP (?)", sql_arg)
         self.assertIn("ReplayBatchId = ?", sql_arg)
+        self.assertIn("ORDER BY b.ReplayId", sql_arg)
         self.assertEqual(params_arg, (100, batch_id))
 
     @patch("message_replay_job.db_client.pyodbc")

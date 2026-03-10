@@ -25,7 +25,8 @@ WITH Batch AS (
 )
 SELECT b.ReplayId, m.Id AS MessageId, m.RawPayload, m.CorrelationId
 FROM Batch b
-JOIN monitoring.Message m ON m.Id = b.MessageId;
+JOIN monitoring.Message m ON m.Id = b.MessageId
+ORDER BY b.ReplayId;
 """
 
 
