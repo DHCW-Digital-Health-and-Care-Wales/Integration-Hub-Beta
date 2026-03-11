@@ -4,7 +4,7 @@ A containerised job that replays HL7 messages from SQL Server to an Azure Servic
 
 ## How It Works
 
-1. Reads the `REPLAY_BATCH_ID` (UUID) from environment variables to identify the replay batch. This should be passed in to the contain app job as well when triggered.
+1. Reads the `REPLAY_BATCH_ID` (UUID) from environment variables to identify the replay batch. This should be passed in to the container app job as well when triggered.
 2. Fetches pending/failed rows from `monitoring.MessageReplayQueue` in configurable-sized batches (default 100), joined with `monitoring.Message` to retrieve the raw HL7 payload.
 3. Sends each batch to the configured Service Bus priority queue via `MessageSenderClient` from the shared lib.
 4. Marks each batch as `Loaded` in the database after successful send.
@@ -56,7 +56,7 @@ uv run python -m unittest discover tests
 
 ## REPLAY_BATCH_SIZE Tuning
 
-The `REPLAY_BATCH_SIZE` env variable controls how many rows are fetched per database round-trip, mapping to `TOP (?)` in the fetch query. The default is currently set to 100, which is is conservative given the typical HL7 message sizes expected currently.
+The `REPLAY_BATCH_SIZE` env variable controls how many rows are fetched per database round-trip, mapping to `TOP (?)` in the fetch query. The default is currently set to 100, which is conservative given the typical HL7 message sizes expected currently.
 
 A comparison between smaller and larger batch sizes below and the impact they have:
 

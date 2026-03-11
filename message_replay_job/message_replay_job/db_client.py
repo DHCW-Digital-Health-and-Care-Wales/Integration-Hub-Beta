@@ -13,8 +13,8 @@ ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 # Fetches the next batch of pending/failed replay rows, joined with the Messages
 # table to retrieve the raw payload and correlation ID for each message.
-# Uses READPAST to skip locked rows (concurrent safety) and a parameterised TOP (?)
-# for a configurable batch size.
+# Uses READPAST to skip locked rows and reduce blocking between concurrent workers,
+# and a parameterised TOP (?) for a configurable batch size.
 FETCH_BATCH_SQL = """
 WITH Batch AS (
     SELECT TOP (?) ReplayId, MessageId
