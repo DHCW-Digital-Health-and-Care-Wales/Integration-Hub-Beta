@@ -19,6 +19,7 @@ parameters:
       - HL7 Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
+      - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
       
@@ -157,6 +158,12 @@ stages:
           appImageName: 'networktestapp'
           appFunctionMidfix: ''
           buildPipeline: 'Network Test App - Build'
+
+        # Message Store Service
+        - name: 'Message Store Service'
+          appImageName: 'messagestoreservice'
+          appFunctionMidfix: ''
+          buildPipeline: 'Message Store Service - Build'
       
       # Environment configurations
       environments:
