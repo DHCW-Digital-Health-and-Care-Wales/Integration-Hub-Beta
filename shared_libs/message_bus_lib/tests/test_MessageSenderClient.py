@@ -15,7 +15,6 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 
 
 class TestMessageSenderClient(unittest.TestCase):
-
     def setUp(self) -> None:
         self.TOPIC_NAME = "test-topic"
         self.service_bus_sender_client = MagicMock()
@@ -88,6 +87,7 @@ class TestMessageSenderClient(unittest.TestCase):
             finally:
                 with lock:
                     is_running = False
+
         return slow_operation
 
     def _run_concurrent_operations(self, operations: List[Callable[[], None]]) -> List[Exception]:
@@ -118,9 +118,7 @@ class TestMessageSenderClient(unittest.TestCase):
     def test_send_message_thread_safety(self) -> None:
         """Test that concurrent send_message() calls are serialized by the lock."""
         # Arrange
-        self.service_bus_sender_client.send_messages = MagicMock(
-            side_effect=self._create_slow_operation()
-        )
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=self._create_slow_operation())
 
         num_threads = 5
         operations = [lambda: self.message_sender_client.send_message(b"Thread Safe Test")] * num_threads
@@ -136,9 +134,7 @@ class TestMessageSenderClient(unittest.TestCase):
     def test_close_thread_safety(self) -> None:
         """Test that concurrent close() calls are serialized by the lock."""
         # Arrange
-        self.service_bus_sender_client.close = MagicMock(
-            side_effect=self._create_slow_operation()
-        )
+        self.service_bus_sender_client.close = MagicMock(side_effect=self._create_slow_operation())
 
         num_threads = 5
         operations = [self.message_sender_client.close] * num_threads
@@ -177,9 +173,7 @@ class TestMessageSenderClient(unittest.TestCase):
     def test_send_message_raises_message_size_exceeded_error(self) -> None:
         # Arrange
         message = b"Test Message"
-        self.service_bus_sender_client.send_messages = MagicMock(
-            side_effect=MessageSizeExceededError()
-        )
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=MessageSizeExceededError())
 
         # Act & Assert
         with self.assertRaises(MessageSizeExceededError):
@@ -191,9 +185,7 @@ class TestMessageSenderClient(unittest.TestCase):
     def test_send_message_raises_service_bus_error_after_retries(self) -> None:
         # Arrange
         message = b"Test Message"
-        self.service_bus_sender_client.send_messages = MagicMock(
-            side_effect=ServiceBusError("Connection failed")
-        )
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=ServiceBusError("Connection failed"))
 
         # Act & Assert
         with self.assertRaises(ServiceBusError):
@@ -273,6 +265,40 @@ class TestSendMessageBatch(unittest.TestCase):
             self.client.send_message_batch(messages)
 
         self.assertIn("exceeds Service Bus max message size", str(ctx.exception))
+
+    def test_send_message_batch_raises_message_size_exceeded_when_oversized_message_follows_flush(self) -> None:
+        """MessageSizeExceededError propagates uncaught when a message triggers a flush
+        but is also too large for the fresh empty batch.
+          - Message A fits in batch_1 (messages_in_batch = 1)
+          - Message B fails on batch_1 because it is full — batch_1 is flushed, batch_2 created
+          - Message B also fails on batch_2 (empty) — it is oversized
+        MessageSizeExceededError is also a ValueError via inheritance.
+        """
+        mock_batch_1 = MagicMock()
+        add_call_count = 0
+
+        def batch_1_add_side_effect(msg: Any) -> None:
+            nonlocal add_call_count
+            add_call_count += 1
+            if add_call_count == 2:
+                raise MessageSizeExceededError()  # batch_1 is full; B does not fit
+
+        mock_batch_1.add_message.side_effect = batch_1_add_side_effect
+
+        # Message B is also too large — fails on the empty batch_2 too
+        mock_batch_2 = MagicMock()
+        mock_batch_2.add_message.side_effect = MessageSizeExceededError()
+
+        self.service_bus_sender.create_message_batch.side_effect = [mock_batch_1, mock_batch_2]
+
+        messages = self._make_messages(2)
+
+        # MessageSizeExceededError from the unchecked add_message on batch_2
+        with self.assertRaises(MessageSizeExceededError):
+            self.client.send_message_batch(messages)
+
+        # batch_1 (containing message A) was flushed before the error
+        self.service_bus_sender.send_messages.assert_called_once_with(mock_batch_1)
 
     def test_send_message_batch_returns_zero_for_empty_list(self) -> None:
         mock_batch = MagicMock()
