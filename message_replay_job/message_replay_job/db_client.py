@@ -1,56 +1,46 @@
 import logging
-from datetime import datetime, timezone
 from types import TracebackType
 from typing import List
 
 import pyodbc
 
-from .message_record import MessageRecord
+from .replay_record import ReplayRecord
 
 logger = logging.getLogger(__name__)
 
 # ODBC driver name for SQL Server connections
 ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
-
-# SQL statement for batch-inserting message records into the monitoring.Message table.
-# Uses parameterised placeholders to prevent SQL injection.
-INSERT_SQL = """
-INSERT INTO monitoring.Message (
-    ReceivedAt,
-    StoredAt,
-    CorrelationId,
-    SourceSystem,
-    ProcessingComponent,
-    TargetSystem,
-    RawPayload,
-    XmlPayload
+# Fetches the next batch of pending/failed replay rows, joined with the Messages
+# table to retrieve the raw payload and correlation ID for each message.
+# Uses READPAST to skip locked rows and reduce blocking between concurrent workers,
+# and a parameterised TOP (?) for a configurable batch size.
+FETCH_BATCH_SQL = """
+WITH Batch AS (
+    SELECT TOP (?) ReplayId, MessageId
+    FROM monitoring.MessageReplayQueue WITH (READPAST)
+    WHERE Status IN ('Failed', 'Pending')
+    AND ReplayBatchId = ?
+    ORDER BY ReplayId
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+SELECT b.ReplayId, m.Id AS MessageId, m.RawPayload, m.CorrelationId
+FROM Batch b
+JOIN monitoring.Message m ON m.Id = b.MessageId
+ORDER BY b.ReplayId;
 """
 
 
 class DatabaseClient:
-    """Manages pyodbc connections to SQL Server and provides batch message inserts.
+    """Manages pyodbc connections to SQL Server for replay batch operations.
 
     Maintains a single persistent connection that is opened lazily on the first call
-    to ``store_messages`` and reused for all subsequent calls.  If a database error
-    occurs the stale connection is discarded so that the next call transparently
-    reconnects (reconnect-on-failure strategy).
+    and reused for all subsequent calls. If a database error occurs the stale connection
+    is discarded so that the next call transparently reconnects (reconnect-on-failure).
 
     Supports two authentication modes:
-    - **Password auth** (local dev): when both ``sql_username`` and ``sql_password``
-      are provided, connects with username/password via the ODBC connection string.
-      Both must be supplied together — providing only one raises a ``ValueError``.
-    - **Managed Identity auth** (production): when both ``sql_username`` and
-      ``sql_password`` are ``None``, uses ``Authentication=ActiveDirectoryMsi`` in
-      the ODBC connection string so the driver authenticates directly via Azure
-      Managed Identity.
-
-      For a **system-assigned** Managed Identity, omit ``managed_identity_client_id``.
-      For a **user-assigned** Managed Identity, set ``managed_identity_client_id`` to
-      the client ID of the identity; it is passed as ``UID`` so the driver targets
-      the correct identity.
+    - **Password auth** (local dev): when ``sql_password`` is provided.
+    - **Managed Identity auth** (production): when ``sql_password`` is ``None``, uses
+      ``Authentication=ActiveDirectoryMsi``.
     """
 
     def __init__(
@@ -80,66 +70,82 @@ class DatabaseClient:
         self._sql_password = sql_password
         self._sql_encrypt = sql_encrypt
         self._sql_trust_server_certificate = sql_trust_server_certificate
-        # Optional client ID for user-assigned Managed Identity.
-        # When None, the system-assigned identity is used automatically.
         self._managed_identity_client_id = managed_identity_client_id
         # Persistent connection, opened lazily on first use.
         self._connection: pyodbc.Connection | None = None
 
-    def store_messages(self, messages: List[MessageRecord]) -> None:
-        """Batch-insert a list of MessageRecord objects into monitoring.Message.
+    def fetch_batch(self, replay_batch_id: str, batch_size: int) -> List[ReplayRecord]:
+        """Fetch the next batch of pending replay records up to ``batch_size`` rows.
 
-        Uses ``fast_executemany`` for performance and wraps the operation in an
-        atomic transaction (``autocommit=False``).  The underlying connection is
-        reused across calls; if a database error occurs the connection is closed and
-        discarded so that the next call transparently reconnects.
-
-        If ``executemany`` raises, the transaction is rolled back so that a subsequent
-        ``abandon_all`` on the Service Bus batch can safely re-queue without duplicates.
+        Executes the CTE query ordered by ReplayId, joining with the Messages table
+        to retrieve the raw payload and correlation ID for each message.
 
         Args:
-            messages: The batch of message records to persist.
+            replay_batch_id: The UUID identifying the replay batch.
+            batch_size: Maximum number of rows to fetch in this call.
+
+        Returns:
+            A list of ReplayRecord objects, empty if no pending rows remain.
 
         Raises:
-            pyodbc.Error: On any database-level failure (connection, execution, etc.).
+            pyodbc.Error: On any database-level failure.
         """
-        if not messages:
-            logger.debug("No messages to store — skipping database insert")
+        connection = self._get_connection()
+        try:
+            cursor = connection.cursor()
+            cursor.execute(FETCH_BATCH_SQL, (batch_size, replay_batch_id))
+            rows = cursor.fetchall()
+            return [
+                ReplayRecord(
+                    replay_id=row.ReplayId,
+                    message_id=row.MessageId,
+                    raw_payload=row.RawPayload,
+                    correlation_id=row.CorrelationId,
+                )
+                for row in rows
+            ]
+        except Exception:
+            logger.error("Failed to fetch replay batch — discarding connection", exc_info=True)
+            self._close_connection()
+            raise
+
+    def update_statuses(self, replay_ids: List[int], status: str) -> None:
+        """Update the status of the given replay records.
+
+        Uses a single UPDATE with a dynamic WHERE IN clause for efficiency.
+        Commits on success, rolls back and discards connection on error.
+
+        Args:
+            replay_ids: The ReplayId values to update.
+            status: The new status string (e.g. 'Loaded', 'Failed').
+
+        Raises:
+            pyodbc.Error: On any database-level failure.
+        """
+        if not replay_ids:
             return
 
         connection = self._get_connection()
-        stored_at = datetime.now(timezone.utc)
+        placeholders = ", ".join("?" for _ in replay_ids)
+        sql = f"""
+UPDATE monitoring.MessageReplayQueue
+SET Status = ?, ProcessedAt = SYSUTCDATETIME()
+WHERE ReplayId IN ({placeholders});
+"""  # nosec B608 — placeholders are parameterised ? markers, not user input
+        params = [status] + list(replay_ids)
 
         try:
             cursor = connection.cursor()
-            # Enable fast_executemany for batch performance
-            cursor.fast_executemany = True
-
-            rows = [
-                (
-                    msg.received_at,
-                    stored_at,
-                    msg.correlation_id,
-                    msg.source_system,
-                    msg.processing_component,
-                    msg.target_system,
-                    msg.raw_payload,
-                    msg.xml_payload,
-                )
-                for msg in messages
-            ]
-
-            cursor.executemany(INSERT_SQL, rows)
+            cursor.execute(sql, params)
             connection.commit()
-            logger.info("Successfully stored %d message(s) in database", len(messages))
+            logger.info("Updated %d replay record(s) to status '%s'", len(replay_ids), status)
         except Exception:
             try:
                 connection.rollback()
                 logger.debug("Transaction rolled back successfully")
             except Exception:
                 logger.warning("Rollback failed", exc_info=True)
-            logger.error("Database insert failed — discarding connection", exc_info=True)
-            # Discard the stale connection so the next call reconnects cleanly.
+            logger.error("Failed to update statuses — discarding connection", exc_info=True)
             self._close_connection()
             raise
 
@@ -152,20 +158,14 @@ class DatabaseClient:
         self._close_connection()
 
     def _get_connection(self) -> pyodbc.Connection:
-        """Return the existing persistent connection, creating it if necessary.
-
-        Uses lazy initialisation: the connection is only established on the first
-        call, then cached on ``self._connection`` for reuse across batches.
-        If the cached connection has been closed externally (e.g. server-side
-        timeout), a new one is opened transparently.
-        """
+        """Return the existing persistent connection, creating it if necessary."""
         if self._connection is None:
             logger.debug("No active connection — opening a new one")
             self._connection = self._connect()
         return self._connection
 
     def _close_connection(self) -> None:
-        """Close and discard the cached connection"""
+        """Close and discard the cached connection."""
         if self._connection is not None:
             try:
                 self._connection.close()
@@ -199,13 +199,8 @@ class DatabaseClient:
     def _connect_with_managed_identity(self) -> pyodbc.Connection:
         """Connect using Azure Managed Identity (production).
 
-        Uses ``Authentication=ActiveDirectoryMsi`` in the ODBC connection string,
-        allowing the ODBC driver to handle Managed Identity authentication directly.
-
-        - System-assigned identity: ``managed_identity_client_id`` is ``None``, so
-          ``UID`` is omitted and the driver picks up the single assigned identity.
-        - User-assigned identity: ``managed_identity_client_id`` is set to the client
-          ID of the target identity, passed as ``UID`` for explicit selection.
+        Uses ``Authentication=ActiveDirectoryMsi`` in the ODBC connection string.
+        For user-assigned identity, ``managed_identity_client_id`` is passed as ``UID``.
         """
         uid_segment = f"UID={self._managed_identity_client_id};" if self._managed_identity_client_id else ""
         conn_str = f"{self._build_base_connection_string()};{uid_segment}Authentication=ActiveDirectoryMsi"

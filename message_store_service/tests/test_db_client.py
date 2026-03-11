@@ -82,9 +82,7 @@ class TestDatabaseClient(unittest.TestCase):
 
     @patch("message_store_service.db_client.datetime")
     @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_batch_inserts_multiple_records(
-        self, mock_pyodbc: MagicMock, mock_dt: MagicMock
-    ) -> None:
+    def test_store_messages_batch_inserts_multiple_records(self, mock_pyodbc: MagicMock, mock_dt: MagicMock) -> None:
         """Verify multiple records are inserted as a single executemany batch with correct per-row values."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -236,9 +234,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.close.assert_called_once()
 
     @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_raises_original_error_when_rollback_also_fails(
-        self, mock_pyodbc: MagicMock
-    ) -> None:
+    def test_store_messages_raises_original_error_when_rollback_also_fails(self, mock_pyodbc: MagicMock) -> None:
         """If rollback itself raises (e.g. broken connection), the *original* insert error must
         still be re-raised and the stale connection must still be discarded.
 
@@ -279,10 +275,10 @@ class TestDatabaseClient(unittest.TestCase):
         """DatabaseClient must raise ValueError whenever exactly one of sql_username/sql_password is provided."""
         # Each tuple: (sql_username, sql_password, expected_missing_field_in_error)
         invalid_cases = [
-            (None,  "secret", "sql_username", "password set, username is None"),
-            ("",    "secret", "sql_username", "password set, username is empty string"),
-            ("sa",  None,     "sql_password", "username set, password is None"),
-            ("sa",  "",       "sql_password", "username set, password is empty string"),
+            (None, "secret", "sql_username", "password set, username is None"),
+            ("", "secret", "sql_username", "password set, username is empty string"),
+            ("sa", None, "sql_password", "username set, password is None"),
+            ("sa", "", "sql_password", "username set, password is empty string"),
         ]
         for username, password, expected_field, description in invalid_cases:
             with self.subTest(description):
@@ -302,8 +298,8 @@ class TestDatabaseClient(unittest.TestCase):
         Both credentials provided (password auth) and neither provided (Managed Identity) are valid.
         """
         valid_cases = [
-            ("sa",  "secret", "both username and password provided"),
-            (None,  None,     "neither username nor password provided (Managed Identity)"),
+            ("sa", "secret", "both username and password provided"),
+            (None, None, "neither username nor password provided (Managed Identity)"),
         ]
         for username, password, description in valid_cases:
             with self.subTest(description):
@@ -358,9 +354,7 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertNotIn("PWD=", conn_str)
 
     @patch("message_store_service.db_client.pyodbc")
-    def test_connect_uses_managed_identity_user_assigned_when_client_id_provided(
-        self, mock_pyodbc: MagicMock
-    ) -> None:
+    def test_connect_uses_managed_identity_user_assigned_when_client_id_provided(self, mock_pyodbc: MagicMock) -> None:
         """When managed_identity_client_id is set, UID is the client ID for user-assigned MI selection."""
         client = DatabaseClient(
             sql_server="myserver.database.windows.net",
@@ -388,9 +382,7 @@ class TestDatabaseClient(unittest.TestCase):
 
     @patch("message_store_service.db_client.datetime")
     @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_row_tuple_matches_column_order(
-        self, mock_pyodbc: MagicMock, mock_dt: MagicMock
-    ) -> None:
+    def test_store_messages_row_tuple_matches_column_order(self, mock_pyodbc: MagicMock, mock_dt: MagicMock) -> None:
         """Verify the tuple order matches the INSERT column order and stored_at is injected by db_client."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -446,4 +438,3 @@ class TestDatabaseClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
