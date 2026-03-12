@@ -1,4 +1,4 @@
-# HL7 Sender Build Pipeline
+# HL7 Subscription Sender Build Pipeline
 trigger:
   branches:
     include:
