@@ -13,6 +13,7 @@ pr:
       - hl7_server/*
       - hl7_phw_transformer/*
       - hl7_sender/*
+      - hl7_subscription_sender/*
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
@@ -49,6 +50,14 @@ stages:
         parameters:
           appName: 'hl7_sender'
           appDisplayName: 'HL7 Sender'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # HL7 Subscription Sender validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'hl7_subscription_sender'
+          appDisplayName: 'HL7 Subscription Sender'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 

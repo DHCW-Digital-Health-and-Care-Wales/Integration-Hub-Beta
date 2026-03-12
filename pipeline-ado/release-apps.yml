@@ -17,6 +17,7 @@ parameters:
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
       - HL7 Sender
+      - HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - Message Store Service
@@ -70,6 +71,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Sender - Build'
       source: 'HL7 Sender - Build'
+      trigger: none
+    - pipeline: 'HL7 Subscription Sender - Build'
+      source: 'HL7 Subscription Sender - Build'
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
@@ -136,6 +140,11 @@ stages:
           appImageName: 'hl7sender'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'HL7 Subscription Sender'
+          appImageName: 'hl7subscriptionsender'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Subscription Sender - Build'
           
         - name: 'PIMS HL7 Sender'
           appImageName: 'hl7sender'
