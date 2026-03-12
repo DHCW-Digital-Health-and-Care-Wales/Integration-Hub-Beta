@@ -1,11 +1,15 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
 from field_utils_lib.field_utils import (
+    _extract_cx_4_hd_1,
+    _normalize_repetitions,
     copy_segment_fields_in_range,
+    get_cx_4_hd_1_segment_codes_from_pid_field,
     get_hl7_field_value,
     set_nested_field,
 )
@@ -290,6 +294,117 @@ class TestCopySegmentFieldsInRange(unittest.TestCase):
         self.assertEqual(len(new_pid.pid_3), len(original_pid.pid_3))
         self.assertEqual(len(new_pid.pid_11), len(original_pid.pid_11))
         self.assertEqual(len(new_pid.pid_13), len(original_pid.pid_13))
+
+
+class TestGetCx4Hd1SegmentCodes(unittest.TestCase):
+    def _rep_with_hd1(self, code: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            cx_4=SimpleNamespace(
+                hd_1=SimpleNamespace(
+                    value=SimpleNamespace(value=code)
+                )
+            )
+        )
+
+    def test_returns_deduplicated_codes_in_order(self) -> None:
+        message = SimpleNamespace(
+            pid=SimpleNamespace(
+                pid_3=[
+                    self._rep_with_hd1("NHS"),
+                    self._rep_with_hd1("NHS"),
+                    self._rep_with_hd1("PAS"),
+                ]
+            )
+        )
+
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
+
+        self.assertEqual(result, ["NHS", "PAS"])
+
+    def test_returns_empty_list_when_pid_missing(self) -> None:
+        message = SimpleNamespace()
+
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
+
+        self.assertEqual(result, [])
+
+    def test_returns_empty_list_when_pid_field_missing(self) -> None:
+        message = SimpleNamespace(pid=SimpleNamespace())
+
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
+
+        self.assertEqual(result, [])
+
+    def test_returns_empty_list_for_invalid_pid_field_name(self) -> None:
+        message = SimpleNamespace(pid=SimpleNamespace(pid_3=[self._rep_with_hd1("NHS")]))
+
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3.cx_4")
+
+        self.assertEqual(result, [])
+
+    def test_handles_single_non_iterable_repetition(self) -> None:
+        message = SimpleNamespace(
+            pid=SimpleNamespace(
+                pid_3=self._rep_with_hd1("PAS")
+            )
+        )
+
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
+
+        self.assertEqual(result, ["PAS"])
+
+
+class TestExtractCx4Hd1(unittest.TestCase):
+    def test_returns_trimmed_code_value(self) -> None:
+        rep = SimpleNamespace(
+            cx_4=SimpleNamespace(
+                hd_1=SimpleNamespace(
+                    value=SimpleNamespace(value="  252  ")
+                )
+            )
+        )
+
+        result = _extract_cx_4_hd_1(rep)
+
+        self.assertEqual(result, "252")
+
+    def test_returns_empty_string_when_structure_missing(self) -> None:
+        rep = SimpleNamespace()
+
+        result = _extract_cx_4_hd_1(rep)
+
+        self.assertEqual(result, "")
+
+    def test_returns_trimmed_code_when_value_is_direct_string(self) -> None:
+        rep = SimpleNamespace(
+            cx_4=SimpleNamespace(
+                hd_1=SimpleNamespace(
+                    value="  ABC  "
+                )
+            )
+        )
+
+        result = _extract_cx_4_hd_1(rep)
+
+        self.assertEqual(result, "ABC")
+
+
+class TestNormalizeRepetitions(unittest.TestCase):
+    def test_none_returns_empty_list(self) -> None:
+        self.assertEqual(_normalize_repetitions(None), [])
+
+    def test_string_returns_single_item_list(self) -> None:
+        self.assertEqual(_normalize_repetitions("abc"), ["abc"])
+
+    def test_iterable_returns_list_copy(self) -> None:
+        values = ("a", "b")
+
+        result = _normalize_repetitions(values)
+
+        self.assertEqual(result, ["a", "b"])
+
+    def test_non_iterable_returns_empty_list(self) -> None:
+        self.assertEqual(_normalize_repetitions(123), [])
 
 
 if __name__ == '__main__':
