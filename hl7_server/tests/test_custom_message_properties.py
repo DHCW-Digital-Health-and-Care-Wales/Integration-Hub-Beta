@@ -71,8 +71,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "108",
-                "pid.pid_3.cx_4.hd_1": "NHS",
                 "pid.pid_29.ts_1": "2023-01-15",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -100,8 +98,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "108",
-                "pid.pid_3.cx_4.hd_1": "NHS",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -120,8 +116,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "108",
-                "pid.pid_3.cx_4.hd_1": "NHS",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -140,8 +134,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "108",
-                "pid.pid_3.cx_4.hd_1": "NHS",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -158,8 +150,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "",
-                "pid.pid_3.cx_4.hd_1": "",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -179,8 +169,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "108",
-                "pid.pid_3.cx_4.hd_1": "",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")
@@ -199,8 +187,6 @@ class TestCustomMessageProperties(unittest.TestCase):
         with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
             mock_get_field.side_effect = lambda msg, path: {
                 "msh.msh_9.msh_9_2": "A28",
-                "pid.pid_2.cx_4.hd_1": "",
-                "pid.pid_3.cx_4.hd_1": "NHS",
                 "pid.pid_29.ts_1": "",
                 "pid.pid_30": "",
             }.get(path, "")

@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-import re
 from typing import Any
 
 from hl7apy.exceptions import ChildNotFound
@@ -166,7 +165,7 @@ def copy_segment_fields_in_range(
                 new_rep.value = value
 
 
-def get_cx_4_hd_1_segment_codes(msg: Any, pid_field: str) -> list[str]:
+def get_cx_4_hd_1_segment_codes_from_pid_field(msg: Any, pid_field: str) -> list[str]:
     """
     Extract and deduplicate assigning authority codes from a PID field.
 
@@ -174,8 +173,8 @@ def get_cx_4_hd_1_segment_codes(msg: Any, pid_field: str) -> list[str]:
     the ``cx_4.hd_1`` value, trims whitespace, and preserves first-seen order.
     Missing PID segments/fields return an empty list.
     """
-    if not _is_valid_pid_field(pid_field):
-        return []
+    if not isinstance(pid_field, str):  
+        return [] 
 
     codes: list[str] = []
     seen: set[str] = set()
@@ -220,6 +219,9 @@ def _extract_cx_4_hd_1(rep: Any) -> str:
 
 
 def _normalize_repetitions(value: Any | None) -> list[Any]:
+    # if value is a number (123, 3.14) or true/false (True, False),
+    # treats it as “no valid HL7 repetitions found,”
+    # so returns an empty list [].
     if value is None:
         return []
     if isinstance(value, (str, bytes)):
@@ -230,10 +232,4 @@ def _normalize_repetitions(value: Any | None) -> list[Any]:
         return list(value)
     # HL7 fields can sometimes be a single non-iterable repetition object.
     return [value]
-
-
-def _is_valid_pid_field(pid_field: Any) -> bool:
-    if not isinstance(pid_field, str):
-        return False
-    return bool(re.fullmatch(r"pid_\d+", pid_field))
 
