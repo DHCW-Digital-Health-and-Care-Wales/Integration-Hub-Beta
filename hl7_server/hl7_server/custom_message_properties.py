@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
 
-from field_utils_lib import get_cx_4_hd_1_segment_codes, get_hl7_field_value
+from field_utils_lib import get_cx_4_hd_1_segment_codes_from_pid_field, get_hl7_field_value
 from hl7apy.core import Message
 from message_bus_lib.metadata_utils import (
     CORRELATION_ID_KEY,
@@ -23,10 +23,10 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
     }
 
 def build_mpi_properties(msg: Message) -> dict[str, str]:
-    pid2_codes = get_cx_4_hd_1_segment_codes(msg, "pid_2")
+    pid2_codes = get_cx_4_hd_1_segment_codes_from_pid_field(msg, "pid_2")
     update_sources = _pipe_wrap(pid2_codes)
 
-    pid3_codes = get_cx_4_hd_1_segment_codes(msg, "pid_3")
+    pid3_codes = get_cx_4_hd_1_segment_codes_from_pid_field(msg, "pid_3")
     assigning_authorities = _pipe_wrap(pid3_codes)
 
     return {

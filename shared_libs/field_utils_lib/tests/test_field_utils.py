@@ -9,7 +9,7 @@ from field_utils_lib.field_utils import (
     _extract_cx_4_hd_1,
     _normalize_repetitions,
     copy_segment_fields_in_range,
-    get_cx_4_hd_1_segment_codes,
+    get_cx_4_hd_1_segment_codes_from_pid_field,
     get_hl7_field_value,
     set_nested_field,
 )
@@ -317,28 +317,28 @@ class TestGetCx4Hd1SegmentCodes(unittest.TestCase):
             )
         )
 
-        result = get_cx_4_hd_1_segment_codes(message, "pid_3")
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
 
         self.assertEqual(result, ["NHS", "PAS"])
 
     def test_returns_empty_list_when_pid_missing(self) -> None:
         message = SimpleNamespace()
 
-        result = get_cx_4_hd_1_segment_codes(message, "pid_3")
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
 
         self.assertEqual(result, [])
 
     def test_returns_empty_list_when_pid_field_missing(self) -> None:
         message = SimpleNamespace(pid=SimpleNamespace())
 
-        result = get_cx_4_hd_1_segment_codes(message, "pid_3")
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
 
         self.assertEqual(result, [])
 
     def test_returns_empty_list_for_invalid_pid_field_name(self) -> None:
         message = SimpleNamespace(pid=SimpleNamespace(pid_3=[self._rep_with_hd1("NHS")]))
 
-        result = get_cx_4_hd_1_segment_codes(message, "pid_3.cx_4")
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3.cx_4")
 
         self.assertEqual(result, [])
 
@@ -349,7 +349,7 @@ class TestGetCx4Hd1SegmentCodes(unittest.TestCase):
             )
         )
 
-        result = get_cx_4_hd_1_segment_codes(message, "pid_3")
+        result = get_cx_4_hd_1_segment_codes_from_pid_field(message, "pid_3")
 
         self.assertEqual(result, ["PAS"])
 
