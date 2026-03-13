@@ -124,6 +124,34 @@ python := "python3"
     echo "   - Send test message: just send phw-to-mpi.sample.hl7"
     echo "   - Stop services: just stop"
 
+
+# Build + Start Docker containers for a specific profile (auto-generates secrets if needed)
+@bstart profile: (_ensure-secrets)
+    echo "⚒️  Building Docker containers for profile: {{profile}}"
+    echo ""
+    echo "📋 Profile selected: {{profile}}"
+    echo "🔨 This may take a few minutes on first build..."
+    echo ""
+    docker compose --profile {{profile}} build
+    echo ""
+    echo "✅ Build complete for profile: {{profile}}"
+    echo ""
+    echo "▶️  Starting Docker Compose services..."
+    echo ""
+    echo "📋 Profile: {{profile}}"
+    echo "🚀 Launching containers in detached mode..."
+    echo ""
+    docker compose --profile {{profile}} up -d
+    echo ""
+    echo "✅ Services started successfully!"
+    echo "📍 Running containers for profile: {{profile}}"
+    echo ""
+    echo "💡 Next steps examples:"
+    echo "   - Check status: docker ps"
+    echo "   - View logs: just logs phw-hl7-server"
+    echo "   - Send test message: just send phw-to-mpi.sample.hl7"
+    echo "   - Stop services: just stop"
+
 # Stop all Docker containers across all profiles
 @stop:
     echo "⏹️  Stopping all Docker Compose services..."

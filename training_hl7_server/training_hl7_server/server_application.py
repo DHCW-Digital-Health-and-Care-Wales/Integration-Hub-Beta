@@ -7,6 +7,8 @@ import threading
 
 from hl7apy.mllp import MLLPServer
 
+from training_hl7_server.app_config import AppConfig
+from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
 
 
@@ -15,7 +17,7 @@ class TrainingHl7ServerApplication:
     The main application class for the Training HL7 Server.
 
     This class:
-    1. Loads configuration from environment variables
+    1. Loads configuration from environment variables in AppConfig
     2. Sets up the MLLP server with message handlers
     3. Handles graceful shutdown on SIGINT/SIGTERM
     """
@@ -27,19 +29,21 @@ class TrainingHl7ServerApplication:
         # ===================================================================
         # Environment variables allow us to configure the server without
         # changing code - useful for different environments (dev, test, prod)
+        # We read these from the AppConfig class which provides defaults and validation
+        app_config = AppConfig.read_env_config()
 
         # HOST: The network interface to bind to
         # "0.0.0.0" means accept connections from any network interface
         # "localhost" would only accept connections from the same machine
-        self.host = os.environ.get("HOST", "0.0.0.0")
+        self.host = app_config.host
 
         # PORT: The TCP port number to listen on
         # Each service needs a unique port number
-        self.port = int(os.environ.get("PORT", "2575"))
+        self.port = app_config.port
 
         # HL7_VERSION: The expected HL7 version for incoming messages
         # We'll validate that messages match this version
-        self.expected_version = os.environ.get("HL7_VERSION", "2.3.1")
+        self.expected_version = app_config.hl7_version
 
         # ===================================================================
         # Server instance (will be set when the server starts)
@@ -106,9 +110,10 @@ class TrainingHl7ServerApplication:
         # 1. Create an instance of MessageHandler
         # 2. Pass the message and self.expected_version as arguments
         # 3. Call the handler's reply() method to get the ACK response
-
+        print("Setting up message handlers...")
         handlers = {
             "ADT^A31": (MessageHandler, self.expected_version),
+            "ERR": (ErrorHandler,)
         }
 
         # ===================================================================
