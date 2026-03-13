@@ -45,6 +45,8 @@ class TrainingHl7ServerApplication:
         # We'll validate that messages match this version
         self.expected_version = app_config.hl7_version
 
+        self.allowed_senders = app_config.allowed_senders
+
         # ===================================================================
         # Server instance (will be set when the server starts)
         # ===================================================================
@@ -112,7 +114,9 @@ class TrainingHl7ServerApplication:
         # 3. Call the handler's reply() method to get the ACK response
         print("Setting up message handlers...")
         handlers = {
-            "ADT^A31": (MessageHandler, self.expected_version),
+            "ADT^A31": (MessageHandler, self.expected_version, self.allowed_senders),
+            "ADT^A28": (MessageHandler, self.expected_version, self.allowed_senders),
+            "ADT^A40": (MessageHandler, self.expected_version, self.allowed_senders),
             "ERR": (ErrorHandler,)
         }
 

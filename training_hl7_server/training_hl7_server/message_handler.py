@@ -31,6 +31,7 @@ class MessageHandler(AbstractHandler):
         self,
         incoming_message: str,
         expected_version: str = "2.3.1",
+        allowed_senders: list[str] = ["TRAINING_APP"]
     ) -> None:
         """
         Initialize the message handler.
@@ -44,6 +45,8 @@ class MessageHandler(AbstractHandler):
 
         # Store the expected HL7 version for validation
         self.expected_version = expected_version
+
+        self.allowed_senders = allowed_senders
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
@@ -112,6 +115,8 @@ class MessageHandler(AbstractHandler):
             # Ensure the message uses the expected HL7 version
             self._validate_version(hl7_version)
 
+            self._validate_sender(sending_app)
+
             # ===================================================================
             # STEP 5: Build and return a success ACK
             # ===================================================================
@@ -173,3 +178,19 @@ class MessageHandler(AbstractHandler):
         if message_version != self.expected_version:
             raise ValidationError(f"Invalid HL7 version: expected '{self.expected_version}', got '{message_version}'")
         print(f"✓ HL7 version validated: {message_version}")
+
+    def _validate_sender(self, sender: str) -> None:
+        """
+        Validate the Sender from MSH-3.
+
+        This ensures we only accept messages with the expected sender.
+
+        Args:
+            sender: The message sender from MSH-3.
+
+        Raises:
+            ValidationError: If the version doesn't match expected.
+        """
+        if sender not in self.allowed_senders:
+            raise ValidationError(f"Invalid Sender: expected '{self.allowed_senders}', got '{sender}'")
+        print(f"✓ Sender validated: {sender}")
