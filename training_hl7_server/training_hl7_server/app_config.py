@@ -66,6 +66,14 @@ class AppConfig:
         allowed_senders: Comma-separated list of allowed sending application
                          codes (MSH-3). If None, all senders are accepted.
                          Example: "169,245" allows only apps 169 and 245.
+        connection_string: Azure Service Bus connection string.
+                           WEEK 2 ADDITION: Used to connect to Service Bus.
+
+        egress_queue_name: Queue to publish HL7 messages to for transformer.
+                           WEEK 2 ADDITION: Messages go here after ACK.
+
+        egress_session_id: Session ID for the egress queue (if session-enabled).
+                           WEEK 2 ADDITION: Used for ordered message processing.
     """
 
     # =========================================================================
@@ -79,6 +87,13 @@ class AppConfig:
     # =========================================================================
     hl7_version: str | None
     allowed_senders: str | None
+
+    # =========================================================================
+    # Azure Service Bus Configuration
+    # =========================================================================
+    connection_string: str | None
+    egress_queue_name: str | None
+    egress_session_id: str | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
