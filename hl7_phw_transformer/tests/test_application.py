@@ -38,14 +38,17 @@ class TestProcessPhwMessage(unittest.TestCase):
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
     @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
-    def test_process_message_success(
-        self,
-        mock_transform_dod: MagicMock,
-        mock_transform_datetime: MagicMock
-    ) -> None:
+    def test_process_message_success(self, mock_transform_dod: MagicMock, mock_transform_datetime: MagicMock) -> None:
         # Arrange
         mock_transform_datetime.return_value = "20250522103000"
         mock_transform_dod.return_value = '""'
+
+        # Build the expected transformed message
+        transformed_hl7_message = Message("ADT_A01")
+        transformed_hl7_message.msh.msh_7 = "20250522103000"
+        transformed_hl7_message.msh.msh_10 = "MSGID1234"
+        transformed_hl7_message.pid.pid_29 = '""'
+        transformed_hl7_string = transformed_hl7_message.to_er7()
 
         # Act
         result = process_message(self.service_bus_message, **self.process_message_kwargs)
@@ -60,23 +63,22 @@ class TestProcessPhwMessage(unittest.TestCase):
 
         # Verify audit logging
         self.mock_event_logger.log_message_received.assert_called_once_with(
-            self.hl7_string, "Message received for PHW transformation"
+            self.hl7_string, "Message received for PHW transformation", correlation_id=None
         )
         audit_message = (
             "HL7 transformations applied: DateTime transformed from 2025-05-22_10:30:00 to 20250522103000; "
             'Date of death transformed from RESURREC to ""'
         )
         self.mock_event_logger.log_message_processed.assert_called_once_with(
-            self.hl7_string,
+            transformed_hl7_string,
             audit_message,
+            correlation_id=None,
         )
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
     @patch("hl7_phw_transformer.mappers.pid_mapper.transform_date_of_death")
     def test_process_message_with_valid_date_of_death(
-        self,
-        mock_transform_dod: MagicMock,
-        mock_transform_datetime: MagicMock
+        self, mock_transform_dod: MagicMock, mock_transform_datetime: MagicMock
     ) -> None:
         # Arrange
         created_datetime = "2025-05-22 10:30:00"
@@ -110,10 +112,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.assertTrue(result)
 
     @patch("hl7_phw_transformer.mappers.msh_mapper.transform_datetime")
-    def test_process_message_failure_due_to_transform(
-        self,
-        mock_transform_datetime: MagicMock
-    ) -> None:
+    def test_process_message_failure_due_to_transform(self, mock_transform_datetime: MagicMock) -> None:
         # Arrange
         created_datetime = "invalid_datetime"
         hl7_message = Message("ADT_A01")
@@ -144,12 +143,13 @@ class TestProcessPhwMessage(unittest.TestCase):
         self.mock_sender.send_message.assert_not_called()
 
         self.mock_event_logger.log_message_received.assert_called_once_with(
-            hl7_string, "Message received for PHW transformation"
+            hl7_string, "Message received for PHW transformation", correlation_id=None
         )
         self.mock_event_logger.log_message_failed.assert_called_once_with(
             hl7_string,
             f"Failed to transform PHW message: {error_reason}",
             "PHW transformation failed",
+            correlation_id=None,
         )
         self.mock_event_logger.log_message_processed.assert_not_called()
 
@@ -164,7 +164,7 @@ class TestProcessPhwMessage(unittest.TestCase):
         mock_health_check: MagicMock,
         mock_factory: MagicMock,
         mock_read_env_config: MagicMock,
-        mock_event_logger: MagicMock
+        mock_event_logger: MagicMock,
     ) -> None:
         # Arrange
         # Create proper context manager mocks for all clients
@@ -195,7 +195,6 @@ class TestProcessPhwMessage(unittest.TestCase):
             egress_queue_name="egress_queue",
             egress_session_id=None,
             service_bus_namespace="service_bus_namespace",
-            audit_queue_name=None,
             workflow_id="workflow_id",
             microservice_id="microservice_id",
             health_check_hostname="localhost",

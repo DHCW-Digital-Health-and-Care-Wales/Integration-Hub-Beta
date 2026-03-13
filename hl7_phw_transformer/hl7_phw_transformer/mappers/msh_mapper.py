@@ -8,7 +8,16 @@ def map_msh(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
     msh_segment = original_msg.msh
     new_msh = new_msg.msh
 
-    copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=21)
+    # Copy all MSH fields except MSH-7 (Date/Time of Message), which is handled
+    # explicitly below to avoid overwriting the auto-populated timestamp on the
+    # new message when the original does not carry a value.
+    copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=6)
+    copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=8, end=21)
+
+    try:
+        new_msh.msh_12[0].value = msh_segment.msh_12[0].value
+    except Exception:
+        pass
 
     created_datetime = get_hl7_field_value(msh_segment, "msh_7.ts_1")
     if created_datetime:

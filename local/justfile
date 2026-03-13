@@ -121,7 +121,7 @@ python := "python3"
     echo "💡 Next steps examples:"
     echo "   - Check status: docker ps"
     echo "   - View logs: just logs phw-hl7-server"
-    echo "   - Send test message: just send phw-to-mpi.sample.hl7"
+    echo "   - Send test message: just send ./sample_messages/phw-to-mpi.sample.hl7"
     echo "   - Stop services: just stop"
 
 

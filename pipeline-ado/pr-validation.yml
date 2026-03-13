@@ -7,6 +7,7 @@ pr:
     include:
       - main
       - develop
+      - release-*
   paths:
     include:
       - hl7_server/*
@@ -15,6 +16,7 @@ pr:
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
+      - message_store_service/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -71,6 +73,14 @@ stages:
         parameters:
           appName: 'hl7_pims_transformer'
           appDisplayName: 'HL7 PIMS Transformer'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # Message Store Service validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'message_store_service'
+          appDisplayName: 'Message Store Service'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 

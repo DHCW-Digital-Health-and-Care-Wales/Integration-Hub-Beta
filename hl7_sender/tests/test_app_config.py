@@ -16,12 +16,12 @@ class TestAppConfig(unittest.TestCase):
                 "SERVICE_BUS_NAMESPACE": "namespace",
                 "RECEIVER_MLLP_HOST": "localhost",
                 "RECEIVER_MLLP_PORT": "1234",
-                "AUDIT_QUEUE_NAME": "audit-queue",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test health board",
                 "PEER_SERVICE": "test-service",
-                "ACK_TIMEOUT_SECONDS": "30"
+                "ACK_TIMEOUT_SECONDS": "30",
             }
             return values.get(name)
 
@@ -33,7 +33,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.service_bus_namespace, "namespace")
         self.assertEqual(config.receiver_mllp_hostname, "localhost")
         self.assertEqual(config.receiver_mllp_port, 1234)
-        self.assertEqual(config.audit_queue_name, "audit-queue")
+        self.assertEqual(config.message_store_queue_name, "messagestore-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
         self.assertEqual(config.microservice_id, "test-microservice")
         self.assertEqual(config.health_board, "test health board")

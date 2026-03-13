@@ -3,6 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from azure.servicebus import ServiceBusMessage
+from azure.servicebus.exceptions import SessionCannotBeLockedError
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 
@@ -192,6 +193,178 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.assertEqual(self.message_receiver_client.retry_attempt, 0)
         # there should be no retry planned
         self.assertIsNone(self.message_receiver_client.next_retry_time)
+
+
+class TestReceiveMessagesBatch(unittest.TestCase):
+    """Tests for MessageReceiverClient.receive_messages_batch with batch callback."""
+
+    def setUp(self) -> None:
+        self.service_bus_client = MagicMock()
+        self.sb_receiver = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        self.message_receiver_client = MessageReceiverClient(self.service_bus_client, "test-queue")
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_completes_all_on_success(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor returns True, all messages should be completed."""
+        messages = [create_message("1"), create_message("2"), create_message("3")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            self.assertEqual(len(msgs), 3)
+            return True
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.complete_message.call_count, 3)
+        self.sb_receiver.complete_message.assert_any_call(messages[0])
+        self.sb_receiver.complete_message.assert_any_call(messages[1])
+        self.sb_receiver.complete_message.assert_any_call(messages[2])
+        self.sb_receiver.abandon_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_abandons_all_on_failure(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor returns False, all messages should be abandoned."""
+        messages = [create_message("1"), create_message("2")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            return False
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.abandon_message.call_count, 2)
+        self.sb_receiver.abandon_message.assert_any_call(messages[0])
+        self.sb_receiver.abandon_message.assert_any_call(messages[1])
+        self.sb_receiver.complete_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_abandons_all_on_exception(self, sleep_mock: MagicMock) -> None:
+        """When batch_processor raises an exception, all messages should be abandoned."""
+        messages = [create_message("1"), create_message("2")]
+        self.sb_receiver.receive_messages.return_value = messages
+
+        def processor(msgs: list) -> bool:
+            raise RuntimeError("Processing failed")
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        self.assertEqual(self.sb_receiver.abandon_message.call_count, 2)
+        self.sb_receiver.complete_message.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_batch_skips_processing_when_no_messages(self, sleep_mock: MagicMock) -> None:
+        """When no messages are received, batch_processor should not be called."""
+        self.sb_receiver.receive_messages.return_value = []
+
+        processor = MagicMock(return_value=True)
+
+        self.message_receiver_client.receive_messages_batch(num_of_messages=10, batch_processor=processor)
+
+        processor.assert_not_called()
+        self.sb_receiver.complete_message.assert_not_called()
+        self.sb_receiver.abandon_message.assert_not_called()
+
+
+
+class TestAutoLockRenewerLifecycle(unittest.TestCase):
+    """
+    Tests that AutoLockRenewer.close() is always called when a session_id is provided,
+    regardless of whether processing succeeds, fails, or raises an unexpected exception.
+    This ensures background lock-renewal threads are never leaked.
+    """
+
+    def setUp(self) -> None:
+        self.service_bus_client = MagicMock()
+        self.sb_receiver = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        # Use a session_id so that AutoLockRenewer is instantiated inside _receive_and_process.
+        self.message_receiver_client = MessageReceiverClient(
+            self.service_bus_client, "test-queue", session_id="session-1"
+        )
+
+    @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
+    @patch("time.sleep", return_value=None)
+    def test_autolock_renewer_closed_after_processing(
+        self, _sleep: MagicMock, mock_renewer_cls: MagicMock
+    ) -> None:
+        """AutoLockRenewer must be closed regardless of whether processing succeeds,
+        returns False, or raises an exception."""
+        def raising_processor(msg: Any) -> bool:
+            raise RuntimeError("Unexpected processing error")
+
+        cases = [
+            ("success",   lambda msg: True),
+            ("failure",   lambda msg: False),
+            ("exception", raising_processor),
+        ]
+
+        for scenario, processor in cases:
+            with self.subTest(scenario=scenario):
+                mock_renewer = MagicMock()
+                mock_renewer_cls.reset_mock()
+                mock_renewer_cls.return_value = mock_renewer
+
+                # Reset retry state so _apply_delay_and_check_if_its_retry_time
+                # does not short-circuit before AutoLockRenewer is created.
+                self.message_receiver_client.next_retry_time = None
+                self.message_receiver_client.retry_attempt = 0
+                self.sb_receiver.receive_messages.return_value = [create_message("1")]
+
+                self.message_receiver_client.receive_messages(1, processor)
+
+                mock_renewer.close.assert_called_once()
+
+    @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
+    @patch("time.sleep", return_value=None)
+    def test_autolock_renewer_closed_when_receiver_creation_raises(
+        self, _sleep: MagicMock, mock_renewer_cls: MagicMock
+    ) -> None:
+        """AutoLockRenewer must be closed even if the receiver context manager raises on entry."""
+        mock_renewer = MagicMock()
+        mock_renewer_cls.return_value = mock_renewer
+
+        # Simulate an error during receiver __enter__ (e.g., network failure)
+        self.service_bus_client.get_queue_receiver.return_value.__enter__.side_effect = RuntimeError(
+            "Receiver creation failed"
+        )
+
+        with self.assertRaises(RuntimeError):
+            self.message_receiver_client.receive_messages(1, lambda msg: True)
+
+        mock_renewer.close.assert_called_once()
+
+    @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
+    @patch("time.sleep", return_value=None)
+    def test_autolock_renewer_closed_on_session_cannot_be_locked(
+        self, _sleep: MagicMock, mock_renewer_cls: MagicMock
+    ) -> None:
+        """AutoLockRenewer must be closed when SessionCannotBeLockedError is raised."""
+        mock_renewer = MagicMock()
+        mock_renewer_cls.return_value = mock_renewer
+
+        self.service_bus_client.get_queue_receiver.return_value.__enter__.side_effect = (
+            SessionCannotBeLockedError()
+        )
+
+        # SessionCannotBeLockedError is caught internally; no exception should propagate.
+        self.message_receiver_client.receive_messages(1, lambda msg: True)
+
+        mock_renewer.close.assert_called_once()
+
+    @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
+    @patch("time.sleep", return_value=None)
+    def test_autolock_renewer_not_created_without_session_id(
+        self, _sleep: MagicMock, mock_renewer_cls: MagicMock
+    ) -> None:
+        """AutoLockRenewer must NOT be created when no session_id is provided."""
+        # Create a client without a session_id
+        client_without_session = MessageReceiverClient(self.service_bus_client, "test-queue")
+        sb_receiver = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        sb_receiver.receive_messages.return_value = []
+
+        client_without_session.receive_messages(1, lambda msg: True)
+
+        mock_renewer_cls.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,7 +16,6 @@ class TestAppConfig(unittest.TestCase):
                 "EGRESS_QUEUE_NAME": "topic",
                 "EGRESS_SESSION_ID": "session_id",
                 "SERVICE_BUS_NAMESPACE": "namespace",
-                "AUDIT_QUEUE_NAME": "audit_queue",
                 "WORKFLOW_ID": "workflow_id",
                 "MICROSERVICE_ID": "microservice_id",
             }

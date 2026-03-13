@@ -59,6 +59,59 @@ The [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json) file define
 > [!NOTE]
 > **RequiresSession**: Set to `true` when you need guaranteed FIFO (First-In-First-Out) message ordering. Session-enabled queues ensure messages with the same session ID are processed in order. This applies to both the local emulator and Azure Service Bus in production.
 
+### Local SQL Server
+
+A local SQL Server instance is available for development and testing. The container uses Microsoft SQL Server 2022 Express and automatically initializes the `IntegrationHub` database with the required schema.
+
+**Connection Details:**
+
+| Property     | Value                                      |
+| ------------ | ------------------------------------------ |
+| **Host**     | `localhost`                                |
+| **Port**     | `1433`                                     |
+| **Database** | `IntegrationHub`                           |
+| **Username** | `sa`                                       |
+| **Password** | Value of `MSSQL_SA_PASSWORD` in `.secrets` |
+
+**Connection String:**
+
+```
+Server=<localhost|sqlserver>,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;
+```
+
+**What's initialized:**
+
+- Database: `IntegrationHub`
+- Schema: `monitoring`
+- Table: `monitoring.Message` - stores message tracking data including payloads, timestamps, and workflow identifiers
+
+**Customizing initialization:**
+
+To modify the database schema or add seed data, edit the SQL script at `sql-scripts/init-db.sql`. The script is executed automatically when the container starts and uses idempotent `IF NOT EXISTS` checks, making it safe to run multiple times.
+
+**Message Store Service SQL configuration:**
+
+The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
+
+| Variable                       | Value               | Description                                                                                                                                      |
+|--------------------------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                                                       |
+| `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                                                                    |
+| `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator) — must be set together with `MSSQL_SA_PASSWORD`                                                          |
+| `MSSQL_SA_PASSWORD`            | *(from `.secrets`)* | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
+| `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required)                                        |
+| `SQL_TRUST_SERVER_CERTIFICATE` | `Yes`               | (Only relevant when `SQL_ENCRYPT=Yes`.) Overrides the default (`No`) — trusts the self-signed certificate used by the local SQL Server container |
+
+> **Note**: `SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause the service to fail at startup with a clear error. Omit both to use Managed Identity (production).
+
+> **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
+
+> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`)
+
+**Starting SQL Server:**
+
+The SQL Server container starts automatically when using any profile (e.g., `just start phw-to-mpi` or `docker compose --profile phw-to-mpi up -d`).
+
 ### SSL Certificates (Corporate Networks)
 
 - **For machines on corporate networks**: Configure SSL certificates to allow uv and Docker to work with corporate proxies:
@@ -104,7 +157,7 @@ Each profile starts a complete integration flow with all required services:
 Each service is configured via a corresponding `.env` file in the `local/` directory:
 
 | File                          | Configures            | Key Variables                                                             |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
+| ----------------------------- | --------------------- |---------------------------------------------------------------------------|
 | **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
 | **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
 | **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
@@ -112,6 +165,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **chemo-hl7-transformer.env** | Chemocare Transformer | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi` |
 | **pims-hl7-server.env**       | PIMS HL7 Server       | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`              |
 | **pims-hl7-transformer.env**  | PIMS Transformer      | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`      |
+| **message-store-service.env** | Message Store Service | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                        |
 | **mpi-hl7-sender.env**        | MPI HL7 Sender        | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`  |
 | **mpi-hl7-mock-receiver.env** | MPI Mock Receiver     | `PORT=2576`, `EGRESS_QUEUE_NAME`                                          |
 
@@ -167,8 +221,8 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 **Steps**
 
 - Install python-hl7 e.g. `pip install hl7` - see [python-hl7 docs](https://python-hl7.readthedocs.io/en/latest/#install)
-- Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file)
-- Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
+- Create a `.hl7` file to contain the HL7 message to be sent (or use the `phw-to-mpi.sample.hl7` example file in `local/sample_messages/`)
+- Run `mllp_send` with the `.hl7` file e.g. `mllp_send --loose --file /sample_messages/phw-to-mpi.sample.hl7 --port 2575 127.0.0.1`
 - Check the Docker logs to show whether the request succeeded.
 
 See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
@@ -237,8 +291,8 @@ Examples:
 
 ```bash
   just start phw-to-mpi
-  just send phw-to-mpi.sample.hl7
-  just send phw-to-mpi.sample.hl7 2576
+  just send ./sample_messages/phw-to-mpi.sample.hl7
+  just send ./sample_messages/chemocare-to-mpi.sample.hl7 2578
   just logs mpi-hl7-mock-receiver
   just stop
   just build phw-to-mpi

@@ -3,6 +3,7 @@ trigger:
   branches:
     include:
       - main
+      - release-*
   paths:
     include:
       - network_test_app/*

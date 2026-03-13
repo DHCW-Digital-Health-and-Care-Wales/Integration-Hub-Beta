@@ -1,7 +1,14 @@
 import unittest
 from unittest.mock import MagicMock
 
-from field_utils_lib.field_utils import get_hl7_field_value, set_nested_field, copy_segment_fields_in_range
+from hl7apy.core import Message
+from hl7apy.parser import parse_message
+
+from field_utils_lib.field_utils import (
+    copy_segment_fields_in_range,
+    get_hl7_field_value,
+    set_nested_field,
+)
 
 
 class TestGetHl7FieldValue(unittest.TestCase):
@@ -119,89 +126,170 @@ class TestSetNestedField(unittest.TestCase):
 
 
 class TestCopySegmentFieldsInRange(unittest.TestCase):
-    def test_copy_segment_fields_in_range_single_field(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
-        source_field = MagicMock()
-        source_field.value = "test_value"
-        source_segment.msh_3 = source_field
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=3)
-        
-        self.assertEqual(target_segment.msh_3, source_field)
+    def setUp(self) -> None:
+        self.hl7_message = (
+            "MSH|^~\\&|SEND_APP|SEND_FAC|REC_APP|REC_FAC|20250505||ADT^A31^ADT_A05|"
+            "MSG123|P|2.5|||||GBR|8859/1|EN\r"
+            "PID|||8888^^^252^PI~4444^^^NHS^NH||SURNAME^FNAME^MNAME^^MR||"
+            "19990101|M|^^||99 ROAD^PLACE^CITY^COUNTY^SA99 1XX^^H"
+            "~SECOND1^SECOND2^SECOND3^SECOND4^SB99 9SB^^H||"
+            "^^^home~^^^work||||||||||||||||2024-12-31|||01\r"
+        )
+        self.original_message = parse_message(self.hl7_message)
 
-    def test_copy_segment_fields_in_range_multiple_fields(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
-        for i in range(3, 6):
-            field = MagicMock()
-            field.value = f"value_{i}"
-            setattr(source_segment, f"msh_{i}", field)
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=5)
-        
-        for i in range(3, 6):
-            self.assertEqual(getattr(target_segment, f"msh_{i}"), getattr(source_segment, f"msh_{i}"))
+    def test_copy_single_field(self) -> None:
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
 
-    def test_copy_segment_fields_in_range_inclusive_end(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
+        copy_segment_fields_in_range(self.original_message.pid, new_pid, "pid", start=7, end=7)
+
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_7"),
+            get_hl7_field_value(self.original_message.pid, "pid_7"),
+        )
+
+    def test_copy_multiple_fields(self) -> None:
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+
+        copy_segment_fields_in_range(self.original_message.pid, new_pid, "pid", start=7, end=9)
+
+        for i in range(7, 10):
+            self.assertEqual(
+                get_hl7_field_value(new_pid, f"pid_{i}"),
+                get_hl7_field_value(self.original_message.pid, f"pid_{i}"),
+                f"PID.{i} mismatch",
+            )
+
+    def test_copy_inclusive_end(self) -> None:
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+
+        copy_segment_fields_in_range(self.original_message.pid, new_pid, "pid", start=1, end=39)
+
+        # Verify both start and end are included
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_1"),
+            get_hl7_field_value(self.original_message.pid, "pid_1"),
+        )
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_39"),
+            get_hl7_field_value(self.original_message.pid, "pid_39"),
+        )
+
+    def test_copy_skips_empty_fields(self) -> None:
+        """Fields with no data should not cause errors."""
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+
+        # PID.4, PID.9, PID.10 are empty in our test message
+        copy_segment_fields_in_range(self.original_message.pid, new_pid, "pid", start=1, end=10)
+
+        # Non-empty fields should be copied
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_5"),
+            get_hl7_field_value(self.original_message.pid, "pid_5"),
+        )
+
+    def test_copy_large_range(self) -> None:
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+
+        copy_segment_fields_in_range(self.original_message.pid, new_pid, "pid", start=1, end=39)
+
         for i in range(1, 40):
-            field = MagicMock()
-            field.value = f"pid_{i}"
-            setattr(source_segment, f"pid_{i}", field)
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "pid", start=1, end=39)
-        
-        self.assertEqual(getattr(target_segment, "pid_1"), getattr(source_segment, "pid_1"))
-        self.assertEqual(getattr(target_segment, "pid_39"), getattr(source_segment, "pid_39"))
+            self.assertEqual(
+                get_hl7_field_value(new_pid, f"pid_{i}"),
+                get_hl7_field_value(self.original_message.pid, f"pid_{i}"),
+                f"PID.{i} mismatch",
+            )
 
-    def test_copy_segment_fields_in_range_skips_missing_fields(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
-        source_field = MagicMock()
-        source_field.value = "value_3"
-        source_segment.msh_3 = source_field
-        
-        del source_segment.msh_4
-        del source_segment.msh_5
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=3, end=5)
-        
-        self.assertEqual(target_segment.msh_3, source_field)
+    def test_copy_msh_fields(self) -> None:
+        new_msg = Message(version="2.5")
 
-    def test_copy_segment_fields_in_range_large_range(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
-        # Setup source fields
-        for i in range(1, 40):
-            field = MagicMock()
-            field.value = f"pid_{i}"
-            setattr(source_segment, f"pid_{i}", field)
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "pid", start=1, end=39)
-        
-        for i in range(1, 40):
-            self.assertEqual(getattr(target_segment, f"pid_{i}"), getattr(source_segment, f"pid_{i}"))
+        copy_segment_fields_in_range(self.original_message.msh, new_msg.msh, "msh", start=3, end=21)
 
-    def test_copy_segment_fields_in_range_msh_13_to_21(self):
-        source_segment = MagicMock()
-        target_segment = MagicMock()
-        
-        for i in range(13, 22):
-            field = MagicMock()
-            field.value = f"msh_{i}"
-            setattr(source_segment, f"msh_{i}", field)
-        
-        copy_segment_fields_in_range(source_segment, target_segment, "msh", start=13, end=21)
-        
-        for i in range(13, 22):
-            self.assertEqual(getattr(target_segment, f"msh_{i}"), getattr(source_segment, f"msh_{i}"))
+        for i in range(3, 22):
+            self.assertEqual(
+                get_hl7_field_value(new_msg.msh, f"msh_{i}"),
+                get_hl7_field_value(self.original_message.msh, f"msh_{i}"),
+                f"MSH.{i} mismatch",
+            )
+
+    def test_copy_preserves_pid_3_repetitions(self) -> None:
+        """PID.3 (Patient Identifier List) commonly has multiple repetitions."""
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+        original_pid = self.original_message.pid
+
+        copy_segment_fields_in_range(original_pid, new_pid, "pid", start=3, end=3)
+
+        self.assertEqual(len(original_pid.pid_3), 2)
+        self.assertEqual(len(new_pid.pid_3), len(original_pid.pid_3))
+        for i in range(len(original_pid.pid_3)):
+            self.assertEqual(
+                original_pid.pid_3[i].value,
+                new_pid.pid_3[i].value,
+                f"PID.3 repetition {i} mismatch",
+            )
+
+    def test_copy_preserves_pid_11_repetitions(self) -> None:
+        """PID.11 (Patient Address) commonly has multiple repetitions."""
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+        original_pid = self.original_message.pid
+
+        copy_segment_fields_in_range(original_pid, new_pid, "pid", start=11, end=11)
+
+        self.assertEqual(len(original_pid.pid_11), 2)
+        self.assertEqual(len(new_pid.pid_11), len(original_pid.pid_11))
+        for i in range(len(original_pid.pid_11)):
+            self.assertEqual(
+                original_pid.pid_11[i].value,
+                new_pid.pid_11[i].value,
+                f"PID.11 repetition {i} mismatch",
+            )
+
+    def test_copy_preserves_pid_13_repetitions(self) -> None:
+        """PID.13 (Phone Number Home) commonly has multiple repetitions."""
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+        original_pid = self.original_message.pid
+
+        copy_segment_fields_in_range(original_pid, new_pid, "pid", start=13, end=13)
+
+        self.assertEqual(len(original_pid.pid_13), 2)
+        self.assertEqual(len(new_pid.pid_13), len(original_pid.pid_13))
+        for i in range(len(original_pid.pid_13)):
+            self.assertEqual(
+                original_pid.pid_13[i].value,
+                new_pid.pid_13[i].value,
+                f"PID.13 repetition {i} mismatch",
+            )
+
+    def test_copy_range_with_mix_of_single_and_repeating_fields(self) -> None:
+        """A range containing both single-value and repeating fields should handle all correctly."""
+        new_msg = Message(version="2.5")
+        new_pid = new_msg.add_segment("PID")
+        original_pid = self.original_message.pid
+
+        # PID.1-13 includes single fields (pid_7, pid_8) and repeating fields (pid_3, pid_11, pid_13)
+        copy_segment_fields_in_range(original_pid, new_pid, "pid", start=1, end=13)
+
+        # Check single-value fields
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_7"),
+            get_hl7_field_value(original_pid, "pid_7"),
+        )
+        self.assertEqual(
+            get_hl7_field_value(new_pid, "pid_8"),
+            get_hl7_field_value(original_pid, "pid_8"),
+        )
+
+        # Check repeating fields
+        self.assertEqual(len(new_pid.pid_3), len(original_pid.pid_3))
+        self.assertEqual(len(new_pid.pid_11), len(original_pid.pid_11))
+        self.assertEqual(len(new_pid.pid_13), len(original_pid.pid_13))
 
 
 if __name__ == '__main__':

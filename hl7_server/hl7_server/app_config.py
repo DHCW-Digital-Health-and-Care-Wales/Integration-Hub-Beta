@@ -13,7 +13,7 @@ class AppConfig:
     egress_topic_name: str | None
     egress_session_id: str | None
     service_bus_namespace: str | None
-    audit_queue_name: str
+    message_store_queue_name: str
     workflow_id: str
     microservice_id: str
     health_board: str
@@ -43,7 +43,7 @@ class AppConfig:
             egress_topic_name=egress_topic_name,
             egress_session_id=_read_env("EGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
-            audit_queue_name=_read_required_env("AUDIT_QUEUE_NAME"),
+            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),
@@ -57,6 +57,7 @@ class AppConfig:
             max_message_size_bytes=_read_and_validate_message_size(),
         )
 
+
 def _read_and_validate_message_size() -> int:
     configured_size = _read_int_env("MAX_MESSAGE_SIZE_BYTES")
 
@@ -69,13 +70,15 @@ def _read_and_validate_message_size() -> int:
         raise ValueError(
             f"Maximum message size configured: {configured_size} bytes. "
             f"It exceeds Azure Service Bus Premium tier limit of {service_bus_limit_bytes} bytes "
-            f"({service_bus_limit_bytes / 1024 /1024:.1f}MB)."
+            f"({service_bus_limit_bytes / 1024 / 1024:.1f}MB)."
         )
 
     return configured_size
 
+
 def _read_env(name: str) -> str | None:
     return os.getenv(name)
+
 
 def _read_required_env(name: str) -> str:
     value = os.getenv(name)
@@ -83,6 +86,7 @@ def _read_required_env(name: str) -> str:
         raise RuntimeError(f"Missing required configuration: {name}")
     else:
         return value
+
 
 def _read_int_env(name: str) -> int | None:
     value = os.getenv(name)

@@ -35,7 +35,6 @@ class TestChemocareTransformer(unittest.TestCase):
             None,
             None,
             None,
-            None,
             health_check_hostname="localhost",
             health_check_port=9000,
         )
@@ -62,10 +61,8 @@ class TestChemocareTransformer(unittest.TestCase):
         self.assertEqual(str(context.exception), error_reason)
 
     def test_audit_text_methods(self) -> None:
-
         received_text = self.transformer.get_received_audit_text()
         self.assertEqual(received_text, "Message received for Chemocare transformation")
-
 
         processed_text = self.transformer.get_processed_audit_text(self.hl7_message)
         self.assertEqual(processed_text, "Chemocare transformation applied for SENDING_APP: 192")
