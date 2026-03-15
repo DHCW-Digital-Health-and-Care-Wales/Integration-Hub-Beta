@@ -99,7 +99,7 @@ class MessageHandler(AbstractHandler):
         # =====================================================================
         # If configured, this client will be used to poublish validated messages
         # to Azure Service Bus for the transformer to process.
-        self.sender_client = self.sender_client
+        self.sender_client = sender_client
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()

@@ -118,11 +118,11 @@ class TrainingHl7ServerApplication:
         print(f"Allowed Senders: {self.config.allowed_senders or '(any)'}")
 
         # WEEK 2 ADDITION: Initialize Service Bus sender
-        if self.config.connection_string and self.config.queue_name:
+        if self.config.connection_string and self.config.egress_queue_name:
             print("-" * 60)
             print("SERVICE BUS INTEGRATION ENABLED (WEEK 2)")
-            print(f"Egress Queue: {self.config.queue_name}")
-            print(f"Session ID: {self.config.session_id or '(none)'}")
+            print(f"Egress Queue: {self.config.egress_queue_name}")
+            print(f"Session ID: {self.config.egress_session_id or '(none)'}")
 
             # Create connection configuration for Service Bus
             connection_config = ConnectionConfig(
