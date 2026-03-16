@@ -43,7 +43,7 @@ stages:
         parameters:
           jobName: 'BuildPushHL7SubscriptionSender'
           displayName: 'Build and Push HL7 Subscription Sender'
-          appName: 'hl7subscriptionsender'
+          appName: 'hl7subsndr'
           dockerfilePath: 'hl7_subscription_sender/Dockerfile'
           buildContext: 'hl7_subscription_sender'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
