@@ -68,8 +68,10 @@ class SubscriptionReceiverClient(MessageReceiverClient):
                         self._abort_message_processing(receiver, messages[i:])
                         self._set_delay_before_retry()
                         break
+                    finally:
+                        if autolock_renewer:
+                            autolock_renewer.close()
 
-                autolock_renewer.close() if autolock_renewer else None
         except SessionCannotBeLockedError as e:
             logger.warning(
                 "Session cannot be locked. This may occur if another instance is "

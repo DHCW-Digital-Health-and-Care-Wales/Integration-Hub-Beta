@@ -1,6 +1,6 @@
 # HL7 Subscription Sender
 
-HL7 Sender Service is a message delivery service that subscribes to transformed HL7 messages from the message bus and reliably delivers them to target systems (e.g., MPI - Master Patient Index). Handles connection management, retries, delivery acknowledgements, and error reporting to ensure end-to-end message delivery.
+ HL7 Subscription Sender service is a message delivery service that subscribes to HL7 messages from the message bus and reliably delivers them to target systems. It handles connection management, retries, delivery acknowledgements, and error reporting to ensure end-to-end message delivery.
 
 ## Development
 
@@ -51,7 +51,7 @@ Destination host and port should be configured using environment variables confi
 - **HEALTH_CHECK_HOST** - default 127.0.0.1
 - **HEALTH_CHECK_PORT** - default 9000
 - **INGRESS_TOPIC_NAME** - service bus topic name under which a subscription is published
-- **INGRESS_SUBSCRIPTION_NAME** - service bus subscription name to read subsciription messages from
+- **INGRESS_SUBSCRIPTION_NAME** - service bus subscription name to read subscription messages from
 
 ### Running directly
 
