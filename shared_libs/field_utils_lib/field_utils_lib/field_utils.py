@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Any
 
 from hl7apy.exceptions import ChildNotFound
@@ -162,4 +163,73 @@ def copy_segment_fields_in_range(
             else:
                 new_rep = target_segment.add_field(field_name)
                 new_rep.value = value
+
+
+def get_cx_4_hd_1_segment_codes_from_pid_field(msg: Any, pid_field: str) -> list[str]:
+    """
+    Extract and deduplicate assigning authority codes from a PID field.
+
+    The function reads each repetition from the requested PID field, extracts
+    the ``cx_4.hd_1`` value, trims whitespace, and preserves first-seen order.
+    Missing PID segments/fields return an empty list.
+    """
+    if not isinstance(pid_field, str):  
+        return [] 
+
+    codes: list[str] = []
+    seen: set[str] = set()
+
+    try:
+        pid = msg.pid
+    except (AttributeError, ChildNotFound):
+        return []
+
+    if pid is None:
+        return codes
+
+    try:
+        field_val = getattr(pid, pid_field)
+    except (AttributeError, ChildNotFound):
+        return []
+
+    for rep in _normalize_repetitions(field_val):
+        authority_code = _extract_cx_4_hd_1(rep)
+        if authority_code and authority_code not in seen:
+            seen.add(authority_code)
+            codes.append(authority_code)
+
+    return codes
+
+
+def _extract_cx_4_hd_1(rep: Any) -> str:
+    try:
+        component = rep.cx_4.hd_1
+    except (AttributeError, ChildNotFound):
+        return ""
+
+    raw_value = getattr(component, "value", None)
+    if raw_value is None:
+        return ""
+
+    final_value = getattr(raw_value, "value", raw_value)
+    if final_value is None:
+        return ""
+
+    return str(final_value).strip()
+
+
+def _normalize_repetitions(value: Any | None) -> list[Any]:
+    # if value is a number (123, 3.14) or true/false (True, False),
+    # treats it as “no valid HL7 repetitions found,”
+    # so returns an empty list [].
+    if value is None:
+        return []
+    if isinstance(value, (str, bytes)):
+        return [value]
+    if isinstance(value, (int, float, bool)):
+        return []
+    if isinstance(value, Iterable):
+        return list(value)
+    # HL7 fields can sometimes be a single non-iterable repetition object.
+    return [value]
 
