@@ -245,6 +245,32 @@ class TestMessageReplayJobSendRetry(unittest.TestCase):
 
         mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
 
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_original_error_propagates_when_failed_status_update_raises_on_send_double_failure(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """Even if marking the batch as Failed throws, the original send exception must propagate."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = [_make_record(1, 100)]
+        mock_db.update_statuses.side_effect = Exception("DB unavailable")
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = Exception("SB error")
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        with self.assertRaises(Exception) as ctx:
+            job.run()
+
+        self.assertIn("SB error", str(ctx.exception))
+
 
 class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
     """Tests for failure when marking records as Loaded."""
@@ -364,6 +390,32 @@ class TestMessageReplayJobOversizedMessage(unittest.TestCase):
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 1)
         # Batch marked Failed before aborting
         mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
+
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_original_error_propagates_when_failed_status_update_raises_on_oversized_message(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """Even if marking the batch as Failed throws, the original ValueError must propagate."""
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = [_make_record(1, 100)]
+        mock_db.update_statuses.side_effect = Exception("DB unavailable")
+
+        mock_sender_client = MagicMock()
+        mock_sender_client.send_message_batch.side_effect = ValueError(
+            "Single message exceeds Service Bus max message size"
+        )
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        with self.assertRaises(ValueError):
+            job.run()
 
 
 class TestMessageReplayJobOperationTimeout(unittest.TestCase):

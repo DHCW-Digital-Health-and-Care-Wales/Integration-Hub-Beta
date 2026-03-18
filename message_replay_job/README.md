@@ -71,6 +71,12 @@ For large replay batches (thousands of messages), the support team can increase 
 
 ## Known Duplication Scenarios
 
-The replay job provides **at-least-once** delivery. Duplicate messages on the priority queue are possible in the following scenarios and at this stage should be handled via manual deduplication by the support team.
+The replay job provides **at-least-once** delivery. Duplicate messages on the priority queue are possible in the following scenarios and at this stage should be handled via manual deduplication by the support team:
 
-The likelihood of this happening is low, however to aid deduplication each message carries a ReplayId and MessageId as application properties.
+- When the DB batch (default 100 messages) is large enough that `send_message_batch` must split into multiple sub-batches AND a later sub-batch fails. If all messages fit in a single Service Bus batch, there's no risk - either the whole batch succeeds or the whole batch fails atomically.
+
+- Even if only the failed sub-batch is retried, duplicates can still happen because the broker outcome may be unknown - e.g. when the client times out before the service bus acknowledgement reaches the caller (an `OperationTimeoutError` or `ServiceBusError` is raised). The caller then retries once, and the same messages are published again.
+
+This is fundamentally an at-least-once delivery problem. The Azure Service Bus SDK does not provide transactional send-then-ack semantics for batch sends. True exactly-once requires idempotency at the consumer side, not just better retry slicing at the producer side.
+
+The likelihood of these scenarios happening is low, however to aid deduplication each message carries a ReplayId and MessageId as application properties.

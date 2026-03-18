@@ -127,7 +127,10 @@ class MessageReplayJob:
                 "Message exceeds Service Bus size limit, marking batch as Failed",
                 exc_info=True,
             )
-            self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
+            try:
+                self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
+            except Exception:
+                logger.warning("Failed to mark batch as Failed in database", exc_info=True)
             raise
         except OperationTimeoutError:
             logger.warning(
@@ -149,7 +152,10 @@ class MessageReplayJob:
                 "Retry of send batch to Service Bus failed, marking batch as Failed",
                 exc_info=True,
             )
-            self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
+            try:
+                self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
+            except Exception:
+                logger.warning("Failed to mark batch as Failed in database", exc_info=True)
             raise
 
     @staticmethod
