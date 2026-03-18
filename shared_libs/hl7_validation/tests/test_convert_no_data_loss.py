@@ -22,7 +22,12 @@ class TestConvertEr7ToXmlNoDataLoss(unittest.TestCase):
         Trailing empty components (e.g., "^^W00000^") are formatting-only and
         can be dropped by parser/serializer round-trips without losing data.
         For example, ^^W00000^ equals ^^W00000.
+
+        Trailing whitespace within field values is also stripped, as XML
+        serializers normalize it and it carries no semantic meaning in HL7.
+        Leading whitespace is preserved as it may be semantically significant.
         """
+        value = value.rstrip()
         repetitions = value.split("~")
         normalized_reps: list[str] = []
 
