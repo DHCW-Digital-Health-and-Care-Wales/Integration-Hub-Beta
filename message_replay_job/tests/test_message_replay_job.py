@@ -142,6 +142,35 @@ class TestMessageReplayJobRun(unittest.TestCase):
         self.assertEqual(messages[0].application_properties["ReplayId"], "1")
         self.assertEqual(messages[0].application_properties["MessageId"], "100")
 
+    @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
+    @patch("message_replay_job.message_replay_job.DatabaseClient")
+    def test_factory_closes_sender_not_double_closed_by_with_block(
+        self,
+        mock_db_client_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+    ) -> None:
+        """Factory is the sole context manager for Service Bus resources.
+
+        The sender_client must NOT appear in the with-block — closing it there
+        would double-close the underlying ServiceBusSender because ServiceBusClient.close()
+        already iterates through its handlers and closes every spawned sender.
+        """
+        config = _make_config()
+        mock_db = MagicMock()
+        mock_db_client_cls.return_value = mock_db
+        mock_db.fetch_batch.return_value = []
+
+        mock_sender_client = MagicMock()
+        mock_factory = MagicMock()
+        mock_factory.create_queue_sender_client.return_value = mock_sender_client
+        mock_factory_cls.return_value = mock_factory
+
+        job = MessageReplayJob(config)
+        job.run()
+
+        mock_factory.__exit__.assert_called_once()
+        mock_sender_client.__exit__.assert_not_called()
+
 
 class TestMessageReplayJobFetchRetry(unittest.TestCase):
     """Tests for fetch retry logic."""

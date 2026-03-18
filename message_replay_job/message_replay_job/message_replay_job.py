@@ -48,7 +48,7 @@ class MessageReplayJob:
         factory = ServiceBusClientFactory(sb_config)
         sender_client = factory.create_queue_sender_client(queue_name=self._config.priority_queue_name)
 
-        with self._db_client, factory, sender_client:
+        with self._db_client, factory:
             batch_number = 0
             while True:
                 batch_number += 1
