@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 from message_replay_job.db_client import DatabaseClient
 from message_replay_job.replay_record import ReplayRecord
+from message_replay_job.replay_status import ReplayStatus
 
 
 class TestDatabaseClient(unittest.TestCase):
@@ -132,14 +133,14 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_pyodbc.connect.return_value = mock_conn
 
-        self.client.update_statuses([1, 2, 3], "Loaded")
+        self.client.update_statuses([1, 2, 3], ReplayStatus.LOADED)
 
         sql_arg = mock_cursor.execute.call_args[0][0]
         params_arg = mock_cursor.execute.call_args[0][1]
         self.assertIn("UPDATE monitoring.MessageReplayQueue", sql_arg)
         self.assertIn("SET Status = ?", sql_arg)
         self.assertIn("?, ?, ?", sql_arg)
-        self.assertEqual(params_arg, ["Loaded", 1, 2, 3])
+        self.assertEqual(params_arg, [ReplayStatus.LOADED, 1, 2, 3])
 
     @patch("message_replay_job.db_client.pyodbc")
     def test_update_statuses_commits_on_success(self, mock_pyodbc: MagicMock) -> None:
@@ -148,7 +149,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_pyodbc.connect.return_value = mock_conn
 
-        self.client.update_statuses([1], "Loaded")
+        self.client.update_statuses([1], ReplayStatus.LOADED)
 
         mock_conn.commit.assert_called_once()
 
@@ -161,7 +162,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
 
         with self.assertRaises(Exception):
-            self.client.update_statuses([1, 2], "Loaded")
+            self.client.update_statuses([1, 2], ReplayStatus.LOADED)
 
         mock_conn.rollback.assert_called_once()
         mock_conn.commit.assert_not_called()
@@ -174,15 +175,15 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_pyodbc.connect.return_value = mock_conn
 
-        self.client.update_statuses([42], "Failed")
+        self.client.update_statuses([42], ReplayStatus.FAILED)
 
         params_arg = mock_cursor.execute.call_args[0][1]
-        self.assertEqual(params_arg, ["Failed", 42])
+        self.assertEqual(params_arg, [ReplayStatus.FAILED, 42])
         mock_conn.commit.assert_called_once()
 
     @patch("message_replay_job.db_client.pyodbc")
     def test_update_statuses_skips_on_empty_list(self, mock_pyodbc: MagicMock) -> None:
-        self.client.update_statuses([], "Loaded")
+        self.client.update_statuses([], ReplayStatus.LOADED)
         mock_pyodbc.connect.assert_not_called()
 
     @patch("message_replay_job.db_client.pyodbc")
@@ -195,7 +196,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
 
         with self.assertRaises(Exception):
-            self.client.update_statuses([1], "Loaded")
+            self.client.update_statuses([1], ReplayStatus.LOADED)
 
         mock_conn.rollback.assert_called_once()
         mock_conn.close.assert_called_once()
@@ -215,7 +216,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_pyodbc.connect.return_value = mock_conn
 
         with self.assertRaises(Exception) as ctx:
-            self.client.update_statuses([1], "Loaded")
+            self.client.update_statuses([1], ReplayStatus.LOADED)
 
         # The *original* error must propagate, not the rollback error.
         self.assertIn("original DB error", str(ctx.exception))

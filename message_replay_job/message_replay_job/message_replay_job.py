@@ -10,6 +10,7 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from .app_config import AppConfig
 from .db_client import DatabaseClient
 from .replay_record import ReplayRecord
+from .replay_status import ReplayStatus
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class MessageReplayJob:
     def _update_loaded_status_with_retry(self, replay_ids: List[int]) -> None:
         """Mark records as Loaded with one retry on failure. Aborts on double failure."""
         self._retry_once(
-            lambda: self._db_client.update_statuses(replay_ids, "Loaded"),
+            lambda: self._db_client.update_statuses(replay_ids, ReplayStatus.LOADED),
             "mark batch as Loaded in database",
         )
 
@@ -126,7 +127,7 @@ class MessageReplayJob:
                 "Message exceeds Service Bus size limit, marking batch as Failed",
                 exc_info=True,
             )
-            self._db_client.update_statuses(replay_ids, "Failed")
+            self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
             raise
         except OperationTimeoutError:
             logger.warning(
@@ -148,7 +149,7 @@ class MessageReplayJob:
                 "Retry of send batch to Service Bus failed, marking batch as Failed",
                 exc_info=True,
             )
-            self._db_client.update_statuses(replay_ids, "Failed")
+            self._db_client.update_statuses(replay_ids, ReplayStatus.FAILED)
             raise
 
     @staticmethod

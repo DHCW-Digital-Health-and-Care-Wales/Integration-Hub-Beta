@@ -5,6 +5,7 @@ from azure.servicebus.exceptions import OperationTimeoutError, ServiceBusError
 
 from message_replay_job.message_replay_job import MessageReplayJob
 from message_replay_job.replay_record import ReplayRecord
+from message_replay_job.replay_status import ReplayStatus
 
 
 def _make_record(replay_id: int = 1, message_id: int = 100) -> ReplayRecord:
@@ -65,8 +66,8 @@ class TestMessageReplayJobRun(unittest.TestCase):
         self.assertEqual(mock_db.fetch_batch.call_count, 3)
         update_calls = mock_db.update_statuses.call_args_list
         self.assertEqual(len(update_calls), 2)
-        self.assertEqual(update_calls[0], call([1, 2], "Loaded"))
-        self.assertEqual(update_calls[1], call([3], "Loaded"))
+        self.assertEqual(update_calls[0], call([1, 2], ReplayStatus.LOADED))
+        self.assertEqual(update_calls[1], call([3], ReplayStatus.LOADED))
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -88,7 +89,7 @@ class TestMessageReplayJobRun(unittest.TestCase):
         job = MessageReplayJob(config)
         job.run()
 
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.LOADED)
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -168,7 +169,7 @@ class TestMessageReplayJobFetchRetry(unittest.TestCase):
         job.run()
 
         self.assertEqual(mock_db.fetch_batch.call_count, 3)
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.LOADED)
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -218,7 +219,7 @@ class TestMessageReplayJobSendRetry(unittest.TestCase):
         job = MessageReplayJob(config)
         job.run()
 
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.LOADED)
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -242,7 +243,7 @@ class TestMessageReplayJobSendRetry(unittest.TestCase):
         with self.assertRaises(Exception):
             job.run()
 
-        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
 
 
 class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
@@ -274,7 +275,7 @@ class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
         # Retried once: two calls total
         self.assertEqual(mock_db.update_statuses.call_count, 2)
         for c in mock_db.update_statuses.call_args_list:
-            self.assertEqual(c, call([1], "Loaded"))
+            self.assertEqual(c, call([1], ReplayStatus.LOADED))
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -300,7 +301,7 @@ class TestMessageReplayJobLoadedUpdateFailure(unittest.TestCase):
 
         self.assertEqual(mock_db.update_statuses.call_count, 2)
         for c in mock_db.update_statuses.call_args_list:
-            self.assertEqual(c, call([1], "Loaded"))
+            self.assertEqual(c, call([1], ReplayStatus.LOADED))
 
 
 class TestBuildMessages(unittest.TestCase):
@@ -362,7 +363,7 @@ class TestMessageReplayJobOversizedMessage(unittest.TestCase):
         # NOT retried — only one send attempt
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 1)
         # Batch marked Failed before aborting
-        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
 
 
 class TestMessageReplayJobOperationTimeout(unittest.TestCase):
@@ -394,7 +395,7 @@ class TestMessageReplayJobOperationTimeout(unittest.TestCase):
         job.run()
 
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.LOADED)
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -420,7 +421,7 @@ class TestMessageReplayJobOperationTimeout(unittest.TestCase):
             job.run()
 
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
-        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
 
 
 class TestMessageReplayJobServiceBusError(unittest.TestCase):
@@ -452,7 +453,7 @@ class TestMessageReplayJobServiceBusError(unittest.TestCase):
         job.run()
 
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
-        mock_db.update_statuses.assert_called_once_with([1], "Loaded")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.LOADED)
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")
@@ -478,7 +479,7 @@ class TestMessageReplayJobServiceBusError(unittest.TestCase):
             job.run()
 
         self.assertEqual(mock_sender_client.send_message_batch.call_count, 2)
-        mock_db.update_statuses.assert_called_once_with([1], "Failed")
+        mock_db.update_statuses.assert_called_once_with([1], ReplayStatus.FAILED)
 
 
 class TestRetryOnce(unittest.TestCase):

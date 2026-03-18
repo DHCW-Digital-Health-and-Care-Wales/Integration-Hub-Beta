@@ -5,6 +5,7 @@ from typing import List
 import pyodbc
 
 from .replay_record import ReplayRecord
+from .replay_status import ReplayStatus
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class DatabaseClient:
             self._close_connection()
             raise
 
-    def update_statuses(self, replay_ids: List[int], status: str) -> None:
+    def update_statuses(self, replay_ids: List[int], status: ReplayStatus) -> None:
         """Update the status of the given replay records.
 
         Uses a single UPDATE with a dynamic WHERE IN clause for efficiency.
@@ -117,7 +118,7 @@ class DatabaseClient:
 
         Args:
             replay_ids: The ReplayId values to update.
-            status: The new status string (e.g. 'Loaded', 'Failed').
+            status: The new status (e.g. ReplayStatus.LOADED, ReplayStatus.FAILED).
 
         Raises:
             pyodbc.Error: On any database-level failure.
