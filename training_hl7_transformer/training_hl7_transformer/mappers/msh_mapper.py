@@ -35,6 +35,11 @@ from hl7apy.core import Message
 # These provide helper functions for working with HL7 fields
 from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
 
+# ===========================================================================
+# WEEK 2 EXERCISE 1 SOLUTION: Import datetime transformer
+# ===========================================================================
+from training_hl7_transformer.datetime_transformer import transform_datetime_to_readable
+
 
 def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     """
@@ -106,6 +111,27 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     new_msh.msh_3.value = new_sending_app
 
     # =========================================================================
+    # WEEK 2 EXERCISE 1 SOLUTION: Transform MSH-7 DateTime
+    # =========================================================================
+    # MSH-7 contains the message creation datetime
+    # We transform from compact HL7 format (YYYYMMDDHHMMSS) to readable format
+    #
+    # Get the original datetime value from MSH-7.TS-1 (timestamp component 1)
+    original_datetime = get_hl7_field_value(msh_segment, "msh_7.ts_1")
+    transformed_datetime = None
+
+    if original_datetime:
+        # Apply datetime transformation
+        transformed_datetime = transform_datetime_to_readable(original_datetime)
+
+        if transformed_datetime and transformed_datetime != original_datetime:
+            # Set the transformed datetime on the new message
+            new_msh.msh_7.ts_1.value = transformed_datetime
+            print(f"MSH-7 transformed: '{original_datetime}' -> '{transformed_datetime}'")
+        else:
+            print(f"MSH-7 unchanged: '{original_datetime}'")
+
+    # =========================================================================
     # STEP 4: Print transformation details (local logging)
     # =========================================================================
     # In production, we'd use the event_logger library for structured logging.
@@ -119,4 +145,7 @@ def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:
     return {
         "original_sending_app": original_sending_app or "",
         "new_sending_app": new_sending_app,
+        # WEEK 2 EXERCISE 1 SOLUTION: Include datetime transformation details
+        "original_datetime": original_datetime or "",
+        "transformed_datetime": transformed_datetime or "",
     }

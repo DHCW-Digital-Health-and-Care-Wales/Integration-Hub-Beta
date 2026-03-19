@@ -117,7 +117,7 @@
             }
           },
           {
-            "Name": "local-inthub-training-egres",
+            "Name": "local-inthub-training-egress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",

@@ -51,6 +51,8 @@ from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 from training_hl7_transformer.app_config import TransformerConfig
 from training_hl7_transformer.mappers.msh_mapper import map_msh
+from training_hl7_transformer.mappers.evn_mapper import map_evn
+from training_hl7_transformer.mappers.pid_mapper import map_pid
 
 
 class TrainingTransformer:
@@ -138,6 +140,17 @@ class TrainingTransformer:
         # Example:
         # from training_hl7_transformer.mappers.pid_mapper import map_pid
         # pid_details = map_pid(hl7_msg, new_message)
+
+        try:
+            _ = map_evn(hl7_msg, new_message)
+        except AttributeError:
+            print("EVN segment not present in original message (skipping)")
+
+        try:
+            _ = map_pid(hl7_msg, new_message)
+        except AttributeError:
+            print("PID segment not present in original message (skipping)")
+
 
         return new_message
 

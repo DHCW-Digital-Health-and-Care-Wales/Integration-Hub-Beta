@@ -33,6 +33,8 @@ services:
     container_name: "sqledge"
     image: "mcr.microsoft.com/azure-sql-edge:latest"
     restart: on-failure
+    ports:
+      - "1433:1433"
     networks:
       integration-hub:
         aliases:
@@ -42,24 +44,24 @@ services:
     env_file:
       - ./.secrets
 
-  sqlserver:
-    container_name: sqlserver
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    restart: on-failure
-    ports:
-      - "1433:1433"
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_PID: Express
-    env_file:
-      - ./.secrets
-    volumes:
-      - ./sql-scripts:/var/opt/mssql/scripts
-    entrypoint: [ "/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh" ]
-    networks:
-      integration-hub:
-        aliases:
-          - "sqlserver"
+  # sqlserver:
+  #   container_name: sqlserver
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   restart: on-failure
+  #   ports:
+  #     - "1433:1433"
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #     MSSQL_PID: Express
+  #   env_file:
+  #     - ./.secrets
+  #   volumes:
+  #     - ./sql-scripts:/var/opt/mssql/scripts
+  #   entrypoint: [ "/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh" ]
+  #   networks:
+  #     integration-hub:
+  #       aliases:
+  #         - "sqlserver"
 
   phw-hl7-server:
     container_name: phw-hl7-server
