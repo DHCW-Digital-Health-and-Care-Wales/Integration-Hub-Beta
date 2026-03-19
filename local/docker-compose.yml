@@ -81,6 +81,27 @@ services:
         aliases:
           - "message-store-service"
 
+  message-replay-job:
+    container_name: message-replay-job
+    build:
+      context: ../message_replay_job
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./.secrets
+      - ./message-replay-job.env
+    depends_on:
+      - sb-emulator
+      - sqlserver
+    restart: "no"
+    profiles:
+      - replay
+    networks:
+      integration-hub:
+        aliases:
+          - "message-replay-job"
+
   phw-hl7-server:
     container_name: phw-hl7-server
     build:

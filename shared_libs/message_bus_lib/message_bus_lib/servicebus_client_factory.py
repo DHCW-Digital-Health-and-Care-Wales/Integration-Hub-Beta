@@ -1,4 +1,5 @@
 import logging
+from types import TracebackType
 from typing import Optional
 
 from azure.identity import DefaultAzureCredential
@@ -14,6 +15,7 @@ from message_bus_lib.subscription_receiver_client import SubscriptionReceiverCli
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 MAX_LOCK_RENEWAL_DURATION = 300  # 5 minutes
+
 
 
 class ServiceBusClientFactory:
@@ -58,3 +60,20 @@ class ServiceBusClientFactory:
             session_id,
         )
         return SubscriptionReceiverClient(self.servicebus_client, topic_name, subscription_name, session_id)
+
+    def close(self) -> None:
+        """Close the underlying ServiceBusClient."""
+        if self.servicebus_client:
+            self.servicebus_client.close()
+            self.logger.debug("ServiceBusClientFactory closed")
+
+    def __enter__(self) -> "ServiceBusClientFactory":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None,
+    ) -> None:
+        self.close()
