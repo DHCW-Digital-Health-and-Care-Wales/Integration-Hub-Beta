@@ -43,8 +43,12 @@ class TestMessageThrottlingIntegration(unittest.TestCase):
         print(f"\nStarting integration test: {msg_count} messages at {rate}/min limit")
         print(f"Expected interval between messages: {self.expected_interval:.2f} seconds")
 
+        # Narrow to a local variable — mypy cannot narrow instance attributes through assert.
+        connection_string = self.connection_string
+        assert connection_string is not None, "SERVICE_BUS_CONNECTION_STRING must be set for integration tests"
+
         # Send all messages quickly using a single connection
-        with ServiceBusClient.from_connection_string(self.connection_string) as client:
+        with ServiceBusClient.from_connection_string(connection_string) as client:
             with client.get_queue_sender(self.queue_name) as sender:
                 messages = []
                 for i in range(self.test_messages_count):
