@@ -2,6 +2,56 @@
 
 Integration Hub services can be run locally using [Azure Service Bus emulator](https://learn.microsoft.com/en-us/azure/service-bus-messaging/overview-emulator) and [Docker Compose](https://docs.docker.com/compose/).
 
+## Table of Contents
+
+- [Quick Start Commands](#quick-start-commands)
+- [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+  - [Service Bus Emulator Configuration](#service-bus-emulator-configuration)
+  - [Local SQL Server](#local-sql-server)
+  - [Connecting to SQL Server from Your Machine](#connecting-to-sql-server-from-your-machine)
+  - [macOS-Specific Setup](#macos-specific-setup)
+  - [SSL Certificates (Corporate Networks)](#ssl-certificates-corporate-networks)
+- [Startup](#startup)
+  - [Build and start containers](#build-and-start-containers)
+  - [Review logs](#review-logs)
+  - [Rebuilding Containers](#rebuilding-containers)
+  - [Interact with Azure Service Bus emulator](#interact-with-azure-service-bus-emulator)
+  - [Using Python MLLP Send to test](#using-python-mllp-send-to-test)
+  - [Using the HAPI test panel](#using-the-hapi-test-panel-to-connect-to-the-service-bus-emulator-macos)
+  - [Running the Message Replay Job](#running-the-message-replay-job)
+  - [Stopping the stack](#stopping-the-stack)
+- [Using Just](#using-just)
+- [DevContainer Usage](#devcontainer-usage)
+
+> [!IMPORTANT]
+> To run `just` commands in the `local/` directory, you must first set up a Python virtual environment using `uv venv` with no dependencies. Run this once in the `local/` folder:
+>
+> ```bash
+> # in local/
+> uv venv
+> ```
+>
+> This creates a `.venv` directory that `just` uses. Remember to `source .venv/bin/activate` before using just
+
+## Quick Start Commands
+
+Common tasks for local development:
+
+| Task                                  | Command                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| Generate secrets                      | `just secrets`                                                 |
+| Start PHW integration flow            | `just start phw-to-mpi`                                        |
+| Start all profiles                    | `docker compose --profile "*" up -d`                           |
+| View live logs (all services)         | `just logs`                                                    |
+| View logs for specific service        | `just logs mpi-hl7-mock-receiver`                              |
+| Send test HL7 message                 | `just send ./sample_messages/phw-to-mpi.sample.hl7`            |
+| Send test HL7 message to a given port | `just send ./sample_messages/chemocare-to-mpi.sample.hl7 2578` |
+| Run the message replay job            | `just run replay`                                              |
+| Stop all containers                   | `just stop`                                                    |
+
+For more commands, run `just --list`.
+
 ## Prerequisites
 
 - [Docker Desktop](https://docs.docker.com/desktop/)
@@ -61,7 +111,7 @@ The [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json) file define
 
 ### Local SQL Server
 
-A local SQL Server instance is available for development and testing. The container uses Microsoft SQL Server 2022 Express and automatically initializes the `IntegrationHub` database with the required schema.
+A local SQL Server instance is available for development and testing. The container uses Microsoft SQL Server 2022 Express and automatically initialises the `IntegrationHub` database with the required schema.
 
 **Connection Details:**
 
@@ -79,13 +129,14 @@ A local SQL Server instance is available for development and testing. The contai
 Server=<localhost|sqlserver>,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;
 ```
 
-**What's initialized:**
+**What's initialised:**
 
 - Database: `IntegrationHub`
 - Schema: `monitoring`
 - Table: `monitoring.Message` - stores message tracking data including payloads, timestamps, and workflow identifiers
+- Table: `monitoring.MessageReplayQueue` - used for re-sending messages from the Message Store to the Service Bus priority queue, includes a replay id, the message replay status, the message id from the `Message` table and replay batch identifier
 
-**Customizing initialization:**
+**Customising initialisation:**
 
 To modify the database schema or add seed data, edit the SQL script at `sql-scripts/init-db.sql`. The script is executed automatically when the container starts and uses idempotent `IF NOT EXISTS` checks, making it safe to run multiple times.
 
@@ -94,11 +145,11 @@ To modify the database schema or add seed data, edit the SQL script at `sql-scri
 The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
 
 | Variable                       | Value               | Description                                                                                                                                      |
-|--------------------------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                                                       |
 | `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                                                                    |
 | `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator) — must be set together with `MSSQL_SA_PASSWORD`                                                          |
-| `MSSQL_SA_PASSWORD`            | *(from `.secrets`)* | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
+| `MSSQL_SA_PASSWORD`            | _(from `.secrets`)_ | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
 | `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required)                                        |
 | `SQL_TRUST_SERVER_CERTIFICATE` | `Yes`               | (Only relevant when `SQL_ENCRYPT=Yes`.) Overrides the default (`No`) — trusts the self-signed certificate used by the local SQL Server container |
 
@@ -111,6 +162,82 @@ The `message-store-service` connects to the local SQL Server using the following
 **Starting SQL Server:**
 
 The SQL Server container starts automatically when using any profile (e.g., `just start phw-to-mpi` or `docker compose --profile phw-to-mpi up -d`).
+
+### Connecting to SQL Server from Your Machine
+
+You can connect to the local SQL Server instance from your development machine using a SQL client or application. Use the connection details from the table above.
+
+**Using an SQL Client**
+Use the connection details in [Local SQL Server](#local-sql-server)
+
+> [!NOTE]
+> When connecting programmatically or with certain SQL clients, ensure you specify `DBVERSION_70` in your connection properties. This setting is required to handle XML columns properly, which are used in the `monitoring.Message` table for raw HL7 payloads:
+>
+> ```
+> Server=localhost,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;DBVERSION_70
+> ```
+
+**Using VS Code with SQL Server Extension:**
+
+1. Install the [SQL Server (mssql)](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql) extension in VS Code
+2. Open the Command Palette (`Cmd+Shift+P` on macOS) and run: `MS SQL: Add Connection`
+3. Create a new connection profile using the connection details from [Local SQL Server](#local-sql-server):
+   - **Profile Name**: `MessageStoreDB` (or your preferred name)
+   - **Connection Type**: Parameters
+   - **Server Name**: `127.0.0.1`
+   - **Authentication Type**: SQL Login
+   - **Username**: `sa`
+   - **Password**: (from `.secrets` file)
+   - **Encrypt**: `Mandatory`
+   - **Trust Server Certificate**: Checked/Enabled
+4. Click **Connect** at the bottom to save and connect to the database
+5. The connection will appear in the SQL Server Connections panel and you can query the database directly from VS Code
+
+### macOS-Specific Setup (for running Python services locally)
+
+If you need to run Python-based services locally (such as the message replay job or message store service), follow these additional steps:
+
+#### Installing pyodbc on macOS
+
+1. **Install unixodbc via Homebrew:**
+
+   ```bash
+   brew install unixodbc
+   ```
+
+2. **Set DYLD_LIBRARY_PATH for non-standard Homebrew installations:**
+
+   If you're using a non-standard Homebrew path, add this to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+   ```bash
+   export DYLD_LIBRARY_PATH="/path/to/your/homebrew/opt/unixodbc/lib"
+   ```
+
+   For example, if your Homebrew is installed in `/Users/test/homebrew/`, set:
+
+   ```bash
+   export DYLD_LIBRARY_PATH="/Users/test/homebrew/opt/unixodbc/lib"
+   ```
+
+   Then reload your shell:
+
+   ```bash
+   source ~/.zshrc
+   ```
+
+   > **Note**: If this environment variable is not set correctly, Python unit tests will fail when attempting to import `pyodbc`. If you see an error like `Library not loaded: /opt/homebrew/opt/unixodbc/lib/libodbc.2.dylib`, verify the `DYLD_LIBRARY_PATH` environment variable is configured correctly in your shell profile.
+
+#### Apple Silicon (M series) Mac Setup
+
+If you're using an Apple Silicon (M series) Mac, additional Docker configuration is required because SQL Server containers do not support the native ARM64 architecture:
+
+1. **Open Docker Desktop settings**
+2. Navigate to **Settings > General**
+3. Under **Virtual machine manager**, select **Apple Virtualisation Framework**
+4. Enable the checkbox: **Use Rosetta for x86_64/amd64 emulation on Apple Silicon**
+5. Click **Apply & Restart**
+
+This configuration allows Docker to run the SQL Server container using x86/amd64 emulation when building or running locally.
 
 ### SSL Certificates (Corporate Networks)
 
@@ -145,19 +272,22 @@ Profiles:
 
 Each profile starts a complete integration flow with all required services:
 
-| Profile          | Services Started                                                                            | Use Case                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                    |
-| **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)  |
-| **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                             |
-| **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow |
+| Profile          | Services Started                                                                            | Use Case                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                                                 |
+| **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
+| **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
+| **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
+| **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
+
+Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile.
 
 #### Environment Files Reference
 
 Each service is configured via a corresponding `.env` file in the `local/` directory:
 
 | File                          | Configures            | Key Variables                                                             |
-| ----------------------------- | --------------------- |---------------------------------------------------------------------------|
+| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
 | **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
 | **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
 | **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
@@ -166,6 +296,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **pims-hl7-server.env**       | PIMS HL7 Server       | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`              |
 | **pims-hl7-transformer.env**  | PIMS Transformer      | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`      |
 | **message-store-service.env** | Message Store Service | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                        |
+| **message-replay-job.env**    | Message Replay Job    | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`    |
 | **mpi-hl7-sender.env**        | MPI HL7 Sender        | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`  |
 | **mpi-hl7-mock-receiver.env** | MPI Mock Receiver     | `PORT=2576`, `EGRESS_QUEUE_NAME`                                          |
 
@@ -254,9 +385,21 @@ See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for 
 
 10. Logs would show whether your request succeeded.
 
+### Running the Message Replay Job
+
+The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
+
+For detailed setup and execution instructions, see [MESSAGE_REPLAY.md](./MESSAGE_REPLAY.md).
+
 ### Stopping the stack
 
 To terminate the containers you can proceed with the following command in the `/local` directory:
+
+```
+just stop
+```
+
+or its equivalent:
 
 ```
 docker compose --profile "*" down
