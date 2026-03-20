@@ -1,9 +1,12 @@
+import os
 import socket
 import unittest
 from typing import Any, Callable, Dict
 from unittest.mock import Mock, patch
 
 from hl7_sender.hl7_sender_client import HL7SenderClient, is_socket_closed
+
+WINDOWS_OS = "nt"
 
 
 class TestIsSocketClosed(unittest.TestCase):
@@ -38,7 +41,10 @@ class TestIsSocketClosed(unittest.TestCase):
         # Assert
         self.assertFalse(result)
         mock_select.assert_called_once_with([mock_socket], [], [], 0)
-        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        if os.name == WINDOWS_OS:
+            mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
+        else:
+            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_readable_with_empty_data_socket_closed(self, mock_select: Mock) -> None:
@@ -55,7 +61,10 @@ class TestIsSocketClosed(unittest.TestCase):
         # Assert
         self.assertTrue(result)
         mock_select.assert_called_once_with([mock_socket], [], [], 0)
-        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        if os.name == WINDOWS_OS:
+            mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
+        else:
+            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_recv_raises_blocking_io_error(self, mock_select: Mock) -> None:

@@ -18,12 +18,8 @@ def is_socket_closed(sock: socket.socket) -> bool:
         readable, _, _ = select.select([sock], [], [], 0)
         if readable:
             # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-            if (
-                os.name == WINDOWS_OS
-            ):  # Windows does not support MSG_DONTWAIT, so we just check if the socket is readable
-                data = sock.recv(16, socket.MSG_PEEK)  # socket is open and has data to read, but we won't read it here
-            else:
-                data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else socket.MSG_DONTWAIT | socket.MSG_PEEK
+            data = sock.recv(16, flags)
             return len(data) == 0
         return False  # no data, but socket is fine
     except BlockingIOError:

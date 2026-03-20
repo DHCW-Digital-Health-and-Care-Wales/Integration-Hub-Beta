@@ -1,4 +1,5 @@
 import logging
+import os
 import select
 import socket
 from typing import Any, Optional, Type
@@ -8,6 +9,7 @@ from hl7apy.consts import MLLP_ENCODING_CHARS
 
 logger = logging.getLogger(__name__)
 ENCODING_CHARS = MLLP_ENCODING_CHARS.SB + MLLP_ENCODING_CHARS.EB + MLLP_ENCODING_CHARS.CR
+WINDOWS_OS = "nt"
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
@@ -16,7 +18,8 @@ def is_socket_closed(sock: socket.socket) -> bool:
         readable, _, _ = select.select([sock], [], [], 0)
         if readable:
             # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-            data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else socket.MSG_DONTWAIT | socket.MSG_PEEK
+            data = sock.recv(16, flags)
             return len(data) == 0
         return False  # no data, but socket is fine
     except BlockingIOError:
@@ -56,7 +59,7 @@ class HL7SenderClient:
             self.mllp_client = self._close_and_create_new_mllp_client()
 
         try:
-            ack_response = self.mllp_client.send_message(message).decode('utf-8')
+            ack_response = self.mllp_client.send_message(message).decode("utf-8")
             stripped_response = ack_response.strip(ENCODING_CHARS)
             return stripped_response
         except socket.timeout:

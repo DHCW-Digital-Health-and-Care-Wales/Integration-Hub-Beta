@@ -1,14 +1,12 @@
 import logging
-import time
-from typing import Callable, Optional
+from contextlib import AbstractContextManager
+from typing import Optional
 
 from azure.servicebus import (
-    AutoLockRenewer,
     ServiceBusClient,
-    ServiceBusMessage,
+    ServiceBusReceiver,
     ServiceBusReceiveMode,
 )
-from azure.servicebus.exceptions import SessionCannotBeLockedError
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 
@@ -32,50 +30,12 @@ class SubscriptionReceiverClient(MessageReceiverClient):
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
 
-    def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
-        if not self._apply_delay_and_check_if_its_retry_time():
-            return
-
-        try:
-            autolock_renewer = AutoLockRenewer() if self.session_id else None
-            with self.sb_client.get_subscription_receiver(
-                topic_name=self.topic_name,
-                subscription_name=self.subscription_name,
-                session_id=self.session_id,
-                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
-                auto_lock_renewer=autolock_renewer,
-                max_wait_time=self.MAX_WAIT_TIME_SECONDS,
-            ) as receiver:
-                messages = receiver.receive_messages(
-                    max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
-                )
-                for i, msg in enumerate(messages):
-                    try:
-                        is_success = message_processor(msg)
-                        if is_success:
-                            receiver.complete_message(msg)
-                            logger.debug("Message processed and completed: %s", msg.message_id)
-                            self._clear_retry_state()
-                        else:
-                            logger.error(
-                                "Message processing failed, abandoning subsequent messages: %s", msg.message_id
-                            )
-                            self._abort_message_processing(receiver, messages[i:])
-                            self._set_delay_before_retry()
-                            break
-                    except Exception as e:
-                        logger.error("Unexpected error processing message: %s", msg.message_id, exc_info=e)
-                        self._abort_message_processing(receiver, messages[i:])
-                        self._set_delay_before_retry()
-                        break
-                    finally:
-                        if autolock_renewer:
-                            autolock_renewer.close()
-
-        except SessionCannotBeLockedError as e:
-            logger.warning(
-                "Session cannot be locked. This may occur if another instance is "
-                "processing messages for the same session. Exception: %s",
-                str(e),
-            )
-            time.sleep(self.MAX_WAIT_TIME_SECONDS)
+    def _get_receiver(self, autolock_renewer: object | None) -> AbstractContextManager[ServiceBusReceiver]:
+        return self.sb_client.get_subscription_receiver(
+            topic_name=self.topic_name,
+            subscription_name=self.subscription_name,
+            session_id=self.session_id,
+            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            auto_lock_renewer=autolock_renewer,
+            max_wait_time=self.MAX_WAIT_TIME_SECONDS,
+        )

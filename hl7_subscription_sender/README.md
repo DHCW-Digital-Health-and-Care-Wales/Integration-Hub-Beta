@@ -45,7 +45,7 @@ Destination host and port should be configured using environment variables confi
 - **INGRESS_SESSION_ID** - service bus queue FIFO session name (optional, sessions not used if not set)
 - **RECEIVER_MLLP_HOST** - HL7/mllp destination server host
 - **RECEIVER_MLLP_PORT** - HL7/mllp destination server port
-- **ACK_TIMEOUT_SECONDS** - time for message acklowledgement
+- **ACK_TIMEOUT_SECONDS** - time for message acknowledgement
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HEALTH_CHECK_HOST** - default 127.0.0.1

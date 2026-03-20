@@ -230,7 +230,7 @@ class TestBatchSizing(unittest.TestCase):
     def test_reduces_batch_when_interval_exceeds_lock_window(self) -> None:
         throttler = MagicMock(interval_seconds=60.0)  # one message per minute
 
-        with patch("hl7_subscription_sender.application.MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS", 900):
+        with patch("hl7_subscription_sender.application.SubscriptionReceiverClient.LOCK_RENEWAL_DURATION_SECONDS", 900):
             batch_size = _calculate_batch_size(throttler)
 
         self.assertEqual(batch_size, 15)  # (900-30)/60 = 14 intervals => 15 messages

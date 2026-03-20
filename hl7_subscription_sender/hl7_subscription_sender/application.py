@@ -7,9 +7,9 @@ from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
-from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_metadata, get_metadata_log_values
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+from message_bus_lib.subscription_receiver_client import SubscriptionReceiverClient
 from metric_sender_lib.metric_sender import MetricSender
 from processor_manager_lib import ProcessorManager
 
@@ -37,7 +37,7 @@ def _calculate_batch_size(throttler: MessageThrottler) -> int:
     if interval is None:
         return MAX_BATCH_SIZE
 
-    max_processing_window = MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS - LOCK_RENEWAL_BUFFER_SECONDS
+    max_processing_window = SubscriptionReceiverClient.LOCK_RENEWAL_DURATION_SECONDS - LOCK_RENEWAL_BUFFER_SECONDS
     if max_processing_window <= 0:
         return 1
 
@@ -50,7 +50,7 @@ def _calculate_batch_size(throttler: MessageThrottler) -> int:
             "Reducing batch size from %d to %d to stay within the lock renewal window (%ds limit, %.2fs interval).",
             MAX_BATCH_SIZE,
             batch_size,
-            MessageReceiverClient.LOCK_RENEWAL_DURATION_SECONDS,
+            SubscriptionReceiverClient.LOCK_RENEWAL_DURATION_SECONDS,
             interval,
         )
 
