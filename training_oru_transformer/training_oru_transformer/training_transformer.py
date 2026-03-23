@@ -130,7 +130,7 @@ class TrainingTransformer:
         # Create a new HL7 message with version 2.3.1
         # This ensures consistent output regardless of input version
         #new_message = Message(version="2.5.1")
-        new_message = Message("ORU_R01")
+        new_message = Message(version="2.5.1")
         #new_message = new_msg.add_group("ORU_R01_ORDER_OBSERVATION").add_group("ORU_R01_OBSERVATION")
         #new_message.msh.msh_9.msg_1 = "ORU" # Message Type
 
@@ -145,12 +145,22 @@ class TrainingTransformer:
         except AttributeError:
             print("PID segment not present in original message (skipping)")
         '''
+        print(f"Original message:\n{hl7_msg.to_er7()}\n")
         # Apply OBX mapper
-        try:
-            print("Applying OBX mapper...")
-            _ = map_obx(hl7_msg, new_message)
-        except AttributeError:
-            print("OBX segment not present in original message (skipping)")
+
+                 
+        for segment in hl7_msg.children:
+            if segment.name == "OBX":
+                # Apply the OBX mapper to transform OBX segments
+                try:
+                    print(f"Applying OBX mapper to segment: {segment.to_er7()}")
+                    map_obx(hl7_msg, new_message)
+                except AttributeError:
+                    print("OBX segment not present in original message (skipping)")
+            else:
+                # Copy other segments as-is
+                new_message.add(segment) 
+
 
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
@@ -224,6 +234,7 @@ class TrainingTransformer:
                 transformed_body = transformed_msg.to_er7()
 
                 print(f"✓ Transformation complete for {message_control_id}")
+                print(f"Sending transformed message to egress queue: {transformed_body}")
 
                 # =============================================================
                 # PUBLISH transformed message to egress queue

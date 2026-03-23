@@ -26,20 +26,25 @@ def map_obx(original_message: Message, new_message: Message) -> None:
     print(f"Found {len(obx_segments)} OBX segments")
 
     for obx in obx_segments:
-
-        new_obx = deepcopy(obx)
-
         try:
+            # Create a new OBX segment in the new message
+            new_obx = new_message.add_segment("OBX")
+
+            # Copy fields from the original OBX segment to the new one
+            for field in obx.children:
+                new_obx.add(field)
+
+            # Check if OBX-2 is "ED" and process OBX-5
             if new_obx.obx_2.value == "ED":
-
+                print("Processing OBX segment with ED data type...")
                 for rep in new_obx.obx_5:
-
-                    if hasattr(rep, "ed_5"):
-                        data = rep.ed_5.value
-
-                        if data and data.startswith("JVBERi"):
+                    # Access OBX.5.5 (5th component of OBX-5)
+                    if hasattr(rep, "children") and len(rep.children) >= 5:
+                        obx_5_5 = rep.children[4].value  # OBX.5.5 is the 5th component (index 4)
+                        print(f"OBX.5.5 value: {obx_5_5}")
+                        if obx_5_5 and obx_5_5.startswith("JVBERi"):
                             print("PDF detected → replacing with pdffile.txt")
-                            rep.ed_5.value = "pdffile.txt"
+                            rep.children[4].value = "pdffile.txt"  # Replace OBX.5.5 value
 
         except Exception as e:
             print(f"OBX processing warning: {e}")

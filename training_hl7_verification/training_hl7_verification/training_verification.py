@@ -49,7 +49,7 @@ from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
-from hl7_validation import XmlValidationError, validate_er7_with_flow
+from hl7_validation.validate import XmlValidationError, validate_er7_with_flow
 from hl7_validation.convert import er7_to_hl7v2xml
 
 from training_hl7_verification.app_config import VerificationConfig
@@ -187,6 +187,9 @@ class TrainingVerification:
                 # find_groups=False simplifies parsing (no group structures)
                 hl7_msg = parse_message(raw_body, find_groups=False)
 
+                print(f"Raw message body:\n{raw_body}\n")
+                print(f"Parsed HL7 message:\n{hl7_msg.to_er7()}\n")
+
                 # Extract key identifiers for logging
                 message_control_id = hl7_msg.msh.msh_10.value
                 message_type = hl7_msg.msh.msh_9.to_er7()
@@ -265,6 +268,7 @@ class TrainingVerification:
                 # Apply transformations
                 transformed_msg = self.transform_message(hl7_msg)
                 transformed_body = transformed_msg.to_er7()
+                print(f"Transformed HL7 message:\n{transformed_body}\n")
 
                 print(f"✓ Transformation complete for {message_control_id}")
 
@@ -273,7 +277,7 @@ class TrainingVerification:
                 # =============================================================
                 print(f">>> PUBLISHING to queue: {self.config.egress_queue_name}")
                 try:
-                    sender_client.send_text_message(transformed_body)
+                    sender_client.send_text_message(raw_body)
                     print(f"✓ Published to egress: {message_control_id}")
                 except Exception as send_error:
                     # If send fails (e.g., connection timeout), log and re-raise
