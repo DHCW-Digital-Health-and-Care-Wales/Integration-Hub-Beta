@@ -67,11 +67,9 @@ class Hl7ServerApplication:
             )
             logger.info(f"Configured to send messages to queue: {app_config.egress_queue_name}")
 
-        message_store_sender = factory.create_queue_sender_client(app_config.message_store_queue_name)
-        self.message_store_client = MessageStoreClient(
-            message_store_sender, app_config.microservice_id, app_config.peer_service
+        self.message_store_client = factory.create_message_store_client(
+            app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
         )
-        logger.info(f"Configured message store queue: {app_config.message_store_queue_name}")
 
         self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
         logger.debug(f"EventLogger instantiated for workflow: {app_config.workflow_id}")

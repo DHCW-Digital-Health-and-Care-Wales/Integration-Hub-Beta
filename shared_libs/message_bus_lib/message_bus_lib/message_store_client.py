@@ -12,9 +12,14 @@ class MessageStoreClient:
 
     Wraps a MessageSenderClient to send structured JSON events containing
     the raw (and optionally XML) message payload along with tracking metadata.
+
+    When sender_client is None the instance is in disabled mode: send_to_store
+    becomes a no-op that logs a warning per call, and close() is a no-op. Disabled
+    instances are created by ServiceBusClientFactory.create_message_store_client
+    when MESSAGE_STORE_ENABLED=false.
     """
 
-    def __init__(self, sender_client: MessageSenderClient, microservice_id: str, peer_service: str):
+    def __init__(self, sender_client: MessageSenderClient | None, microservice_id: str, peer_service: str):
         self.sender_client = sender_client
         self.microservice_id = microservice_id
         self.peer_service = peer_service
@@ -38,6 +43,11 @@ class MessageStoreClient:
             xml_payload: XML representation of the HL7 message (optional).
             target_system: The target system. Defaults to peer_service if not provided.
         """
+        # No-op when the message store is disabled (sender_client is None).
+        if self.sender_client is None:
+            logger.debug("Message store is disabled — message not stored (CorrelationId: %s)", correlation_id)
+            return
+
         store_event = {
             "MessageReceivedAt": message_received_at,
             "CorrelationId": correlation_id,

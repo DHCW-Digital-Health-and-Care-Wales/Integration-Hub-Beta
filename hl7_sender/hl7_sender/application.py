@@ -78,9 +78,9 @@ def main() -> None:
     )
     throttler = MessageThrottler(app_config.max_messages_per_minute)
 
-    message_store_sender = factory.create_queue_sender_client(app_config.message_store_queue_name)
-    message_store_client = MessageStoreClient(message_store_sender, app_config.microservice_id, app_config.peer_service)
-    logger.info(f"Configured message store queue: {app_config.message_store_queue_name}")
+    message_store_client = factory.create_message_store_client(
+        app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
+    )
 
     with (
         factory.create_message_receiver_client(

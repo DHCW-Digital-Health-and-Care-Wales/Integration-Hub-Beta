@@ -48,6 +48,7 @@ Destination host and port should be configured using environment variables confi
 - **RECEIVER_MLLP_PORT** - HL7/mllp destination server port
 - **ACK_TIMEOUT_SECONDS** - time for message acklowledgement
 - **MESSAGE_STORE_QUEUE_NAME** - Message store service bus queue
+- **MESSAGE_STORE_ENABLED** - Set to `false` to disable message store persistence (optional, default `true` — enabled)
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HEALTH_CHECK_HOST** - default 127.0.0.1

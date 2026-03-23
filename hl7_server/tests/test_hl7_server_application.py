@@ -139,8 +139,10 @@ class TestHl7ServerApplicationQueue(unittest.TestCase):
 
         self.app.start_server()
 
-        mock_factory_instance.create_queue_sender_client.assert_any_call("egress_queue", None)
-        mock_factory_instance.create_queue_sender_client.assert_any_call("messagestore-queue")
+        mock_factory_instance.create_queue_sender_client.assert_called_once_with("egress_queue", None)
+        mock_factory_instance.create_message_store_client.assert_called_once_with(
+            "messagestore-queue", "test-service", "test-service"
+        )
         mock_factory_instance.create_topic_sender_client.assert_not_called()
 
         self.app.stop_server()
@@ -187,7 +189,10 @@ class TestHl7ServerApplicationTopic(unittest.TestCase):
         self.app.start_server()
 
         mock_factory_instance.create_topic_sender_client.assert_called_once_with("egress_topic", "egress_session")
-        mock_factory_instance.create_queue_sender_client.assert_called_once_with("messagestore-queue")
+        mock_factory_instance.create_queue_sender_client.assert_not_called()
+        mock_factory_instance.create_message_store_client.assert_called_once_with(
+            "messagestore-queue", "test-service", "test-service"
+        )
 
         self.app.stop_server()
 
