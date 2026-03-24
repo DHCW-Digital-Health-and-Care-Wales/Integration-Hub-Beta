@@ -188,7 +188,9 @@ class TrainingVerification:
                 hl7_msg = parse_message(raw_body, find_groups=False)
 
                 print(f"Raw message body:\n{raw_body}\n")
-                print(f"Parsed HL7 message:\n{hl7_msg.to_er7()}\n")
+                print(f"Parsed HL7 message:\n")
+                for segment in hl7_msg.children:
+                    print(f"{segment.to_er7()}")
 
                 # Extract key identifiers for logging
                 message_control_id = hl7_msg.msh.msh_10.value

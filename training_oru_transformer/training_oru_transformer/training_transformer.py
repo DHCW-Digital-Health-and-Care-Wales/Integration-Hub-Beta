@@ -148,7 +148,7 @@ class TrainingTransformer:
         print(f"Original message:\n{hl7_msg.to_er7()}\n")
         # Apply OBX mapper
 
-                 
+                
         for segment in hl7_msg.children:
             if segment.name == "OBX":
                 # Apply the OBX mapper to transform OBX segments
@@ -160,8 +160,7 @@ class TrainingTransformer:
             else:
                 # Copy other segments as-is
                 new_message.add(segment) 
-
-
+        
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
         # =====================================================================
@@ -232,9 +231,13 @@ class TrainingTransformer:
                 # Apply transformations
                 transformed_msg = self.transform_message(hl7_msg)
                 transformed_body = transformed_msg.to_er7()
+                parsed_trm_msg = parse_message(transformed_body, find_groups=False)
+                print(f"Transformed message:")
+                for segment in parsed_trm_msg.children:
+                    print(f"{segment.to_er7()}")
 
                 print(f"✓ Transformation complete for {message_control_id}")
-                print(f"Sending transformed message to egress queue: {transformed_body}")
+                #print(f"Sending transformed message to egress queue: {transformed_body}")
 
                 # =============================================================
                 # PUBLISH transformed message to egress queue

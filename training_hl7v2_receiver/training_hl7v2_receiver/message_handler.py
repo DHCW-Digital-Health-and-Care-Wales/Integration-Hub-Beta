@@ -135,7 +135,9 @@ class MessageHandler(AbstractHandler):
             # Message object that we can easily work with
             # find_groups=False disables group parsing for simplicity
             msg = parse_message(self.incoming_message, find_groups=False)
-
+            print("Parsed Message Structure:")
+            for segment in msg.children:
+                print(f"Segment: {segment.name} | Content: {segment.to_er7()}")
             # ===================================================================
             # STEP 2: Extract key fields from the MSH segment
             # ===================================================================
