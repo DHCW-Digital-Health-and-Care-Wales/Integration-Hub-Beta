@@ -130,7 +130,7 @@ class TrainingTransformer:
         # Create a new HL7 message with version 2.3.1
         # This ensures consistent output regardless of input version
         #new_message = Message(version="2.5.1")
-        new_message = Message(version="2.5.1")
+        new_message = Message(version=hl7_msg.version)
         #new_message = new_msg.add_group("ORU_R01_ORDER_OBSERVATION").add_group("ORU_R01_OBSERVATION")
         #new_message.msh.msh_9.msg_1 = "ORU" # Message Type
 
@@ -147,20 +147,26 @@ class TrainingTransformer:
         '''
         print(f"Original message:\n{hl7_msg.to_er7()}\n")
         # Apply OBX mapper
-
-                
+        obx_exist = None
         for segment in hl7_msg.children:
             if segment.name == "OBX":
-                # Apply the OBX mapper to transform OBX segments
-                try:
-                    print(f"Applying OBX mapper to segment: {segment.to_er7()}")
-                    map_obx(hl7_msg, new_message)
-                except AttributeError:
-                    print("OBX segment not present in original message (skipping)")
-            else:
-                # Copy other segments as-is
-                new_message.add(segment) 
-        
+                obx_exist = True
+                print(f"obx_exist: {obx_exist}")
+                break
+                
+        #for segment in hl7_msg.children:
+        if obx_exist:
+            # Apply the OBX mapper to transform OBX segments
+            print(f"OBX segment found in original message, applying OBX mapper...")
+            try:
+                print(f"Applying OBX mapper to segment: {segment.to_er7()}")
+                map_obx(hl7_msg, new_message)
+            except AttributeError:
+                print("OBX segment not present in original message (skipping)")
+        else:
+            # Copy other segments as-is
+            new_message.add(segment) 
+    
         # =====================================================================
         # STRETCH EXERCISE 2: Add more segment mappers here
         # =====================================================================
@@ -231,9 +237,10 @@ class TrainingTransformer:
                 # Apply transformations
                 transformed_msg = self.transform_message(hl7_msg)
                 transformed_body = transformed_msg.to_er7()
-                parsed_trm_msg = parse_message(transformed_body, find_groups=False)
-                print(f"Transformed message:")
-                for segment in parsed_trm_msg.children:
+                
+                print("-" * 60)
+                print("transformed message:")
+                for segment in transformed_msg.children:
                     print(f"{segment.to_er7()}")
 
                 print(f"✓ Transformation complete for {message_control_id}")
