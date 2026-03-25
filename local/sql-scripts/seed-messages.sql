@@ -44,7 +44,8 @@ WITH
             WHEN RowNum <= 750 THEN DATEADD(SECOND, RowNum - 501, DATEADD(DAY, -1, CAST(@TodayUtc AS DATETIME2(3))))
             ELSE DATEADD(SECOND, RowNum - 751, CAST('2025-12-31T00:00:00.000' AS DATETIME2(3)))
         END AS ReceivedAt,
-            CAST(NEWID() AS NVARCHAR(100)) AS CorrelationId
+            CAST(NEWID() AS NVARCHAR(100)) AS CorrelationId,
+            N'mpi' AS SessionId
         FROM NumberedRows
     )
 INSERT INTO monitoring.Message
@@ -52,6 +53,7 @@ INSERT INTO monitoring.Message
     ReceivedAt,
     StoredAt,
     CorrelationId,
+    SessionId,
     SourceSystem,
     ProcessingComponent,
     TargetSystem,
@@ -62,6 +64,7 @@ SELECT
     s.ReceivedAt,
     s.ReceivedAt,
     s.CorrelationId,
+    s.SessionId,
     N'252',
     N'mpi_hl7_sender',
     N'MPI',

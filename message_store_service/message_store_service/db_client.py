@@ -24,9 +24,10 @@ INSERT INTO monitoring.Message (
     ProcessingComponent,
     TargetSystem,
     RawPayload,
-    XmlPayload
+    XmlPayload,
+    SessionId
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -125,6 +126,7 @@ class DatabaseClient:
                     msg.target_system,
                     msg.raw_payload,
                     msg.xml_payload,
+                    msg.session_id,
                 )
                 for msg in messages
             ]

@@ -5,13 +5,17 @@
 
 The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
 
+The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**. Each replayed message is automatically stamped with the `SessionId` that was stored when the message was originally processed, so the consuming `hl7_sender` instance will pick it up without any session configuration change.
+
 ## Quick Start
 
 1. **Initialise database**: `just start phw-to-mpi` (starts SQL Server and seeds test messages)
 2. **Create replay batch**: Run `create-replay-batch.sql` in VS Code to get a `ReplayBatchId`
 3. **Configure job**: Set `REPLAY_BATCH_ID` in `message-replay-job.env`
-4. **Run job**: `just run replay` (builds and executes the replay job)
-5. **Verify**: Check logs with `just logs message-replay-job`
+4. **Redirect sender**: Update `INGRESS_QUEUE_NAME` in the relevant sender `.env` file to `local-inthub-priority-messagequeue`
+5. **Run job**: `just run replay` (builds and executes the replay job)
+6. **Verify**: Check logs with `just logs message-replay-job`
+7. **Revert sender**: Restore the original `INGRESS_QUEUE_NAME` in the sender `.env` file
 
 ## Quick Reference
 
@@ -203,6 +207,21 @@ REPLAY_BATCH_SIZE=100
 ```
 
 For more technical details, see [Message Replay Job README](../message_replay_job/README.md#replay_batch_size-explained).
+
+## Step 3b: Redirect the Consuming Service to the Priority Queue
+
+The priority queue is session-enabled. Before running the job, update **only** `INGRESS_QUEUE_NAME` in the relevant sender env file (e.g. `local/mpi-hl7-sender.env`) to point at the priority queue:
+
+```dotenv
+INGRESS_QUEUE_NAME="local-inthub-priority-messagequeue"
+```
+
+Leave `INGRESS_SESSION_ID` unchanged — each replayed message is automatically stamped with the `SessionId` stored in `monitoring.Message`, so the sender will pick up exactly the messages intended for it.
+
+> [!IMPORTANT]
+> Restart the sender container after changing the env file: `just restart <sender-service-name>`
+
+After the replay is complete, revert `INGRESS_QUEUE_NAME` to its original value and restart again.
 
 ## Step 4: Run the Replay Job
 

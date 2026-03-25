@@ -11,7 +11,7 @@ class AppConfig:
     connection_string: str | None
     egress_queue_name: str | None
     egress_topic_name: str | None
-    egress_session_id: str | None
+    egress_session_id: str
     service_bus_namespace: str | None
     message_store_queue_name: str
     workflow_id: str
@@ -41,7 +41,7 @@ class AppConfig:
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             egress_queue_name=egress_queue_name,
             egress_topic_name=egress_topic_name,
-            egress_session_id=_read_env("EGRESS_SESSION_ID"),
+            egress_session_id=_read_required_env("EGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),

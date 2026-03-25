@@ -92,6 +92,7 @@ class Hl7ServerApplication:
             app_config.workflow_id,
             app_config.sending_app,
             self.message_store_client,
+            app_config.egress_session_id,
             flow_name,
             standard_version,
         )

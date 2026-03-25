@@ -45,7 +45,9 @@ WHERE TABLE_SCHEMA = 'monitoring' AND TABLE_NAME = 'Message')
         TargetSystem NVARCHAR(100) NULL,
         -- Payloads
         RawPayload NVARCHAR(MAX) NOT NULL,
-        XmlPayload XML NULL
+        XmlPayload XML NULL,
+        -- Session routing (used by the message replay job)
+        SessionId NVARCHAR(128) NOT NULL
     );
 END;
 GO

@@ -38,6 +38,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_row.MessageId = 100
         mock_row.RawPayload = "MSH|^~\\&|..."
         mock_row.CorrelationId = "corr-1"
+        mock_row.SessionId = "mpi"
         mock_cursor.fetchall.return_value = [mock_row]
 
         result = self.client.fetch_batch("a1b2c3d4-e5f6-7890-abcd-ef1234567890", batch_size=100)
@@ -48,6 +49,7 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertEqual(result[0].message_id, 100)
         self.assertEqual(result[0].raw_payload, "MSH|^~\\&|...")
         self.assertEqual(result[0].correlation_id, "corr-1")
+        self.assertEqual(result[0].session_id, "mpi")
 
     @patch("message_replay_job.db_client.pyodbc")
     def test_fetch_batch_returns_empty_list_when_no_rows(self, mock_pyodbc: MagicMock) -> None:

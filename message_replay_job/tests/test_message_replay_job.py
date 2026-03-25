@@ -8,13 +8,14 @@ from message_replay_job.replay_record import ReplayRecord
 from message_replay_job.replay_status import ReplayStatus
 
 
-def _make_record(replay_id: int = 1, message_id: int = 100) -> ReplayRecord:
+def _make_record(replay_id: int = 1, message_id: int = 100, session_id: str = "test-session") -> ReplayRecord:
     """Helper to create a ReplayRecord with sensible defaults."""
     return ReplayRecord(
         replay_id=replay_id,
         message_id=message_id,
         raw_payload=f"MSH|^~\\&|payload-{replay_id}",
         correlation_id=f"corr-{replay_id}",
+        session_id=session_id,
     )
 
 
@@ -141,6 +142,7 @@ class TestMessageReplayJobRun(unittest.TestCase):
         self.assertEqual(messages[0].application_properties["CorrelationId"], "corr-1")
         self.assertEqual(messages[0].application_properties["ReplayId"], "1")
         self.assertEqual(messages[0].application_properties["MessageId"], "100")
+        self.assertEqual(messages[0].session_id, "test-session")
 
     @patch("message_replay_job.message_replay_job.ServiceBusClientFactory")
     @patch("message_replay_job.message_replay_job.DatabaseClient")

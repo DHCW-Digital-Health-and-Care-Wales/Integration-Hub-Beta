@@ -27,6 +27,7 @@ def build_message_record(message: ServiceBusMessage) -> MessageRecord:
         source_system = data["SourceSystem"]
         processing_component = data["ProcessingComponent"]
         raw_payload = data["RawPayload"]
+        session_id = data["SessionId"]
     except KeyError as e:
         logger.exception(
             "Missing required field in message body - CorrelationId: %s",
@@ -66,6 +67,7 @@ def build_message_record(message: ServiceBusMessage) -> MessageRecord:
         target_system=target_system,
         raw_payload=raw_payload,
         xml_payload=xml_payload,
+        session_id=session_id,
     )
 
 

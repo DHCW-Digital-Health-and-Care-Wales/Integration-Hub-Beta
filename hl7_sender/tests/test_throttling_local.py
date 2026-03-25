@@ -45,7 +45,7 @@ class TestMessageThrottlingIntegration(unittest.TestCase):
 
         # Narrow to a local variable — mypy cannot narrow instance attributes through assert.
         connection_string = self.connection_string
-        assert connection_string is not None, "SERVICE_BUS_CONNECTION_STRING must be set for integration tests"
+        assert connection_string is not None, "SERVICE_BUS_CONNECTION_STRING must be set for integration tests"  # nosec B101
 
         # Send all messages quickly using a single connection
         with ServiceBusClient.from_connection_string(connection_string) as client:

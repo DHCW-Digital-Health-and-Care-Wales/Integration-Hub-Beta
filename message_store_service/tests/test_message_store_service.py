@@ -21,7 +21,7 @@ class TestMessageStoreServiceInit(unittest.TestCase):
         mock_config.sql_server = "localhost,1433"
         mock_config.sql_database = "IntegrationHub"
         mock_config.sql_username = "sa"
-        mock_config.sql_password = "secret"
+        mock_config.sql_password = "secret"  # nosec B105 — test fixture, not real password
         mock_config.sql_encrypt = "yes"
         mock_config.sql_trust_server_certificate = "yes"
         mock_config.managed_identity_client_id = None
@@ -39,7 +39,7 @@ class TestMessageStoreServiceInit(unittest.TestCase):
             sql_server="localhost,1433",
             sql_database="IntegrationHub",
             sql_username="sa",
-            sql_password="secret",
+            sql_password="secret",  # nosec B106 — test fixture, not real password
             sql_encrypt="yes",
             sql_trust_server_certificate="yes",
             managed_identity_client_id=None,
