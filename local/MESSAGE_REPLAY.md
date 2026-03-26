@@ -1,4 +1,7 @@
-# Running the Message Replay Job
+# Running the Message Replay Job Locally
+
+> [!NOTE]
+> This only applies to running it locally.
 
 The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
 
