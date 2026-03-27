@@ -36,6 +36,10 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
     )
 
 
+# Default session ID used across tests — corresponds to INGRESS_SESSION_ID in env config.
+TEST_SESSION_ID = "test-session"
+
+
 class TestProcessMessage(unittest.TestCase):
     def _assert_error_handling(
         self,
@@ -73,6 +77,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -111,6 +116,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -151,6 +157,7 @@ class TestProcessMessage(unittest.TestCase):
                     mock_metric_sender,
                     mock_throttler,
                     mock_message_store,
+                    TEST_SESSION_ID,
                 )
 
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -177,6 +184,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -269,6 +277,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -278,6 +287,7 @@ class TestProcessMessage(unittest.TestCase):
         self.assertEqual(call_kwargs["xml_payload"], "<xml>content</xml>")
         self.assertIn("message_received_at", call_kwargs)
         self.assertIn("correlation_id", call_kwargs)
+        self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
@@ -308,6 +318,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self.assertTrue(result)
@@ -342,6 +353,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -384,6 +396,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self.assertTrue(result)
@@ -428,6 +441,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -437,7 +451,7 @@ class TestProcessMessage(unittest.TestCase):
         self.assertEqual(call_kwargs["message_received_at"], original_timestamp)
         self.assertEqual(call_kwargs["correlation_id"], original_correlation_id)
         self.assertEqual(call_kwargs["source_system"], "PHW")
-
+        self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
 class TestBatchSizing(unittest.TestCase):
     def test_uses_max_batch_when_no_throttle(self) -> None:

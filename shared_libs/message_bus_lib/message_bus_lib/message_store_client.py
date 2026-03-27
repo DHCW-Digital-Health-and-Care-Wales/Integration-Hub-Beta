@@ -30,6 +30,7 @@ class MessageStoreClient:
         correlation_id: str,
         source_system: str,
         raw_payload: str,
+        session_id: str,
         xml_payload: str | None = None,
         target_system: str | None = None,
     ) -> None:
@@ -40,6 +41,7 @@ class MessageStoreClient:
             correlation_id: Unique ID to track the message through the Integration Hub.
             source_system: The system that sent the message (MSH.3).
             raw_payload: The raw HL7 message.
+            session_id: The Service Bus session ID of the component that stored the message.
             xml_payload: XML representation of the HL7 message (optional).
             target_system: The target system. Defaults to peer_service if not provided.
         """
@@ -56,6 +58,7 @@ class MessageStoreClient:
             "TargetSystem": target_system if target_system is not None else self.peer_service,
             "RawPayload": raw_payload,
             "XmlPayload": xml_payload,
+            "SessionId": session_id,
         }
         try:
             self.sender_client.send_text_message(json.dumps(store_event))

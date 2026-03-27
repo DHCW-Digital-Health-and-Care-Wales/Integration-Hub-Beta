@@ -16,6 +16,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
         )
 
         self.mock_sender.send_text_message.assert_called_once()
@@ -29,6 +30,7 @@ class TestMessageStoreClient(unittest.TestCase):
         self.assertEqual(sent_data["TargetSystem"], "test-peer")
         self.assertEqual(sent_data["RawPayload"], "MSH|^~\\&|...")
         self.assertIsNone(sent_data["XmlPayload"])
+        self.assertEqual(sent_data["SessionId"], "test-session")
 
     def test_send_to_store_with_xml_payload(self) -> None:
         self.client.send_to_store(
@@ -36,6 +38,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
             xml_payload="<xml>message</xml>",
         )
 
@@ -50,6 +53,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
             target_system="custom-target",
         )
 
@@ -67,6 +71,7 @@ class TestMessageStoreClient(unittest.TestCase):
                 correlation_id="test-uuid",
                 source_system="252",
                 raw_payload="MSH|^~\\&|...",
+                session_id="test-session",
             )
 
         self.assertIn("Service Bus error", str(context.exception))
@@ -78,6 +83,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
         )
 
         mock_logger.info.assert_called_once_with("Message store event sent - CorrelationId: %s", "test-uuid")
@@ -92,6 +98,7 @@ class TestMessageStoreClient(unittest.TestCase):
                 correlation_id="test-uuid",
                 source_system="252",
                 raw_payload="MSH|^~\\&|...",
+                session_id="test-session",
             )
 
         mock_logger.error.assert_called_once()
@@ -113,6 +120,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="abc-123",
             source_system="SRC",
             raw_payload="RAW_DATA",
+            session_id="phw-to-mpi",
             xml_payload="<xml/>",
             target_system="TGT",
         )
@@ -128,6 +136,7 @@ class TestMessageStoreClient(unittest.TestCase):
             "TargetSystem",
             "RawPayload",
             "XmlPayload",
+            "SessionId",
         }
         self.assertEqual(set(sent_data.keys()), expected_keys)
 
@@ -142,6 +151,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="disabled-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
         )
 
         mock_logger.debug.assert_called_once_with(

@@ -48,7 +48,7 @@ To define host and port the server should bind to use environment variables conf
 - **SERVICE_BUS_NAMESPACE** - service bus namespace (recommended, required when SERVICE_BUS_CONNECTION_STRING is empty)
 - **EGRESS_QUEUE_NAME** - service bus queue name to store received messages
 - **EGRESS_TOPIC_NAME** - service bus topic name to store received messages
-- **EGRESS_SESSION_ID** - service bus queue FIFO session name (optional, sessions not used if not set)
+- **EGRESS_SESSION_ID** - service bus queue FIFO session name (required for message replay — stored alongside each persisted message so the replay job can route it back to the correct downstream component)
 - **MESSAGE_STORE_QUEUE_NAME** - Message store service bus queue
 - **MESSAGE_STORE_ENABLED** - Set to `false` to disable message store persistence (optional, default `true` — enabled)
 - **WORKFLOW_ID** - workflow id (used for audit)

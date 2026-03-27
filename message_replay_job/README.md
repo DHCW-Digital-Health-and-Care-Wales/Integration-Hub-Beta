@@ -5,13 +5,30 @@ A containerised job that replays HL7 messages from SQL Server to an Azure Servic
 ## How It Works
 
 1. Reads the `REPLAY_BATCH_ID` (UUID) from environment variables to identify the replay batch. This should be passed in to the container app job as well when triggered.
-2. Fetches pending/failed rows from `monitoring.MessageReplayQueue` in configurable-sized batches (default 100), joined with `monitoring.Message` to retrieve the raw HL7 payload.
-3. Sends each batch to the configured Service Bus priority queue via `MessageSenderClient` from the shared lib.
-4. Marks each batch as `Loaded` in the database after successful send.
-5. Repeats until no pending rows remain, then exits.
+2. Fetches pending/failed rows from `monitoring.MessageReplayQueue` in configurable-sized batches (default 100), joined with `monitoring.Message` to retrieve the raw HL7 payload and `SessionId`.
+3. Builds a `ServiceBusMessage` for each record, adding the stored `SessionId` as the message session so the priority queue routes each message to the correct downstream consumer.
+4. Sends each batch to the configured Service Bus priority queue via `MessageSenderClient` from the shared lib.
+5. Marks each batch as `Loaded` in the database after successful send.
+6. Repeats until no pending rows remain, then exits.
 
 > [!IMPORTANT]
 > All database and Service Bus operations use a **retry-once** strategy: if the first attempt fails, a single retry is made before aborting (or marking the batch as `Failed` for send errors).
+
+## Triggering a Replay
+
+The priority queue (`PRIORITY_QUEUE_NAME`) is session-enabled. The downstream consumer (e.g. `hl7_sender`) must be temporarily redirected to it for the duration of the replay. Only **one** environment variable on the consuming service needs to change — the session ID is preserved automatically from the stored value.
+
+### Steps
+
+1. **Create a replay batch** in the database (see [local/MESSAGE_REPLAY.md](../local/MESSAGE_REPLAY.md)).
+2. **Update the consuming service** (e.g. `hl7_sender`):
+   - Set `INGRESS_QUEUE_NAME` → the priority queue name (e.g. `inthub-priority-messagequeue`).
+   - `INGRESS_SESSION_ID` stays unchanged — the replay job stamps the same session value that was stored when the message was originally processed.
+3. **Run the replay job** with the correct `REPLAY_BATCH_ID`.
+4. **Revert** `INGRESS_QUEUE_NAME` on the consuming service once the replay is complete.
+
+> [!NOTE]
+> The `SessionId` stored in `monitoring.Message` reflects the session of the component that originally stored the message (`EGRESS_SESSION_ID` for `hl7_server`, `INGRESS_SESSION_ID` for `hl7_sender`).
 
 ## Configuration
 

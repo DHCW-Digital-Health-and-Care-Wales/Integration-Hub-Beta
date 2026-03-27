@@ -14,6 +14,7 @@ class MessageRecord:
     target_system: Optional[str]
     raw_payload: str
     xml_payload: Optional[str]
+    session_id: str
 
 
 __all__ = ["MessageRecord"]

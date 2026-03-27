@@ -18,16 +18,17 @@ batch.
 
 ### Database table — `monitoring.Message`
 
-| Column                | Type            | Required | Description                                      |
-| --------------------- | --------------- | -------- | ------------------------------------------------ |
-| `ReceivedAt`          | `datetime`      | ✅       | Timestamp the message was originally received    |
-| `StoredAt`            | `datetime`      | ✅       | Timestamp the record was written to the database |
-| `CorrelationId`       | `nvarchar`      | ✅       | Unique identifier for tracing the message        |
-| `SourceSystem`        | `nvarchar`      | ✅       | System that originated the message               |
-| `ProcessingComponent` | `nvarchar`      | ✅       | Microservice that processed the message          |
-| `TargetSystem`        | `nvarchar`      | ❌       | Destination system (if known)                    |
-| `RawPayload`          | `nvarchar(max)` | ✅       | Original HL7 raw message payload                 |
-| `XmlPayload`          | `nvarchar(max)` | ❌       | XML-transformed payload (if available)           |
+| Column                | Type            | Required | Description                                       |
+| --------------------- | --------------- | -------- |---------------------------------------------------|
+| `ReceivedAt`          | `datetime`      | ✅       | Timestamp the message was originally received     |
+| `StoredAt`            | `datetime`      | ✅       | Timestamp the record was written to the database  |
+| `CorrelationId`       | `nvarchar`      | ✅       | Unique identifier for tracing the message         |
+| `SourceSystem`        | `nvarchar`      | ✅       | System that originated the message                |
+| `ProcessingComponent` | `nvarchar`      | ✅       | Microservice that processed the message           |
+| `TargetSystem`        | `nvarchar`      | ❌       | Destination system (if known)                     |
+| `RawPayload`          | `nvarchar(max)` | ✅       | Original HL7 raw message payload                  |
+| `XmlPayload`          | `nvarchar(max)` | ❌       | XML-transformed payload (if available)            |
+| `SessionId`           | `nvarchar(128)` | ✅       | Service Bus session ID of the storing component   |
 
 ### Service Bus message format
 
@@ -41,11 +42,13 @@ Each Service Bus message body must be a JSON object with the following fields:
   "ProcessingComponent": "hl7_pims_transformer",
   "RawPayload": "MSH|...",
   "TargetSystem": "MPI",
-  "XmlPayload": "<ClinicalDocument>...</ClinicalDocument>"
+  "XmlPayload": "<ClinicalDocument>...</ClinicalDocument>",
+  "SessionId": "pims-to-mpi"
 }
 ```
 
-> `TargetSystem` and `XmlPayload` are optional.
+> `TargetSystem` and `XmlPayload` are optional. `SessionId` is required and is set by the producing component
+> (`EGRESS_SESSION_ID` for `hl7_server`, `INGRESS_SESSION_ID` for `hl7_sender`).
 
 ## Development
 

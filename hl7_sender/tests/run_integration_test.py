@@ -14,7 +14,7 @@ Usage:
 """
 
 import re
-import subprocess
+import subprocess  # nosec B404 — integration test runner, subprocess calls use fixed commands
 import sys
 import time
 from datetime import datetime
@@ -31,7 +31,7 @@ EXPECTED_SERVICES = [
 def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 B607 — fixed command list, no shell, no user input
             cmd,
             cwd=cwd,
             capture_output=True,
@@ -50,7 +50,7 @@ def check_containers_running(services: list[str]) -> bool:
     print(f"Checking for running containers: {', '.join(services)}")
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 B607 — fixed command list, no shell, no user input
             ["docker", "ps", "--format", "table {{.Names}}"],
             capture_output=True,
             text=True,
@@ -77,7 +77,7 @@ def check_containers_running(services: list[str]) -> bool:
 
 def get_actual_timing_from_logs() -> dict:
     """Parse container logs to get actual message timing from the most recent test run."""
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603 B607 — fixed command list, no shell, no user input
         ["docker", "logs", "mpi-hl7-sender", "-t", "--since", "5m"],
         capture_output=True,
         text=True,

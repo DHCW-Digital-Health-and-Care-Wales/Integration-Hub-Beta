@@ -12,6 +12,7 @@ class TestAppConfig(unittest.TestCase):
             values: Dict[str, str] = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 "SERVICE_BUS_NAMESPACE": "namespace",
                 "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
@@ -34,6 +35,7 @@ class TestAppConfig(unittest.TestCase):
 
         self.assertEqual(config.connection_string, "conn_str")
         self.assertEqual(config.egress_queue_name, "egress_queue")
+        self.assertEqual(config.egress_session_id, "test-session")
         self.assertEqual(config.service_bus_namespace, "namespace")
         self.assertEqual(config.message_store_queue_name, "messagestore-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
@@ -53,6 +55,7 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
@@ -72,6 +75,7 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
@@ -96,6 +100,7 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
@@ -115,6 +120,7 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 # MESSAGE_STORE_QUEUE_NAME intentionally omitted to test required field validation
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
@@ -135,6 +141,7 @@ class TestAppConfig(unittest.TestCase):
         def getenv_side_effect(name: str) -> Optional[str]:
             required_values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
                 "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
@@ -149,6 +156,7 @@ class TestAppConfig(unittest.TestCase):
 
         # Verify required fields are loaded
         self.assertEqual(config.egress_queue_name, "egress_queue")
+        self.assertEqual(config.egress_session_id, "test-session")
         self.assertEqual(config.message_store_queue_name, "messagestore-queue")
         self.assertEqual(config.workflow_id, "test-workflow")
         self.assertEqual(config.microservice_id, "test-microservice")

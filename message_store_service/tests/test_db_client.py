@@ -15,6 +15,7 @@ def _make_record(
     target_system: Optional[str] = None,
     raw_payload: str = "MSH|...",
     xml_payload: Optional[str] = None,
+    session_id: str = "test-session",
 ) -> MessageRecord:
     """Helper to create a MessageRecord with sensible defaults."""
     return MessageRecord(
@@ -25,6 +26,7 @@ def _make_record(
         target_system=target_system,
         raw_payload=raw_payload,
         xml_payload=xml_payload,
+        session_id=session_id,
     )
 
 
@@ -36,7 +38,7 @@ class TestDatabaseClient(unittest.TestCase):
             sql_server="localhost,1433",
             sql_database="IntegrationHub",
             sql_username="sa",
-            sql_password="secret",
+            sql_password="secret",  # nosec B106 — test fixture, not real password
             sql_encrypt="yes",
             sql_trust_server_certificate="yes",
         )
@@ -101,6 +103,7 @@ class TestDatabaseClient(unittest.TestCase):
                 target_system=f"tgt-{i}" if i % 2 == 0 else None,
                 raw_payload=f"MSH|payload-{i}",
                 xml_payload=f"<msg id='{i}'/>" if i % 2 == 0 else None,
+                session_id=f"session-{i}",
             )
             for i in range(5)
         ]
@@ -121,6 +124,7 @@ class TestDatabaseClient(unittest.TestCase):
             self.assertEqual(row[5], record.target_system, f"row {i}: target_system mismatch")
             self.assertEqual(row[6], record.raw_payload, f"row {i}: raw_payload mismatch")
             self.assertEqual(row[7], record.xml_payload, f"row {i}: xml_payload mismatch")
+            self.assertEqual(row[8], record.session_id, f"row {i}: session_id mismatch")
 
     # ------------------------------------------------------------------
     # Connection reuse
@@ -402,14 +406,17 @@ class TestDatabaseClient(unittest.TestCase):
             target_system="tgt",
             raw_payload="raw",
             xml_payload="<xml/>",
+            session_id="test-session",
         )
 
         self.client.store_messages([record])
 
         row = mock_cursor.executemany.call_args[0][1][0]
         # Column order: ReceivedAt, StoredAt, CorrelationId, SourceSystem,
-        #               ProcessingComponent, TargetSystem, RawPayload, XmlPayload
-        self.assertEqual(row, (received_at, fixed_stored_at, "cid", "src", "comp", "tgt", "raw", "<xml/>"))
+        #               ProcessingComponent, TargetSystem, RawPayload, XmlPayload, SessionId
+        self.assertEqual(
+            row, (received_at, fixed_stored_at, "cid", "src", "comp", "tgt", "raw", "<xml/>", "test-session")
+        )
 
     # ------------------------------------------------------------------
     # Context manager
