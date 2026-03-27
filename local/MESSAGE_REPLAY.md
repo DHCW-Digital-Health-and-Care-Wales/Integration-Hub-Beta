@@ -219,7 +219,7 @@ INGRESS_QUEUE_NAME="local-inthub-priority-messagequeue"
 Leave `INGRESS_SESSION_ID` unchanged — each replayed message is automatically stamped with the `SessionId` stored in `monitoring.Message`, so the sender will pick up exactly the messages intended for it.
 
 > [!IMPORTANT]
-> Restart the sender container after changing the env file: `just restart <sender-service-name>`
+> Restart the profile which contains your desired sender after changing the env file: `just restart <profile>` (e.g. `just restart phw-to-mpi`)
 
 After the replay is complete, revert `INGRESS_QUEUE_NAME` to its original value and restart again.
 
