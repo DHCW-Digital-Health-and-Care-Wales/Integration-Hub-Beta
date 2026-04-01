@@ -24,7 +24,7 @@ WITH Batch AS (
     AND ReplayBatchId = ?
     ORDER BY ReplayId
 )
-SELECT b.ReplayId, m.Id AS MessageId, m.RawPayload, m.CorrelationId
+SELECT b.ReplayId, m.Id AS MessageId, m.RawPayload, m.CorrelationId, m.SessionId
 FROM Batch b
 JOIN monitoring.Message m ON m.Id = b.MessageId
 ORDER BY b.ReplayId;
@@ -102,6 +102,7 @@ class DatabaseClient:
                     message_id=row.MessageId,
                     raw_payload=row.RawPayload,
                     correlation_id=row.CorrelationId,
+                    session_id=row.SessionId,
                 )
                 for row in rows
             ]

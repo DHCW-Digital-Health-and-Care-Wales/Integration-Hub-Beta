@@ -19,6 +19,7 @@ class TestMessageRecord(unittest.TestCase):
             target_system="MPI",
             raw_payload="MSH|^~\\&|SENDING|FAC||",
             xml_payload="<message/>",
+            session_id="paris-to-mpi",
         )
 
         self.assertEqual(record.received_at, received_at)
@@ -28,6 +29,7 @@ class TestMessageRecord(unittest.TestCase):
         self.assertEqual(record.target_system, "MPI")
         self.assertEqual(record.raw_payload, "MSH|^~\\&|SENDING|FAC||")
         self.assertEqual(record.xml_payload, "<message/>")
+        self.assertEqual(record.session_id, "paris-to-mpi")
 
     def test_construction_with_optional_fields_none(self) -> None:
         """Verify optional fields (target_system, xml_payload) accept None."""
@@ -39,10 +41,12 @@ class TestMessageRecord(unittest.TestCase):
             target_system=None,
             raw_payload="MSH|^~\\&|SENDING|FAC||",
             xml_payload=None,
+            session_id="phw-to-mpi",
         )
 
         self.assertIsNone(record.target_system)
         self.assertIsNone(record.xml_payload)
+        self.assertEqual(record.session_id, "phw-to-mpi")
 
 
 if __name__ == "__main__":

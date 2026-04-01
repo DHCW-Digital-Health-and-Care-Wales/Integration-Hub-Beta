@@ -160,10 +160,11 @@ class MessageReplayJob:
 
     @staticmethod
     def _build_messages(records: List[ReplayRecord]) -> List[ServiceBusMessage]:
-        """Build ServiceBusMessage objects from replay records."""
+        """Build ServiceBusMessages from replay records."""
         return [
             ServiceBusMessage(
                 body=record.raw_payload,
+                session_id=record.session_id,
                 application_properties={
                     "CorrelationId": record.correlation_id,
                     "ReplayId": str(record.replay_id),

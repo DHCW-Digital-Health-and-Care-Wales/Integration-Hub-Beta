@@ -16,6 +16,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
         )
 
         self.mock_sender.send_text_message.assert_called_once()
@@ -29,6 +30,7 @@ class TestMessageStoreClient(unittest.TestCase):
         self.assertEqual(sent_data["TargetSystem"], "test-peer")
         self.assertEqual(sent_data["RawPayload"], "MSH|^~\\&|...")
         self.assertIsNone(sent_data["XmlPayload"])
+        self.assertEqual(sent_data["SessionId"], "test-session")
 
     def test_send_to_store_with_xml_payload(self) -> None:
         self.client.send_to_store(
@@ -36,6 +38,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
             xml_payload="<xml>message</xml>",
         )
 
@@ -50,6 +53,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
             target_system="custom-target",
         )
 
@@ -67,6 +71,7 @@ class TestMessageStoreClient(unittest.TestCase):
                 correlation_id="test-uuid",
                 source_system="252",
                 raw_payload="MSH|^~\\&|...",
+                session_id="test-session",
             )
 
         self.assertIn("Service Bus error", str(context.exception))
@@ -78,6 +83,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="test-uuid",
             source_system="252",
             raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
         )
 
         mock_logger.info.assert_called_once_with("Message store event sent - CorrelationId: %s", "test-uuid")
@@ -92,6 +98,7 @@ class TestMessageStoreClient(unittest.TestCase):
                 correlation_id="test-uuid",
                 source_system="252",
                 raw_payload="MSH|^~\\&|...",
+                session_id="test-session",
             )
 
         mock_logger.error.assert_called_once()
@@ -113,6 +120,7 @@ class TestMessageStoreClient(unittest.TestCase):
             correlation_id="abc-123",
             source_system="SRC",
             raw_payload="RAW_DATA",
+            session_id="phw-to-mpi",
             xml_payload="<xml/>",
             target_system="TGT",
         )
@@ -128,8 +136,33 @@ class TestMessageStoreClient(unittest.TestCase):
             "TargetSystem",
             "RawPayload",
             "XmlPayload",
+            "SessionId",
         }
         self.assertEqual(set(sent_data.keys()), expected_keys)
+
+    @patch("message_bus_lib.message_store_client.logger")
+    def test_send_to_store_when_disabled_logs_and_returns(self, mock_logger: MagicMock) -> None:
+        """When sender_client is None, send_to_store is a no-op that logs a message."""
+        disabled_client = MessageStoreClient(None, "test-microservice", "test-peer")
+
+        # Should not raise, even though there is no real sender.
+        disabled_client.send_to_store(
+            message_received_at="2025-01-01T00:00:00+00:00",
+            correlation_id="disabled-uuid",
+            source_system="252",
+            raw_payload="MSH|^~\\&|...",
+            session_id="test-session",
+        )
+
+        mock_logger.debug.assert_called_once_with(
+            "Message store is disabled — message not stored (CorrelationId: %s)",
+            "disabled-uuid",
+        )
+
+    def test_close_when_disabled_is_noop(self) -> None:
+        """close() on a disabled (sender_client=None) client must not raise."""
+        disabled_client = MessageStoreClient(None, "test-microservice", "test-peer")
+        disabled_client.close()
 
 
 if __name__ == "__main__":

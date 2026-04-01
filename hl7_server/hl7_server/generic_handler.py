@@ -41,6 +41,7 @@ class GenericHandler(AbstractHandler):
         workflow_id: str,
         sending_app: str | None,
         message_store_client: MessageStoreClient,
+        egress_session_id: str,
         flow_name: str | None = None,
         standard_version: str | None = None,
     ):
@@ -52,6 +53,7 @@ class GenericHandler(AbstractHandler):
         self.workflow_id = workflow_id
         self.sending_app = sending_app
         self.message_store_client = message_store_client
+        self.egress_session_id = egress_session_id
         self.flow_name: str | None = flow_name
         self.standard_version: str | None = standard_version
 
@@ -202,6 +204,7 @@ class GenericHandler(AbstractHandler):
                 correlation_id=tracking_metadata_properties.get(CORRELATION_ID_KEY, ""),
                 source_system=tracking_metadata_properties.get(SOURCE_SYSTEM_KEY, ""),
                 raw_payload=self.incoming_message,
+                session_id=self.egress_session_id,
                 xml_payload=xml_payload,
             )
         except Exception as e:

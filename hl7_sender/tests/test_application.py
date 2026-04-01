@@ -36,6 +36,10 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
     )
 
 
+# Default session ID used across tests — corresponds to INGRESS_SESSION_ID in env config.
+TEST_SESSION_ID = "test-session"
+
+
 class TestProcessMessage(unittest.TestCase):
     def _assert_error_handling(
         self,
@@ -73,6 +77,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -111,6 +116,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_parse_message.assert_called_once_with(hl7_string)
@@ -151,6 +157,7 @@ class TestProcessMessage(unittest.TestCase):
                     mock_metric_sender,
                     mock_throttler,
                     mock_message_store,
+                    TEST_SESSION_ID,
                 )
 
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -177,6 +184,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
@@ -188,10 +196,8 @@ class TestProcessMessage(unittest.TestCase):
     @patch("hl7_sender.application.TCPHealthCheckServer")
     @patch("hl7_sender.application.HL7SenderClient")
     @patch("hl7_sender.application.EventLogger")
-    @patch("hl7_sender.application.MessageStoreClient")
     def test_health_check_server_starts_and_stops(
         self,
-        mock_message_store_cls: Mock,
         mock_event_logger: Mock,
         mock_hl7_sender: Mock,
         mock_health_check: Mock,
@@ -203,10 +209,6 @@ class TestProcessMessage(unittest.TestCase):
         mock_health_check_ctx = MagicMock()
         mock_health_check_ctx.__enter__.return_value = mock_health_server
         mock_health_check.return_value = mock_health_check_ctx
-        mock_message_store_instance = MagicMock()
-        mock_message_store_instance.__enter__ = MagicMock(return_value=mock_message_store_instance)
-        mock_message_store_instance.__exit__ = MagicMock(return_value=False)
-        mock_message_store_cls.return_value = mock_message_store_instance
         mock_app_config.read_env_config.return_value = AppConfig(
             connection_string=None,
             ingress_queue_name="test-queue-name",
@@ -233,6 +235,9 @@ class TestProcessMessage(unittest.TestCase):
             mock_health_check.assert_called_once_with("localhost", 9000)
             mock_health_server.start.assert_called_once()
             mock_health_check_ctx.__exit__.assert_called_once()
+            mock_factory.return_value.create_message_store_client.assert_called_once_with(
+                "test-messagestore-queue", "test_microservice_id", "test-service"
+            )
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
@@ -272,6 +277,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -281,6 +287,7 @@ class TestProcessMessage(unittest.TestCase):
         self.assertEqual(call_kwargs["xml_payload"], "<xml>content</xml>")
         self.assertIn("message_received_at", call_kwargs)
         self.assertIn("correlation_id", call_kwargs)
+        self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
@@ -298,7 +305,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        service_bus_message.delivery_count = 1  # Simulate a retry delivery attempt
+        service_bus_message.delivery_count = 1  # type: ignore[attr-defined]  # Simulate a retry delivery attempt
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
@@ -311,6 +318,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self.assertTrue(result)
@@ -345,6 +353,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -387,6 +396,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         self.assertTrue(result)
@@ -431,6 +441,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
+            TEST_SESSION_ID,
         )
 
         mock_message_store.send_to_store.assert_called_once()
@@ -440,7 +451,7 @@ class TestProcessMessage(unittest.TestCase):
         self.assertEqual(call_kwargs["message_received_at"], original_timestamp)
         self.assertEqual(call_kwargs["correlation_id"], original_correlation_id)
         self.assertEqual(call_kwargs["source_system"], "PHW")
-
+        self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
 class TestBatchSizing(unittest.TestCase):
     def test_uses_max_batch_when_no_throttle(self) -> None:
