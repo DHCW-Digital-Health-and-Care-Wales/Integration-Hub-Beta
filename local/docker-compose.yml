@@ -187,6 +187,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - mpi-to-topic
     networks:
       integration-hub:
         aliases:

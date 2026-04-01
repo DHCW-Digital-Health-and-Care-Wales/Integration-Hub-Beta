@@ -139,6 +139,12 @@ The platform handles HL7 message processing through specialized microservices:
 - Handles connection management and retry logic for reliable delivery.
 - Provides delivery confirmation and error handling.
 
+**`hl7_subscription_sender/`**
+
+- Subscription based message delivery service to outbound systems.
+- Handles connection management and retry logic for reliable delivery.
+- Provides delivery confirmation and error handling.
+
 **`hl7_mock_receiver/`**
 
 - Mock receiver for testing and development.
@@ -161,6 +167,7 @@ The system supports multiple healthcare system integration profiles:
 - **Paris to MPI**
 - **Chemocare to MPI**
 - **PIMS to MPI**
+- **MPI to Outbound**
 
 ## Technology Stack
 

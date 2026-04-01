@@ -267,6 +267,7 @@ Profiles:
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
+- mpi-to-topic
 
 #### Profiles Reference
 
@@ -279,6 +280,7 @@ Each profile starts a complete integration flow with all required services:
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
+| **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 
 Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile.
 
@@ -286,19 +288,20 @@ Note that all the listed profiles will start the **message-store-service** as we
 
 Each service is configured via a corresponding `.env` file in the `local/` directory:
 
-| File                          | Configures            | Key Variables                                                             |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------------- |
-| **phw-hl7-server.env**        | PHW HL7 Server        | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`               |
-| **phw-hl7-transformer.env**   | PHW Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`       |
-| **paris-hl7-server.env**      | Paris HL7 Server      | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`             |
-| **chemo-hl7-server.env**      | Chemocare HL7 Server  | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`             |
-| **chemo-hl7-transformer.env** | Chemocare Transformer | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi` |
-| **pims-hl7-server.env**       | PIMS HL7 Server       | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`              |
-| **pims-hl7-transformer.env**  | PIMS Transformer      | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`      |
-| **message-store-service.env** | Message Store Service | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                        |
-| **message-replay-job.env**    | Message Replay Job    | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`    |
-| **mpi-hl7-sender.env**        | MPI HL7 Sender        | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`  |
-| **mpi-hl7-mock-receiver.env** | MPI Mock Receiver     | `PORT=2576`, `EGRESS_QUEUE_NAME`                                          |
+| File                          | Configures                  | Key Variables                                                                         |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| **phw-hl7-server.env**        | PHW HL7 Server              | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`                           |
+| **phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
+| **paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
+| **chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
+| **chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
+| **pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
+| **pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
+| **message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
+| **message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
+| **mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
+| **mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
+| **mpi-hl7-chem-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 
