@@ -33,7 +33,7 @@
 # ============================================
 # Configuration Variables
 # ============================================
-
+set shell := ["powershell.exe", "-Command"]
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
 
@@ -41,7 +41,7 @@ default_port := "2575"
 secrets_file := ".secrets"
 
 # Python interpreter
-python := "python3"
+python := "python"
 
 # ============================================
 # Default Recipe (shows help)
@@ -85,7 +85,7 @@ python := "python3"
 @secrets:
     echo "🔒 Generating secrets file..."
     echo ""
-    {{python}} generate_secrets.py > {{secrets_file}}
+    {{python}} generate_secrets.py | Out-File -Encoding utf8 {{secrets_file}}
     echo "✅ Secrets file created at: ./{{secrets_file}}"
     echo "💡 This file contains randomly generated secrets for local development"
     echo "💡 Next step: Run 'just start <profile>' to launch services"

@@ -39,7 +39,9 @@ def validate_er7_with_standard(er7_string: str, version: str) -> None:
     _check_version_supported(version)
 
     try:
-        msg = parse_message(er7_string, validation_level=consts.VALIDATION_LEVEL.STRICT, find_groups=False)
+        # Group-aware parsing is required for message structures like ADT_A39 where
+        # segments are nested in named groups (e.g. PATIENT).
+        msg = parse_message(er7_string, validation_level=consts.VALIDATION_LEVEL.STRICT, find_groups=True)
     except (HL7apyException, ValueError) as e:
         raise XmlValidationError(f"{PARSE_ERROR_MSG}: {e}") from e
 
@@ -69,7 +71,14 @@ def validate_parsed_message_with_standard(msg: Message, version: str) -> None:
         raise XmlValidationError(f"Message version {msg_version} does not match requested version {version}")
 
     try:
-        msg.validate()
+        # Reparse from ER7 with groups enabled so validation is correct even when
+        # the original message was parsed with find_groups=False by callers.
+        reparsed_msg = parse_message(msg.to_er7(), validation_level=consts.VALIDATION_LEVEL.STRICT, find_groups=True)
+    except (HL7apyException, ValueError) as e:
+        raise XmlValidationError(f"{PARSE_ERROR_MSG}: {e}") from e
+
+    try:
+        reparsed_msg.validate()
     except (ValidationError, HL7apyException) as e:
         raise XmlValidationError(f"Standard HL7 v{version} validation failed: {e}") from e
 

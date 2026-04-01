@@ -48,6 +48,16 @@ class TestStandardValidation(unittest.TestCase):
 
         validate_er7_with_standard(er7, "2.6")
 
+    def test_standard_validation_adt_a39_successful(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A40^ADT_A39|MSG123|P|2.5",
+            "EVN|A40|20250101010101",
+            "PID|||B0000009789^^^328^PI||DOE^JOHN",
+            "MRG|B0000009790^^^328^PI",
+        ])
+
+        validate_er7_with_standard(er7, "2.5")
+
 
     def test_standard_validation_invalid_version_raises(self) -> None:
         er7 = "\r".join([
@@ -113,6 +123,17 @@ class TestStandardValidation(unittest.TestCase):
 
         msg = parse_message(er7, find_groups=False)
         validate_parsed_message_with_standard(msg, "2.6")
+
+    def test_parsed_message_standard_validation_adt_a39_successful(self) -> None:
+        er7 = "\r".join([
+            "MSH|^~\\&|SENDER|FACILITY|RECEIVER|FACILITY|20250101010101||ADT^A40^ADT_A39|MSG123|P|2.5",
+            "EVN|A40|20250101010101",
+            "PID|||B0000009789^^^328^PI||DOE^JOHN",
+            "MRG|B0000009790^^^328^PI",
+        ])
+
+        msg = parse_message(er7, find_groups=False)
+        validate_parsed_message_with_standard(msg, "2.5")
 
 
     def test_parsed_message_standard_validation_invalid_version_raises(self) -> None:
