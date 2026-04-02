@@ -78,9 +78,9 @@ def main() -> None:
     )
     throttler = MessageThrottler(app_config.max_messages_per_minute)
 
-    message_store_sender = factory.create_queue_sender_client(app_config.message_store_queue_name)
-    message_store_client = MessageStoreClient(message_store_sender, app_config.microservice_id, app_config.peer_service)
-    logger.info(f"Configured message store queue: {app_config.message_store_queue_name}")
+    message_store_client = factory.create_message_store_client(
+        app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
+    )
 
     with (
         factory.create_message_receiver_client(
@@ -101,7 +101,8 @@ def main() -> None:
             receiver_client.receive_messages(
                 batch_size,
                 lambda message: _process_message(
-                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client
+                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
+                    app_config.ingress_session_id,
                 ),
             )
 
@@ -113,6 +114,7 @@ def _process_message(
     metric_sender: MetricSender,
     throttler: MessageThrottler,
     message_store_client: MessageStoreClient,
+    session_id: str,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
@@ -137,7 +139,7 @@ def _process_message(
         logger.info(f"Message ID: {message_id}")
 
         if _is_first_delivery_attempt(message):
-            _send_to_message_store(message_store_client, event_logger, message_body, metadata)
+            _send_to_message_store(message_store_client, event_logger, message_body, metadata, session_id)
         else:
             logger.info(
                 "Skipping message store send on retry attempt - CorrelationId: %s, DeliveryCount: %s",
@@ -202,6 +204,7 @@ def _send_to_message_store(
     event_logger: EventLogger,
     message_body: str,
     metadata: dict[str, str] | None,
+    session_id: str,
 ) -> None:
     """Send a message to the message store queue with XML payload."""
     try:
@@ -225,6 +228,7 @@ def _send_to_message_store(
             correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
             source_system=incoming_metadata.get(SOURCE_SYSTEM_KEY, ""),
             raw_payload=message_body,
+            session_id=session_id,
             xml_payload=xml_payload,
         )
     except Exception as e:

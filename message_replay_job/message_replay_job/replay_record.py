@@ -9,6 +9,7 @@ class ReplayRecord:
     message_id: int
     raw_payload: str
     correlation_id: str
+    session_id: str
 
 
 __all__ = ["ReplayRecord"]

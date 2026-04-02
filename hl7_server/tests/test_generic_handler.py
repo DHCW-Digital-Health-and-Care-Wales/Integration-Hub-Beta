@@ -43,6 +43,7 @@ class TestGenericHandler(unittest.TestCase):
             workflow_id="test-workflow",
             sending_app="252",
             message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
         )
 
     def test_valid_a28_message_returns_ack(self) -> None:
@@ -93,6 +94,7 @@ class TestGenericHandler(unittest.TestCase):
             workflow_id="test-workflow",
             sending_app="252",
             message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
         )
 
         with self.assertRaises(ValidationException):
@@ -128,6 +130,7 @@ class TestGenericHandler(unittest.TestCase):
             workflow_id="test-workflow",
             sending_app="252",
             message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
             flow_name="mpi",
         )
 
@@ -160,6 +163,7 @@ class TestGenericHandler(unittest.TestCase):
                 workflow_id="test-workflow",
                 sending_app="252",
                 message_store_client=self.mock_message_store,
+                egress_session_id="mpi-outbound",
                 flow_name="mpi",
             )
 
@@ -199,6 +203,7 @@ class TestGenericHandler(unittest.TestCase):
                     workflow_id="test-workflow",
                     sending_app="252",
                     message_store_client=self.mock_message_store,
+                    egress_session_id="test-session",
                     flow_name="mpi",
                 )
 
@@ -232,6 +237,7 @@ class TestGenericHandler(unittest.TestCase):
                 workflow_id="test-workflow",
                 sending_app="252",
                 message_store_client=self.mock_message_store,
+                egress_session_id="test-session",
                 standard_version="2.5",
             )
 
@@ -260,6 +266,7 @@ class TestGenericHandler(unittest.TestCase):
             workflow_id="test-workflow",
             sending_app="252",
             message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
             standard_version="2.5",
         )
 
@@ -300,6 +307,7 @@ class TestGenericHandler(unittest.TestCase):
                 workflow_id="test-workflow",
                 sending_app="252",
                 message_store_client=self.mock_message_store,
+                egress_session_id="test-session",
                 flow_name="phw",
                 standard_version="2.5",
             )
@@ -326,6 +334,7 @@ class TestGenericHandler(unittest.TestCase):
                 workflow_id="test-workflow",
                 sending_app="252",
                 message_store_client=self.mock_message_store,
+                egress_session_id="test-session",
             )
 
             handler.reply()
@@ -341,6 +350,7 @@ class TestGenericHandler(unittest.TestCase):
         self.assertIn("message_received_at", call_kwargs.kwargs)
         self.assertIn("correlation_id", call_kwargs.kwargs)
         self.assertIn("source_system", call_kwargs.kwargs)
+        self.assertEqual(call_kwargs.kwargs["session_id"], "test-session")
 
     def test_message_stored_before_service_bus_send(self) -> None:
         message_stored = {"value": False}
@@ -419,6 +429,7 @@ class TestGenericHandler(unittest.TestCase):
             workflow_id="test-workflow",
             sending_app="252",
             message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
             flow_name="phw",
         )
 

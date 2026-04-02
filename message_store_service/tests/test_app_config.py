@@ -19,7 +19,7 @@ class TestAppConfig(unittest.TestCase):
                 "SQL_SERVER": "localhost,1433",
                 "SQL_DATABASE": "IntegrationHub",
                 "SQL_USERNAME": "sa",
-                "MSSQL_SA_PASSWORD": "secret",
+                "MSSQL_SA_PASSWORD": "secret",  # nosec B105 — test fixture, not real password
                 "SQL_ENCRYPT": "No",
                 "SQL_TRUST_SERVER_CERTIFICATE": "Yes",
                 "MANAGED_IDENTITY_CLIENT_ID": "my-mi-client-id",

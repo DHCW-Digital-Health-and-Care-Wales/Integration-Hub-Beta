@@ -1,6 +1,14 @@
--- This script seeds the monitoring.Message table with 1000 rows of test data based on a sample PHW HL7 message.
--- The ReceivedAt timestamps are distributed across three days (25% today, 25% yesterday, and 25% tomorrow)
--- with 25% of messages having a fixed timestamp of 2025-12-31 to allow testing of date range queries.
+/*
+   This script seeds the monitoring.Message table with 1000 rows of test data based on a sample PHW HL7 message.
+   The ReceivedAt timestamps are distributed across three days (25% today, 25% yesterday, and 25% tomorrow)
+   with 25% of messages having a fixed timestamp of 2025-12-31 to allow testing of date range queries.
+
+   The session ID stored in the DB and replayed is whichever was active when the message was written to the message
+   store (depends on which stage of the flow you're replaying). This can vary - for example, the PHW receiver and
+   MPI sender use different session IDs, same applies to the Paris flow. Since this mock DB is seeded with PHW messages
+   from the sender it exclusively uses that session ID.
+*/
+
 USE IntegrationHub;
 GO
 
@@ -44,7 +52,8 @@ WITH
             WHEN RowNum <= 750 THEN DATEADD(SECOND, RowNum - 501, DATEADD(DAY, -1, CAST(@TodayUtc AS DATETIME2(3))))
             ELSE DATEADD(SECOND, RowNum - 751, CAST('2025-12-31T00:00:00.000' AS DATETIME2(3)))
         END AS ReceivedAt,
-            CAST(NEWID() AS NVARCHAR(100)) AS CorrelationId
+            CAST(NEWID() AS NVARCHAR(100)) AS CorrelationId,
+            N'mpi' AS SessionId
         FROM NumberedRows
     )
 INSERT INTO monitoring.Message
@@ -52,6 +61,7 @@ INSERT INTO monitoring.Message
     ReceivedAt,
     StoredAt,
     CorrelationId,
+    SessionId,
     SourceSystem,
     ProcessingComponent,
     TargetSystem,
@@ -62,6 +72,7 @@ SELECT
     s.ReceivedAt,
     s.ReceivedAt,
     s.CorrelationId,
+    s.SessionId,
     N'252',
     N'mpi_hl7_sender',
     N'MPI',

@@ -18,18 +18,22 @@ class TestBuildMessageRecord(unittest.TestCase):
         msg.body = [json.dumps(data).encode("utf-8")]
         return msg
 
-    def test_build_message_record_parses_json_with_all_fields(self) -> None:
-        received_at = "2025-06-01T09:59:00+00:00"
-
-        data = {
-            "MessageReceivedAt": received_at,
+    def _base_data(self) -> dict:  # type: ignore[type-arg]
+        """Minimal valid JSON payload including all required fields."""
+        return {
+            "MessageReceivedAt": "2025-06-01T09:59:00+00:00",
             "CorrelationId": "corr-123",
             "SourceSystem": "PARIS",
             "ProcessingComponent": "message_store_service",
             "TargetSystem": "MPI",
             "RawPayload": "MSH|^~\\&|PARIS|FAC|MPI|RECEIVING|...",
             "XmlPayload": "<message/>",
+            "SessionId": "paris-to-mpi",
         }
+
+    def test_build_message_record_parses_json_with_all_fields(self) -> None:
+        received_at = "2025-06-01T09:59:00+00:00"
+        data = self._base_data()
         msg = self._make_message_with_json_body(data)
 
         record = build_message_record(msg)
@@ -42,6 +46,7 @@ class TestBuildMessageRecord(unittest.TestCase):
         self.assertEqual(record.target_system, "MPI")
         self.assertEqual(record.raw_payload, "MSH|^~\\&|PARIS|FAC|MPI|RECEIVING|...")
         self.assertEqual(record.xml_payload, "<message/>")
+        self.assertEqual(record.session_id, "paris-to-mpi")
 
     def test_build_message_record_with_optional_fields_missing(self) -> None:
         """When optional fields (TargetSystem, XmlPayload) are missing, they default to None."""
@@ -51,6 +56,7 @@ class TestBuildMessageRecord(unittest.TestCase):
             "SourceSystem": "PHW",
             "ProcessingComponent": "hl7_phw_transformer",
             "RawPayload": "MSH|^~\\&|PHW|...",
+            "SessionId": "phw-to-mpi",
         }
         msg = self._make_message_with_json_body(data)
 
@@ -61,6 +67,7 @@ class TestBuildMessageRecord(unittest.TestCase):
         self.assertEqual(record.processing_component, "hl7_phw_transformer")
         self.assertIsNone(record.target_system)
         self.assertIsNone(record.xml_payload)
+        self.assertEqual(record.session_id, "phw-to-mpi")
 
     def test_build_message_record_raises_on_invalid_json(self) -> None:
         """If the message body is not valid JSON, ValueError should be raised."""
@@ -77,7 +84,7 @@ class TestBuildMessageRecord(unittest.TestCase):
         data = {
             "MessageReceivedAt": "2025-06-01T09:59:00+00:00",
             "CorrelationId": "corr-789",
-            # Missing SourceSystem, ProcessingComponent and RawPayload
+            # Missing SourceSystem, ProcessingComponent, RawPayload, and SessionId
         }
         msg = self._make_message_with_json_body(data)
 
@@ -95,13 +102,8 @@ class TestBuildMessageRecord(unittest.TestCase):
             build_message_record(msg)
 
     def test_build_message_record_raises_on_invalid_received_at_format(self) -> None:
-        data = {
-            "MessageReceivedAt": "not-a-datetime",
-            "CorrelationId": "corr-000",
-            "SourceSystem": "SRC",
-            "ProcessingComponent": "svc",
-            "RawPayload": "MSH|...",
-        }
+        data = self._base_data()
+        data["MessageReceivedAt"] = "not-a-datetime"
         msg = self._make_message_with_json_body(data)
 
         with self.assertRaises(ValueError) as ctx:
@@ -111,15 +113,9 @@ class TestBuildMessageRecord(unittest.TestCase):
 
     def test_build_message_record_with_empty_optional_fields(self) -> None:
         """When optional fields are present but empty strings, they are preserved."""
-        data = {
-            "MessageReceivedAt": "2025-06-01T09:59:00+00:00",
-            "CorrelationId": "corr-111",
-            "SourceSystem": "SYS",
-            "ProcessingComponent": "test_service",
-            "TargetSystem": "",
-            "RawPayload": "MSH|...",
-            "XmlPayload": "",
-        }
+        data = self._base_data()
+        data["TargetSystem"] = ""
+        data["XmlPayload"] = ""
         msg = self._make_message_with_json_body(data)
 
         record = build_message_record(msg)
@@ -144,6 +140,7 @@ class TestBuildMessageRecords(unittest.TestCase):
                 "SourceSystem": "S1",
                 "ProcessingComponent": "svc1",
                 "RawPayload": "body1",
+                "SessionId": "session-1",
             }),
             self._make_message({
                 "MessageReceivedAt": "2025-06-01T09:59:01+00:00",
@@ -151,6 +148,7 @@ class TestBuildMessageRecords(unittest.TestCase):
                 "SourceSystem": "S2",
                 "ProcessingComponent": "svc2",
                 "RawPayload": "body2",
+                "SessionId": "session-2",
             }),
         ]
 
