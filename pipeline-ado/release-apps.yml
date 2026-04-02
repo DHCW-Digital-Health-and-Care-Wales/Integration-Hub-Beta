@@ -119,6 +119,11 @@ stages:
           appFunctionMidfix: 'mpi'
           buildPipeline: 'HL7 Server - Build'
 
+        - name: 'WDS HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'wds'
+          buildPipeline: 'HL7 Server - Build'
+          
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           appImageName: 'phw-hl7transformer'
