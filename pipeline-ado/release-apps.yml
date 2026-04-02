@@ -13,6 +13,7 @@ parameters:
       - Paris HL7Server
       - Chemocare HL7Server
       - MPI HL7Server
+      - WDS HL7Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
