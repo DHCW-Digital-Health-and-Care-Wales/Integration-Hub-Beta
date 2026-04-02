@@ -12,8 +12,8 @@ from azure.servicebus import (
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.subscription_receiver_client import SubscriptionReceiverClient
 from message_bus_lib.message_store_client import MessageStoreClient
+from message_bus_lib.subscription_receiver_client import SubscriptionReceiverClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 MAX_LOCK_RENEWAL_DURATION = 300  # 5 minutes
