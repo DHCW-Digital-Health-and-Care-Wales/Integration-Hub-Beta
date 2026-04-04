@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BusWatch</title>
+    <style>
+        :root {
+            --bg: #f3efe8;
+            --card: #fffdf8;
+            --ink: #1e1b16;
+            --muted: #675d50;
+            --accent: #025d5f;
+            --accent-soft: #d8efef;
+            --border: #ded3c2;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 0 0, #ffe8cf 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, #d0efeb 0%, transparent 45%),
+                var(--bg);
+        }
+
+        main {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+
+        h1 {
+            margin: 0;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            letter-spacing: 0.02em;
+            font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+        }
+
+        .subtitle {
+            margin-top: 0.4rem;
+            color: var(--muted);
+        }
+
+        .banner-error {
+            margin-top: 0.9rem;
+            border: 1px solid #cc8f76;
+            border-radius: 10px;
+            padding: 0.7rem 0.9rem;
+            background: #fff3eb;
+            color: #7b2e15;
+        }
+
+        .queues {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .queue {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--card);
+            padding: 1rem;
+            box-shadow: 0 8px 20px rgba(51, 37, 18, 0.08);
+        }
+
+        .queue-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .queue-name {
+            margin: 0;
+            font-size: 1.1rem;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .stat {
+            background: var(--accent-soft);
+            color: #0f4344;
+            border-radius: 999px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.84rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.8rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            border-top: 1px solid var(--border);
+            padding: 0.55rem;
+            font-size: 0.92rem;
+            vertical-align: top;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 0.82rem;
+            letter-spacing: 0.01em;
+            text-transform: uppercase;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .empty {
+            margin-top: 0.75rem;
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        .queue-error {
+            margin-top: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid #d8baa9;
+            background: #fdf1e8;
+            color: #7b2e15;
+            padding: 0.65rem 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 760px) {
+            th:nth-child(4),
+            td:nth-child(4) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>BusWatch Queue Browser</h1>
+        <p class="subtitle">Peeked message sample size per queue: {{ peek_count }}</p>
+        {% if error_message %}
+            <p class="banner-error">
+                Unable to list queues from Service Bus. Check connection settings and emulator status.<br />
+                <strong>Details:</strong> {{ error_message }}
+            </p>
+        {% endif %}
+    </header>
+
+    <section class="queues">
+        {% for queue in queues %}
+            <article class="queue">
+                <div class="queue-header">
+                    <h2 class="queue-name">{{ queue.name }}</h2>
+                    <div class="stats">
+                        <span class="stat">Active: {{ queue.runtime.active_count }}</span>
+                        <span class="stat">DLQ: {{ queue.runtime.dead_letter_count }}</span>
+                        <span class="stat">Scheduled: {{ queue.runtime.scheduled_count }}</span>
+                        <span class="stat">Transfer DLQ: {{ queue.runtime.transfer_dead_letter_count }}</span>
+                    </div>
+                </div>
+
+                {% if queue.messages %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sequence</th>
+                                <th>Message Id</th>
+                                <th>Enqueued</th>
+                                <th>Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in queue.messages %}
+                                <tr>
+                                    <td>
+                                        {% if message.sequence_number is not none %}
+                                            <a href="/queues/{{ queue.name }}/messages/{{ message.sequence_number }}">
+                                                {{ message.sequence_number }}
+                                            </a>
+                                        {% else %}
+                                            n/a
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ message.message_id or "-" }}</td>
+                                    <td>{{ message.enqueued_time_utc or "-" }}</td>
+                                    <td>{{ message.content_preview }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="empty">No messages found in the peek window.</p>
+                {% endif %}
+
+                {% if queue.error %}
+                    <p class="queue-error">
+                        Unable to read this queue right now.<br />
+                        <strong>Details:</strong> {{ queue.error }}
+                    </p>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </section>
+</main>
+</body>
+</html>

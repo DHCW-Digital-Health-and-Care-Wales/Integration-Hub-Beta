@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BusWatch - Message Detail</title>
+    <style>
+        :root {
+            --bg: #f3efe8;
+            --card: #fffdf8;
+            --ink: #1e1b16;
+            --muted: #675d50;
+            --accent: #025d5f;
+            --border: #ded3c2;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+        }
+
+        main {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 2rem 1rem 3rem;
+        }
+
+        .back {
+            display: inline-block;
+            margin-bottom: 0.8rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .back:hover {
+            text-decoration: underline;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--card);
+            padding: 1rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        }
+
+        dl {
+            display: grid;
+            grid-template-columns: minmax(120px, 180px) 1fr;
+            gap: 0.5rem 1rem;
+            margin: 0;
+        }
+
+        dt {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        dd {
+            margin: 0;
+            word-break: break-word;
+        }
+
+        h2 {
+            margin-top: 1.2rem;
+            font-size: 1rem;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        }
+
+        pre {
+            margin: 0;
+            background: #f8f4ec;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.8rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <a class="back" href="/">Back to queues</a>
+
+    <article class="card">
+        <h1>Message {{ message.sequence_number or "n/a" }}</h1>
+        <dl>
+            <dt>Queue</dt>
+            <dd>{{ message.queue_name }}</dd>
+
+            <dt>Message Id</dt>
+            <dd>{{ message.message_id or "-" }}</dd>
+
+            <dt>Correlation Id</dt>
+            <dd>{{ message.correlation_id or "-" }}</dd>
+
+            <dt>Subject</dt>
+            <dd>{{ message.subject or "-" }}</dd>
+
+            <dt>Content Type</dt>
+            <dd>{{ message.content_type or "-" }}</dd>
+
+            <dt>Enqueued</dt>
+            <dd>{{ message.enqueued_time_utc or "-" }}</dd>
+        </dl>
+
+        <h2>Body</h2>
+        <pre>{{ message.body }}</pre>
+
+        <h2>Application Properties</h2>
+        {% if message.application_properties %}
+            <ul>
+                {% for key, value in message.application_properties.items() %}
+                    <li><strong>{{ key }}</strong>: {{ value }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No application properties.</p>
+        {% endif %}
+    </article>
+</main>
+</body>
+</html>
