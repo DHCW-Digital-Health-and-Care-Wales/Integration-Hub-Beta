@@ -17,6 +17,7 @@ services:
       - "${HOST_WORKSPACE_PATH:-..}/local/ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
     ports:
       - "5672:5672"
+      - "5300:5300"
     restart: on-failure
     environment:
       SQL_SERVER: sqledge
@@ -398,6 +399,30 @@ services:
       integration-hub:
         aliases:
           - "training-hl7-mock-receiver"
+
+  # BusWatch - Allows peeking at messages on Service Bus emulator
+  # http://localhost:8080
+  bus-watch:
+    container_name: bus-watch-server
+    build:
+      context: ../buswatch
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
+    env_file:
+      - ./training-buswatch.env
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - training
+    networks:
+      integration-hub:
+        aliases:
+          - "training-buswatch"
+
 
 networks:
   integration-hub:

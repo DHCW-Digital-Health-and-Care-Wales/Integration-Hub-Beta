@@ -3,137 +3,346 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BusWatch - Message Detail</title>
+    <title>Message Detail - BusWatch</title>
     <style>
         :root {
-            --bg: #f3efe8;
-            --card: #fffdf8;
+            /* NHS Wales Informatics Service Brand Colours */
+            --nhs-blue: #2C3E72;
+            --nwis-blue: #12A3C9;
+            --nwis-green: #97CC39;
+            --nwis-aqua: #00A8B1;
+            --nwis-red: #CB1C19;
+            
+            /* Neutral Palette */
+            --bg: #f0f4f8;
+            --card: #ffffff;
             --ink: #1e1b16;
-            --muted: #675d50;
-            --accent: #025d5f;
-            --border: #ded3c2;
+            --muted: #666666;
+            --border: #e0e0e0;
+            --code-bg: #f5f5f5;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             margin: 0;
-            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            padding: 0;
+            font-family: Calibri, "Segoe UI", sans-serif;
             color: var(--ink);
             background: var(--bg);
+            line-height: 1.6;
+        }
+
+        /* Header with NHS Branding */
+        header {
+            background: var(--nhs-blue);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-banner-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        .brand-logo {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .brand-logo img {
+            max-height: 64px;
+            max-width: 200px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .org-name {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 400;
+            margin-top: 0.25rem;
+            opacity: 0.95;
+        }
+
+        .strap-line {
+            display: block;
+            font-size: 0.75rem;
+            font-style: italic;
+            margin-top: 0.3rem;
+            color: var(--nwis-green);
+            font-weight: 500;
         }
 
         main {
-            max-width: 980px;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 2rem 1rem 3rem;
         }
 
-        .back {
+        .back-link {
             display: inline-block;
-            margin-bottom: 0.8rem;
-            color: var(--accent);
+            margin-bottom: 1.5rem;
+            color: var(--nwis-blue);
             text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
-        .back:hover {
+        .back-link:hover {
             text-decoration: underline;
         }
 
         .card {
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 8px;
             background: var(--card);
-            padding: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card + .card {
+            margin-top: 1.5rem;
         }
 
         h1 {
             margin-top: 0;
-            margin-bottom: 0.5rem;
-            font-family: "Space Grotesk", "Segoe UI", sans-serif;
-        }
-
-        dl {
-            display: grid;
-            grid-template-columns: minmax(120px, 180px) 1fr;
-            gap: 0.5rem 1rem;
-            margin: 0;
-        }
-
-        dt {
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        dd {
-            margin: 0;
-            word-break: break-word;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
         }
 
         h2 {
-            margin-top: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
+            border-bottom: 2px solid var(--nwis-green);
+            padding-bottom: 0.5rem;
+        }
+
+        .message-meta {
+            display: grid;
+            grid-template-columns: minmax(140px, 1fr) 1fr;
+            gap: 0.75rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .meta-label {
+            color: var(--muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .meta-value {
+            color: var(--ink);
+            word-break: break-word;
+            font-family: "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+
+        h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
             font-size: 1rem;
-            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            font-weight: 600;
+            color: var(--nwis-blue);
         }
 
         pre {
-            margin: 0;
-            background: #f8f4ec;
+            margin: 0 0 1rem 0;
+            background: var(--code-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0.8rem;
+            border-radius: 6px;
+            padding: 1rem;
             overflow-x: auto;
             white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "Courier New", monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--ink);
         }
 
         ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .property-list {
+            list-style: none;
+            padding: 0;
             margin: 0;
-            padding-left: 1rem;
+        }
+
+        .property-list li {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: var(--code-bg);
+            border-radius: 4px;
+            border-left: 3px solid var(--nwis-blue);
+        }
+
+        .property-name {
+            font-weight: 600;
+            color: var(--nwis-blue);
+            font-family: "Courier New", monospace;
+        }
+
+        .property-value {
+            color: var(--ink);
+            font-family: "Courier New", monospace;
+        }
+
+        .no-data {
+            color: var(--muted);
+            font-style: italic;
+            padding: 0.5rem;
+        }
+
+        footer {
+            background: var(--nhs-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            margin-top: 3rem;
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--nwis-green);
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .brand-banner-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .brand-logo img {
+                max-height: 50px;
+            }
+
+            .message-meta {
+                grid-template-columns: 1fr;
+            }
+            
+            pre {
+                font-size: 0.8rem;
+                padding: 0.75rem;
+            }
         }
     </style>
 </head>
 <body>
+<header>
+    <div style="max-width: 1000px; margin: 0 auto; padding: 0 1rem;">
+        <div class="brand-banner-row">
+            <p class="site-title brand-text">
+                BusWatch
+                <span class="org-name">NHS Wales Informatics Service</span>
+                <span class="strap-line">Delivering information and technology for better care</span>
+            </p>
+            <div class="brand-logo" aria-label="Brand logo">
+                <img src="/static/DHCW-logo-RGB-White.png" alt="NHS Wales logo" onerror="this.style.display='none'" />
+            </div>
+        </div>
+    </div>
+</header>
+
 <main>
-    <a class="back" href="/">Back to queues</a>
+    <a class="back-link" href="/">← Back to queues</a>
 
     <article class="card">
-        <h1>Message {{ message.sequence_number or "n/a" }}</h1>
-        <dl>
-            <dt>Queue</dt>
-            <dd>{{ message.queue_name }}</dd>
-
-            <dt>Message Id</dt>
-            <dd>{{ message.message_id or "-" }}</dd>
-
-            <dt>Correlation Id</dt>
-            <dd>{{ message.correlation_id or "-" }}</dd>
-
-            <dt>Subject</dt>
-            <dd>{{ message.subject or "-" }}</dd>
-
-            <dt>Content Type</dt>
-            <dd>{{ message.content_type or "-" }}</dd>
-
-            <dt>Enqueued</dt>
-            <dd>{{ message.enqueued_time_utc or "-" }}</dd>
-        </dl>
-
-        <h2>Body</h2>
-        <pre>{{ message.body }}</pre>
-
-        <h2>Application Properties</h2>
-        {% if message.application_properties %}
-            <ul>
-                {% for key, value in message.application_properties.items() %}
-                    <li><strong>{{ key }}</strong>: {{ value }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>No application properties.</p>
-        {% endif %}
+        <h1>Message {{ message.sequence_number or "No Sequence" }}</h1>
+        
+        <h2>Message Properties</h2>
+        <div class="message-meta">
+            <span class="meta-label">Queue:</span>
+            <span class="meta-value">{{ message.queue_name }}</span>
+            
+            <span class="meta-label">Sequence Number:</span>
+            <span class="meta-value">{{ message.sequence_number or "-" }}</span>
+            
+            <span class="meta-label">Message ID:</span>
+            <span class="meta-value">{{ message.message_id or "-" }}</span>
+            
+            <span class="meta-label">Correlation ID:</span>
+            <span class="meta-value">{{ message.correlation_id or "-" }}</span>
+            
+            <span class="meta-label">Subject:</span>
+            <span class="meta-value">{{ message.subject or "-" }}</span>
+            
+            <span class="meta-label">Content Type:</span>
+            <span class="meta-value">{{ message.content_type or "-" }}</span>
+            
+            <span class="meta-label">Enqueued:</span>
+            <span class="meta-value">{{ message.enqueued_time_utc or "-" }}</span>
+        </div>
     </article>
+
+    <article class="card">
+        <h2>Message Body</h2>
+        <pre>{{ message.body }}</pre>
+    </article>
+
+    {% if message.application_properties %}
+        <article class="card">
+            <h2>Application Properties</h2>
+            {% if message.application_properties %}
+                <ul class="property-list">
+                    {% for key, value in message.application_properties.items() %}
+                        <li>
+                            <span class="property-name">{{ key }}:</span>
+                            <span class="property-value">{{ value }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="no-data">No application properties.</p>
+            {% endif %}
+        </article>
+    {% endif %}
 </main>
+
+<footer>
+    <p>
+        <strong>NHS Wales Informatics Service</strong> | 
+        <a href="https://www.wales.nhs.uk/informatics">Learn more</a>
+    </p>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Passionate about making a difference</p>
+</footer>
+
 </body>
 </html>

@@ -3,30 +3,98 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BusWatch</title>
+    <title>BusWatch - NHS Wales Informatics Service</title>
     <style>
         :root {
-            --bg: #f3efe8;
-            --card: #fffdf8;
+            /* NHS Wales Informatics Service Brand Colours */
+            --nhs-blue: #2C3E72;
+            --nwis-blue: #12A3C9;
+            --nwis-green: #97CC39;
+            --nwis-aqua: #00A8B1;
+            --nwis-red: #CB1C19;
+            
+            /* Neutral Palette */
+            --bg: #f0f4f8;
+            --card: #ffffff;
             --ink: #1e1b16;
-            --muted: #675d50;
-            --accent: #025d5f;
-            --accent-soft: #d8efef;
-            --border: #ded3c2;
+            --muted: #666666;
+            --border: #e0e0e0;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             margin: 0;
-            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            padding: 0;
+            font-family: Calibri, "Segoe UI", sans-serif;
             color: var(--ink);
-            background:
-                radial-gradient(circle at 0 0, #ffe8cf 0%, transparent 40%),
-                radial-gradient(circle at 100% 100%, #d0efeb 0%, transparent 45%),
-                var(--bg);
+            background: var(--bg);
+            line-height: 1.6;
+        }
+
+        /* Header with NHS Branding */
+        header {
+            background: var(--nhs-blue);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header-content {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-banner-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        .brand-logo {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .brand-logo img {
+            max-height: 72px;
+            max-width: 220px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .org-name {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 400;
+            margin-top: 0.25rem;
+            opacity: 0.95;
+        }
+
+        .strap-line {
+            display: block;
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-top: 0.5rem;
+            color: var(--nwis-green);
+            font-weight: 500;
         }
 
         main {
@@ -36,38 +104,52 @@
         }
 
         h1 {
-            margin: 0;
-            font-family: "Space Grotesk", "Segoe UI", sans-serif;
-            letter-spacing: 0.02em;
-            font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+            margin: 0 0 0.5rem 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
+        }
+
+        h2 {
+            margin: 1.5rem 0 0.75rem 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
         }
 
         .subtitle {
-            margin-top: 0.4rem;
+            margin: 0;
             color: var(--muted);
+            font-size: 0.95rem;
         }
 
         .banner-error {
-            margin-top: 0.9rem;
-            border: 1px solid #cc8f76;
-            border-radius: 10px;
-            padding: 0.7rem 0.9rem;
-            background: #fff3eb;
-            color: #7b2e15;
+            margin-top: 1rem;
+            border-left: 4px solid var(--nwis-red);
+            border-radius: 4px;
+            padding: 0.9rem 1rem;
+            background: #fdf0ef;
+            color: var(--nwis-red);
+            font-size: 0.95rem;
         }
 
         .queues {
             display: grid;
-            gap: 1rem;
-            margin-top: 1.5rem;
+            gap: 1.5rem;
+            margin-top: 2rem;
         }
 
         .queue {
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 8px;
             background: var(--card);
-            padding: 1rem;
-            box-shadow: 0 8px 20px rgba(51, 37, 18, 0.08);
+            padding: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .queue:hover {
+            box-shadow: 0 4px 12px rgba(44, 62, 114, 0.1);
         }
 
         .queue-header {
@@ -75,54 +157,100 @@
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 0.5rem;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .queue-name {
             margin: 0;
-            font-size: 1.1rem;
-            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
+        }
+
+        .queue-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .refresh-note {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .refresh-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
         }
 
         .stats {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.4rem;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
         }
 
         .stat {
-            background: var(--accent-soft);
-            color: #0f4344;
-            border-radius: 999px;
-            padding: 0.2rem 0.6rem;
-            font-size: 0.84rem;
+            background: #f0f8fa;
+            color: var(--nwis-aqua);
+            border-left: 3px solid var(--nwis-aqua);
+            border-radius: 4px;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 0.8rem;
+            margin-top: 1rem;
         }
 
         th,
         td {
             text-align: left;
-            border-top: 1px solid var(--border);
-            padding: 0.55rem;
-            font-size: 0.92rem;
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 0.5rem;
+            font-size: 0.9rem;
             vertical-align: top;
         }
 
         th {
-            color: var(--muted);
-            font-size: 0.82rem;
+            color: white;
+            background: var(--nwis-blue);
+            font-size: 0.85rem;
+            font-weight: 600;
             letter-spacing: 0.01em;
             text-transform: uppercase;
         }
 
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8fbfc;
+        }
+
         a {
-            color: var(--accent);
+            color: var(--nwis-blue);
             text-decoration: none;
+            font-weight: 500;
         }
 
         a:hover {
@@ -130,19 +258,77 @@
         }
 
         .empty {
-            margin-top: 0.75rem;
+            margin-top: 1rem;
+            padding: 1rem;
             color: var(--muted);
             font-style: italic;
+            text-align: center;
+            background: #f8f8f8;
+            border-radius: 4px;
         }
 
         .queue-error {
             margin-top: 0.75rem;
-            border-radius: 10px;
-            border: 1px solid #d8baa9;
-            background: #fdf1e8;
-            color: #7b2e15;
-            padding: 0.65rem 0.75rem;
+            border-left: 4px solid var(--nwis-red);
+            border-radius: 4px;
+            background: #fdf0ef;
+            color: var(--nwis-red);
+            padding: 0.75rem 1rem;
             font-size: 0.9rem;
+        }
+
+        .page-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header-left {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .refresh-all-btn {
+            border: none;
+            background: var(--nwis-green);
+            color: white;
+            border-radius: 4px;
+            padding: 0.6rem 1.4rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .refresh-all-btn:hover {
+            background: #7ab83a;
+            box-shadow: 0 4px 12px rgba(151, 204, 57, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .refresh-all-btn:active {
+            transform: translateY(0);
+        }
+
+        footer {
+            background: var(--nhs-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            margin-top: 3rem;
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--nwis-green);
+            font-weight: 500;
         }
 
         @media (max-width: 760px) {
@@ -150,33 +336,78 @@
             td:nth-child(4) {
                 display: none;
             }
+            .brand-banner-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .brand-logo img {
+                max-height: 56px;
+            }
+            .page-header {
+                flex-direction: column;
+            }
+            .refresh-all-btn {
+                width: 100%;
+            }
+            .queue-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
 <body>
-<main>
-    <header>
-        <h1>BusWatch Queue Browser</h1>
-        <p class="subtitle">Peeked message sample size per queue: {{ peek_count }}</p>
-        {% if error_message %}
-            <p class="banner-error">
-                Unable to list queues from Service Bus. Check connection settings and emulator status.<br />
-                <strong>Details:</strong> {{ error_message }}
+<header>
+    <div style="max-width: 1180px; margin: 0 auto; padding: 0 1rem;">
+        <div class="brand-banner-row">
+            <p class="site-title brand-text">
+                BusWatch
+                <span class="org-name">NHS Wales Informatics Service</span>
+                <span class="strap-line">Delivering information and technology for better care</span>
             </p>
-        {% endif %}
-    </header>
+            <div class="brand-logo" aria-label="Brand logo">
+                <img src="/static/DHCW-logo-RGB-White.png" alt="NHS Wales logo" onerror="this.style.display='none'" />
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1>Queue Browser</h1>
+            <p class="subtitle">Message sample size per queue: {{ peek_count }}</p>
+        </div>
+        <form method="get" action="/" style="margin: 0;">
+            <button type="submit" name="refresh_all" value="true" class="refresh-all-btn">Refresh All Queues</button>
+        </form>
+    </div>
+    {% if error_message %}
+        <p class="banner-error">
+            <strong>Unable to list queues from Service Bus.</strong> Check connection settings and emulator status.<br />
+            Details: {{ error_message }}
+        </p>
+    {% endif %}
 
     <section class="queues">
         {% for queue in queues %}
             <article class="queue">
                 <div class="queue-header">
                     <h2 class="queue-name">{{ queue.name }}</h2>
-                    <div class="stats">
-                        <span class="stat">Active: {{ queue.runtime.active_count }}</span>
-                        <span class="stat">DLQ: {{ queue.runtime.dead_letter_count }}</span>
-                        <span class="stat">Scheduled: {{ queue.runtime.scheduled_count }}</span>
-                        <span class="stat">Transfer DLQ: {{ queue.runtime.transfer_dead_letter_count }}</span>
+                    <div class="queue-actions">
+                        <form method="get" action="/" style="margin: 0;">
+                            <input type="hidden" name="refresh_queue" value="{{ queue.name }}" />
+                            <button type="submit" class="refresh-btn">Refresh</button>
+                        </form>
+                        <span class="refresh-note">Updated: {{ queue.refreshed_at or "-" }}</span>
                     </div>
+                </div>
+                
+                <div class="stats">
+                    <span class="stat">Active: {{ queue.runtime.active_count }}</span>
+                    <span class="stat">Dead Letter: {{ queue.runtime.dead_letter_count }}</span>
+                    <span class="stat">Scheduled: {{ queue.runtime.scheduled_count }}</span>
+                    <span class="stat">Transfer DLQ: {{ queue.runtime.transfer_dead_letter_count }}</span>
                 </div>
 
                 {% if queue.messages %}
@@ -184,9 +415,9 @@
                         <thead>
                             <tr>
                                 <th>Sequence</th>
-                                <th>Message Id</th>
+                                <th>Message ID</th>
                                 <th>Enqueued</th>
-                                <th>Preview</th>
+                                <th>Content Preview</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -209,18 +440,26 @@
                         </tbody>
                     </table>
                 {% else %}
-                    <p class="empty">No messages found in the peek window.</p>
+                    <p class="empty">No messages in the peek window</p>
                 {% endif %}
 
                 {% if queue.error %}
                     <p class="queue-error">
-                        Unable to read this queue right now.<br />
-                        <strong>Details:</strong> {{ queue.error }}
+                        <strong>Unable to read this queue:</strong> {{ queue.error }}
                     </p>
                 {% endif %}
             </article>
         {% endfor %}
     </section>
 </main>
+
+<footer>
+    <p>
+        <strong>NHS Wales Informatics Service</strong> | 
+        <a href="https://www.wales.nhs.uk/informatics">Learn more</a>
+    </p>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Passionate about making a difference</p>
+</footer>
+
 </body>
 </html>
