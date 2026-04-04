@@ -15,8 +15,12 @@ from azure.servicebus import NEXT_AVAILABLE_SESSION, ServiceBusClient, ServiceBu
 # Queue list refreshes should be responsive in the browser even when a session
 # queue is empty, so we use a short wait when probing next available session.
 LIST_SESSION_WAIT_SECONDS = 0.2
+# Queue clear should drain promptly while still allowing empty queues to return.
+CLEAR_SESSION_WAIT_SECONDS = 0.2
 # Message detail lookups can afford a slightly longer wait for reliability.
 DETAIL_SESSION_WAIT_SECONDS = 1.0
+# Clear queue in small batches so the UI remains responsive for larger drains.
+CLEAR_BATCH_SIZE = 50
 
 
 @dataclass(frozen=True)
@@ -112,6 +116,15 @@ class ServiceBusReader:
 
         return [self._to_summary(queue_name, message) for message in messages]
 
+    def clear_queue(self, queue_name: str) -> int:
+        """Receive and complete all available messages in a queue."""
+        if queue_name in self._session_queues:
+            return self._clear_session_queue(queue_name)
+
+        receiver = self._client.get_queue_receiver(queue_name=queue_name)
+        with receiver:
+            return self._drain_receiver(receiver)
+
     def _peek_session_queue(self, queue_name: str, max_count: int) -> list[MessageSummary]:
         """Peek messages from the next available session on a session-enabled queue."""
         try:
@@ -128,6 +141,30 @@ class ServiceBusReader:
             return []
 
         return [self._to_summary(queue_name, message) for message in messages]
+
+    def _clear_session_queue(self, queue_name: str) -> int:
+        """Receive and complete all messages across available sessions."""
+        cleared_count = 0
+
+        while True:
+            try:
+                receiver = self._client.get_queue_receiver(
+                    queue_name=queue_name,
+                    session_id=NEXT_AVAILABLE_SESSION,
+                    max_wait_time=CLEAR_SESSION_WAIT_SECONDS,
+                )
+            except Exception as exc:
+                if _is_no_session_available_error(exc):
+                    return cleared_count
+                raise
+
+            with receiver:
+                session_count = self._drain_receiver(receiver)
+
+            if session_count == 0:
+                return cleared_count
+
+            cleared_count += session_count
 
     def get_message_detail(self, queue_name: str, sequence_number: int, search_limit: int) -> MessageDetail | None:
         """Find one message by sequence number using a bounded peek."""
@@ -170,6 +207,19 @@ class ServiceBusReader:
                 return self._to_detail(queue_name, message)
 
         return None
+
+    def _drain_receiver(self, receiver: Any) -> int:
+        """Receive messages in batches until the receiver is empty."""
+        cleared_count = 0
+
+        while True:
+            messages = receiver.receive_messages(max_message_count=CLEAR_BATCH_SIZE, max_wait_time=LIST_SESSION_WAIT_SECONDS)
+            if not messages:
+                return cleared_count
+
+            for message in messages:
+                receiver.complete_message(message)
+                cleared_count += 1
 
     def _to_summary(self, queue_name: str, message: ServiceBusMessage) -> MessageSummary:
         """Project a raw Service Bus message into a compact list-row model."""
@@ -273,6 +323,12 @@ def _stringify_value(value: Any) -> str:
         return json.dumps(value, default=str)
 
     return str(value)
+
+
+def _is_no_session_available_error(exc: Exception) -> bool:
+    """Best-effort detection for empty session queues in emulator mode."""
+    message = str(exc).lower()
+    return "session" in message and "available" in message
 
 
 def _load_emulator_session_queues() -> frozenset[str]:

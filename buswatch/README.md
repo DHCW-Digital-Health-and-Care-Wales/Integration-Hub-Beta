@@ -7,6 +7,7 @@ BusWatch is a small Python web app that peeks Azure Service Bus queue messages a
 - Lists queues from local ServiceBusEmulatorConfig.json (or from configured queue names)
 - Shows queue runtime metrics (active, dead-letter, scheduled)
 - Peeks messages without dequeueing
+- Clears all currently available messages from an individual queue
 - Handles session-enabled queues using next available session
 - Clickable message sequence numbers to open full message detail
 - Message detail supports HL7 structured parsing with per-segment/per-field view (with raw toggle)

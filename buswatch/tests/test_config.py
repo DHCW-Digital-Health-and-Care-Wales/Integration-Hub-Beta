@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import buswatch.config as config_module
 from buswatch.config import get_settings
 
 
@@ -19,11 +22,12 @@ def test_get_settings_parses_queue_names(monkeypatch) -> None:
 
 
 
-def test_get_settings_defaults(monkeypatch) -> None:
+def test_get_settings_defaults(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.delenv("BUSWATCH_QUEUE_NAMES", raising=False)
     monkeypatch.delenv("BUSWATCH_PEEK_COUNT", raising=False)
     monkeypatch.delenv("BUSWATCH_DETAIL_SEARCH_LIMIT", raising=False)
     monkeypatch.delenv("SERVICEBUS_CONNECTION_STRING", raising=False)
+    monkeypatch.setattr(config_module, "CONFIG_FILE_PATH", tmp_path / "missing-config.ini")
 
     settings = get_settings()
 

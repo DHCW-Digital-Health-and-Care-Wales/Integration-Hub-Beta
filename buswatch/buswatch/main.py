@@ -7,9 +7,10 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -60,6 +61,16 @@ def home(request: Request) -> HTMLResponse:
     error_message: str | None = None
     refresh_queue = request.query_params.get("refresh_queue")
     refresh_all = request.query_params.get("refresh_all") == "true"
+    cleared_queue = request.query_params.get("cleared_queue")
+    cleared_count = request.query_params.get("cleared_count")
+    clear_error = request.query_params.get("clear_error")
+
+    action_message: str | None = None
+    action_error: str | None = None
+    if cleared_queue and cleared_count is not None:
+        action_message = f"Cleared {cleared_count} message(s) from queue '{cleared_queue}'."
+    if cleared_queue and clear_error:
+        action_error = f"Unable to clear queue '{cleared_queue}': {clear_error}"
 
     try:
         queue_names = settings.queue_names or reader.list_queues()
@@ -149,8 +160,37 @@ def home(request: Request) -> HTMLResponse:
             "queues": queues,
             "peek_count": settings.peek_count,
             "error_message": error_message,
+            "action_message": action_message,
+            "action_error": action_error,
         },
     )
+
+
+@app.post("/queues/{queue_name}/clear")
+def clear_queue(queue_name: str) -> RedirectResponse:
+    """Clear all currently available messages from one queue and redirect home."""
+    with queue_cache_lock:
+        queue_cache.pop(queue_name, None)
+
+    try:
+        cleared_count = reader.clear_queue(queue_name)
+        query = urlencode(
+            {
+                "refresh_queue": queue_name,
+                "cleared_queue": queue_name,
+                "cleared_count": str(cleared_count),
+            }
+        )
+    except Exception as exc:  # pragma: no cover - depends on local emulator state
+        query = urlencode(
+            {
+                "refresh_queue": queue_name,
+                "cleared_queue": queue_name,
+                "clear_error": str(exc),
+            }
+        )
+
+    return RedirectResponse(url=f"/?{query}", status_code=303)
 
 
 @app.get("/queues/{queue_name}/messages/{sequence_number}", response_class=HTMLResponse)

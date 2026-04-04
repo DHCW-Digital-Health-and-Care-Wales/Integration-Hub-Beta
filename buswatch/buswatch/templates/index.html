@@ -133,6 +133,16 @@
             font-size: 0.95rem;
         }
 
+        .banner-success {
+            margin-top: 1rem;
+            border-left: 4px solid var(--nwis-green);
+            border-radius: 4px;
+            padding: 0.9rem 1rem;
+            background: #f3fae8;
+            color: #43620e;
+            font-size: 0.95rem;
+        }
+
         .queues {
             display: grid;
             gap: 1.5rem;
@@ -195,6 +205,24 @@
 
         .refresh-btn:hover {
             background: var(--nwis-blue);
+            color: white;
+        }
+
+        .clear-queue-btn {
+            border: 1px solid var(--nwis-red);
+            background: transparent;
+            color: var(--nwis-red);
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .clear-queue-btn:hover {
+            background: var(--nwis-red);
             color: white;
         }
 
@@ -525,6 +553,12 @@
             Details: {{ error_message }}
         </p>
     {% endif %}
+    {% if action_message %}
+        <p class="banner-success">{{ action_message }}</p>
+    {% endif %}
+    {% if action_error %}
+        <p class="banner-error">{{ action_error }}</p>
+    {% endif %}
 
     <section class="filter-panel" aria-label="Message filters">
         <div class="filter-grid">
@@ -568,6 +602,9 @@
                         <form method="get" action="/" style="margin: 0;">
                             <input type="hidden" name="refresh_queue" value="{{ queue.name }}" />
                             <button type="submit" class="refresh-btn">Refresh</button>
+                        </form>
+                        <form method="post" action="/queues/{{ queue.name }}/clear" style="margin: 0;" onsubmit="return window.confirm('Clear all available messages from {{ queue.name }}?');">
+                            <button type="submit" class="clear-queue-btn">Clear queue</button>
                         </form>
                         <span class="refresh-note">Updated: {{ queue.refreshed_at or "-" }}</span>
                         <span class="row-count" data-row-count></span>
