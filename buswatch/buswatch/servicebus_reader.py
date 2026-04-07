@@ -28,10 +28,6 @@ class QueueRuntime:
     """Queue status details used by the list view."""
 
     name: str
-    active_count: int | None
-    dead_letter_count: int | None
-    scheduled_count: int | None
-    transfer_dead_letter_count: int | None
 
 
 @dataclass(frozen=True)
@@ -94,14 +90,8 @@ class ServiceBusReader:
         return queue_names
 
     def get_queue_runtime(self, queue_name: str) -> QueueRuntime:
-        """Return queue metrics placeholder values for emulator mode."""
-        return QueueRuntime(
-            name=queue_name,
-            active_count=None,
-            dead_letter_count=None,
-            scheduled_count=None,
-            transfer_dead_letter_count=None,
-        )
+        """Return queue status for emulator mode."""
+        return QueueRuntime(name=queue_name)
 
     def peek_messages(self, queue_name: str, max_count: int) -> list[MessageSummary]:
         """Peek messages in a queue without locking or dequeuing."""

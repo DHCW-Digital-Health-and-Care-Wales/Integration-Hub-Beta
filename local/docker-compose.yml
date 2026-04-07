@@ -409,6 +409,7 @@ services:
       dockerfile: ./Dockerfile
     volumes:
       - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
+      - ../topology:/app/topology:ro
     env_file:
       - ./training-buswatch.env
     ports:

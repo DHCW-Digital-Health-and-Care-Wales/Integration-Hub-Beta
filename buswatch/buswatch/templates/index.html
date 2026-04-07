@@ -453,6 +453,34 @@
             transform: translateY(0);
         }
 
+        .flow-view-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.55rem 1.1rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
+
+        .flow-view-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
+            text-decoration: none;
+        }
+
+        .page-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
         .row-count {
             color: var(--muted);
             font-size: 0.82rem;
@@ -505,6 +533,10 @@
             .refresh-all-btn {
                 width: 100%;
             }
+            .flow-view-btn {
+                width: 100%;
+                text-align: center;
+            }
             .queue-header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -543,9 +575,12 @@
             <h1>Queue Browser</h1>
             <p class="subtitle">Message sample size per queue: {{ peek_count }}</p>
         </div>
-        <form method="get" action="/" style="margin: 0;">
-            <button type="submit" name="refresh_all" value="true" class="refresh-all-btn">Refresh All Queues</button>
-        </form>
+        <div class="page-actions">
+            <a class="flow-view-btn" href="/flows">Open Flow Explorer</a>
+            <form method="get" action="/" style="margin: 0;">
+                <button type="submit" name="refresh_all" value="true" class="refresh-all-btn">Refresh All Queues</button>
+            </form>
+        </div>
     </div>
     {% if error_message %}
         <p class="banner-error">
@@ -612,10 +647,7 @@
                 </div>
                 
                 <div class="stats">
-                    <span class="stat">Active: {{ queue.runtime.active_count }}</span>
-                    <span class="stat">Dead Letter: {{ queue.runtime.dead_letter_count }}</span>
-                    <span class="stat">Scheduled: {{ queue.runtime.scheduled_count }}</span>
-                    <span class="stat">Transfer DLQ: {{ queue.runtime.transfer_dead_letter_count }}</span>
+
                 </div>
 
                 {% if queue.messages %}

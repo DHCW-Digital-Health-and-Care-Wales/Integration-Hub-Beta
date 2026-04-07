@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -46,6 +48,64 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 app = FastAPI(title="BusWatch", version="0.1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+def _topology_file_candidates() -> list[Path]:
+    """Return preferred topology file paths in order of precedence."""
+    explicit_file = os.getenv("BUSWATCH_TOPOLOGY_FILE", "").strip()
+    if explicit_file:
+        return [Path(explicit_file)]
+
+    repo_root = BASE_DIR.parents[1]
+    package_root = BASE_DIR.parent
+    return [
+        repo_root / "topology" / "flows.json",
+        repo_root / "topology" / "flows.yaml",
+        repo_root / "topology" / "flows.yml",
+        package_root / "topology" / "flows.json",
+        package_root / "topology" / "flows.yaml",
+        package_root / "topology" / "flows.yml",
+        Path("/app/topology/flows.json"),
+        Path("/app/topology/flows.yaml"),
+        Path("/app/topology/flows.yml"),
+    ]
+
+
+def _load_topology_data() -> dict[str, object]:
+    """Load topology graph payload from repository topology files."""
+    for candidate in _topology_file_candidates():
+        if not candidate.exists():
+            continue
+
+        if candidate.suffix.lower() == ".json":
+            try:
+                payload = json.loads(candidate.read_text(encoding="utf-8"))
+            except Exception as exc:
+                raise RuntimeError(f"Unable to parse {candidate.name}: {exc}") from exc
+            if isinstance(payload, dict):
+                return payload
+            raise RuntimeError(f"Topology file {candidate.name} must contain a JSON object.")
+
+        try:
+            import yaml  # type: ignore[import-not-found]
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "Topology YAML file found but PyYAML is not installed. "
+                "Install with: pip install pyyaml"
+            ) from exc
+
+        try:
+            payload = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise RuntimeError(f"Unable to parse {candidate.name}: {exc}") from exc
+
+        if isinstance(payload, dict):
+            return payload
+        raise RuntimeError(f"Topology file {candidate.name} must contain a YAML mapping/object.")
+
+    raise RuntimeError(
+        "No topology file found. Add topology/flows.json (recommended) or topology/flows.yaml."
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -163,6 +223,37 @@ def home(request: Request) -> HTMLResponse:
             "action_message": action_message,
             "action_error": action_error,
         },
+    )
+
+
+@app.get("/flows", response_class=HTMLResponse)
+def flows_view(request: Request) -> HTMLResponse:
+    """Render an interactive topology view of integration flows."""
+    topology: dict[str, object] = {"nodes": [], "edges": [], "views": []}
+    error_message: str | None = None
+
+    try:
+        loaded = _load_topology_data()
+        nodes = loaded.get("nodes", [])
+        edges = loaded.get("edges", [])
+        views = loaded.get("views", [])
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            raise RuntimeError("Topology must define list fields 'nodes' and 'edges'.")
+
+        topology = {
+            "schema_version": loaded.get("schema_version", 1),
+            "allow_cycles": bool(loaded.get("allow_cycles", False)),
+            "nodes": nodes,
+            "edges": edges,
+            "views": views if isinstance(views, list) else [],
+        }
+    except Exception as exc:  # pragma: no cover - depends on local file/dependency state
+        error_message = str(exc)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="flows.html",
+        context={"topology": topology, "error_message": error_message},
     )
 
 

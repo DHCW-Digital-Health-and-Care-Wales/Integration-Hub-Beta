@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flow Explorer - BusWatch</title>
+    <style>
+        :root {
+            --nhs-blue: #2c3e72;
+            --nwis-blue: #12a3c9;
+            --nwis-green: #97cc39;
+            --nwis-aqua: #00a8b1;
+            --nwis-red: #cb1c19;
+
+            --bg: #eef3f7;
+            --card: #ffffff;
+            --ink: #1e1b16;
+            --muted: #666666;
+            --border: #dce5ee;
+
+            --node-server: #2f7d72;
+            --node-transformer: #4757a7;
+            --node-sender: #a14f2b;
+            --node-topic: #7f5ad8;
+            --node-external: #7e8795;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+            line-height: 1.5;
+        }
+
+        header {
+            background: var(--nhs-blue);
+            color: white;
+            padding: 1.3rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+        }
+
+        .header-wrap {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .site-subtitle {
+            margin: 0.2rem 0 0 0;
+            opacity: 0.95;
+            font-size: 0.88rem;
+            color: var(--nwis-green);
+        }
+
+        .back-link {
+            border: 1px solid #8fd6e7;
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 0.85rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        main {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 1.35rem 1rem 2.25rem;
+        }
+
+        .error-banner {
+            border-left: 4px solid var(--nwis-red);
+            background: #fdeeed;
+            color: var(--nwis-red);
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(34, 62, 114, 0.07);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(120px, 1fr));
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 1rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .field label {
+            color: var(--nhs-blue);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .field select,
+        .field input[type="checkbox"],
+        .field input[type="range"] {
+            font-family: Calibri, "Segoe UI", sans-serif;
+        }
+
+        .field select {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.45rem 0.5rem;
+            background: white;
+            color: var(--ink);
+            font-size: 0.9rem;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tool-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 6px;
+            padding: 0.4rem 0.65rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .tool-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .toggle {
+            display: flex;
+            gap: 0.45rem;
+            align-items: center;
+            color: var(--muted);
+            font-size: 0.88rem;
+            min-height: 2.2rem;
+        }
+
+        .summary-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .chip {
+            border-radius: 999px;
+            background: #edf8fb;
+            border: 1px solid #cde8ef;
+            color: #196274;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.22rem 0.65rem;
+        }
+
+        .graph-wrap {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: radial-gradient(circle at 20% 20%, #f7fbff 0%, #f2f6fb 48%, #edf2f8 100%);
+            position: relative;
+            overflow: hidden;
+            height: 68vh;
+            min-height: 420px;
+        }
+
+        #graph-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #graph-svg.dragging {
+            cursor: grabbing;
+        }
+
+        .edge-label {
+            cursor: default;
+            transition: font-size 120ms ease, transform 120ms ease;
+            pointer-events: auto;
+        }
+
+        .edge-label:hover {
+            font-size: 14px;
+            transform: translateY(-4px);
+        }
+
+        .legend {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem;
+            width: 180px;
+            backdrop-filter: blur(2px);
+        }
+
+        .legend h3 {
+            margin: 0 0 0.45rem 0;
+            color: var(--nhs-blue);
+            font-size: 0.86rem;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.28rem;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.84rem;
+            margin-top: 0.65rem;
+        }
+
+        .channel-panel {
+            margin-top: 0.9rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #f9fcff;
+            padding: 0.75rem 0.85rem;
+        }
+
+        .channel-panel h3 {
+            margin: 0;
+            color: var(--nhs-blue);
+            font-size: 0.9rem;
+        }
+
+        .channel-list {
+            margin: 0.55rem 0 0 0;
+            padding-left: 1rem;
+            max-height: 180px;
+            overflow: auto;
+        }
+
+        .channel-list li {
+            color: var(--ink);
+            font-size: 0.84rem;
+            margin-top: 0.25rem;
+            font-family: Consolas, "Courier New", monospace;
+        }
+
+        .channel-empty {
+            color: var(--muted);
+            font-size: 0.84rem;
+            margin-top: 0.45rem;
+            font-style: italic;
+        }
+
+        @media (max-width: 980px) {
+            .controls {
+                grid-template-columns: repeat(2, minmax(140px, 1fr));
+            }
+
+            .graph-wrap {
+                height: 62vh;
+                min-height: 360px;
+            }
+
+            .legend {
+                position: static;
+                margin: 0.75rem;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-wrap">
+        <div>
+            <p class="site-title">Flow Explorer</p>
+            <p class="site-subtitle">Interactive topology view for BusWatch integration flows</p>
+        </div>
+        <a class="back-link" href="/">Back To Queue Browser</a>
+    </div>
+</header>
+
+<main>
+    {% if error_message %}
+    <p class="error-banner">
+        <strong>Unable to load topology.</strong><br />
+        {{ error_message }}
+    </p>
+    {% endif %}
+
+    <section class="panel">
+        <div class="controls">
+            <div class="field" style="grid-column: span 2;">
+                <label for="scope-select">Flow / Scope</label>
+                <select id="scope-select"></select>
+            </div>
+            <div class="field">
+                <label for="layout-select">Layout</label>
+                <select id="layout-select">
+                    <option value="horizontal" selected>Left To Right</option>
+                    <option value="vertical">Top To Bottom</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="zoom-slider">Zoom</label>
+                <input id="zoom-slider" type="range" min="0.35" max="2.6" step="0.05" value="1" />
+            </div>
+            <div class="field">
+                <label>View Tools</label>
+                <div class="zoom-controls">
+                    <button id="zoom-out" class="tool-btn" type="button">-</button>
+                    <button id="zoom-in" class="tool-btn" type="button">+</button>
+                    <button id="fit-btn" class="tool-btn" type="button">Fit</button>
+                    <button id="reset-btn" class="tool-btn" type="button">Reset</button>
+                </div>
+            </div>
+            <div class="field">
+                <label>Display</label>
+                <div class="toggle"><input id="edge-label-toggle" type="checkbox" checked />Edge labels</div>
+                <div class="toggle"><input id="node-meta-toggle" type="checkbox" checked />Node metadata</div>
+            </div>
+        </div>
+
+        <div class="summary-bar" id="summary-bar"></div>
+
+        <div class="graph-wrap">
+            <svg id="graph-svg" aria-label="Flow graph visualization">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L10,4 L0,8 z" fill="#6a7a91"></path>
+                    </marker>
+                </defs>
+                <g id="graph-pan-root">
+                    <g id="graph-edges"></g>
+                    <g id="graph-nodes"></g>
+                    <g id="graph-edge-labels"></g>
+                </g>
+            </svg>
+            <aside class="legend">
+                <h3>Legend</h3>
+                <div class="legend-row"><span class="swatch" style="background: var(--node-server);"></span>HL7 server</div>
+                <div class="legend-row"><span class="swatch" style="background: var(--node-transformer);"></span>Transformer</div>
+                <div class="legend-row"><span class="swatch" style="background: var(--node-sender);"></span>Sender</div>
+                <div class="legend-row"><span class="swatch" style="background: var(--node-topic);"></span>Topic</div>
+                <div class="legend-row"><span class="swatch" style="background: var(--node-external);"></span>External receiver</div>
+            </aside>
+        </div>
+
+        <p class="hint">
+            Scroll wheel to zoom, drag to pan. Use Flow / Scope to focus on one workflow or a named view.
+        </p>
+
+        <section class="channel-panel" aria-label="Selected channels">
+            <h3>Channels in current selection</h3>
+            <ul id="channel-list" class="channel-list"></ul>
+            <p id="channel-empty" class="channel-empty" style="display: none;">No queue/topic channels in this selection.</p>
+        </section>
+    </section>
+</main>
+
+<script>
+    (function () {
+        const topology = {{ topology | tojson }};
+
+        const scopeSelect = document.getElementById("scope-select");
+        const layoutSelect = document.getElementById("layout-select");
+        const zoomSlider = document.getElementById("zoom-slider");
+        const zoomInButton = document.getElementById("zoom-in");
+        const zoomOutButton = document.getElementById("zoom-out");
+        const fitButton = document.getElementById("fit-btn");
+        const resetButton = document.getElementById("reset-btn");
+        const edgeLabelToggle = document.getElementById("edge-label-toggle");
+        const nodeMetaToggle = document.getElementById("node-meta-toggle");
+        const summaryBar = document.getElementById("summary-bar");
+        const channelList = document.getElementById("channel-list");
+        const channelEmpty = document.getElementById("channel-empty");
+
+        const svg = document.getElementById("graph-svg");
+        const panRoot = document.getElementById("graph-pan-root");
+        const edgeLayer = document.getElementById("graph-edges");
+        const edgeLabelLayer = document.getElementById("graph-edge-labels");
+        const nodeLayer = document.getElementById("graph-nodes");
+
+        if (!scopeSelect || !layoutSelect || !zoomSlider || !zoomInButton || !zoomOutButton || !fitButton || !resetButton || !edgeLabelToggle || !nodeMetaToggle || !summaryBar || !channelList || !channelEmpty || !svg || !panRoot || !edgeLayer || !edgeLabelLayer || !nodeLayer) {
+            return;
+        }
+
+        const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+        const edges = Array.isArray(topology.edges) ? topology.edges : [];
+        const views = Array.isArray(topology.views) ? topology.views : [];
+
+        const nodeById = new Map(nodes.map((node) => [node.id, node]));
+
+        const transform = {
+            x: 36,
+            y: 36,
+            scale: 1,
+        };
+
+        let viewportBounds = { minX: 0, minY: 0, maxX: 900, maxY: 580 };
+        let dragState = null;
+
+        function cssVariable(name, fallback) {
+            const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return value || fallback;
+        }
+
+        function colorForNode(node) {
+            const kind = String(node.kind || "").toLowerCase();
+            if (kind.includes("transformer")) {
+                return cssVariable("--node-transformer", "#4757a7");
+            }
+            if (kind.includes("sender")) {
+                return cssVariable("--node-sender", "#a14f2b");
+            }
+            if (kind.includes("topic")) {
+                return cssVariable("--node-topic", "#7f5ad8");
+            }
+            if (kind.includes("external")) {
+                return cssVariable("--node-external", "#7e8795");
+            }
+            return cssVariable("--node-server", "#2f7d72");
+        }
+
+        function setTransform(nextX, nextY, nextScale) {
+            transform.x = nextX;
+            transform.y = nextY;
+            transform.scale = Math.max(0.35, Math.min(2.6, nextScale));
+            panRoot.setAttribute("transform", `translate(${transform.x} ${transform.y}) scale(${transform.scale})`);
+            zoomSlider.value = String(transform.scale.toFixed(2));
+        }
+
+        function getScopeOptions() {
+            const options = [{ value: "all", label: "All flows" }];
+
+            const workflows = new Set();
+            edges.forEach((edge) => {
+                const workflow = typeof edge.workflow === "string" ? edge.workflow : "";
+                if (workflow) {
+                    workflows.add(workflow);
+                }
+            });
+
+            Array.from(workflows).sort().forEach((workflow) => {
+                options.push({ value: `workflow:${workflow}`, label: `Workflow: ${workflow}` });
+            });
+
+            views
+                .filter((view) => view && typeof view.id === "string")
+                .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+                .forEach((view) => {
+                    options.push({ value: `view:${view.id}`, label: `View: ${view.id}` });
+                });
+
+            return options;
+        }
+
+        function setScopeOptions() {
+            const options = getScopeOptions();
+            options.forEach((option) => {
+                const element = document.createElement("option");
+                element.value = option.value;
+                element.textContent = option.label;
+                scopeSelect.appendChild(element);
+            });
+        }
+
+        function resolveGraphForScope(scopeValue) {
+            if (scopeValue === "all") {
+                return { selectedNodes: nodes.slice(), selectedEdges: edges.slice() };
+            }
+
+            if (scopeValue.startsWith("workflow:")) {
+                const workflow = scopeValue.replace("workflow:", "");
+                const selectedEdges = edges.filter((edge) => edge.workflow === workflow);
+                const nodeIds = new Set();
+                selectedEdges.forEach((edge) => {
+                    nodeIds.add(edge.from);
+                    nodeIds.add(edge.to);
+                });
+                const selectedNodes = Array.from(nodeIds)
+                    .map((nodeId) => nodeById.get(nodeId))
+                    .filter(Boolean);
+                return { selectedNodes, selectedEdges };
+            }
+
+            if (scopeValue.startsWith("view:")) {
+                const viewId = scopeValue.replace("view:", "");
+                const view = views.find((candidate) => candidate.id === viewId);
+                const includeNodes = new Set(Array.isArray(view && view.include_nodes) ? view.include_nodes : []);
+                const selectedNodes = nodes.filter((node) => includeNodes.has(node.id));
+                const selectedEdges = edges.filter((edge) => includeNodes.has(edge.from) && includeNodes.has(edge.to));
+                return { selectedNodes, selectedEdges };
+            }
+
+            return { selectedNodes: nodes.slice(), selectedEdges: edges.slice() };
+        }
+
+        function makeTopologicalLevels(selectedNodes, selectedEdges) {
+            const nodeIds = selectedNodes.map((node) => node.id);
+            const inDegree = new Map(nodeIds.map((nodeId) => [nodeId, 0]));
+            const outgoing = new Map(nodeIds.map((nodeId) => [nodeId, []]));
+
+            selectedEdges.forEach((edge) => {
+                if (!inDegree.has(edge.from) || !inDegree.has(edge.to)) {
+                    return;
+                }
+                outgoing.get(edge.from).push(edge.to);
+                inDegree.set(edge.to, (inDegree.get(edge.to) || 0) + 1);
+            });
+
+            const queue = Array.from(inDegree.keys())
+                .filter((nodeId) => (inDegree.get(nodeId) || 0) === 0)
+                .sort();
+            const levels = new Map(nodeIds.map((nodeId) => [nodeId, 0]));
+            const visited = new Set();
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                if (!current) {
+                    continue;
+                }
+                visited.add(current);
+                const currentLevel = levels.get(current) || 0;
+                (outgoing.get(current) || []).forEach((target) => {
+                    levels.set(target, Math.max(levels.get(target) || 0, currentLevel + 1));
+                    inDegree.set(target, (inDegree.get(target) || 0) - 1);
+                    if ((inDegree.get(target) || 0) === 0) {
+                        queue.push(target);
+                    }
+                });
+                queue.sort();
+            }
+
+            selectedNodes.forEach((node, index) => {
+                if (!visited.has(node.id)) {
+                    levels.set(node.id, index % 3);
+                }
+            });
+
+            return levels;
+        }
+
+        function computeNodePositions(selectedNodes, selectedEdges) {
+            const layoutMode = layoutSelect.value;
+            const nodeWidth = 205;
+            const nodeHeight = 72;
+            const layerGap = 280;
+            const laneGap = 165;
+            const margin = 40;
+
+            const levels = makeTopologicalLevels(selectedNodes, selectedEdges);
+            const levelsMap = new Map();
+
+            selectedNodes.forEach((node) => {
+                const level = levels.get(node.id) || 0;
+                if (!levelsMap.has(level)) {
+                    levelsMap.set(level, []);
+                }
+                levelsMap.get(level).push(node);
+            });
+
+            const sortedLevels = Array.from(levelsMap.keys()).sort((a, b) => a - b);
+            const positions = new Map();
+            let maxX = 0;
+            let maxY = 0;
+
+            sortedLevels.forEach((level) => {
+                const levelNodes = levelsMap.get(level).slice().sort((a, b) => {
+                    const domainA = String(a.domain || "");
+                    const domainB = String(b.domain || "");
+                    if (domainA !== domainB) {
+                        return domainA.localeCompare(domainB);
+                    }
+                    return String(a.id).localeCompare(String(b.id));
+                });
+
+                levelNodes.forEach((node, index) => {
+                    let x;
+                    let y;
+                    if (layoutMode === "vertical") {
+                        x = margin + index * layerGap;
+                        y = margin + level * laneGap;
+                    } else {
+                        x = margin + level * layerGap;
+                        y = margin + index * laneGap;
+                    }
+
+                    positions.set(node.id, { x, y, width: nodeWidth, height: nodeHeight });
+                    maxX = Math.max(maxX, x + nodeWidth + margin);
+                    maxY = Math.max(maxY, y + nodeHeight + margin);
+                });
+            });
+
+            viewportBounds = { minX: 0, minY: 0, maxX: Math.max(maxX, 900), maxY: Math.max(maxY, 620) };
+            return positions;
+        }
+
+        function clearLayer(layer) {
+            while (layer.firstChild) {
+                layer.removeChild(layer.firstChild);
+            }
+        }
+
+        function createSvgElement(name) {
+            return document.createElementNS("http://www.w3.org/2000/svg", name);
+        }
+
+        function formatEdgeLabel(edge) {
+            if (edge.channel) {
+                return String(edge.channel);
+            }
+
+            if (edge.transport === "mllp" && edge.host && edge.port) {
+                return `${edge.host}:${edge.port}`;
+            }
+
+            if (edge.workflow) {
+                return String(edge.workflow);
+            }
+
+            return String(edge.transport || "link");
+        }
+
+        function compactLabel(text) {
+            const value = String(text || "");
+            return value.length > 38 ? `${value.slice(0, 35)}...` : value;
+        }
+
+        function _rectsOverlap(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function _estimateLabelBounds(text, centerX, centerY) {
+            const width = Math.max(38, String(text || "").length * 7.1 + 12);
+            const height = 20;
+            return {
+                x: centerX - width / 2,
+                y: centerY - height + 3,
+                width,
+                height,
+            };
+        }
+
+        function drawEdge(edge, sourceRect, targetRect, nodeRects, placedLabelRects) {
+            const sourceX = sourceRect.x + sourceRect.width;
+            const sourceY = sourceRect.y + sourceRect.height / 2;
+            const targetX = targetRect.x;
+            const targetY = targetRect.y + targetRect.height / 2;
+
+            const dx = Math.max(60, (targetX - sourceX) / 2);
+            const path = `M ${sourceX} ${sourceY} C ${sourceX + dx} ${sourceY}, ${targetX - dx} ${targetY}, ${targetX} ${targetY}`;
+
+            const pathEl = createSvgElement("path");
+            pathEl.setAttribute("d", path);
+            pathEl.setAttribute("fill", "none");
+            pathEl.setAttribute("stroke", "#6a7a91");
+            pathEl.setAttribute("stroke-width", "2");
+            pathEl.setAttribute("marker-end", "url(#arrowhead)");
+            pathEl.setAttribute("opacity", "0.92");
+            edgeLayer.appendChild(pathEl);
+
+            if (edgeLabelToggle.checked) {
+                const label = createSvgElement("text");
+                const midX = (sourceX + targetX) / 2;
+                const midY = (sourceY + targetY) / 2;
+                const fullLabel = formatEdgeLabel(edge);
+                const shortLabel = compactLabel(fullLabel);
+
+                // Place labels on the normal of the edge direction so text stays clear
+                // of nodes regardless of layout orientation.
+                const vx = targetX - sourceX;
+                const vy = targetY - sourceY;
+                const length = Math.max(1, Math.hypot(vx, vy));
+                let nx = -vy / length;
+                let ny = vx / length;
+
+                // Keep labels above the edge when possible for visual consistency.
+                if (ny > 0) {
+                    nx = -nx;
+                    ny = -ny;
+                }
+
+                const baseOffset = Math.max(34, Math.min(58, sourceRect.height * 0.6 + 14));
+                const driftOffset = Math.min(20, Math.max(6, Math.abs(vy) * 0.12));
+                const base = baseOffset + driftOffset;
+
+                // In dense multi-flow views, test multiple positions and pick the first
+                // one that does not overlap any node box or an earlier edge label.
+                const candidates = [
+                    base,
+                    base + 18,
+                    base + 34,
+                    -base,
+                    -(base + 18),
+                    -(base + 34),
+                ];
+
+                let labelX = midX + nx * base;
+                let labelY = midY + ny * base;
+                let pickedBounds = _estimateLabelBounds(shortLabel, labelX, labelY);
+
+                for (const offset of candidates) {
+                    const candidateX = midX + nx * offset;
+                    const candidateY = midY + ny * offset;
+                    const candidateBounds = _estimateLabelBounds(shortLabel, candidateX, candidateY);
+
+                    const overlapsNode = nodeRects.some((rect) => _rectsOverlap(candidateBounds, rect));
+                    const overlapsLabel = placedLabelRects.some((rect) => _rectsOverlap(candidateBounds, rect));
+                    if (!overlapsNode && !overlapsLabel) {
+                        labelX = candidateX;
+                        labelY = candidateY;
+                        pickedBounds = candidateBounds;
+                        break;
+                    }
+                }
+
+                label.setAttribute("x", String(labelX));
+                label.setAttribute("y", String(labelY));
+                label.setAttribute("class", "edge-label");
+                label.setAttribute("text-anchor", "middle");
+                label.setAttribute("font-size", "12");
+                label.setAttribute("fill", "#4b5b73");
+                label.setAttribute("font-weight", "700");
+                label.setAttribute("stroke", "#ffffff");
+                label.setAttribute("stroke-width", "4");
+                label.setAttribute("paint-order", "stroke");
+                label.setAttribute("letter-spacing", "0.01em");
+                label.textContent = shortLabel;
+                label.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = fullLabel;
+                edgeLabelLayer.appendChild(label);
+                placedLabelRects.push(pickedBounds);
+            }
+        }
+
+        function setChannelList(selectedEdges) {
+            channelList.innerHTML = "";
+
+            const entries = [];
+            selectedEdges.forEach((edge) => {
+                if (edge.channel) {
+                    entries.push(`${edge.transport || "servicebus"}: ${edge.channel}`);
+                } else if (edge.transport === "mllp" && edge.host && edge.port) {
+                    entries.push(`mllp: ${edge.host}:${edge.port}`);
+                }
+            });
+
+            const uniqueEntries = Array.from(new Set(entries)).sort((a, b) => a.localeCompare(b));
+            if (uniqueEntries.length === 0) {
+                channelEmpty.style.display = "block";
+                return;
+            }
+
+            channelEmpty.style.display = "none";
+            uniqueEntries.forEach((entry) => {
+                const item = document.createElement("li");
+                item.textContent = entry;
+                channelList.appendChild(item);
+            });
+        }
+
+        function appendMultilineText(parent, x, y, lines, lineHeight, options) {
+            const text = createSvgElement("text");
+            text.setAttribute("x", String(x));
+            text.setAttribute("y", String(y));
+            text.setAttribute("font-size", String(options.fontSize || 12));
+            text.setAttribute("fill", options.fill || "white");
+            text.setAttribute("font-weight", options.fontWeight || "600");
+            text.setAttribute("font-family", "Calibri, Segoe UI, sans-serif");
+
+            lines.forEach((line, index) => {
+                const tspan = createSvgElement("tspan");
+                tspan.setAttribute("x", String(x));
+                tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
+                tspan.textContent = line;
+                text.appendChild(tspan);
+            });
+
+            parent.appendChild(text);
+        }
+
+        function drawNode(node, rect) {
+            const group = createSvgElement("g");
+            const color = colorForNode(node);
+
+            const shape = createSvgElement("rect");
+            shape.setAttribute("x", String(rect.x));
+            shape.setAttribute("y", String(rect.y));
+            shape.setAttribute("rx", "10");
+            shape.setAttribute("ry", "10");
+            shape.setAttribute("width", String(rect.width));
+            shape.setAttribute("height", String(rect.height));
+            shape.setAttribute("fill", color);
+            shape.setAttribute("stroke", "rgba(15, 22, 38, 0.25)");
+            shape.setAttribute("stroke-width", "1.2");
+            group.appendChild(shape);
+
+            const title = String(node.id || "unknown");
+            const titleLines = title.length > 24 ? [title.slice(0, 24), title.slice(24)] : [title];
+            appendMultilineText(group, rect.x + 12, rect.y + 23, titleLines, 13, {
+                fontSize: 12,
+                fontWeight: "700",
+                fill: "white",
+            });
+
+            if (nodeMetaToggle.checked) {
+                const meta = [String(node.kind || "service"), String(node.domain || "-")];
+                appendMultilineText(group, rect.x + 12, rect.y + 45, meta, 11, {
+                    fontSize: 10,
+                    fontWeight: "500",
+                    fill: "rgba(255,255,255,0.94)",
+                });
+            }
+
+            nodeLayer.appendChild(group);
+        }
+
+        function setSummary(selectedNodes, selectedEdges, scopeLabel) {
+            summaryBar.innerHTML = "";
+            const chips = [
+                `Scope: ${scopeLabel}`,
+                `Nodes: ${selectedNodes.length}`,
+                `Edges: ${selectedEdges.length}`,
+            ];
+
+            const workflowCount = new Set(selectedEdges.map((edge) => edge.workflow).filter(Boolean)).size;
+            chips.push(`Workflows: ${workflowCount}`);
+
+            chips.forEach((text) => {
+                const chip = document.createElement("span");
+                chip.className = "chip";
+                chip.textContent = text;
+                summaryBar.appendChild(chip);
+            });
+        }
+
+        function scopeLabelFromValue(scopeValue) {
+            if (scopeValue === "all") {
+                return "All flows";
+            }
+            if (scopeValue.startsWith("workflow:")) {
+                return `Workflow ${scopeValue.replace("workflow:", "")}`;
+            }
+            if (scopeValue.startsWith("view:")) {
+                return `View ${scopeValue.replace("view:", "")}`;
+            }
+            return "Custom";
+        }
+
+        function renderGraph() {
+            clearLayer(edgeLayer);
+            clearLayer(edgeLabelLayer);
+            clearLayer(nodeLayer);
+
+            const scopeValue = scopeSelect.value || "all";
+            const { selectedNodes, selectedEdges } = resolveGraphForScope(scopeValue);
+            setSummary(selectedNodes, selectedEdges, scopeLabelFromValue(scopeValue));
+            setChannelList(selectedEdges);
+
+            const positions = computeNodePositions(selectedNodes, selectedEdges);
+            const nodeRects = selectedNodes
+                .map((node) => positions.get(node.id))
+                .filter((rect) => Boolean(rect));
+            const placedLabelRects = [];
+
+            selectedEdges.forEach((edge) => {
+                const sourceRect = positions.get(edge.from);
+                const targetRect = positions.get(edge.to);
+                if (!sourceRect || !targetRect) {
+                    return;
+                }
+                drawEdge(edge, sourceRect, targetRect, nodeRects, placedLabelRects);
+            });
+
+            selectedNodes.forEach((node) => {
+                const rect = positions.get(node.id);
+                if (rect) {
+                    drawNode(node, rect);
+                }
+            });
+        }
+
+        function fitToGraph() {
+            const svgRect = svg.getBoundingClientRect();
+            const graphWidth = viewportBounds.maxX - viewportBounds.minX;
+            const graphHeight = viewportBounds.maxY - viewportBounds.minY;
+
+            const fitScale = Math.max(
+                0.35,
+                Math.min(2.6, Math.min((svgRect.width - 36) / graphWidth, (svgRect.height - 36) / graphHeight))
+            );
+
+            const centerX = (svgRect.width - graphWidth * fitScale) / 2 - viewportBounds.minX * fitScale;
+            const centerY = (svgRect.height - graphHeight * fitScale) / 2 - viewportBounds.minY * fitScale;
+            setTransform(centerX, centerY, fitScale);
+        }
+
+        function zoomBy(delta, originX, originY) {
+            const rect = svg.getBoundingClientRect();
+            const pointX = originX !== undefined ? originX : rect.left + rect.width / 2;
+            const pointY = originY !== undefined ? originY : rect.top + rect.height / 2;
+
+            const oldScale = transform.scale;
+            const nextScale = Math.max(0.35, Math.min(2.6, oldScale * delta));
+            if (nextScale === oldScale) {
+                return;
+            }
+
+            const localX = pointX - rect.left;
+            const localY = pointY - rect.top;
+            const worldX = (localX - transform.x) / oldScale;
+            const worldY = (localY - transform.y) / oldScale;
+
+            const nextX = localX - worldX * nextScale;
+            const nextY = localY - worldY * nextScale;
+            setTransform(nextX, nextY, nextScale);
+        }
+
+        function bindPanAndZoom() {
+            svg.addEventListener("wheel", (event) => {
+                event.preventDefault();
+                const direction = event.deltaY > 0 ? 0.92 : 1.08;
+                zoomBy(direction, event.clientX, event.clientY);
+            }, { passive: false });
+
+            svg.addEventListener("pointerdown", (event) => {
+                dragState = {
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    originX: transform.x,
+                    originY: transform.y,
+                };
+                svg.classList.add("dragging");
+                svg.setPointerCapture(event.pointerId);
+            });
+
+            svg.addEventListener("pointermove", (event) => {
+                if (!dragState || event.pointerId !== dragState.pointerId) {
+                    return;
+                }
+                const deltaX = event.clientX - dragState.startX;
+                const deltaY = event.clientY - dragState.startY;
+                setTransform(dragState.originX + deltaX, dragState.originY + deltaY, transform.scale);
+            });
+
+            function stopDrag(event) {
+                if (!dragState || event.pointerId !== dragState.pointerId) {
+                    return;
+                }
+                dragState = null;
+                svg.classList.remove("dragging");
+            }
+
+            svg.addEventListener("pointerup", stopDrag);
+            svg.addEventListener("pointercancel", stopDrag);
+            svg.addEventListener("pointerleave", stopDrag);
+        }
+
+        function bindControls() {
+            scopeSelect.addEventListener("change", () => {
+                renderGraph();
+                fitToGraph();
+            });
+
+            layoutSelect.addEventListener("change", () => {
+                renderGraph();
+                fitToGraph();
+            });
+
+            edgeLabelToggle.addEventListener("change", () => {
+                renderGraph();
+            });
+
+            nodeMetaToggle.addEventListener("change", () => {
+                renderGraph();
+            });
+
+            zoomSlider.addEventListener("input", () => {
+                const nextScale = Number.parseFloat(zoomSlider.value);
+                if (Number.isFinite(nextScale)) {
+                    setTransform(transform.x, transform.y, nextScale);
+                }
+            });
+
+            zoomInButton.addEventListener("click", () => zoomBy(1.12));
+            zoomOutButton.addEventListener("click", () => zoomBy(0.9));
+
+            fitButton.addEventListener("click", () => fitToGraph());
+            resetButton.addEventListener("click", () => {
+                setTransform(36, 36, 1);
+                renderGraph();
+            });
+        }
+
+        setScopeOptions();
+        bindPanAndZoom();
+        bindControls();
+        renderGraph();
+        fitToGraph();
+    })();
+</script>
+</body>
+</html>

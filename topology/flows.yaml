@@ -1,0 +1,227 @@
+schema_version: 1
+allow_cycles: false
+
+nodes:
+  - id: chemo_server
+    kind: hl7_server
+    domain: CHEMO
+    owner: integration
+  - id: chemo_transformer
+    kind: transformer
+    domain: CHEMO
+    owner: integration
+  - id: phw_server
+    kind: hl7_server
+    domain: PHW
+    owner: integration
+  - id: phw_transformer
+    kind: transformer
+    domain: PHW
+    owner: integration
+  - id: pims_server
+    kind: hl7_server
+    domain: PIMS
+    owner: integration
+  - id: pims_transformer
+    kind: transformer
+    domain: PIMS
+    owner: integration
+  - id: paris_server
+    kind: hl7_server
+    domain: PARIS
+    owner: integration
+  - id: mpi_sender
+    kind: sender
+    domain: SHARED
+    owner: integration
+  - id: mpi_mock_receiver
+    kind: external_receiver
+    domain: SHARED
+    owner: integration
+  - id: mpi_server
+    kind: hl7_server
+    domain: MPI
+    owner: integration
+  - id: mpi_topic_mpihl7input
+    kind: topic
+    domain: MPI
+    owner: integration
+  - id: training_hl7_server
+    kind: hl7_server
+    domain: TRAINING
+    owner: integration
+  - id: training_hl7_transformer
+    kind: transformer
+    domain: TRAINING
+    owner: integration
+  - id: training_hl7_sender
+    kind: sender
+    domain: TRAINING
+    owner: integration
+  - id: training_hl7_mock_receiver
+    kind: external_receiver
+    domain: TRAINING
+    owner: integration
+  - id: training_mock_receiver_queue
+    kind: queue
+    domain: TRAINING
+    owner: integration
+
+edges:
+  - id: e1
+    from: chemo_server
+    to: chemo_transformer
+    transport: servicebus_queue
+    channel: local-inthub-chemo-transformer-ingress
+    session_id: chemocare-to-mpi
+    workflow: chemocare-to-mpi
+    message_profile: hl7_2_4
+  - id: e2
+    from: chemo_transformer
+    to: mpi_sender
+    transport: servicebus_queue
+    channel: local-inthub-mpi-sender-ingress
+    session_id: mpi
+    workflow: chemocare-to-mpi
+
+  - id: e3
+    from: phw_server
+    to: phw_transformer
+    transport: servicebus_queue
+    channel: local-inthub-phw-transformer-ingress
+    session_id: phw-to-mpi
+    workflow: phw-to-mpi
+    message_profile: hl7_2_5
+  - id: e4
+    from: phw_transformer
+    to: mpi_sender
+    transport: servicebus_queue
+    channel: local-inthub-mpi-sender-ingress
+    session_id: mpi
+    workflow: phw-to-mpi
+
+  - id: e5
+    from: pims_server
+    to: pims_transformer
+    transport: servicebus_queue
+    channel: local-inthub-pims-transformer-ingress
+    session_id: pims-to-mpi
+    workflow: pims-to-mpi
+    message_profile: hl7_2_3_1
+  - id: e6
+    from: pims_transformer
+    to: mpi_sender
+    transport: servicebus_queue
+    channel: local-inthub-mpi-sender-ingress
+    session_id: mpi
+    workflow: pims-to-mpi
+
+  - id: e7
+    from: paris_server
+    to: mpi_sender
+    transport: servicebus_queue
+    channel: local-inthub-mpi-sender-ingress
+    session_id: mpi
+    workflow: paris-to-mpi
+    message_profile: hl7_2_5_1
+
+  - id: e8
+    from: mpi_sender
+    to: mpi_mock_receiver
+    transport: mllp
+    host: mpi-hl7-mock-receiver
+    port: 2576
+    workflow: mpi-delivery
+
+  - id: e9
+    from: mpi_mock_receiver
+    to: mpi_server
+    transport: mllp
+    host: mpi-hl7-server
+    port: 2580
+    workflow: mpi-to-topic
+
+  - id: e10
+    from: mpi_server
+    to: mpi_topic_mpihl7input
+    transport: servicebus_topic
+    channel: mpihl7input
+    session_id: mpi-outbound
+    workflow: mpi-to-topic
+
+  - id: e11
+    from: training_hl7_server
+    to: training_hl7_transformer
+    transport: servicebus_queue
+    channel: local-inthub-training-transformer-ingress
+    session_id: training-session
+    workflow: training-to-mock-receiver
+    message_profile: hl7_2_3_1
+
+  - id: e12
+    from: training_hl7_transformer
+    to: training_hl7_sender
+    transport: servicebus_queue
+    channel: local-inthub-training-egress
+    session_id: training
+    workflow: training-to-mock-receiver
+
+  - id: e13
+    from: training_hl7_sender
+    to: training_hl7_mock_receiver
+    transport: mllp
+    host: training-hl7-mock-receiver
+    port: 2591
+    workflow: training-to-mock-receiver
+
+  - id: e14
+    from: training_hl7_mock_receiver
+    to: training_mock_receiver_queue
+    transport: servicebus_queue
+    channel: local-inthub-training-mock-receiver
+    workflow: training-to-mock-receiver
+
+views:
+  - id: prod_like
+    include_nodes:
+      - chemo_server
+      - chemo_transformer
+      - phw_server
+      - phw_transformer
+      - pims_server
+      - pims_transformer
+      - paris_server
+      - mpi_sender
+      - mpi_mock_receiver
+      - mpi_server
+      - mpi_topic_mpihl7input
+  - id: chemo_path
+    include_nodes:
+      - chemo_server
+      - chemo_transformer
+      - mpi_sender
+      - mpi_mock_receiver
+      - mpi_server
+      - mpi_topic_mpihl7input
+  - id: training_pipeline
+    include_nodes:
+      - training_hl7_server
+      - training_hl7_transformer
+      - training_hl7_sender
+      - training_hl7_mock_receiver
+      - training_mock_receiver_queue
+  - id: ingress_comparison
+    include_nodes:
+      - chemo_server
+      - chemo_transformer
+      - phw_server
+      - phw_transformer
+      - pims_server
+      - pims_transformer
+      - paris_server
+      - mpi_sender
+      - training_hl7_server
+      - training_hl7_transformer
+      - training_hl7_sender
+      - training_hl7_mock_receiver
+      - training_mock_receiver_queue
