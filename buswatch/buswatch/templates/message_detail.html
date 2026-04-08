@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Message Detail - BusWatch</title>
+    <style>
+        :root {
+            /* NHS Wales Informatics Service Brand Colours */
+            --nhs-blue: #2C3E72;
+            --nwis-blue: #12A3C9;
+            --nwis-green: #97CC39;
+            --nwis-aqua: #00A8B1;
+            --nwis-red: #CB1C19;
+            
+            /* Neutral Palette */
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --ink: #1e1b16;
+            --muted: #666666;
+            --border: #e0e0e0;
+            --code-bg: #f5f5f5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+            line-height: 1.6;
+        }
+
+        /* Header with NHS Branding */
+        header {
+            background: var(--nhs-blue);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-banner-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        .brand-logo {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .brand-logo img {
+            max-height: 64px;
+            max-width: 200px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .org-name {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 400;
+            margin-top: 0.25rem;
+            opacity: 0.95;
+        }
+
+        .strap-line {
+            display: block;
+            font-size: 0.75rem;
+            font-style: italic;
+            margin-top: 0.3rem;
+            color: var(--nwis-green);
+            font-weight: 500;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem 3rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: var(--nwis-blue);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card + .card {
+            margin-top: 1.5rem;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tool-btn {
+            border: 1px solid var(--nwis-blue);
+            background: white;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, "Segoe UI", sans-serif;
+        }
+
+        .tool-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .tool-feedback {
+            margin: 0 0 0.75rem 0;
+            color: var(--muted);
+            font-size: 0.85rem;
+            min-height: 1.25rem;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .view-btn {
+            border: 1px solid var(--border);
+            background: #fafafa;
+            color: var(--ink);
+            border-radius: 4px;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, "Segoe UI", sans-serif;
+        }
+
+        .view-btn.active {
+            border-color: var(--nwis-blue);
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .structured-meta {
+            margin: 0 0 0.8rem 0;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .segment-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-bottom: 1rem;
+        }
+
+        .segment-chip {
+            border: 1px solid var(--nwis-aqua);
+            border-radius: 999px;
+            background: #eef9fb;
+            color: var(--nwis-aqua);
+            padding: 0.18rem 0.6rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .segment-block {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.85rem;
+            overflow: hidden;
+        }
+
+        .segment-header {
+            margin: 0;
+            padding: 0.55rem 0.75rem;
+            background: #f7fafc;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: var(--nhs-blue);
+        }
+
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .field-table th,
+        .field-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 0.65rem;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.82rem;
+        }
+
+        .field-table th {
+            background: #f4f8fb;
+            color: var(--nwis-blue);
+            font-weight: 700;
+            width: 100px;
+        }
+
+        .field-table tr:last-child th,
+        .field-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .mono {
+            font-family: "Courier New", monospace;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
+        }
+
+        h2 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
+            border-bottom: 2px solid var(--nwis-green);
+            padding-bottom: 0.5rem;
+        }
+
+        .message-meta {
+            display: grid;
+            grid-template-columns: minmax(140px, 1fr) 1fr;
+            gap: 0.75rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .meta-label {
+            color: var(--muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .meta-value {
+            color: var(--ink);
+            word-break: break-word;
+            font-family: "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+
+        h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
+        }
+
+        pre {
+            margin: 0 0 1rem 0;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "Courier New", monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--ink);
+        }
+
+        ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .property-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .property-list li {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: var(--code-bg);
+            border-radius: 4px;
+            border-left: 3px solid var(--nwis-blue);
+        }
+
+        .property-name {
+            font-weight: 600;
+            color: var(--nwis-blue);
+            font-family: "Courier New", monospace;
+        }
+
+        .property-value {
+            color: var(--ink);
+            font-family: "Courier New", monospace;
+        }
+
+        .no-data {
+            color: var(--muted);
+            font-style: italic;
+            padding: 0.5rem;
+        }
+
+        footer {
+            background: var(--nhs-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            margin-top: 3rem;
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--nwis-green);
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .brand-banner-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .brand-logo img {
+                max-height: 50px;
+            }
+
+            .message-meta {
+                grid-template-columns: 1fr;
+            }
+            
+            pre {
+                font-size: 0.8rem;
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div style="max-width: 1000px; margin: 0 auto; padding: 0 1rem;">
+        <div class="brand-banner-row">
+            <p class="site-title brand-text">
+                BusWatch
+                <span class="org-name">NHS Wales Informatics Service</span>
+                <span class="strap-line">Delivering information and technology for better care</span>
+            </p>
+            <div class="brand-logo" aria-label="Brand logo">
+                <img src="/static/DHCW-logo-RGB-White.png" alt="NHS Wales logo" onerror="this.style.display='none'" />
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <a class="back-link" href="/">← Back to queues</a>
+
+    <article class="card">
+        <h1>Message {{ message.sequence_number or "No Sequence" }}</h1>
+
+        <div class="toolbar">
+            <button type="button" class="tool-btn" id="copy-body-btn">Copy body</button>
+            <button type="button" class="tool-btn" id="copy-json-btn">Copy JSON</button>
+            <button type="button" class="tool-btn" id="download-json-btn">Download JSON</button>
+            <button type="button" class="tool-btn" id="download-body-btn">Download body</button>
+        </div>
+        <p class="tool-feedback" id="tool-feedback" aria-live="polite"></p>
+        
+        <h2>Message Properties</h2>
+        <div class="message-meta">
+            <span class="meta-label">Queue:</span>
+            <span class="meta-value" id="meta-queue">{{ message.queue_name }}</span>
+            
+            <span class="meta-label">Sequence Number:</span>
+            <span class="meta-value" id="meta-sequence">{{ message.sequence_number or "-" }}</span>
+            
+            <span class="meta-label">Message ID:</span>
+            <span class="meta-value" id="meta-message-id">{{ message.message_id or "-" }}</span>
+            
+            <span class="meta-label">Correlation ID:</span>
+            <span class="meta-value" id="meta-correlation-id">{{ message.correlation_id or "-" }}</span>
+            
+            <span class="meta-label">Subject:</span>
+            <span class="meta-value" id="meta-subject">{{ message.subject or "-" }}</span>
+            
+            <span class="meta-label">Content Type:</span>
+            <span class="meta-value" id="meta-content-type">{{ message.content_type or "-" }}</span>
+            
+            <span class="meta-label">Enqueued:</span>
+            <span class="meta-value" id="meta-enqueued">{{ message.enqueued_time_utc or "-" }}</span>
+        </div>
+    </article>
+
+    <article class="card">
+        <h2>Message Body</h2>
+
+        <div class="view-toggle" id="body-view-toggle" role="tablist" aria-label="Message body view">
+            <button type="button" id="raw-view-btn" class="view-btn active" role="tab" aria-selected="true">Raw</button>
+            <button type="button" id="hl7-view-btn" class="view-btn" role="tab" aria-selected="false">HL7 Structured</button>
+        </div>
+
+        <pre id="message-body">{{ message.body }}</pre>
+
+        <section id="hl7-structured-view" class="hidden" aria-label="Structured HL7 message view">
+            <p id="hl7-structured-meta" class="structured-meta"></p>
+            <div id="hl7-segment-nav" class="segment-nav"></div>
+            <div id="hl7-segment-list"></div>
+        </section>
+    </article>
+
+    {% if message.application_properties %}
+        <article class="card">
+            <h2>Application Properties</h2>
+            {% if message.application_properties %}
+                <ul class="property-list">
+                    {% for key, value in message.application_properties.items() %}
+                        <li data-app-key="{{ key }}" data-app-value="{{ value }}">
+                            <span class="property-name">{{ key }}:</span>
+                            <span class="property-value">{{ value }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="no-data">No application properties.</p>
+            {% endif %}
+        </article>
+    {% endif %}
+</main>
+
+<footer>
+    <p>
+        <strong>NHS Wales Informatics Service</strong> | 
+        <a href="https://www.wales.nhs.uk/informatics">Learn more</a>
+    </p>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Passionate about making a difference</p>
+</footer>
+
+<script>
+    (function () {
+        function getText(id) {
+            const element = document.getElementById(id);
+            return element ? element.textContent.trim() : "";
+        }
+
+        function toNullable(value) {
+            return value === "-" ? null : value;
+        }
+
+        function getApplicationProperties() {
+            const nodes = Array.from(document.querySelectorAll("li[data-app-key]"));
+            const result = {};
+
+            nodes.forEach((node) => {
+                const key = node.getAttribute("data-app-key");
+                const value = node.getAttribute("data-app-value");
+                if (key) {
+                    result[key] = value || "";
+                }
+            });
+
+            return result;
+        }
+
+        function getDetailPayload() {
+            return {
+                queue_name: getText("meta-queue"),
+                sequence_number: toNullable(getText("meta-sequence")),
+                message_id: toNullable(getText("meta-message-id")),
+                correlation_id: toNullable(getText("meta-correlation-id")),
+                subject: toNullable(getText("meta-subject")),
+                content_type: toNullable(getText("meta-content-type")),
+                enqueued_time_utc: toNullable(getText("meta-enqueued")),
+                body: getText("message-body"),
+                application_properties: getApplicationProperties(),
+            };
+        }
+
+        function parseHl7Message(bodyText) {
+            const normalized = (bodyText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+            const lines = normalized
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
+
+            if (lines.length === 0 || !lines[0].startsWith("MSH")) {
+                return null;
+            }
+
+            const mshLine = lines[0];
+            if (mshLine.length < 4) {
+                return null;
+            }
+
+            const fieldSep = mshLine.charAt(3);
+            const encodingChars = mshLine.length >= 8 ? mshLine.slice(4, 8) : "^~\\&";
+            const componentSep = encodingChars.charAt(0) || "^";
+
+            const segments = lines.map((line, index) => {
+                const code = line.slice(0, 3);
+                const rawFields = line.split(fieldSep);
+                const fields = [];
+
+                if (code === "MSH") {
+                    fields.push({ index: 1, value: fieldSep });
+                    for (let i = 1; i < rawFields.length; i += 1) {
+                        fields.push({ index: i + 1, value: rawFields[i] });
+                    }
+                } else {
+                    for (let i = 1; i < rawFields.length; i += 1) {
+                        fields.push({ index: i, value: rawFields[i] });
+                    }
+                }
+
+                return {
+                    anchor: `hl7-segment-${index + 1}`,
+                    code,
+                    raw: line,
+                    fields,
+                };
+            });
+
+            return {
+                fieldSep,
+                componentSep,
+                encodingChars,
+                segments,
+            };
+        }
+
+        function renderHl7StructuredView(parsed) {
+            const metaNode = document.getElementById("hl7-structured-meta");
+            const navNode = document.getElementById("hl7-segment-nav");
+            const listNode = document.getElementById("hl7-segment-list");
+
+            if (!metaNode || !navNode || !listNode) {
+                return;
+            }
+
+            metaNode.textContent = `Segments: ${parsed.segments.length} | Field separator: ${parsed.fieldSep} | Encoding chars: ${parsed.encodingChars}`;
+            navNode.innerHTML = "";
+            listNode.innerHTML = "";
+
+            parsed.segments.forEach((segment, index) => {
+                const chip = document.createElement("a");
+                chip.href = `#${segment.anchor}`;
+                chip.className = "segment-chip";
+                chip.textContent = `${segment.code} ${index + 1}`;
+                navNode.appendChild(chip);
+
+                const block = document.createElement("section");
+                block.className = "segment-block";
+                block.id = segment.anchor;
+
+                const title = document.createElement("h3");
+                title.className = "segment-header";
+                title.textContent = `${segment.code} segment`;
+                block.appendChild(title);
+
+                const table = document.createElement("table");
+                table.className = "field-table";
+
+                segment.fields.forEach((field) => {
+                    const row = document.createElement("tr");
+
+                    const indexCell = document.createElement("th");
+                    indexCell.textContent = `${segment.code}-${field.index}`;
+
+                    const valueCell = document.createElement("td");
+                    valueCell.className = "mono";
+                    valueCell.textContent = field.value || "";
+
+                    row.appendChild(indexCell);
+                    row.appendChild(valueCell);
+                    table.appendChild(row);
+                });
+
+                const rawRow = document.createElement("tr");
+                const rawLabel = document.createElement("th");
+                rawLabel.textContent = "Raw";
+                const rawValue = document.createElement("td");
+                rawValue.className = "mono";
+                rawValue.textContent = segment.raw;
+                rawRow.appendChild(rawLabel);
+                rawRow.appendChild(rawValue);
+                table.appendChild(rawRow);
+
+                block.appendChild(table);
+                listNode.appendChild(block);
+            });
+        }
+
+        function configureBodyViewToggle() {
+            const rawButton = document.getElementById("raw-view-btn");
+            const hl7Button = document.getElementById("hl7-view-btn");
+            const rawBody = document.getElementById("message-body");
+            const structuredView = document.getElementById("hl7-structured-view");
+
+            if (!rawButton || !hl7Button || !rawBody || !structuredView) {
+                return;
+            }
+
+            const bodyText = getText("message-body");
+            const parsed = parseHl7Message(bodyText);
+
+            function setActiveView(isHl7View) {
+                rawButton.classList.toggle("active", !isHl7View);
+                hl7Button.classList.toggle("active", isHl7View);
+                rawButton.setAttribute("aria-selected", String(!isHl7View));
+                hl7Button.setAttribute("aria-selected", String(isHl7View));
+                rawBody.classList.toggle("hidden", isHl7View);
+                structuredView.classList.toggle("hidden", !isHl7View);
+            }
+
+            if (!parsed) {
+                hl7Button.disabled = true;
+                hl7Button.title = "Body is not recognised as HL7 (MSH segment not found).";
+                return;
+            }
+
+            renderHl7StructuredView(parsed);
+
+            rawButton.addEventListener("click", () => {
+                setActiveView(false);
+            });
+
+            hl7Button.addEventListener("click", () => {
+                setActiveView(true);
+            });
+        }
+
+        function setFeedback(message, isError) {
+            const feedback = document.getElementById("tool-feedback");
+            if (!feedback) {
+                return;
+            }
+
+            feedback.textContent = message;
+            feedback.style.color = isError ? "var(--nwis-red)" : "var(--muted)";
+        }
+
+        async function copyToClipboard(text, successMessage) {
+            try {
+                await navigator.clipboard.writeText(text);
+                setFeedback(successMessage, false);
+            } catch (_error) {
+                setFeedback("Copy failed. Clipboard permissions may be blocked by your browser.", true);
+            }
+        }
+
+        function downloadText(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(link.href);
+        }
+
+        const copyBodyButton = document.getElementById("copy-body-btn");
+        const copyJsonButton = document.getElementById("copy-json-btn");
+        const downloadJsonButton = document.getElementById("download-json-btn");
+        const downloadBodyButton = document.getElementById("download-body-btn");
+
+        if (!copyBodyButton || !copyJsonButton || !downloadJsonButton || !downloadBodyButton) {
+            return;
+        }
+
+        copyBodyButton.addEventListener("click", () => {
+            const bodyText = getText("message-body");
+            copyToClipboard(bodyText, "Message body copied.");
+        });
+
+        copyJsonButton.addEventListener("click", () => {
+            const payload = getDetailPayload();
+            const jsonText = JSON.stringify(payload, null, 2);
+            copyToClipboard(jsonText, "Message JSON copied.");
+        });
+
+        downloadJsonButton.addEventListener("click", () => {
+            const payload = getDetailPayload();
+            const jsonText = JSON.stringify(payload, null, 2);
+            const sequence = payload.sequence_number || "message";
+            downloadText(jsonText, `buswatch-message-${sequence}.json`, "application/json");
+            setFeedback("JSON download started.", false);
+        });
+
+        downloadBodyButton.addEventListener("click", () => {
+            const payload = getDetailPayload();
+            const sequence = payload.sequence_number || "message";
+            downloadText(payload.body || "", `buswatch-message-${sequence}.txt`, "text/plain;charset=utf-8");
+            setFeedback("Body download started.", false);
+        });
+
+        configureBodyViewToggle();
+    })();
+</script>
+
+</body>
+</html>

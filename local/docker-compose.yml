@@ -348,5 +348,32 @@ services:
         aliases:
           - "mpi-hl7-chemo-sender"
 
+  # BusWatch - Allows peeking at messages on Service Bus emulator
+  # http://localhost:8080
+  bus-watch:
+    container_name: bus-watch-server
+    build:
+      context: ../buswatch
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
+    env_file:
+      - ./buswatch.env
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
+      - pims-to-mpi
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "buswatch"
+
 networks:
   integration-hub:
