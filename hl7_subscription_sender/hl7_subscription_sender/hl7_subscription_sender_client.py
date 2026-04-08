@@ -30,8 +30,8 @@ def is_socket_closed(sock: socket.socket) -> bool:
         logger.exception("unexpected exception when checking if a socket is closed")
         return False
 
-class HL7SenderClient:
 
+class HL7SubscriptionSenderClient:
     def __init__(self, receiver_mllp_hostname: str, receiver_mllp_port: int, ack_timeout_seconds: int):
         self.receiver_mllp_hostname = receiver_mllp_hostname
         self.receiver_mllp_port = receiver_mllp_port
@@ -73,7 +73,7 @@ class HL7SenderClient:
             self.mllp_client = self._close_and_create_new_mllp_client()
             raise ConnectionError(f"Connection error while sending message: {e}")
 
-    def __enter__(self) -> "HL7SenderClient":
+    def __enter__(self) -> "HL7SubscriptionSenderClient":
         return self
 
     def __exit__(

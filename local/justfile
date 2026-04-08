@@ -20,6 +20,7 @@
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
+# - mpi-to-topic   : MPI to Outbound Integration
 #
 # Tips:
 # -----

@@ -1,5 +1,6 @@
 import logging
 import time
+from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Callable, Optional
 
@@ -91,13 +92,7 @@ class MessageReceiverClient:
         try:
             if self.session_id:
                 autolock_renewer = AutoLockRenewer()
-            with self.sb_client.get_queue_receiver(
-                queue_name=self.queue_name,
-                session_id=self.session_id,
-                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
-                auto_lock_renewer=autolock_renewer,
-                max_wait_time=self.MAX_WAIT_TIME_SECONDS,
-            ) as receiver:
+            with self._get_receiver(autolock_renewer) as receiver:
                 messages = receiver.receive_messages(
                     max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
                 )
@@ -119,6 +114,17 @@ class MessageReceiverClient:
         finally:
             if autolock_renewer:
                 autolock_renewer.close()
+
+    def _get_receiver(
+        self, autolock_renewer: AutoLockRenewer | None
+    ) -> AbstractContextManager[ServiceBusReceiver]:
+        return self.sb_client.get_queue_receiver(
+            queue_name=self.queue_name,
+            session_id=self.session_id,
+            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            auto_lock_renewer=autolock_renewer,
+            max_wait_time=self.MAX_WAIT_TIME_SECONDS,
+        )
 
     def _apply_delay_and_check_if_its_retry_time(self) -> bool:
         if self.next_retry_time:

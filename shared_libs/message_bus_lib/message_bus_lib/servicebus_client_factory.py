@@ -13,9 +13,11 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.message_store_client import MessageStoreClient
+from message_bus_lib.subscription_receiver_client import SubscriptionReceiverClient
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
-MAX_LOCK_RENEWAL_DURATION = 300 # 5 minutes
+MAX_LOCK_RENEWAL_DURATION = 300  # 5 minutes
+
 
 
 def _read_bool_env(name: str, default: bool) -> bool:
@@ -39,9 +41,9 @@ class ServiceBusClientFactory:
 
     def _build_service_bus_client(self) -> ServiceBusClient:
         if self.config.is_using_connection_string():
-            return ServiceBusClient.from_connection_string(self.config.connection_string) # type: ignore
+            return ServiceBusClient.from_connection_string(self.config.connection_string)  # type: ignore
         else:
-            fully_qualified_namespace = self.config.service_bus_namespace + SERVICEBUS_NAMESPACE_SUFFIX # type: ignore
+            fully_qualified_namespace = self.config.service_bus_namespace + SERVICEBUS_NAMESPACE_SUFFIX  # type: ignore
             credential = DefaultAzureCredential()
             return ServiceBusClient(fully_qualified_namespace, credential)
 
@@ -56,13 +58,23 @@ class ServiceBusClientFactory:
         return MessageSenderClient(sender, queue_name, session_id)
 
     def create_message_receiver_client(
-            self, queue_name: str, session_id: Optional[str] = None
+        self, queue_name: str, session_id: Optional[str] = None
     ) -> MessageReceiverClient:
         self.logger.debug(
             "Creating message receiver client for queue '%s' with session_id '%s'", queue_name, session_id
         )
         return MessageReceiverClient(self.servicebus_client, queue_name, session_id)
 
+    def create_subscription_receiver_client(
+        self, topic_name: str, subscription_name: str, session_id: Optional[str] = None
+    ) -> SubscriptionReceiverClient:
+        self.logger.debug(
+            "Creating message receiver client for topic '%s', subscription '%s' with session_id '%s'",
+            topic_name,
+            subscription_name,
+            session_id,
+        )
+        return SubscriptionReceiverClient(self.servicebus_client, topic_name, subscription_name, session_id)
     def create_message_store_client(
         self, queue_name: str, microservice_id: str, peer_service: str
     ) -> MessageStoreClient:
