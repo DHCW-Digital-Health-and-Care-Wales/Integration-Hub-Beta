@@ -21,7 +21,7 @@ class _FakeMessage:
 
 class TestEmulatorConfigParsing(unittest.TestCase):
     def test_extract_queue_names_deduplicates_and_preserves_order(self) -> None:
-        payload = {
+        payload: dict[str, object] = {
             "UserConfig": {
                 "Namespaces": [
                     {
@@ -40,7 +40,7 @@ class TestEmulatorConfigParsing(unittest.TestCase):
         self.assertEqual(queue_names, ["queue-a", "queue-b"])
 
     def test_extract_session_queue_names_only_returns_session_enabled_queues(self) -> None:
-        payload = {
+        payload: dict[str, object] = {
             "UserConfig": {
                 "Namespaces": [
                     {
