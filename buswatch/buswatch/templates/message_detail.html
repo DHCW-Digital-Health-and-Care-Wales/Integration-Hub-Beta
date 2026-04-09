@@ -501,6 +501,12 @@
             return element ? element.textContent.trim() : "";
         }
 
+        // Reads text without trimming to preserve exact payload content (e.g. HL7 body).
+        function getRawText(id) {
+            const element = document.getElementById(id);
+            return element ? element.textContent : "";
+        }
+
         function toNullable(value) {
             return value === "-" ? null : value;
         }
@@ -529,7 +535,7 @@
                 subject: toNullable(getText("meta-subject")),
                 content_type: toNullable(getText("meta-content-type")),
                 enqueued_time_utc: toNullable(getText("meta-enqueued")),
-                body: getText("message-body"),
+                body: getRawText("message-body"),
                 application_properties: getApplicationProperties(),
             };
         }
@@ -658,7 +664,7 @@
                 return;
             }
 
-            const bodyText = getText("message-body");
+            const bodyText = getRawText("message-body");
             const parsed = parseHl7Message(bodyText);
 
             function setActiveView(isHl7View) {
@@ -727,7 +733,7 @@
         }
 
         copyBodyButton.addEventListener("click", () => {
-            const bodyText = getText("message-body");
+            const bodyText = getRawText("message-body");
             copyToClipboard(bodyText, "Message body copied.");
         });
 

@@ -25,24 +25,31 @@ BusWatch is a small Python web app that peeks Azure Service Bus queue messages a
 ```bash
 cd buswatch
 uv sync
-uv run uvicorn buswatch.main:app --reload --host 0.0.0.0 --port 8080
+uv run uvicorn buswatch.main:app --reload --host 127.0.0.1 --port 8080
 ```
 
 Then open `http://localhost:8080`.
+
+## Test
+
+```bash
+cd buswatch
+uv run python -m unittest discover tests
+```
 
 ## Usage
 
 The UI will display queues that have been configured in the `buswatch.env` file:
 ```
 # Optional comma-separated queue names.
-# Leave empty to list queues from the namespace automatically.
+# Leave empty to use queue discovery from ServiceBusEmulatorConfig.json.
 BUSWATCH_QUEUE_NAMES=local-inthub-training-transformer-ingress,local-inthub-training-egress,local-inthub-training-mock-receiver
 ```
-To display all queues leave this option blank:
+To discover all queues automatically from `ServiceBusEmulatorConfig.json`, leave this option blank:
 
 `BUSWATCH_QUEUE_NAMES=`
 
-Invidiual queues can be refresh by pressing the refresh button on the queue card.
+Individual queues can be refreshed by pressing the refresh button on the queue card.
 
 To refresh all the queues press the **Refresh All Queues** button at the top of the page.
 

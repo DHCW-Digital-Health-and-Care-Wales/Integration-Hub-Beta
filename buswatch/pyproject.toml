@@ -4,7 +4,7 @@
 name = "BusWatch"
 version = "0.1.0"
 description = "Tool for peeking at message on a service bus queue"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 
 # Runtime dependencies - packages required to run the application
 dependencies = [
@@ -23,9 +23,6 @@ dev = [
   
   # mypy: Static type checker for Python
   "mypy==1.18.2",
-  
-  # pytest: Testing framework
-  "pytest>=7.0.0",
 ]
 
 # ===================================================================
@@ -46,8 +43,12 @@ line-length = 120
 # Configure which linting rules to enable
 [tool.ruff.lint]
 select = [
-  "E",   # pycodestyle errors
-  "F",   # pyflakes (unused imports, undefined variables, etc.)
-  "W",   # pycodestyle warnings
-  "I"    # isort (import sorting)
+  "E",  # Enforces style guide rules (Pycodestyle errors).
+  "F",  # Detects various errors in Python code (Pyflakes errors).
+  "W",  # Enforces style guide warnings (Pycodestyle warnings).
+  "A",  # Detects shadowing of Python built-in functions (Flake8-builtins).
+  "PLC",  # Enforces coding conventions (Pylint convention messages).
+  "PLE",  # Detects errors in Python code (Pylint error messages).
+  "PLW",  # Detects potential issues in Python code (Pylint warning messages).
+  "I"  # Sorts and organizes imports (Import-related rules).
 ]

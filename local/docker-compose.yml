@@ -360,7 +360,7 @@ services:
     env_file:
       - ./buswatch.env
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     restart: on-failure
     depends_on:
       - sb-emulator
