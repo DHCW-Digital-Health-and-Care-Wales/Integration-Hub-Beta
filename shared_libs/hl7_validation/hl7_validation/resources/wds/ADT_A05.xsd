@@ -10,9 +10,7 @@
             <xsd:element minOccurs="0" ref="PD1"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
-            <xsd:element minOccurs="0" ref="PV1"/>
-            <xsd:element minOccurs="0" ref="PV2"/>
-            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" ref="ADT_A05.VISIT"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DB1"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
@@ -27,6 +25,14 @@
         </xsd:sequence>
     </xsd:complexType>
     <xsd:element name="ADT_A05" type="ADT_A05.CONTENT"/>
+    <xsd:complexType name="ADT_A05.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A05.VISIT" type="ADT_A05.VISIT.CONTENT"/>
     <xsd:complexType name="ADT_A05.PROCEDURE.CONTENT">
         <xsd:sequence>
             <xsd:element ref="PR1"/>
