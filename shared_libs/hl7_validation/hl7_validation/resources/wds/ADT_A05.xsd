@@ -10,7 +10,7 @@
             <xsd:element minOccurs="0" ref="PD1"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
-            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV1"/>
             <xsd:element minOccurs="0" ref="PV2"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
             <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DB1"/>
