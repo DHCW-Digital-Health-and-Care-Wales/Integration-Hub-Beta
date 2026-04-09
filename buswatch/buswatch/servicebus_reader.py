@@ -11,7 +11,6 @@ from typing import Any
 
 from azure.servicebus import NEXT_AVAILABLE_SESSION, ServiceBusClient, ServiceBusMessage
 
-
 # Queue list refreshes should be responsive in the browser even when a session
 # queue is empty, so we use a short wait when probing next available session.
 LIST_SESSION_WAIT_SECONDS = 0.2
@@ -213,7 +212,8 @@ class ServiceBusReader:
         cleared_count = 0
 
         while True:
-            messages = receiver.receive_messages(max_message_count=CLEAR_BATCH_SIZE, max_wait_time=LIST_SESSION_WAIT_SECONDS)
+            messages = receiver.receive_messages(max_message_count=CLEAR_BATCH_SIZE,
+                                                 max_wait_time=LIST_SESSION_WAIT_SECONDS)
             if not messages:
                 return cleared_count
 

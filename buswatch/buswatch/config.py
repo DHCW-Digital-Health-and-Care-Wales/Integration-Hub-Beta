@@ -6,7 +6,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DEFAULT_CONNECTION_STRING = (
     # Emulator default uses localhost because this file is also used for
     # non-container local runs. In Docker, this is typically overridden

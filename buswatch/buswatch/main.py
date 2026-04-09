@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -17,11 +18,15 @@ from fastapi.templating import Jinja2Templates
 try:
     # Normal import path when the package is installed or executed from project root.
     from buswatch.config import Settings, get_settings
-    from buswatch.servicebus_reader import MessageDetail, MessageSummary, QueueRuntime, ServiceBusReader
+    from buswatch.servicebus_reader import MessageDetail, MessageSummary, QueueRuntime, ServiceBusReader  # noqa: F401
 except ModuleNotFoundError:  # pragma: no cover - supports running from package directory
     # Fallback path to support direct execution from buswatch/buswatch/.
-    from config import Settings, get_settings
-    from servicebus_reader import MessageDetail, MessageSummary, QueueRuntime, ServiceBusReader
+    from config import Settings, get_settings  # type: ignore[import-not-found, no-redef]
+    from servicebus_reader import (  # type: ignore[import-not-found, no-redef]
+        MessageDetail,
+        MessageSummary,
+        ServiceBusReader,
+    )
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,7 +43,7 @@ queue_cache_lock = Lock()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: ARG001
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     # FastAPI lifespan hook ensures we close AMQP resources cleanly on shutdown.
     yield
     reader.close()
