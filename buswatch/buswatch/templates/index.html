@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BusWatch - Digital Health and Care Wales</title>
+    <style>
+        :root {
+            /* DHCW Brand Colours */
+            --nhs-blue: #2C3E72;
+            --nwis-blue: #12A3C9;
+            --nwis-green: #97CC39;
+            --nwis-aqua: #00A8B1;
+            --nwis-red: #CB1C19;
+            
+            /* Neutral Palette */
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --ink: #1e1b16;
+            --muted: #666666;
+            --border: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: var(--bg);
+            line-height: 1.6;
+        }
+
+        /* Header with NHS Branding */
+        header {
+            background: var(--nhs-blue);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header-content {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .site-title {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-banner-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        .brand-logo {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .brand-logo img {
+            max-height: 72px;
+            max-width: 220px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .org-name {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 400;
+            margin-top: 0.25rem;
+            opacity: 0.95;
+        }
+
+        .strap-line {
+            display: block;
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-top: 0.5rem;
+            color: var(--nwis-green);
+            font-weight: 500;
+        }
+
+        main {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
+        }
+
+        h2 {
+            margin: 1.5rem 0 0.75rem 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .banner-error {
+            margin-top: 1rem;
+            border-left: 4px solid var(--nwis-red);
+            border-radius: 4px;
+            padding: 0.9rem 1rem;
+            background: #fdf0ef;
+            color: var(--nwis-red);
+            font-size: 0.95rem;
+        }
+
+        .banner-success {
+            margin-top: 1rem;
+            border-left: 4px solid var(--nwis-green);
+            border-radius: 4px;
+            padding: 0.9rem 1rem;
+            background: #f3fae8;
+            color: #43620e;
+            font-size: 0.95rem;
+        }
+
+        .queues {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .queue {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            padding: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .queue:hover {
+            box-shadow: 0 4px 12px rgba(44, 62, 114, 0.1);
+        }
+
+        .queue-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .queue-name {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--nhs-blue);
+        }
+
+        .queue-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .refresh-note {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .refresh-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .clear-queue-btn {
+            border: 1px solid var(--nwis-red);
+            background: transparent;
+            color: var(--nwis-red);
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .clear-queue-btn:hover {
+            background: var(--nwis-red);
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat {
+            background: #f0f8fa;
+            color: var(--nwis-aqua);
+            border-left: 3px solid var(--nwis-aqua);
+            border-radius: 4px;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 0.5rem;
+            font-size: 0.9rem;
+            vertical-align: top;
+        }
+
+        th {
+            color: white;
+            background: var(--nwis-blue);
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            text-transform: uppercase;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8fbfc;
+        }
+
+        a {
+            color: var(--nwis-blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .empty {
+            margin-top: 1rem;
+            padding: 1rem;
+            color: var(--muted);
+            font-style: italic;
+            text-align: center;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .queue-error {
+            margin-top: 0.75rem;
+            border-left: 4px solid var(--nwis-red);
+            border-radius: 4px;
+            background: #fdf0ef;
+            color: var(--nwis-red);
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .page-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header-left {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-panel {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .filter-field label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--nwis-blue);
+        }
+
+        .filter-field input {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.45rem 0.55rem;
+            font-family: Calibri, "Segoe UI", sans-serif;
+            font-size: 0.9rem;
+            color: var(--ink);
+        }
+
+        .clear-filter-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.45rem 0.8rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .clear-filter-btn:hover {
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .filter-hint {
+            margin: 0.75rem 0 0 0;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .live-panel {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            padding: 0.9rem 1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem 1rem;
+        }
+
+        .live-panel label {
+            color: var(--muted);
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+
+        .live-select {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.35rem 0.45rem;
+            font-size: 0.9rem;
+            font-family: Calibri, "Segoe UI", sans-serif;
+        }
+
+        .live-toggle-btn {
+            border: 1px solid var(--nwis-blue);
+            background: transparent;
+            color: var(--nwis-blue);
+            border-radius: 4px;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .live-toggle-btn.active {
+            background: var(--nwis-blue);
+            color: white;
+        }
+
+        .live-status {
+            color: var(--muted);
+            font-size: 0.85rem;
+            min-width: 240px;
+        }
+
+        .refresh-all-btn {
+            border: none;
+            background: var(--nwis-green);
+            color: white;
+            border-radius: 4px;
+            padding: 0.6rem 1.4rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: Calibri, sans-serif;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .refresh-all-btn:hover {
+            background: #7ab83a;
+            box-shadow: 0 4px 12px rgba(151, 204, 57, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .refresh-all-btn:active {
+            transform: translateY(0);
+        }
+
+        .row-count {
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        .message-row-new {
+            background: #f0fbf4;
+            animation: highlight-new-row 2.2s ease-out;
+        }
+
+        @keyframes highlight-new-row {
+            from {
+                background: #dff7e7;
+            }
+            to {
+                background: transparent;
+            }
+        }
+
+        footer {
+            background: var(--nhs-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            margin-top: 3rem;
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--nwis-green);
+            font-weight: 500;
+        }
+
+        @media (max-width: 760px) {
+            th:nth-child(4),
+            td:nth-child(4) {
+                display: none;
+            }
+            .brand-banner-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .brand-logo img {
+                max-height: 56px;
+            }
+            .page-header {
+                flex-direction: column;
+            }
+            .refresh-all-btn {
+                width: 100%;
+            }
+            .queue-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .live-status {
+                min-width: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div style="max-width: 1180px; margin: 0 auto; padding: 0 1rem;">
+        <div class="brand-banner-row">
+            <p class="site-title brand-text">
+                BusWatch
+                <span class="org-name">BusWatch - Digital Health and Care Wales</span>
+                <span class="strap-line">Delivering information and technology for better care</span>
+            </p>
+            <div class="brand-logo" aria-label="Brand logo">
+                <img src="/static/DHCW-logo-RGB-White.png" alt="NHS Wales logo" onerror="this.style.display='none'" />
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1>Queue Browser</h1>
+            <p class="subtitle">Message sample size per queue: {{ peek_count }}</p>
+        </div>
+        <form method="get" action="/" style="margin: 0;">
+            <button type="submit" name="refresh_all" value="true" class="refresh-all-btn">Refresh All Queues</button>
+        </form>
+    </div>
+    {% if error_message %}
+        <p class="banner-error">
+            <strong>Unable to list queues from Service Bus.</strong> Check connection settings and emulator status.<br />
+            Details: {{ error_message }}
+        </p>
+    {% endif %}
+    {% if action_message %}
+        <p class="banner-success">{{ action_message }}</p>
+    {% endif %}
+    {% if action_error %}
+        <p class="banner-error">{{ action_error }}</p>
+    {% endif %}
+
+    <section class="filter-panel" aria-label="Message filters">
+        <div class="filter-grid">
+            <div class="filter-field">
+                <label for="filter-queue-name">Queue name</label>
+                <input id="filter-queue-name" type="text" placeholder="e.g. training-hl7-server" />
+            </div>
+            <div class="filter-field">
+                <label for="filter-message-id">Message ID</label>
+                <input id="filter-message-id" type="text" placeholder="Exact or partial message id" />
+            </div>
+            <div class="filter-field">
+                <label for="filter-message-text">Message text preview</label>
+                <input id="filter-message-text" type="text" placeholder="Find text in preview, subject, or sequence" />
+            </div>
+        </div>
+        <p class="filter-hint">
+            Filters are local to this page and do not re-query Service Bus.
+            <button id="clear-filters" type="button" class="clear-filter-btn">Clear filters</button>
+        </p>
+    </section>
+
+    <section class="live-panel" aria-label="Live mode controls">
+        <button id="live-toggle-btn" type="button" class="live-toggle-btn">Start live mode</button>
+        <label for="live-interval">Refresh every</label>
+        <select id="live-interval" class="live-select">
+            <option value="2">2s</option>
+            <option value="5" selected>5s</option>
+            <option value="10">10s</option>
+            <option value="30">30s</option>
+        </select>
+        <span class="live-status" id="live-status">Live mode is paused.</span>
+    </section>
+
+    <section class="queues" id="queues-section">
+        {% for queue in queues %}
+            <article class="queue" data-queue-name="{{ queue.name | lower }}">
+                <div class="queue-header">
+                    <h2 class="queue-name">{{ queue.name }}</h2>
+                    <div class="queue-actions">
+                        <form method="get" action="/" style="margin: 0;">
+                            <input type="hidden" name="refresh_queue" value="{{ queue.name }}" />
+                            <button type="submit" class="refresh-btn">Refresh</button>
+                        </form>
+                        <form method="post" action="/queues/{{ queue.name }}/clear" style="margin: 0;" onsubmit="return window.confirm('Clear all available messages from {{ queue.name }}?');">
+                            <button type="submit" class="clear-queue-btn">Clear queue</button>
+                        </form>
+                        <span class="refresh-note">Updated: {{ queue.refreshed_at or "-" }}</span>
+                        <span class="row-count" data-row-count></span>
+                    </div>
+                </div>
+
+                {% if queue.messages %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sequence</th>
+                                <th>Message ID</th>
+                                <th>Enqueued</th>
+                                <th>Content Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in queue.messages %}
+                                <tr
+                                    class="message-row"
+                                    data-message-id="{{ (message.message_id or '') | lower }}"
+                                    data-sequence="{{ message.sequence_number or '' }}"
+                                    data-subject="{{ (message.subject or '') | lower }}"
+                                    data-preview="{{ (message.content_preview or '') | lower }}"
+                                >
+                                    <td>
+                                        {% if message.sequence_number is not none %}
+                                            <a href="/queues/{{ queue.name }}/messages/{{ message.sequence_number }}">
+                                                {{ message.sequence_number }}
+                                            </a>
+                                        {% else %}
+                                            n/a
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ message.message_id or "-" }}</td>
+                                    <td>{{ message.enqueued_time_utc or "-" }}</td>
+                                    <td>{{ message.content_preview }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="empty">No messages in the peek window</p>
+                {% endif %}
+
+                {% if queue.error %}
+                    <p class="queue-error">
+                        <strong>Unable to read this queue:</strong> {{ queue.error }}
+                    </p>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </section>
+</main>
+
+<footer>
+    <p>
+        <strong>Digital Health and Care Wales</strong> | 
+        <a href="https://www.wales.nhs.uk/informatics">Learn more</a>
+    </p>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Passionate about making a difference</p>
+</footer>
+
+<script>
+    (function () {
+        const queueFilterInput = document.getElementById("filter-queue-name");
+        const messageIdFilterInput = document.getElementById("filter-message-id");
+        const messageTextFilterInput = document.getElementById("filter-message-text");
+        const clearButton = document.getElementById("clear-filters");
+        const liveToggleButton = document.getElementById("live-toggle-btn");
+        const liveIntervalSelect = document.getElementById("live-interval");
+        const liveStatus = document.getElementById("live-status");
+
+        if (
+            !queueFilterInput ||
+            !messageIdFilterInput ||
+            !messageTextFilterInput ||
+            !clearButton ||
+            !liveToggleButton ||
+            !liveIntervalSelect ||
+            !liveStatus
+        ) {
+            return;
+        }
+
+        let liveModeEnabled = false;
+        let liveTimerId = null;
+        let isRefreshing = false;
+
+        function normalize(value) {
+            return (value || "").toString().trim().toLowerCase();
+        }
+
+        function getQueueCards() {
+            return Array.from(document.querySelectorAll("article.queue"));
+        }
+
+        function getQueueSection() {
+            return document.getElementById("queues-section");
+        }
+
+        function toSequenceMap() {
+            const map = new Map();
+            getQueueCards().forEach((queueCard) => {
+                const queueName = normalize(queueCard.getAttribute("data-queue-name"));
+                const sequenceSet = new Set();
+                queueCard.querySelectorAll("tr.message-row").forEach((row) => {
+                    const sequence = normalize(row.getAttribute("data-sequence"));
+                    if (sequence) {
+                        sequenceSet.add(sequence);
+                    }
+                });
+                map.set(queueName, sequenceSet);
+            });
+            return map;
+        }
+
+        function markNewRows(previousMap) {
+            getQueueCards().forEach((queueCard) => {
+                const queueName = normalize(queueCard.getAttribute("data-queue-name"));
+                const previousSet = previousMap.get(queueName) || new Set();
+                queueCard.querySelectorAll("tr.message-row").forEach((row) => {
+                    const sequence = normalize(row.getAttribute("data-sequence"));
+                    if (sequence && !previousSet.has(sequence)) {
+                        row.classList.add("message-row-new");
+                    }
+                });
+            });
+        }
+
+        function setLiveStatus(message, isError) {
+            liveStatus.textContent = message;
+            liveStatus.style.color = isError ? "var(--nwis-red)" : "var(--muted)";
+        }
+
+        async function refreshQueuesInPlace() {
+            if (isRefreshing) {
+                return;
+            }
+
+            isRefreshing = true;
+            const previousMap = toSequenceMap();
+
+            try {
+                const response = await fetch("/?refresh_all=true", { cache: "no-store" });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const html = await response.text();
+                const parsedDocument = new DOMParser().parseFromString(html, "text/html");
+                const nextQueueSection = parsedDocument.getElementById("queues-section");
+                const currentQueueSection = getQueueSection();
+
+                if (!nextQueueSection || !currentQueueSection) {
+                    throw new Error("Could not parse queue section from refresh response.");
+                }
+
+                currentQueueSection.replaceWith(nextQueueSection);
+                markNewRows(previousMap);
+                applyFilters();
+
+                const now = new Date();
+                setLiveStatus(`Live mode active. Last refresh: ${now.toLocaleTimeString()}.`, false);
+            } catch (error) {
+                const detail = error && error.message ? error.message : "Unknown error";
+                setLiveStatus(`Live refresh failed: ${detail}`, true);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        function stopLiveMode() {
+            liveModeEnabled = false;
+            if (liveTimerId !== null) {
+                clearInterval(liveTimerId);
+                liveTimerId = null;
+            }
+            liveToggleButton.classList.remove("active");
+            liveToggleButton.textContent = "Start live mode";
+            setLiveStatus("Live mode is paused.", false);
+        }
+
+        function startLiveMode() {
+            const intervalSeconds = Number.parseInt(liveIntervalSelect.value, 10) || 5;
+
+            liveModeEnabled = true;
+            liveToggleButton.classList.add("active");
+            liveToggleButton.textContent = "Pause live mode";
+            setLiveStatus(`Live mode active. Refreshing every ${intervalSeconds}s.`, false);
+
+            if (liveTimerId !== null) {
+                clearInterval(liveTimerId);
+            }
+            liveTimerId = setInterval(refreshQueuesInPlace, intervalSeconds * 1000);
+            refreshQueuesInPlace();
+        }
+
+        function applyFilters() {
+            const queueQuery = normalize(queueFilterInput.value);
+            const messageIdQuery = normalize(messageIdFilterInput.value);
+            const messageTextQuery = normalize(messageTextFilterInput.value);
+
+            getQueueCards().forEach((queueCard) => {
+                const queueName = normalize(queueCard.getAttribute("data-queue-name"));
+                const queueMatches = !queueQuery || queueName.includes(queueQuery);
+
+                const rows = Array.from(queueCard.querySelectorAll("tr.message-row"));
+                let visibleRows = 0;
+
+                rows.forEach((row) => {
+                    const messageId = normalize(row.getAttribute("data-message-id"));
+                    const sequence = normalize(row.getAttribute("data-sequence"));
+                    const subject = normalize(row.getAttribute("data-subject"));
+                    const preview = normalize(row.getAttribute("data-preview"));
+                    const rowText = [sequence, subject, preview].join(" ");
+
+                    const rowMatchesMessageId = !messageIdQuery || messageId.includes(messageIdQuery);
+                    const rowMatchesText = !messageTextQuery || rowText.includes(messageTextQuery);
+                    const rowVisible = queueMatches && rowMatchesMessageId && rowMatchesText;
+
+                    row.style.display = rowVisible ? "" : "none";
+                    if (rowVisible) {
+                        visibleRows += 1;
+                    }
+                });
+
+                const hasNoRows = rows.length === 0;
+                const queueVisible = queueMatches && (hasNoRows || visibleRows > 0 || (!messageIdQuery && !messageTextQuery));
+                queueCard.style.display = queueVisible ? "" : "none";
+
+                const countTag = queueCard.querySelector("[data-row-count]");
+                if (countTag) {
+                    countTag.textContent = hasNoRows ? "" : `${visibleRows}/${rows.length} shown`;
+                }
+            });
+        }
+
+        [queueFilterInput, messageIdFilterInput, messageTextFilterInput].forEach((element) => {
+            element.addEventListener("input", applyFilters);
+        });
+
+        clearButton.addEventListener("click", () => {
+            queueFilterInput.value = "";
+            messageIdFilterInput.value = "";
+            messageTextFilterInput.value = "";
+            applyFilters();
+            queueFilterInput.focus();
+        });
+
+        liveToggleButton.addEventListener("click", () => {
+            if (liveModeEnabled) {
+                stopLiveMode();
+            } else {
+                startLiveMode();
+            }
+        });
+
+        liveIntervalSelect.addEventListener("change", () => {
+            if (liveModeEnabled) {
+                startLiveMode();
+            }
+        });
+
+        applyFilters();
+    })();
+</script>
+
+</body>
+</html>
