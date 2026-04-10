@@ -17,6 +17,7 @@ pr:
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
+      - buswatch/*
       - message_store_service/*
       - shared_libs/*
       - pipeline-ado/*
@@ -90,6 +91,14 @@ stages:
         parameters:
           appName: 'message_store_service'
           appDisplayName: 'Message Store Service'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # BusWatch validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'buswatch'
+          appDisplayName: 'BusWatch'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 
