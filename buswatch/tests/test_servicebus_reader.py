@@ -106,9 +106,11 @@ class TestMessageFormatting(unittest.TestCase):
 
 class TestSessionErrorDetection(unittest.TestCase):
     def test_is_session_required_error_detects_next_available_session_hint(self) -> None:
-        exc = RuntimeError(
-            "If trying to receive from NEXT_AVAILABLE_SESSION, use max_wait_time on the ServiceBusReceiver to control the timeout."
+        message = (
+            "If trying to receive from NEXT_AVAILABLE_SESSION, use max_wait_time "
+            "on the ServiceBusReceiver to control the timeout."
         )
+        exc = RuntimeError(message)
 
         self.assertTrue(_is_session_required_error(exc))
 
