@@ -20,6 +20,7 @@ parameters:
       - HL7 Sender
       - Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
+      - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - Message Store Service
@@ -151,6 +152,11 @@ stages:
         - name: 'Chemo HL7 Subscription Sender'
           appImageName: 'hl7subsndr'
           appFunctionMidfix: 'mpi-chemo'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'BCU Chemo HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'mpi-bcuchemo'
           buildPipeline: 'HL7 Subscription Sender - Build'
 
         - name: 'PHW HL7 Subscription Sender'
