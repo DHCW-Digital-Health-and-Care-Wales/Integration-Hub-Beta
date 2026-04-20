@@ -156,7 +156,7 @@ stages:
 
         - name: 'BCU Chemo HL7 Subscription Sender'
           appImageName: 'hl7subsndr'
-          appFunctionMidfix: 'mpi-bcuchemo'
+          appFunctionMidfix: 'mpi-bcuch'
           buildPipeline: 'HL7 Subscription Sender - Build'
 
         - name: 'PHW HL7 Subscription Sender'
