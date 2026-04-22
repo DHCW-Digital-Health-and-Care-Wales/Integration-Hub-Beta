@@ -3,6 +3,12 @@
 This file is automatically loaded by GitHub Copilot CLI and coding agents.
 It provides the context needed to work effectively in this repository.
 
+## Team
+
+- **Gareth** — Hub-Team lead
+- **Matt** — developer
+- **Alex** — developer
+
 ---
 
 ## Project Overview
