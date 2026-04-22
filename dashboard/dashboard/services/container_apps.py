@@ -5,8 +5,8 @@ Provides grouping by integration flow.
 from __future__ import annotations
 
 import logging
-from services.azure_monitor import get_container_app_metrics
-from services.flows import FLOWS
+from dashboard.services.azure_monitor import get_container_app_metrics
+from dashboard.services.flows import FLOWS
 
 log = logging.getLogger(__name__)
 
