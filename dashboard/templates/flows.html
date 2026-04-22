@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Flow Detail{% endblock %}
+
+{% block head %}
+<script>window.REFRESH_INTERVAL = {{ refresh_interval }};</script>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-diagram-3-fill" style="color:var(--accent-purple)"></i>
+        Integration Flows
+      </h1>
+      <p class="page-subtitle">Per-flow queue depths, health status and container metrics</p>
+    </div>
+    <div class="refresh-bar">
+      <span>Last updated: <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
+      <div class="refresh-countdown">
+        <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
+        <span id="countdown-num" class="countdown-num">{{ refresh_interval }}</span>s
+      </div>
+      <button class="btn-dash" id="manual-refresh">
+        <i class="bi bi-arrow-repeat"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr))">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number" id="kpi-total-active">{{ status.kpis.total_active_messages }}</div>
+        <div class="kpi-label">Active Msgs</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon {% if status.kpis.total_dlq_messages > 0 %}red{% else %}green{% endif %}">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-number" id="kpi-total-dlq">{{ status.kpis.total_dlq_messages }}</div>
+        <div class="kpi-label">Dead-Letter</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number" id="kpi-flows-healthy">{{ status.kpis.flows_healthy }}</div>
+        <div class="kpi-label">Healthy</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number" id="kpi-flows-warning">{{ status.kpis.flows_warning }}</div>
+        <div class="kpi-label">Warning</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number" id="kpi-flows-critical">{{ status.kpis.flows_critical }}</div>
+        <div class="kpi-label">Critical</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed flow cards -->
+  {% for flow in status.flows %}
+  {% set pre  = flow.pre_queue %}
+  {% set post = flow.post_queue %}
+  <div class="flow-detail-card animate-in" data-flow-id="{{ flow.id }}" style="--flow-colour: {{ flow.colour }}">
+
+    <div class="flow-detail-header">
+      <div class="flow-colour-bar" style="background:{{ flow.colour }}"></div>
+      <div class="flow-title-icon" style="background:{{ flow.colour }}20; color:{{ flow.colour }}; width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1rem;">
+        <i class="{{ flow.icon }}"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div style="font-size:1rem; font-weight:700;">{{ flow.label }}</div>
+        <div style="font-size:0.72rem; color:var(--text-muted);">
+          Port {{ flow.source_port }} &nbsp;·&nbsp; {{ flow.source }} → {{ flow.destination }}
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        {% if pre.dlq > 0 or (post.name and post.dlq > 0) %}
+        <span class="dlq-badge-pill"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ (pre.dlq or 0) + (post.dlq or 0) }}</span>
+        {% endif %}
+        <span class="status-badge {{ flow.health }} large flow-health-badge">
+          <span class="flow-status-dot {{ flow.health }}" style="width:7px;height:7px;"></span>
+          {{ flow.health | upper }}
+        </span>
+      </div>
+    </div>
+
+    <div class="flow-detail-body">
+
+      <!-- Full pipeline -->
+      <div class="section-title mb-2"><i class="bi bi-arrow-right-circle"></i> Message Flow</div>
+      <div class="pipeline mb-3" style="gap:0; overflow-x:auto;">
+
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:80px; font-size:0.72rem;">
+            <div style="font-size:0.58rem; color:var(--text-dim)">HL7 Server</div>
+            {{ flow.source }}
+          </div>
+          {% if flow.source_port %}<div class="port-label">:{{ flow.source_port }}</div>{% endif %}
+        </div>
+
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ pre.health if pre.name else '' }}"></div></div>
+
+        {% if pre.name %}
+        <div class="pipeline-node">
+          <div class="pipeline-node-box {{ pre.health }}" data-queue="pre" style="min-width:100px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;">PRE-QUEUE</div>
+            {{ pre.name }}
+          </div>
+          <div class="pipeline-node-count" style="font-size:0.7rem;">
+            <span data-queue-active="pre" style="color: {% if pre.health == 'critical' %}var(--accent-red){% elif pre.health == 'warning' %}var(--accent-amber){% else %}var(--text-muted){% endif %}">
+              {{ pre.active }} active
+            </span>
+            {% if pre.dlq > 0 %}<span class="dlq-badge"> · {{ pre.dlq }} DLQ</span>{% endif %}
+          </div>
+        </div>
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ pre.health }}"></div></div>
+        {% endif %}
+
+        {% if flow.transformer %}
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:110px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-gear"></i> TRANSFORMER</div>
+            {{ flow.transformer }}
+          </div>
+        </div>
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ post.health if post.name else '' }}"></div></div>
+        {% endif %}
+
+        {% if post.name %}
+        <div class="pipeline-node">
+          <div class="pipeline-node-box {{ post.health }}" data-queue="post" style="min-width:100px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;">POST-QUEUE</div>
+            {{ post.name }}
+          </div>
+          <div class="pipeline-node-count" style="font-size:0.7rem;">
+            <span data-queue-active="post" style="color: {% if post.health == 'critical' %}var(--accent-red){% elif post.health == 'warning' %}var(--accent-amber){% else %}var(--text-muted){% endif %}">
+              {{ post.active }} active
+            </span>
+            {% if post.dlq > 0 %}<span class="dlq-badge"> · {{ post.dlq }} DLQ</span>{% endif %}
+          </div>
+        </div>
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ post.health }}"></div></div>
+        {% endif %}
+
+        <!-- Sender -->
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:80px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;">SENDER</div>
+            HL7 Sender
+          </div>
+        </div>
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line healthy"></div></div>
+
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="color:var(--accent-cyan); border-color:rgba(6,182,212,0.3);">
+            {{ flow.destination }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Queue metrics grid -->
+      <div class="flow-detail-queue-grid">
+        {% if pre.name and pre.exists %}
+        <div class="queue-metric-box {{ pre.health }}">
+          <div class="queue-metric-name">
+            <span><i class="bi bi-inbox"></i> {{ pre.name }}</span>
+            <span class="status-badge {{ pre.health }}" style="font-size:0.6rem;">{{ pre.health }}</span>
+          </div>
+          <div class="queue-metric-values">
+            <div>
+              <div class="qmv-value {{ 'critical' if pre.active >= 50 else ('warning' if pre.active >= 10 else 'ok') }}">{{ pre.active }}</div>
+              <div class="qmv-label">Active</div>
+            </div>
+            <div>
+              <div class="qmv-value {{ 'critical' if pre.dlq > 0 else 'ok' }}">{{ pre.dlq }}</div>
+              <div class="qmv-label">DLQ</div>
+            </div>
+            <div>
+              <div class="qmv-value ok" style="font-size:0.9rem;">Pre</div>
+              <div class="qmv-label">Stage</div>
+            </div>
+          </div>
+        </div>
+        {% elif pre.name %}
+        <div class="queue-metric-box unknown">
+          <div class="queue-metric-name"><i class="bi bi-question-circle"></i> {{ pre.name }}</div>
+          <div style="color:var(--text-dim); font-size:0.75rem; margin-top:0.5rem;">Queue not found in namespace</div>
+        </div>
+        {% endif %}
+
+        {% if post.name and post.exists %}
+        <div class="queue-metric-box {{ post.health }}">
+          <div class="queue-metric-name">
+            <span><i class="bi bi-send"></i> {{ post.name }}</span>
+            <span class="status-badge {{ post.health }}" style="font-size:0.6rem;">{{ post.health }}</span>
+          </div>
+          <div class="queue-metric-values">
+            <div>
+              <div class="qmv-value {{ 'critical' if post.active >= 50 else ('warning' if post.active >= 10 else 'ok') }}">{{ post.active }}</div>
+              <div class="qmv-label">Active</div>
+            </div>
+            <div>
+              <div class="qmv-value {{ 'critical' if post.dlq > 0 else 'ok' }}">{{ post.dlq }}</div>
+              <div class="qmv-label">DLQ</div>
+            </div>
+            <div>
+              <div class="qmv-value ok" style="font-size:0.9rem;">Post</div>
+              <div class="qmv-label">Stage</div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Container Apps for this flow -->
+      {% set apps = container_metrics.get(flow.id, []) %}
+      {% if apps %}
+      <div class="section-title mt-3 mb-2"><i class="bi bi-cpu"></i> Container Apps</div>
+      <div class="row g-2">
+        {% for app in apps %}
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="app-metric-card">
+            <div class="app-metric-name">{{ app.name }}</div>
+            <div>
+              <div class="metric-bar-label"><span>CPU</span><span>{{ app.cpu_usage }}%</span></div>
+              <div class="metric-bar"><div class="metric-bar-fill cpu" style="width:{{ [app.cpu_usage, 100] | min }}%"></div></div>
+            </div>
+            <div>
+              <div class="metric-bar-label">
+                <span>Memory</span>
+                <span>{{ (app.memory_bytes / 1048576) | round(1) }} MB</span>
+              </div>
+              <div class="metric-bar"><div class="metric-bar-fill mem" style="width:{{ [(app.memory_bytes / 536870912 * 100), 100] | min | round(1) }}%"></div></div>
+            </div>
+            <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
+              <i class="bi bi-layers"></i> {{ app.replicas }} replica(s)
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div><!-- /flow-detail-body -->
+  </div><!-- /flow-detail-card -->
+  {% else %}
+  <div class="no-data">
+    <i class="bi bi-cloud-slash"></i>
+    <span>No flow data available — check Azure credentials</span>
+  </div>
+  {% endfor %}
+
+</div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

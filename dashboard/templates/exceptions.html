@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Exceptions{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-exclamation-triangle-fill" style="color:var(--accent-red)"></i>
+        Application Exceptions
+      </h1>
+      <p class="page-subtitle">Last {{ hours }} hours — {{ exceptions | length }} exception(s)</p>
+    </div>
+    <!-- Hours filter -->
+    <form method="get" class="d-flex align-items-center gap-2">
+      <label class="text-muted" style="font-size:0.78rem;">Show last</label>
+      <select name="hours" class="dash-input" onchange="this.form.submit()">
+        {% for h in [1, 6, 12, 24, 48, 72] %}
+        <option value="{{ h }}" {% if h == hours %}selected{% endif %}>{{ h }}h</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if exceptions %}
+  <!-- Summary bar -->
+  <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(150px,1fr))">
+    {% set sev1 = exceptions | selectattr('severity', 'equalto', 1) | list | length %}
+    {% set sev2 = exceptions | selectattr('severity', 'equalto', 2) | list | length %}
+    {% set sev3 = exceptions | selectattr('severity', 'equalto', 3) | list | length %}
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ exceptions | length }}</div>
+        <div class="kpi-label">Total Exceptions</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="bi bi-exclamation-octagon"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ sev1 }}</div>
+        <div class="kpi-label">Critical (Sev 1)</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="bi bi-exclamation-circle"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ sev2 }}</div>
+        <div class="kpi-label">Error (Sev 2)</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-info-circle"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ sev3 }}</div>
+        <div class="kpi-label">Warning (Sev 3)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exceptions list -->
+  <div class="queue-table-wrapper">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-list-ul me-1"></i> Exception Log</h6>
+      <span class="text-muted" style="font-size:0.72rem;">Sorted by most recent</span>
+    </div>
+    <div class="scroll-panel" style="max-height:none;">
+      <div class="exceptions-list p-3 stagger-children">
+        {% for exc in exceptions %}
+        <div class="exception-item exc-severity-{{ exc.severity }}">
+          <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+            <div class="exception-type">{{ exc.type or 'UnknownException' }}</div>
+            <div class="exception-meta">
+              {% if exc.app %}<span><i class="bi bi-app"></i> {{ exc.app }}</span>{% endif %}
+              <span><i class="bi bi-clock"></i> {{ exc.timestamp | replace('T', ' ') | truncate(19, True, '') }}</span>
+              <span class="status-badge {% if exc.severity == 1 %}critical{% elif exc.severity == 2 %}warning{% else %}unknown{% endif %}">
+                Sev {{ exc.severity }}
+              </span>
+            </div>
+          </div>
+          {% if exc.message %}
+          <div class="exception-full-msg">{{ exc.message | truncate(300) }}</div>
+          {% endif %}
+          {% if exc.operation_id %}
+          <div class="exception-meta mt-1">
+            <span><i class="bi bi-fingerprint"></i> {{ exc.operation_id }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem;">
+      <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:var(--accent-green); opacity:0.8;"></i>
+      <span style="font-size:1rem; font-weight:600; color:var(--accent-green);">No exceptions</span>
+      <span style="color:var(--text-muted);">
+        {% if not config_ok %}
+          Azure Log Analytics credentials are not configured.
+        {% else %}
+          No exceptions were found in the last {{ hours }} hours. 🎉
+        {% endif %}
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+{% endblock %}

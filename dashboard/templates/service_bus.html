@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Service Bus{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-stack" style="color:var(--accent-cyan)"></i>
+        Azure Service Bus
+      </h1>
+      <p class="page-subtitle">Queue depths, dead-letter counts and flow mapping</p>
+    </div>
+    <a href="{{ url_for('service_bus_page') }}" class="btn-dash">
+      <i class="bi bi-arrow-repeat"></i> Refresh
+    </a>
+  </div>
+
+  {% if queues %}
+
+  <!-- Summary KPIs -->
+  {% set total_active = queues | sum(attribute='active_message_count') %}
+  {% set total_dlq    = queues | sum(attribute='dead_letter_message_count') %}
+  {% set total_sched  = queues | sum(attribute='scheduled_message_count') %}
+  {% set warn_queues  = queues | selectattr('active_message_count', 'ge', 10) | list | length %}
+  {% set crit_queues  = queues | selectattr('active_message_count', 'ge', 50) | list | length %}
+
+  <div class="kpi-strip stagger-children mb-3">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ total_active }}</div>
+        <div class="kpi-label">Total Active</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon {% if total_dlq > 0 %}red{% else %}green{% endif %}">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-number {% if total_dlq > 0 %}text-danger{% endif %}">{{ total_dlq }}</div>
+        <div class="kpi-label">Total DLQ</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon purple"><i class="bi bi-clock-history"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ total_sched }}</div>
+        <div class="kpi-label">Scheduled</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon cyan"><i class="bi bi-collection-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ queues | length }}</div>
+        <div class="kpi-label">Total Queues</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number {% if warn_queues > 0 %}text-warning{% endif %}">{{ warn_queues }}</div>
+        <div class="kpi-label">Warning Queues</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number {% if crit_queues > 0 %}text-danger{% endif %}">{{ crit_queues }}</div>
+        <div class="kpi-label">Critical Queues</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow health summary -->
+  {% if flows %}
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-diagram-3"></i> Flow Summary</span>
+  </div>
+  <div class="row g-2 mb-3 stagger-children">
+    {% for flow in flows %}
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="dash-card" style="--flow-colour:{{ flow.colour }}; border-left: 3px solid {{ flow.colour }}; padding:0.75rem 0.9rem;">
+        <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">
+          {{ flow.label }}
+        </div>
+        <span class="status-badge {{ flow.health }}">{{ flow.health }}</span>
+        {% if flow.pre_queue.dlq > 0 or (flow.post_queue.name and flow.post_queue.dlq > 0) %}
+        <div class="dlq-badge-pill mt-1" style="font-size:0.6rem;">
+          DLQ: {{ (flow.pre_queue.dlq or 0) + (flow.post_queue.dlq or 0) }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Queue table -->
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-table"></i> All Queues</span>
+  </div>
+  <div class="queue-table-wrapper">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-list-ul me-1"></i> Queue Details</h6>
+      <span class="text-muted" style="font-size:0.72rem;">Click column headers to sort</span>
+    </div>
+    <div class="scroll-panel" style="max-height:none;">
+      <table class="dash-table" id="queue-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Queue <span class="sort-icon"></span></th>
+            <th data-sort="active"  class="text-end">Active <span class="sort-icon"></span></th>
+            <th data-sort="dlq"     class="text-end">DLQ <span class="sort-icon"></span></th>
+            <th data-sort="sched"   class="text-end">Scheduled <span class="sort-icon"></span></th>
+            <th data-sort="total"   class="text-end">Total <span class="sort-icon"></span></th>
+            <th class="text-end">Size</th>
+            <th class="text-end">Max</th>
+            <th>Status</th>
+            <th>Health</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in queues | sort(attribute='active_message_count', reverse=True) %}
+          {% set active = q.active_message_count %}
+          {% set dlq    = q.dead_letter_message_count %}
+          {% set q_health = 'critical' if active >= 50 else ('warning' if (active >= 10 or dlq > 0) else 'healthy') %}
+          <tr data-queue-name="{{ q.name }}" class="{{ 'table-danger-row' if q_health == 'critical' else '' }}">
+            <td class="queue-name-cell" data-col="name">{{ q.name }}</td>
+            <td class="count-cell text-end {{ 'critical' if active >= 50 else ('warning' if active >= 10 else 'zero') }}"
+                data-col="active">{{ active }}</td>
+            <td class="count-cell text-end {{ 'dlq-warn' if dlq > 0 else 'zero' }}"
+                data-col="dlq">{{ dlq }}</td>
+            <td class="count-cell text-end zero" data-col="sched">{{ q.scheduled_message_count }}</td>
+            <td class="count-cell text-end zero" data-col="total">{{ q.message_count }}</td>
+            <td class="text-end" style="font-size:0.75rem; color:var(--text-muted);">{{ q.size_in_bytes | format_bytes }}</td>
+            <td class="text-end" style="font-size:0.75rem; color:var(--text-dim);">{{ q.max_size_in_megabytes }}MB</td>
+            <td>
+              <span class="status-badge {{ 'healthy' if q.status == 'Active' else 'warning' }}"
+                    style="font-size:0.62rem;">
+                {{ q.status }}
+              </span>
+            </td>
+            <td><span class="status-badge {{ q_health }}">{{ q_health }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem;">
+      <i class="bi bi-cloud-slash"></i>
+      <span style="font-size:0.9rem; font-weight:600;">Service Bus data unavailable</span>
+      <span style="color:var(--text-muted); font-size:0.8rem;">
+        Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-chat-square-text-fill" style="color:var(--accent-purple)"></i>
+        HL7 Messages
+      </h1>
+      <p class="page-subtitle">Messages processed today via Application Insights custom events</p>
+    </div>
+    <a href="{{ url_for('messages_page') }}" class="btn-dash">
+      <i class="bi bi-arrow-repeat"></i> Refresh
+    </a>
+  </div>
+
+  {% if messages %}
+
+  <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr))">
+    <div class="kpi-card">
+      <div class="kpi-icon purple"><i class="bi bi-chat-square-text-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ messages | length }}</div>
+        <div class="kpi-label">Messages Today</div>
+      </div>
+    </div>
+    {% set apps = messages | map(attribute='app') | select | unique | list %}
+    <div class="kpi-card">
+      <div class="kpi-icon cyan"><i class="bi bi-app-indicator"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ apps | length }}</div>
+        <div class="kpi-label">Distinct Apps</div>
+      </div>
+    </div>
+    {% set events = messages | map(attribute='event') | select | unique | list %}
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-lightning-charge-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ events | length }}</div>
+        <div class="kpi-label">Event Types</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="queue-table-wrapper">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-list-ul me-1"></i> Message Log</h6>
+      <span class="text-muted" style="font-size:0.72rem;">Most recent first · max 500</span>
+    </div>
+    <div class="scroll-panel" style="max-height:600px;">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event</th>
+            <th>Application</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for msg in messages %}
+          <tr>
+            <td class="font-mono" style="font-size:0.73rem; color:var(--text-muted); white-space:nowrap;">
+              {{ msg.timestamp | replace('T', ' ') | truncate(19, True, '') }}
+            </td>
+            <td>
+              <span class="status-badge healthy" style="font-size:0.65rem;">{{ msg.event or 'N/A' }}</span>
+            </td>
+            <td style="font-size:0.78rem; color:var(--accent-cyan);">{{ msg.app or '—' }}</td>
+            <td style="font-size:0.73rem; color:var(--text-muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              {% if msg.dimensions %}
+                {% for k, v in msg.dimensions.items() | list | sort %}
+                  <span style="color:var(--text-dim)">{{ k }}:</span>
+                  <span style="color:var(--text-primary)">{{ v }}</span>
+                  {% if not loop.last %} &nbsp;·&nbsp; {% endif %}
+                {% endfor %}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem;">
+      <i class="bi bi-chat-square-text" style="font-size:2.5rem; opacity:0.4;"></i>
+      <span style="font-size:0.9rem; font-weight:600;">No messages found</span>
+      <span style="color:var(--text-muted); font-size:0.8rem;">
+        Either no messages were processed today, or Log Analytics credentials are not configured.
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+{% endblock %}
