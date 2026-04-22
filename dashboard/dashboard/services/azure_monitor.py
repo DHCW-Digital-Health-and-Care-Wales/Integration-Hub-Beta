@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone, timedelta
 
-import config
+from dashboard import config
 
 log = logging.getLogger(__name__)
 

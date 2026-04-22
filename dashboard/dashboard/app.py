@@ -11,11 +11,11 @@ from threading import Lock
 
 from flask import Flask, jsonify, render_template, request
 
-import config
-from services.azure_monitor import get_exceptions, get_messages_today
-from services.container_apps import get_container_apps_metrics
-from services.flows import FLOWS, build_flow_data, overall_health
-from services.service_bus import get_queues
+from dashboard import config
+from dashboard.services.azure_monitor import get_exceptions, get_messages_today
+from dashboard.services.container_apps import get_container_apps_metrics
+from dashboard.services.flows import FLOWS, build_flow_data, overall_health
+from dashboard.services.service_bus import get_queues
 
 logging.basicConfig(
     level=logging.INFO,

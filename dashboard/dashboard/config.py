@@ -1,7 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # Azure credentials
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "")

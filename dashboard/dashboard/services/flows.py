@@ -4,7 +4,7 @@ Each flow represents an end-to-end HL7 message path.
 """
 from __future__ import annotations
 
-import config
+from dashboard import config
 
 # ---------------------------------------------------------------------------
 # Flow definitions
