@@ -115,14 +115,6 @@ def _configure_ssl_trust() -> None:
 
 _configure_ssl_trust()
 
-from flask import Flask, jsonify, render_template, request
-
-from dashboard import config
-from dashboard.services.azure_monitor import get_exceptions, get_messages_today
-from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import FLOWS, build_flow_data, overall_health
-from dashboard.services.service_bus import get_queues
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
