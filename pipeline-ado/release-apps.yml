@@ -8,6 +8,7 @@ parameters:
     default: 'all'
     values:
       - all
+      - Dashboard
       - PHW HL7Server
       - PIMS HL7Server
       - Paris HL7Server
@@ -82,6 +83,9 @@ resources:
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
+      trigger: none
+    - pipeline: 'Dashboard - Build'
+      source: 'Dashboard - Build'
       trigger: none
 
 stages:
@@ -179,6 +183,12 @@ stages:
           appImageName: 'networktestapp'
           appFunctionMidfix: ''
           buildPipeline: 'Network Test App - Build'
+
+        # NOC Dashboard
+        - name: 'Dashboard'
+          appImageName: 'dashboard'
+          appFunctionMidfix: ''
+          buildPipeline: 'Dashboard - Build'
 
         # Message Store Service
         - name: 'Message Store Service'

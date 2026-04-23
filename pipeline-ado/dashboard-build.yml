@@ -1,0 +1,51 @@
+# Dashboard Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+      - release-*
+  paths:
+    include:
+      - dashboard/*
+      - pipeline-ado/templates/*
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'dashboard'
+          appDisplayName: 'Dashboard'
+          pythonVersion: '3.13'
+          poolName: ${{ variables.POOL_NAME }}
+          banditSourceDir: 'dashboard'
+
+  - stage: BuildAndPushDashboard
+    displayName: 'Build and Push Dashboard'
+    dependsOn: CodeQuality
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushDashboard'
+          displayName: 'Build and Push Dashboard'
+          appName: 'dashboard'
+          dockerfilePath: 'dashboard/Dockerfile'
+          buildContext: 'dashboard'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
