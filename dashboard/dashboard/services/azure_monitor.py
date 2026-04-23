@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
@@ -159,8 +159,10 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
+        from azure.identity import ClientSecretCredential
         from azure.monitor.query import MetricsQueryClient
         from azure.mgmt.appcontainers import ContainerAppsAPIClient
+        from azure.monitor.query import MetricsQueryClient
 
         cred = get_azure_credential()
         apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)

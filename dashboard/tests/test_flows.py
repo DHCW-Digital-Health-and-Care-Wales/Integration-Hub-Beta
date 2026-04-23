@@ -4,8 +4,6 @@ Pure logic — no Azure calls, no mocking needed.
 """
 from __future__ import annotations
 
-import pytest
-
 from dashboard.services.flows import FLOWS, flow_health, overall_health, queue_health
 
 

@@ -13,6 +13,14 @@ from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 
+from flask import Flask, jsonify, render_template, request
+
+from dashboard import config
+from dashboard.services.azure_monitor import get_exceptions, get_messages_today
+from dashboard.services.container_apps import get_container_apps_metrics
+from dashboard.services.flows import FLOWS, build_flow_data, overall_health
+from dashboard.services.service_bus import get_queues
+
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
     """Read a PEM or DER certificate file and return PEM text."""
@@ -129,18 +137,16 @@ app.secret_key = config.FLASK_SECRET_KEY
 # ---------------------------------------------------------------------------
 
 _cache_lock = Lock()
-_status_cache: dict = {}
-_cache_timestamp: float = 0.0
+_cache_data: dict = {"status": {}, "timestamp": 0.0}
 
 
 def _get_cached_status(force: bool = False) -> dict:
-    global _status_cache, _cache_timestamp
     now = time.monotonic()
     with _cache_lock:
-        if force or (now - _cache_timestamp) > config.API_CACHE_TTL:
-            _status_cache = _build_status()
-            _cache_timestamp = now
-    return _status_cache
+        if force or (now - _cache_data["timestamp"]) > config.API_CACHE_TTL:
+            _cache_data["status"] = _build_status()
+            _cache_data["timestamp"] = now
+    return _cache_data["status"]
 
 
 def _build_status() -> dict:
@@ -270,11 +276,11 @@ def api_messages():
 # ---------------------------------------------------------------------------
 
 @app.template_filter("format_bytes")
-def format_bytes(size: int) -> str:
+def format_bytes(size: int | float) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if size < 1024:
             return f"{size:.1f} {unit}"
-        size /= 1024
+        size = size / 1024
     return f"{size:.1f} TB"
 
 

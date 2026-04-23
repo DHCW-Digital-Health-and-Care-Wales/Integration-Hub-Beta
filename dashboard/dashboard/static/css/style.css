@@ -505,6 +505,12 @@ a:hover { color: #60a5fa; }
 .pipeline-arrow-line.critical { background: var(--accent-red); }
 .pipeline-arrow-line.critical::after { border-left-color: var(--accent-red); }
 
+/* Ghost nodes and arrows: invisible but space-preserving for column alignment */
+.pipeline-node.ghost,
+.pipeline-arrow.ghost {
+  visibility: hidden;
+}
+
 /* Scanning line on healthy flows */
 @keyframes scan-line {
   0%   { left: 0%; opacity: 0; }

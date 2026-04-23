@@ -133,9 +133,9 @@
         <!-- Source -->
         <div class="pipeline-node">
           <div class="pipeline-node-box neutral">{{ flow.source }}</div>
-          {% if flow.source_port %}
-          <div class="port-label">:{{ flow.source_port }}</div>
-          {% endif %}
+          <div class="pipeline-node-count">
+            {% if flow.source_port %}<span class="port-label">:{{ flow.source_port }}</span>{% endif %}
+          </div>
         </div>
 
         <!-- Arrow to pre-queue -->
@@ -171,6 +171,7 @@
             <i class="bi bi-gear-fill" style="font-size:0.6rem"></i>
             {{ flow.transformer | replace(' Transformer', '') }}
           </div>
+          <div class="pipeline-node-count"></div>
         </div>
 
         <div class="pipeline-arrow">
@@ -203,6 +204,7 @@
           <div class="pipeline-node-box neutral" style="color: var(--accent-cyan); border-color: var(--accent-cyan)40;">
             {{ flow.destination }}
           </div>
+          <div class="pipeline-node-count"></div>
         </div>
 
       </div><!-- /pipeline -->
