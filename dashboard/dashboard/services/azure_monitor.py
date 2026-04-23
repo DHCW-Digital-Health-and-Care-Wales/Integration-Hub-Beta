@@ -7,31 +7,20 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from dashboard import config
+from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
 
 def _get_logs_client():
-    from azure.identity import ClientSecretCredential
     from azure.monitor.query import LogsQueryClient
 
-    cred = ClientSecretCredential(
-        tenant_id=config.AZURE_TENANT_ID,
-        client_id=config.AZURE_CLIENT_ID,
-        client_secret=config.AZURE_CLIENT_SECRET,
-    )
+    cred = get_azure_credential()
     return LogsQueryClient(cred)
 
 
 def _credentials_configured() -> bool:
-    return all(
-        [
-            config.AZURE_TENANT_ID,
-            config.AZURE_CLIENT_ID,
-            config.AZURE_CLIENT_SECRET,
-            config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
-        ]
-    )
+    return bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID)
 
 
 def get_exceptions(hours: int = 24) -> list[dict]:
@@ -40,7 +29,7 @@ def get_exceptions(hours: int = 24) -> list[dict]:
     Returns a list of exception dicts. Falls back to [] on any error.
     """
     if not _credentials_configured():
-        log.warning("Log Analytics credentials not configured — returning empty list")
+        log.warning("Log Analytics workspace not configured — returning empty list")
         return []
 
     query = f"""
@@ -137,27 +126,19 @@ def get_container_app_metrics() -> list[dict]:
     """
     if not all(
         [
-            config.AZURE_TENANT_ID,
-            config.AZURE_CLIENT_ID,
-            config.AZURE_CLIENT_SECRET,
             config.AZURE_SUBSCRIPTION_ID,
             config.AZURE_CONTAINER_APPS_RESOURCE_GROUP,
             config.AZURE_CONTAINER_APPS_ENVIRONMENT,
         ]
     ):
-        log.warning("Container Apps credentials not configured — returning empty list")
+        log.warning("Container Apps resource configuration missing — returning empty list")
         return []
 
     try:
-        from azure.identity import ClientSecretCredential
         from azure.monitor.query import MetricsQueryClient
         from azure.mgmt.appcontainers import ContainerAppsAPIClient
 
-        cred = ClientSecretCredential(
-            tenant_id=config.AZURE_TENANT_ID,
-            client_id=config.AZURE_CLIENT_ID,
-            client_secret=config.AZURE_CLIENT_SECRET,
-        )
+        cred = get_azure_credential()
         apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
         metrics_client = MetricsQueryClient(cred)
 

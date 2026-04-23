@@ -25,9 +25,9 @@ docker run -p 8080:8080 --env-file dashboard.env integration-hub-dashboard
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AZURE_TENANT_ID` | Azure AD tenant ID | — |
-| `AZURE_CLIENT_ID` | Service principal client ID | — |
-| `AZURE_CLIENT_SECRET` | Service principal secret | — |
+| `AZURE_TENANT_ID` | Azure AD tenant ID (for service-principal fallback auth) | — |
+| `AZURE_CLIENT_ID` | Service principal client ID (for service-principal fallback auth) | — |
+| `AZURE_CLIENT_SECRET` | Service principal secret (for service-principal fallback auth) | — |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | — |
 | `AZURE_RESOURCE_GROUP` | Resource group containing Service Bus | — |
 | `AZURE_SERVICE_BUS_NAMESPACE` | Service Bus namespace name | — |
@@ -41,6 +41,17 @@ docker run -p 8080:8080 --env-file dashboard.env integration-hub-dashboard
 
 All queue names are also overridable (e.g. `QUEUE_PHW_PRE`, `QUEUE_PHW_POST`).
 See `dashboard/config.py` for the full list.
+
+## Azure authentication
+
+The dashboard uses `DefaultAzureCredential` first (Managed Identity, Azure CLI login, workload identity, etc.).
+If `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET` are set, it safely falls back to
+`ClientSecretCredential`.
+
+This means:
+- Local development can use `az login` without client secret values.
+- Azure-hosted deployments can use Managed Identity without client secret values.
+- Service principal env vars remain supported as a fallback path.
 
 ## Quality checks
 

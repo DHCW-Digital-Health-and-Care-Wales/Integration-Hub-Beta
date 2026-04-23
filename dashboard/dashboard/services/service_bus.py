@@ -6,38 +6,25 @@ from __future__ import annotations
 import logging
 
 from dashboard import config
+from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
 
 def _get_client():
-    from azure.identity import ClientSecretCredential
     from azure.mgmt.servicebus import ServiceBusManagementClient
 
-    cred = ClientSecretCredential(
-        tenant_id=config.AZURE_TENANT_ID,
-        client_id=config.AZURE_CLIENT_ID,
-        client_secret=config.AZURE_CLIENT_SECRET,
-    )
+    cred = get_azure_credential()
     return ServiceBusManagementClient(cred, config.AZURE_SUBSCRIPTION_ID)
 
 
 def get_queues() -> list[dict]:
     """
-    Return a list of queue dicts.  Falls back to an empty list if Azure
-    credentials are not configured.
+    Return a list of queue dicts. Falls back to an empty list if required
+    Service Bus resource configuration is missing.
     """
-    if not all(
-        [
-            config.AZURE_TENANT_ID,
-            config.AZURE_CLIENT_ID,
-            config.AZURE_CLIENT_SECRET,
-            config.AZURE_SUBSCRIPTION_ID,
-            config.AZURE_RESOURCE_GROUP,
-            config.AZURE_SERVICE_BUS_NAMESPACE,
-        ]
-    ):
-        log.warning("Service Bus credentials not fully configured — returning empty list")
+    if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
+        log.warning("Service Bus resource configuration missing — returning empty list")
         return []
 
     try:
