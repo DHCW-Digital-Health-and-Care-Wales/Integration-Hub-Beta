@@ -55,8 +55,8 @@ class TestFlowHealth:
     def test_unknown_when_no_queues_found(self) -> None:
         assert flow_health("phw-to-mpi", {}) == "unknown"
 
-    def test_all_five_flows_defined(self) -> None:
-        expected = {"phw-to-mpi", "paris-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "mpi-outbound"}
+    def test_all_flows_defined(self) -> None:
+        expected = {"phw-to-mpi", "paris-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "wds-to-mpi", "mpi-outbound"}
         assert set(FLOWS.keys()) == expected
 
 

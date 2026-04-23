@@ -27,6 +27,83 @@
   <!-- Dashboard CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 
+  <style>
+    /* ── Lego panel ── */
+    #lego-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      width: 280px;
+      flex-direction: column;
+      align-items: stretch;
+      background: #1b294a;
+      border: 1px solid #12a3c9;
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(18,163,201,0.2);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    #lego-panel.lego-panel--visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #lego-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #FFD700;
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid rgba(18,163,201,0.25);
+    }
+    #lego-close-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+    #lego-close-btn:hover { color: #fff; }
+    #lego-canvas { display: block; width: 260px !important; height: 295px !important; }
+    #lego-lyrics {
+      padding: 8px 12px 4px;
+      min-height: 2.4em;
+      font-size: 0.7rem;
+      color: #12a3c9;
+      text-align: center;
+      font-style: italic;
+      transition: opacity 0.3s ease;
+    }
+    #lego-hint {
+      padding: 4px 12px 10px;
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.25);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+    /* ── Floating musical notes ── */
+    .lego-note {
+      position: absolute;
+      font-size: 1.3rem;
+      pointer-events: none;
+      animation: legoNoteFloat 2.2s ease-out forwards;
+      bottom: 120px;
+    }
+    @keyframes legoNoteFloat {
+      0%   { transform: translateY(0)     rotate(-12deg); opacity: 1;   }
+      60%  { opacity: 1; }
+      100% { transform: translateY(-105px) rotate(18deg);  opacity: 0;  }
+    }
+  </style>
+
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -130,6 +207,17 @@
   <span id="footer-time"></span>
 </footer>
 
+<!-- Easter egg: LEGO man singing "Everything is Awesome" (Konami: ↑↑↓↓←→←→BA) -->
+<div id="lego-panel" style="display:none;">
+  <div id="lego-panel-header">
+    <span>🧱 Everything is Awesome!</span>
+    <button id="lego-close-btn" title="Close">&#x2715;</button>
+  </div>
+  <canvas id="lego-canvas" width="260" height="295"></canvas>
+  <div id="lego-lyrics"></div>
+  <div id="lego-hint">↑↑↓↓←→←→BA &nbsp;·&nbsp; ESC to close</div>
+</div>
+
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmRD/9Vz3hgbQDJ+zN5r5tDU+A9"
@@ -166,5 +254,7 @@
 </script>
 
 {% block scripts %}{% endblock %}
+
+<script src="{{ url_for('static', filename='js/easter-egg.js') }}"></script>
 </body>
 </html>

@@ -37,6 +37,8 @@ QUEUE_CHEMO_PRE = os.getenv("QUEUE_CHEMO_PRE", "pre-chemo-transform")
 QUEUE_CHEMO_POST = os.getenv("QUEUE_CHEMO_POST", "post-chemo-transform")
 QUEUE_PIMS_PRE = os.getenv("QUEUE_PIMS_PRE", "pre-pims-transform")
 QUEUE_PIMS_POST = os.getenv("QUEUE_PIMS_POST", "post-pims-transform")
+QUEUE_WDS_PRE = os.getenv("QUEUE_WDS_PRE", "pre-wds-transform")
+QUEUE_WDS_POST = os.getenv("QUEUE_WDS_POST", "post-wds-transform")
 QUEUE_MESSAGE_STORE = os.getenv("QUEUE_MESSAGE_STORE", "message-store")
 QUEUE_MPI_OUTBOUND = os.getenv("QUEUE_MPI_OUTBOUND", "mpi-outbound")
 

@@ -55,6 +55,17 @@ FLOWS: dict[str, dict] = {
         "colour": "#22c55e",
         "icon": "bi-clipboard2-pulse",
     },
+    "wds-to-mpi": {
+        "label": "WDS → MPI",
+        "source": "WDS",
+        "source_port": 2582,
+        "pre_queue": config.QUEUE_WDS_PRE,
+        "transformer": None,
+        "post_queue": config.QUEUE_WDS_POST,
+        "destination": "MPI",
+        "colour": "#f97316",
+        "icon": "bi-hospital",
+    },
     "mpi-outbound": {
         "label": "MPI Outbound",
         "source": "MPI",
@@ -70,6 +81,37 @@ FLOWS: dict[str, dict] = {
 
 
 # ---------------------------------------------------------------------------
+# Dynamic flow discovery
+# ---------------------------------------------------------------------------
+
+def get_active_flows(force_refresh: bool = False) -> dict[str, dict]:
+    """
+    Return the subset of FLOWS that are currently deployed in Azure.
+
+    Queries ARM for Container Apps tagged with ``integration-hub-flow`` and
+    filters ``FLOWS`` to only those present.  If ARM is not reachable or
+    returns nothing (e.g. local dev with no credentials), all flows are
+    returned so the dashboard still works.
+
+    Results from ARM are cached for 5 minutes — pass ``force_refresh=True``
+    to bypass the cache (used by the /api/refresh endpoint).
+    """
+    from dashboard.services.arm import get_deployed_flow_ids
+
+    deployed = get_deployed_flow_ids(force=force_refresh)
+    if not deployed:
+        # ARM not configured or unreachable — show everything
+        return FLOWS
+
+    active = {fid: flow for fid, flow in FLOWS.items() if fid in deployed}
+    if not active:
+        # Tags returned but none matched known flows — safe fallback
+        return FLOWS
+
+    return active
+
+
+# ---------------------------------------------------------------------------
 # Health calculation helpers
 # ---------------------------------------------------------------------------
 
@@ -82,12 +124,14 @@ def queue_health(active: int, dlq: int) -> str:
     return "healthy"
 
 
-def flow_health(flow_id: str, queues_by_name: dict[str, dict]) -> str:
+def flow_health(flow_id: str, queues_by_name: dict[str, dict], flows: dict[str, dict] | None = None) -> str:
     """
     Return overall health for a flow given a mapping of queue-name → queue dict.
     Queue dicts must contain ``active_message_count`` and ``dead_letter_message_count``.
     """
-    flow = FLOWS[flow_id]
+    if flows is None:
+        flows = FLOWS
+    flow = flows[flow_id]
     relevant = [q for q in [flow.get("pre_queue"), flow.get("post_queue")] if q]
     statuses = []
     for qname in relevant:
@@ -120,19 +164,24 @@ def overall_health(flow_statuses: list[str]) -> str:
     return "unknown"
 
 
-def build_flow_data(queues: list[dict]) -> list[dict]:
+def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) -> list[dict]:
     """
     Given the raw list of queue dicts from service_bus.get_queues(),
     return a list of enriched flow dicts ready for the template / API.
+
+    Pass an explicit ``flows`` dict (e.g. from ``get_active_flows()``) to
+    restrict output to deployed flows.  Defaults to all ``FLOWS`` if omitted.
     """
+    if flows is None:
+        flows = FLOWS
     queues_by_name: dict[str, dict] = {q["name"]: q for q in queues}
 
     result = []
-    for flow_id, flow in FLOWS.items():
+    for flow_id, flow in flows.items():
         pre_q = queues_by_name.get(flow.get("pre_queue", ""))
         post_q = queues_by_name.get(flow.get("post_queue", ""))
 
-        health = flow_health(flow_id, queues_by_name)
+        health = flow_health(flow_id, queues_by_name, flows)
 
         result.append(
             {

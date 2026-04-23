@@ -143,7 +143,8 @@ def _get_cached_status(force: bool = False) -> dict:
 
 def _build_status() -> dict:
     queues = get_queues()
-    flows = build_flow_data(queues)
+    active_flows = get_active_flows()
+    flows = build_flow_data(queues, active_flows)
 
     total_active = sum(q.get("active_message_count", 0) for q in queues)
     total_dlq = sum(q.get("dead_letter_message_count", 0) for q in queues)
@@ -191,11 +192,12 @@ def index():
 def flows_page():
     status = _get_cached_status()
     container_metrics = get_container_apps_metrics()
+    active_flows = get_active_flows()
     return render_template(
         "flows.html",
         status=status,
         container_metrics=container_metrics,
-        flows_def=FLOWS,
+        flows_def=active_flows,
         refresh_interval=config.API_CACHE_TTL,
     )
 
@@ -244,10 +246,20 @@ def api_status():
     return jsonify(data)
 
 
+@app.route("/api/refresh")
+def api_refresh():
+    """Force-refresh both the status cache and the ARM flow discovery cache."""
+    from dashboard.services.arm import get_deployed_flow_ids
+    get_deployed_flow_ids(force=True)
+    data = _get_cached_status(force=True)
+    return jsonify({"refreshed": True, "active_flows": list(get_active_flows().keys()), **data})
+
+
 @app.route("/api/flows")
 def api_flows():
     queues = get_queues()
-    flows = build_flow_data(queues)
+    active_flows = get_active_flows()
+    flows = build_flow_data(queues, active_flows)
     container_metrics = get_container_apps_metrics()
     return jsonify(
         {
