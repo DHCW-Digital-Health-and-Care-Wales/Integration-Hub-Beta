@@ -18,8 +18,9 @@ parameters:
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
       - HL7 Sender
-      - Chemo HL7 Subscription Sender
+      - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
+      - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - Message Store Service
@@ -148,9 +149,14 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Sender - Build'
 
-        - name: 'Chemo HL7 Subscription Sender'
+        - name: 'SWW Chemo HL7 Subscription Sender'
           appImageName: 'hl7subsndr'
-          appFunctionMidfix: 'mpi-chemo'
+          appFunctionMidfix: 'sww-chemo'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'BCU Chemo HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'bcu-chemo'
           buildPipeline: 'HL7 Subscription Sender - Build'
 
         - name: 'PHW HL7 Subscription Sender'
