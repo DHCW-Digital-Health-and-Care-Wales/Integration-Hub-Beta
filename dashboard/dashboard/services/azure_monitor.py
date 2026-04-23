@@ -3,6 +3,7 @@ Azure Monitor / Log Analytics queries for the Integration Hub.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -23,6 +24,20 @@ def _credentials_configured() -> bool:
     return bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID)
 
 
+def _parse_dimensions(raw_dimensions: object) -> dict:
+    if isinstance(raw_dimensions, dict):
+        return raw_dimensions
+
+    if isinstance(raw_dimensions, str):
+        try:
+            parsed = json.loads(raw_dimensions)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    return {}
+
+
 def get_exceptions(hours: int = 24) -> list[dict]:
     """
     Query Log Analytics for application exceptions in the last *hours* hours.
@@ -33,9 +48,14 @@ def get_exceptions(hours: int = 24) -> list[dict]:
         return []
 
     query = f"""
-    exceptions
-    | where timestamp > ago({hours}h)
-    | project timestamp, type, outerMessage, severityLevel, appName, operation_Id
+    AppExceptions
+    | where TimeGenerated > ago({hours}h)
+    | project timestamp=TimeGenerated,
+              type=ExceptionType,
+              outerMessage=coalesce(OuterMessage, Message),
+              severityLevel=SeverityLevel,
+              appName=AppRoleName,
+              operation_Id=OperationId
     | order by timestamp desc
     | take 200
     """
@@ -82,10 +102,13 @@ def get_messages_today() -> list[dict]:
         return []
 
     query = """
-    customEvents
-    | where timestamp > startofday(now())
-    | where name == "MessageProcessed" or name startswith "HL7"
-    | project timestamp, name, customDimensions, appName
+    AppTraces
+    | where TimeGenerated > startofday(now())
+    | where Message == "Integration Hub Event"
+    | project timestamp=TimeGenerated,
+              name=Message,
+              customDimensions=Properties,
+              appName=AppRoleName
     | order by timestamp desc
     | take 500
     """
@@ -105,12 +128,13 @@ def get_messages_today() -> list[dict]:
         for table in response.tables:
             for row in table.rows:
                 row_dict = dict(zip(table.columns, row))
+                dimensions = _parse_dimensions(row_dict.get("customDimensions", {}))
                 results.append(
                     {
                         "timestamp": str(row_dict.get("timestamp", "")),
-                        "event": row_dict.get("name", ""),
-                        "app": row_dict.get("appName", ""),
-                        "dimensions": row_dict.get("customDimensions", {}),
+                        "event": dimensions.get("event_type") or row_dict.get("name", ""),
+                        "app": dimensions.get("microservice_id") or row_dict.get("appName", ""),
+                        "dimensions": dimensions,
                     }
                 )
         return results

@@ -14,6 +14,9 @@ uv run flask --app dashboard.app run
 
 Open http://127.0.0.1:5000
 
+If `dashboard/.env` exists, the dashboard loads it automatically at startup.
+Values already exported in the shell still take precedence.
+
 ## Running with Docker
 
 ```bash
@@ -33,6 +36,7 @@ docker run -p 8080:8080 --env-file dashboard.env integration-hub-dashboard
 | `AZURE_SERVICE_BUS_NAMESPACE` | Service Bus namespace name | — |
 | `AZURE_LOG_ANALYTICS_WORKSPACE_ID` | Log Analytics workspace ID | — |
 | `AZURE_CONTAINER_APPS_ENVIRONMENT` | Container Apps environment name | — |
+| `AZURE_CA_CERT_FILE` | Optional PEM/DER corporate CA certificate file appended to the trust bundle for Azure HTTPS calls | — |
 | `FLASK_SECRET_KEY` | Flask session secret | `dev-secret-key-change-in-production` |
 | `QUEUE_WARNING_THRESHOLD` | Active message count warning level | `10` |
 | `QUEUE_CRITICAL_THRESHOLD` | Active message count critical level | `50` |

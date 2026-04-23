@@ -4,10 +4,108 @@ Integration Hub Dashboard — Flask application entry point.
 from __future__ import annotations
 
 import logging
+import os
+import ssl
+import tempfile
 import time
 from datetime import datetime, timezone
 from functools import lru_cache
+from pathlib import Path
 from threading import Lock
+
+
+def _read_extra_ca_file(cert_path: Path) -> str | None:
+    """Read a PEM or DER certificate file and return PEM text."""
+    try:
+        raw = cert_path.read_bytes()
+    except OSError:
+        return None
+
+    if raw.startswith(b"-----BEGIN CERTIFICATE-----"):
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+
+    try:
+        return ssl.DER_cert_to_PEM_cert(raw)
+    except ValueError:
+        return None
+
+def _load_env_file(env_file: Path | None = None) -> None:
+    """Load simple KEY=VALUE pairs from dashboard/.env without overriding existing env vars."""
+    dotenv_path = env_file or Path(__file__).resolve().parent.parent / ".env"
+    if not dotenv_path.is_file():
+        return
+
+    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        env_name = key.strip()
+        if not env_name or env_name in os.environ:
+            continue
+
+        env_value = value.strip()
+        if len(env_value) >= 2 and env_value[0] == env_value[-1] and env_value[0] in {"\"", "'"}:
+            env_value = env_value[1:-1]
+
+        os.environ[env_name] = env_value
+
+
+_load_env_file()
+
+
+def _configure_ssl_trust() -> None:
+    """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception."""
+    if os.name != "nt":
+        return
+
+    bundle_path = Path(tempfile.gettempdir()) / "integration-hub-dashboard-ca.pem"
+
+    extra_cert_paths = []
+    for env_name in ("AZURE_CA_CERT_FILE", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
+        env_value = os.environ.get(env_name)
+        if env_value:
+            extra_cert_paths.append(Path(env_value))
+
+    try:
+        import certifi
+
+        bundle_parts = [Path(certifi.where()).read_text(encoding="utf-8")]
+        for cert_path in extra_cert_paths:
+            extra_pem = _read_extra_ca_file(cert_path)
+            if extra_pem:
+                bundle_parts.append(extra_pem)
+
+        if len(bundle_parts) > 1:
+            bundle_path.write_text("\n".join(bundle_parts) + "\n", encoding="utf-8")
+            os.environ["SSL_CERT_FILE"] = str(bundle_path)
+            os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
+            return
+    except Exception:
+        pass
+
+    certs: dict[bytes, None] = {}
+    for store_name in ("ROOT", "CA"):
+        for cert_bytes, encoding, _trust in ssl.enum_certificates(store_name):
+            if encoding == "x509_asn":
+                certs[cert_bytes] = None
+
+    if not certs:
+        return
+
+    if not bundle_path.is_file():
+        pem_data = "".join(ssl.DER_cert_to_PEM_cert(cert) for cert in certs)
+        bundle_path.write_text(pem_data, encoding="ascii")
+
+    os.environ["SSL_CERT_FILE"] = str(bundle_path)
+    os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
+
+
+_configure_ssl_trust()
 
 from flask import Flask, jsonify, render_template, request
 
@@ -112,6 +210,7 @@ def exceptions_page():
         "exceptions.html",
         exceptions=exceptions,
         hours=hours,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
     )
 
 
@@ -132,6 +231,7 @@ def messages_page():
     return render_template(
         "messages.html",
         messages=messages,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
     )
 
 
