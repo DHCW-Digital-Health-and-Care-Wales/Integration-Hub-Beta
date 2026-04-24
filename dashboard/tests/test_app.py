@@ -118,7 +118,9 @@ class TestApiRoutes:
 
 
 class TestEnvLoading:
-    def test_load_env_file_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_load_dotenv_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from dotenv import load_dotenv
+
         env_file = tmp_path / ".env"
         env_file.write_text(
             "AZURE_RESOURCE_GROUP=from-file\nAZURE_SERVICE_BUS_NAMESPACE=from-file-sb\n",
@@ -128,7 +130,7 @@ class TestEnvLoading:
         monkeypatch.delenv("AZURE_RESOURCE_GROUP", raising=False)
         monkeypatch.setenv("AZURE_SERVICE_BUS_NAMESPACE", "pre-set")
 
-        app_module._load_env_file(env_file)
+        load_dotenv(env_file, override=False)
 
         assert os.environ["AZURE_RESOURCE_GROUP"] == "from-file"
         assert os.environ["AZURE_SERVICE_BUS_NAMESPACE"] == "pre-set"

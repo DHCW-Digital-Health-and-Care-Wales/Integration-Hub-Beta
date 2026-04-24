@@ -18,7 +18,7 @@ from flask import Flask, jsonify, render_template, request
 from dashboard import config
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import FLOWS, build_flow_data, overall_health
+from dashboard.services.flows import FLOWS, build_flow_data, get_active_flows, overall_health
 from dashboard.services.service_bus import get_queues
 
 
@@ -39,32 +39,6 @@ def _read_extra_ca_file(cert_path: Path) -> str | None:
         return ssl.DER_cert_to_PEM_cert(raw)
     except ValueError:
         return None
-
-def _load_env_file(env_file: Path | None = None) -> None:
-    """Load simple KEY=VALUE pairs from dashboard/.env without overriding existing env vars."""
-    dotenv_path = env_file or Path(__file__).resolve().parent.parent / ".env"
-    if not dotenv_path.is_file():
-        return
-
-    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        env_name = key.strip()
-        if not env_name or env_name in os.environ:
-            continue
-
-        env_value = value.strip()
-        if len(env_value) >= 2 and env_value[0] == env_value[-1] and env_value[0] in {"\"", "'"}:
-            env_value = env_value[1:-1]
-
-        os.environ[env_name] = env_value
-
-
-_load_env_file()
-
 
 def _configure_ssl_trust() -> None:
     """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception."""
@@ -143,7 +117,8 @@ def _get_cached_status(force: bool = False) -> dict:
 
 def _build_status() -> dict:
     queues = get_queues()
-    flows = build_flow_data(queues)
+    active_flows = get_active_flows()
+    flows = build_flow_data(queues, active_flows)
 
     total_active = sum(q.get("active_message_count", 0) for q in queues)
     total_dlq = sum(q.get("dead_letter_message_count", 0) for q in queues)
@@ -191,11 +166,12 @@ def index():
 def flows_page():
     status = _get_cached_status()
     container_metrics = get_container_apps_metrics()
+    active_flows = get_active_flows()
     return render_template(
         "flows.html",
         status=status,
         container_metrics=container_metrics,
-        flows_def=FLOWS,
+        flows_def=active_flows,
         refresh_interval=config.API_CACHE_TTL,
     )
 
@@ -244,10 +220,20 @@ def api_status():
     return jsonify(data)
 
 
+@app.route("/api/refresh")
+def api_refresh():
+    """Force-refresh both the status cache and the ARM flow discovery cache."""
+    from dashboard.services.arm import get_deployed_flow_ids
+    get_deployed_flow_ids(force=True)
+    data = _get_cached_status(force=True)
+    return jsonify({"refreshed": True, "active_flows": list(get_active_flows().keys()), **data})
+
+
 @app.route("/api/flows")
 def api_flows():
     queues = get_queues()
-    flows = build_flow_data(queues)
+    active_flows = get_active_flows()
+    flows = build_flow_data(queues, active_flows)
     container_metrics = get_container_apps_metrics()
     return jsonify(
         {
