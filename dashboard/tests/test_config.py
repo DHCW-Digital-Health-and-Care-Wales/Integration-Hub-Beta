@@ -12,7 +12,7 @@ from unittest.mock import patch
 class TestConfigDefaults:
     def _load_config(self, env: dict) -> object:
         """Re-import config module with a patched environment."""
-        with patch.dict(os.environ, env, clear=True):
+        with patch.dict(os.environ, env, clear=True), patch("dotenv.load_dotenv"):
             import dashboard.config as cfg
             importlib.reload(cfg)
             return cfg

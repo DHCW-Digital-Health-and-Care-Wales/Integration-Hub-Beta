@@ -4,7 +4,23 @@ Pure logic — no Azure calls, no mocking needed.
 """
 from __future__ import annotations
 
-from dashboard.services.flows import FLOWS, flow_health, overall_health, queue_health
+from dashboard.services.flows import flow_health, overall_health, queue_health
+
+
+# Test flows with hardcoded queue names - independent of config.py
+TEST_FLOWS = {
+    "phw-to-mpi": {
+        "label": "PHW → MPI",
+        "source": "PHW",
+        "source_port": 2575,
+        "pre_queue": "pre-phw-transform",
+        "transformer": "PHW Transformer",
+        "post_queue": "post-phw-transform",
+        "destination": "MPI",
+        "colour": "#3b82f6",
+        "icon": "bi-heart-pulse",
+    },
+}
 
 
 class TestQueueHealth:
@@ -36,26 +52,27 @@ class TestFlowHealth:
             "pre-phw-transform":  self._make_queue("pre-phw-transform"),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
-        assert flow_health("phw-to-mpi", queues_by_name) == "healthy"
+        assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "healthy"
 
     def test_warning_when_pre_queue_at_threshold(self) -> None:
         queues_by_name = {
             "pre-phw-transform":  self._make_queue("pre-phw-transform", active=15),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
-        assert flow_health("phw-to-mpi", queues_by_name) == "warning"
+        assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "warning"
 
     def test_critical_when_post_queue_critical(self) -> None:
         queues_by_name = {
             "pre-phw-transform":  self._make_queue("pre-phw-transform"),
             "post-phw-transform": self._make_queue("post-phw-transform", active=50),
         }
-        assert flow_health("phw-to-mpi", queues_by_name) == "critical"
+        assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "critical"
 
     def test_unknown_when_no_queues_found(self) -> None:
-        assert flow_health("phw-to-mpi", {}) == "unknown"
+        assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
     def test_all_flows_defined(self) -> None:
+        from dashboard.services.flows import FLOWS
         expected = {"phw-to-mpi", "paris-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "wds-to-mpi", "mpi-outbound"}
         assert set(FLOWS.keys()) == expected
 
