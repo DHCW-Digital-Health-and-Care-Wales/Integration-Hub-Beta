@@ -18,7 +18,7 @@ from flask import Flask, jsonify, render_template, request
 from dashboard import config
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import FLOWS, build_flow_data, get_active_flows, overall_health
+from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health
 from dashboard.services.service_bus import get_queues
 
 

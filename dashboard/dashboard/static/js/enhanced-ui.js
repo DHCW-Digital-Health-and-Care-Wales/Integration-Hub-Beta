@@ -154,15 +154,17 @@
     const by     = baseY + bounce;             // adjusted baseline
 
     // ── LEGS ──
-    ctx.fillStyle = '#1B294A';
+    ctx.fillStyle = '#2952A3';
     ctx.fillRect(cx - 27 + sway, by - 52, 23, 50);   // left leg
     ctx.fillRect(cx + 4  + sway, by - 52, 23, 50);   // right leg
 
     // ── FEET ──
+    ctx.fillStyle = '#1F3D7A';
     ctx.fillRect(cx - 30 + sway, by - 10, 27, 12);
     ctx.fillRect(cx + 3  + sway, by - 10, 27, 12);
 
     // ── HIPS ──
+    ctx.fillStyle = '#2952A3';
     ctx.fillRect(cx - 29 + sway, by - 69, 58, 19);
 
     // ── TORSO ──

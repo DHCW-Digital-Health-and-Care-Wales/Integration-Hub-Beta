@@ -33,19 +33,5 @@ QUEUE_WARNING_THRESHOLD = int(os.getenv("QUEUE_WARNING_THRESHOLD", "10"))
 QUEUE_CRITICAL_THRESHOLD = int(os.getenv("QUEUE_CRITICAL_THRESHOLD", "50"))
 DLQ_WARNING_THRESHOLD = int(os.getenv("DLQ_WARNING_THRESHOLD", "1"))
 
-# Queue name overrides — allows env-based remapping if real names differ
-QUEUE_PHW_PRE = os.getenv("QUEUE_PHW_PRE", "pre-phw-transform")
-QUEUE_PHW_POST = os.getenv("QUEUE_PHW_POST", "post-phw-transform")
-QUEUE_PARIS_PRE = os.getenv("QUEUE_PARIS_PRE", "pre-paris-transform")
-QUEUE_PARIS_POST = os.getenv("QUEUE_PARIS_POST", "post-paris-transform")
-QUEUE_CHEMO_PRE = os.getenv("QUEUE_CHEMO_PRE", "pre-chemo-transform")
-QUEUE_CHEMO_POST = os.getenv("QUEUE_CHEMO_POST", "post-chemo-transform")
-QUEUE_PIMS_PRE = os.getenv("QUEUE_PIMS_PRE", "pre-pims-transform")
-QUEUE_PIMS_POST = os.getenv("QUEUE_PIMS_POST", "post-pims-transform")
-QUEUE_WDS_PRE = os.getenv("QUEUE_WDS_PRE", "pre-wds-transform")
-QUEUE_WDS_POST = os.getenv("QUEUE_WDS_POST", "post-wds-transform")
-QUEUE_MESSAGE_STORE = os.getenv("QUEUE_MESSAGE_STORE", "message-store")
-QUEUE_MPI_OUTBOUND = os.getenv("QUEUE_MPI_OUTBOUND", "mpi-outbound")
-
 # Cache TTL in seconds for /api/status
 API_CACHE_TTL = int(os.getenv("API_CACHE_TTL", "30"))

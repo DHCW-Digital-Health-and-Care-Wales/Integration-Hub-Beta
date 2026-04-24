@@ -17,6 +17,11 @@ class TestConfigDefaults:
             importlib.reload(cfg)
             return cfg
 
+    def teardown_method(self) -> None:
+        """Restore config module to real environment after each test."""
+        import dashboard.config as cfg
+        importlib.reload(cfg)
+
     def test_warning_threshold_default(self) -> None:
         cfg = self._load_config({})
         assert cfg.QUEUE_WARNING_THRESHOLD == 10
@@ -36,16 +41,3 @@ class TestConfigDefaults:
     def test_warning_threshold_override(self) -> None:
         cfg = self._load_config({"QUEUE_WARNING_THRESHOLD": "25"})
         assert cfg.QUEUE_WARNING_THRESHOLD == 25
-
-    def test_queue_name_defaults(self) -> None:
-        cfg = self._load_config({})
-        assert cfg.QUEUE_PHW_PRE == "pre-phw-transform"
-        assert cfg.QUEUE_PHW_POST == "post-phw-transform"
-        assert cfg.QUEUE_PARIS_PRE == "pre-paris-transform"
-        assert cfg.QUEUE_CHEMO_PRE == "pre-chemo-transform"
-        assert cfg.QUEUE_PIMS_PRE == "pre-pims-transform"
-        assert cfg.QUEUE_MPI_OUTBOUND == "mpi-outbound"
-
-    def test_queue_name_override(self) -> None:
-        cfg = self._load_config({"QUEUE_PHW_PRE": "custom-phw-queue"})
-        assert cfg.QUEUE_PHW_PRE == "custom-phw-queue"

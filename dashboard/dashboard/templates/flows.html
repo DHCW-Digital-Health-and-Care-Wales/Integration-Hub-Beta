@@ -88,8 +88,9 @@
         </div>
       </div>
       <div class="d-flex align-items-center gap-2">
-        {% if pre.dlq > 0 or (post.name and post.dlq > 0) %}
-        <span class="dlq-badge-pill"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ (pre.dlq or 0) + (post.dlq or 0) }}</span>
+        {% set flow_dlq = (pre.dlq or 0) + (post.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
+        {% if flow_dlq > 0 %}
+        <span class="dlq-badge-pill"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ flow_dlq }}</span>
         {% endif %}
         <span class="status-badge {{ flow.health }} large flow-health-badge">
           <span class="flow-status-dot {{ flow.health }}" style="width:7px;height:7px;"></span>
@@ -103,6 +104,79 @@
       <!-- Full pipeline — every node always includes an empty .pipeline-node-count spacer
            so all nodes share the same total height and the arrow line stays centred. -->
       <div class="section-title mb-2"><i class="bi bi-arrow-right-circle"></i> Message Flow</div>
+
+      {% if flow.topic %}
+      {# ── Topic / subscription flow (MPI Outbound) ── #}
+      <div class="pipeline mb-3" style="gap:0; overflow-x:auto;">
+        <!-- SOURCE -->
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:80px; font-size:0.72rem;">
+            <div style="font-size:0.58rem; color:var(--text-dim)">HL7 Server{% if flow.source_port %} :{{ flow.source_port }}{% endif %}</div>
+            {{ flow.source }}
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line healthy"></div></div>
+
+        <!-- TOPIC -->
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:120px; border-color:{{ flow.colour }}40;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-broadcast"></i> TOPIC</div>
+            {{ flow.topic }}
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ flow.health }}"></div></div>
+
+        <!-- FAN-OUT INDICATOR -->
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:100px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-diagram-3"></i> SUBSCRIPTIONS</div>
+            {{ flow.subscriptions | length }} senders
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line healthy"></div></div>
+
+        <!-- DESTINATION -->
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="color:var(--accent-cyan); border-color:rgba(6,182,212,0.3);">
+            {{ flow.destination }}
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+      </div>
+
+      <!-- Subscription detail grid -->
+      {% if flow.subscriptions %}
+      <div class="section-title mb-2"><i class="bi bi-collection"></i> Subscriptions</div>
+      <div class="flow-detail-queue-grid">
+        {% for sub in flow.subscriptions %}
+        <div class="queue-metric-box {{ sub.health }}">
+          <div class="queue-metric-name">
+            <span><i class="bi bi-envelope-arrow-down"></i> {{ sub.name }}</span>
+            <span class="status-badge {{ sub.health }}" style="font-size:0.6rem;">{{ sub.health }}</span>
+          </div>
+          <div class="queue-metric-values">
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.active >= 50 else ('warning' if sub.active >= 10 else 'ok') }}">{{ sub.active }}</div>
+              <div class="qmv-label">Active</div>
+            </div>
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.dlq > 0 else 'ok' }}">{{ sub.dlq }}</div>
+              <div class="qmv-label">DLQ</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      {# ── Standard queue-based flow ── #}
       <div class="pipeline mb-3" style="gap:0; overflow-x:auto;">
 
         <!-- 1. SOURCE -->
@@ -241,6 +315,7 @@
         </div>
         {% endif %}
       </div>
+      {% endif %} {# end standard queue-based flow #}
 
       <!-- Container Apps for this flow -->
       {% set apps = container_metrics.get(flow.id, []) %}

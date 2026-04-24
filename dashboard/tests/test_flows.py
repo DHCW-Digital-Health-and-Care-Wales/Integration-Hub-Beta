@@ -72,9 +72,9 @@ class TestFlowHealth:
         assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
     def test_all_flows_defined(self) -> None:
-        from dashboard.services.flows import FLOWS
+        from dashboard.services.flows import _FLOW_DEFS
         expected = {"phw-to-mpi", "paris-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "wds-to-mpi", "mpi-outbound"}
-        assert set(FLOWS.keys()) == expected
+        assert {d["id"] for d in _FLOW_DEFS} == expected
 
 
 class TestOverallHealth:

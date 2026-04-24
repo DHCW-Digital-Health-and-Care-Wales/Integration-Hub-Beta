@@ -87,9 +87,10 @@
           {{ flow.label }}
         </div>
         <span class="status-badge {{ flow.health }}">{{ flow.health }}</span>
-        {% if flow.pre_queue.dlq > 0 or (flow.post_queue.name and flow.post_queue.dlq > 0) %}
+        {% set flow_dlq = (flow.pre_queue.dlq or 0) + (flow.post_queue.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
+        {% if flow_dlq > 0 %}
         <div class="dlq-badge-pill mt-1" style="font-size:0.6rem;">
-          DLQ: {{ (flow.pre_queue.dlq or 0) + (flow.post_queue.dlq or 0) }}
+          DLQ: {{ flow_dlq }}
         </div>
         {% endif %}
       </div>

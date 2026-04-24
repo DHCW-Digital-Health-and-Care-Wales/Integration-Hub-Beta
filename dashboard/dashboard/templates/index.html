@@ -118,10 +118,11 @@
           <span class="flow-status-dot {{ flow.health }}"></span>
         </div>
         <div class="d-flex align-items-center gap-2">
-          {% if pre.dlq > 0 or post.dlq > 0 %}
+          {% set flow_dlq = (pre.dlq or 0) + (post.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
+          {% if flow_dlq > 0 %}
           <span class="dlq-badge-pill">
             <i class="bi bi-exclamation-octagon-fill"></i>
-            DLQ: {{ (pre.dlq or 0) + (post.dlq or 0) }}
+            DLQ: {{ flow_dlq }}
           </span>
           {% endif %}
           <span class="status-badge {{ flow.health }} flow-health-badge">{{ flow.health | upper }}</span>
@@ -137,6 +138,45 @@
             {% if flow.source_port %}<span class="port-label">:{{ flow.source_port }}</span>{% endif %}
           </div>
         </div>
+
+        {% if flow.topic %}
+        {# ── Topic / subscription flow (MPI Outbound) ── #}
+        <div class="pipeline-arrow">
+          <div class="pipeline-arrow-line healthy"></div>
+        </div>
+
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral">
+            <i class="bi bi-broadcast" style="font-size:0.6rem"></i> TOPIC
+          </div>
+          <div class="pipeline-node-count">
+            {% set sub_total_active = flow.subscriptions | sum(attribute='active') if flow.subscriptions else 0 %}
+            <span>{{ sub_total_active }}</span>
+            {% set sub_total_dlq = flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0 %}
+            {% if sub_total_dlq > 0 %}
+            <span class="dlq-badge">+{{ sub_total_dlq }}DLQ</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="pipeline-arrow">
+          <div class="pipeline-arrow-line {{ flow.health }}"></div>
+        </div>
+
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral">
+            <i class="bi bi-diagram-3" style="font-size:0.6rem"></i>
+            {{ flow.subscriptions | length }} subs
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+
+        <div class="pipeline-arrow">
+          <div class="pipeline-arrow-line healthy"></div>
+        </div>
+
+        {% else %}
+        {# ── Standard queue-based flow ── #}
 
         <!-- Arrow to pre-queue -->
         <div class="pipeline-arrow">
@@ -197,6 +237,8 @@
         <div class="pipeline-arrow">
           <div class="pipeline-arrow-line {{ post.health }}" data-arrow="post"></div>
         </div>
+        {% endif %}
+
         {% endif %}
 
         <!-- Destination -->
