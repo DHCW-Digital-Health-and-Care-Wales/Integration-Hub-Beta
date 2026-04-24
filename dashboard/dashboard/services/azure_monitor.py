@@ -159,14 +159,12 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
-        from azure.identity import ClientSecretCredential
-        from azure.monitor.query import MetricsQueryClient
+        from azure.monitor.querymetrics import MetricsClient
         from azure.mgmt.appcontainers import ContainerAppsAPIClient
-        from azure.monitor.query import MetricsQueryClient
 
         cred = get_azure_credential()
         apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
-        metrics_client = MetricsQueryClient(cred)
+        metrics_client = MetricsClient("https://management.azure.com", cred)
 
         apps = list(
             apps_client.container_apps.list_by_resource_group(

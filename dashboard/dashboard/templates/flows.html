@@ -234,6 +234,11 @@
             </div>
           </div>
         </div>
+        {% elif post.name %}
+        <div class="queue-metric-box unknown">
+          <div class="queue-metric-name"><i class="bi bi-question-circle"></i> {{ post.name }}</div>
+          <div style="color:var(--text-dim); font-size:0.75rem; margin-top:0.5rem;">Queue not found in namespace</div>
+        </div>
         {% endif %}
       </div>
 
