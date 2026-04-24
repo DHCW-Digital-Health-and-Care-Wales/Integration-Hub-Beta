@@ -18,6 +18,19 @@
     </a>
   </div>
 
+  {% if queue_filter %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-cyan); padding:0.7rem 1rem; display:flex; align-items:center; justify-content:space-between;">
+    <span style="font-size:0.82rem;">
+      <i class="bi bi-funnel-fill" style="color:var(--accent-cyan)"></i>
+      Filtered by queue: <strong style="color:var(--accent-cyan)">{{ queue_filter }}</strong>
+      {% if flow_label %}<span style="color:var(--text-muted)"> · {{ flow_label }}</span>{% endif %}
+    </span>
+    <a href="{{ url_for('messages_page') }}" class="btn-dash btn-dash--sm">
+      <i class="bi bi-x-lg"></i> Clear filter
+    </a>
+  </div>
+  {% endif %}
+
   {% if messages %}
 
   <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr))">
@@ -45,7 +58,36 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
+  {% if not queue_filter %}
+  <!-- Messages chart — only on the unfiltered overview -->
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-graph-up"></i> Service Bus Messages</span>
+  </div>
+  <div class="dash-card mb-3">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+      <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Show data for the last:</span>
+      <div id="metrics-timespan-btns" style="display:flex; gap:4px;">
+        <button class="btn-dash btn-dash--sm metrics-ts-btn active" data-hours="1">1 hour</button>
+        <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="6">6 hours</button>
+        <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="12">12 hours</button>
+        <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="24">1 day</button>
+        <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="168">7 days</button>
+        <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="720">30 days</button>
+      </div>
+    </div>
+    <div style="position:relative; width:100%; height:280px;">
+      <canvas id="messages-chart" style="width:100%; height:100%;"></canvas>
+    </div>
+    <div id="messages-chart-legend" style="display:flex; gap:1.5rem; justify-content:center; margin-top:0.6rem; font-size:0.72rem; color:var(--text-muted);"></div>
+    <div id="messages-chart-loading" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:0.8rem; color:var(--text-dim); display:none;">
+      <i class="bi bi-arrow-repeat spin"></i> Loading metrics…
+    </div>
+  </div>
+  {% endif %}
+
+  {% if messages %}
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
       <h6><i class="bi bi-list-ul me-1"></i> Message Log</h6>
@@ -104,4 +146,10 @@
   {% endif %}
 
 </div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+{% if not queue_filter %}
+<script src="{{ url_for('static', filename='js/sb-chart.js') }}"></script>
+{% endif %}
 {% endblock %}

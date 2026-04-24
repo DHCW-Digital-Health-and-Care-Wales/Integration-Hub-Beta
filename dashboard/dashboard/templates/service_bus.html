@@ -129,7 +129,9 @@
           {% set dlq    = q.dead_letter_message_count %}
           {% set q_health = 'critical' if active >= 50 else ('warning' if (active >= 10 or dlq > 0) else 'healthy') %}
           <tr data-queue-name="{{ q.name }}" class="{{ 'table-danger-row' if q_health == 'critical' else '' }}">
-            <td class="queue-name-cell" data-col="name">{{ q.name }}</td>
+            <td class="queue-name-cell" data-col="name">
+              <a href="{{ url_for('messages_page', queue=q.name) }}" class="queue-link">{{ q.name }}</a>
+            </td>
             <td class="count-cell text-end {{ 'critical' if active >= 50 else ('warning' if active >= 10 else 'zero') }}"
                 data-col="active">{{ active }}</td>
             <td class="count-cell text-end {{ 'dlq-warn' if dlq > 0 else 'zero' }}"
@@ -169,4 +171,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/explode.js') }}"></script>
 {% endblock %}

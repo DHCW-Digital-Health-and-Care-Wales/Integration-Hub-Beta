@@ -92,19 +92,41 @@ def get_exceptions(hours: int = 24) -> list[dict]:
         return []
 
 
-def get_messages_today() -> list[dict]:
+def get_messages_today(
+    workflow_id: str | None = None,
+    microservice_ids: list[str] | None = None,
+) -> list[dict]:
     """
     Query Log Analytics for HL7 messages processed today.
     Returns a list of message dicts.
+
+    If *microservice_ids* is given, only messages whose ``microservice_id``
+    custom dimension matches one of the values are returned.
+    Falls back to *workflow_id* filtering if *microservice_ids* is empty.
     """
     if not _credentials_configured():
         log.warning("Log Analytics credentials not configured — returning empty list")
         return []
 
-    query = """
+    import re
+
+    # Build the optional filter clause
+    wf_filter = ""
+    if microservice_ids:
+        # Sanitise each id — only allow alphanumeric, hyphens, underscores
+        safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", mid) for mid in microservice_ids]
+        safe_ids = [s for s in safe_ids if s]
+        if safe_ids:
+            conditions = " or ".join(f'Properties contains "{sid}"' for sid in safe_ids)
+            wf_filter = f"\n    | where {conditions}"
+    elif workflow_id:
+        safe_wf = re.sub(r"[^a-zA-Z0-9\-_]", "", workflow_id)
+        wf_filter = f'\n    | where Properties contains "{safe_wf}"'
+
+    query = f"""
     AppTraces
     | where TimeGenerated > startofday(now())
-    | where Message == "Integration Hub Event"
+    | where Message == "Integration Hub Event"{wf_filter}
     | project timestamp=TimeGenerated,
               name=Message,
               customDimensions=Properties,

@@ -103,6 +103,7 @@ _AUTO_COLOURS = ["#ec4899", "#8b5cf6", "#14b8a6", "#ef4444", "#64748b"]
 _CACHE_TTL_SECONDS = 300
 _cache_lock = Lock()
 _cached_flows: dict[str, dict] = {}
+_cached_apps: list[dict] = []
 _cache_timestamp: float = 0.0
 
 
@@ -324,7 +325,7 @@ def discover_flows(force: bool = False) -> dict[str, dict]:
     Returns an empty dict if the Container Apps API is unreachable or not
     configured, which lets the caller fall back to static definitions.
     """
-    global _cached_flows, _cache_timestamp  # noqa: PLW0603
+    global _cached_flows, _cached_apps, _cache_timestamp  # noqa: PLW0603
 
     if not _is_configured():
         log.warning("Container Apps not configured — flow discovery disabled")
@@ -362,6 +363,7 @@ def discover_flows(force: bool = False) -> dict[str, dict]:
                 sorted(flows.keys()),
             )
             _cached_flows = flows
+            _cached_apps = apps
             _cache_timestamp = now
             return dict(flows)
 
@@ -369,3 +371,25 @@ def discover_flows(force: bool = False) -> dict[str, dict]:
             log.error("Container App flow discovery failed: %s", exc)
             # Return stale cache if available, otherwise empty
             return dict(_cached_flows)
+
+
+def queue_to_microservice_ids(queue_name: str) -> list[str]:
+    """Return the ``MICROSERVICE_ID`` values of apps whose INGRESS or EGRESS queue matches *queue_name*.
+
+    Relies on the cached Container App data populated by :func:`discover_flows`.
+    Returns an empty list if no match is found.
+    """
+    # Ensure discovery has run at least once
+    discover_flows()
+
+    lower = queue_name.lower()
+    result: list[str] = []
+    for app in _cached_apps:
+        env = app["env"]
+        ingress = (env.get("INGRESS_QUEUE_NAME") or "").lower()
+        egress = (env.get("EGRESS_QUEUE_NAME") or "").lower()
+        if lower in (ingress, egress):
+            ms_id = env.get("MICROSERVICE_ID") or app["name"]
+            if ms_id not in result:
+                result.append(ms_id)
+    return result

@@ -4,6 +4,7 @@ Azure Service Bus queue metrics via azure-mgmt-servicebus.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from dashboard import config
@@ -161,3 +162,105 @@ def get_subscriptions(topic_name: str) -> list[dict]:
     except Exception as exc:
         log.error("Failed to fetch subscriptions for topic %s: %s", topic_name, exc)
         return []
+
+
+# ---------------------------------------------------------------------------
+# Service Bus metrics (Incoming / Outgoing messages over time)
+# ---------------------------------------------------------------------------
+
+def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) -> dict:
+    """Query Log Analytics for Service Bus IncomingMessages / OutgoingMessages.
+
+    Uses a KQL query against the ``AzureMetrics`` table rather than the
+    Azure Monitor Metrics REST API, because the installed SDK only ships
+    the ``LogsQueryClient``.
+
+    If *queue_name* is provided the results are scoped to that single queue.
+
+    Returns a dict with ``incoming`` and ``outgoing`` lists of
+    ``{"time": ISO-string, "value": int}`` data points, plus a
+    ``timespan`` label.
+    """
+    empty: dict = {"incoming": [], "outgoing": [], "timespan": f"{timespan_hours}h"}
+
+    workspace_id = config.AZURE_LOG_ANALYTICS_WORKSPACE_ID
+    if not workspace_id:
+        log.warning("Log Analytics workspace not configured — skipping message metrics")
+        return empty
+
+    # Choose bin size based on timespan
+    if timespan_hours <= 1:
+        bin_size = "1m"
+    elif timespan_hours <= 12:
+        bin_size = "5m"
+    elif timespan_hours <= 48:
+        bin_size = "15m"
+    else:
+        bin_size = "1h"
+
+    import re
+
+    queue_filter_kql = ""
+    if queue_name:
+        safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", queue_name)
+        queue_filter_kql = f"| where Resource =~ '{safe_queue}'\n"
+
+    kql = (
+        "AzureMetrics\n"
+        "| where ResourceProvider == 'MICROSOFT.SERVICEBUS'\n"
+        "| where MetricName in ('IncomingMessages', 'OutgoingMessages')\n"
+        f"| where TimeGenerated > ago({timespan_hours}h)\n"
+        f"{queue_filter_kql}"
+        f"| summarize Value=sum(Total) by bin(TimeGenerated, {bin_size}), MetricName\n"
+        "| order by TimeGenerated asc\n"
+    )
+
+    try:
+        from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+
+        cred = get_azure_credential()
+        client = LogsQueryClient(cred)
+
+        response = client.query_workspace(
+            workspace_id=workspace_id,
+            query=kql,
+            timespan=timedelta(hours=timespan_hours),
+        )
+
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.error("Log Analytics query failed: %s", response.partial_error)
+            return empty
+
+        series: dict[str, list[dict]] = {"incoming": [], "outgoing": []}
+        key_map = {"IncomingMessages": "incoming", "OutgoingMessages": "outgoing"}
+
+        for row in response.tables[0].rows:
+            time_generated = row[0]  # datetime
+            metric_name = row[1]     # str
+            value = row[2]           # float/int
+
+            key = key_map.get(metric_name)
+            if not key:
+                continue
+
+            if isinstance(time_generated, datetime):
+                time_str = time_generated.astimezone(timezone.utc).isoformat()
+            else:
+                time_str = str(time_generated)
+
+            series[key].append({
+                "time": time_str,
+                "value": int(value) if value is not None else 0,
+            })
+
+        series["timespan"] = f"{timespan_hours}h"
+        log.info(
+            "Fetched %d incoming, %d outgoing message metric points",
+            len(series["incoming"]),
+            len(series["outgoing"]),
+        )
+        return series
+
+    except Exception as exc:
+        log.error("Failed to fetch Service Bus message metrics: %s", exc)
+        return empty

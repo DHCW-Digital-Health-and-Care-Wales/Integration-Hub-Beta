@@ -19,7 +19,7 @@ from dashboard import config
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health
-from dashboard.services.service_bus import get_queues
+from dashboard.services.service_bus import get_queues, get_message_metrics
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
@@ -201,11 +201,30 @@ def service_bus_page():
 
 @app.route("/messages")
 def messages_page():
-    messages = get_messages_today()
+    queue_filter = request.args.get("queue", "").strip()
+    flow_label = None
+    microservice_ids: list[str] | None = None
+
+    if queue_filter:
+        from dashboard.services.arm import queue_to_microservice_ids
+        from dashboard.services.flows import queue_to_workflow_id, get_flows
+
+        microservice_ids = queue_to_microservice_ids(queue_filter)
+        if not microservice_ids:
+            # Queue exists but no Container App uses it — show empty results
+            microservice_ids = ["__no_match__"]
+        workflow_id = queue_to_workflow_id(queue_filter)
+        if workflow_id:
+            flows = get_flows()
+            flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
+
+    messages = get_messages_today(microservice_ids=microservice_ids)
     return render_template(
         "messages.html",
         messages=messages,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        queue_filter=queue_filter,
+        flow_label=flow_label,
     )
 
 
@@ -247,6 +266,16 @@ def api_flows():
 def api_messages():
     messages = get_messages_today()
     return jsonify({"messages": messages, "count": len(messages)})
+
+
+@app.route("/api/servicebus-metrics")
+def api_servicebus_metrics():
+    hours = request.args.get("hours", "1", type=str)
+    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
+    timespan_hours = allowed.get(hours, 1)
+    queue = request.args.get("queue", "").strip() or None
+    metrics = get_message_metrics(timespan_hours, queue_name=queue)
+    return jsonify(metrics)
 
 
 # ---------------------------------------------------------------------------

@@ -301,6 +301,23 @@ def overall_health(flow_statuses: list[str]) -> str:
     return "unknown"
 
 
+def queue_to_workflow_id(queue_name: str) -> str | None:
+    """Map a queue name back to the workflow_id (flow ID) that owns it.
+
+    Searches the active flow definitions for a flow whose ``pre_queue``
+    or ``post_queue`` matches *queue_name* (case-insensitive).
+    Returns ``None`` if no match is found.
+    """
+    flows = get_flows()
+    lower = queue_name.lower()
+    for flow_id, flow in flows.items():
+        pre = (flow.get("pre_queue") or "").lower()
+        post = (flow.get("post_queue") or "").lower()
+        if lower in (pre, post):
+            return flow_id
+    return None
+
+
 def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) -> list[dict]:
     """
     Given the raw list of queue dicts from service_bus.get_queues(),

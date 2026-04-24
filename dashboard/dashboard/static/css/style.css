@@ -593,6 +593,15 @@ table.dash-table td {
 }
 
 .queue-name-cell { font-family: var(--font-mono); font-size: 0.78rem; }
+.queue-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.queue-link:hover {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+}
 
 .count-cell {
   font-family: var(--font-mono);
@@ -819,6 +828,12 @@ table.dash-table td {
   background: rgba(59,130,246,0.15);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+}
+
+.btn-dash--sm {
+  font-size: 0.68rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 5px;
 }
 
 /* ---------- Forms (for hours filter) ---------- */

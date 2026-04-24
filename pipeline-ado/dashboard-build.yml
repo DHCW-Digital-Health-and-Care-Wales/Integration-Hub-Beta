@@ -19,7 +19,7 @@ parameters:
 
 variables:
   acrName: 'uksdhcwihsharedcr'
-  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  azureServiceConnection: 'DEV-MonitoringDashboard'
   POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
 
 stages:
