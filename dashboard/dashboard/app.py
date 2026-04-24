@@ -103,16 +103,29 @@ app.secret_key = config.FLASK_SECRET_KEY
 # ---------------------------------------------------------------------------
 
 _cache_lock = Lock()
-_cache_data: dict = {"status": {}, "timestamp": 0.0}
+_cache_data: dict = {
+    "status":     {"data": {}, "ts": 0.0},
+    "flows":      {"data": {}, "ts": 0.0},
+    "exceptions": {"data": [], "ts": 0.0},
+    "servicebus": {"data": {}, "ts": 0.0},
+    "messages":   {"data": [], "ts": 0.0},
+}
+
+
+def _cached(key: str, builder, ttl: float | None = None, force: bool = False):
+    """Generic TTL cache helper. Returns cached value or calls builder() to refresh."""
+    _ttl = ttl if ttl is not None else config.API_CACHE_TTL
+    now = time.monotonic()
+    with _cache_lock:
+        entry = _cache_data[key]
+        if force or (now - entry["ts"]) > _ttl:
+            entry["data"] = builder()
+            entry["ts"] = now
+    return _cache_data[key]["data"]
 
 
 def _get_cached_status(force: bool = False) -> dict:
-    now = time.monotonic()
-    with _cache_lock:
-        if force or (now - _cache_data["timestamp"]) > config.API_CACHE_TTL:
-            _cache_data["status"] = _build_status()
-            _cache_data["timestamp"] = now
-    return _cache_data["status"]
+    return _cached("status", _build_status, force=force)
 
 
 def _build_status() -> dict:
@@ -165,8 +178,12 @@ def index():
 @app.route("/flows")
 def flows_page():
     status = _get_cached_status()
-    container_metrics = get_container_apps_metrics()
     active_flows = get_active_flows()
+    container_metrics = _cached(
+        "flows",
+        get_container_apps_metrics,
+        ttl=config.API_CACHE_TTL,
+    )
     return render_template(
         "flows.html",
         status=status,
@@ -179,7 +196,11 @@ def flows_page():
 @app.route("/exceptions")
 def exceptions_page():
     hours = int(request.args.get("hours", 24))
-    exceptions = get_exceptions(hours=hours)
+    exceptions = _cached(
+        "exceptions",
+        lambda: get_exceptions(hours=hours),
+        ttl=config.API_CACHE_TTL,
+    )
     return render_template(
         "exceptions.html",
         exceptions=exceptions,
@@ -190,7 +211,12 @@ def exceptions_page():
 
 @app.route("/service-bus")
 def service_bus_page():
-    queues = get_queues()
+    cached_sb = _cached(
+        "servicebus",
+        lambda: {"queues": get_queues()},
+        ttl=config.API_CACHE_TTL,
+    )
+    queues = cached_sb["queues"]
     flows = build_flow_data(queues)
     return render_template(
         "service_bus.html",
@@ -211,14 +237,17 @@ def messages_page():
 
         microservice_ids = queue_to_microservice_ids(queue_filter)
         if not microservice_ids:
-            # Queue exists but no Container App uses it — show empty results
             microservice_ids = ["__no_match__"]
         workflow_id = queue_to_workflow_id(queue_filter)
         if workflow_id:
             flows = get_flows()
             flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
 
-    messages = get_messages_today(microservice_ids=microservice_ids)
+    messages = _cached(
+        "messages",
+        lambda: get_messages_today(microservice_ids=microservice_ids),
+        ttl=config.API_CACHE_TTL,
+    )
     return render_template(
         "messages.html",
         messages=messages,
@@ -241,9 +270,13 @@ def api_status():
 
 @app.route("/api/refresh")
 def api_refresh():
-    """Force-refresh both the status cache and the ARM flow discovery cache."""
+    """Force-refresh all caches including ARM flow discovery."""
     from dashboard.services.arm import get_deployed_flow_ids
     get_deployed_flow_ids(force=True)
+    # Bust every cache entry
+    with _cache_lock:
+        for entry in _cache_data.values():
+            entry["ts"] = 0.0
     data = _get_cached_status(force=True)
     return jsonify({"refreshed": True, "active_flows": list(get_active_flows().keys()), **data})
 
