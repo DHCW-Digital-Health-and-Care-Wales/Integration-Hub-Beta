@@ -18,7 +18,7 @@ from flask import Flask, jsonify, render_template, request
 from dashboard import config
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import FLOWS, build_flow_data, overall_health
+from dashboard.services.flows import FLOWS, build_flow_data, get_active_flows, overall_health
 from dashboard.services.service_bus import get_queues
 
 
@@ -39,32 +39,6 @@ def _read_extra_ca_file(cert_path: Path) -> str | None:
         return ssl.DER_cert_to_PEM_cert(raw)
     except ValueError:
         return None
-
-def _load_env_file(env_file: Path | None = None) -> None:
-    """Load simple KEY=VALUE pairs from dashboard/.env without overriding existing env vars."""
-    dotenv_path = env_file or Path(__file__).resolve().parent.parent / ".env"
-    if not dotenv_path.is_file():
-        return
-
-    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        env_name = key.strip()
-        if not env_name or env_name in os.environ:
-            continue
-
-        env_value = value.strip()
-        if len(env_value) >= 2 and env_value[0] == env_value[-1] and env_value[0] in {"\"", "'"}:
-            env_value = env_value[1:-1]
-
-        os.environ[env_name] = env_value
-
-
-_load_env_file()
-
 
 def _configure_ssl_trust() -> None:
     """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception."""
