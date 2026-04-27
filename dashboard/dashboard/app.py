@@ -41,35 +41,44 @@ def _read_extra_ca_file(cert_path: Path) -> str | None:
         return None
 
 def _configure_ssl_trust() -> None:
-    """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception."""
+    """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception.
+
+    Combines the certifi default bundle with the corporate CA certificate
+    specified in AZURE_CA_CERT_FILE.  The resulting bundle is written to a
+    temp file and both SSL_CERT_FILE and REQUESTS_CA_BUNDLE are pointed at it
+    so that all Python HTTP clients (requests, httpx, urllib3, Azure SDK) use
+    the combined trust store.
+    """
     if os.name != "nt":
         return
 
     bundle_path = Path(tempfile.gettempdir()) / "integration-hub-dashboard-ca.pem"
 
-    extra_cert_paths = []
-    for env_name in ("AZURE_CA_CERT_FILE", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        env_value = os.environ.get(env_name)
-        if env_value:
-            extra_cert_paths.append(Path(env_value))
+    # Only read the explicit corporate CA env var — REQUESTS_CA_BUNDLE and
+    # SSL_CERT_FILE may contain stale system-level values that aren't valid
+    # PEM bundles (e.g. C:\Certs\portal.azure.com).
+    extra_ca = os.environ.get("AZURE_CA_CERT_FILE")
 
     try:
         import certifi
 
         bundle_parts = [Path(certifi.where()).read_text(encoding="utf-8")]
-        for cert_path in extra_cert_paths:
-            extra_pem = _read_extra_ca_file(cert_path)
+        if extra_ca:
+            extra_pem = _read_extra_ca_file(Path(extra_ca))
             if extra_pem:
                 bundle_parts.append(extra_pem)
 
-        if len(bundle_parts) > 1:
-            bundle_path.write_text("\n".join(bundle_parts) + "\n", encoding="utf-8")
-            os.environ["SSL_CERT_FILE"] = str(bundle_path)
-            os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
-            return
-    except Exception:
-        pass
+        # Always write the bundle — even if there's no extra cert, we need a
+        # valid file to override the potentially-broken system SSL_CERT_FILE.
+        bundle_path.write_text("\n".join(bundle_parts) + "\n", encoding="utf-8")
+        os.environ["SSL_CERT_FILE"] = str(bundle_path)
+        os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
+        return
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("certifi-based CA bundle failed: %s", exc)
 
+    # Fallback: build from Windows certificate store
     certs: dict[bytes, None] = {}
     for store_name in ("ROOT", "CA"):
         for cert_bytes, encoding, _trust in ssl.enum_certificates(store_name):
@@ -79,9 +88,8 @@ def _configure_ssl_trust() -> None:
     if not certs:
         return
 
-    if not bundle_path.is_file():
-        pem_data = "".join(ssl.DER_cert_to_PEM_cert(cert) for cert in certs)
-        bundle_path.write_text(pem_data, encoding="ascii")
+    pem_data = "".join(ssl.DER_cert_to_PEM_cert(cert) for cert in certs)
+    bundle_path.write_text(pem_data, encoding="ascii")
 
     os.environ["SSL_CERT_FILE"] = str(bundle_path)
     os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
