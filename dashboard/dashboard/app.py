@@ -387,6 +387,7 @@ def alarm_config_page():
 
             entry = servers_cfg.setdefault(sid, {})
             entry["alarm_enabled"]              = enabled
+            entry["email_alerts_enabled"]       = f"email_{sid}" in request.form
             entry["alerting_gap_minutes"]       = _int(f"alerting_gap_{sid}", 60)
             entry["day_threshold_minutes"]      = _int(f"day_threshold_{sid}", 60)
             entry["evening_threshold_minutes"]  = _int(f"evening_threshold_{sid}", 120)
@@ -404,6 +405,7 @@ def alarm_config_page():
         servers=servers,
         saved=saved,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.SMTP_HOST and config.ALERT_EMAIL_TO),
     )
 
 

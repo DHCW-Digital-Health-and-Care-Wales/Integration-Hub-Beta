@@ -131,20 +131,30 @@
   <!-- Alarm table -->
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
-      <h6><i class="bi bi-table me-1"></i> Server Status</h6>
+      <h6><i class="bi bi-table me-1"></i> Alarm 1's</h6>
       <span class="text-muted" style="font-size:0.72rem;">Refreshed at {{ refreshed_at }}</span>
     </div>
 
-    <div class="scroll-panel" style="max-height:none;">
+    <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
       <table class="dash-table w-100">
         <thead>
           <tr>
             <th>Status</th>
-            <th>HL7 Server</th>
+            <th>Service</th>
             <th>Last Message</th>
             <th>Time Since</th>
-            <th>Period Threshold</th>
-            <th>Alerting Gap Remaining</th>
+            <th>
+              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>Day
+            </th>
+            <th>
+              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>Evening
+            </th>
+            <th>
+              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>Weekend
+            </th>
+            <th>
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>Alerting Gap
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -171,12 +181,25 @@
               {% endif %}
             </td>
 
-            <td style="font-weight:500;">{{ row.display_name }}</td>
+            <td style="font-weight:500;">
+              {{ row.display_name }}
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">{{ row.id }}</div>
+            </td>
 
             <td style="font-family:monospace; font-size:0.82rem;">
               {{ row.last_message_display }}
+              {% if row.status in ('critical', 'suppressed') %}
+                <div style="color:var(--accent-red); font-weight:600; font-family:inherit; font-size:0.78rem; margin-top:2px;">
+                  {{ row.duration_label }} ago
+                </div>
+              {% elif row.status == 'healthy' and row.duration_label %}
+                <div style="color:var(--accent-green); font-family:inherit; font-size:0.78rem; margin-top:2px;">
+                  {{ row.duration_label }} ago
+                </div>
+              {% endif %}
             </td>
 
+            <!-- Time Since (kept for compact scan) -->
             <td>
               {% if row.status in ('critical', 'suppressed') %}
                 <span style="color:var(--accent-red); font-weight:600;">{{ row.duration_label }}</span>
@@ -187,17 +210,34 @@
               {% endif %}
             </td>
 
-            <td style="color:var(--text-muted); font-size:0.82rem;">
-              {{ row.period_threshold_minutes }} min
+            <!-- Day threshold — highlight if active -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'day' %}color:var(--accent-amber); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.day_threshold_minutes }} min
+              {% if row.current_period == 'day' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
             </td>
 
+            <!-- Evening threshold -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'evening' %}color:var(--accent-blue); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.evening_threshold_minutes }} min
+              {% if row.current_period == 'evening' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
+            </td>
+
+            <!-- Weekend threshold -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'weekend' %}color:var(--accent-purple); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.weekend_threshold_minutes }} min
+              {% if row.current_period == 'weekend' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
+            </td>
+
+            <!-- Alerting gap / cooldown remaining -->
             <td style="font-size:0.82rem;">
+              <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} min</span>
               {% if row.status == 'suppressed' and row.cooldown_remaining %}
-                <span style="color:var(--accent-amber);">
-                  {{ row.cooldown_remaining | int }} min
-                </span>
-              {% else %}
-                <span style="color:var(--text-muted);">—</span>
+                <div style="color:var(--accent-amber); font-size:0.75rem; margin-top:2px;">
+                  <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} min left
+                </div>
               {% endif %}
             </td>
 
@@ -253,210 +293,6 @@
     background: rgba(245,158,11,0.12);
     color: var(--accent-amber);
     border-color: rgba(245,158,11,0.35);
-  }
-</style>
-
-{% endblock %}
-
-
-  <div class="page-header">
-    <div>
-      <h1 class="page-title">
-        <i class="bi bi-alarm" style="color:var(--accent-amber)"></i>
-        Alarm 1 — Message Inactivity
-      </h1>
-      <p class="page-subtitle">
-        HL7 server instances that have not received a message within their configured threshold
-      </p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <a href="{{ url_for('alarm_config_page') }}" class="btn-dash">
-        <i class="bi bi-gear-fill"></i> Configure
-      </a>
-      <a href="{{ url_for('alarm_page') }}" class="btn-dash">
-        <i class="bi bi-arrow-repeat"></i> Refresh
-      </a>
-    </div>
-  </div>
-
-  {% if not config_ok %}
-  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
-    <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
-      <i class="bi bi-exclamation-triangle-fill"></i>
-      <span>Log Analytics workspace is not configured — last message times cannot be retrieved.
-        Last message data will show as <strong>Unknown</strong>.</span>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if not alarm_rows %}
-
-  {% if no_alarms_configured %}
-  <!-- No alarms have been enabled yet -->
-  <div class="dash-card">
-    <div class="no-data" style="padding:3rem; text-align:center;">
-      <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">No alarms have been configured yet.</p>
-      <a href="{{ url_for('alarm_config_page') }}" class="btn-dash mt-2">
-        <i class="bi bi-gear-fill"></i> Configure Alarms
-      </a>
-    </div>
-  </div>
-
-  {% else %}
-  <!-- All monitored servers are healthy -->
-  <div class="dash-card">
-    <div class="no-data" style="padding:3rem; text-align:center;">
-      <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:var(--accent-green); opacity:0.85;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">All monitored HL7 servers are within their inactivity threshold.</p>
-    </div>
-  </div>
-  {% endif %}
-
-  {% else %}
-
-  <!-- KPI strip -->
-  {% set n_critical = alarm_rows | selectattr('status', 'equalto', 'critical') | list | length %}
-  {% set n_unknown  = alarm_rows | selectattr('status', 'equalto', 'unknown')  | list | length %}
-  {% set n_healthy  = alarm_rows | selectattr('status', 'equalto', 'healthy')  | list | length %}
-
-  <div class="kpi-strip stagger-children mb-3"
-       style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr))">
-
-    <div class="kpi-card">
-      <div class="kpi-icon blue"><i class="bi bi-bell-fill"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-number">{{ alarm_rows | length }}</div>
-        <div class="kpi-label">Monitored Servers</div>
-      </div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-icon red"><i class="bi bi-exclamation-octagon-fill"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-number">{{ n_critical }}</div>
-        <div class="kpi-label">In Alarm</div>
-      </div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-icon amber"><i class="bi bi-question-circle-fill"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-number">{{ n_unknown }}</div>
-        <div class="kpi-label">Unknown</div>
-      </div>
-    </div>
-
-    <div class="kpi-card">
-      <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-number">{{ n_healthy }}</div>
-        <div class="kpi-label">Within Threshold</div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Alarm table -->
-  <div class="queue-table-wrapper">
-    <div class="queue-table-header">
-      <h6><i class="bi bi-table me-1"></i> Server Status</h6>
-      <span class="text-muted" style="font-size:0.72rem;">
-        Refreshed at {{ refreshed_at }}
-      </span>
-    </div>
-
-    <div class="scroll-panel" style="max-height:none;">
-      <table class="dash-table w-100">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>HL7 Server</th>
-            <th>Last Message</th>
-            <th>Time Since</th>
-            <th>Threshold</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in alarm_rows %}
-          <tr class="{% if row.status == 'critical' %}alarm-row--critical{% elif row.status == 'unknown' %}alarm-row--unknown{% endif %}">
-
-            <td>
-              {% if row.status == 'critical' %}
-                <span class="status-badge critical">
-                  <i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
-                </span>
-              {% elif row.status == 'unknown' %}
-                <span class="status-badge unknown">
-                  <i class="bi bi-question-circle me-1"></i>Unknown
-                </span>
-              {% else %}
-                <span class="status-badge healthy">
-                  <i class="bi bi-check-circle-fill me-1"></i>OK
-                </span>
-              {% endif %}
-            </td>
-
-            <td style="font-weight:500;">{{ row.display_name }}</td>
-
-            <td style="font-family:monospace; font-size:0.82rem;">
-              {{ row.last_message_display }}
-            </td>
-
-            <td>
-              {% if row.status == 'critical' %}
-                <span style="color:var(--accent-red); font-weight:600;">{{ row.duration_label }}</span>
-              {% elif row.status == 'unknown' %}
-                <span style="color:var(--text-muted);">{{ row.duration_label }}</span>
-              {% else %}
-                <span style="color:var(--accent-green);">{{ row.duration_label }}</span>
-              {% endif %}
-            </td>
-
-            <td style="color:var(--text-muted); font-size:0.82rem;">
-              {{ row.threshold_minutes }} min
-            </td>
-
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  {% endif %}
-
-</div>
-
-<style>
-  .dash-table { border-collapse: collapse; }
-  .dash-table thead tr {
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(255,255,255,0.03);
-  }
-  .dash-table th {
-    padding: 0.6rem 1rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-  .dash-table td {
-    padding: 0.75rem 1rem;
-    font-size: 0.83rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-  }
-  .dash-table tbody tr:hover { background: rgba(255,255,255,0.025); }
-  .alarm-row--critical {
-    background: rgba(239,68,68,0.04);
-    border-left: 3px solid var(--accent-red);
-  }
-  .alarm-row--unknown {
-    background: rgba(245,158,11,0.04);
-    border-left: 3px solid var(--accent-amber);
   }
 </style>
 

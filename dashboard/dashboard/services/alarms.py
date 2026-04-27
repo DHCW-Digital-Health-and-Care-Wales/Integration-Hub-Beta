@@ -20,6 +20,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -252,6 +255,93 @@ def get_last_message_times(server_ids: list[str]) -> dict[str, datetime | None]:
 
 
 # ---------------------------------------------------------------------------
+# Email notification
+# ---------------------------------------------------------------------------
+
+def _send_alarm_email(
+    server_id: str,
+    display_name: str,
+    minutes_since: float,
+    period_threshold: int,
+    last_msg: datetime | None,
+    now: datetime,
+    email_alerts_enabled: bool = False,
+) -> None:
+    """Send an HTML email when Alarm 1 fires. No-op if SMTP is not configured or emails disabled."""
+    if not config.ALERT_EMAIL_ENABLED:
+        return
+    if not email_alerts_enabled:
+        return
+    if not config.ALERT_EMAIL_TO or not config.SMTP_HOST:
+        log.warning("Alarm email enabled but ALERT_EMAIL_TO / SMTP_HOST not set — skipping")
+        return
+
+    period = get_current_period(now)
+    period_label = {"day": "Day (Mon–Fri 08:00–17:00)", "evening": "Evening (Mon–Fri 17:00–08:00)",
+                    "weekend": "Weekend (Fri 17:00–Mon 08:00)"}.get(period, period.title())
+    last_msg_str = last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"
+    duration_str = _format_duration(minutes_since)
+
+    subject = f"[Integration Hub] Alarm 1 — {display_name} inactivity ({duration_str})"
+    body = f"""<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;">
+<h2 style="color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:8px;">
+  &#x26A0; Integration Hub — Alarm 1: Message Inactivity
+</h2>
+<p style="color:#555;font-size:14px;">
+  The following HL7 server has received no messages for longer than its configured threshold.
+</p>
+<table cellpadding="8" cellspacing="0"
+       style="border-collapse:collapse;font-size:14px;width:100%;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+  <tr style="background:#fff;">
+    <td style="font-weight:bold;width:180px;border-bottom:1px solid #eee;">Server</td>
+    <td style="border-bottom:1px solid #eee;">{display_name}</td>
+  </tr>
+  <tr style="background:#fff;">
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Server ID</td>
+    <td style="border-bottom:1px solid #eee;font-family:monospace;">{server_id}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Last Message (UTC)</td>
+    <td style="border-bottom:1px solid #eee;">{last_msg_str}</td>
+  </tr>
+  <tr style="background:#fff;">
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Inactive For</td>
+    <td style="border-bottom:1px solid #eee;color:#c0392b;font-weight:bold;">{duration_str}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Period / Threshold</td>
+    <td style="border-bottom:1px solid #eee;">{period_label} — {period_threshold} min</td>
+  </tr>
+  <tr style="background:#fff;">
+    <td style="font-weight:bold;">Fired At (UTC)</td>
+    <td>{now.strftime("%d %b %Y  %H:%M:%S UTC")}</td>
+  </tr>
+</table>
+<p style="font-size:12px;color:#999;margin-top:24px;">
+  NHS Wales Integration Hub — automated alarm notification
+</p>
+</body></html>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = config.ALERT_EMAIL_FROM or config.SMTP_USERNAME
+    msg["To"] = config.ALERT_EMAIL_TO
+    msg.attach(MIMEText(body, "html"))
+
+    try:
+        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=15) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            if config.SMTP_USERNAME and config.SMTP_PASSWORD:
+                smtp.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        log.info("Alarm 1 email sent for %s to %s", server_id, config.ALERT_EMAIL_TO)
+    except Exception as exc:
+        log.error("Failed to send alarm 1 email for %s: %s", server_id, exc)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -334,6 +424,9 @@ def get_alarm_status() -> list[dict]:
             state_servers.setdefault(sid, {})["last_alarm_at"] = now.isoformat()
             state_dirty = True
             cooldown_remaining = None
+            _send_alarm_email(sid, server_cfg.get("display_name") or _display_name(sid),
+                              minutes_since, period_threshold, last_msg, now,
+                              email_alerts_enabled=server_cfg.get("email_alerts_enabled", False))
         else:
             mins_since_alarm = (now - last_alarm_at).total_seconds() / 60
             if mins_since_alarm >= alerting_gap:
@@ -342,6 +435,9 @@ def get_alarm_status() -> list[dict]:
                 state_servers[sid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
+                _send_alarm_email(sid, server_cfg.get("display_name") or _display_name(sid),
+                                  minutes_since, period_threshold, last_msg, now,
+                                  email_alerts_enabled=server_cfg.get("email_alerts_enabled", False))
             else:
                 # Within alerting gap — suppress
                 status = "suppressed"
@@ -349,7 +445,6 @@ def get_alarm_status() -> list[dict]:
 
         results.append(_build_row(
             sid, server_cfg,
-            last_msg=last_msg,
             last_msg=last_msg,
             status=status,
             minutes_since=minutes_since,
@@ -424,6 +519,7 @@ def get_config_page_data() -> list[dict]:
             "alerting_gap_minutes": int(
                 servers_cfg.get(sid, {}).get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)
             ),
+            "email_alerts_enabled": servers_cfg.get(sid, {}).get("email_alerts_enabled", False),
         }
         for sid in all_ids
     ]

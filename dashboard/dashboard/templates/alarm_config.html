@@ -29,7 +29,7 @@
   </div>
   {% endif %}
 
-  <!-- Cooldown explanation -->
+  <!-- How alarms work -->
   <div class="dash-card mb-4" style="font-size:0.8rem; color:var(--text-muted); padding:1rem 1.25rem;">
     <div class="d-flex align-items-start gap-2">
       <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-cyan); flex-shrink:0;"></i>
@@ -64,26 +64,52 @@
           <div style="font-weight:600; font-size:0.92rem;">{{ s.display_name }}</div>
           <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">{{ s.id }}</div>
         </div>
-        <!-- Alarm 1 enable toggle -->
-        <div class="d-flex align-items-center gap-2">
-          <label for="enabled_{{ s.id }}"
-                 style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
-            Alarm 1
-          </label>
-          <div class="form-check form-switch" style="margin:0; padding-left:0;">
-            <input class="form-check-input"
-                   type="checkbox"
-                   role="switch"
-                   id="enabled_{{ s.id }}"
-                   name="enabled_{{ s.id }}"
-                   {% if s.alarm_enabled %}checked{% endif %}
-                   style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <!-- Alarm 1 enable toggle -->
+          <div class="d-flex align-items-center gap-2">
+            <label for="enabled_{{ s.id }}"
+                   style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+              Alarm 1
+            </label>
+            <div class="form-check form-switch" style="margin:0; padding-left:0;">
+              <input class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                     id="enabled_{{ s.id }}"
+                     name="enabled_{{ s.id }}"
+                     {% if s.alarm_enabled %}checked{% endif %}
+                     style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+            </div>
+            <span id="label_{{ s.id }}"
+                  style="font-size:0.78rem; font-weight:600; min-width:60px;
+                         color:{% if s.alarm_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
+              {% if s.alarm_enabled %}Enabled{% else %}Disabled{% endif %}
+            </span>
           </div>
-          <span id="label_{{ s.id }}"
-                style="font-size:0.78rem; font-weight:600; min-width:60px;
-                       color:{% if s.alarm_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
-            {% if s.alarm_enabled %}Enabled{% else %}Disabled{% endif %}
-          </span>
+          <!-- divider -->
+          <div style="width:1px; height:24px; background:var(--border-color);"></div>
+          <!-- Email notifications toggle -->
+          <div class="d-flex align-items-center gap-2">
+            <label for="email_{{ s.id }}"
+                   style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>Email
+            </label>
+            <div class="form-check form-switch" style="margin:0; padding-left:0;">
+              <input class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                     id="email_{{ s.id }}"
+                     name="email_{{ s.id }}"
+                     {% if s.email_alerts_enabled %}checked{% endif %}
+                     {% if not smtp_configured %}disabled title="Configure SMTP in .env to enable"{% endif %}
+                     style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+            </div>
+            <span id="email_label_{{ s.id }}"
+                  style="font-size:0.78rem; font-weight:600; min-width:60px;
+                         color:{% if s.email_alerts_enabled and smtp_configured %}var(--accent-green){% else %}var(--text-muted){% endif %};">
+              {% if s.email_alerts_enabled and smtp_configured %}Enabled{% else %}Disabled{% endif %}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -222,6 +248,17 @@
 
 <script>
   // Live Enabled/Disabled label update on toggle change
+  // Per-server email toggle labels
+  document.querySelectorAll('input[id^="email_"]').forEach(function (cb) {
+    var sid = cb.id.replace('email_', '');
+    var lbl = document.getElementById('email_label_' + sid);
+    if (!lbl) return;
+    cb.addEventListener('change', function () {
+      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
+    });
+  });
+
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
     var sid = cb.id.replace('enabled_', '');
     var lbl = document.getElementById('label_' + sid);
@@ -236,165 +273,3 @@
 
 {% endblock %}
 
-
-  {% if saved %}
-  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green); padding:0.8rem 1.1rem;">
-    <div class="d-flex align-items-center gap-2" style="color:var(--accent-green); font-size:0.83rem;">
-      <i class="bi bi-check-circle-fill"></i>
-      <span>Configuration saved successfully.</span>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Alarm 1 section -->
-  <form method="post" action="{{ url_for('alarm_config_page') }}">
-
-    <div class="queue-table-wrapper mb-4">
-      <div class="queue-table-header">
-        <div>
-          <h6><i class="bi bi-alarm me-1" style="color:var(--accent-amber)"></i> Alarm 1 — Message Inactivity</h6>
-          <p style="margin:0; font-size:0.73rem; color:var(--text-muted);">
-            Raises an alarm when an HL7 server has received no messages within the threshold period.
-          </p>
-        </div>
-      </div>
-
-      {% if servers %}
-      <div class="scroll-panel" style="max-height:none;">
-        <table class="dash-table w-100">
-          <thead>
-            <tr>
-              <th>HL7 Server</th>
-              <th style="text-align:center;">Alarm 1 Enabled</th>
-              <th>Inactivity Threshold (minutes)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in servers %}
-            <tr>
-              <td style="font-weight:500;">
-                {{ s.display_name }}
-                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">{{ s.id }}</div>
-              </td>
-
-              <td style="text-align:center;">
-                <div class="form-check form-switch d-flex justify-content-center align-items-center" style="margin:0;">
-                  <input class="form-check-input"
-                         type="checkbox"
-                         role="switch"
-                         id="enabled_{{ s.id }}"
-                         name="enabled_{{ s.id }}"
-                         {% if s.alarm_enabled %}checked{% endif %}
-                         style="width:2.5em; height:1.3em; cursor:pointer;">
-                </div>
-              </td>
-
-              <td>
-                <div class="d-flex align-items-center gap-2" style="max-width:280px;">
-                  <input type="number"
-                         class="dash-input"
-                         name="threshold_{{ s.id }}"
-                         value="{{ s.threshold_minutes }}"
-                         min="1"
-                         max="44640"
-                         step="1"
-                         style="width:100px; text-align:right;"
-                         aria-label="Threshold in minutes for {{ s.display_name }}">
-                  <span style="font-size:0.8rem; color:var(--text-muted);">minutes</span>
-                  <span style="font-size:0.75rem; color:var(--text-muted);">
-                    (≈ {{ (s.threshold_minutes / 60) | round(1) }} hr{% if (s.threshold_minutes / 60) | round(1) != 1.0 %}s{% endif %})
-                  </span>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="p-3 d-flex justify-content-end" style="border-top:1px solid var(--border-color);">
-        <button type="submit" class="btn-dash btn-dash--primary">
-          <i class="bi bi-floppy-fill"></i> Save Configuration
-        </button>
-      </div>
-
-      {% else %}
-      <div class="no-data" style="padding:2.5rem; text-align:center;">
-        <i class="bi bi-hdd-network" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
-        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">
-          No HL7 servers found.
-          {% if not config_ok %}
-          Log Analytics is not configured — server discovery is unavailable.
-          The known server list will be shown once Log Analytics is set up, or once
-          servers start sending messages.
-          {% endif %}
-        </p>
-      </div>
-      {% endif %}
-
-    </div>
-
-  </form>
-
-  <!-- Reference panel -->
-  <div class="dash-card" style="font-size:0.8rem; color:var(--text-muted); padding:1rem 1.25rem;">
-    <div class="d-flex align-items-start gap-2">
-      <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-cyan); flex-shrink:0;"></i>
-      <div>
-        <strong style="color:var(--text-primary);">How it works</strong><br>
-        Alarm 1 queries Application Insights for the most recent
-        <code>MESSAGE_RECEIVED</code> event from each enabled HL7 server.
-        If the time since the last message exceeds the configured threshold,
-        the server is flagged as <span style="color:var(--accent-red);">In Alarm</span>.<br><br>
-        Servers with no data in the last 30 days are shown as
-        <span style="color:var(--accent-amber);">Unknown</span>.
-        The threshold can be set independently per server — for example, a server
-        that only processes batch overnight jobs may need a longer threshold than
-        one handling real-time ADT feeds.
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<style>
-  .dash-table { border-collapse: collapse; }
-  .dash-table thead tr {
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(255,255,255,0.03);
-  }
-  .dash-table th {
-    padding: 0.6rem 1rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-  .dash-table td {
-    padding: 0.75rem 1rem;
-    font-size: 0.83rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-  }
-  .dash-table tbody tr:last-child td { border-bottom: none; }
-  .dash-table tbody tr:hover { background: rgba(255,255,255,0.025); }
-
-  .btn-dash--primary {
-    background: var(--accent-cyan);
-    color: #fff;
-    border-color: var(--accent-cyan);
-  }
-  .btn-dash--primary:hover {
-    background: color-mix(in srgb, var(--accent-cyan) 85%, white);
-  }
-
-  /* Style the Bootstrap switch to use DHCW colours */
-  .form-check-input:checked {
-    background-color: var(--accent-cyan) !important;
-    border-color: var(--accent-cyan) !important;
-  }
-</style>
-
-{% endblock %}

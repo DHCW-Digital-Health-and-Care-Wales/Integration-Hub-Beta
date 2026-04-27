@@ -1,0 +1,314 @@
+{#
+  Street Lamp Simulator — easter egg for the Flows page.
+  Trigger: hold Shift and press S then L.
+  To remove: delete this file and the {% include %} line in flows.html.
+  Depends on: static/vendor/threejs/three.min.js
+#}
+
+<!-- 🪔 Street Lamp easter egg — Shift+S+L -->
+<style>
+  #lamp-modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 99990;
+    background: rgba(0,0,0,0.82);
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #lamp-modal-overlay.lamp-visible { display: flex; }
+  #lamp-modal {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,170,51,0.25);
+    width: min(92vw, 680px);
+    height: min(85vh, 520px);
+    background: #000;
+  }
+  #lamp-modal-close {
+    position: absolute; top: 12px; right: 14px; z-index: 2;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; font-size: 1.1rem; line-height: 1; border-radius: 50%;
+    width: 30px; height: 30px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); transition: background 0.15s;
+  }
+  #lamp-modal-close:hover { background: rgba(255,255,255,0.15); }
+  #lamp-hint-badge {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 2;
+    font-family: sans-serif; font-size: 11px; color: rgba(255,255,255,0.4);
+    pointer-events: none; white-space: nowrap;
+  }
+  #lamp-canvas-el { display: block; width: 100%; height: 100%; }
+</style>
+
+<div id="lamp-modal-overlay" role="dialog" aria-modal="true" aria-label="Street Lamp Simulator">
+  <div id="lamp-modal">
+    <button id="lamp-modal-close" title="Close (Esc)">&#x2715;</button>
+    <canvas id="lamp-canvas-el"></canvas>
+    <div id="lamp-hint-badge">👆 Drag · 🤏 Pinch zoom · ESC to close</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── key sequence detector: Shift+S then Shift+L ── */
+  var seq = [], COMBO = ['S', 'L'];
+  document.addEventListener('keydown', function (e) {
+    if (!e.shiftKey) { seq = []; return; }
+    seq.push(e.key.toUpperCase());
+    if (seq.length > COMBO.length) seq.shift();
+    if (seq.join('') === COMBO.join('')) { openLamp(); seq = []; }
+  });
+
+  var overlay = document.getElementById('lamp-modal-overlay');
+  var closeBtn = document.getElementById('lamp-modal-close');
+  var lampBtn;
+  var renderer, animId;
+  var loaded = false;
+
+  function openLamp() {
+    overlay.classList.add('lamp-visible');
+    if (!loaded) { loaded = true; loadThree(); }
+    else if (renderer) { resizeRenderer(); if (!animId) animate(); }
+  }
+
+  function closeLamp() {
+    overlay.classList.remove('lamp-visible');
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+  }
+
+  closeBtn.addEventListener('click', closeLamp);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeLamp(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLamp(); });
+
+  /* ── load Three.js then build the scene ── */
+  function loadThree() {
+    var s = document.createElement('script');
+    s.src = '{{ url_for('static', filename='vendor/threejs/three.min.js') }}';
+    s.onload = buildScene;
+    document.head.appendChild(s);
+  }
+
+  function resizeRenderer() {
+    var modal = document.getElementById('lamp-modal');
+    if (!renderer) return;
+    renderer.setSize(modal.clientWidth, modal.clientHeight);
+    if (window._lampCamera) {
+      window._lampCamera.aspect = modal.clientWidth / modal.clientHeight;
+      window._lampCamera.updateProjectionMatrix();
+    }
+  }
+
+  function buildScene() {
+    var modal  = document.getElementById('lamp-modal');
+    var canvas = document.getElementById('lamp-canvas-el');
+    var W = modal.clientWidth, H = modal.clientHeight;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.NoToneMapping;
+
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x03050e, 0.018);
+
+    var camera = new THREE.PerspectiveCamera(60, W / H, 0.05, 300);
+    window._lampCamera = camera;
+
+    /* Sky sphere */
+    scene.add(new THREE.Mesh(
+      new THREE.SphereGeometry(250, 32, 16),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide, depthWrite: false,
+        vertexShader: `varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+        fragmentShader: `varying vec3 vD;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}void main(){vec3 d=normalize(vD);float h=clamp(d.y,0.,1.);vec3 sky=mix(vec3(0.04,0.05,0.12),vec3(0.01,0.01,0.05),pow(h,0.5));vec2 sc=d.xy/(d.z+0.001);float star=step(0.995,hash(floor(sc*300.)))*max(d.y,0.);sky+=vec3(0.9,0.9,1.0)*star;float moon=smoothstep(0.013,0.007,length(d-normalize(vec3(0.5,0.78,0.3))));sky+=vec3(0.85,0.88,0.78)*moon;sky+=vec3(0.5,0.55,0.45)*pow(max(dot(d,normalize(vec3(0.5,0.78,0.3))),0.),10.)*0.06;gl_FragColor=vec4(sky,1.);}`
+      })
+    ));
+
+    scene.add(new THREE.AmbientLight(0x0a1428, 0.8));
+    var moonLight = new THREE.DirectionalLight(0x4466aa, 0.12);
+    moonLight.position.set(5, 20, 8); scene.add(moonLight);
+
+    var lampLight = new THREE.PointLight(0xffaa33, 0, 22, 1.5);
+    lampLight.castShadow = true;
+    lampLight.shadow.mapSize.set(1024, 1024);
+    lampLight.shadow.bias = -0.003;
+    lampLight.shadow.camera.near = 0.1;
+    lampLight.shadow.camera.far = 25;
+    scene.add(lampLight);
+    var lampFill = new THREE.PointLight(0xff8800, 0, 30, 1.2);
+    scene.add(lampFill);
+
+    /* Road */
+    var road = new THREE.Mesh(new THREE.PlaneGeometry(8, 80), new THREE.MeshLambertMaterial({ color: 0x1e1e20 }));
+    road.rotation.x = -Math.PI / 2; road.receiveShadow = true; scene.add(road);
+    var dashMat = new THREE.MeshLambertMaterial({ color: 0xcccc88 });
+    for (var z = -35; z < 35; z += 4) {
+      var dash = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 1.8), dashMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.01, z); scene.add(dash);
+    }
+
+    function makePavement(x, w) {
+      var p = new THREE.Mesh(new THREE.PlaneGeometry(w, 80), new THREE.MeshLambertMaterial({ color: 0x888878 }));
+      p.rotation.x = -Math.PI / 2; p.position.set(x, 0.04, 0); p.receiveShadow = true; scene.add(p);
+      var slabMat = new THREE.MeshLambertMaterial({ color: 0x666658 });
+      for (var sz = -38; sz < 38; sz += 1.2) {
+        var sl = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.04), slabMat);
+        sl.rotation.x = -Math.PI / 2; sl.position.set(x, 0.05, sz); scene.add(sl);
+      }
+      var k = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 80), new THREE.MeshLambertMaterial({ color: 0x999990 }));
+      k.position.set(x - (w / 2) * Math.sign(x), 0.05, 0); k.castShadow = true; scene.add(k);
+    }
+    makePavement(-5.5, 3); makePavement(5.5, 3);
+
+    function makeHouse(x, hz, col, winLit) {
+      var g = new THREE.Group();
+      var hw = 4.8, hd = 3.8, hh = 3.5, rh = 1.6;
+      var body = new THREE.Mesh(new THREE.BoxGeometry(hw, hh, hd), new THREE.MeshLambertMaterial({ color: col }));
+      body.position.y = hh / 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
+      var rShape = new THREE.Shape();
+      rShape.moveTo(-hw/2,0); rShape.lineTo(hw/2,0); rShape.lineTo(0,rh); rShape.closePath();
+      var roof = new THREE.Mesh(new THREE.ExtrudeGeometry(rShape, { depth: hd+0.1, bevelEnabled: false }), new THREE.MeshLambertMaterial({ color: 0x3a1208 }));
+      roof.position.set(0, hh, -hd/2-0.05); roof.castShadow = true; g.add(roof);
+      [[-1.1,hh*0.58],[1.1,hh*0.58],[-1.1,hh*0.22],[1.1,hh*0.22]].forEach(function(wp, i) {
+        var lit = winLit[i] || false;
+        var wf = new THREE.Mesh(new THREE.BoxGeometry(0.72,0.7,0.08), new THREE.MeshLambertMaterial({color:0x888880}));
+        wf.position.set(wp[0],wp[1],hd/2+0.01); g.add(wf);
+        var wg = new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.52), new THREE.MeshBasicMaterial({color:lit?0xffdd88:0x111820}));
+        wg.position.set(wp[0],wp[1],hd/2+0.06); g.add(wg);
+      });
+      var door = new THREE.Mesh(new THREE.BoxGeometry(0.65,1.0,0.08), new THREE.MeshLambertMaterial({color:0x1a0808}));
+      door.position.set(0,0.5,hd/2+0.04); g.add(door);
+      g.position.set(x,0,hz); scene.add(g);
+    }
+    var hCols = [0x7a6555,0x686055,0x7e7060,0x6a5e50,0x756858];
+    [-20,-10,0,10,20].forEach(function(hz,i){
+      makeHouse(-9.5,hz,hCols[i],[true,false,false,true]);
+      makeHouse(9.5,hz,hCols[(i+2)%5],[false,true,true,false]);
+    });
+
+    /* Street lamp */
+    var poleMat = new THREE.MeshLambertMaterial({color:0x555555});
+    var lampGroup = new THREE.Group();
+    var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,5.8,8),poleMat);
+    pole.position.y=2.9; pole.castShadow=true; lampGroup.add(pole);
+    var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,1.4,8),poleMat);
+    arm.rotation.z=Math.PI/2; arm.position.set(0.6,5.8,0); arm.castShadow=true; lampGroup.add(arm);
+    var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.038,0.038,0.3,8),poleMat);
+    neck.position.set(1.25,5.65,0); lampGroup.add(neck);
+    var housing = new THREE.Mesh(new THREE.CylinderGeometry(0.20,0.24,0.4,8),new THREE.MeshLambertMaterial({color:0x333333}));
+    housing.position.set(1.25,5.47,0); housing.castShadow=true; lampGroup.add(housing);
+    var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.16,0.1,8),new THREE.MeshLambertMaterial({color:0x222222}));
+    cap.position.set(1.25,5.27,0); lampGroup.add(cap);
+    var lensMat = new THREE.MeshBasicMaterial({color:0x442200});
+    var lens = new THREE.Mesh(new THREE.CircleGeometry(0.15,12),lensMat);
+    lens.rotation.x=Math.PI/2; lens.position.set(1.25,5.22,0); lampGroup.add(lens);
+    lampGroup.userData.lensMat = lensMat;
+    lampGroup.position.set(-3.2,0,-1); scene.add(lampGroup);
+
+    var lampHead = new THREE.Vector3(-3.2+1.25, 5.3, -1);
+    lampLight.position.copy(lampHead); lampFill.position.copy(lampHead);
+
+    /* Halo sprite */
+    var hc = document.createElement('canvas'); hc.width = hc.height = 256;
+    var hx = hc.getContext('2d');
+    var hg = hx.createRadialGradient(128,128,0,128,128,128);
+    hg.addColorStop(0,'rgba(255,180,60,0.9)'); hg.addColorStop(0.2,'rgba(255,140,30,0.5)');
+    hg.addColorStop(0.5,'rgba(255,100,10,0.15)'); hg.addColorStop(1,'rgba(0,0,0,0)');
+    hx.fillStyle=hg; hx.fillRect(0,0,256,256);
+    var haloMat = new THREE.SpriteMaterial({map:new THREE.CanvasTexture(hc),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+    var halo = new THREE.Sprite(haloMat); halo.scale.set(4,4,1); halo.position.copy(lampHead); halo.position.y+=0.1; scene.add(halo);
+
+    /* Ground pool */
+    var pc = document.createElement('canvas'); pc.width=pc.height=512;
+    var px = pc.getContext('2d');
+    var pg = px.createRadialGradient(256,256,0,256,256,256);
+    pg.addColorStop(0,'rgba(255,180,60,0.5)'); pg.addColorStop(0.3,'rgba(255,140,30,0.25)');
+    pg.addColorStop(0.6,'rgba(255,100,10,0.08)'); pg.addColorStop(1,'rgba(0,0,0,0)');
+    px.fillStyle=pg; px.fillRect(0,0,512,512);
+    var poolMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(pc),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+    var pool = new THREE.Mesh(new THREE.PlaneGeometry(12,12),poolMat);
+    pool.rotation.x=-Math.PI/2; pool.position.set(lampHead.x,0.02,lampHead.z); pool.renderOrder=2; scene.add(pool);
+
+    /* Bushes */
+    var bushMat = new THREE.MeshLambertMaterial({color:0x1a3a12});
+    [[-7.2,-6,0.5],[-7,-14,0.45],[-7.3,-3,0.4],[7,-4,0.5],[7.2,-12,0.45],[7,14,0.5]].forEach(function(b){
+      var bm = new THREE.Mesh(new THREE.DodecahedronGeometry(b[2],0),bushMat);
+      bm.position.set(b[0],b[2]*0.5,b[1]); bm.scale.y=0.6; bm.castShadow=true; bm.receiveShadow=true; scene.add(bm);
+    });
+
+    /* Car */
+    (function(){
+      var g=new THREE.Group();
+      var cbody=new THREE.MeshLambertMaterial({color:0x1c3a58});
+      var dark=new THREE.MeshLambertMaterial({color:0x080808});
+      var chrome=new THREE.MeshLambertMaterial({color:0x999999});
+      var glass=new THREE.MeshLambertMaterial({color:0x1a2a35,transparent:true,opacity:0.75});
+      var lb=new THREE.Mesh(new THREE.BoxGeometry(1.78,0.5,4.1),cbody);lb.position.y=0.52;lb.castShadow=true;lb.receiveShadow=true;g.add(lb);
+      var ub=new THREE.Mesh(new THREE.BoxGeometry(1.58,0.48,2.1),cbody);ub.position.set(0,0.97,-0.05);ub.castShadow=true;g.add(ub);
+      var wf=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.46),glass);wf.position.set(0,0.97,0.97);wf.rotation.x=-0.25;g.add(wf);
+      var wr=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.46),glass);wr.position.set(0,0.97,-1.1);wr.rotation.x=0.25;g.add(wr);
+      [-0.8,0.8].forEach(function(sx){var sw=new THREE.Mesh(new THREE.PlaneGeometry(1.85,0.38),glass);sw.position.set(sx,0.97,-0.05);sw.rotation.y=sx>0?Math.PI/2:-Math.PI/2;g.add(sw);});
+      [2.1,-2.1].forEach(function(bz){var bm=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.2,0.1),chrome);bm.position.set(0,0.33,bz);g.add(bm);});
+      [[-0.92,-1.2],[-0.92,1.2],[0.92,-1.2],[0.92,1.2]].forEach(function(tw){
+        var t=new THREE.Mesh(new THREE.CylinderGeometry(0.29,0.29,0.2,16),dark);t.rotation.z=Math.PI/2;t.position.set(tw[0],0.29,tw[1]);t.castShadow=true;g.add(t);
+        var r=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.21,8),chrome);r.rotation.z=Math.PI/2;r.position.set(tw[0],0.29,tw[1]);g.add(r);
+      });
+      var yp=new THREE.Mesh(new THREE.BoxGeometry(0.48,0.12,0.02),new THREE.MeshBasicMaterial({color:0xffff66}));yp.position.set(0,0.42,2.11);g.add(yp);
+      var wp=new THREE.Mesh(new THREE.BoxGeometry(0.48,0.12,0.02),new THREE.MeshBasicMaterial({color:0xffffff}));wp.position.set(0,0.42,-2.11);g.add(wp);
+      g.position.set(3.2,0,2); g.rotation.y=0.04; scene.add(g);
+    })();
+
+    /* Lamp on/off button */
+    lampBtn = document.createElement('button');
+    lampBtn.textContent = '💡 Turn Off';
+    lampBtn.style.cssText = 'position:absolute;bottom:44px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:14px;padding:10px 28px;border-radius:24px;cursor:pointer;backdrop-filter:blur(6px);font-family:sans-serif;z-index:3;';
+    document.getElementById('lamp-modal').appendChild(lampBtn);
+
+    var lampOn=true, lampTarget=1.0, lampCurrent=0.0;
+    lampBtn.addEventListener('click', function(){
+      lampOn=!lampOn; lampTarget=lampOn?1.0:0.0;
+      lampBtn.textContent=lampOn?'💡 Turn Off':'💡 Turn On';
+    });
+
+    /* Camera orbit */
+    var TARGET=new THREE.Vector3(0,2.5,0);
+    var phi=Math.PI/2.5, theta=0.6, radius=10;
+    function updateCam(){camera.position.set(TARGET.x+radius*Math.sin(phi)*Math.sin(theta),TARGET.y+radius*Math.cos(phi),TARGET.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(TARGET);}
+    updateCam();
+
+    var lT=null,lP=null,mD=false,lM=null;
+    var dom=canvas;
+    dom.addEventListener('touchstart',function(e){e.preventDefault();if(e.touches.length===1)lT={x:e.touches[0].clientX,y:e.touches[0].clientY};if(e.touches.length===2){var dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;lP=Math.sqrt(dx*dx+dy*dy);}},{passive:false});
+    dom.addEventListener('touchmove',function(e){e.preventDefault();if(e.touches.length===1&&lT){theta-=(e.touches[0].clientX-lT.x)*.004;phi=Math.max(.1,Math.min(Math.PI-.1,phi+(e.touches[0].clientY-lT.y)*.004));lT={x:e.touches[0].clientX,y:e.touches[0].clientY};updateCam();}if(e.touches.length===2&&lP!=null){var dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY,d=Math.sqrt(dx*dx+dy*dy);radius=Math.max(3,Math.min(30,radius*(lP/d)));lP=d;updateCam();}},{passive:false});
+    dom.addEventListener('touchend',function(){lT=null;lP=null;},{passive:false});
+    dom.addEventListener('mousedown',function(e){mD=true;lM={x:e.clientX,y:e.clientY};});
+    dom.addEventListener('mousemove',function(e){if(!mD)return;theta-=(e.clientX-lM.x)*.004;phi=Math.max(.1,Math.min(Math.PI-.1,phi+(e.clientY-lM.y)*.004));lM={x:e.clientX,y:e.clientY};updateCam();});
+    dom.addEventListener('mouseup',function(){mD=false;});
+    dom.addEventListener('wheel',function(e){radius=Math.max(3,Math.min(30,radius+e.deltaY*.01));updateCam();});
+
+    window.addEventListener('resize', resizeRenderer);
+
+    /* Animation loop */
+    var T=0;
+    function doAnimate(){
+      animId=requestAnimationFrame(doAnimate); T+=0.016;
+      lampCurrent+=(lampTarget-lampCurrent)*0.07;
+      var lc=lampCurrent;
+      lampLight.intensity=lc*6.0; lampFill.intensity=lc*2.5;
+      lampGroup.userData.lensMat.color.setRGB(lc>0.05?0.9+lc*0.1:0.08,lc>0.05?0.55*lc:0.04,lc>0.05?0.0:0.02);
+      haloMat.opacity=lc*0.85; poolMat.opacity=lc;
+      if(lampTarget===1&&lampCurrent<0.9){var fl=0.88+Math.sin(T*50)*0.06+Math.random()*0.06;lampLight.intensity*=fl;lampGroup.userData.lensMat.color.multiplyScalar(fl);}
+      renderer.render(scene,camera);
+    }
+    animate = doAnimate;
+    doAnimate();
+  }
+
+  var animate = function(){};
+})();
+</script>
