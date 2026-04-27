@@ -853,6 +853,28 @@ table.dash-table td {
   box-shadow: 0 0 0 2px var(--glow-blue);
 }
 
+.dash-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 7px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dash-select:focus, .dash-select:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px var(--glow-blue);
+}
+
+.dash-select option {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
 /* ---------- Data unavailable state ---------- */
 .no-data {
   display: flex;
