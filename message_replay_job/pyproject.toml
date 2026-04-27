@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 
 dependencies = [
   "azure-core>=1.38.0",
-  "azure-servicebus==7.14.2",
+  "azure-servicebus==7.14.3",
   "pyodbc>=5.2.0",
   "message-bus-lib",
   "event-logger-lib",

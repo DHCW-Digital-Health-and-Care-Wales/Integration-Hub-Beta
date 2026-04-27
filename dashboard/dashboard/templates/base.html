@@ -97,6 +97,34 @@
     }
   </style>
 
+  <style>
+    /* Alarm dropdown menu — match existing dark theme, not Bootstrap's default */
+    .navbar .dropdown-menu {
+      background: #1b294a;
+      border: 1px solid rgba(18,163,201,0.3);
+      border-radius: 10px;
+      min-width: 210px;
+      padding: 0.4rem 0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+      margin-top: 6px;
+    }
+    .navbar .dropdown-menu .dropdown-item {
+      color: rgba(255,255,255,0.82);
+      font-size: 0.83rem;
+      padding: 0.55rem 1rem;
+      transition: background 0.12s;
+    }
+    .navbar .dropdown-menu .dropdown-item:hover,
+    .navbar .dropdown-menu .dropdown-item:focus {
+      background: rgba(18,163,201,0.15);
+      color: #fff;
+    }
+    .navbar .dropdown-menu .dropdown-item.active {
+      background: rgba(18,163,201,0.22);
+      color: #12a3c9;
+    }
+  </style>
+
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -161,6 +189,27 @@
           </a>
         </li>
 
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if request.endpoint in ['alarm_page', 'alarm_config_page'] %}active{% endif %}"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell-fill"></i> Alarms
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li>
+              <a class="dropdown-item {% if request.endpoint == 'alarm_page' %}active{% endif %}"
+                 href="{{ url_for('alarm_page') }}">
+                <i class="bi bi-alarm me-2"></i> Alarm 1 — Inactivity
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item {% if request.endpoint == 'alarm_config_page' %}active{% endif %}"
+                 href="{{ url_for('alarm_config_page') }}">
+                <i class="bi bi-gear-fill me-2"></i> Configure Alarms
+              </a>
+            </li>
+          </ul>
+        </li>
+
       </ul>
 
       <!-- System health in nav -->
@@ -211,10 +260,44 @@
   <div id="lego-hint">↑↑↓↓←→←→BA &nbsp;·&nbsp; ESC to close</div>
 </div>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmRD/9Vz3hgbQDJ+zN5r5tDU+A9"
-        crossorigin="anonymous"></script>
+<!-- Bootstrap JS (no integrity so it loads behind Zscaler; vanilla fallback handles dropdowns either way) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Vanilla-JS dropdown fallback — works even if CDN Bootstrap JS is blocked.
+  // Uses the same .show class Bootstrap uses, so the two coexist safely.
+  (function () {
+    function closeAll() {
+      document.querySelectorAll('.dropdown-menu.show').forEach(function (m) {
+        m.classList.remove('show');
+      });
+      document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (t) {
+        t.setAttribute('aria-expanded', 'false');
+      });
+    }
+    document.addEventListener('click', function (e) {
+      var toggle = e.target.closest('[data-bs-toggle="dropdown"]');
+      if (toggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        var parent = toggle.closest('.nav-item, .dropdown');
+        var menu = parent ? parent.querySelector('.dropdown-menu') : null;
+        if (!menu) return;
+        var wasOpen = menu.classList.contains('show');
+        closeAll();
+        if (!wasOpen) {
+          menu.classList.add('show');
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+      } else if (!e.target.closest('.dropdown-menu')) {
+        closeAll();
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeAll();
+    });
+  })();
+</script>
 
 <script>
   // Footer clock

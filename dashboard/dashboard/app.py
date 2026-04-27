@@ -16,6 +16,7 @@ from threading import Lock
 from flask import Flask, jsonify, render_template, request
 
 from dashboard import config
+from dashboard.services.alarms import get_alarm_status, get_config_page_data, load_alarm_config, save_alarm_config
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health
@@ -117,6 +118,7 @@ _cache_data: dict = {
     "exceptions": {"data": [], "ts": 0.0},
     "servicebus": {"data": {}, "ts": 0.0},
     "messages":   {"data": [], "ts": 0.0},
+    "alarms":     {"data": [], "ts": 0.0},
 }
 
 
@@ -333,6 +335,76 @@ def api_servicebus_metrics():
     queue = request.args.get("queue", "").strip() or None
     metrics = get_message_metrics(timespan_hours, queue_name=queue)
     return jsonify(metrics)
+
+
+# ---------------------------------------------------------------------------
+# Alarm page routes
+# ---------------------------------------------------------------------------
+
+@app.route("/alarms")
+def alarm_page():
+    alarm_rows = _cached(
+        "alarms",
+        get_alarm_status,
+        ttl=config.API_CACHE_TTL,
+    )
+    # Determine whether any alarms have been configured at all
+    cfg = load_alarm_config()
+    any_configured = any(
+        s.get("alarm_enabled", False) for s in cfg.get("servers", {}).values()
+    )
+    return render_template(
+        "alarm.html",
+        alarm_rows=alarm_rows,
+        no_alarms_configured=not any_configured,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+    )
+
+
+@app.route("/alarm-config", methods=["GET", "POST"])
+def alarm_config_page():
+    saved = False
+
+    if request.method == "POST":
+        cfg = load_alarm_config()
+        servers_cfg = cfg.setdefault("servers", {})
+
+        # All server IDs are identified by the presence of an alerting_gap_ field
+        submitted_ids = [
+            key[len("alerting_gap_"):]
+            for key in request.form
+            if key.startswith("alerting_gap_")
+        ]
+        for sid in submitted_ids:
+            enabled = f"enabled_{sid}" in request.form
+
+            def _int(field: str, default: int) -> int:
+                try:
+                    return max(1, int(request.form.get(field, default)))
+                except (ValueError, TypeError):
+                    return default
+
+            entry = servers_cfg.setdefault(sid, {})
+            entry["alarm_enabled"]              = enabled
+            entry["alerting_gap_minutes"]       = _int(f"alerting_gap_{sid}", 60)
+            entry["day_threshold_minutes"]      = _int(f"day_threshold_{sid}", 60)
+            entry["evening_threshold_minutes"]  = _int(f"evening_threshold_{sid}", 120)
+            entry["weekend_threshold_minutes"]  = _int(f"weekend_threshold_{sid}", 240)
+
+        save_alarm_config(cfg)
+        # Bust the alarms cache so the alarm page reflects the new config immediately
+        with _cache_lock:
+            _cache_data["alarms"]["ts"] = 0.0
+        saved = True
+
+    servers = get_config_page_data()
+    return render_template(
+        "alarm_config.html",
+        servers=servers,
+        saved=saved,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+    )
 
 
 # ---------------------------------------------------------------------------
