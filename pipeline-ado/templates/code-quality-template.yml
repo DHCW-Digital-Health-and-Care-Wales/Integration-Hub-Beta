@@ -53,7 +53,6 @@ jobs:
           uv tool install bandit
           uv tool install mypy
           uv tool install pip-audit
-          uv tool install uv-secure==0.14.4
           
           # Verify UV installation
           uv --version
@@ -151,10 +150,10 @@ jobs:
           echo "----------------------------------------"
           echo ""
           
-          echo "🛡️ Running UV-Secure dependency security scan..."
+          echo "🛡️ Running uv audit dependency security scan..."
           # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
-          if ! uv tool run uv-secure --ignore-vulns GHSA-5239-wwwm-4pmq; then
-            echo "##[error]UV-Secure found dependency security issues!"
+          if ! uv audit --ignore-advisory GHSA-5239-wwwm-4pmq; then
+            echo "##[error]uv audit found dependency security issues!"
             VALIDATION_FAILED=1
           fi
           echo ""
