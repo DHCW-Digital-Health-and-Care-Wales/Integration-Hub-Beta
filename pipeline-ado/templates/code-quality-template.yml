@@ -152,7 +152,7 @@ jobs:
           
           echo "🛡️ Running uv audit dependency security scan..."
           # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
-          if ! uv audit --ignore-advisory GHSA-5239-wwwm-4pmq; then
+          if ! uv audit --ignore GHSA-5239-wwwm-4pmq; then
             echo "##[error]uv audit found dependency security issues!"
             VALIDATION_FAILED=1
           fi
