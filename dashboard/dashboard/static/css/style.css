@@ -941,6 +941,101 @@ table.dash-table td {
   scrollbar-color: var(--border-color) transparent;
 }
 
+/* ---------- Clickable KPI card ---------- */
+a.kpi-card--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+
+a.kpi-card--link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(18, 163, 201, 0.18);
+  border-color: var(--accent-cyan);
+}
+
+/* ---------- Flow search / filter bar ---------- */
+.flow-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.flow-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.flow-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+#flow-search, #msg-search {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 7px 12px 7px 30px;
+  font-family: var(--font-main);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#flow-search:focus, #msg-search:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(18, 163, 201, 0.12);
+}
+
+.flow-filter-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.flow-filter-btn {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.flow-filter-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-cyan);
+  color: var(--text-primary);
+}
+
+.flow-filter-btn.active        { background: var(--accent-cyan);   border-color: var(--accent-cyan);   color: #fff; }
+.flow-filter-btn.active.healthy { background: var(--accent-green);  border-color: var(--accent-green);  color: #fff; }
+.flow-filter-btn.active.warning { background: var(--accent-amber);  border-color: var(--accent-amber);  color: #fff; }
+.flow-filter-btn.active.critical{ background: var(--accent-red);    border-color: var(--accent-red);    color: #fff; }
+
+.flow-no-results {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem 0;
+  grid-column: 1 / -1;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
   .flows-grid { grid-template-columns: 1fr; }

@@ -70,11 +70,30 @@
     </div>
   </div>
 
+  <!-- Search / filter bar -->
+  <div class="flow-filter-bar mb-3">
+    <div class="flow-search-wrap">
+      <i class="bi bi-search flow-search-icon"></i>
+      <input id="flow-search" type="search" placeholder="Search flows…" autocomplete="off" oninput="filterFlows()">
+    </div>
+    <div class="flow-filter-btns">
+      <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">All</button>
+      <button class="flow-filter-btn healthy"           data-filter="healthy"  onclick="setFlowFilter(this,'healthy')">Healthy</button>
+      <button class="flow-filter-btn warning"           data-filter="warning"  onclick="setFlowFilter(this,'warning')">Warning</button>
+      <button class="flow-filter-btn critical"          data-filter="critical" onclick="setFlowFilter(this,'critical')">Critical</button>
+    </div>
+  </div>
+  <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
+
   <!-- Detailed flow cards -->
   {% for flow in status.flows %}
   {% set pre  = flow.pre_queue %}
   {% set post = flow.post_queue %}
-  <div class="flow-detail-card animate-in" data-flow-id="{{ flow.id }}" style="--flow-colour: {{ flow.colour }}">
+  <div class="flow-detail-card animate-in"
+       data-flow-id="{{ flow.id }}"
+       data-label="{{ flow.label | lower }}"
+       data-health="{{ flow.health }}"
+       style="--flow-colour: {{ flow.colour }}">
 
     <div class="flow-detail-header">
       <div class="flow-colour-bar" style="background:{{ flow.colour }}"></div>
@@ -354,10 +373,19 @@
     <span>No flow data available — check Azure credentials</span>
   </div>
   {% endfor %}
+  <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
 
 </div><!-- /page-wrapper -->
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  // Pre-apply filter from URL param (e.g. ?filter=healthy)
+  const _urlFilter = new URLSearchParams(window.location.search).get('filter');
+  if (_urlFilter) {
+    const _btn = document.querySelector(`.flow-filter-btn[data-filter="${_urlFilter}"]`);
+    if (_btn) setFlowFilter(_btn, _urlFilter);
+  }
+</script>
 {% endblock %}

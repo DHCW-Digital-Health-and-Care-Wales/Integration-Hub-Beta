@@ -91,7 +91,13 @@
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
       <h6><i class="bi bi-list-ul me-1"></i> Message Log</h6>
-      <span class="text-muted" style="font-size:0.72rem;">Most recent first · max 500</span>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <div class="flow-search-wrap" style="min-width:220px;">
+          <i class="bi bi-search flow-search-icon"></i>
+          <input id="msg-search" type="search" placeholder="Filter by application…" autocomplete="off" oninput="filterMessages()">
+        </div>
+        <span id="msg-count" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap;">{{ messages | length }} messages</span>
+      </div>
     </div>
     <div class="scroll-panel" style="max-height:600px;">
       <table class="dash-table">
@@ -103,9 +109,9 @@
             <th>Details</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="msg-tbody">
           {% for msg in messages %}
-          <tr>
+          <tr data-app="{{ (msg.app or '') | lower }}">
             <td class="font-mono" style="font-size:0.73rem; color:var(--text-muted); white-space:nowrap;">
               {{ msg.timestamp | replace('T', ' ') | truncate(19, True, '') }}
             </td>
@@ -149,6 +155,24 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  function filterMessages() {
+    const q = (document.getElementById('msg-search')?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#msg-tbody tr');
+    let visible = 0;
+    rows.forEach(function(row) {
+      const show = !q || (row.dataset.app || '').includes(q);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    const countEl = document.getElementById('msg-count');
+    if (countEl) {
+      countEl.textContent = q
+        ? visible + ' of ' + rows.length + ' messages'
+        : rows.length + ' messages';
+    }
+  }
+</script>
 {% if not queue_filter %}
 <script src="{{ url_for('static', filename='js/sb-chart.js') }}"></script>
 {% endif %}

@@ -73,6 +73,7 @@
       // Health class on card
       card.classList.remove("healthy", "warning", "critical", "unknown");
       card.classList.add(healthClass(flow.health));
+      card.dataset.health = flow.health;
 
       // Status dot
       const dot = card.querySelector(".flow-status-dot");
@@ -266,6 +267,37 @@
     });
     rows.forEach((r) => tbody.appendChild(r));
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Flow search & filter (overview + flows pages)                       */
+  /* ------------------------------------------------------------------ */
+  let _flowFilter = "all";
+
+  window.setFlowFilter = function (btn, filter) {
+    _flowFilter = filter;
+    document.querySelectorAll(".flow-filter-btn").forEach((b) => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    filterFlows();
+  };
+
+  window.filterFlows = function () {
+    const q = (document.getElementById("flow-search")?.value || "").toLowerCase().trim();
+    const cards = document.querySelectorAll(".flow-card, .flow-detail-card");
+    let visible = 0;
+
+    cards.forEach((card) => {
+      const label = (card.dataset.label || "").toLowerCase();
+      const health = card.dataset.health || "unknown";
+      const textMatch = !q || label.includes(q);
+      const statusMatch = _flowFilter === "all" || health === _flowFilter;
+      const show = textMatch && statusMatch;
+      card.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+
+    const noResults = document.getElementById("flow-no-results");
+    if (noResults) noResults.style.display = visible === 0 && cards.length > 0 ? "" : "none";
+  };
 
   initSortableTable("queue-table");
 

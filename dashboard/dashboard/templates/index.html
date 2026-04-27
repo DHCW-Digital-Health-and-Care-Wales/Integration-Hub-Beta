@@ -33,15 +33,15 @@
   <!-- KPI Strip -->
   <div class="kpi-strip stagger-children" id="kpi-strip">
 
-    <div class="kpi-card">
+    <a href="{{ url_for('service_bus_page') }}" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-total-active">{{ status.kpis.total_active_messages }}</div>
         <div class="kpi-label">Active Messages</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi-card">
+    <a href="{{ url_for('service_bus_page') }}" class="kpi-card kpi-card--link">
       <div class="kpi-icon {% if status.kpis.total_dlq_messages > 0 %}red{% else %}green{% endif %}">
         <i class="bi bi-exclamation-octagon-fill"></i>
       </div>
@@ -50,46 +50,43 @@
              id="kpi-total-dlq">{{ status.kpis.total_dlq_messages }}</div>
         <div class="kpi-label">Dead-Letter Messages</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi-card">
+    <a href="{{ url_for('exceptions_page') }}" class="kpi-card kpi-card--link">
       <div class="kpi-icon {% if status.kpis.exception_count_1h > 0 %}amber{% else %}green{% endif %}">
         <i class="bi bi-bug-fill"></i>
       </div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-exceptions-1h">{{ status.kpis.exception_count_1h }}</div>
-        <div class="kpi-label">
-          Exceptions (1h)
-          <a href="{{ url_for('exceptions_page') }}" class="ms-1" style="font-size:0.65rem;">View →</a>
-        </div>
+        <div class="kpi-label">Exceptions (1h)</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi-card">
+    <a href="{{ url_for('flows_page') }}?filter=healthy" class="kpi-card kpi-card--link">
       <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-flows-healthy">{{ status.kpis.flows_healthy }}</div>
         <div class="kpi-label">Flows Healthy</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi-card">
+    <a href="{{ url_for('flows_page') }}?filter=warning" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if status.kpis.flows_warning > 0 %}text-warning{% endif %}"
              id="kpi-flows-warning">{{ status.kpis.flows_warning }}</div>
         <div class="kpi-label">Flows Warning</div>
       </div>
-    </div>
+    </a>
 
-    <div class="kpi-card">
+    <a href="{{ url_for('flows_page') }}?filter=critical" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if status.kpis.flows_critical > 0 %}text-danger{% endif %}"
              id="kpi-flows-critical">{{ status.kpis.flows_critical }}</div>
         <div class="kpi-label">Flows Critical</div>
       </div>
-    </div>
+    </a>
 
   </div><!-- /kpi-strip -->
 
@@ -101,12 +98,27 @@
     </a>
   </div>
 
+  <div class="flow-filter-bar">
+    <div class="flow-search-wrap">
+      <i class="bi bi-search flow-search-icon"></i>
+      <input id="flow-search" type="search" placeholder="Search flows…" autocomplete="off" oninput="filterFlows()">
+    </div>
+    <div class="flow-filter-btns">
+      <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">All</button>
+      <button class="flow-filter-btn healthy"           data-filter="healthy"  onclick="setFlowFilter(this,'healthy')">Healthy</button>
+      <button class="flow-filter-btn warning"           data-filter="warning"  onclick="setFlowFilter(this,'warning')">Warning</button>
+      <button class="flow-filter-btn critical"          data-filter="critical" onclick="setFlowFilter(this,'critical')">Critical</button>
+    </div>
+  </div>
+
   <div class="flows-grid stagger-children" id="flows-grid">
     {% for flow in status.flows %}
     {% set pre = flow.pre_queue %}
     {% set post = flow.post_queue %}
     <div class="flow-card {{ flow.health }}"
          data-flow-id="{{ flow.id }}"
+         data-label="{{ flow.label | lower }}"
+         data-health="{{ flow.health }}"
          style="--flow-colour: {{ flow.colour }}">
 
       <div class="flow-header">
@@ -257,6 +269,7 @@
       <span>No flow data available — check Azure credentials</span>
     </div>
     {% endfor %}
+    <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
   </div><!-- /flows-grid -->
 
   <!-- Two-column lower section -->
