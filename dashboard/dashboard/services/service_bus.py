@@ -168,6 +168,54 @@ def get_subscriptions(topic_name: str) -> list[dict]:
 # Service Bus metrics (Incoming / Outgoing messages over time)
 # ---------------------------------------------------------------------------
 
+def _zero_fill(points: list[dict], timespan_hours: int, bin_minutes: int) -> list[dict]:
+    """Fill in explicit zero-value data points for all expected time bins.
+
+    Log Analytics only returns bins where activity occurred, so gaps between
+    real data points are left empty. Without zero-filling, the chart draws
+    diagonal interpolation lines across those gaps, giving a false impression
+    of steady message flow. This function generates every UTC-epoch-aligned
+    bin across the timespan and inserts value=0 for any bin with no data,
+    producing sharp spikes rather than ramps.
+    """
+    if not points:
+        return points
+
+    bin_secs = bin_minutes * 60
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(hours=timespan_hours)
+
+    # Snap start to the nearest UTC-epoch-aligned bin boundary (floor)
+    start_epoch = int(start.timestamp())
+    aligned_start_epoch = (start_epoch // bin_secs) * bin_secs
+
+    # Build lookup: UTC-epoch-aligned bin epoch → value
+    real: dict[int, int] = {}
+    for p in points:
+        try:
+            t = datetime.fromisoformat(p["time"].replace("Z", "+00:00"))
+            # Snap this point to its UTC-aligned bin boundary
+            t_epoch = int(t.timestamp())
+            bin_epoch = (t_epoch // bin_secs) * bin_secs
+            # Sum values that fall in the same bin (shouldn't happen but be safe)
+            real[bin_epoch] = real.get(bin_epoch, 0) + (int(p["value"]) if p["value"] else 0)
+        except (ValueError, KeyError):
+            pass
+
+    if not real:
+        return points
+
+    # Generate every bin from aligned_start to now+1bin, inserting 0 for gaps
+    filled: list[dict] = []
+    epoch = aligned_start_epoch
+    end_epoch = int(now.timestamp()) + bin_secs
+    while epoch <= end_epoch:
+        ts = datetime.fromtimestamp(epoch, tz=timezone.utc)
+        filled.append({"time": ts.isoformat(), "value": real.get(epoch, 0)})
+        epoch += bin_secs
+
+    return filled
+
 def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) -> dict:
     """Query Log Analytics for Service Bus IncomingMessages / OutgoingMessages.
 
@@ -203,7 +251,9 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
     queue_filter_kql = ""
     if queue_name:
         safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", queue_name)
-        queue_filter_kql = f"| where Resource =~ '{safe_queue}'\n"
+        # ResourceId contains the full path: .../namespaces/<ns>/queues/<queue-name>
+        # Resource column holds only the namespace name, so we must use ResourceId.
+        queue_filter_kql = f"| where tolower(ResourceId) contains '/{safe_queue.lower()}'\n"
 
     kql = (
         "AzureMetrics\n"
@@ -259,6 +309,14 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
             len(series["incoming"]),
             len(series["outgoing"]),
         )
+
+        # Zero-fill: insert explicit 0 values for all expected time bins so the
+        # chart shows flat zero during inactive periods rather than interpolating
+        # across gaps between real data points.
+        bin_minutes = {"1m": 1, "5m": 5, "15m": 15, "1h": 60}[bin_size]
+        series["incoming"] = _zero_fill(series["incoming"], timespan_hours, bin_minutes)
+        series["outgoing"] = _zero_fill(series["outgoing"], timespan_hours, bin_minutes)
+
         return series
 
     except Exception as exc:

@@ -121,15 +121,30 @@ _cache_data: dict = {
 
 
 def _cached(key: str, builder, ttl: float | None = None, force: bool = False):
-    """Generic TTL cache helper. Returns cached value or calls builder() to refresh."""
+    """Generic TTL cache helper. Returns cached value or calls builder() to refresh.
+
+    The lock is held only for the fast cache-check and the final store — never
+    during the (potentially slow) Azure API call, so concurrent requests are not
+    blocked waiting for a cache rebuild.
+    """
     _ttl = ttl if ttl is not None else config.API_CACHE_TTL
     now = time.monotonic()
+
+    # Fast path: return stale-check under lock, return immediately if fresh
+    if not force:
+        with _cache_lock:
+            entry = _cache_data[key]
+            if (now - entry["ts"]) <= _ttl and entry["data"] is not None:
+                return entry["data"]
+
+    # Slow path: call builder outside the lock so other requests aren't blocked
+    new_data = builder()
+
     with _cache_lock:
-        entry = _cache_data[key]
-        if force or (now - entry["ts"]) > _ttl:
-            entry["data"] = builder()
-            entry["ts"] = now
-    return _cache_data[key]["data"]
+        _cache_data[key]["data"] = new_data
+        _cache_data[key]["ts"] = time.monotonic()
+
+    return new_data
 
 
 def _get_cached_status(force: bool = False) -> dict:
@@ -186,7 +201,6 @@ def index():
 @app.route("/flows")
 def flows_page():
     status = _get_cached_status()
-    active_flows = get_active_flows()
     container_metrics = _cached(
         "flows",
         get_container_apps_metrics,
@@ -196,7 +210,6 @@ def flows_page():
         "flows.html",
         status=status,
         container_metrics=container_metrics,
-        flows_def=active_flows,
         refresh_interval=config.API_CACHE_TTL,
     )
 
@@ -256,12 +269,15 @@ def messages_page():
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
+    cached_sb = _cached("servicebus", lambda: {"queues": get_queues()}, ttl=config.API_CACHE_TTL)
+    queue_names = sorted(q["name"] for q in cached_sb.get("queues", []) if q.get("name"))
     return render_template(
         "messages.html",
         messages=messages,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         queue_filter=queue_filter,
         flow_label=flow_label,
+        queue_names=queue_names,
     )
 
 
