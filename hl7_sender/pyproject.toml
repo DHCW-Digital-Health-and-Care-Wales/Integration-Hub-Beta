@@ -17,6 +17,7 @@ dependencies = [
   "event-logger-lib",
   "metric-sender-lib",
   "hl7_validation_lib",
+  "setuptools>=82.0.0",
 ]
 
 [dependency-groups]

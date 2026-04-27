@@ -12,6 +12,7 @@ dependencies = [
   "urllib3>=2.6.3",
   "message-bus-lib",
   "health-check-lib",
+  "setuptools>=82.0.0",
 ]
 
 [dependency-groups]

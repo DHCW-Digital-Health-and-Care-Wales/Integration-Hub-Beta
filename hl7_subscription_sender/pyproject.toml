@@ -16,6 +16,7 @@ dependencies = [
   "processor-manager-lib",
   "event-logger-lib",
   "metric-sender-lib",
+  "setuptools>=82.0.0",
 ]
 
 [dependency-groups]
