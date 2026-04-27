@@ -12,7 +12,7 @@ from azure.servicebus import (
     ServiceBusReceiveMode,
     ServiceBusReceiver,
 )
-from azure.servicebus.exceptions import SessionCannotBeLockedError
+from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,11 @@ class MessageReceiverClient:
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
+        except ServiceBusError as exc:
+            # Transient AMQP-level errors (e.g. session not yet established, connection dropped)
+            # are surfaced as ServiceBusError. Treat them as recoverable and retry after a delay.
+            logger.warning("Transient Service Bus error, will retry later: %s", exc)
+            self._set_delay_before_retry()
         finally:
             if autolock_renewer:
                 autolock_renewer.close()

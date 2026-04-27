@@ -3,7 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from azure.servicebus import ServiceBusMessage
-from azure.servicebus.exceptions import SessionCannotBeLockedError
+from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 
@@ -140,6 +140,19 @@ class TestMessageReceiverClient(unittest.TestCase):
         # Act
         self.message_receiver_client.receive_messages(1, error_processor)
         self.message_receiver_client.receive_messages(1, error_processor)
+
+        # Assert
+        self.assertEqual(self.message_receiver_client.retry_attempt, 1)
+        self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS * 2)
+        self.assertIsNotNone(self.message_receiver_client.next_retry_time)
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_sets_retry_delay_on_service_bus_error(self, sleep_mock: MagicMock) -> None:
+        # Arrange
+        self.service_bus_receiver_client.receive_messages.side_effect = ServiceBusError("Transient receive failure")
+
+        # Act
+        self.message_receiver_client.receive_messages(1, lambda msg: True)
 
         # Assert
         self.assertEqual(self.message_receiver_client.retry_attempt, 1)
