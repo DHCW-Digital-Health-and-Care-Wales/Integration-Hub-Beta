@@ -16,6 +16,7 @@ dependencies = [
   "processor-manager-lib",
   "event-logger-lib",
   "metric-sender-lib",
+  "setuptools>=82.0.0",
 ]
 
 [dependency-groups]
@@ -23,7 +24,6 @@ dev = [
   "ruff==0.14.9",
   "bandit==1.9.2",
   "mypy==1.18.2",
-  "uv-secure[faster-async]==0.14.4",
 ]
 
 [tool.uv.sources]

@@ -1,5 +1,5 @@
 [build-system]  
-requires = ["setuptools>=61.0"]  
+requires = ["setuptools>=82.0.0"]  
 build-backend = "setuptools.build_meta"  
 
 [project]  
@@ -19,7 +19,7 @@ dependencies = [
     "azure-servicebus==7.14.2",  
     "azure-identity==1.23.0",  
     "urllib3>=2.6.3",
-    "setuptools==80.9.0",  
+    "setuptools>=82.0.0",  
 ]  
 
 [dependency-groups]
@@ -27,7 +27,6 @@ dev = [
   "ruff==0.15.0",
   "bandit==1.9.2",
   "mypy==1.18.2",
-  "uv-secure[faster-async]==0.14.4",
 ]
 
 [tool.mypy]

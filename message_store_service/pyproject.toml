@@ -12,6 +12,7 @@ dependencies = [
   "health-check-lib",
   "processor-manager-lib",
   "event-logger-lib",
+  "setuptools>=82.0.0",
 ]
 
 [dependency-groups]
@@ -19,7 +20,6 @@ dev = [
   "ruff==0.15.1",
   "bandit==1.9.3",
   "mypy==1.19.1",
-  "uv-secure[faster-async]==0.16.0",
 ]
 
 [tool.uv.sources]
