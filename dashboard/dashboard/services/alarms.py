@@ -20,9 +20,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -267,13 +264,13 @@ def _send_alarm_email(
     now: datetime,
     email_alerts_enabled: bool = False,
 ) -> None:
-    """Send an HTML email when Alarm 1 fires. No-op if SMTP is not configured or emails disabled."""
+    """Send an HTML email via Azure Communication Services when Alarm 1 fires."""
     if not config.ALERT_EMAIL_ENABLED:
         return
     if not email_alerts_enabled:
         return
-    if not config.ALERT_EMAIL_TO or not config.SMTP_HOST:
-        log.warning("Alarm email enabled but ALERT_EMAIL_TO / SMTP_HOST not set — skipping")
+    if not config.ACS_CONNECTION_STRING or not config.ALERT_EMAIL_TO:
+        log.warning("Alarm email enabled but ACS_CONNECTION_STRING / ALERT_EMAIL_TO not set — skipping")
         return
 
     period = get_current_period(now)
@@ -322,20 +319,17 @@ def _send_alarm_email(
 </p>
 </body></html>"""
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = config.ALERT_EMAIL_FROM or config.SMTP_USERNAME
-    msg["To"] = config.ALERT_EMAIL_TO
-    msg.attach(MIMEText(body, "html"))
-
     try:
-        with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=15) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-            if config.SMTP_USERNAME and config.SMTP_PASSWORD:
-                smtp.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
-            smtp.send_message(msg)
+        from azure.communication.email import EmailClient  # noqa: PLC0415
+
+        client = EmailClient.from_connection_string(config.ACS_CONNECTION_STRING)
+        message = {
+            "senderAddress": config.ALERT_EMAIL_FROM,
+            "recipients": {"to": [{"address": config.ALERT_EMAIL_TO}]},
+            "content": {"subject": subject, "html": body},
+        }
+        poller = client.begin_send(message)
+        poller.result()  # wait for delivery confirmation
         log.info("Alarm 1 email sent for %s to %s", server_id, config.ALERT_EMAIL_TO)
     except Exception as exc:
         log.error("Failed to send alarm 1 email for %s: %s", server_id, exc)

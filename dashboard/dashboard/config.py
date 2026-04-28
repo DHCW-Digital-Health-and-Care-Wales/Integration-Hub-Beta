@@ -36,11 +36,8 @@ DLQ_WARNING_THRESHOLD = int(os.getenv("DLQ_WARNING_THRESHOLD", "1"))
 # Cache TTL in seconds for /api/status
 API_CACHE_TTL = int(os.getenv("API_CACHE_TTL", "30"))
 
-# Alarm 1 — email notifications
+# Alarm 1 — email notifications (Azure Communication Services)
 ALERT_EMAIL_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true"
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.office365.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+ACS_CONNECTION_STRING = os.getenv("ACS_CONNECTION_STRING", "")

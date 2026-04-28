@@ -12,6 +12,20 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-communication-email"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/de/f71191ead5e778a7d8939744977a049f796f6fb6549847c667fad373605e/azure_communication_email-1.1.0.tar.gz", hash = "sha256:6a4af8281024327c3ab18a4996919069a99a69aad3a19c40f7852a6682493327", size = 55546, upload-time = "2025-10-17T20:30:23.349Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/fe/9bd1028853c4b351c756ba4acc39ef5b5914a3452ebe2df0b8ddd6051114/azure_communication_email-1.1.0-py3-none-any.whl", hash = "sha256:9212153f21cf7e68734c32ebfe8702b43398bd01df2dddb0ca52cd5a8bbd5024", size = 64170, upload-time = "2025-10-17T20:30:24.829Z" },
+]
+
+[[package]]
 name = "azure-core"
 version = "1.39.0"
 source = { registry = "https://pypi.org/simple" }
@@ -439,6 +453,7 @@ name = "integration-hub-dashboard"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "azure-communication-email" },
     { name = "azure-identity" },
     { name = "azure-mgmt-appcontainers" },
     { name = "azure-mgmt-servicebus" },
@@ -460,6 +475,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "azure-communication-email", specifier = ">=1.0.0" },
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
     { name = "azure-mgmt-servicebus", specifier = ">=9.0.0" },

@@ -9,6 +9,7 @@ description = "NHS Wales Integration Hub NOC monitoring dashboard"
 requires-python = ">=3.13"
 
 dependencies = [
+    "azure-communication-email>=1.0.0",
     "azure-identity>=1.25.0",
     "azure-mgmt-appcontainers>=4.0.0",
     "azure-mgmt-servicebus>=9.0.0",
