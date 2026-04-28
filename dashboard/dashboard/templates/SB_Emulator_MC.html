@@ -1,0 +1,119 @@
+{#
+  Minecraft Classic Emulator — easter egg for the Service Bus page.
+  Trigger: hold Shift and press C then J.
+  To remove: delete this file and the {% include %} line in service_bus.html.
+  Uses: https://classic.minecraft.net/ via iframe (official Mojang hosted).
+#}
+
+<!-- 🎮 Minecraft easter egg — Shift+C+J -->
+<style>
+  #mc-modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 99990;
+    background: rgba(0, 0, 0, 0.88);
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #mc-modal-overlay.mc-visible { display: flex; }
+  #mc-modal {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8), 0 0 0 4px #5a3e1b, 0 0 0 8px #8b6914;
+    width: min(96vw, 900px);
+    height: min(90vh, 600px);
+    background: #1a1a2e;
+    image-rendering: pixelated;
+  }
+  #mc-modal-close {
+    position: absolute; top: 10px; right: 12px; z-index: 2;
+    background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff; font-size: 1rem; line-height: 1; border-radius: 3px;
+    width: 28px; height: 28px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    font-family: monospace;
+  }
+  #mc-modal-close:hover { background: rgba(255, 255, 255, 0.15); }
+  #mc-iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  #mc-hint-badge {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 2;
+    font-family: 'Courier New', monospace; font-size: 10px; color: rgba(255, 255, 255, 0.35);
+    pointer-events: none; white-space: nowrap;
+    text-shadow: 1px 1px 0 #000;
+  }
+  #mc-title-badge {
+    position: absolute; top: 10px; left: 14px; z-index: 2;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    text-shadow: 1px 1px 0 #000;
+  }
+</style>
+
+<div id="mc-modal-overlay" role="dialog" aria-modal="true" aria-label="Minecraft Classic">
+  <div id="mc-modal">
+    <div id="mc-title-badge">⛏ Minecraft Classic</div>
+    <button id="mc-modal-close" title="Close (Esc)">&#x2715;</button>
+    <iframe
+      id="mc-iframe"
+      src="about:blank"
+      data-src="https://classic.minecraft.net/"
+      allow="fullscreen"
+      title="Minecraft Classic"
+    ></iframe>
+    <div id="mc-hint-badge">ESC to close · Click inside to capture mouse</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const KEYS = new Set();
+  const COMBO = ['shift', 'c', 'j'];
+
+  const overlay = document.getElementById('mc-modal-overlay');
+  const iframe  = document.getElementById('mc-iframe');
+  const closeBtn = document.getElementById('mc-modal-close');
+
+  function openMC() {
+    // Lazy-load the iframe only on first open
+    if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+      iframe.src = iframe.dataset.src;
+    }
+    overlay.classList.add('mc-visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMC() {
+    overlay.classList.remove('mc-visible');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', function (e) {
+    KEYS.add(e.key.toLowerCase());
+    if (COMBO.every(k => KEYS.has(k))) {
+      openMC();
+      KEYS.clear();
+    }
+  });
+
+  document.addEventListener('keyup', function (e) {
+    KEYS.delete(e.key.toLowerCase());
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeMC();
+  });
+
+  closeBtn.addEventListener('click', closeMC);
+
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeMC();
+  });
+}());
+</script>

@@ -40,12 +40,8 @@ DEFAULT_WEEKEND_THRESHOLD = 240
 DEFAULT_ALERTING_GAP      = 60
 
 # Seed list — always present even if Log Analytics is unavailable.
-KNOWN_HL7_SERVERS: list[str] = [
-    "chemocare_hl7_server",
-    "paris_hl7_server",
-    "phw_hl7_server",
-    "pims_hl7_server",
-]
+# Uses Container App naming convention: {location}-{env}-{flow}-hl7server-ca
+KNOWN_HL7_SERVERS: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +128,29 @@ def _applicable_threshold(server_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 
 def _display_name(server_id: str) -> str:
-    return server_id.replace("_", " ").title()
+    # Handle Container App naming: uks-dev-phw-hl7server-ca → PHW HL7 Server
+    # Strip known prefix/suffix patterns and normalise separators
+    name = server_id
+    # Remove trailing -ca suffix
+    if name.endswith("-ca"):
+        name = name[:-3]
+    # Remove leading {location}-{env}- prefix (e.g. uks-dev-)
+    parts = name.split("-")
+    # Drop parts that look like region/env prefixes (short, non-descriptive)
+    # Heuristic: drop first two parts if they're 3 chars or fewer (uks, dev)
+    while len(parts) >= 2 and len(parts[0]) <= 4:  # noqa: PLR2004
+        parts = parts[1:]
+    name = " ".join(parts)
+    # Expand common abbreviations
+    name = re.sub(r"\bhl7server\b", "HL7 Server", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bhl7\b", "HL7", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bphw\b", "PHW", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bpims\b", "PIMS", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bmpi\b", "MPI", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bwds\b", "WDS", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bparis\b", "Paris", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bchemo\b", "ChemoCare", name, flags=re.IGNORECASE)
+    return name.title() if name == name.lower() else name
 
 
 def _format_duration(minutes: float) -> str:
@@ -176,7 +194,7 @@ def discover_hl7_servers() -> list[str]:
         | where Message == "Integration Hub Event"
         | where Properties contains "MESSAGE_RECEIVED"
         | extend microservice_id = tostring(parse_json(Properties)["microservice_id"])
-        | where microservice_id endswith "_hl7_server"
+        | where microservice_id endswith "-hl7server-ca"
         | summarize by microservice_id
         | order by microservice_id asc
         """
