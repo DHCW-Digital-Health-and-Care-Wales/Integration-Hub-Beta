@@ -183,6 +183,7 @@ def _build_status() -> dict:
         },
         "flows": flows,
         "queues": queues,
+        "recent_exceptions": exceptions_1h[:5],
     }
 
 

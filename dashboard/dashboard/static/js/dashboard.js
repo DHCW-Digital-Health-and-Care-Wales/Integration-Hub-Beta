@@ -70,7 +70,7 @@
       const card = document.querySelector(`[data-flow-id="${flow.id}"]`);
       if (!card) continue;
 
-      // Health class on card
+      // Health class on card (works for both table rows and detail cards)
       card.classList.remove("healthy", "warning", "critical", "unknown");
       card.classList.add(healthClass(flow.health));
       card.dataset.health = flow.health;
@@ -89,9 +89,29 @@
         badge.textContent = flow.health.toUpperCase();
       }
 
-      // Pre-queue
+      // Compact table — update active/dlq totals
+      const rowActive = card.querySelector(`[data-flow-active="${flow.id}"]`);
+      if (rowActive) {
+        const pre = flow.pre_queue || {};
+        const post = flow.post_queue || {};
+        const subActive = (flow.subscriptions || []).reduce((s, q) => s + (q.active || 0), 0);
+        const total = (pre.active || 0) + (post.active || 0) + subActive;
+        animateCounter(rowActive, total);
+        rowActive.className = "text-end count-cell " +
+          (total >= 50 ? "critical" : total >= 10 ? "warning" : "zero");
+      }
+      const rowDlq = card.querySelector(`[data-flow-dlq="${flow.id}"]`);
+      if (rowDlq) {
+        const pre = flow.pre_queue || {};
+        const post = flow.post_queue || {};
+        const subDlq = (flow.subscriptions || []).reduce((s, q) => s + (q.dlq || 0), 0);
+        const total = (pre.dlq || 0) + (post.dlq || 0) + subDlq;
+        animateCounter(rowDlq, total);
+        rowDlq.className = "text-end count-cell " + (total > 0 ? "dlq-warn" : "zero");
+      }
+
+      // Detail card pipeline nodes (only present on flows page)
       updateQueueNode(card, "pre", flow.pre_queue);
-      // Post-queue
       updateQueueNode(card, "post", flow.post_queue);
     }
   }
@@ -282,22 +302,101 @@
 
   window.filterFlows = function () {
     const q = (document.getElementById("flow-search")?.value || "").toLowerCase().trim();
+
+    // ── Compact table rows (Overview page) ──────────────────────────────
+    const rows = document.querySelectorAll(".flow-row");
+    if (rows.length) {
+      let visible = 0;
+      rows.forEach((row) => {
+        const label = (row.dataset.label || "").toLowerCase();
+        const health = row.dataset.health || "unknown";
+        const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+      const noResults = document.getElementById("flow-no-results");
+      if (noResults) noResults.style.display = visible === 0 && rows.length > 0 ? "" : "none";
+      return;
+    }
+
+    // ── Grouped flow cards (Flows detail page) ──────────────────────────
+    const groups = document.querySelectorAll(".flow-group");
+    if (groups.length) {
+      groups.forEach((group) => {
+        const cards = group.querySelectorAll(".flow-detail-card");
+        let groupVisible = 0;
+        cards.forEach((card) => {
+          const label = (card.dataset.label || "").toLowerCase();
+          const health = card.dataset.health || "unknown";
+          const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
+          card.style.display = show ? "" : "none";
+          if (show) groupVisible++;
+        });
+        group.style.display = groupVisible > 0 ? "" : "none";
+        // Auto-expand groups that have matching results when searching
+        if (q && groupVisible > 0) {
+          setGroupExpanded(group, true);
+        }
+      });
+      const noResults = document.getElementById("flow-no-results");
+      const totalVisible = document.querySelectorAll(".flow-group:not([style*='display: none']) .flow-detail-card:not([style*='display: none'])").length;
+      if (noResults) noResults.style.display = totalVisible === 0 ? "" : "none";
+      return;
+    }
+
+    // ── Flat flow cards fallback ─────────────────────────────────────────
     const cards = document.querySelectorAll(".flow-card, .flow-detail-card");
     let visible = 0;
-
     cards.forEach((card) => {
       const label = (card.dataset.label || "").toLowerCase();
       const health = card.dataset.health || "unknown";
-      const textMatch = !q || label.includes(q);
-      const statusMatch = _flowFilter === "all" || health === _flowFilter;
-      const show = textMatch && statusMatch;
+      const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
       card.style.display = show ? "" : "none";
       if (show) visible++;
     });
-
     const noResults = document.getElementById("flow-no-results");
     if (noResults) noResults.style.display = visible === 0 && cards.length > 0 ? "" : "none";
   };
+
+  /* ------------------------------------------------------------------ */
+  /* Flow group collapse / expand (Flows detail page)                   */
+  /* ------------------------------------------------------------------ */
+  function setGroupExpanded(groupEl, expanded) {
+    const body = groupEl.querySelector(".flow-group-body");
+    const chevron = groupEl.querySelector(".flow-group-chevron");
+    if (!body) return;
+    if (expanded) {
+      body.classList.add("expanded");
+      if (chevron) chevron.style.transform = "rotate(0deg)";
+    } else {
+      body.classList.remove("expanded");
+      if (chevron) chevron.style.transform = "rotate(-90deg)";
+    }
+    // Persist to sessionStorage
+    try {
+      const states = JSON.parse(sessionStorage.getItem("flowGroupStates") || "{}");
+      states[groupEl.dataset.source] = expanded;
+      sessionStorage.setItem("flowGroupStates", JSON.stringify(states));
+    } catch (_) { /* ignore */ }
+  }
+
+  window.toggleFlowGroup = function (headerEl) {
+    const group = headerEl.closest(".flow-group");
+    if (!group) return;
+    const body = group.querySelector(".flow-group-body");
+    setGroupExpanded(group, !body.classList.contains("expanded"));
+  };
+
+  // Restore group states from sessionStorage on load
+  (function restoreGroupStates() {
+    try {
+      const states = JSON.parse(sessionStorage.getItem("flowGroupStates") || "{}");
+      document.querySelectorAll(".flow-group").forEach((group) => {
+        const src = group.dataset.source;
+        if (src in states) setGroupExpanded(group, states[src]);
+      });
+    } catch (_) { /* ignore */ }
+  })();
 
   initSortableTable("queue-table");
 

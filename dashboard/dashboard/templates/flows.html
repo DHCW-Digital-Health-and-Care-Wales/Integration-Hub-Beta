@@ -31,14 +31,14 @@
 
   <!-- KPI row -->
   <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr))">
-    <div class="kpi-card">
+    <a href="{{ url_for('service_bus_page') }}" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-total-active">{{ status.kpis.total_active_messages }}</div>
         <div class="kpi-label">Active Msgs</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="{{ url_for('service_bus_page') }}" class="kpi-card kpi-card--link">
       <div class="kpi-icon {% if status.kpis.total_dlq_messages > 0 %}red{% else %}green{% endif %}">
         <i class="bi bi-exclamation-octagon-fill"></i>
       </div>
@@ -46,28 +46,28 @@
         <div class="kpi-number" id="kpi-total-dlq">{{ status.kpis.total_dlq_messages }}</div>
         <div class="kpi-label">Dead-Letter</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="{{ url_for('flows_page') }}?filter=healthy" class="kpi-card kpi-card--link">
       <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-flows-healthy">{{ status.kpis.flows_healthy }}</div>
         <div class="kpi-label">Healthy</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="{{ url_for('flows_page') }}?filter=warning" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-flows-warning">{{ status.kpis.flows_warning }}</div>
         <div class="kpi-label">Warning</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="{{ url_for('flows_page') }}?filter=critical" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-flows-critical">{{ status.kpis.flows_critical }}</div>
         <div class="kpi-label">Critical</div>
       </div>
-    </div>
+    </a>
   </div>
 
   <!-- Search / filter bar -->
@@ -85,15 +85,50 @@
   </div>
   <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
 
-  <!-- Detailed flow cards -->
-  {% for flow in status.flows %}
-  {% set pre  = flow.pre_queue %}
-  {% set post = flow.post_queue %}
-  <div class="flow-detail-card animate-in"
-       data-flow-id="{{ flow.id }}"
-       data-label="{{ flow.label | lower }}"
-       data-health="{{ flow.health }}"
-       style="--flow-colour: {{ flow.colour }}">
+  <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
+
+  <!-- Grouped flow cards, one section per source system -->
+  {% for source, source_flows in status.flows | groupby('source') %}
+  {% set ns = namespace(group_active=0, group_dlq=0, group_health='healthy') %}
+  {% for f in source_flows %}
+    {% set f_active = (f.pre_queue.active or 0) + (f.post_queue.active or 0) + (f.subscriptions | sum(attribute='active') if f.subscriptions else 0) %}
+    {% set f_dlq    = (f.pre_queue.dlq   or 0) + (f.post_queue.dlq   or 0) + (f.subscriptions | sum(attribute='dlq')    if f.subscriptions else 0) %}
+    {% set ns.group_active = ns.group_active + f_active %}
+    {% set ns.group_dlq    = ns.group_dlq    + f_dlq %}
+    {% if f.health == 'critical' %}{% set ns.group_health = 'critical' %}
+    {% elif f.health == 'warning' and ns.group_health != 'critical' %}{% set ns.group_health = 'warning' %}{% endif %}
+  {% endfor %}
+  {% set auto_open = ns.group_health != 'healthy' %}
+
+  <div class="flow-group animate-in" data-source="{{ source }}" id="group-{{ source | lower | replace(' ', '-') }}">
+
+    <div class="flow-group-header" onclick="toggleFlowGroup(this)" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' ')toggleFlowGroup(this)">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-chevron-down flow-group-chevron" style="font-size:0.72rem; transition:transform 0.2s; {{ 'transform:rotate(-90deg)' if not auto_open else '' }}"></i>
+        <span class="flow-status-dot {{ ns.group_health }}"></span>
+        <span class="flow-group-name">{{ source }}</span>
+        <span class="status-badge {{ ns.group_health }}" style="font-size:0.65rem;">{{ ns.group_health | upper }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-3" style="font-size:0.72rem; color:var(--text-muted);">
+        <span>{{ source_flows | list | length }} flow{{ 's' if source_flows | list | length != 1 else '' }}</span>
+        <span>Active: <strong style="{{ 'color:var(--accent-amber)' if ns.group_active >= 10 else '' }}">{{ ns.group_active }}</strong></span>
+        {% if ns.group_dlq > 0 %}
+        <span class="dlq-badge-pill" style="font-size:0.65rem;"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ ns.group_dlq }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="flow-group-body {{ 'expanded' if auto_open else '' }}">
+      {% for flow in source_flows %}
+      {% set pre  = flow.pre_queue %}
+      {% set post = flow.post_queue %}
+      <div class="flow-detail-card animate-in"
+           data-flow-id="{{ flow.id }}"
+           data-label="{{ flow.label | lower }}"
+           data-health="{{ flow.health }}"
+           id="flow-{{ flow.id }}"
+           style="--flow-colour: {{ flow.colour }}">
 
     <div class="flow-detail-header">
       <div class="flow-colour-bar" style="background:{{ flow.colour }}"></div>
@@ -366,14 +401,21 @@
       {% endif %}
 
     </div><!-- /flow-detail-body -->
-  </div><!-- /flow-detail-card -->
+      </div><!-- /flow-detail-card -->
+      {% else %}
+      <div class="no-data" style="padding:1.5rem;">
+        <i class="bi bi-cloud-slash"></i>
+        <span>No flow data available — check Azure credentials</span>
+      </div>
+      {% endfor %}
+    </div><!-- /flow-group-body -->
+  </div><!-- /flow-group -->
   {% else %}
   <div class="no-data">
     <i class="bi bi-cloud-slash"></i>
     <span>No flow data available — check Azure credentials</span>
   </div>
   {% endfor %}
-  <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
 
 </div><!-- /page-wrapper -->
 {% endblock %}

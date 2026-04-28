@@ -111,166 +111,53 @@
     </div>
   </div>
 
-  <div class="flows-grid stagger-children" id="flows-grid">
-    {% for flow in status.flows %}
-    {% set pre = flow.pre_queue %}
-    {% set post = flow.post_queue %}
-    <div class="flow-card {{ flow.health }}"
-         data-flow-id="{{ flow.id }}"
-         data-label="{{ flow.label | lower }}"
-         data-health="{{ flow.health }}"
-         style="--flow-colour: {{ flow.colour }}">
-
-      <div class="flow-header">
-        <div class="flow-title">
-          <div class="flow-title-icon" style="background:{{ flow.colour }}20; color:{{ flow.colour }}">
-            <i class="{{ flow.icon }}"></i>
-          </div>
-          {{ flow.label }}
-          <span class="flow-status-dot {{ flow.health }}"></span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          {% set flow_dlq = (pre.dlq or 0) + (post.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
-          {% if flow_dlq > 0 %}
-          <span class="dlq-badge-pill">
-            <i class="bi bi-exclamation-octagon-fill"></i>
-            DLQ: {{ flow_dlq }}
-          </span>
-          {% endif %}
-          <span class="status-badge {{ flow.health }} flow-health-badge">{{ flow.health | upper }}</span>
-        </div>
-      </div>
-
-      <!-- Pipeline diagram -->
-      <div class="pipeline">
-        <!-- Source -->
-        <div class="pipeline-node">
-          <div class="pipeline-node-box neutral">{{ flow.source }}</div>
-          <div class="pipeline-node-count">
-            {% if flow.source_port %}<span class="port-label">:{{ flow.source_port }}</span>{% endif %}
-          </div>
-        </div>
-
-        {% if flow.topic %}
-        {# ── Topic / subscription flow (MPI Outbound) ── #}
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line healthy"></div>
-        </div>
-
-        <div class="pipeline-node">
-          <div class="pipeline-node-box neutral">
-            <i class="bi bi-broadcast" style="font-size:0.6rem"></i> TOPIC
-          </div>
-          <div class="pipeline-node-count">
-            {% set sub_total_active = flow.subscriptions | sum(attribute='active') if flow.subscriptions else 0 %}
-            <span>{{ sub_total_active }}</span>
-            {% set sub_total_dlq = flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0 %}
-            {% if sub_total_dlq > 0 %}
-            <span class="dlq-badge">+{{ sub_total_dlq }}DLQ</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line {{ flow.health }}"></div>
-        </div>
-
-        <div class="pipeline-node">
-          <div class="pipeline-node-box neutral">
-            <i class="bi bi-diagram-3" style="font-size:0.6rem"></i>
-            {{ flow.subscriptions | length }} subs
-          </div>
-          <div class="pipeline-node-count"></div>
-        </div>
-
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line healthy"></div>
-        </div>
-
+  <div class="queue-table-wrapper p-0" id="flows-compact-wrap">
+    <table class="dash-table" id="flows-compact-table">
+      <thead>
+        <tr>
+          <th style="width:16px;"></th>
+          <th>Flow</th>
+          <th>Route</th>
+          <th class="text-end">Active</th>
+          <th class="text-end">DLQ</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for flow in status.flows %}
+        {% set pre  = flow.pre_queue %}
+        {% set post = flow.post_queue %}
+        {% set flow_active = (pre.active or 0) + (post.active or 0) + (flow.subscriptions | sum(attribute='active') if flow.subscriptions else 0) %}
+        {% set flow_dlq    = (pre.dlq   or 0) + (post.dlq   or 0) + (flow.subscriptions | sum(attribute='dlq')    if flow.subscriptions else 0) %}
+        <tr class="flow-row"
+            data-flow-id="{{ flow.id }}"
+            data-label="{{ flow.label | lower }}"
+            data-health="{{ flow.health }}">
+          <td><span class="flow-status-dot {{ flow.health }}"></span></td>
+          <td>
+            <span style="color:{{ flow.colour }}; margin-right:0.4rem;"><i class="{{ flow.icon }}"></i></span>
+            <a href="{{ url_for('flows_page') }}#flow-{{ flow.id }}"
+               style="color:var(--text-primary); text-decoration:none; font-weight:600;">{{ flow.label }}</a>
+          </td>
+          <td style="font-size:0.75rem; color:var(--text-muted);">
+            {{ flow.source }}{% if flow.source_port %} <span class="port-label">:{{ flow.source_port }}</span>{% endif %}
+            <span style="opacity:0.4"> → </span>{{ flow.destination }}
+          </td>
+          <td class="text-end count-cell {{ 'critical' if flow_active >= 50 else ('warning' if flow_active >= 10 else 'zero') }}"
+              data-flow-active="{{ flow.id }}">{{ flow_active }}</td>
+          <td class="text-end count-cell {{ 'dlq-warn' if flow_dlq > 0 else 'zero' }}"
+              data-flow-dlq="{{ flow.id }}">{{ flow_dlq }}</td>
+          <td><span class="status-badge {{ flow.health }} flow-health-badge">{{ flow.health | upper }}</span></td>
+        </tr>
         {% else %}
-        {# ── Standard queue-based flow ── #}
-
-        <!-- Arrow to pre-queue -->
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line {{ pre.health if pre.name else '' }}"
-               data-arrow="pre"></div>
-        </div>
-
-        <!-- Pre-queue -->
-        {% if pre.name %}
-        <div class="pipeline-node">
-          <div class="pipeline-node-box {{ pre.health }}" data-queue="pre">
-            {{ pre.name | replace('pre-','') | replace('-transform','') | upper }}
-          </div>
-          <div class="pipeline-node-count">
-            <span data-queue-active="pre">{{ pre.active }}</span>
-            {% if pre.dlq > 0 %}
-            <span class="dlq-badge" data-queue-dlq="pre">+{{ pre.dlq }}DLQ</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <!-- Arrow to transformer / post-queue -->
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line {{ pre.health }}" data-arrow="pre-mid"></div>
-        </div>
-        {% endif %}
-
-        <!-- Transformer (optional) -->
-        {% if flow.transformer %}
-        <div class="pipeline-node">
-          <div class="pipeline-node-box neutral">
-            <i class="bi bi-gear-fill" style="font-size:0.6rem"></i>
-            {{ flow.transformer | replace(' Transformer', '') }}
-          </div>
-          <div class="pipeline-node-count"></div>
-        </div>
-
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line {{ post.health if post.name else '' }}"
-               data-arrow="mid-post"></div>
-        </div>
-        {% endif %}
-
-        <!-- Post-queue -->
-        {% if post.name %}
-        <div class="pipeline-node">
-          <div class="pipeline-node-box {{ post.health }}" data-queue="post">
-            {{ post.name | replace('post-','') | replace('-transform','') | upper }}
-          </div>
-          <div class="pipeline-node-count">
-            <span data-queue-active="post">{{ post.active }}</span>
-            {% if post.dlq > 0 %}
-            <span class="dlq-badge" data-queue-dlq="post">+{{ post.dlq }}DLQ</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="pipeline-arrow">
-          <div class="pipeline-arrow-line {{ post.health }}" data-arrow="post"></div>
-        </div>
-        {% endif %}
-
-        {% endif %}
-
-        <!-- Destination -->
-        <div class="pipeline-node">
-          <div class="pipeline-node-box neutral" style="color: var(--accent-cyan); border-color: var(--accent-cyan)40;">
-            {{ flow.destination }}
-          </div>
-          <div class="pipeline-node-count"></div>
-        </div>
-
-      </div><!-- /pipeline -->
-    </div><!-- /flow-card -->
-    {% else %}
-    <div class="no-data" style="grid-column:1/-1">
-      <i class="bi bi-cloud-slash"></i>
-      <span>No flow data available — check Azure credentials</span>
-    </div>
-    {% endfor %}
-    <p class="flow-no-results" id="flow-no-results" style="display:none">No flows match your search.</p>
-  </div><!-- /flows-grid -->
+        <tr><td colspan="6" class="text-center" style="color:var(--text-dim); padding:2rem;">
+          No flow data available — check Azure credentials
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="flow-no-results" id="flow-no-results" style="display:none; padding:1rem 1.25rem; margin:0;">No flows match your search.</p>
+  </div><!-- /flows-compact-wrap -->
 
   <!-- Two-column lower section -->
   <div class="row g-3 mt-0">
@@ -279,27 +166,47 @@
     <div class="col-12 col-xl-5">
       <div class="queue-table-wrapper h-100">
         <div class="queue-table-header">
-          <h6><i class="bi bi-exclamation-triangle text-danger me-1"></i> Recent Exceptions</h6>
+          <h6><i class="bi bi-exclamation-triangle text-danger me-1"></i> Recent Exceptions <span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">(last hour)</span></h6>
           <a href="{{ url_for('exceptions_page') }}" class="btn-dash" style="font-size:0.7rem;">
             View All <i class="bi bi-arrow-right"></i>
           </a>
         </div>
-        <div class="p-3 scroll-panel">
-          {% set recent_exceptions = [] %}
-          <div class="exceptions-list">
-            <div class="no-data py-4">
-              <i class="bi bi-check-circle text-success" style="font-size:1.5rem; opacity:0.8;"></i>
-              <span style="font-size:0.8rem;">
-                {% if status.kpis.exception_count_1h == 0 %}
-                  No exceptions in the last hour
-                {% else %}
-                  <a href="{{ url_for('exceptions_page') }}" style="color:var(--accent-amber)">
-                    {{ status.kpis.exception_count_1h }} exception(s) — click to view
-                  </a>
-                {% endif %}
-              </span>
-            </div>
+        <div class="scroll-panel" style="max-height:280px;">
+          {% if status.recent_exceptions %}
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>App</th>
+                <th>Type</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for exc in status.recent_exceptions %}
+              {% set sev_colour = 'var(--accent-red)' if exc.severity == 1 else ('var(--accent-amber)' if exc.severity == 2 else 'var(--accent-blue)') %}
+              <tr>
+                <td class="font-mono" style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">
+                  {{ exc.timestamp | replace('T',' ') | truncate(19, True, '') }}
+                </td>
+                <td style="font-size:0.73rem; color:var(--accent-cyan); white-space:nowrap;">{{ exc.app or '—' }}</td>
+                <td style="font-size:0.68rem; color:{{ sev_colour }}; white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis;">
+                  {{ exc.type.split('.')[-1] if exc.type else '—' }}
+                </td>
+                <td style="font-size:0.68rem; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                    title="{{ exc.message }}">
+                  {{ exc.message or '—' }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="no-data py-4">
+            <i class="bi bi-check-circle" style="font-size:1.5rem; color:var(--accent-green); opacity:0.8;"></i>
+            <span style="font-size:0.8rem;">No exceptions in the last hour</span>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>

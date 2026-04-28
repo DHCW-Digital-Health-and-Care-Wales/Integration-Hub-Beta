@@ -30,46 +30,46 @@
     {% set sev1 = exceptions | selectattr('severity', 'equalto', 1) | list | length %}
     {% set sev2 = exceptions | selectattr('severity', 'equalto', 2) | list | length %}
     {% set sev3 = exceptions | selectattr('severity', 'equalto', 3) | list | length %}
-    <div class="kpi-card">
+    <a href="#exception-log" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ exceptions | length }}</div>
         <div class="kpi-label">Total Exceptions</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#exception-log" onclick="setSeverityFilter(1)" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-exclamation-octagon"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev1 }}</div>
         <div class="kpi-label">Critical (Sev 1)</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#exception-log" onclick="setSeverityFilter(2)" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev2 }}</div>
         <div class="kpi-label">Error (Sev 2)</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#exception-log" onclick="setSeverityFilter(3)" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-info-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev3 }}</div>
         <div class="kpi-label">Warning (Sev 3)</div>
       </div>
-    </div>
+    </a>
   </div>
 
   <!-- Exceptions list -->
-  <div class="queue-table-wrapper">
+  <div class="queue-table-wrapper" id="exception-log">
     <div class="queue-table-header">
       <h6><i class="bi bi-list-ul me-1"></i> Exception Log</h6>
       <span class="text-muted" style="font-size:0.72rem;">Sorted by most recent</span>
     </div>
     <div class="scroll-panel" style="max-height:none;">
-      <div class="exceptions-list p-3 stagger-children">
+      <div class="exceptions-list p-3 stagger-children" id="exception-items">
         {% for exc in exceptions %}
-        <div class="exception-item exc-severity-{{ exc.severity }}">
+        <div class="exception-item exc-severity-{{ exc.severity }}" data-severity="{{ exc.severity }}">
           <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
             <div class="exception-type">{{ exc.type or 'UnknownException' }}</div>
             <div class="exception-meta">
@@ -111,4 +111,28 @@
   {% endif %}
 
 </div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function setSeverityFilter(sev) {
+    var items = document.querySelectorAll('#exception-items .exception-item');
+    items.forEach(function(el) {
+      el.style.display = (parseInt(el.dataset.severity) === sev) ? '' : 'none';
+    });
+    // Show a reset link in the header
+    var header = document.querySelector('#exception-log .queue-table-header span');
+    if (header) {
+      header.innerHTML = 'Severity ' + sev + ' only &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">Show all</a>';
+    }
+  }
+
+  function clearSeverityFilter() {
+    document.querySelectorAll('#exception-items .exception-item').forEach(function(el) {
+      el.style.display = '';
+    });
+    var header = document.querySelector('#exception-log .queue-table-header span');
+    if (header) header.textContent = 'Sorted by most recent';
+  }
+</script>
 {% endblock %}

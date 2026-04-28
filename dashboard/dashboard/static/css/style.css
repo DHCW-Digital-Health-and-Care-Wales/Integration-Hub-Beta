@@ -1075,6 +1075,37 @@ a.kpi-card--link:hover {
   .page-header { flex-direction: column; }
 }
 
+/* ---------- Flow group (collapsible, grouped by source) ---------- */
+.flow-group {
+  margin-bottom: 0.5rem;
+}
+
+.flow-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.flow-group-header:hover { background: var(--bg-card-hover); border-color: var(--accent-cyan); }
+
+.flow-group-name { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+
+.flow-group-body {
+  display: none;
+  padding-top: 0.5rem;
+}
+.flow-group-body.expanded { display: block; }
+
+/* ---------- Flow compact table (Overview page) ---------- */
+.flow-row td { font-size: 0.8rem; padding: 0.55rem 0.75rem; }
+.flow-row:hover { background: rgba(51,65,85,0.4); cursor: pointer; }
+
 /* ---------- Flow detail page ---------- */
 .flow-detail-card {
   background: var(--bg-card);

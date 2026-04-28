@@ -2,6 +2,7 @@
   "servers": {
     "chemocare_hl7_server": {
       "alarm_enabled": false,
+      "email_alerts_enabled": false,
       "alerting_gap_minutes": 60,
       "day_threshold_minutes": 60,
       "evening_threshold_minutes": 120,
@@ -9,6 +10,7 @@
     },
     "paris_hl7_server": {
       "alarm_enabled": false,
+      "email_alerts_enabled": false,
       "alerting_gap_minutes": 60,
       "day_threshold_minutes": 60,
       "evening_threshold_minutes": 120,
@@ -16,6 +18,7 @@
     },
     "phw_hl7_server": {
       "alarm_enabled": true,
+      "email_alerts_enabled": false,
       "alerting_gap_minutes": 60,
       "day_threshold_minutes": 1,
       "evening_threshold_minutes": 120,
@@ -23,6 +26,7 @@
     },
     "pims_hl7_server": {
       "alarm_enabled": false,
+      "email_alerts_enabled": false,
       "alerting_gap_minutes": 60,
       "day_threshold_minutes": 60,
       "evening_threshold_minutes": 120,

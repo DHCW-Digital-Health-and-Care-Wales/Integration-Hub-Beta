@@ -28,14 +28,14 @@
   {% set crit_queues  = queues | selectattr('active_message_count', 'ge', 50) | list | length %}
 
   <div class="kpi-strip stagger-children mb-3">
-    <div class="kpi-card">
+    <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ total_active }}</div>
         <div class="kpi-label">Total Active</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon {% if total_dlq > 0 %}red{% else %}green{% endif %}">
         <i class="bi bi-exclamation-octagon-fill"></i>
       </div>
@@ -43,7 +43,7 @@
         <div class="kpi-number {% if total_dlq > 0 %}text-danger{% endif %}">{{ total_dlq }}</div>
         <div class="kpi-label">Total DLQ</div>
       </div>
-    </div>
+    </a>
     <div class="kpi-card">
       <div class="kpi-icon purple"><i class="bi bi-clock-history"></i></div>
       <div class="kpi-body">
@@ -58,20 +58,20 @@
         <div class="kpi-label">Total Queues</div>
       </div>
     </div>
-    <div class="kpi-card">
+    <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if warn_queues > 0 %}text-warning{% endif %}">{{ warn_queues }}</div>
         <div class="kpi-label">Warning Queues</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if crit_queues > 0 %}text-danger{% endif %}">{{ crit_queues }}</div>
         <div class="kpi-label">Critical Queues</div>
       </div>
-    </div>
+    </a>
   </div>
 
   <!-- Flow health summary -->
