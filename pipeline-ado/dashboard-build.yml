@@ -33,6 +33,7 @@ stages:
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
           banditSourceDir: 'dashboard'
+          usePytest: true
 
   - stage: BuildAndPushDashboard
     displayName: 'Build and Push Dashboard'

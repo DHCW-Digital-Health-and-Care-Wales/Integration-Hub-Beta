@@ -21,6 +21,10 @@ parameters:
     type: string
     displayName: 'Bandit source directory (defaults to last part of appName if not specified)'
     default: ''
+  - name: usePytest
+    type: boolean
+    default: false
+    displayName: 'Use pytest instead of unittest discover'
 
 jobs:
   - job: CodeQuality_${{ replace(parameters.appName, '/', '_') }}
@@ -192,10 +196,16 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🧪 Running unit tests..."
-          if ! python -m unittest discover tests -v; then
-            echo "##[error]Unit tests failed!"
-            exit 1
-          fi
+          ${{ if parameters.usePytest }}:
+            if ! uv run --no-sync pytest tests -v; then
+              echo "##[error]Unit tests failed!"
+              exit 1
+            fi
+          ${{ else }}:
+            if ! python -m unittest discover tests -v; then
+              echo "##[error]Unit tests failed!"
+              exit 1
+            fi
           
           echo "✅ All unit tests passed"
           echo "##[endgroup]"
