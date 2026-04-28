@@ -1,7 +1,7 @@
 import logging
 from threading import Lock
 from types import TracebackType
-from typing import Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 from azure.servicebus import ServiceBusMessage, ServiceBusSender
 from azure.servicebus.exceptions import (
@@ -16,16 +16,32 @@ MAX_SERVICE_BUS_RETRIES = 3
 
 
 class MessageSenderClient:
-    def __init__(self, sender: ServiceBusSender, message_destination: str, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        sender: ServiceBusSender,
+        message_destination: str,
+        session_id: Optional[str] = None,
+        propagate_trace_context: bool = True,
+    ):
         self.sender = sender
         self.session_id = session_id
         self.message_destination = message_destination
+        self.propagate_trace_context = propagate_trace_context
         self._lock = Lock()
 
-    def send_message(self, message_data: bytes, custom_properties: Optional[Dict[str, str]] = None) -> None:
+    def send_message(self, message_data: bytes, custom_properties: Optional[Dict[str, Any]] = None) -> None:
+        props: Dict[str, Any] = dict(custom_properties) if custom_properties else {}
+
+        if self.propagate_trace_context:
+            try:
+                from otel_lib import inject_trace_context
+                props = inject_trace_context(props)
+            except ImportError:
+                pass  # otel_lib not installed — skip trace propagation
+
         message = ServiceBusMessage(
             body=message_data,
-            application_properties=custom_properties.copy() if custom_properties else None,  # type: ignore[arg-type]
+            application_properties=props if props else None,  # type: ignore[arg-type]
             session_id=self.session_id,
         )
 
@@ -47,7 +63,7 @@ class MessageSenderClient:
         if last_error:
             raise last_error
 
-    def send_text_message(self, message_text: str, custom_properties: Optional[Dict[str, str]] = None) -> None:
+    def send_text_message(self, message_text: str, custom_properties: Optional[Dict[str, Any]] = None) -> None:
         self.send_message(message_text.encode('utf-8'), custom_properties)
 
     def send_message_batch(self, messages: Sequence[ServiceBusMessage]) -> int:
