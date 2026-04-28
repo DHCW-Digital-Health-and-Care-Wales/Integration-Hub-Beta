@@ -10,9 +10,9 @@ from dashboard.services import credentials
 
 class TestAzureCredentialSelection:
     def test_uses_default_credential_when_service_principal_not_configured(self) -> None:
-        with patch("azure.identity.DefaultAzureCredential") as default_cls, \
-             patch("azure.identity.ClientSecretCredential") as client_secret_cls, \
-             patch("azure.identity.ChainedTokenCredential") as chained_cls, \
+        with patch("dashboard.services.credentials.DefaultAzureCredential") as default_cls, \
+             patch("dashboard.services.credentials.ClientSecretCredential") as client_secret_cls, \
+             patch("dashboard.services.credentials.ChainedTokenCredential") as chained_cls, \
              patch.object(credentials.config, "AZURE_TENANT_ID", ""), \
              patch.object(credentials.config, "AZURE_CLIENT_ID", ""), \
              patch.object(credentials.config, "AZURE_CLIENT_SECRET", ""):
@@ -26,9 +26,9 @@ class TestAzureCredentialSelection:
             chained_cls.assert_not_called()
 
     def test_uses_chained_credential_when_service_principal_is_configured(self) -> None:
-        with patch("azure.identity.DefaultAzureCredential") as default_cls, \
-             patch("azure.identity.ClientSecretCredential") as client_secret_cls, \
-             patch("azure.identity.ChainedTokenCredential") as chained_cls, \
+        with patch("dashboard.services.credentials.DefaultAzureCredential") as default_cls, \
+             patch("dashboard.services.credentials.ClientSecretCredential") as client_secret_cls, \
+             patch("dashboard.services.credentials.ChainedTokenCredential") as chained_cls, \
              patch.object(credentials.config, "AZURE_TENANT_ID", "tenant"), \
              patch.object(credentials.config, "AZURE_CLIENT_ID", "client"), \
              patch.object(credentials.config, "AZURE_CLIENT_SECRET", "secret"):
@@ -50,9 +50,9 @@ class TestAzureCredentialSelection:
             chained_cls.assert_called_once_with(default_instance, sp_instance)
 
     def test_uses_default_credential_when_service_principal_is_partially_configured(self) -> None:
-        with patch("azure.identity.DefaultAzureCredential") as default_cls, \
-             patch("azure.identity.ClientSecretCredential") as client_secret_cls, \
-             patch("azure.identity.ChainedTokenCredential") as chained_cls, \
+        with patch("dashboard.services.credentials.DefaultAzureCredential") as default_cls, \
+             patch("dashboard.services.credentials.ClientSecretCredential") as client_secret_cls, \
+             patch("dashboard.services.credentials.ChainedTokenCredential") as chained_cls, \
              patch.object(credentials.config, "AZURE_TENANT_ID", "tenant"), \
              patch.object(credentials.config, "AZURE_CLIENT_ID", "client"), \
              patch.object(credentials.config, "AZURE_CLIENT_SECRET", ""):
