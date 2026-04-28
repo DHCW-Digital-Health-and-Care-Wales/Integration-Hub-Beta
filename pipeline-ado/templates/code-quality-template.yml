@@ -190,23 +190,29 @@ jobs:
           echo "##[endgroup]"
         displayName: 'Code Quality Validation - ${{ parameters.appDisplayName }}'
           
-      - script: |
-          set -euo pipefail
-          echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
-          cd ${{ parameters.appName }}
-          
-          echo "🧪 Running unit tests..."
-          ${{ if parameters.usePytest }}:
+      - ${{ if parameters.usePytest }}:
+        - script: |
+            set -euo pipefail
+            echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
+            cd ${{ parameters.appName }}
+            echo "🧪 Running unit tests..."
             if ! uv run --no-sync pytest tests -v; then
               echo "##[error]Unit tests failed!"
               exit 1
             fi
-          ${{ else }}:
+            echo "✅ All unit tests passed"
+            echo "##[endgroup]"
+          displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'
+      - ${{ else }}:
+        - script: |
+            set -euo pipefail
+            echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
+            cd ${{ parameters.appName }}
+            echo "🧪 Running unit tests..."
             if ! python -m unittest discover tests -v; then
               echo "##[error]Unit tests failed!"
               exit 1
             fi
-          
-          echo "✅ All unit tests passed"
-          echo "##[endgroup]"
-        displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'
+            echo "✅ All unit tests passed"
+            echo "##[endgroup]"
+          displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'
