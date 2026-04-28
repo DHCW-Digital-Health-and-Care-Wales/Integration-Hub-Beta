@@ -36,7 +36,8 @@ DLQ_WARNING_THRESHOLD = int(os.getenv("DLQ_WARNING_THRESHOLD", "1"))
 # Cache TTL in seconds for /api/status
 API_CACHE_TTL = int(os.getenv("API_CACHE_TTL", "30"))
 
-# Alarm 1 — email notifications (Azure Communication Services)
+# Demo / simulation mode — returns synthetic data, no Azure credentials needed
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 ALERT_EMAIL_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true"
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")

@@ -192,6 +192,13 @@ def refresh_flows() -> dict[str, dict]:
     """Re-discover flows from Azure and update the cached FLOWS."""
     global FLOWS  # noqa: PLW0603
 
+    # --- Demo mode: return synthetic flows without hitting Azure ---
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_FLOWS  # noqa: PLC0415
+        log.info("DEMO_MODE active — using %d synthetic flow(s)", len(DEMO_FLOWS))
+        FLOWS = DEMO_FLOWS
+        return FLOWS
+
     # --- Primary: Container App env var discovery ---
     discovered = discover_flows()
     if discovered:
