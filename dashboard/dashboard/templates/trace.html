@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Trace {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-diagram-2" style="color:var(--accent-cyan)"></i>
+        Trace: {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}
+      </h1>
+      <p class="page-subtitle">
+        <a href="javascript:history.back()" style="color:var(--accent-cyan); text-decoration:none;">
+          <i class="bi bi-arrow-left"></i> Back
+        </a>
+        {% if trace_data.start_time %}
+        &nbsp;·&nbsp; <span style="color:var(--text-muted);">
+          {{ trace_data.start_time | replace('T', ' ') | truncate(19, True, '') }}
+        </span>
+        {% endif %}
+      </p>
+    </div>
+    <div>
+      <span style="font-size:0.7rem; color:var(--text-dim); font-family:monospace; letter-spacing:0.04em;">
+        {{ operation_id }}
+      </span>
+    </div>
+  </div>
+
+  {% if trace_data.ok %}
+
+  <!-- KPI Summary Strip -->
+  <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr))">
+
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-diagram-2"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ trace_data.spans | length }}</div>
+        <div class="kpi-label">Spans</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-stopwatch"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ trace_data.duration_ms }}ms</div>
+        <div class="kpi-label">Total Duration</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-app"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+             title="{{ trace_data.spans | map(attribute='app_name') | select | unique | join(', ') }}">
+          {{ trace_data.spans | map(attribute='app_name') | select | unique | join(', ') or '—' }}
+        </div>
+        <div class="kpi-label">Apps Involved</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon {% if trace_data.exceptions | length > 0 %}red{% else %}green{% endif %}">
+        <i class="bi bi-bug{% if trace_data.exceptions | length > 0 %}-fill{% endif %}"></i>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-number {% if trace_data.exceptions | length > 0 %}text-danger{% endif %}">
+          {{ trace_data.exceptions | length }}
+        </div>
+        <div class="kpi-label">Exceptions</div>
+      </div>
+    </div>
+
+  </div><!-- /kpi-strip -->
+
+  <!-- Waterfall Chart -->
+  <div class="dash-card mb-3">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color);">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-bar-chart-steps me-1" style="color:var(--accent-cyan);"></i>
+        Span Waterfall
+      </h6>
+    </div>
+    <div style="padding:1rem 1.25rem; overflow-x:auto;">
+      <div id="waterfall-container" style="min-width:600px; font-size:0.72rem; line-height:1.4;">
+        <!-- Rendered by JS below -->
+      </div>
+      <!-- Axis labels -->
+      <div style="display:flex; margin-top:0.3rem; min-width:600px;">
+        <div style="flex:0 0 208px;"></div>
+        <div style="flex:1; display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-dim);">
+          <span>0ms</span>
+          <span id="waterfall-mid-label"></span>
+          <span id="waterfall-end-label"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exceptions table -->
+  {% if trace_data.exceptions %}
+  <div class="queue-table-wrapper mb-3">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-bug-fill text-danger me-1"></i> Exceptions</h6>
+    </div>
+    <div class="scroll-panel">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>App</th>
+            <th>Type</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exc in trace_data.exceptions %}
+          <tr>
+            <td class="font-mono" style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">
+              {{ exc.timestamp | replace('T', ' ') | truncate(19, True, '') }}
+            </td>
+            <td style="font-size:0.73rem; color:var(--accent-cyan); white-space:nowrap;">{{ exc.app_name or '—' }}</td>
+            <td style="font-size:0.73rem; color:var(--accent-red);">{{ exc.name or '—' }}</td>
+            <td style="font-size:0.68rem; color:var(--text-muted);">{{ exc.message | truncate(300) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Logs collapsible section -->
+  {% if trace_data.logs %}
+  <div class="queue-table-wrapper">
+    <div class="queue-table-header" style="cursor:pointer; user-select:none;" onclick="toggleLogs()">
+      <h6><i class="bi bi-journal-text me-1"></i> Trace Logs ({{ trace_data.logs | length }})</h6>
+      <span id="logs-toggle-icon" style="color:var(--text-muted);"><i class="bi bi-chevron-right"></i></span>
+    </div>
+    <div id="logs-panel" style="display:none;">
+      <div class="scroll-panel" style="max-height:350px;">
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>App</th>
+              <th>Severity</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in trace_data.logs %}
+            <tr>
+              <td class="font-mono" style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">
+                {{ entry.timestamp | replace('T', ' ') | truncate(19, True, '') }}
+              </td>
+              <td style="font-size:0.73rem; color:var(--accent-cyan); white-space:nowrap;">{{ entry.app_name or '—' }}</td>
+              <td style="font-size:0.68rem;">{{ entry.severity if entry.severity is not none else '—' }}</td>
+              <td style="font-size:0.68rem; color:var(--text-muted);">{{ entry.message | truncate(300) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <!-- No trace found -->
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem;">
+      <i class="bi bi-search" style="font-size:2.5rem; color:var(--text-dim); opacity:0.6;"></i>
+      <span style="font-size:1rem; font-weight:600;">No trace found</span>
+      <span style="color:var(--text-muted);">
+        No spans were found for operation ID:
+        <code style="font-size:0.78rem; color:var(--accent-cyan);">{{ operation_id }}</code>
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var spans = {{ trace_data.spans | tojson }};
+  var totalDurationMs = {{ trace_data.duration_ms | tojson }};
+  var traceStartIso   = {{ trace_data.start_time | tojson }};
+
+  var container = document.getElementById('waterfall-container');
+  if (!container || !spans.length) return;
+
+  var traceStartMs = traceStartIso ? new Date(traceStartIso).getTime() : null;
+
+  // Compute the total time window (start of first span → end of last span)
+  var windowMs = totalDurationMs || 1;
+  if (traceStartMs !== null) {
+    var maxEnd = traceStartMs;
+    spans.forEach(function (s) {
+      if (s.start_time) {
+        var t = new Date(s.start_time).getTime();
+        var d = typeof s.duration === 'number' ? s.duration : 0;
+        if (t + d > maxEnd) maxEnd = t + d;
+      }
+    });
+    windowMs = maxEnd - traceStartMs || totalDurationMs || 1;
+  }
+
+  // Axis labels
+  var midLabel = document.getElementById('waterfall-mid-label');
+  var endLabel = document.getElementById('waterfall-end-label');
+  if (midLabel) midLabel.textContent = Math.round(windowMs / 2) + 'ms';
+  if (endLabel) endLabel.textContent = Math.round(windowMs) + 'ms';
+
+  function escAttr(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  var html = '';
+  spans.forEach(function (s) {
+    var leftPct = 0;
+    if (s.start_time && traceStartMs !== null) {
+      var spanStartMs = new Date(s.start_time).getTime();
+      leftPct = Math.max(0, ((spanStartMs - traceStartMs) / windowMs) * 100);
+    }
+
+    var dur = typeof s.duration === 'number' ? s.duration : null;
+    var widthPct = (dur !== null && windowMs > 0) ? Math.max(0.5, (dur / windowMs) * 100) : 0;
+    var isPoint = (widthPct === 0);
+
+    var ok = s.success === true || s.success === 'True' || s.success === 1;
+    var barColor = ok ? 'var(--accent-green)' : 'var(--accent-red)';
+
+    var labelText = (s.app_name ? '[' + s.app_name + ']  ' : '') + s.name + (dur !== null ? '  (' + Math.round(dur) + 'ms)' : '');
+    var tooltipText = 'Target: ' + (s.target || '—') + '\nDuration: ' + (dur !== null ? Math.round(dur) + 'ms' : '—') + '\nParent: ' + (s.parent_id || '—');
+
+    html += '<div style="display:flex;align-items:center;margin-bottom:5px;gap:8px;">';
+
+    // Label column (fixed width)
+    html += '<div style="flex:0 0 200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+          + 'color:var(--text-muted);font-size:0.7rem;" title="' + escAttr(labelText) + '">'
+          + escAttr(labelText) + '</div>';
+
+    // Track
+    html += '<div style="flex:1;position:relative;height:18px;background:rgba(255,255,255,0.04);border-radius:3px;">';
+
+    if (isPoint) {
+      // Point marker when no duration data
+      html += '<div style="position:absolute;left:' + leftPct.toFixed(2) + '%;width:4px;height:100%;'
+            + 'background:' + barColor + ';border-radius:2px;" title="' + escAttr(tooltipText) + '"></div>';
+    } else {
+      html += '<div style="position:absolute;left:' + leftPct.toFixed(2) + '%;width:' + widthPct.toFixed(2) + '%;height:100%;'
+            + 'background:' + barColor + ';border-radius:3px;opacity:0.82;" title="' + escAttr(tooltipText) + '"></div>';
+    }
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+})();
+
+function toggleLogs() {
+  var panel = document.getElementById('logs-panel');
+  var icon  = document.getElementById('logs-toggle-icon');
+  if (!panel) return;
+  var collapsed = panel.style.display === 'none';
+  panel.style.display = collapsed ? '' : 'none';
+  if (icon) icon.innerHTML = collapsed
+    ? '<i class="bi bi-chevron-down"></i>'
+    : '<i class="bi bi-chevron-right"></i>';
+}
+</script>
+{% endblock %}

@@ -22,6 +22,7 @@ from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
 from dashboard.services.service_bus import get_message_metrics, get_queues
+from dashboard.services.traces import get_trace
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
@@ -135,7 +136,7 @@ def _cached(key: str, builder: Callable[[], Any], ttl: float | None = None, forc
     # Fast path: return stale-check under lock, return immediately if fresh
     if not force:
         with _cache_lock:
-            entry = _cache_data[key]
+            entry = _cache_data.setdefault(key, {"data": None, "ts": 0.0})
             if (now - entry["ts"]) <= _ttl and entry["data"] is not None:
                 return entry["data"]
 
@@ -221,7 +222,7 @@ def flows_page() -> str:
 def exceptions_page() -> str:
     hours = int(request.args.get("hours", 24))
     exceptions = _cached(
-        "exceptions",
+        f"exceptions_{hours}",
         lambda: get_exceptions(hours=hours),
         ttl=config.API_CACHE_TTL,
     )
@@ -284,6 +285,14 @@ def messages_page() -> str:
 # ---------------------------------------------------------------------------
 # API routes
 # ---------------------------------------------------------------------------
+
+@app.route("/trace/<operation_id>")
+def trace_page(operation_id: str) -> str | tuple[str, int]:
+    trace_data = get_trace(operation_id)
+    if not trace_data["ok"]:
+        return render_template("trace.html", operation_id=operation_id, trace_data=trace_data), 404
+    return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
+
 
 @app.route("/api/status")
 def api_status() -> Response:

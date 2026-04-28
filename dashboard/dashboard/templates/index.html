@@ -180,6 +180,7 @@
                 <th>App</th>
                 <th>Type</th>
                 <th>Message</th>
+                <th>Trace</th>
               </tr>
             </thead>
             <tbody>
@@ -196,6 +197,15 @@
                 <td style="font-size:0.68rem; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                     title="{{ exc.message }}">
                   {{ exc.message or '—' }}
+                </td>
+                <td style="font-size:0.68rem; white-space:nowrap;">
+                  {% if exc.operation_id %}
+                  <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
+                     title="View trace"
+                     style="color:var(--accent-cyan);">
+                    <i class="bi bi-diagram-2"></i> trace
+                  </a>
+                  {% else %}—{% endif %}
                 </td>
               </tr>
               {% endfor %}

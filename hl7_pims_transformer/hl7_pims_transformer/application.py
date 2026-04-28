@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    # TODO: add configure_otel() call once otel_lib is validated
     transformer = PimsTransformer()
     transformer.run()
 

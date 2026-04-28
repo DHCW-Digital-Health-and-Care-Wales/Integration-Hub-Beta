@@ -86,6 +86,11 @@
           {% if exc.operation_id %}
           <div class="exception-meta mt-1">
             <span><i class="bi bi-fingerprint"></i> {{ exc.operation_id }}</span>
+            <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
+               title="View trace"
+               style="color:var(--accent-cyan); font-size:0.75rem; white-space:nowrap;">
+              <i class="bi bi-diagram-2"></i> trace
+            </a>
           </div>
           {% endif %}
         </div>

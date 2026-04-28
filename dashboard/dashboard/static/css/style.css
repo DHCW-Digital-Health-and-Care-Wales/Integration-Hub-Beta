@@ -106,12 +106,47 @@ a:hover { color: #60a5fa; }
   background: var(--navbar-bg) !important;
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
-  height: var(--navbar-height);
+  min-height: var(--navbar-height);
   position: sticky;
   top: 0;
   z-index: 1030;
   padding: 0 1.5rem;
   transition: background 0.25s ease;
+}
+
+/* Mobile: expanded collapse menu sits below the bar */
+@media (max-width: 991.98px) {
+  .navbar {
+    padding: 0 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .navbar > .container-fluid {
+    flex-wrap: wrap;
+    align-items: center;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .navbar-collapse {
+    width: 100%;
+    padding: 0.5rem 0 0.75rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.25rem;
+  }
+  .navbar-collapse .navbar-nav {
+    gap: 0 !important;
+  }
+  .navbar-collapse .nav-link {
+    padding: 0.55rem 0.5rem !important;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  /* Health badge + theme toggle row on mobile */
+  .navbar-collapse .d-flex {
+    padding-top: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 }
 
 .navbar-brand {

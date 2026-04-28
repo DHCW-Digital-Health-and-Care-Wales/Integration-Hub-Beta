@@ -23,10 +23,17 @@ class MessageReceiverClient:
     MAX_WAIT_TIME_SECONDS = 60
     LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
 
-    def __init__(self, sb_client: ServiceBusClient, queue_name: str, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        sb_client: ServiceBusClient,
+        queue_name: str,
+        session_id: Optional[str] = None,
+        propagate_trace_context: bool = True,
+    ):
         self.sb_client = sb_client
         self.queue_name = queue_name
         self.session_id = session_id
+        self.propagate_trace_context = propagate_trace_context
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
@@ -37,7 +44,7 @@ class MessageReceiverClient:
         def per_message_adapter(receiver: ServiceBusReceiver, messages: list[ServiceBusReceivedMessage]) -> bool:
             for i, msg in enumerate(messages):
                 try:
-                    is_success = message_processor(msg)
+                    is_success = self._invoke_with_trace_context(message_processor, msg)
                 except Exception:
                     logger.exception("Unexpected error processing message: %s", msg.message_id)
                     self._abort_message_processing(receiver, messages[i:])
@@ -71,6 +78,29 @@ class MessageReceiverClient:
             return is_success
 
         self._receive_and_process(num_of_messages, batch_adapter)
+
+    def _invoke_with_trace_context(
+        self, handler: Callable[[ServiceBusReceivedMessage], bool], msg: ServiceBusReceivedMessage
+    ) -> bool:
+        """Call handler, restoring the W3C trace context from the message properties first."""
+        if not self.propagate_trace_context:
+            return handler(msg)
+
+        try:
+            from otel_lib import extract_trace_context
+            import opentelemetry.context as otel_context
+
+            props = dict(msg.application_properties or {})
+            # Service Bus stores string keys as bytes in some SDK versions; normalise them.
+            normalised = {k.decode() if isinstance(k, bytes) else k: v for k, v in props.items()}
+            ctx = extract_trace_context(normalised)
+            token = otel_context.attach(ctx)
+            try:
+                return handler(msg)
+            finally:
+                otel_context.detach(token)
+        except ImportError:
+            return handler(msg)
 
     def _receive_and_process(
         self,

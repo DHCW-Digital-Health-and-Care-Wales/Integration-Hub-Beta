@@ -28,6 +28,10 @@ def get_queues() -> list[dict]:
     Return a list of queue dicts. Falls back to an empty list if required
     Service Bus resource configuration is missing.
     """
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_QUEUES  # noqa: PLC0415
+        return DEMO_QUEUES
+
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
         log.warning("Service Bus resource configuration missing — returning empty list")
         return []

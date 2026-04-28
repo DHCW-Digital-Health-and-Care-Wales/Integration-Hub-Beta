@@ -67,6 +67,7 @@ def _calculate_batch_size(throttler: MessageThrottler) -> int:
 
 
 def main() -> None:
+    # TODO: add configure_otel() call once otel_lib is validated
     processor_manager = ProcessorManager()
 
     app_config = AppConfig.read_env_config()

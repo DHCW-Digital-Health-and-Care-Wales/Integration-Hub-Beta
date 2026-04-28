@@ -167,6 +167,18 @@ class EventLogger:
                 "timestamp": event.timestamp.isoformat(),
             }
 
+            # Include OTel trace correlation IDs if available on the current log record.
+            # These are populated by OtelCorrelationFilter (from otel_lib) when installed.
+            try:
+                import opentelemetry.trace as otel_trace
+                span = otel_trace.get_current_span()
+                ctx = span.get_span_context()
+                if ctx and ctx.is_valid:
+                    event_dict["otel_trace_id"] = format(ctx.trace_id, "032x")
+                    event_dict["otel_span_id"] = format(ctx.span_id, "016x")
+            except ImportError:
+                pass  # opentelemetry not installed — skip trace correlation
+
             if self.azure_monitor_enabled:
                 logger.info("Integration Hub Event", extra=event_dict)
                 logger.debug(f"Event logged to Azure Monitor: {event.event_type.value}")

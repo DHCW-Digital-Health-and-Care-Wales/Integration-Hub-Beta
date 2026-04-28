@@ -45,6 +45,10 @@ def get_exceptions(hours: int = 24) -> list[dict]:
     Query Log Analytics for application exceptions in the last *hours* hours.
     Returns a list of exception dicts. Falls back to [] on any error.
     """
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_EXCEPTIONS  # noqa: PLC0415
+        return DEMO_EXCEPTIONS
+
     if not _credentials_configured():
         log.warning("Log Analytics workspace not configured — returning empty list")
         return []
@@ -81,7 +85,7 @@ def get_exceptions(hours: int = 24) -> list[dict]:
                         "timestamp": str(row_dict.get("timestamp", "")),
                         "type": row_dict.get("type", "Unknown"),
                         "message": row_dict.get("outerMessage", ""),
-                        "severity": int(row_dict.get("severityLevel", 3)),
+                        "severity": int(row_dict.get("severityLevel") or 3),
                         "app": row_dict.get("appName", ""),
                         "operation_id": row_dict.get("operation_Id", ""),
                     }
