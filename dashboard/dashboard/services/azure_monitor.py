@@ -81,7 +81,7 @@ def get_exceptions(hours: int = 24) -> list[dict]:
                         "timestamp": str(row_dict.get("timestamp", "")),
                         "type": row_dict.get("type", "Unknown"),
                         "message": row_dict.get("outerMessage", ""),
-                        "severity": int(row_dict.get("severityLevel", 3)),
+                        "severity": int(row_dict.get("severityLevel") or 3),
                         "app": row_dict.get("appName", ""),
                         "operation_id": row_dict.get("operation_Id", ""),
                     }
