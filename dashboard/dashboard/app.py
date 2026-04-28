@@ -82,7 +82,7 @@ def _configure_ssl_trust() -> None:
     # Fallback: build from Windows certificate store
     certs: dict[bytes, None] = {}
     for store_name in ("ROOT", "CA"):
-        for cert_bytes, encoding, _trust in ssl.enum_certificates(store_name):
+        for cert_bytes, encoding, _trust in ssl.enum_certificates(store_name):  # type: ignore[attr-defined]
             if encoding == "x509_asn":
                 certs[cert_bytes] = None
 
@@ -431,4 +431,4 @@ def health_badge(health: str) -> str:
 
 
 if __name__ == "__main__":
-    app.run(debug=config.FLASK_DEBUG, host="0.0.0.0", port=5000)
+    app.run(debug=config.FLASK_DEBUG, host="0.0.0.0", port=5000)  # nosec B104

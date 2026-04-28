@@ -264,7 +264,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
 
     return {
         "label": meta.get("label", workflow_id.replace("-", " ").title()),
-        "source": meta.get("source", workflow_id.split("-")[0].upper()),
+        "source": meta.get("source", workflow_id.split("-", maxsplit=1)[0].upper()),
         "source_port": source_port,
         "pre_queue": pre_queue,
         "transformer": transformer_name,
