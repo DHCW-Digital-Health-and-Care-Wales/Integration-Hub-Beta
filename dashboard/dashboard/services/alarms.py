@@ -23,7 +23,10 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+
 from dashboard import config
+from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
@@ -178,10 +181,6 @@ def discover_hl7_servers() -> list[str]:
         | order by microservice_id asc
         """
         try:
-            from azure.monitor.query import LogsQueryClient, LogsQueryStatus
-
-            from dashboard.services.credentials import get_azure_credential
-
             client = LogsQueryClient(get_azure_credential())
             response = client.query_workspace(
                 workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
@@ -221,10 +220,6 @@ def get_last_message_times(server_ids: list[str]) -> dict[str, datetime | None]:
     | summarize last_message = max(TimeGenerated) by microservice_id
     """
     try:
-        from azure.monitor.query import LogsQueryClient, LogsQueryStatus
-
-        from dashboard.services.credentials import get_azure_credential
-
         client = LogsQueryClient(get_azure_credential())
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
@@ -288,7 +283,8 @@ def _send_alarm_email(
   The following HL7 server has received no messages for longer than its configured threshold.
 </p>
 <table cellpadding="8" cellspacing="0"
-       style="border-collapse:collapse;font-size:14px;width:100%;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+       style="border-collapse:collapse;font-size:14px;width:100%;
+              background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
   <tr style="background:#fff;">
     <td style="font-weight:bold;width:180px;border-bottom:1px solid #eee;">Server</td>
     <td style="border-bottom:1px solid #eee;">{display_name}</td>

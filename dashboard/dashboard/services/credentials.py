@@ -8,6 +8,7 @@ Authentication order is:
 from __future__ import annotations
 
 from azure.core.credentials import TokenCredential
+from azure.identity import ChainedTokenCredential, ClientSecretCredential, DefaultAzureCredential
 
 from dashboard import config
 
@@ -29,8 +30,6 @@ def get_azure_credential() -> TokenCredential:
     DefaultAzureCredential is attempted first. If service principal values are
     configured, ClientSecretCredential is chained as a fallback.
     """
-    from azure.identity import ChainedTokenCredential, ClientSecretCredential, DefaultAzureCredential
-
     default_credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
 
     if not _service_principal_configured():

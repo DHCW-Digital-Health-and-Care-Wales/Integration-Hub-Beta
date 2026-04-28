@@ -4,8 +4,13 @@ Azure Service Bus queue metrics via azure-mgmt-servicebus.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
+from typing import Any
+
+from azure.mgmt.servicebus import ServiceBusManagementClient
+from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
@@ -13,9 +18,7 @@ from dashboard.services.credentials import get_azure_credential
 log = logging.getLogger(__name__)
 
 
-def _get_client():
-    from azure.mgmt.servicebus import ServiceBusManagementClient
-
+def _get_client() -> Any:
     cred = get_azure_credential()
     return ServiceBusManagementClient(cred, config.AZURE_SUBSCRIPTION_ID)
 
@@ -246,8 +249,6 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
     else:
         bin_size = "1h"
 
-    import re
-
     queue_filter_kql = ""
     if queue_name:
         safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", queue_name)
@@ -266,8 +267,6 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
     )
 
     try:
-        from azure.monitor.query import LogsQueryClient, LogsQueryStatus
-
         cred = get_azure_credential()
         client = LogsQueryClient(cred)
 
@@ -281,7 +280,7 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
             log.error("Log Analytics query failed: %s", response.partial_error)
             return empty
 
-        series: dict[str, list[dict]] = {"incoming": [], "outgoing": []}
+        series: dict[str, Any] = {"incoming": [], "outgoing": []}
         key_map = {"IncomingMessages": "incoming", "OutgoingMessages": "outgoing"}
 
         for row in response.tables[0].rows:

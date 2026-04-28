@@ -4,8 +4,7 @@ Pure logic — no Azure calls, no mocking needed.
 """
 from __future__ import annotations
 
-from dashboard.services.flows import flow_health, overall_health, queue_health
-
+from dashboard.services.flows import _FLOW_DEFS, flow_health, overall_health, queue_health
 
 # Test flows with hardcoded queue names - independent of config.py
 TEST_FLOWS = {
@@ -72,7 +71,6 @@ class TestFlowHealth:
         assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
     def test_all_flows_defined(self) -> None:
-        from dashboard.services.flows import _FLOW_DEFS
         expected = {"phw-to-mpi", "paris-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "wds-to-mpi", "mpi-outbound"}
         assert {d["id"] for d in _FLOW_DEFS} == expected
 

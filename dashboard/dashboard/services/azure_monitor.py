@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import timedelta
+from typing import Any
+
+from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
@@ -13,9 +17,7 @@ from dashboard.services.credentials import get_azure_credential
 log = logging.getLogger(__name__)
 
 
-def _get_logs_client():
-    from azure.monitor.query import LogsQueryClient
-
+def _get_logs_client() -> Any:
     cred = get_azure_credential()
     return LogsQueryClient(cred)
 
@@ -60,8 +62,6 @@ def get_exceptions(hours: int = 24) -> list[dict]:
     | take 200
     """
     try:
-        from azure.monitor.query import LogsQueryStatus
-
         client = _get_logs_client()
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
@@ -108,8 +108,6 @@ def get_messages_today(
         log.warning("Log Analytics credentials not configured — returning empty list")
         return []
 
-    import re
-
     # Build the optional filter clause
     wf_filter = ""
     if microservice_ids:
@@ -135,8 +133,6 @@ def get_messages_today(
     | take 500
     """
     try:
-        from azure.monitor.query import LogsQueryStatus
-
         client = _get_logs_client()
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
@@ -181,8 +177,8 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
-        from azure.monitor.querymetrics import MetricsClient
-        from azure.mgmt.appcontainers import ContainerAppsAPIClient
+        from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
+        from azure.monitor.querymetrics import MetricsClient  # noqa: PLC0415
 
         cred = get_azure_credential()
         apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
@@ -198,7 +194,7 @@ def get_container_app_metrics() -> list[dict]:
         for app in apps:
             resource_id = app.id
             try:
-                response = metrics_client.query_resource(
+                response = metrics_client.query_resource(  # type: ignore[attr-defined]
                     resource_uri=resource_id,
                     metric_names=["CpuUsage", "MemoryWorkingSetBytes", "Replicas"],
                     timespan=timedelta(minutes=5),

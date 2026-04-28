@@ -9,18 +9,19 @@ import ssl
 import tempfile
 import time
 from datetime import datetime, timezone
-from functools import lru_cache
 from pathlib import Path
 from threading import Lock
+from typing import Any, Callable
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from dashboard import config
 from dashboard.services.alarms import get_alarm_status, get_config_page_data, load_alarm_config, save_alarm_config
+from dashboard.services.arm import discover_flows, queue_to_microservice_ids
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health
-from dashboard.services.service_bus import get_queues, get_message_metrics
+from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
+from dashboard.services.service_bus import get_message_metrics, get_queues
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
@@ -61,7 +62,7 @@ def _configure_ssl_trust() -> None:
     extra_ca = os.environ.get("AZURE_CA_CERT_FILE")
 
     try:
-        import certifi
+        import certifi  # noqa: PLC0415
 
         bundle_parts = [Path(certifi.where()).read_text(encoding="utf-8")]
         if extra_ca:
@@ -76,8 +77,7 @@ def _configure_ssl_trust() -> None:
         os.environ["REQUESTS_CA_BUNDLE"] = str(bundle_path)
         return
     except Exception as exc:
-        import logging as _log
-        _log.getLogger(__name__).warning("certifi-based CA bundle failed: %s", exc)
+        log.warning("certifi-based CA bundle failed: %s", exc)
 
     # Fallback: build from Windows certificate store
     certs: dict[bytes, None] = {}
@@ -122,7 +122,7 @@ _cache_data: dict = {
 }
 
 
-def _cached(key: str, builder, ttl: float | None = None, force: bool = False):
+def _cached(key: str, builder: Callable[[], Any], ttl: float | None = None, force: bool = False) -> Any:
     """Generic TTL cache helper. Returns cached value or calls builder() to refresh.
 
     The lock is held only for the fast cache-check and the final store — never
@@ -192,7 +192,7 @@ def _build_status() -> dict:
 # ---------------------------------------------------------------------------
 
 @app.route("/")
-def index():
+def index() -> str:
     status = _get_cached_status()
     return render_template(
         "index.html",
@@ -202,7 +202,7 @@ def index():
 
 
 @app.route("/flows")
-def flows_page():
+def flows_page() -> str:
     status = _get_cached_status()
     container_metrics = _cached(
         "flows",
@@ -218,7 +218,7 @@ def flows_page():
 
 
 @app.route("/exceptions")
-def exceptions_page():
+def exceptions_page() -> str:
     hours = int(request.args.get("hours", 24))
     exceptions = _cached(
         "exceptions",
@@ -234,7 +234,7 @@ def exceptions_page():
 
 
 @app.route("/service-bus")
-def service_bus_page():
+def service_bus_page() -> str:
     cached_sb = _cached(
         "servicebus",
         lambda: {"queues": get_queues()},
@@ -250,15 +250,12 @@ def service_bus_page():
 
 
 @app.route("/messages")
-def messages_page():
+def messages_page() -> str:
     queue_filter = request.args.get("queue", "").strip()
     flow_label = None
     microservice_ids: list[str] | None = None
 
     if queue_filter:
-        from dashboard.services.arm import queue_to_microservice_ids
-        from dashboard.services.flows import queue_to_workflow_id, get_flows
-
         microservice_ids = queue_to_microservice_ids(queue_filter)
         if not microservice_ids:
             microservice_ids = ["__no_match__"]
@@ -289,17 +286,16 @@ def messages_page():
 # ---------------------------------------------------------------------------
 
 @app.route("/api/status")
-def api_status():
+def api_status() -> Response:
     force = request.args.get("force", "false").lower() == "true"
     data = _get_cached_status(force=force)
     return jsonify(data)
 
 
 @app.route("/api/refresh")
-def api_refresh():
+def api_refresh() -> Response:
     """Force-refresh all caches including ARM flow discovery."""
-    from dashboard.services.arm import get_deployed_flow_ids
-    get_deployed_flow_ids(force=True)
+    discover_flows(force=True)
     # Bust every cache entry
     with _cache_lock:
         for entry in _cache_data.values():
@@ -309,7 +305,7 @@ def api_refresh():
 
 
 @app.route("/api/flows")
-def api_flows():
+def api_flows() -> Response:
     queues = get_queues()
     active_flows = get_active_flows()
     flows = build_flow_data(queues, active_flows)
@@ -323,13 +319,13 @@ def api_flows():
 
 
 @app.route("/api/messages")
-def api_messages():
+def api_messages() -> Response:
     messages = get_messages_today()
     return jsonify({"messages": messages, "count": len(messages)})
 
 
 @app.route("/api/servicebus-metrics")
-def api_servicebus_metrics():
+def api_servicebus_metrics() -> Response:
     hours = request.args.get("hours", "1", type=str)
     allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
     timespan_hours = allowed.get(hours, 1)
@@ -343,7 +339,7 @@ def api_servicebus_metrics():
 # ---------------------------------------------------------------------------
 
 @app.route("/alarms")
-def alarm_page():
+def alarm_page() -> str:
     alarm_rows = _cached(
         "alarms",
         get_alarm_status,
@@ -364,7 +360,7 @@ def alarm_page():
 
 
 @app.route("/alarm-config", methods=["GET", "POST"])
-def alarm_config_page():
+def alarm_config_page() -> str:
     saved = False
 
     if request.method == "POST":
@@ -406,7 +402,7 @@ def alarm_config_page():
         servers=servers,
         saved=saved,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.SMTP_HOST and config.ALERT_EMAIL_TO),
+        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )
 
 

@@ -6,10 +6,13 @@ All Azure service calls are mocked.
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from dotenv import load_dotenv
+from flask.testing import FlaskClient
 
 from dashboard import app as app_module
 
@@ -17,7 +20,7 @@ app = app_module.app
 
 
 @pytest.fixture()
-def client():
+def client() -> Generator[FlaskClient, None, None]:
     app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
@@ -29,7 +32,7 @@ EMPTY_MESSAGES: list = []
 EMPTY_CONTAINER_METRICS: dict = {}
 
 
-def _mock_patches():
+def _mock_patches() -> list:
     return [
         patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
         patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
@@ -39,27 +42,27 @@ def _mock_patches():
 
 
 class TestPageRoutes:
-    def test_index_returns_200(self, client: object) -> None:
+    def test_index_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
              patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
             response = client.get("/")
         assert response.status_code == 200
 
-    def test_flows_returns_200(self, client: object) -> None:
+    def test_flows_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
              patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
             response = client.get("/flows")
         assert response.status_code == 200
 
-    def test_exceptions_returns_200(self, client: object) -> None:
+    def test_exceptions_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS):
             response = client.get("/exceptions")
         assert response.status_code == 200
 
-    def test_exceptions_empty_state_uses_config_flag(self, client: object) -> None:
+    def test_exceptions_empty_state_uses_config_flag(self, client: FlaskClient) -> None:
         with patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"):
@@ -69,17 +72,17 @@ class TestPageRoutes:
         assert b"No exceptions were found in the last 24 hours" in response.data
         assert b"Azure Log Analytics credentials are not configured." not in response.data
 
-    def test_service_bus_returns_200(self, client: object) -> None:
+    def test_service_bus_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES):
             response = client.get("/service-bus")
         assert response.status_code == 200
 
-    def test_messages_returns_200(self, client: object) -> None:
+    def test_messages_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES):
             response = client.get("/messages")
         assert response.status_code == 200
 
-    def test_messages_empty_state_uses_config_flag(self, client: object) -> None:
+    def test_messages_empty_state_uses_config_flag(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES), \
              patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"):
             response = client.get("/messages")
@@ -90,7 +93,7 @@ class TestPageRoutes:
 
 
 class TestApiRoutes:
-    def test_api_status_returns_json(self, client: object) -> None:
+    def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
              patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
              patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
@@ -100,7 +103,7 @@ class TestApiRoutes:
         assert "system_health" in data
         assert "kpis" in data
 
-    def test_api_flows_returns_json(self, client: object) -> None:
+    def test_api_flows_returns_json(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
              patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
             response = client.get("/api/flows")
@@ -108,7 +111,7 @@ class TestApiRoutes:
         data = response.get_json()
         assert "flows" in data
 
-    def test_api_messages_returns_json(self, client: object) -> None:
+    def test_api_messages_returns_json(self, client: FlaskClient) -> None:
         with patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES):
             response = client.get("/api/messages")
         assert response.status_code == 200
@@ -119,8 +122,6 @@ class TestApiRoutes:
 
 class TestEnvLoading:
     def test_load_dotenv_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        from dotenv import load_dotenv
-
         env_file = tmp_path / ".env"
         env_file.write_text(
             "AZURE_RESOURCE_GROUP=from-file\nAZURE_SERVICE_BUS_NAMESPACE=from-file-sb\n",

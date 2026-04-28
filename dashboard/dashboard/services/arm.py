@@ -20,6 +20,8 @@ import logging
 import time
 from threading import Lock
 
+from azure.mgmt.appcontainers import ContainerAppsAPIClient
+
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
 
@@ -125,8 +127,6 @@ def _list_container_apps() -> list[dict]:
     ``name``, ``env`` (dict of flow env vars), ``target_port``.
     Only apps that have a ``WORKFLOW_ID`` env var are included.
     """
-    from azure.mgmt.appcontainers import ContainerAppsAPIClient
-
     cred = get_azure_credential()
     client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
     apps = client.container_apps.list_by_resource_group(

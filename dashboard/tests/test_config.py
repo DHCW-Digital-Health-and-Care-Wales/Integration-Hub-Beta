@@ -6,21 +6,22 @@ from __future__ import annotations
 
 import importlib
 import os
+import types
 from unittest.mock import patch
+
+import dashboard.config as _cfg_module
 
 
 class TestConfigDefaults:
-    def _load_config(self, env: dict) -> object:
+    def _load_config(self, env: dict) -> types.ModuleType:
         """Re-import config module with a patched environment."""
         with patch.dict(os.environ, env, clear=True), patch("dotenv.load_dotenv"):
-            import dashboard.config as cfg
-            importlib.reload(cfg)
-            return cfg
+            importlib.reload(_cfg_module)
+            return _cfg_module
 
     def teardown_method(self) -> None:
         """Restore config module to real environment after each test."""
-        import dashboard.config as cfg
-        importlib.reload(cfg)
+        importlib.reload(_cfg_module)
 
     def test_warning_threshold_default(self) -> None:
         cfg = self._load_config({})

@@ -11,6 +11,13 @@ from __future__ import annotations
 import logging
 
 from dashboard import config
+from dashboard.services.arm import discover_flows  # noqa: PLC0415 (deferred to avoid circular at load time)
+from dashboard.services.service_bus import (  # noqa: PLC0415
+    get_queue_names,
+    get_subscriptions,
+    get_topic_names,
+    resolve_by_suffix,
+)
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +109,6 @@ _FLOW_DEFS: list[dict] = [
 
 def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -> dict[str, dict]:
     """Fallback: build the FLOWS dict by resolving queue/topic names via suffix matching."""
-    from dashboard.services.service_bus import get_subscriptions, resolve_by_suffix
 
     flows: dict[str, dict] = {}
     for defn in _FLOW_DEFS:
@@ -152,7 +158,6 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
 
 def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
     """For flows that have a topic, fetch subscriptions from Service Bus."""
-    from dashboard.services.service_bus import get_subscriptions
 
     for flow in flows.values():
         topic = flow.get("topic")
@@ -177,7 +182,7 @@ def get_flows() -> dict[str, dict]:
     Results are cached in the module-level ``FLOWS`` dict until
     ``refresh_flows()`` is called.
     """
-    global FLOWS  # noqa: PLW0603
+    global FLOWS  # noqa: PLW0602
     if not FLOWS:
         refresh_flows()
     return FLOWS
@@ -188,8 +193,6 @@ def refresh_flows() -> dict[str, dict]:
     global FLOWS  # noqa: PLW0603
 
     # --- Primary: Container App env var discovery ---
-    from dashboard.services.arm import discover_flows
-
     discovered = discover_flows()
     if discovered:
         log.info("Using %d flow(s) from Container App discovery", len(discovered))
@@ -198,8 +201,6 @@ def refresh_flows() -> dict[str, dict]:
         return FLOWS
 
     # --- Fallback: static definitions + suffix matching ---
-    from dashboard.services.service_bus import get_queue_names, get_topic_names
-
     log.info("Container App discovery unavailable — falling back to suffix matching")
     queue_names = get_queue_names()
     topic_names = get_topic_names()

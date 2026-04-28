@@ -4,7 +4,7 @@ Tests the classification and flow-building logic — no Azure calls.
 """
 from __future__ import annotations
 
-import pytest
+from typing import Any
 
 from dashboard.services.arm import _build_flow, _classify_app
 
@@ -45,7 +45,7 @@ class TestClassifyApp:
 
 class TestBuildFlow:
     def test_standard_flow_with_transformer(self) -> None:
-        apps = [
+        apps: list[dict[str, Any]] = [
             {
                 "name": "phw-hl7server-ca",
                 "env": {
@@ -85,7 +85,7 @@ class TestBuildFlow:
         assert flow["destination"] == "MPI"
 
     def test_flow_without_transformer(self) -> None:
-        apps = [
+        apps: list[dict[str, Any]] = [
             {
                 "name": "paris-hl7server-ca",
                 "env": {
@@ -111,7 +111,7 @@ class TestBuildFlow:
         assert flow["source_port"] == 2577
 
     def test_topic_based_flow(self) -> None:
-        apps = [
+        apps: list[dict[str, Any]] = [
             {
                 "name": "mpi-hl7server-ca",
                 "env": {
@@ -139,7 +139,7 @@ class TestBuildFlow:
         assert flow["source_port"] == 2580
 
     def test_unknown_flow_gets_generated_metadata(self) -> None:
-        apps = [
+        apps: list[dict[str, Any]] = [
             {
                 "name": "new-server-ca",
                 "env": {

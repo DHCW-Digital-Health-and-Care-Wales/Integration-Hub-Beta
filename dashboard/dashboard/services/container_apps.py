@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 
+from dashboard.services.arm import _cached_flows
 from dashboard.services.azure_monitor import get_container_app_metrics
 from dashboard.services.flows import get_flows
 
@@ -34,8 +35,6 @@ def _build_app_flow_map() -> dict[str, str]:
     return an empty dict and the caller falls back to keyword matching.
     """
     try:
-        from dashboard.services.arm import _cached_flows, _classify_app
-
         if not _cached_flows:
             return {}
 
