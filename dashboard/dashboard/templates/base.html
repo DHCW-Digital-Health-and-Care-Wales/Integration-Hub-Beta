@@ -129,10 +129,20 @@
 </head>
 <body>
 
+<!-- Page navigation loading bar -->
+<div id="page-load-bar"></div>
+
 <!-- Live update toast -->
 <div id="live-indicator">
   <i class="bi bi-arrow-repeat"></i> Updated
 </div>
+
+{% if data_is_stale | default(false) %}
+<!-- Stale data toast — hidden by JS once fresh data arrives -->
+<div id="stale-toast">
+  <i class="bi bi-arrow-repeat spin-slow"></i> Refreshing data…
+</div>
+{% endif %}
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg">
@@ -291,6 +301,34 @@
     if (btn) btn.addEventListener('click', function() {
       apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
     });
+  })();
+
+  // Navigation loading bar
+  (function () {
+    const bar = document.getElementById('page-load-bar');
+    if (!bar) return;
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href') || '';
+      // Only trigger for internal page navigations, not anchors / external / JS links
+      if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+          href.startsWith('http://') || href.startsWith('https://') ||
+          link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      bar.classList.add('loading');
+    });
+  })();
+
+  // Stale toast: dismiss on fresh data or after a timeout
+  (function () {
+    const toast = document.getElementById('stale-toast');
+    if (!toast) return;
+    document.addEventListener('dataupdated', function () {
+      toast.classList.add('hidden');
+    });
+    // Fallback: auto-hide after the cache TTL has elapsed
+    const ttl = (window.REFRESH_INTERVAL || 30) * 1000;
+    setTimeout(function () { toast.classList.add('hidden'); }, ttl + 5000);
   })();
 </script>
 

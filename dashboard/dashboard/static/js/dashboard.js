@@ -206,6 +206,7 @@
       }
 
       flashLiveIndicator();
+      document.dispatchEvent(new CustomEvent('dataupdated'));
     } catch (err) {
       console.warn("Dashboard refresh failed:", err);
     } finally {

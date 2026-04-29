@@ -82,14 +82,11 @@ def get_trace(operation_id: str) -> dict:
         log.error("Failed to fetch trace %s: %s", operation_id, exc)
         return _empty()
 
-    if response.status == LogsQueryStatus.FAILURE:
-        log.error("Log Analytics trace query failed: %s", response.partial_error)
+    if response.status in (LogsQueryStatus.FAILURE, LogsQueryStatus.PARTIAL):
+        log.warning("Log Analytics trace query returned non-success status (%s): %s", response.status, response.partial_error)
         return _empty()
 
-    if response.status == LogsQueryStatus.PARTIAL:
-        log.warning("Log Analytics trace query returned partial results: %s", response.partial_error)
-
-    tables = response.tables if response.status == LogsQueryStatus.SUCCESS else response.partial_data
+    tables = response.tables
     spans: list[dict] = []
     exceptions: list[dict] = []
     logs: list[dict] = []

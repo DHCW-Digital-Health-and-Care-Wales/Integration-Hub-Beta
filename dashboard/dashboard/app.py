@@ -7,6 +7,7 @@ import logging
 import os
 import ssl
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -114,12 +115,12 @@ app.secret_key = config.FLASK_SECRET_KEY
 
 _cache_lock = Lock()
 _cache_data: dict = {
-    "status":     {"data": {}, "ts": 0.0},
-    "flows":      {"data": {}, "ts": 0.0},
-    "exceptions": {"data": [], "ts": 0.0},
-    "servicebus": {"data": {}, "ts": 0.0},
-    "messages":   {"data": [], "ts": 0.0},
-    "alarms":     {"data": [], "ts": 0.0},
+    "status":     {"data": None, "ts": 0.0},
+    "flows":      {"data": None, "ts": 0.0},
+    "exceptions": {"data": None, "ts": 0.0},
+    "servicebus": {"data": None, "ts": 0.0},
+    "messages":   {"data": None, "ts": 0.0},
+    "alarms":     {"data": None, "ts": 0.0},
 }
 
 
@@ -150,8 +151,61 @@ def _cached(key: str, builder: Callable[[], Any], ttl: float | None = None, forc
     return new_data
 
 
+_bg_refresh_in_flight: set[str] = set()
+_bg_refresh_lock = Lock()
+
+
+def _cached_nowait(key: str, builder: Callable[[], Any], ttl: float | None = None) -> Any:
+    """Stale-while-revalidate: return cached data immediately (even if stale)
+    and trigger a background refresh if the entry is expired.  Only blocks on
+    the very first call when there is no cached value at all.
+    """
+    _ttl = ttl if ttl is not None else config.API_CACHE_TTL
+    now = time.monotonic()
+
+    with _cache_lock:
+        entry = _cache_data.setdefault(key, {"data": None, "ts": 0.0})
+        cached = entry["data"]
+        is_stale = (now - entry["ts"]) > _ttl
+
+    if cached is None:
+        # No data yet — must block once so the page has something to render.
+        return _cached(key, builder, ttl=ttl)
+
+    if is_stale:
+        # Serve stale data immediately; refresh in a background thread.
+        with _bg_refresh_lock:
+            if key not in _bg_refresh_in_flight:
+                _bg_refresh_in_flight.add(key)
+
+                def _refresh(k: str, b: Callable[[], Any], t: float) -> None:
+                    try:
+                        _cached(k, b, ttl=t, force=True)
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("Background cache refresh failed for %r: %s", k, exc)
+                    finally:
+                        with _bg_refresh_lock:
+                            _bg_refresh_in_flight.discard(k)
+
+                threading.Thread(target=_refresh, args=(key, builder, _ttl), daemon=True).start()
+
+    return cached
+
+
 def _get_cached_status(force: bool = False) -> dict:
-    return _cached("status", _build_status, force=force)
+    if force:
+        return _cached("status", _build_status, force=True)
+    return _cached_nowait("status", _build_status)
+
+
+def _is_cache_stale(key: str, ttl: float | None = None) -> bool:
+    """Return True if the cache entry for *key* is expired (or was never populated)."""
+    _ttl = ttl if ttl is not None else config.API_CACHE_TTL
+    with _cache_lock:
+        entry = _cache_data.get(key, {"data": None, "ts": 0.0})
+        if entry["data"] is None:
+            return False  # first-load blocking fetch; not stale, just cold
+        return (time.monotonic() - entry["ts"]) > _ttl
 
 
 def _build_status() -> dict:
@@ -199,13 +253,14 @@ def index() -> str:
         "index.html",
         status=status,
         refresh_interval=config.API_CACHE_TTL,
+        data_is_stale=_is_cache_stale("status"),
     )
 
 
 @app.route("/flows")
 def flows_page() -> str:
     status = _get_cached_status()
-    container_metrics = _cached(
+    container_metrics = _cached_nowait(
         "flows",
         get_container_apps_metrics,
         ttl=config.API_CACHE_TTL,
@@ -215,13 +270,14 @@ def flows_page() -> str:
         status=status,
         container_metrics=container_metrics,
         refresh_interval=config.API_CACHE_TTL,
+        data_is_stale=_is_cache_stale("status"),
     )
 
 
 @app.route("/exceptions")
 def exceptions_page() -> str:
     hours = int(request.args.get("hours", 24))
-    exceptions = _cached(
+    exceptions = _cached_nowait(
         f"exceptions_{hours}",
         lambda: get_exceptions(hours=hours),
         ttl=config.API_CACHE_TTL,
@@ -231,12 +287,13 @@ def exceptions_page() -> str:
         exceptions=exceptions,
         hours=hours,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        data_is_stale=_is_cache_stale(f"exceptions_{hours}"),
     )
 
 
 @app.route("/service-bus")
 def service_bus_page() -> str:
-    cached_sb = _cached(
+    cached_sb = _cached_nowait(
         "servicebus",
         lambda: {"queues": get_queues()},
         ttl=config.API_CACHE_TTL,
@@ -247,6 +304,7 @@ def service_bus_page() -> str:
         "service_bus.html",
         queues=queues,
         flows=flows,
+        data_is_stale=_is_cache_stale("servicebus"),
     )
 
 
@@ -265,12 +323,12 @@ def messages_page() -> str:
             flows = get_flows()
             flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
 
-    messages = _cached(
+    messages = _cached_nowait(
         "messages",
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
-    cached_sb = _cached("servicebus", lambda: {"queues": get_queues()}, ttl=config.API_CACHE_TTL)
+    cached_sb = _cached_nowait("servicebus", lambda: {"queues": get_queues()}, ttl=config.API_CACHE_TTL)
     queue_names = sorted(q["name"] for q in cached_sb.get("queues", []) if q.get("name"))
     return render_template(
         "messages.html",
@@ -279,6 +337,7 @@ def messages_page() -> str:
         queue_filter=queue_filter,
         flow_label=flow_label,
         queue_names=queue_names,
+        data_is_stale=_is_cache_stale("messages"),
     )
 
 
@@ -349,7 +408,7 @@ def api_servicebus_metrics() -> Response:
 
 @app.route("/alarms")
 def alarm_page() -> str:
-    alarm_rows = _cached(
+    alarm_rows = _cached_nowait(
         "alarms",
         get_alarm_status,
         ttl=config.API_CACHE_TTL,
@@ -365,6 +424,7 @@ def alarm_page() -> str:
         no_alarms_configured=not any_configured,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        data_is_stale=_is_cache_stale("alarms"),
     )
 
 
