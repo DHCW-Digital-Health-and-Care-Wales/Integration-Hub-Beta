@@ -1,10 +1,11 @@
-"""Alarm service — HL7 server message inactivity monitoring (Alarm 1).
+"""Alarm service — workflow message inactivity monitoring (Alarm 1).
 
-Config is persisted to ``alarm_config.json`` in the dashboard root directory.
-State (last alarm fired time per server) is persisted to ``alarm_state.json``.
+Config is persisted to ``alarm1_config.json`` in the dashboard root directory.
+State (last alarm fired time per rule) is persisted to ``alarm_state.json``.
 
-Each HL7 server has five settings:
-  alarm_enabled            – bool, whether Alarm 1 is active for this server
+Each rule targets a specific workflow_id and has five settings:
+  alarm_enabled            – bool, whether Alarm 1 is active for this rule
+  workflow_id              – the workflow to monitor (parse_json(Properties)["workflow_id"])
   day_threshold_minutes    – minutes of inactivity during Day to trip the alarm
   evening_threshold_minutes – minutes of inactivity during Evening to trip the alarm
   weekend_threshold_minutes – minutes of inactivity during Weekend to trip the alarm
@@ -12,7 +13,7 @@ Each HL7 server has five settings:
 
 The applicable inactivity trip point is determined by the current time period
 (day / evening / weekend).  ``alerting_gap_minutes`` is a single re-alarm gap that
-applies regardless of period.  Once a server returns to healthy the last-alarm
+applies regardless of period.  Once a rule returns to healthy the last-alarm
 timestamp is cleared so the next inactivity event fires immediately.
 """
 from __future__ import annotations
@@ -30,7 +31,7 @@ from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm_config.json"
+CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm1_config.json"
 STATE_PATH  = Path(__file__).parent.parent.parent / "alarm_state.json"
 
 # Defaults
@@ -38,10 +39,6 @@ DEFAULT_DAY_THRESHOLD     = 60
 DEFAULT_EVENING_THRESHOLD = 120
 DEFAULT_WEEKEND_THRESHOLD = 240
 DEFAULT_ALERTING_GAP      = 60
-
-# Seed list — always present even if Log Analytics is unavailable.
-# Uses Container App naming convention: {location}-{env}-{flow}-hl7server-ca
-KNOWN_HL7_SERVERS: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -51,12 +48,12 @@ KNOWN_HL7_SERVERS: list[str] = []
 def load_alarm_config() -> dict:
     """Load alarm config from JSON file. Returns empty config on missing/corrupt file."""
     if not CONFIG_PATH.exists():
-        return {"servers": {}}
+        return {"rules": {}}
     try:
         return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         log.warning("Failed to load alarm config: %s", exc)
-        return {"servers": {}}
+        return {"rules": {}}
 
 
 def save_alarm_config(cfg: dict) -> None:
@@ -66,12 +63,12 @@ def save_alarm_config(cfg: dict) -> None:
 
 def _load_alarm_state() -> dict:
     if not STATE_PATH.exists():
-        return {"servers": {}}
+        return {"rules": {}}
     try:
         return json.loads(STATE_PATH.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         log.warning("Failed to load alarm state: %s", exc)
-        return {"servers": {}}
+        return {"rules": {}}
 
 
 def _save_alarm_state(state: dict) -> None:
@@ -183,59 +180,24 @@ def _parse_dt(raw: object) -> datetime | None:
 # Log Analytics queries
 # ---------------------------------------------------------------------------
 
-def discover_hl7_servers() -> list[str]:
-    """Return all known HL7 server microservice_ids (seed list + Log Analytics discovery)."""
-    discovered: list[str] = []
+def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
+    """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (30-day window)."""
+    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
+        return {wid: None for wid in workflow_ids}
 
-    if config.AZURE_LOG_ANALYTICS_WORKSPACE_ID:
-        query = """
-        AppTraces
-        | where TimeGenerated > ago(30d)
-        | where Message == "Integration Hub Event"
-        | where Properties contains "MESSAGE_RECEIVED"
-        | extend microservice_id = tostring(parse_json(Properties)["microservice_id"])
-        | where microservice_id endswith "-hl7server-ca"
-        | summarize by microservice_id
-        | order by microservice_id asc
-        """
-        try:
-            client = LogsQueryClient(get_azure_credential())
-            response = client.query_workspace(
-                workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
-                query=query,
-                timespan=timedelta(days=30),
-            )
-            if response.status == LogsQueryStatus.SUCCESS:
-                for table in response.tables:
-                    for row in table.rows:
-                        row_dict = dict(zip(table.columns, row))
-                        mid = (row_dict.get("microservice_id") or "").strip()
-                        if mid:
-                            discovered.append(mid)
-        except Exception as exc:
-            log.error("Failed to discover HL7 servers: %s", exc)
-
-    return sorted(dict.fromkeys(KNOWN_HL7_SERVERS + discovered))
-
-
-def get_last_message_times(server_ids: list[str]) -> dict[str, datetime | None]:
-    """Query Log Analytics for the most recent MESSAGE_RECEIVED per server (30-day window)."""
-    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not server_ids:
-        return {sid: None for sid in server_ids}
-
-    safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", sid) for sid in server_ids if sid]
+    safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", wid) for wid in workflow_ids if wid]
     if not safe_ids:
-        return {sid: None for sid in server_ids}
+        return {wid: None for wid in workflow_ids}
 
-    ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
+    ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
     query = f"""
     AppTraces
     | where TimeGenerated > ago(30d)
     | where Message == "Integration Hub Event"
     | where Properties contains "MESSAGE_RECEIVED"
-    | extend microservice_id = tostring(parse_json(Properties)["microservice_id"])
-    | where microservice_id in ({ids_kql})
-    | summarize last_message = max(TimeGenerated) by microservice_id
+    | extend workflow_id = tostring(parse_json(Properties)["workflow_id"])
+    | where workflow_id in ({ids_kql})
+    | summarize last_message = max(TimeGenerated) by workflow_id
     """
     try:
         client = LogsQueryClient(get_azure_credential())
@@ -245,23 +207,23 @@ def get_last_message_times(server_ids: list[str]) -> dict[str, datetime | None]:
             timespan=timedelta(days=30),
         )
         if response.status != LogsQueryStatus.SUCCESS:
-            log.warning("get_last_message_times: partial/failed query")
-            return {sid: None for sid in server_ids}
+            log.warning("get_last_message_times_by_workflow: partial/failed query")
+            return {wid: None for wid in workflow_ids}
 
         found: dict[str, datetime | None] = {}
         for table in response.tables:
             for row in table.rows:
                 row_dict = dict(zip(table.columns, row))
-                mid = (row_dict.get("microservice_id") or "").strip()
+                wid = (row_dict.get("workflow_id") or "").strip()
                 ts = _parse_dt(row_dict.get("last_message"))
-                if mid:
-                    found[mid] = ts
+                if wid:
+                    found[wid] = ts
 
-        return {sid: found.get(sid) for sid in server_ids}
+        return {wid: found.get(wid) for wid in workflow_ids}
 
     except Exception as exc:
         log.error("Failed to fetch last message times: %s", exc)
-        return {sid: None for sid in server_ids}
+        return {wid: None for wid in workflow_ids}
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +231,8 @@ def get_last_message_times(server_ids: list[str]) -> dict[str, datetime | None]:
 # ---------------------------------------------------------------------------
 
 def _send_alarm_email(
-    server_id: str,
+    rule_id: str,
+    workflow_id: str,
     display_name: str,
     minutes_since: float,
     period_threshold: int,
@@ -298,18 +261,18 @@ def _send_alarm_email(
   &#x26A0; Integration Hub — Alarm 1: Message Inactivity
 </h2>
 <p style="color:#555;font-size:14px;">
-  The following HL7 server has received no messages for longer than its configured threshold.
+  The following workflow has received no messages for longer than its configured threshold.
 </p>
 <table cellpadding="8" cellspacing="0"
        style="border-collapse:collapse;font-size:14px;width:100%;
               background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
   <tr style="background:#fff;">
-    <td style="font-weight:bold;width:180px;border-bottom:1px solid #eee;">Server</td>
+    <td style="font-weight:bold;width:180px;border-bottom:1px solid #eee;">Rule</td>
     <td style="border-bottom:1px solid #eee;">{display_name}</td>
   </tr>
   <tr style="background:#fff;">
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Server ID</td>
-    <td style="border-bottom:1px solid #eee;font-family:monospace;">{server_id}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Workflow ID</td>
+    <td style="border-bottom:1px solid #eee;font-family:monospace;">{workflow_id}</td>
   </tr>
   <tr>
     <td style="font-weight:bold;border-bottom:1px solid #eee;">Last Message (UTC)</td>
@@ -343,10 +306,10 @@ def _send_alarm_email(
             "content": {"subject": subject, "html": body},
         }
         poller = client.begin_send(message)
-        poller.result()  # wait for delivery confirmation
-        log.info("Alarm 1 email sent for %s to %s", server_id, config.ALERT_EMAIL_TO)
+        poller.result()
+        log.info("Alarm 1 email sent for %s to %s", rule_id, config.ALERT_EMAIL_TO)
     except Exception as exc:
-        log.error("Failed to send alarm 1 email for %s: %s", server_id, exc)
+        log.error("Failed to send alarm 1 email for %s: %s", rule_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -354,7 +317,7 @@ def _send_alarm_email(
 # ---------------------------------------------------------------------------
 
 def get_alarm_status() -> list[dict]:
-    """Evaluate Alarm 1 for all enabled servers and return their status rows.
+    """Evaluate Alarm 1 for all enabled rules and return their status rows.
 
     Status values:
         'critical'   – in alarm condition, cooldown has expired (needs attention)
@@ -362,40 +325,42 @@ def get_alarm_status() -> list[dict]:
         'healthy'    – last message received within the inactivity threshold
         'unknown'    – no message data found in the 30-day lookback window
 
-    State (last_alarm_at per server) is persisted to alarm_state.json so that
+    State (last_alarm_at per rule) is persisted to alarm_state.json so that
     cooldowns survive dashboard restarts.
     """
     cfg = load_alarm_config()
-    servers_cfg = cfg.get("servers", {})
+    rules_cfg = cfg.get("rules", {})
 
-    all_ids = discover_hl7_servers()
-    for sid in servers_cfg:
-        if sid not in all_ids:
-            all_ids.append(sid)
-    all_ids.sort()
-
-    enabled_ids = [sid for sid in all_ids if servers_cfg.get(sid, {}).get("alarm_enabled", False)]
-    if not enabled_ids:
+    enabled_rules = [
+        (rid, rcfg) for rid, rcfg in rules_cfg.items()
+        if not rcfg.get("deleted") and rcfg.get("alarm_enabled", False)
+    ]
+    if not enabled_rules:
         return []
 
-    last_times = get_last_message_times(enabled_ids)
+    # Collect unique workflow_ids for the batch query
+    workflow_ids = list(dict.fromkeys(
+        rcfg.get("workflow_id", "").strip()
+        for _, rcfg in enabled_rules
+        if rcfg.get("workflow_id", "").strip()
+    ))
+    last_times = get_last_message_times_by_workflow(workflow_ids)
     now = datetime.now(timezone.utc)
 
     state = _load_alarm_state()
-    state_servers = state.setdefault("servers", {})
+    state_rules = state.setdefault("rules", {})
     state_dirty = False
 
     results: list[dict] = []
 
-    for sid in enabled_ids:
-        server_cfg = servers_cfg.get(sid, {})
-        period_threshold = _applicable_threshold(server_cfg, now)
-        last_msg = last_times.get(sid)
+    for rid, rule_cfg in enabled_rules:
+        workflow_id = rule_cfg.get("workflow_id", "").strip()
+        period_threshold = _applicable_threshold(rule_cfg, now)
+        last_msg = last_times.get(workflow_id) if workflow_id else None
 
         if last_msg is None:
-            # No data in 30-day window — cannot determine status
             results.append(_build_row(
-                sid, server_cfg,
+                rid, rule_cfg,
                 last_msg=None,
                 status="unknown",
                 minutes_since=None,
@@ -408,12 +373,11 @@ def get_alarm_status() -> list[dict]:
         in_alarm = minutes_since > period_threshold
 
         if not in_alarm:
-            # Healthy — clear any stored last-alarm timestamp
-            if sid in state_servers:
-                del state_servers[sid]
+            if rid in state_rules:
+                del state_rules[rid]
                 state_dirty = True
             results.append(_build_row(
-                sid, server_cfg,
+                rid, rule_cfg,
                 last_msg=last_msg,
                 status="healthy",
                 minutes_since=minutes_since,
@@ -422,37 +386,34 @@ def get_alarm_status() -> list[dict]:
             ))
             continue
 
-        # --- In alarm condition ---
-        alerting_gap = int(server_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
-        last_alarm_at = _parse_dt(state_servers.get(sid, {}).get("last_alarm_at"))
+        alerting_gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
+        last_alarm_at = _parse_dt(state_rules.get(rid, {}).get("last_alarm_at"))
+        display_name = rule_cfg.get("display_name") or workflow_id
 
         if last_alarm_at is None:
-            # First alarm — fire immediately
             status = "critical"
-            state_servers.setdefault(sid, {})["last_alarm_at"] = now.isoformat()
+            state_rules.setdefault(rid, {})["last_alarm_at"] = now.isoformat()
             state_dirty = True
             cooldown_remaining = None
-            _send_alarm_email(sid, server_cfg.get("display_name") or _display_name(sid),
-                              minutes_since, period_threshold, last_msg, now,
-                              email_alerts_enabled=server_cfg.get("email_alerts_enabled", False))
+            _send_alarm_email(rid, workflow_id, display_name, minutes_since,
+                              period_threshold, last_msg, now,
+                              email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False))
         else:
             mins_since_alarm = (now - last_alarm_at).total_seconds() / 60
             if mins_since_alarm >= alerting_gap:
-                # Alerting gap expired — fire again
                 status = "critical"
-                state_servers[sid]["last_alarm_at"] = now.isoformat()
+                state_rules[rid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
-                _send_alarm_email(sid, server_cfg.get("display_name") or _display_name(sid),
-                                  minutes_since, period_threshold, last_msg, now,
-                                  email_alerts_enabled=server_cfg.get("email_alerts_enabled", False))
+                _send_alarm_email(rid, workflow_id, display_name, minutes_since,
+                                  period_threshold, last_msg, now,
+                                  email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False))
             else:
-                # Within alerting gap — suppress
                 status = "suppressed"
                 cooldown_remaining = alerting_gap - mins_since_alarm
 
         results.append(_build_row(
-            sid, server_cfg,
+            rid, rule_cfg,
             last_msg=last_msg,
             status=status,
             minutes_since=minutes_since,
@@ -461,7 +422,7 @@ def get_alarm_status() -> list[dict]:
         ))
 
     if state_dirty:
-        _save_alarm_state({"servers": state_servers})
+        _save_alarm_state({"rules": state_rules})
 
     _order = {"critical": 0, "suppressed": 1, "unknown": 2, "healthy": 3}
     results.sort(key=lambda r: _order.get(r["status"], 9))
@@ -469,8 +430,8 @@ def get_alarm_status() -> list[dict]:
 
 
 def _build_row(
-    sid: str,
-    server_cfg: dict,
+    rid: str,
+    rule_cfg: dict,
     last_msg: datetime | None,
     status: str,
     minutes_since: float | None,
@@ -478,14 +439,16 @@ def _build_row(
     now: datetime,
 ) -> dict:
     period = get_current_period(now)
-    period_threshold = _applicable_threshold(server_cfg, now)
+    period_threshold = _applicable_threshold(rule_cfg, now)
+    workflow_id = rule_cfg.get("workflow_id", "").strip()
     return {
-        "id": sid,
-        "display_name": server_cfg.get("display_name") or _display_name(sid),
-        "day_threshold_minutes": int(server_cfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
-        "evening_threshold_minutes": int(server_cfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
-        "weekend_threshold_minutes": int(server_cfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
-        "alerting_gap_minutes": int(server_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
+        "id": rid,
+        "display_name": rule_cfg.get("display_name") or workflow_id or rid,
+        "workflow_id": workflow_id,
+        "day_threshold_minutes": int(rule_cfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
+        "evening_threshold_minutes": int(rule_cfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
+        "weekend_threshold_minutes": int(rule_cfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
+        "alerting_gap_minutes": int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
         "current_period": period,
         "period_threshold_minutes": period_threshold,
         "last_message": last_msg.isoformat() if last_msg else None,
@@ -500,34 +463,36 @@ def _build_row(
 
 
 def get_config_page_data() -> list[dict]:
-    """Return all known servers with their current alarm settings for the config form."""
+    """Return all configured (non-deleted) rules with their current alarm settings."""
     cfg = load_alarm_config()
-    servers_cfg = cfg.get("servers", {})
-
-    all_ids = discover_hl7_servers()
-    for sid in servers_cfg:
-        if sid not in all_ids:
-            all_ids.append(sid)
-    all_ids.sort()
+    rules_cfg = cfg.get("rules", {})
 
     return [
         {
-            "id": sid,
-            "display_name": servers_cfg.get(sid, {}).get("display_name") or _display_name(sid),
-            "alarm_enabled": servers_cfg.get(sid, {}).get("alarm_enabled", False),
-            "day_threshold_minutes": int(
-                servers_cfg.get(sid, {}).get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)
-            ),
-            "evening_threshold_minutes": int(
-                servers_cfg.get(sid, {}).get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)
-            ),
-            "weekend_threshold_minutes": int(
-                servers_cfg.get(sid, {}).get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)
-            ),
-            "alerting_gap_minutes": int(
-                servers_cfg.get(sid, {}).get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)
-            ),
-            "email_alerts_enabled": servers_cfg.get(sid, {}).get("email_alerts_enabled", False),
+            "id": rid,
+            "display_name": rcfg.get("display_name") or rcfg.get("workflow_id", rid),
+            "workflow_id": rcfg.get("workflow_id", ""),
+            "alarm_enabled": rcfg.get("alarm_enabled", False),
+            "day_threshold_minutes": int(rcfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
+            "evening_threshold_minutes": int(rcfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
+            "weekend_threshold_minutes": int(rcfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
+            "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
+            "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
         }
-        for sid in all_ids
+        for rid, rcfg in rules_cfg.items()
+        if not rcfg.get("deleted")
     ]
+
+
+def generate_rule_id(workflow_id: str, existing_ids: set[str]) -> str:
+    """Return a safe config key for a new rule, deduplicating if needed."""
+    base = re.sub(r"[^a-z0-9\-]", "-", workflow_id.lower().strip()).strip("-")
+    base = re.sub(r"-{2,}", "-", base) or "rule"
+    candidate = f"{base}-inactivity"
+    if candidate not in existing_ids:
+        return candidate
+    for n in range(2, 9999):
+        c = f"{base}-inactivity-{n}"
+        if c not in existing_ids:
+            return c
+    return candidate

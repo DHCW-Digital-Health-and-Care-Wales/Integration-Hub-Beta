@@ -9,6 +9,7 @@ import ssl
 import tempfile
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -17,7 +18,27 @@ from typing import Any, Callable
 from flask import Flask, Response, jsonify, render_template, request
 
 from dashboard import config
-from dashboard.services.alarms import get_alarm_status, get_config_page_data, load_alarm_config, save_alarm_config
+from dashboard.services.alarms import (
+    generate_rule_id as generate_alarm1_rule_id,
+    get_alarm_status,
+    get_config_page_data,
+    load_alarm_config,
+    save_alarm_config,
+)
+from dashboard.services.alarm2 import (
+    generate_rule_id,
+    get_alarm2_config_page_data,
+    get_alarm2_status,
+    load_alarm2_config,
+    save_alarm2_config,
+)
+from dashboard.services.alarm3 import (
+    generate_rule_id as generate_alarm3_rule_id,
+    get_alarm3_config_page_data,
+    get_alarm3_status,
+    load_alarm3_config,
+    save_alarm3_config,
+)
 from dashboard.services.arm import discover_flows, queue_to_microservice_ids
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today
 from dashboard.services.container_apps import get_container_apps_metrics
@@ -121,6 +142,8 @@ _cache_data: dict = {
     "servicebus": {"data": None, "ts": 0.0},
     "messages":   {"data": None, "ts": 0.0},
     "alarms":     {"data": None, "ts": 0.0},
+    "alarm2":     {"data": None, "ts": 0.0},
+    "alarm3":     {"data": None, "ts": 0.0},
 }
 
 
@@ -190,6 +213,69 @@ def _cached_nowait(key: str, builder: Callable[[], Any], ttl: float | None = Non
                 threading.Thread(target=_refresh, args=(key, builder, _ttl), daemon=True).start()
 
     return cached
+
+
+def _multi_cached_nowait(
+    items: list[tuple[str, Callable[[], Any], float | None]],
+) -> list[Any]:
+    """Stale-while-revalidate for **multiple** cache keys simultaneously.
+
+    * Hot entries  → returned instantly (no I/O).
+    * Stale entries → served immediately; background thread refreshes each one.
+    * Cold entries  → fetched **in parallel** via a thread pool, then returned.
+
+    This replaces sequential ``_cached_nowait`` calls on the overview page so
+    that Azure Log Analytics queries for all three alarms run concurrently
+    instead of one-after-the-other.
+    """
+    _ttl_default = config.API_CACHE_TTL
+    now = time.monotonic()
+
+    resolved: dict[str, Any] = {}
+    cold: list[tuple[str, Callable[[], Any], float]] = []
+
+    for key, builder, ttl in items:
+        _ttl = ttl if ttl is not None else _ttl_default
+        with _cache_lock:
+            entry = _cache_data.setdefault(key, {"data": None, "ts": 0.0})
+            cached = entry["data"]
+            is_stale = (now - entry["ts"]) > _ttl
+
+        if cached is None:
+            cold.append((key, builder, _ttl))
+        else:
+            resolved[key] = cached
+            if is_stale:
+                with _bg_refresh_lock:
+                    if key not in _bg_refresh_in_flight:
+                        _bg_refresh_in_flight.add(key)
+
+                        def _refresh(k: str, b: Callable[[], Any], t: float) -> None:
+                            try:
+                                _cached(k, b, ttl=t, force=True)
+                            except Exception as exc:  # noqa: BLE001
+                                log.warning("Background cache refresh failed for %r: %s", k, exc)
+                            finally:
+                                with _bg_refresh_lock:
+                                    _bg_refresh_in_flight.discard(k)
+
+                        threading.Thread(
+                            target=_refresh, args=(key, builder, _ttl), daemon=True
+                        ).start()
+
+    if cold:
+        # Fetch all cold entries concurrently — one thread per entry.
+        with ThreadPoolExecutor(max_workers=len(cold)) as pool:
+            futures = {pool.submit(_cached, k, b, t, True): k for k, b, t in cold}
+            for future in as_completed(futures):
+                k = futures[future]
+                try:
+                    resolved[k] = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Parallel cold fetch failed for %r: %s", k, exc)
+                    resolved[k] = []
+
+    return [resolved.get(key, []) for key, _, _ in items]
 
 
 def _get_cached_status(force: bool = False) -> dict:
@@ -406,7 +492,71 @@ def api_servicebus_metrics() -> Response:
 # Alarm page routes
 # ---------------------------------------------------------------------------
 
+@app.route("/api/alarms/status")
+def api_alarms_status() -> Response:
+    """JSON endpoint returning all three alarm statuses in parallel.
+
+    Supports ``?refresh=1`` to force a cache bust.  Useful for async page
+    loading or periodic polling from the browser.
+    """
+    force = request.args.get("refresh") == "1"
+    if force:
+        with _cache_lock:
+            _cache_data["alarms"]["ts"] = 0.0
+            _cache_data["alarm2"]["ts"] = 0.0
+            _cache_data["alarm3"]["ts"] = 0.0
+
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
+        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ])
+    return jsonify({
+        "alarm1": alarm1_rows,
+        "alarm2": alarm2_rows,
+        "alarm3": alarm3_rows,
+        "refreshed_at": datetime.now(timezone.utc).isoformat(),
+        "poll_interval_seconds": int(config.API_CACHE_TTL),
+    })
+
+
 @app.route("/alarms")
+def alarms_overview_page() -> str:
+    if request.args.get("refresh") == "1":
+        with _cache_lock:
+            _cache_data["alarms"]["ts"] = 0.0
+            _cache_data["alarm2"]["ts"] = 0.0
+            _cache_data["alarm3"]["ts"] = 0.0
+
+    # Fetch all three alarm statuses concurrently — cold fetches run in
+    # parallel threads instead of blocking sequentially.
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
+        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ])
+
+    cfg1 = load_alarm_config()
+    any_alarm1 = any(s.get("alarm_enabled", False) for s in cfg1.get("rules", {}).values())
+    cfg2 = load_alarm2_config()
+    any_alarm2 = any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values())
+    cfg3 = load_alarm3_config()
+    any_alarm3 = any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values())
+    return render_template(
+        "alarms_overview.html",
+        alarm1_rows=alarm1_rows,
+        no_alarm1_configured=not any_alarm1,
+        alarm2_rows=alarm2_rows,
+        no_alarm2_configured=not any_alarm2,
+        alarm3_rows=alarm3_rows,
+        no_alarm3_configured=not any_alarm3,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        refresh_interval=int(config.API_CACHE_TTL),
+    )
+
+
+@app.route("/alarms/inactivity")
 def alarm_page() -> str:
     alarm_rows = _cached_nowait(
         "alarms",
@@ -416,7 +566,7 @@ def alarm_page() -> str:
     # Determine whether any alarms have been configured at all
     cfg = load_alarm_config()
     any_configured = any(
-        s.get("alarm_enabled", False) for s in cfg.get("servers", {}).values()
+        s.get("alarm_enabled", False) for s in cfg.get("rules", {}).values()
     )
     return render_template(
         "alarm.html",
@@ -434,50 +584,246 @@ def alarm_config_page() -> str:
 
     if request.method == "POST":
         cfg = load_alarm_config()
-        servers_cfg = cfg.setdefault("servers", {})
+        rules_cfg = cfg.setdefault("rules", {})
 
-        # All server IDs are identified by the presence of an alerting_gap_ field
+        def _int(field: str, default: int) -> int:
+            try:
+                return max(1, int(request.form.get(field, default)))
+            except (ValueError, TypeError):
+                return default
+
+        # Handle deletions
+        for key in list(request.form):
+            if key.startswith("delete_"):
+                rid = key[len("delete_"):]
+                rules_cfg.setdefault(rid, {})["deleted"] = True
+
+        # Update existing rules
         submitted_ids = [
             key[len("alerting_gap_"):]
             for key in request.form
             if key.startswith("alerting_gap_")
         ]
-        for sid in submitted_ids:
-            enabled = f"enabled_{sid}" in request.form
+        for rid in submitted_ids:
+            if rules_cfg.get(rid, {}).get("deleted"):
+                continue
+            entry = rules_cfg.setdefault(rid, {})
+            entry["alarm_enabled"]             = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"]      = f"email_{rid}" in request.form
+            entry["display_name"]              = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["workflow_id"]               = (request.form.get(f"workflow_id_{rid}") or "").strip()
+            entry["alerting_gap_minutes"]      = _int(f"alerting_gap_{rid}", 60)
+            entry["day_threshold_minutes"]     = _int(f"day_threshold_{rid}", 60)
+            entry["evening_threshold_minutes"] = _int(f"evening_threshold_{rid}", 120)
+            entry["weekend_threshold_minutes"] = _int(f"weekend_threshold_{rid}", 240)
 
-            def _int(field: str, default: int) -> int:
-                try:
-                    return max(1, int(request.form.get(field, default)))
-                except (ValueError, TypeError):
-                    return default
-
-            entry = servers_cfg.setdefault(sid, {})
-            entry["alarm_enabled"]              = enabled
-            entry["email_alerts_enabled"]       = f"email_{sid}" in request.form
-            entry["alerting_gap_minutes"]       = _int(f"alerting_gap_{sid}", 60)
-            entry["day_threshold_minutes"]      = _int(f"day_threshold_{sid}", 60)
-            entry["evening_threshold_minutes"]  = _int(f"evening_threshold_{sid}", 120)
-            entry["weekend_threshold_minutes"]  = _int(f"weekend_threshold_{sid}", 240)
+        # Add new rule
+        new_wid = (request.form.get("new_workflow_id") or "").strip()
+        if new_wid:
+            new_rid = generate_alarm1_rule_id(new_wid, set(rules_cfg))
+            rules_cfg[new_rid] = {
+                "display_name":              (request.form.get("new_display_name") or "").strip(),
+                "alarm_enabled":             False,
+                "workflow_id":               new_wid,
+                "day_threshold_minutes":     _int("new_day_threshold", 60),
+                "evening_threshold_minutes": _int("new_evening_threshold", 120),
+                "weekend_threshold_minutes": _int("new_weekend_threshold", 240),
+                "alerting_gap_minutes":      _int("new_alerting_gap", 60),
+                "email_alerts_enabled":      False,
+            }
 
         save_alarm_config(cfg)
-        # Bust the alarms cache so the alarm page reflects the new config immediately
         with _cache_lock:
             _cache_data["alarms"]["ts"] = 0.0
         saved = True
 
-    servers = get_config_page_data()
+    rules = get_config_page_data()
     return render_template(
         "alarm_config.html",
-        servers=servers,
+        rules=rules,
         saved=saved,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )
 
 
-# ---------------------------------------------------------------------------
-# Template helpers
-# ---------------------------------------------------------------------------
+@app.route("/alarms/outgoing-messages")
+def alarm2_page() -> str:
+    alarm2_rows = _cached_nowait(
+        "alarm2",
+        get_alarm2_status,
+        ttl=config.API_CACHE_TTL,
+    )
+    cfg = load_alarm2_config()
+    any_configured = any(
+        r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values()
+    )
+    return render_template(
+        "alarm2.html",
+        alarm2_rows=alarm2_rows,
+        no_alarms_configured=not any_configured,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        data_is_stale=_is_cache_stale("alarm2"),
+    )
+
+
+@app.route("/alarm2-config", methods=["GET", "POST"])
+def alarm2_config_page() -> str:
+    saved = False
+
+    if request.method == "POST":
+        cfg = load_alarm2_config()
+        rules_cfg = cfg.setdefault("rules", {})
+
+        def _int(field: str, default: int, minimum: int = 0) -> int:
+            try:
+                return max(minimum, int(request.form.get(field, default)))
+            except (ValueError, TypeError):
+                return default
+
+        # --- Handle deletions first ---
+        for key in list(request.form):
+            if key.startswith("delete_"):
+                rid = key[len("delete_"):]
+                rules_cfg.setdefault(rid, {})["deleted"] = True
+
+        # --- Update existing rules (skip deleted) ---
+        submitted_ids = [
+            key[len("alerting_gap_"):]
+            for key in request.form
+            if key.startswith("alerting_gap_")
+        ]
+        for rid in submitted_ids:
+            if rules_cfg.get(rid, {}).get("deleted"):
+                continue
+            entry = rules_cfg.setdefault(rid, {})
+            entry["alarm_enabled"]           = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"]    = f"email_{rid}" in request.form
+            entry["display_name"]            = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["health_board"]            = (request.form.get(f"health_board_{rid}") or "").strip()
+            entry["peer_service"]            = (request.form.get(f"peer_service_{rid}") or "").strip()
+            entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 2880, minimum=1)
+            entry["threshold"]               = _int(f"threshold_{rid}", 0, minimum=0)
+            entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
+
+        # --- Add new rule if submitted ---
+        new_hb = (request.form.get("new_health_board") or "").strip()
+        new_ps = (request.form.get("new_peer_service") or "").strip()
+        if new_hb and new_ps:
+            new_id = generate_rule_id(new_hb, new_ps, set(rules_cfg))
+            rules_cfg[new_id] = {
+                "display_name":            (request.form.get("new_display_name") or "").strip()
+                                           or f"{new_hb} → {new_ps}",
+                "alarm_enabled":           False,
+                "health_board":            new_hb,
+                "peer_service":            new_ps,
+                "window_duration_minutes": _int("new_window_duration", 2880, minimum=1),
+                "threshold":               _int("new_threshold", 0, minimum=0),
+                "alerting_gap_minutes":    _int("new_alerting_gap", 60, minimum=1),
+                "email_alerts_enabled":    False,
+            }
+
+        save_alarm2_config(cfg)
+        with _cache_lock:
+            _cache_data["alarm2"]["ts"] = 0.0
+        saved = True
+
+    rules = get_alarm2_config_page_data()
+    return render_template(
+        "alarm2_config.html",
+        rules=rules,
+        saved=saved,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
+    )
+
+
+@app.route("/alarms/failures")
+def alarm3_page() -> str:
+    alarm3_rows = _cached_nowait(
+        "alarm3",
+        get_alarm3_status,
+        ttl=config.API_CACHE_TTL,
+    )
+    cfg = load_alarm3_config()
+    any_configured = any(
+        r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values()
+    )
+    return render_template(
+        "alarm3.html",
+        alarm3_rows=alarm3_rows,
+        no_alarms_configured=not any_configured,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        data_is_stale=_is_cache_stale("alarm3"),
+    )
+
+
+@app.route("/alarm3-config", methods=["GET", "POST"])
+def alarm3_config_page() -> str:
+    saved = False
+
+    if request.method == "POST":
+        cfg = load_alarm3_config()
+        rules_cfg = cfg.setdefault("rules", {})
+
+        def _int(field: str, default: int, minimum: int = 0) -> int:
+            try:
+                return max(minimum, int(request.form.get(field, default)))
+            except (ValueError, TypeError):
+                return default
+
+        for key in list(request.form):
+            if key.startswith("delete_"):
+                rid = key[len("delete_"):]
+                rules_cfg.setdefault(rid, {})["deleted"] = True
+
+        submitted_ids = [
+            key[len("alerting_gap_"):]
+            for key in request.form
+            if key.startswith("alerting_gap_")
+        ]
+        for rid in submitted_ids:
+            if rules_cfg.get(rid, {}).get("deleted"):
+                continue
+            entry = rules_cfg.setdefault(rid, {})
+            entry["alarm_enabled"]           = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"]    = f"email_{rid}" in request.form
+            entry["display_name"]            = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["workflow_id"]             = (request.form.get(f"workflow_id_{rid}") or "").strip()
+            entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 15, minimum=1)
+            entry["threshold"]               = _int(f"threshold_{rid}", 1, minimum=1)
+            entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
+
+        new_wid = (request.form.get("new_workflow_id") or "").strip()
+        if new_wid:
+            new_id = generate_alarm3_rule_id(new_wid, set(rules_cfg))
+            rules_cfg[new_id] = {
+                "display_name":            (request.form.get("new_display_name") or "").strip()
+                                           or f"{new_wid} Failures",
+                "alarm_enabled":           False,
+                "workflow_id":             new_wid,
+                "window_duration_minutes": _int("new_window_duration", 15, minimum=1),
+                "threshold":               _int("new_threshold", 1, minimum=1),
+                "alerting_gap_minutes":    _int("new_alerting_gap", 60, minimum=1),
+                "email_alerts_enabled":    False,
+            }
+
+        save_alarm3_config(cfg)
+        with _cache_lock:
+            _cache_data["alarm3"]["ts"] = 0.0
+        saved = True
+
+    rules = get_alarm3_config_page_data()
+    return render_template(
+        "alarm3_config.html",
+        rules=rules,
+        saved=saved,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
+    )
+
 
 @app.template_filter("format_bytes")
 def format_bytes(size: int | float) -> str:

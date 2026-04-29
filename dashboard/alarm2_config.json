@@ -1,0 +1,34 @@
+{
+  "rules": {
+    "phw-to-mpi-outgoing": {
+      "alarm_enabled": true,
+      "email_alerts_enabled": false,
+      "display_name": "PHW \u2192 MPI Outgoing",
+      "health_board": "SHARED",
+      "peer_service": "MPI",
+      "window_duration_minutes": 5,
+      "threshold": 0,
+      "alerting_gap_minutes": 20
+    },
+    "pims-mpi": {
+      "display_name": "PIMS \u2192 MPI Outgoing",
+      "alarm_enabled": true,
+      "health_board": "PIMS",
+      "peer_service": "MPI",
+      "window_duration_minutes": 5,
+      "threshold": 0,
+      "alerting_gap_minutes": 20,
+      "email_alerts_enabled": false
+    },
+    "chemo-mpi": {
+      "display_name": "Chemocare \u2192 MPI Outgoing",
+      "alarm_enabled": true,
+      "health_board": "CHEMO",
+      "peer_service": "MPI",
+      "window_duration_minutes": 5,
+      "threshold": 0,
+      "alerting_gap_minutes": 20,
+      "email_alerts_enabled": false
+    }
+  }
+}

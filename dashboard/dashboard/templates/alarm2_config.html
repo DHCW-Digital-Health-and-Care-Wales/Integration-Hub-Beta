@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+
+{% block title %}Configure Alarm 2{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-gear-fill" style="color:var(--accent-cyan)"></i>
+        Alarm 2 Configuration
+      </h1>
+      <p class="page-subtitle">
+        Configure Alarm 2 (outgoing message volume) settings per flow rule
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" id="back-to-summary">
+        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+      </a>
+      <a href="{{ url_for('alarm2_page') }}" class="btn-dash">
+        <i class="bi bi-alarm"></i> View Alarm 2
+      </a>
+    </div>
+  </div>
+
+  {% if saved %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-green); font-size:0.83rem;">
+      <i class="bi bi-check-circle-fill"></i>
+      <span>Configuration saved successfully.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- How Alarm 2 works -->
+  <div class="dash-card mb-4" style="font-size:0.8rem; color:var(--text-muted); padding:1rem 1.25rem;">
+    <div class="d-flex align-items-start gap-2">
+      <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-cyan); flex-shrink:0;"></i>
+      <div>
+        <strong style="color:var(--text-primary);">How Alarm 2 works</strong><br>
+        The alarm queries <code>customMetrics</code> in Log Analytics for the <code>messages_sent</code>
+        metric, filtered by <strong>Health Board</strong> and <strong>Peer Service</strong>
+        dimensions over the configured <strong>Window</strong>.
+        It fires when the total count of messages sent is at or below the <strong>Threshold</strong>.
+        Once fired, it will not re-fire until the <strong>Alerting Gap</strong> has elapsed.
+      </div>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('alarm2_config_page') }}">
+
+    {% if rules %}
+    {% for r in rules %}
+    <div class="dash-card mb-3">
+
+      <!-- Rule header -->
+      <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2"
+           style="border-bottom:1px solid var(--border-color);">
+        <div>
+          <div style="font-weight:600; font-size:0.92rem;">{{ r.display_name }}</div>
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">{{ r.id }}</div>
+        </div>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <!-- Alarm enable toggle -->
+          <div class="d-flex align-items-center gap-2">
+            <label for="enabled_{{ r.id }}"
+                   style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+              Alarm 2
+            </label>
+            <div class="form-check form-switch" style="margin:0; padding-left:0;">
+              <input class="form-check-input"
+                     type="checkbox" role="switch"
+                     id="enabled_{{ r.id }}" name="enabled_{{ r.id }}"
+                     {% if r.alarm_enabled %}checked{% endif %}
+                     style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+            </div>
+            <span id="label_{{ r.id }}"
+                  style="font-size:0.78rem; font-weight:600; min-width:60px;
+                         color:{% if r.alarm_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
+              {% if r.alarm_enabled %}Enabled{% else %}Disabled{% endif %}
+            </span>
+          </div>
+          <!-- divider -->
+          <div style="width:1px; height:24px; background:var(--border-color);"></div>
+          <!-- Email toggle -->
+          <div class="d-flex align-items-center gap-2">
+            <label for="email_{{ r.id }}"
+                   style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>Email
+            </label>
+            <div class="form-check form-switch" style="margin:0; padding-left:0;">
+              <input class="form-check-input"
+                     type="checkbox" role="switch"
+                     id="email_{{ r.id }}" name="email_{{ r.id }}"
+                     {% if r.email_alerts_enabled %}checked{% endif %}
+                     {% if not smtp_configured %}disabled title="Configure SMTP in .env to enable"{% endif %}
+                     style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+            </div>
+            <span id="email_label_{{ r.id }}"
+                  style="font-size:0.78rem; font-weight:600; min-width:60px;
+                         color:{% if r.email_alerts_enabled and smtp_configured %}var(--accent-green){% else %}var(--text-muted){% endif %};">
+              {% if r.email_alerts_enabled and smtp_configured %}Enabled{% else %}Disabled{% endif %}
+            </span>
+          </div>
+          <!-- divider -->
+          <div style="width:1px; height:24px; background:var(--border-color);"></div>
+          <!-- Remove rule -->
+          <button type="button"
+                  class="btn-dash btn-remove-rule"
+                  data-rule-id="{{ r.id }}"
+                  title="Remove this rule">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-3">
+        <div class="row g-3">
+
+          <!-- Display name -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="display_name_{{ r.id }}">
+              <i class="bi bi-tag me-1"></i>Display Name
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="display_name_{{ r.id }}" name="display_name_{{ r.id }}"
+                   value="{{ r.display_name }}" maxlength="80">
+            <div class="cfg-hint">Human-readable label shown in the dashboard</div>
+          </div>
+
+          <!-- Health Board -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="health_board_{{ r.id }}">
+              <i class="bi bi-filter-circle me-1" style="color:var(--accent-cyan)"></i>
+              Health Board
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="health_board_{{ r.id }}" name="health_board_{{ r.id }}"
+                   value="{{ r.health_board }}" maxlength="80"
+                   placeholder="e.g. SHARED">
+            <div class="cfg-hint">customDimensions["health_board"] filter value</div>
+          </div>
+
+          <!-- Peer Service -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="peer_service_{{ r.id }}">
+              <i class="bi bi-filter-circle me-1" style="color:var(--accent-purple)"></i>
+              Peer Service
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="peer_service_{{ r.id }}" name="peer_service_{{ r.id }}"
+                   value="{{ r.peer_service }}" maxlength="80"
+                   placeholder="e.g. MPI">
+            <div class="cfg-hint">customDimensions["peer_service"] filter value</div>
+          </div>
+
+          <!-- Window duration -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="window_duration_{{ r.id }}">
+              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
+              Lookback Window
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="window_duration_{{ r.id }}" name="window_duration_{{ r.id }}"
+                     value="{{ r.window_duration_minutes }}"
+                     min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+            <div class="cfg-hint">Time window for the messages_sent query (e.g. 2880 = 2 days)</div>
+          </div>
+
+          <!-- Threshold -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="threshold_{{ r.id }}">
+              <i class="bi bi-arrow-down-circle me-1" style="color:var(--accent-red)"></i>
+              Threshold
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="threshold_{{ r.id }}" name="threshold_{{ r.id }}"
+                     value="{{ r.threshold }}"
+                     min="0" max="9999999" step="1">
+              <span class="cfg-unit">msgs</span>
+            </div>
+            <div class="cfg-hint">Alarm fires when messages sent &lt;= this value</div>
+          </div>
+
+          <!-- Alerting gap -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="alerting_gap_{{ r.id }}">
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
+              Alerting Gap
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="alerting_gap_{{ r.id }}" name="alerting_gap_{{ r.id }}"
+                     value="{{ r.alerting_gap_minutes }}"
+                     min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+            <div class="cfg-hint">Minimum gap between successive alarm fires</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+
+    <!-- ================================================================ -->
+    <!-- Add New Rule                                                      -->
+    <!-- ================================================================ -->
+    <div class="dash-card mb-3" id="add-rule-panel" style="display:none;">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
+        <div style="font-weight:600; font-size:0.92rem;">
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>New Rule
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="row g-3">
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_display_name">
+              <i class="bi bi-tag me-1"></i>Display Name
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_display_name" name="new_display_name"
+                   maxlength="80" placeholder="e.g. PIMS → MPI">
+            <div class="cfg-hint">Human-readable label (auto-generated if blank)</div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_health_board">
+              <i class="bi bi-filter-circle me-1" style="color:var(--accent-cyan)"></i>
+              Health Board <span style="color:var(--accent-red)">*</span>
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_health_board" name="new_health_board"
+                   maxlength="80" placeholder="e.g. PIMS">
+            <div class="cfg-hint">customDimensions["health_board"] filter value</div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_peer_service">
+              <i class="bi bi-filter-circle me-1" style="color:var(--accent-purple)"></i>
+              Peer Service <span style="color:var(--accent-red)">*</span>
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_peer_service" name="new_peer_service"
+                   maxlength="80" placeholder="e.g. MPI">
+            <div class="cfg-hint">customDimensions["peer_service"] filter value</div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_window_duration">
+              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
+              Lookback Window
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_window_duration" name="new_window_duration"
+                     value="2880" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_threshold">
+              <i class="bi bi-arrow-down-circle me-1" style="color:var(--accent-red)"></i>
+              Threshold
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_threshold" name="new_threshold"
+                     value="0" min="0" max="9999999" step="1">
+              <span class="cfg-unit">msgs</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_alerting_gap">
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
+              Alerting Gap
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_alerting_gap" name="new_alerting_gap"
+                     value="60" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
+      <button type="button" id="add-rule-btn" class="btn-dash">
+        <i class="bi bi-plus-circle me-1"></i> Add Rule
+      </button>
+      <button type="submit" class="btn-dash btn-dash--primary">
+        <i class="bi bi-floppy-fill"></i> Save All Settings
+      </button>
+    </div>
+
+    {% else %}
+    <div class="dash-card">
+      <div class="no-data" style="padding:2.5rem; text-align:center;">
+        <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
+        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">No Alarm 2 rules found.</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </form>
+
+</div>
+
+<style>
+  .cfg-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+  }
+  .cfg-hint {
+    font-size: 0.67rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    opacity: 0.72;
+  }
+  .cfg-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .cfg-num { width: 88px; text-align: right; }
+  .cfg-unit { font-size: 0.78rem; color: var(--text-muted); }
+  .btn-dash--primary {
+    background: var(--accent-cyan);
+    color: #fff;
+    border-color: var(--accent-cyan);
+  }
+  .btn-dash--primary:hover {
+    background: color-mix(in srgb, var(--accent-cyan) 80%, white);
+  }
+  .form-check-input:checked {
+    background-color: var(--accent-cyan) !important;
+    border-color: var(--accent-cyan) !important;
+  }
+  .btn-remove-rule {
+    color: var(--accent-red);
+    border-color: rgba(239,68,68,0.3);
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+  }
+  .btn-remove-rule:hover {
+    background: rgba(239,68,68,0.1);
+    border-color: var(--accent-red);
+  }
+  .rule-card--removing {
+    opacity: 0.4;
+    pointer-events: none;
+    border-left: 3px solid var(--accent-red) !important;
+  }
+</style>
+
+<script>
+  // Toggle enable/disable labels
+  document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
+    var rid = cb.id.replace('enabled_', '');
+    var lbl = document.getElementById('label_' + rid);
+    cb.addEventListener('change', function () {
+      if (!lbl) return;
+      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
+    });
+  });
+  document.querySelectorAll('[id^="email_"]').forEach(function (cb) {
+    var rid = cb.id.replace('email_', '');
+    var lbl = document.getElementById('email_label_' + rid);
+    if (!lbl) return;
+    cb.addEventListener('change', function () {
+      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
+    });
+  });
+
+  // Remove rule: visually mark card, add hidden delete field, disable all inputs
+  document.querySelectorAll('.btn-remove-rule').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var rid   = btn.dataset.ruleId;
+      var card  = btn.closest('.dash-card');
+      if (!card) return;
+
+      // Confirm before removing
+      if (!confirm('Remove rule "' + rid + '"? This will take effect when you save.')) return;
+
+      // Mark card visually
+      card.classList.add('rule-card--removing');
+
+      // Disable all form controls in the card so they don't submit
+      card.querySelectorAll('input, select, textarea').forEach(function (el) {
+        el.disabled = true;
+      });
+
+      // Inject hidden delete flag
+      var hidden = document.createElement('input');
+      hidden.type  = 'hidden';
+      hidden.name  = 'delete_' + rid;
+      hidden.value = '1';
+      card.appendChild(hidden);
+
+      // Change button to indicate pending removal
+      btn.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Removing…';
+    });
+  });
+
+  // Add Rule toggle
+  var addBtn   = document.getElementById('add-rule-btn');
+  var addPanel = document.getElementById('add-rule-panel');
+  if (addBtn && addPanel) {
+    addBtn.addEventListener('click', function () {
+      var visible = addPanel.style.display !== 'none';
+      addPanel.style.display = visible ? 'none' : 'block';
+      addBtn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle me-1"></i> Add Rule'
+        : '<i class="bi bi-dash-circle me-1"></i> Cancel';
+      if (!visible) {
+        // Scroll to and focus the first field
+        addPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('new_health_board').focus();
+      }
+    });
+  }
+
+  // ── Unsaved-changes guard ──────────────────────────────────────────────
+  var formDirty = false;
+  var configForm = document.querySelector('form');
+
+  if (configForm) {
+    configForm.addEventListener('change', function () { formDirty = true; });
+    configForm.addEventListener('input',  function () { formDirty = true; });
+    configForm.addEventListener('submit', function () { formDirty = false; });
+  }
+
+  var backBtn = document.getElementById('back-to-summary');
+  if (backBtn) {
+    backBtn.addEventListener('click', function (e) {
+      if (!formDirty) return;
+      e.preventDefault();
+      window.showUnsavedDialog(backBtn.href);
+    });
+  }
+</script>
+
+{% endblock %}

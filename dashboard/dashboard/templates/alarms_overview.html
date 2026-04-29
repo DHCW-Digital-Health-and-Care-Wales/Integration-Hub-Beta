@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}Alarms Summary{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-bell-fill" style="color:var(--accent-amber)"></i>
+        Alarms Summary
+      </h1>
+      <p class="page-subtitle">
+        Monitoring alerts for the Integration Hub
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span id="poll-indicator" class="poll-indicator">
+        <i class="bi bi-clock me-1"></i><span id="poll-indicator-text">Auto-refresh active</span>
+      </span>
+      <a href="{{ url_for('alarms_overview_page') }}?refresh=1" class="btn-dash">
+        <i class="bi bi-arrow-repeat"></i> Refresh
+      </a>
+    </div>
+  </div>
+
+  {% if not config_ok %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>Log Analytics workspace is not configured — last message times cannot be retrieved.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="alarms-overview-grid">
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Alarm 1 — Message Inactivity                                        -->
+    <!-- ------------------------------------------------------------------ -->
+    {% set n_critical   = alarm1_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set n_suppressed = alarm1_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set n_unknown    = alarm1_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
+    {% set n_healthy    = alarm1_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div id="alarm1-card" class="dash-card alarm-ov-card
+      {% if n_critical > 0 %}alarm-ov-card--critical
+      {% elif n_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+
+      <div class="alarm-ov-header">
+        <div class="d-flex align-items-center gap-2">
+          <div id="alarm1-icon" class="alarm-ov-icon
+            {% if n_critical > 0 %}red
+            {% elif n_suppressed > 0 %}amber
+            {% elif alarm1_rows %}green
+            {% else %}muted{% endif %}">
+            <i class="bi bi-alarm"></i>
+          </div>
+          <div>
+            <div class="alarm-ov-title">Alarm 1 — Inactivity</div>
+            <div class="alarm-ov-desc">HL7 server message inactivity monitoring</div>
+          </div>
+        </div>
+
+        <span id="alarm1-badge" class="status-badge
+          {% if n_critical > 0 %}critical
+          {% elif n_suppressed > 0 %}suppressed
+          {% elif alarm1_rows %}healthy
+          {% else %}unknown{% endif %}">
+          {% if n_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
+          {% elif n_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
+          {% elif alarm1_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
+          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+        </span>
+      </div>
+
+      <div id="alarm1-kpis" class="alarm-ov-kpis"{% if not alarm1_rows %} style="display:none"{% endif %}>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-total" class="alarm-ov-kpi-num">{{ alarm1_rows | length }}</div>
+          <div class="alarm-ov-kpi-lbl">Monitored</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-critical" class="alarm-ov-kpi-num {% if n_critical > 0 %}ov-text-red{% endif %}">{{ n_critical }}</div>
+          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-suppressed" class="alarm-ov-kpi-num {% if n_suppressed > 0 %}ov-text-amber{% endif %}">{{ n_suppressed }}</div>
+          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-unknown" class="alarm-ov-kpi-num">{{ n_unknown }}</div>
+          <div class="alarm-ov-kpi-lbl">Unknown</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ n_healthy }}</div>
+          <div class="alarm-ov-kpi-lbl">Healthy</div>
+        </div>
+      </div>
+      <p id="alarm1-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm1_rows %} display:none{% endif %}">
+        No servers have been configured for this alarm yet.
+      </p>
+
+      <div class="alarm-ov-actions">
+        <a href="{{ url_for('alarm_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-eye me-1"></i> View Details
+        </a>
+        <a href="{{ url_for('alarm_config_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-gear-fill me-1"></i> Configure
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Alarm 2 — Outgoing Message Volume                                  -->
+    <!-- ------------------------------------------------------------------ -->
+    {% set a2_critical   = alarm2_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set a2_suppressed = alarm2_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set a2_unknown    = alarm2_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
+    {% set a2_healthy    = alarm2_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div id="alarm2-card" class="dash-card alarm-ov-card
+      {% if a2_critical > 0 %}alarm-ov-card--critical
+      {% elif a2_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+
+      <div class="alarm-ov-header">
+        <div class="d-flex align-items-center gap-2">
+          <div id="alarm2-icon" class="alarm-ov-icon
+            {% if a2_critical > 0 %}red
+            {% elif a2_suppressed > 0 %}amber
+            {% elif alarm2_rows %}green
+            {% else %}muted{% endif %}">
+            <i class="bi bi-alarm"></i>
+          </div>
+          <div>
+            <div class="alarm-ov-title">Alarm 2 — Outgoing Message Volume</div>
+            <div class="alarm-ov-desc">Fires when outgoing messages sent drops at or below threshold</div>
+          </div>
+        </div>
+
+        <span id="alarm2-badge" class="status-badge
+          {% if a2_critical > 0 %}critical
+          {% elif a2_suppressed > 0 %}suppressed
+          {% elif alarm2_rows %}healthy
+          {% else %}unknown{% endif %}">
+          {% if a2_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
+          {% elif a2_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
+          {% elif alarm2_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
+          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+        </span>
+      </div>
+
+      <div id="alarm2-kpis" class="alarm-ov-kpis"{% if not alarm2_rows %} style="display:none"{% endif %}>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-total" class="alarm-ov-kpi-num">{{ alarm2_rows | length }}</div>
+          <div class="alarm-ov-kpi-lbl">Monitored</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-critical" class="alarm-ov-kpi-num {% if a2_critical > 0 %}ov-text-red{% endif %}">{{ a2_critical }}</div>
+          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-suppressed" class="alarm-ov-kpi-num {% if a2_suppressed > 0 %}ov-text-amber{% endif %}">{{ a2_suppressed }}</div>
+          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-unknown" class="alarm-ov-kpi-num">{{ a2_unknown }}</div>
+          <div class="alarm-ov-kpi-lbl">Unknown</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ a2_healthy }}</div>
+          <div class="alarm-ov-kpi-lbl">Healthy</div>
+        </div>
+      </div>
+      <p id="alarm2-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm2_rows %} display:none{% endif %}">
+        No rules have been configured for this alarm yet.
+      </p>
+
+      <div class="alarm-ov-actions">
+        <a href="{{ url_for('alarm2_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-eye me-1"></i> View Details
+        </a>
+        <a href="{{ url_for('alarm2_config_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-gear-fill me-1"></i> Configure
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Alarm 3 — Message Processing Failures                              -->
+    <!-- ------------------------------------------------------------------ -->
+    {% set a3_critical   = alarm3_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set a3_suppressed = alarm3_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set a3_unknown    = alarm3_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
+    {% set a3_healthy    = alarm3_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div id="alarm3-card" class="dash-card alarm-ov-card
+      {% if a3_critical > 0 %}alarm-ov-card--critical
+      {% elif a3_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+
+      <div class="alarm-ov-header">
+        <div class="d-flex align-items-center gap-2">
+          <div id="alarm3-icon" class="alarm-ov-icon
+            {% if a3_critical > 0 %}red
+            {% elif a3_suppressed > 0 %}amber
+            {% elif alarm3_rows %}green
+            {% else %}muted{% endif %}">
+            <i class="bi bi-alarm"></i>
+          </div>
+          <div>
+            <div class="alarm-ov-title">Alarm 3 — Message Processing Failures</div>
+            <div class="alarm-ov-desc">Fires when MESSAGE_FAILED events meet or exceed threshold</div>
+          </div>
+        </div>
+
+        <span id="alarm3-badge" class="status-badge
+          {% if a3_critical > 0 %}critical
+          {% elif a3_suppressed > 0 %}suppressed
+          {% elif alarm3_rows %}healthy
+          {% else %}unknown{% endif %}">
+          {% if a3_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
+          {% elif a3_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
+          {% elif alarm3_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
+          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+        </span>
+      </div>
+
+      <div id="alarm3-kpis" class="alarm-ov-kpis"{% if not alarm3_rows %} style="display:none"{% endif %}>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-total" class="alarm-ov-kpi-num">{{ alarm3_rows | length }}</div>
+          <div class="alarm-ov-kpi-lbl">Monitored</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-critical" class="alarm-ov-kpi-num {% if a3_critical > 0 %}ov-text-red{% endif %}">{{ a3_critical }}</div>
+          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-suppressed" class="alarm-ov-kpi-num {% if a3_suppressed > 0 %}ov-text-amber{% endif %}">{{ a3_suppressed }}</div>
+          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-unknown" class="alarm-ov-kpi-num">{{ a3_unknown }}</div>
+          <div class="alarm-ov-kpi-lbl">Unknown</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ a3_healthy }}</div>
+          <div class="alarm-ov-kpi-lbl">Healthy</div>
+        </div>
+      </div>
+      <p id="alarm3-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm3_rows %} display:none{% endif %}">
+        No rules have been configured for this alarm yet.
+      </p>
+
+      <div class="alarm-ov-actions">
+        <a href="{{ url_for('alarm3_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-eye me-1"></i> View Details
+        </a>
+        <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash btn-dash-sm">
+          <i class="bi bi-gear-fill me-1"></i> Configure
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<style>
+  .alarms-overview-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .alarm-ov-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem 1.4rem;
+  }
+
+  .alarm-ov-card--critical  { border-left: 3px solid var(--accent-red); }
+  .alarm-ov-card--suppressed { border-left: 3px solid var(--accent-amber); }
+  .alarm-ov-card--disabled  { opacity: 0.45; pointer-events: none; }
+
+  .alarm-ov-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .alarm-ov-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+  }
+  .alarm-ov-icon.red   { background: rgba(239,68,68,0.15);  color: var(--accent-red); }
+  .alarm-ov-icon.amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+  .alarm-ov-icon.green { background: rgba(34,197,94,0.15);  color: var(--accent-green); }
+  .alarm-ov-icon.muted { background: rgba(148,163,184,0.1); color: var(--text-muted); }
+
+  .alarm-ov-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .alarm-ov-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .alarm-ov-kpis {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .alarm-ov-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .alarm-ov-kpi-num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+    transition: color 0.3s;
+  }
+
+  .alarm-ov-kpi-lbl {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+
+  .ov-text-red   { color: var(--accent-red) !important; }
+  .ov-text-amber { color: var(--accent-amber) !important; }
+  .ov-text-green { color: var(--accent-green) !important; }
+
+  .alarm-ov-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-dash-sm {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.8rem;
+  }
+
+  .status-badge.suppressed {
+    background: rgba(245,158,11,0.12);
+    color: var(--accent-amber);
+    border-color: rgba(245,158,11,0.35);
+  }
+
+  /* Poll indicator */
+  .poll-indicator {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+  }
+  .poll-indicator.updating { color: var(--accent-cyan); }
+  .poll-indicator.error    { color: var(--accent-red); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+</style>
+
+<script>
+(function () {
+  var POLL_INTERVAL = {{ refresh_interval }} * 1000;
+  var pollTimer     = null;
+  var countTimer    = null;
+  var lastUpdatedAt = null;
+
+  // ---- DOM helpers --------------------------------------------------------
+
+  function el(id) { return document.getElementById(id); }
+
+  function updateCard(n, rows) {
+    var nCritical   = rows.filter(function(r){ return r.status === 'critical';   }).length;
+    var nSuppressed = rows.filter(function(r){ return r.status === 'suppressed'; }).length;
+    var nUnknown    = rows.filter(function(r){ return r.status === 'unknown';    }).length;
+    var nHealthy    = rows.filter(function(r){ return r.status === 'healthy';    }).length;
+    var total       = rows.length;
+
+    // Card border
+    var card = el('alarm' + n + '-card');
+    card.classList.remove('alarm-ov-card--critical', 'alarm-ov-card--suppressed');
+    if      (nCritical   > 0) card.classList.add('alarm-ov-card--critical');
+    else if (nSuppressed > 0) card.classList.add('alarm-ov-card--suppressed');
+
+    // Icon colour
+    var icon = el('alarm' + n + '-icon');
+    icon.className = 'alarm-ov-icon ' + (
+      nCritical   > 0 ? 'red'   :
+      nSuppressed > 0 ? 'amber' :
+      total       > 0 ? 'green' : 'muted'
+    );
+
+    // Status badge
+    var badge = el('alarm' + n + '-badge');
+    if (nCritical > 0) {
+      badge.className = 'status-badge critical';
+      badge.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm';
+    } else if (nSuppressed > 0) {
+      badge.className = 'status-badge suppressed';
+      badge.innerHTML = '<i class="bi bi-bell-slash-fill me-1"></i>Suppressed';
+    } else if (total > 0) {
+      badge.className = 'status-badge healthy';
+      badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>All OK';
+    } else {
+      badge.className = 'status-badge unknown';
+      badge.innerHTML = '<i class="bi bi-question-circle me-1"></i>Not Configured';
+    }
+
+    // KPIs
+    var kpisEl = el('alarm' + n + '-kpis');
+    var noCfgEl = el('alarm' + n + '-no-cfg');
+    if (total > 0) {
+      kpisEl.style.display  = '';
+      noCfgEl.style.display = 'none';
+      el('alarm' + n + '-kpi-total').textContent     = total;
+      el('alarm' + n + '-kpi-critical').textContent   = nCritical;
+      el('alarm' + n + '-kpi-suppressed').textContent = nSuppressed;
+      el('alarm' + n + '-kpi-unknown').textContent    = nUnknown;
+      el('alarm' + n + '-kpi-healthy').textContent    = nHealthy;
+
+      // Colour the critical/suppressed/healthy KPI numbers
+      el('alarm' + n + '-kpi-critical').className   = 'alarm-ov-kpi-num' + (nCritical   > 0 ? ' ov-text-red'   : '');
+      el('alarm' + n + '-kpi-suppressed').className = 'alarm-ov-kpi-num' + (nSuppressed > 0 ? ' ov-text-amber' : '');
+      el('alarm' + n + '-kpi-healthy').className    = 'alarm-ov-kpi-num ov-text-green';
+    } else {
+      kpisEl.style.display  = 'none';
+      noCfgEl.style.display = '';
+    }
+  }
+
+  // ---- Polling ------------------------------------------------------------
+
+  function setIndicator(state, text) {
+    var ind = el('poll-indicator');
+    var txt = el('poll-indicator-text');
+    ind.className = 'poll-indicator' + (state ? ' ' + state : '');
+    txt.innerHTML = text;
+  }
+
+  function startCountdown() {
+    if (countTimer) clearInterval(countTimer);
+    countTimer = setInterval(function () {
+      if (!lastUpdatedAt) return;
+      var secs = Math.round((Date.now() - lastUpdatedAt) / 1000);
+      var label = secs < 60 ? secs + 's ago' : Math.floor(secs / 60) + 'm ago';
+      setIndicator('', '<i class="bi bi-clock me-1"></i>Updated ' + label);
+    }, 5000);
+  }
+
+  function fetchStatus() {
+    setIndicator('updating', '<i class="bi bi-arrow-repeat spin me-1"></i>Updating\u2026');
+
+    fetch('/api/alarms/status')
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        updateCard(1, data.alarm1 || []);
+        updateCard(2, data.alarm2 || []);
+        updateCard(3, data.alarm3 || []);
+        lastUpdatedAt = Date.now();
+        setIndicator('', '<i class="bi bi-check-circle me-1"></i>Updated just now');
+        startCountdown();
+      })
+      .catch(function(err) {
+        console.warn('Alarm poll failed:', err);
+        setIndicator('error', '<i class="bi bi-exclamation-triangle me-1"></i>Update failed');
+      });
+  }
+
+  // Start polling after one interval (page load already has fresh data).
+  pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+
+  // Expose manual trigger for the Refresh button (bust cache server-side).
+  window.alarmsPollNow = function() {
+    clearInterval(pollTimer);
+    fetch('/api/alarms/status?refresh=1')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        updateCard(1, data.alarm1 || []);
+        updateCard(2, data.alarm2 || []);
+        updateCard(3, data.alarm3 || []);
+        lastUpdatedAt = Date.now();
+        setIndicator('', '<i class="bi bi-check-circle me-1"></i>Refreshed');
+        startCountdown();
+      })
+      .catch(function(err) {
+        console.warn('Manual refresh failed:', err);
+      })
+      .finally(function() {
+        pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+      });
+  };
+})();
+</script>
+
+{% endblock %}

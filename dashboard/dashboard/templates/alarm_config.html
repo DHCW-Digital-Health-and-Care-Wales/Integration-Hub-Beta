@@ -15,9 +15,14 @@
         Configure Alarm 1 (message inactivity) settings per HL7 server
       </p>
     </div>
-    <a href="{{ url_for('alarm_page') }}" class="btn-dash">
-      <i class="bi bi-alarm"></i> View Alarms
-    </a>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" id="back-to-summary">
+        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+      </a>
+      <a href="{{ url_for('alarm_page') }}" class="btn-dash">
+        <i class="bi bi-alarm"></i> View Alarm 1
+      </a>
+    </div>
   </div>
 
   {% if saved %}
@@ -53,8 +58,8 @@
 
   <form method="post" action="{{ url_for('alarm_config_page') }}">
 
-    {% if servers %}
-    {% for s in servers %}
+    {% if rules %}
+    {% for s in rules %}
     <div class="dash-card mb-3">
 
       <!-- Server header -->
@@ -110,15 +115,48 @@
               {% if s.email_alerts_enabled and smtp_configured %}Enabled{% else %}Disabled{% endif %}
             </span>
           </div>
+          <!-- divider -->
+          <div style="width:1px; height:24px; background:var(--border-color);"></div>
+          <!-- Remove server -->
+          <button type="button"
+                  class="btn-dash btn-remove-rule"
+                  data-rule-id="{{ s.id }}"
+                  title="Remove this server">
+            <i class="bi bi-trash3"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Settings grid: 4 fields -->
+      <!-- Settings grid -->
       <div class="p-3">
         <div class="row g-3">
 
+          <!-- Display name -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="display_name_{{ s.id }}">
+              <i class="bi bi-tag me-1"></i>Display Name
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="display_name_{{ s.id }}" name="display_name_{{ s.id }}"
+                   value="{{ s.display_name }}" maxlength="80">
+            <div class="cfg-hint">Human-readable label shown in the dashboard</div>
+          </div>
+
+          <!-- Workflow ID -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="workflow_id_{{ s.id }}">
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
+              Workflow ID
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="workflow_id_{{ s.id }}" name="workflow_id_{{ s.id }}"
+                   value="{{ s.workflow_id }}" maxlength="120"
+                   placeholder="e.g. phw-to-mpi">
+            <div class="cfg-hint">parse_json(Properties)["workflow_id"] filter value</div>
+          </div>
+
           <!-- Day threshold -->
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="day_threshold_{{ s.id }}">
               <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
               Day Threshold
@@ -134,7 +172,7 @@
           </div>
 
           <!-- Evening threshold -->
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="evening_threshold_{{ s.id }}">
               <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
               Evening Threshold
@@ -150,7 +188,7 @@
           </div>
 
           <!-- Weekend threshold -->
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="weekend_threshold_{{ s.id }}">
               <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
               Weekend Threshold
@@ -166,7 +204,7 @@
           </div>
 
           <!-- Alerting gap -->
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="alerting_gap_{{ s.id }}">
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
               Alerting Gap
@@ -187,7 +225,99 @@
     </div>
     {% endfor %}
 
-    <div class="d-flex justify-content-end mt-3 mb-4">
+    <!-- ================================================================ -->
+    <!-- Add New Rule                                                      -->
+    <!-- ================================================================ -->
+    <div class="dash-card mb-3" id="add-server-panel" style="display:none;">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
+        <div style="font-weight:600; font-size:0.92rem;">
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>New Rule
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="row g-3">
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_workflow_id">
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
+              Workflow ID <span style="color:var(--accent-red)">*</span>
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_workflow_id" name="new_workflow_id"
+                   maxlength="120" placeholder="e.g. phw-to-mpi">
+            <div class="cfg-hint">parse_json(Properties)["workflow_id"] filter value</div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_display_name">
+              <i class="bi bi-tag me-1"></i>Display Name
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_display_name" name="new_display_name"
+                   maxlength="80" placeholder="e.g. PHW HL7 Server">
+            <div class="cfg-hint">Human-readable label (auto-generated if blank)</div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_day_threshold">
+              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
+              Day Threshold
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_day_threshold" name="new_day_threshold"
+                     value="60" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_evening_threshold">
+              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
+              Evening Threshold
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_evening_threshold" name="new_evening_threshold"
+                     value="120" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_weekend_threshold">
+              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
+              Weekend Threshold
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_weekend_threshold" name="new_weekend_threshold"
+                     value="240" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_alerting_gap">
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
+              Alerting Gap
+            </label>
+            <div class="cfg-input-row">
+              <input type="number" class="dash-input cfg-num"
+                     id="new_alerting_gap" name="new_alerting_gap"
+                     value="60" min="1" max="44640" step="1">
+              <span class="cfg-unit">min</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
+      <button type="button" id="add-server-btn" class="btn-dash">
+        <i class="bi bi-plus-circle me-1"></i> Add Rule
+      </button>
       <button type="submit" class="btn-dash btn-dash--primary">
         <i class="bi bi-floppy-fill"></i> Save All Settings
       </button>
@@ -198,10 +328,46 @@
       <div class="no-data" style="padding:2.5rem; text-align:center;">
         <i class="bi bi-hdd-network" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
         <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">
-          No HL7 servers found.
-          {% if not config_ok %}Log Analytics is not configured — server discovery is unavailable.{% endif %}
+          No Alarm 1 rules found. Add one below.
         </p>
       </div>
+    </div>
+
+    <!-- Show Add Rule panel even when list is empty -->
+    <div class="dash-card mb-3 mt-3" id="add-server-panel-empty" style="display:none;">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
+        <div style="font-weight:600; font-size:0.92rem;">
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>New Rule
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="row g-3">
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_workflow_id_empty">
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>Workflow ID <span style="color:var(--accent-red)">*</span>
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_workflow_id_empty" name="new_workflow_id"
+                   maxlength="120" placeholder="e.g. phw-to-mpi">
+          </div>
+          <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label" for="new_display_name_empty">
+              <i class="bi bi-tag me-1"></i>Display Name
+            </label>
+            <input type="text" class="dash-input w-100"
+                   id="new_display_name_empty" name="new_display_name"
+                   maxlength="80" placeholder="Auto-generated if blank">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
+      <button type="button" id="add-server-btn-empty" class="btn-dash">
+        <i class="bi bi-plus-circle me-1"></i> Add Rule
+      </button>
+      <button type="submit" class="btn-dash btn-dash--primary">
+        <i class="bi bi-floppy-fill"></i> Save All Settings
+      </button>
     </div>
     {% endif %}
 
@@ -244,11 +410,24 @@
     background-color: var(--accent-cyan) !important;
     border-color: var(--accent-cyan) !important;
   }
+  .btn-remove-rule {
+    color: var(--accent-red);
+    border-color: rgba(239,68,68,0.3);
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+  }
+  .btn-remove-rule:hover {
+    background: rgba(239,68,68,0.1);
+    border-color: var(--accent-red);
+  }
+  .rule-card--removing {
+    opacity: 0.4;
+    pointer-events: none;
+    border-left: 3px solid var(--accent-red) !important;
+  }
 </style>
 
 <script>
-  // Live Enabled/Disabled label update on toggle change
-  // Per-server email toggle labels
   document.querySelectorAll('input[id^="email_"]').forEach(function (cb) {
     var sid = cb.id.replace('email_', '');
     var lbl = document.getElementById('email_label_' + sid);
@@ -262,13 +441,71 @@
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
     var sid = cb.id.replace('enabled_', '');
     var lbl = document.getElementById('label_' + sid);
-    function update() {
+    cb.addEventListener('change', function () {
       if (!lbl) return;
       lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
       lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
-    }
-    cb.addEventListener('change', update);
+    });
   });
+
+  // Remove server
+  document.querySelectorAll('.btn-remove-rule').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var sid  = btn.dataset.ruleId;
+      var card = btn.closest('.dash-card');
+      if (!card) return;
+      if (!confirm('Remove server "' + sid + '"? This will take effect when you save.')) return;
+      card.classList.add('rule-card--removing');
+      card.querySelectorAll('input, select, textarea').forEach(function (el) {
+        el.disabled = true;
+      });
+      var hidden = document.createElement('input');
+      hidden.type  = 'hidden';
+      hidden.name  = 'delete_' + sid;
+      hidden.value = '1';
+      card.appendChild(hidden);
+      btn.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Removing…';
+    });
+  });
+
+  // Add Server toggle
+  function wireAddBtn(btnId, panelId, focusId) {
+    var btn   = document.getElementById(btnId);
+    var panel = document.getElementById(panelId);
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+      var visible = panel.style.display !== 'none';
+      panel.style.display = visible ? 'none' : 'block';
+      btn.innerHTML = visible
+        ? '<i class="bi bi-plus-circle me-1"></i> Add Server'
+        : '<i class="bi bi-dash-circle me-1"></i> Cancel';      if (!visible) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        var f = document.getElementById(focusId);
+        if (f) f.focus();
+      }
+    });
+  }
+  wireAddBtn('add-server-btn',       'add-server-panel',       'new_workflow_id');
+  wireAddBtn('add-server-btn-empty', 'add-server-panel-empty', 'new_workflow_id_empty');
+
+  // ── Unsaved-changes guard ──────────────────────────────────────────────
+  var formDirty = false;
+  var configForm = document.querySelector('form');
+
+  if (configForm) {
+    configForm.addEventListener('change', function () { formDirty = true; });
+    configForm.addEventListener('input',  function () { formDirty = true; });
+    configForm.addEventListener('submit', function () { formDirty = false; });
+  }
+
+  var backBtn = document.getElementById('back-to-summary');
+  if (backBtn) {
+    backBtn.addEventListener('click', function (e) {
+      if (!formDirty) return;
+      e.preventDefault();
+      window.showUnsavedDialog(backBtn.href);
+    });
+  }
 </script>
 
 {% endblock %}
