@@ -15,7 +15,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from flask_babel import Babel
 
 from dashboard import config
 from dashboard.services.alarm2 import (
@@ -134,6 +135,19 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
+# ---------------------------------------------------------------------------
+# Internationalisation (Flask-Babel)
+# ---------------------------------------------------------------------------
+
+def _get_locale() -> str:
+    return session.get("lang", config.DEFAULT_LANGUAGE)
+
+babel = Babel(app, locale_selector=_get_locale)
+
+
+@app.context_processor
+def inject_language() -> dict:
+    return {"current_lang": session.get("lang", config.DEFAULT_LANGUAGE)}
 # ---------------------------------------------------------------------------
 # Simple in-memory cache for /api/status
 # ---------------------------------------------------------------------------
@@ -330,6 +344,18 @@ def _build_status() -> dict:
         "queues": queues,
         "recent_exceptions": exceptions_1h[:5],
     }
+
+
+# ---------------------------------------------------------------------------
+# Language selection
+# ---------------------------------------------------------------------------
+
+@app.route("/set-language", methods=["POST"])
+def set_language() -> Response:
+    lang = request.form.get("lang", "en")
+    if lang in ("en", "cy"):
+        session["lang"] = lang
+    return redirect(request.referrer or url_for("index"))
 
 
 # ---------------------------------------------------------------------------

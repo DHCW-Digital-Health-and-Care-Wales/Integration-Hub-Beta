@@ -38,6 +38,9 @@ API_CACHE_TTL = int(os.getenv("API_CACHE_TTL", "30"))
 
 # Demo / simulation mode — returns synthetic data, no Azure credentials needed
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
+# Language — "en" (English) or "cy" (Welsh / Cymraeg)
+DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "en")
 ALERT_EMAIL_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true"
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
