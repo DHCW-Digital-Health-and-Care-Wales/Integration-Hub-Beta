@@ -111,13 +111,6 @@
   <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
 </div>
 
-{% if data_is_stale | default(false) %}
-<!-- Stale data toast — hidden by JS once fresh data arrives -->
-<div id="stale-toast">
-  <i class="bi bi-arrow-repeat spin-slow"></i> {{ _("Refreshing data\u2026") }}
-</div>
-{% endif %}
-
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg">
   <div class="container-fluid gap-3">
@@ -288,17 +281,7 @@
     });
   })();
 
-  // Stale toast: dismiss on fresh data or after a timeout
-  (function () {
-    const toast = document.getElementById('stale-toast');
-    if (!toast) return;
-    document.addEventListener('dataupdated', function () {
-      toast.classList.add('hidden');
-    });
-    // Fallback: auto-hide after the cache TTL has elapsed
-    const ttl = (window.REFRESH_INTERVAL || 30) * 1000;
-    setTimeout(function () { toast.classList.add('hidden'); }, ttl + 5000);
-  })();
+  // Stale toast removed — pages use their own refresh-bar pattern
 </script>
 
 {% block scripts %}{% endblock %}

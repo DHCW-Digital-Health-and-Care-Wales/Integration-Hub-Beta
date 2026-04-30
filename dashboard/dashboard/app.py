@@ -352,6 +352,39 @@ def _build_status() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Alarm map helper (used by Flows page)
+# ---------------------------------------------------------------------------
+
+def _build_alarm_map() -> dict[str, dict]:
+    """Build a {workflow_id: {alarm1, alarm2, alarm3}} map for the Flows page.
+
+    Config is read directly from JSON (fast).
+    Live status is pulled from cache — non-blocking, may be absent on first load.
+    """
+    a1_cfg = {r["workflow_id"]: r for r in get_config_page_data()       if r.get("workflow_id")}
+    a2_cfg = {r["workflow_id"]: r for r in get_alarm2_config_page_data() if r.get("workflow_id")}
+    a3_cfg = {r["workflow_id"]: r for r in get_alarm3_config_page_data() if r.get("workflow_id")}
+
+    a1_rows, a2_rows, a3_rows = _multi_cached_nowait([
+        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ])
+    a1_status = {r["workflow_id"]: r["status"] for r in (a1_rows or [])}
+    a2_status = {r["workflow_id"]: r["status"] for r in (a2_rows or [])}
+    a3_status = {r["workflow_id"]: r["status"] for r in (a3_rows or [])}
+
+    result: dict[str, dict] = {}
+    for wid in set(a1_cfg) | set(a2_cfg) | set(a3_cfg):
+        result[wid] = {
+            "alarm1": {**a1_cfg[wid], "status": a1_status.get(wid)} if wid in a1_cfg else None,
+            "alarm2": {**a2_cfg[wid], "status": a2_status.get(wid)} if wid in a2_cfg else None,
+            "alarm3": {**a3_cfg[wid], "status": a3_status.get(wid)} if wid in a3_cfg else None,
+        }
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Language selection
 # ---------------------------------------------------------------------------
 
@@ -390,6 +423,7 @@ def flows_page() -> str:
         "flows.html",
         status=status,
         container_metrics=container_metrics,
+        alarm_map=_build_alarm_map(),
         refresh_interval=config.API_CACHE_TTL,
         data_is_stale=_is_cache_stale("status"),
     )
@@ -736,23 +770,20 @@ def alarm2_config_page() -> str:
             entry["alarm_enabled"]           = f"enabled_{rid}" in request.form
             entry["email_alerts_enabled"]    = f"email_{rid}" in request.form
             entry["display_name"]            = (request.form.get(f"display_name_{rid}") or "").strip()
-            entry["health_board"]            = (request.form.get(f"health_board_{rid}") or "").strip()
-            entry["peer_service"]            = (request.form.get(f"peer_service_{rid}") or "").strip()
+            entry["workflow_id"]             = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 2880, minimum=1)
             entry["threshold"]               = _int(f"threshold_{rid}", 0, minimum=0)
             entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
 
         # --- Add new rule if submitted ---
-        new_hb = (request.form.get("new_health_board") or "").strip()
-        new_ps = (request.form.get("new_peer_service") or "").strip()
-        if new_hb and new_ps:
-            new_id = generate_rule_id(new_hb, new_ps, set(rules_cfg))
+        new_wid = (request.form.get("new_workflow_id") or "").strip()
+        if new_wid:
+            new_id = generate_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_id] = {
                 "display_name":            (request.form.get("new_display_name") or "").strip()
-                                           or f"{new_hb} → {new_ps}",
+                                           or new_wid,
                 "alarm_enabled":           False,
-                "health_board":            new_hb,
-                "peer_service":            new_ps,
+                "workflow_id":             new_wid,
                 "window_duration_minutes": _int("new_window_duration", 2880, minimum=1),
                 "threshold":               _int("new_threshold", 0, minimum=0),
                 "alerting_gap_minutes":    _int("new_alerting_gap", 60, minimum=1),

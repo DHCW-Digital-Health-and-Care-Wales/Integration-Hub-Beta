@@ -52,9 +52,7 @@
 
     {% if rules %}
     {% for r in rules %}
-    <div class="dash-card mb-3">
-
-      <!-- Rule header -->
+    <div class="dash-card mb-3" id="rule-{{ r.id }}">
       <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2"
            style="border-bottom:1px solid var(--border-color);">
         <div>
@@ -318,12 +316,12 @@
   .cfg-num { width: 88px; text-align: right; }
   .cfg-unit { font-size: 0.78rem; color: var(--text-muted); }
   .btn-dash--primary {
-    background: var(--accent-red);
+    background: var(--accent-cyan);
     color: #fff;
-    border-color: var(--accent-red);
+    border-color: var(--accent-cyan);
   }
   .btn-dash--primary:hover {
-    background: color-mix(in srgb, var(--accent-red) 80%, white);
+    background: color-mix(in srgb, var(--accent-cyan) 80%, white);
   }
   .form-check-input:checked {
     background-color: var(--accent-cyan) !important;
@@ -343,6 +341,14 @@
     opacity: 0.4;
     pointer-events: none;
     border-left: 3px solid var(--accent-red) !important;
+  }
+  @keyframes rule-card-highlight {
+    0%   { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    65%  { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    100% { box-shadow: none; background: transparent; }
+  }
+  .rule-card--highlighted {
+    animation: rule-card-highlight 2.8s ease-out forwards;
   }
 </style>
 
@@ -419,6 +425,20 @@
       window.showUnsavedDialog(backBtn.href);
     });
   }
+  // Highlight the rule card targeted by the URL fragment
+  (function () {
+    var hash = window.location.hash;
+    if (!hash) return;
+    var card = document.querySelector(hash + '.dash-card');
+    if (!card) return;
+    card.classList.add('rule-card--highlighted');
+    setTimeout(function () {
+      var rect      = card.getBoundingClientRect();
+      var cardMid   = rect.top + window.scrollY + rect.height / 2;
+      var targetTop = cardMid - window.innerHeight / 2;
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }, 50);
+  })();
 </script>
 
 {% endblock %}

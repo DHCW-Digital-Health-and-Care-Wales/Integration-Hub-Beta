@@ -123,10 +123,7 @@
             <th>{{ _("Status") }}</th>
             <th>{{ _("Rule") }}</th>
             <th>
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-cyan)"></i>{{ _("Health Board") }}
-            </th>
-            <th>
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-purple)"></i>{{ _("Peer Service") }}
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Workflow ID") }}
             </th>
             <th>
               <i class="bi bi-send-fill me-1" style="color:var(--accent-green)"></i>{{ _("Messages Sent") }}
@@ -140,6 +137,7 @@
             <th>
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>{{ _("Alerting Gap") }}
             </th>
+            <th style="width:2.5rem;"></th>
           </tr>
         </thead>
         <tbody>
@@ -171,8 +169,7 @@
               <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">{{ row.id }}</div>
             </td>
 
-            <td style="font-family:monospace; font-size:0.82rem;">{{ row.health_board }}</td>
-            <td style="font-family:monospace; font-size:0.82rem;">{{ row.peer_service }}</td>
+            <td style="font-family:monospace; font-size:0.82rem;">{{ row.workflow_id }}</td>
 
             <td style="font-size:0.88rem;">
               {% if row.status in ('critical', 'suppressed') %}
@@ -199,6 +196,15 @@
                   <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} {{ _("min left") }}
                 </div>
               {% endif %}
+            </td>
+
+            <td style="text-align:center;">
+              <a href="{{ url_for('alarm2_config_page') }}#rule-{{ row.id }}"
+                 title="Go to config for {{ row.display_name }}"
+                 class="btn-dash"
+                 style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;">
+                <i class="bi bi-gear-fill"></i>
+              </a>
             </td>
 
           </tr>
