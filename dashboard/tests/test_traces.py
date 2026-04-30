@@ -55,6 +55,11 @@ class TestOperationIdValidation(unittest.TestCase):
         result = get_trace("")
         self.assertFalse(result["ok"])
 
+    def test_rejects_all_zeros_null_trace_id(self) -> None:
+        result = get_trace("00000000000000000000000000000000")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["spans"], [])
+
 
 class TestNoWorkspaceConfigured(unittest.TestCase):
     def test_returns_empty_when_workspace_not_set(self) -> None:

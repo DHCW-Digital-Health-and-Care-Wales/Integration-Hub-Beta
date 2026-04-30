@@ -83,7 +83,7 @@
           {% if exc.message %}
           <div class="exception-full-msg">{{ exc.message | truncate(300) }}</div>
           {% endif %}
-          {% if exc.operation_id %}
+          {% if exc.operation_id and exc.operation_id | replace('0', '') %}
           <div class="exception-meta mt-1">
             <span><i class="bi bi-fingerprint"></i> {{ exc.operation_id }}</span>
             <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
