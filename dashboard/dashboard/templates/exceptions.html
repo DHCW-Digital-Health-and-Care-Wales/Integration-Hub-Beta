@@ -120,7 +120,7 @@
 
 {% block scripts %}
 <script>
-  var i18nSeverityOnly    = {{ _("Severity %(sev)s only") | tojson }};
+  var i18nSeverityOnly    = {{ _("Severity {sev} only") | tojson }};
   var i18nShowAll         = {{ _("Show all") | tojson }};
   var i18nSortedByRecent  = {{ _("Sorted by most recent") | tojson }};
 
@@ -131,7 +131,7 @@
     });
     var header = document.querySelector('#exception-log .queue-table-header span');
     if (header) {
-      var label = i18nSeverityOnly.replace('%(sev)s', sev);
+      var label = i18nSeverityOnly.replace('{sev}', sev);
       header.innerHTML = label + ' &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">' + i18nShowAll + '</a>';
     }
   }

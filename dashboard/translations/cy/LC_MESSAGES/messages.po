@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-04-30 17:19+0100\n"
+"POT-Creation-Date: 2026-04-30 17:28+0100\n"
 "PO-Revision-Date: 2026-04-30 14:50+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: cy\n"
@@ -464,7 +464,7 @@ msgstr "Label what shows up on the dashboard, see"
 #: dashboard/templates/alarm_config.html:245
 #: dashboard/templates/alarm_config.html:349
 msgid "e.g. phw-to-mpi"
-msgstr ""
+msgstr "e.g. phw-to-mpi, like"
 
 #: dashboard/templates/alarm2_config.html:143
 #: dashboard/templates/alarm2_config.html:230
@@ -502,7 +502,7 @@ msgstr "New Rule, Is It"
 
 #: dashboard/templates/alarm2_config.html:218
 msgid "e.g. PIMS → MPI"
-msgstr ""
+msgstr "e.g. PIMS → MPI, see"
 
 #: dashboard/templates/alarm2_config.html:219
 #: dashboard/templates/alarm3_config.html:216
@@ -532,9 +532,9 @@ msgstr "Can't find any Alarm 2 rules, butt."
 
 #: dashboard/templates/alarm2_config.html:361
 #: dashboard/templates/alarm3_config.html:358
-#, python-format
-msgid "Remove rule \"%(id)s\"? This will take effect when you save."
-msgstr ""
+#, fuzzy, python-brace-format, python-format
+msgid "Remove rule \"{id}\"? This will take effect when you save."
+msgstr "Chuck rule \"%(id)s\" out, is it? It'll happen when you save, mind."
 
 #: dashboard/templates/alarm3.html:3 dashboard/templates/alarm3.html:12
 #: dashboard/templates/alarms_overview.html:213
@@ -621,7 +621,7 @@ msgstr "Goes off when failure count hits this or more, see"
 
 #: dashboard/templates/alarm3_config.html:215
 msgid "e.g. PHW → MPI Failures"
-msgstr ""
+msgstr "e.g. PHW → MPI Failures, like"
 
 #: dashboard/templates/alarm3_config.html:286
 msgid "No Alarm 3 rules found."
@@ -741,9 +741,9 @@ msgid "Auto-generated if blank"
 msgstr "Label what shows up (done for you if left blank), see"
 
 #: dashboard/templates/alarm_config.html:439
-#, python-format
-msgid "Remove server \"%(id)s\"? This will take effect when you save."
-msgstr ""
+#, fuzzy, python-brace-format, python-format
+msgid "Remove server \"{id}\"? This will take effect when you save."
+msgstr "Chuck server \"%(id)s\" out, is it? It'll happen when you save, mun."
 
 #: dashboard/templates/alarms_overview.html:15
 msgid "Monitoring alerts for the Integration Hub"
@@ -851,11 +851,11 @@ msgstr "Light or dark, like"
 
 #: dashboard/templates/base.html:204
 msgid "Switch to English"
-msgstr ""
+msgstr "Switch to English, butt"
 
 #: dashboard/templates/base.html:204
 msgid "Switch to Welsh"
-msgstr ""
+msgstr "Newid i'r Gymraeg, innit"
 
 #: dashboard/templates/base.html:220
 msgid "NHS Wales — Integration Hub Dashboard"
@@ -952,9 +952,9 @@ msgid "No exceptions were found in the last %(hours)s hours."
 msgstr "Nothing went wrong in the last %(hours)s hours, fair play."
 
 #: dashboard/templates/exceptions.html:123
-#, python-format
-msgid "Severity %(sev)s only"
-msgstr ""
+#, fuzzy, python-brace-format, python-format
+msgid "Severity {sev} only"
+msgstr "How bad %(sev)s only, like"
 
 #: dashboard/templates/exceptions.html:124
 #, fuzzy
@@ -1346,13 +1346,13 @@ msgid "No messages were processed today."
 msgstr "No messages have come through today, like."
 
 #: dashboard/templates/messages.html:174
-#, python-format
-msgid "%(visible)s of %(total)s messages"
-msgstr ""
+#, fuzzy, python-brace-format, python-format
+msgid "{visible} of {total} messages"
+msgstr "%(visible)s of %(total)s messages, see"
 
 #: dashboard/templates/messages.html:175
-#, fuzzy, python-format
-msgid "%(total)s messages"
+#, fuzzy, python-brace-format, python-format
+msgid "{total} messages"
 msgstr "Last Message, See"
 
 #: dashboard/templates/service_bus.html:12

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-04-30 17:19+0100\n"
+"POT-Creation-Date: 2026-04-30 17:28+0100\n"
 "PO-Revision-Date: 2026-04-30 14:50+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -530,8 +530,8 @@ msgstr ""
 
 #: dashboard/templates/alarm2_config.html:361
 #: dashboard/templates/alarm3_config.html:358
-#, python-format
-msgid "Remove rule \"%(id)s\"? This will take effect when you save."
+#, python-brace-format
+msgid "Remove rule \"{id}\"? This will take effect when you save."
 msgstr ""
 
 #: dashboard/templates/alarm3.html:3 dashboard/templates/alarm3.html:12
@@ -725,8 +725,8 @@ msgid "Auto-generated if blank"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:439
-#, python-format
-msgid "Remove server \"%(id)s\"? This will take effect when you save."
+#, python-brace-format
+msgid "Remove server \"{id}\"? This will take effect when you save."
 msgstr ""
 
 #: dashboard/templates/alarms_overview.html:15
@@ -936,8 +936,8 @@ msgid "No exceptions were found in the last %(hours)s hours."
 msgstr ""
 
 #: dashboard/templates/exceptions.html:123
-#, python-format
-msgid "Severity %(sev)s only"
+#, python-brace-format
+msgid "Severity {sev} only"
 msgstr ""
 
 #: dashboard/templates/exceptions.html:124
@@ -1329,13 +1329,13 @@ msgid "No messages were processed today."
 msgstr ""
 
 #: dashboard/templates/messages.html:174
-#, python-format
-msgid "%(visible)s of %(total)s messages"
+#, python-brace-format
+msgid "{visible} of {total} messages"
 msgstr ""
 
 #: dashboard/templates/messages.html:175
-#, python-format
-msgid "%(total)s messages"
+#, python-brace-format
+msgid "{total} messages"
 msgstr ""
 
 #: dashboard/templates/service_bus.html:12
@@ -1468,5 +1468,20 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Refreshing data…"
+#~ msgstr ""
+
+#~ msgid "Remove rule \"%(id)s\"? This will take effect when you save."
+#~ msgstr ""
+
+#~ msgid "Remove server \"%(id)s\"? This will take effect when you save."
+#~ msgstr ""
+
+#~ msgid "Severity %(sev)s only"
+#~ msgstr ""
+
+#~ msgid "%(visible)s of %(total)s messages"
+#~ msgstr ""
+
+#~ msgid "%(total)s messages"
 #~ msgstr ""
 

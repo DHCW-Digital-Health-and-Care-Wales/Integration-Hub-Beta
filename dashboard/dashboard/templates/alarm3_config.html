@@ -355,7 +355,7 @@
 <script>
   var i18nEnabled  = {{ _("Enabled")  | tojson }};
   var i18nDisabled = {{ _("Disabled") | tojson }};
-  var i18nRemoveRule = {{ _("Remove rule \"%(id)s\"? This will take effect when you save.") | tojson }};
+  var i18nRemoveRule = {{ _("Remove rule \"{id}\"? This will take effect when you save.") | tojson }};
 
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
     var rid = cb.id.replace('enabled_', '');
