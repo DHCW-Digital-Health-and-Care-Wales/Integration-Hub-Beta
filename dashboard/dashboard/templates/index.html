@@ -199,7 +199,7 @@
                   {{ exc.message or '—' }}
                 </td>
                 <td style="font-size:0.68rem; white-space:nowrap;">
-                  {% if exc.operation_id %}
+                  {% if exc.operation_id and exc.operation_id | replace('0', '') %}
                   <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
                      title="View trace"
                      style="color:var(--accent-cyan);">

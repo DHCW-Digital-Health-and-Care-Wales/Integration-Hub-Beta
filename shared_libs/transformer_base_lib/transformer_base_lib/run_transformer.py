@@ -75,8 +75,11 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
                 failed_audit_text=f"{transformer.transformer_name} transformation failed",
             )
 
+        wrapped_processor = processor_manager.wrap_handler(
+            message_processor, transformer.transformer_name, config.ingress_queue_name
+        )
         while processor_manager.is_running:
             receiver_client.receive_messages(
                 batch_size,
-                message_processor,
+                wrapped_processor,
             )

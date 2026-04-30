@@ -20,6 +20,7 @@ from message_bus_lib.metadata_utils import (
 )
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from metric_sender_lib.metric_sender import MetricSender
+from otel_lib import configure_otel
 from processor_manager_lib import ProcessorManager
 
 from hl7_sender.ack_processor import get_ack_result
@@ -67,7 +68,7 @@ def _calculate_batch_size(throttler: MessageThrottler) -> int:
 
 
 def main() -> None:
-    # TODO: add configure_otel() call once otel_lib is validated
+    configure_otel("hl7-sender")
     processor_manager = ProcessorManager()
 
     app_config = AppConfig.read_env_config()
@@ -98,13 +99,19 @@ def main() -> None:
 
         batch_size = _calculate_batch_size(throttler)
 
+        def message_processor(message: ServiceBusMessage) -> bool:
+            return _process_message(
+                message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
+                app_config.ingress_session_id,
+            )
+
+        wrapped_processor = processor_manager.wrap_handler(
+            message_processor, "hl7-sender", app_config.ingress_queue_name
+        )
         while processor_manager.is_running:
             receiver_client.receive_messages(
                 batch_size,
-                lambda message: _process_message(
-                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
-                    app_config.ingress_session_id,
-                ),
+                wrapped_processor,
             )
 
 

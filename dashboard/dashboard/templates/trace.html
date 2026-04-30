@@ -176,8 +176,12 @@
       <i class="bi bi-search" style="font-size:2.5rem; color:var(--text-dim); opacity:0.6;"></i>
       <span style="font-size:1rem; font-weight:600;">No trace found</span>
       <span style="color:var(--text-muted);">
-        No spans were found for operation ID:
-        <code style="font-size:0.78rem; color:var(--accent-cyan);">{{ operation_id }}</code>
+        {% if not operation_id | replace('0', '') %}
+          This exception has no trace context — it was not part of a traced request.
+        {% else %}
+          No spans were found for operation ID:
+          <code style="font-size:0.78rem; color:var(--accent-cyan);">{{ operation_id }}</code>
+        {% endif %}
       </span>
     </div>
   </div>
