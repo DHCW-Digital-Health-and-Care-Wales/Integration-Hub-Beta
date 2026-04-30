@@ -139,7 +139,7 @@
             <input type="text" class="dash-input w-100"
                    id="workflow_id_{{ r.id }}" name="workflow_id_{{ r.id }}"
                    value="{{ r.workflow_id }}" maxlength="120"
-                   placeholder="e.g. phw-to-mpi">
+                   placeholder="{{ _('e.g. phw-to-mpi') }}">
             <div class="cfg-hint">Properties["workflow_id"] {{ _("filter value") }}</div>
           </div>
 
@@ -215,7 +215,7 @@
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_display_name" name="new_display_name"
-                   maxlength="80" placeholder="e.g. PIMS → MPI">
+                   maxlength="80" placeholder="{{ _('e.g. PIMS → MPI') }}">
             <div class="cfg-hint">{{ _("Human-readable label (auto-generated if blank)") }}</div>
           </div>
 
@@ -226,7 +226,7 @@
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_workflow_id" name="new_workflow_id"
-                   maxlength="120" placeholder="e.g. phw-to-mpi">
+                   maxlength="120" placeholder="{{ _('e.g. phw-to-mpi') }}">
             <div class="cfg-hint">Properties["workflow_id"] {{ _("filter value") }}</div>
           </div>
 
@@ -358,6 +358,7 @@
 <script>
   var i18nEnabled  = {{ _("Enabled")  | tojson }};
   var i18nDisabled = {{ _("Disabled") | tojson }};
+  var i18nRemoveRule = {{ _("Remove rule \"%(id)s\"? This will take effect when you save.") | tojson }};
 
   // Toggle enable/disable labels
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
@@ -387,9 +388,7 @@
       if (!card) return;
 
       // Confirm before removing
-      if (!confirm('Remove rule "' + rid + '"? This will take effect when you save.')) return;
-
-      // Mark card visually
+      if (!confirm(i18nRemoveRule.replace('%(id)s', rid))) return;
       card.classList.add('rule-card--removing');
 
       // Disable all form controls in the card so they don't submit

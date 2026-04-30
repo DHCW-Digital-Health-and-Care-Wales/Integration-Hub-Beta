@@ -201,7 +201,7 @@
         <form method="post" action="{{ url_for('set_language') }}" style="margin:0;">
           <input type="hidden" name="lang" value="{{ 'en' if current_lang == 'cy' else 'cy' }}">
           <button type="submit"
-                  title="{{ 'Switch to English' if current_lang == 'cy' else 'Newid i\'r Gymraeg' }}"
+                  title="{{ _('Switch to English') if current_lang == 'cy' else _('Switch to Welsh') }}"
                   style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:0.72rem;font-weight:600;letter-spacing:0.04em;transition:background 0.15s;white-space:nowrap;">
             {{ 'EN' if current_lang == 'cy' else 'CY' }}
           </button>

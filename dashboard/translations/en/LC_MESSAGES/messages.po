@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-04-30 17:00+0100\n"
+"POT-Creation-Date: 2026-04-30 17:19+0100\n"
 "PO-Revision-Date: 2026-04-30 14:50+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -455,6 +455,16 @@ msgstr ""
 msgid "Human-readable label shown in the dashboard"
 msgstr ""
 
+#: dashboard/templates/alarm2_config.html:142
+#: dashboard/templates/alarm2_config.html:229
+#: dashboard/templates/alarm3_config.html:139
+#: dashboard/templates/alarm3_config.html:226
+#: dashboard/templates/alarm_config.html:152
+#: dashboard/templates/alarm_config.html:245
+#: dashboard/templates/alarm_config.html:349
+msgid "e.g. phw-to-mpi"
+msgstr ""
+
 #: dashboard/templates/alarm2_config.html:143
 #: dashboard/templates/alarm2_config.html:230
 msgid "filter value"
@@ -488,6 +498,10 @@ msgstr ""
 msgid "New Rule"
 msgstr ""
 
+#: dashboard/templates/alarm2_config.html:218
+msgid "e.g. PIMS → MPI"
+msgstr ""
+
 #: dashboard/templates/alarm2_config.html:219
 #: dashboard/templates/alarm3_config.html:216
 #: dashboard/templates/alarm_config.html:256
@@ -495,9 +509,9 @@ msgid "Human-readable label (auto-generated if blank)"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:278
-#: dashboard/templates/alarm2_config.html:420
+#: dashboard/templates/alarm2_config.html:419
 #: dashboard/templates/alarm3_config.html:275
-#: dashboard/templates/alarm3_config.html:404
+#: dashboard/templates/alarm3_config.html:405
 #: dashboard/templates/alarm_config.html:317
 #: dashboard/templates/alarm_config.html:364
 msgid "Add Rule"
@@ -512,6 +526,12 @@ msgstr ""
 
 #: dashboard/templates/alarm2_config.html:289
 msgid "No Alarm 2 rules found."
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:361
+#: dashboard/templates/alarm3_config.html:358
+#, python-format
+msgid "Remove rule \"%(id)s\"? This will take effect when you save."
 msgstr ""
 
 #: dashboard/templates/alarm3.html:3 dashboard/templates/alarm3.html:12
@@ -593,6 +613,10 @@ msgstr ""
 
 #: dashboard/templates/alarm3_config.html:172
 msgid "Alarm fires when failure count &gt;= this value"
+msgstr ""
+
+#: dashboard/templates/alarm3_config.html:215
+msgid "e.g. PHW → MPI Failures"
 msgstr ""
 
 #: dashboard/templates/alarm3_config.html:286
@@ -688,8 +712,21 @@ msgstr ""
 msgid "No messages for this long (Fri 17:00–Mon 08:00) → alarm fires"
 msgstr ""
 
+#: dashboard/templates/alarm_config.html:255
+msgid "e.g. PHW HL7 Server"
+msgstr ""
+
 #: dashboard/templates/alarm_config.html:329
 msgid "No Alarm 1 rules found. Add one below."
+msgstr ""
+
+#: dashboard/templates/alarm_config.html:357
+msgid "Auto-generated if blank"
+msgstr ""
+
+#: dashboard/templates/alarm_config.html:439
+#, python-format
+msgid "Remove server \"%(id)s\"? This will take effect when you save."
 msgstr ""
 
 #: dashboard/templates/alarms_overview.html:15
@@ -796,6 +833,14 @@ msgstr ""
 msgid "Toggle light/dark theme"
 msgstr ""
 
+#: dashboard/templates/base.html:204
+msgid "Switch to English"
+msgstr ""
+
+#: dashboard/templates/base.html:204
+msgid "Switch to Welsh"
+msgstr ""
+
 #: dashboard/templates/base.html:220
 msgid "NHS Wales — Integration Hub Dashboard"
 msgstr ""
@@ -860,6 +905,7 @@ msgid "Exception Log"
 msgstr ""
 
 #: dashboard/templates/exceptions.html:67
+#: dashboard/templates/exceptions.html:125
 msgid "Sorted by most recent"
 msgstr ""
 
@@ -887,6 +933,15 @@ msgstr ""
 #: dashboard/templates/exceptions.html:111
 #, python-format
 msgid "No exceptions were found in the last %(hours)s hours."
+msgstr ""
+
+#: dashboard/templates/exceptions.html:123
+#, python-format
+msgid "Severity %(sev)s only"
+msgstr ""
+
+#: dashboard/templates/exceptions.html:124
+msgid "Show all"
 msgstr ""
 
 #: dashboard/templates/flows.html:3
@@ -1273,6 +1328,16 @@ msgstr ""
 msgid "No messages were processed today."
 msgstr ""
 
+#: dashboard/templates/messages.html:174
+#, python-format
+msgid "%(visible)s of %(total)s messages"
+msgstr ""
+
+#: dashboard/templates/messages.html:175
+#, python-format
+msgid "%(total)s messages"
+msgstr ""
+
 #: dashboard/templates/service_bus.html:12
 msgid "Azure Service Bus"
 msgstr ""
@@ -1308,6 +1373,10 @@ msgstr ""
 
 #: dashboard/templates/service_bus.html:80
 msgid "Flow Summary"
+msgstr ""
+
+#: dashboard/templates/service_bus.html:104
+msgid "All Queues"
 msgstr ""
 
 #: dashboard/templates/service_bus.html:108
