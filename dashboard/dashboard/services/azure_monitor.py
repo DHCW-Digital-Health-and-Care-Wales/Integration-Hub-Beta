@@ -56,6 +56,7 @@ def get_exceptions(hours: int = 24) -> list[dict]:
     query = f"""
     AppExceptions
     | where TimeGenerated > ago({hours}h)
+
     | project timestamp=TimeGenerated,
               type=ExceptionType,
               outerMessage=coalesce(OuterMessage, Message),

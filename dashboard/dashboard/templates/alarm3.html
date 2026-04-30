@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Alarm 3 — Message Processing Failures{% endblock %}
+{% block title %}{{ _("Alarm 3 \u2014 Message Processing Failures") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,21 +9,21 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-alarm" style="color:var(--accent-red)"></i>
-        Alarm 3 — Message Processing Failures
+        {{ _("Alarm 3 \u2014 Message Processing Failures") }}
       </h1>
       <p class="page-subtitle">
-        Fires when the count of MESSAGE_FAILED events meets or exceeds the configured threshold
+        {{ _("Fires when the count of MESSAGE_FAILED events meets or exceeds the configured threshold") }}
       </p>
     </div>
     <div class="d-flex align-items-center gap-2">
       <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash">
-        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
       </a>
       <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash">
-        <i class="bi bi-gear-fill"></i> Configure
+        <i class="bi bi-gear-fill"></i> {{ _("Configure") }}
       </a>
       <a href="{{ url_for('alarm3_page') }}" class="btn-dash">
-        <i class="bi bi-arrow-repeat"></i> Refresh
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
     </div>
   </div>
@@ -32,8 +32,8 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
     <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
       <i class="bi bi-exclamation-triangle-fill"></i>
-      <span>Log Analytics workspace is not configured — failure counts cannot be retrieved.
-        Results will show as <strong>Unknown</strong>.</span>
+      <span>{{ _("Log Analytics workspace is not configured \u2014 failure counts cannot be retrieved.") }}
+        {{ _("Results will show as") }} <strong>{{ _("Unknown") }}</strong>.</span>
     </div>
   </div>
   {% endif %}
@@ -44,9 +44,9 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem; text-align:center;">
       <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">No Alarm 3 rules have been configured yet.</p>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("No Alarm 3 rules have been configured yet.") }}</p>
       <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash mt-2">
-        <i class="bi bi-gear-fill"></i> Configure Alarm 3
+        <i class="bi bi-gear-fill"></i> {{ _("Configure Alarm 3") }}
       </a>
     </div>
   </div>
@@ -55,7 +55,7 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem; text-align:center;">
       <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:var(--accent-green); opacity:0.85;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">No MESSAGE_FAILED events detected — all monitored workflows are healthy.</p>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("No MESSAGE_FAILED events detected \u2014 all monitored workflows are healthy.") }}</p>
     </div>
   </div>
   {% endif %}
@@ -75,35 +75,35 @@
       <div class="kpi-icon blue"><i class="bi bi-bell-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ alarm3_rows | length }}</div>
-        <div class="kpi-label">Monitored</div>
+        <div class="kpi-label">{{ _("Monitored") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon red"><i class="bi bi-exclamation-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_critical }}</div>
-        <div class="kpi-label">In Alarm</div>
+        <div class="kpi-label">{{ _("In Alarm") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="bi bi-bell-slash-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_suppressed }}</div>
-        <div class="kpi-label">Suppressed</div>
+        <div class="kpi-label">{{ _("Suppressed") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="bi bi-question-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_unknown }}</div>
-        <div class="kpi-label">Unknown</div>
+        <div class="kpi-label">{{ _("Unknown") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_healthy }}</div>
-        <div class="kpi-label">Healthy</div>
+        <div class="kpi-label">{{ _("Healthy") }}</div>
       </div>
     </div>
 
@@ -112,30 +112,30 @@
   <!-- Alarm table -->
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
-      <h6><i class="bi bi-table me-1"></i> Alarm 3 Rules</h6>
-      <span class="text-muted" style="font-size:0.72rem;">Refreshed at {{ refreshed_at }}</span>
+      <h6><i class="bi bi-table me-1"></i> {{ _("Alarm 3 Rules") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ _("Refreshed at") }} {{ refreshed_at }}</span>
     </div>
 
     <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
       <table class="dash-table w-100">
         <thead>
           <tr>
-            <th>Status</th>
-            <th>Rule</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Rule") }}</th>
             <th>
-              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>Workflow ID
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Workflow ID") }}
             </th>
             <th>
-              <i class="bi bi-x-circle-fill me-1" style="color:var(--accent-red)"></i>Failures
+              <i class="bi bi-x-circle-fill me-1" style="color:var(--accent-red)"></i>{{ _("Failures") }}
             </th>
             <th>
-              <i class="bi bi-arrow-up-circle me-1" style="color:var(--accent-red)"></i>Threshold
+              <i class="bi bi-arrow-up-circle me-1" style="color:var(--accent-red)"></i>{{ _("Threshold") }}
             </th>
             <th>
-              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>Window
+              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>{{ _("Window") }}
             </th>
             <th>
-              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>Alerting Gap
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>{{ _("Alerting Gap") }}
             </th>
             <th style="width:2.5rem;"></th>
           </tr>
@@ -147,19 +147,19 @@
             <td>
               {% if row.status == 'critical' %}
                 <span class="status-badge critical">
-                  <i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
+                  <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
                 </span>
               {% elif row.status == 'suppressed' %}
                 <span class="status-badge suppressed">
-                  <i class="bi bi-bell-slash-fill me-1"></i>Suppressed
+                  <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
                 </span>
               {% elif row.status == 'unknown' %}
                 <span class="status-badge unknown">
-                  <i class="bi bi-question-circle me-1"></i>Unknown
+                  <i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}
                 </span>
               {% else %}
                 <span class="status-badge healthy">
-                  <i class="bi bi-check-circle-fill me-1"></i>OK
+                  <i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}
                 </span>
               {% endif %}
             </td>
@@ -190,10 +190,10 @@
             </td>
 
             <td style="font-size:0.82rem;">
-              <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} min</span>
+              <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} {{ _("min") }}</span>
               {% if row.status == 'suppressed' and row.cooldown_remaining %}
                 <div style="color:var(--accent-amber); font-size:0.75rem; margin-top:2px;">
-                  <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} min left
+                  <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} {{ _("min left") }}
                 </div>
               {% endif %}
             </td>

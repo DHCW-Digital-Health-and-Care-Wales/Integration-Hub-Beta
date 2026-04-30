@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Service Bus{% endblock %}
+{% block title %}{{ _("Service Bus") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,12 +9,12 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-stack" style="color:var(--accent-cyan)"></i>
-        Azure Service Bus
+        {{ _("Azure Service Bus") }}
       </h1>
-      <p class="page-subtitle">Queue depths, dead-letter counts and flow mapping</p>
+      <p class="page-subtitle">{{ _("Queue depths, dead-letter counts and flow mapping") }}</p>
     </div>
     <a href="{{ url_for('service_bus_page') }}" class="btn-dash">
-      <i class="bi bi-arrow-repeat"></i> Refresh
+      <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
     </a>
   </div>
 
@@ -32,7 +32,7 @@
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ total_active }}</div>
-        <div class="kpi-label">Total Active</div>
+        <div class="kpi-label">{{ _("Total Active") }}</div>
       </div>
     </a>
     <a href="#queue-table" class="kpi-card kpi-card--link">
@@ -41,35 +41,35 @@
       </div>
       <div class="kpi-body">
         <div class="kpi-number {% if total_dlq > 0 %}text-danger{% endif %}">{{ total_dlq }}</div>
-        <div class="kpi-label">Total DLQ</div>
+        <div class="kpi-label">{{ _("Total DLQ") }}</div>
       </div>
     </a>
     <div class="kpi-card">
       <div class="kpi-icon purple"><i class="bi bi-clock-history"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ total_sched }}</div>
-        <div class="kpi-label">Scheduled</div>
+        <div class="kpi-label">{{ _("Scheduled") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon cyan"><i class="bi bi-collection-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ queues | length }}</div>
-        <div class="kpi-label">Total Queues</div>
+        <div class="kpi-label">{{ _("Total Queues") }}</div>
       </div>
     </div>
     <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if warn_queues > 0 %}text-warning{% endif %}">{{ warn_queues }}</div>
-        <div class="kpi-label">Warning Queues</div>
+        <div class="kpi-label">{{ _("Warning Queues") }}</div>
       </div>
     </a>
     <a href="#queue-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number {% if crit_queues > 0 %}text-danger{% endif %}">{{ crit_queues }}</div>
-        <div class="kpi-label">Critical Queues</div>
+        <div class="kpi-label">{{ _("Critical Queues") }}</div>
       </div>
     </a>
   </div>
@@ -77,7 +77,7 @@
   <!-- Flow health summary -->
   {% if flows %}
   <div class="section-header">
-    <span class="section-title"><i class="bi bi-diagram-3"></i> Flow Summary</span>
+    <span class="section-title"><i class="bi bi-diagram-3"></i> {{ _("Flow Summary") }}</span>
   </div>
   <div class="row g-2 mb-3 stagger-children">
     {% for flow in flows %}
@@ -105,22 +105,22 @@
   </div>
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
-      <h6><i class="bi bi-list-ul me-1"></i> Queue Details</h6>
-      <span class="text-muted" style="font-size:0.72rem;">Click column headers to sort</span>
+      <h6><i class="bi bi-list-ul me-1"></i> {{ _("Queue Details") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ _("Click column headers to sort") }}</span>
     </div>
     <div class="scroll-panel" style="max-height:none;">
       <table class="dash-table" id="queue-table">
         <thead>
           <tr>
-            <th data-sort="name">Queue <span class="sort-icon"></span></th>
-            <th data-sort="active"  class="text-end">Active <span class="sort-icon"></span></th>
-            <th data-sort="dlq"     class="text-end">DLQ <span class="sort-icon"></span></th>
-            <th data-sort="sched"   class="text-end">Scheduled <span class="sort-icon"></span></th>
-            <th data-sort="total"   class="text-end">Total <span class="sort-icon"></span></th>
-            <th class="text-end">Size</th>
-            <th class="text-end">Max</th>
-            <th>Status</th>
-            <th>Health</th>
+            <th data-sort="name">{{ _("Queue") }} <span class="sort-icon"></span></th>
+            <th data-sort="active"  class="text-end">{{ _("Active") }} <span class="sort-icon"></span></th>
+            <th data-sort="dlq"     class="text-end">{{ _("DLQ") }} <span class="sort-icon"></span></th>
+            <th data-sort="sched"   class="text-end">{{ _("Scheduled") }} <span class="sort-icon"></span></th>
+            <th data-sort="total"   class="text-end">{{ _("Total") }} <span class="sort-icon"></span></th>
+            <th class="text-end">{{ _("Size") }}</th>
+            <th class="text-end">{{ _("Max") }}</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Health") }}</th>
           </tr>
         </thead>
         <tbody>
@@ -158,9 +158,9 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem;">
       <i class="bi bi-cloud-slash"></i>
-      <span style="font-size:0.9rem; font-weight:600;">Service Bus data unavailable</span>
+      <span style="font-size:0.9rem; font-weight:600;">{{ _("Service Bus data unavailable") }}</span>
       <span style="color:var(--text-muted); font-size:0.8rem;">
-        Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file
+        {{ _("Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file") }}
       </span>
     </div>
   </div>

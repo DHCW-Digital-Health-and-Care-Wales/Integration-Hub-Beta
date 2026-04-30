@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Configure Alarm 3{% endblock %}
+{% block title %}{{ _("Configure Alarm 3") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,18 +9,18 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-gear-fill" style="color:var(--accent-red)"></i>
-        Alarm 3 Configuration
+        {{ _("Alarm 3 Configuration") }}
       </h1>
       <p class="page-subtitle">
-        Configure Alarm 3 (message processing failures) settings per workflow rule
+        {{ _("Configure Alarm 3 (message processing failures) settings per workflow rule") }}
       </p>
     </div>
     <div class="d-flex align-items-center gap-2">
       <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" id="back-to-summary">
-        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
       </a>
       <a href="{{ url_for('alarm3_page') }}" class="btn-dash">
-        <i class="bi bi-alarm"></i> View Alarm 3
+        <i class="bi bi-alarm"></i> {{ _("View Alarm 3") }}
       </a>
     </div>
   </div>
@@ -29,7 +29,7 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green); padding:0.8rem 1.1rem;">
     <div class="d-flex align-items-center gap-2" style="color:var(--accent-green); font-size:0.83rem;">
       <i class="bi bi-check-circle-fill"></i>
-      <span>Configuration saved successfully.</span>
+      <span>{{ _("Configuration saved successfully.") }}</span>
     </div>
   </div>
   {% endif %}
@@ -39,11 +39,11 @@
     <div class="d-flex align-items-start gap-2">
       <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-red); flex-shrink:0;"></i>
       <div>
-        <strong style="color:var(--text-primary);">How Alarm 3 works</strong><br>
-        The alarm queries <code>AppTraces</code> in Log Analytics for <code>MESSAGE_FAILED</code> events,
-        filtered by <strong>Workflow ID</strong> over the configured <strong>Window</strong>.
-        It fires when the failure count is at or above the <strong>Threshold</strong>.
-        Once fired, it will not re-fire until the <strong>Alerting Gap</strong> has elapsed.
+        <strong style="color:var(--text-primary);">{{ _("How Alarm 3 works") }}</strong><br>
+        {{ _("The alarm queries") }} <code>AppTraces</code> {{ _("in Log Analytics for") }} <code>MESSAGE_FAILED</code> {{ _("events,") }}
+        {{ _("filtered by") }} <strong>{{ _("Workflow ID") }}</strong> {{ _("over the configured") }} <strong>{{ _("Window") }}</strong>.
+        {{ _("It fires when the failure count is at or above the") }} <strong>{{ _("Threshold") }}</strong>.
+        {{ _("Once fired, it will not re-fire until the") }} <strong>{{ _("Alerting Gap") }}</strong> {{ _("has elapsed.") }}
       </div>
     </div>
   </div>
@@ -64,7 +64,7 @@
           <div class="d-flex align-items-center gap-2">
             <label for="enabled_{{ r.id }}"
                    style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
-              Alarm 3
+              {{ _("Alarm 3") }}
             </label>
             <div class="form-check form-switch" style="margin:0; padding-left:0;">
               <input class="form-check-input"
@@ -76,7 +76,7 @@
             <span id="label_{{ r.id }}"
                   style="font-size:0.78rem; font-weight:600; min-width:60px;
                          color:{% if r.alarm_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
-              {% if r.alarm_enabled %}Enabled{% else %}Disabled{% endif %}
+              {% if r.alarm_enabled %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif %}
             </span>
           </div>
           <!-- divider -->
@@ -85,20 +85,20 @@
           <div class="d-flex align-items-center gap-2">
             <label for="email_{{ r.id }}"
                    style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
-              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>Email
+              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>{{ _("Email") }}
             </label>
             <div class="form-check form-switch" style="margin:0; padding-left:0;">
               <input class="form-check-input"
                      type="checkbox" role="switch"
                      id="email_{{ r.id }}" name="email_{{ r.id }}"
                      {% if r.email_alerts_enabled %}checked{% endif %}
-                     {% if not smtp_configured %}disabled title="Configure SMTP in .env to enable"{% endif %}
+                     {% if not smtp_configured %}disabled title="{{ _('Configure SMTP in .env to enable') }}"{% endif %}
                      style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
             </div>
             <span id="email_label_{{ r.id }}"
                   style="font-size:0.78rem; font-weight:600; min-width:60px;
                          color:{% if r.email_alerts_enabled and smtp_configured %}var(--accent-green){% else %}var(--text-muted){% endif %};">
-              {% if r.email_alerts_enabled and smtp_configured %}Enabled{% else %}Disabled{% endif %}
+              {% if r.email_alerts_enabled and smtp_configured %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif %}
             </span>
           </div>
           <!-- divider -->
@@ -107,7 +107,7 @@
           <button type="button"
                   class="btn-dash btn-remove-rule"
                   data-rule-id="{{ r.id }}"
-                  title="Remove this rule">
+                  title="{{ _('Remove this rule') }}">
             <i class="bi bi-trash3"></i>
           </button>
         </div>
@@ -119,19 +119,19 @@
           <!-- Display name -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="display_name_{{ r.id }}">
-              <i class="bi bi-tag me-1"></i>Display Name
+              <i class="bi bi-tag me-1"></i>{{ _("Display Name") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="display_name_{{ r.id }}" name="display_name_{{ r.id }}"
                    value="{{ r.display_name }}" maxlength="80">
-            <div class="cfg-hint">Human-readable label shown in the dashboard</div>
+            <div class="cfg-hint">{{ _("Human-readable label shown in the dashboard") }}</div>
           </div>
 
           <!-- Workflow ID -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="workflow_id_{{ r.id }}">
               <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
-              Workflow ID
+              {{ _("Workflow ID") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="workflow_id_{{ r.id }}" name="workflow_id_{{ r.id }}"
@@ -144,23 +144,23 @@
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="window_duration_{{ r.id }}">
               <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
-              Lookback Window
+              {{ _("Lookback Window") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="window_duration_{{ r.id }}" name="window_duration_{{ r.id }}"
                      value="{{ r.window_duration_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)</div>
+            <div class="cfg-hint">{{ _("Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)") }}</div>
           </div>
 
           <!-- Threshold -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="threshold_{{ r.id }}">
               <i class="bi bi-arrow-up-circle me-1" style="color:var(--accent-red)"></i>
-              Threshold
+              {{ _("Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
@@ -169,23 +169,23 @@
                      min="1" max="9999999" step="1">
               <span class="cfg-unit">failures</span>
             </div>
-            <div class="cfg-hint">Alarm fires when failure count &gt;= this value</div>
+            <div class="cfg-hint">{{ _("Alarm fires when failure count &gt;= this value") }}</div>
           </div>
 
           <!-- Alerting gap -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="alerting_gap_{{ r.id }}">
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
-              Alerting Gap
+              {{ _("Alerting Gap") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="alerting_gap_{{ r.id }}" name="alerting_gap_{{ r.id }}"
                      value="{{ r.alerting_gap_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">Minimum gap between successive alarm fires</div>
+            <div class="cfg-hint">{{ _("Minimum gap between successive alarm fires") }}</div>
           </div>
 
         </div>
@@ -200,7 +200,7 @@
     <div class="dash-card mb-3" id="add-rule-panel" style="display:none;">
       <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
         <div style="font-weight:600; font-size:0.92rem;">
-          <i class="bi bi-plus-circle me-2" style="color:var(--accent-red)"></i>New Rule
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-red)"></i>{{ _("New Rule") }}
         </div>
       </div>
       <div class="p-3">
@@ -208,18 +208,18 @@
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_display_name">
-              <i class="bi bi-tag me-1"></i>Display Name
+              <i class="bi bi-tag me-1"></i>{{ _("Display Name") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_display_name" name="new_display_name"
                    maxlength="80" placeholder="e.g. PHW → MPI Failures">
-            <div class="cfg-hint">Human-readable label (auto-generated if blank)</div>
+            <div class="cfg-hint">{{ _("Human-readable label (auto-generated if blank)") }}</div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_workflow_id">
               <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
-              Workflow ID <span style="color:var(--accent-red)">*</span>
+              {{ _("Workflow ID") }} <span style="color:var(--accent-red)">*</span>
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_workflow_id" name="new_workflow_id"
@@ -230,20 +230,20 @@
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_window_duration">
               <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
-              Lookback Window
+              {{ _("Lookback Window") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_window_duration" name="new_window_duration"
                      value="15" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_threshold">
               <i class="bi bi-arrow-up-circle me-1" style="color:var(--accent-red)"></i>
-              Threshold
+              {{ _("Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
@@ -256,13 +256,13 @@
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_alerting_gap">
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
-              Alerting Gap
+              {{ _("Alerting Gap") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_alerting_gap" name="new_alerting_gap"
                      value="60" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
@@ -272,10 +272,10 @@
 
     <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
       <button type="button" id="add-rule-btn" class="btn-dash">
-        <i class="bi bi-plus-circle me-1"></i> Add Rule
+        <i class="bi bi-plus-circle me-1"></i> {{ _("Add Rule") }}
       </button>
       <button type="submit" class="btn-dash btn-dash--primary">
-        <i class="bi bi-floppy-fill"></i> Save All Settings
+        <i class="bi bi-floppy-fill"></i> {{ _("Save All Settings") }}
       </button>
     </div>
 
@@ -283,7 +283,7 @@
     <div class="dash-card">
       <div class="no-data" style="padding:2.5rem; text-align:center;">
         <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
-        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">No Alarm 3 rules found.</p>
+        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">{{ _("No Alarm 3 rules found.") }}</p>
       </div>
     </div>
     {% endif %}
@@ -398,7 +398,7 @@
       var visible = addPanel.style.display !== 'none';
       addPanel.style.display = visible ? 'none' : 'block';
       addBtn.innerHTML = visible
-        ? '<i class="bi bi-plus-circle me-1"></i> Add Rule'
+        ? '<i class="bi bi-plus-circle me-1"></i> {{ _("Add Rule") }}'
         : '<i class="bi bi-dash-circle me-1"></i> Cancel';
       if (!visible) {
         addPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });

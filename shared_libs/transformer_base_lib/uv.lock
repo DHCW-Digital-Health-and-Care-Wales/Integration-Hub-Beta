@@ -383,6 +383,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "otel-lib" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -392,6 +393,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "otel-lib", directory = "../otel_lib" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -721,6 +723,34 @@ wheels = [
 ]
 
 [[package]]
+name = "otel-lib"
+version = "0.1.0"
+source = { directory = "../otel_lib" }
+dependencies = [
+    { name = "azure-monitor-opentelemetry" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.2" },
+    { name = "mypy", specifier = "==1.18.2" },
+    { name = "ruff", specifier = "==0.15.0" },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -743,15 +773,20 @@ name = "processor-manager-lib"
 version = "0.1.0"
 source = { directory = "../processor_manager_lib" }
 dependencies = [
+    { name = "opentelemetry-api" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "otel-lib", directory = "../otel_lib" }]
 
 [[package]]
 name = "psutil"
@@ -934,6 +969,7 @@ dependencies = [
     { name = "health-check-lib" },
     { name = "hl7apy" },
     { name = "message-bus-lib" },
+    { name = "otel-lib" },
     { name = "processor-manager-lib" },
     { name = "urllib3" },
 ]
@@ -954,6 +990,7 @@ requires-dist = [
     { name = "health-check-lib", directory = "../health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../message_bus_lib" },
+    { name = "otel-lib", directory = "../otel_lib" },
     { name = "processor-manager-lib", directory = "../processor_manager_lib" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]

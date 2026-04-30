@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Exceptions{% endblock %}
+{% block title %}{{ _("Exceptions") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,13 +9,13 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-exclamation-triangle-fill" style="color:var(--accent-red)"></i>
-        Application Exceptions
+        {{ _("Application Exceptions") }}
       </h1>
-      <p class="page-subtitle">Last {{ hours }} hours — {{ exceptions | length }} exception(s)</p>
+      <p class="page-subtitle">{{ _("Last %(hours)s hours \u2014 %(count)s exception(s)", hours=hours, count=exceptions | length) }}</p>
     </div>
     <!-- Hours filter -->
     <form method="get" class="d-flex align-items-center gap-2">
-      <label class="text-muted" style="font-size:0.78rem;">Show last</label>
+      <label class="text-muted" style="font-size:0.78rem;">{{ _("Show last") }}</label>
       <select name="hours" class="dash-input" onchange="this.form.submit()">
         {% for h in [1, 6, 12, 24, 48, 72] %}
         <option value="{{ h }}" {% if h == hours %}selected{% endif %}>{{ h }}h</option>
@@ -34,28 +34,28 @@
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ exceptions | length }}</div>
-        <div class="kpi-label">Total Exceptions</div>
+        <div class="kpi-label">{{ _("Total Exceptions") }}</div>
       </div>
     </a>
     <a href="#exception-log" onclick="setSeverityFilter(1)" class="kpi-card kpi-card--link">
       <div class="kpi-icon red"><i class="bi bi-exclamation-octagon"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev1 }}</div>
-        <div class="kpi-label">Critical (Sev 1)</div>
+        <div class="kpi-label">{{ _("Critical (Sev 1)") }}</div>
       </div>
     </a>
     <a href="#exception-log" onclick="setSeverityFilter(2)" class="kpi-card kpi-card--link">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev2 }}</div>
-        <div class="kpi-label">Error (Sev 2)</div>
+        <div class="kpi-label">{{ _("Error (Sev 2)") }}</div>
       </div>
     </a>
     <a href="#exception-log" onclick="setSeverityFilter(3)" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-info-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev3 }}</div>
-        <div class="kpi-label">Warning (Sev 3)</div>
+        <div class="kpi-label">{{ _("Warning (Sev 3)") }}</div>
       </div>
     </a>
   </div>
@@ -63,8 +63,8 @@
   <!-- Exceptions list -->
   <div class="queue-table-wrapper" id="exception-log">
     <div class="queue-table-header">
-      <h6><i class="bi bi-list-ul me-1"></i> Exception Log</h6>
-      <span class="text-muted" style="font-size:0.72rem;">Sorted by most recent</span>
+      <h6><i class="bi bi-list-ul me-1"></i> {{ _("Exception Log") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ _("Sorted by most recent") }}</span>
     </div>
     <div class="scroll-panel" style="max-height:none;">
       <div class="exceptions-list p-3 stagger-children" id="exception-items">
@@ -76,20 +76,20 @@
               {% if exc.app %}<span><i class="bi bi-app"></i> {{ exc.app }}</span>{% endif %}
               <span><i class="bi bi-clock"></i> {{ exc.timestamp | replace('T', ' ') | truncate(19, True, '') }}</span>
               <span class="status-badge {% if exc.severity == 1 %}critical{% elif exc.severity == 2 %}warning{% else %}unknown{% endif %}">
-                Sev {{ exc.severity }}
+                {{ _("Sev") }} {{ exc.severity }}
               </span>
             </div>
           </div>
           {% if exc.message %}
           <div class="exception-full-msg">{{ exc.message | truncate(300) }}</div>
           {% endif %}
-          {% if exc.operation_id %}
+          {% if exc.operation_id and exc.operation_id | replace('0', '') %}
           <div class="exception-meta mt-1">
             <span><i class="bi bi-fingerprint"></i> {{ exc.operation_id }}</span>
             <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
-               title="View trace"
+               title="{{ _('View trace') }}"
                style="color:var(--accent-cyan); font-size:0.75rem; white-space:nowrap;">
-              <i class="bi bi-diagram-2"></i> trace
+              <i class="bi bi-diagram-2"></i> {{ _("trace") }}
             </a>
           </div>
           {% endif %}
@@ -103,12 +103,12 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem;">
       <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:var(--accent-green); opacity:0.8;"></i>
-      <span style="font-size:1rem; font-weight:600; color:var(--accent-green);">No exceptions</span>
+      <span style="font-size:1rem; font-weight:600; color:var(--accent-green);">{{ _("No exceptions") }}</span>
       <span style="color:var(--text-muted);">
         {% if not config_ok %}
-          Azure Log Analytics credentials are not configured.
+          {{ _("Azure Log Analytics credentials are not configured.") }}
         {% else %}
-          No exceptions were found in the last {{ hours }} hours. 🎉
+          {{ _("No exceptions were found in the last %(hours)s hours.", hours=hours) }} 🎉
         {% endif %}
       </span>
     </div>

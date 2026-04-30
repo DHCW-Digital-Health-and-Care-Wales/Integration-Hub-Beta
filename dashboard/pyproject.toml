@@ -16,6 +16,7 @@ dependencies = [
     "azure-monitor-query>=2.0.0",
     "azure-monitor-querymetrics>=1.0.0",
     "flask>=3.1.0",
+    "flask-babel>=4.0.0",
     "gunicorn>=23.0.0",
     "python-dotenv>=1.2.2",
 ]

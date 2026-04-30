@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Alarms Summary{% endblock %}
+{% block title %}{{ _("Alarms Summary") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,18 +9,18 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-bell-fill" style="color:var(--accent-amber)"></i>
-        Alarms Summary
+        {{ _("Alarms Summary") }}
       </h1>
       <p class="page-subtitle">
-        Monitoring alerts for the Integration Hub
+        {{ _("Monitoring alerts for the Integration Hub") }}
       </p>
     </div>
     <div class="d-flex align-items-center gap-3">
       <span id="poll-indicator" class="poll-indicator">
-        <i class="bi bi-clock me-1"></i><span id="poll-indicator-text">Auto-refresh active</span>
+        <i class="bi bi-clock me-1"></i><span id="poll-indicator-text">{{ _("Auto-refresh active") }}</span>
       </span>
       <a href="{{ url_for('alarms_overview_page') }}?refresh=1" class="btn-dash">
-        <i class="bi bi-arrow-repeat"></i> Refresh
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
     </div>
   </div>
@@ -29,7 +29,7 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
     <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
       <i class="bi bi-exclamation-triangle-fill"></i>
-      <span>Log Analytics workspace is not configured — last message times cannot be retrieved.</span>
+      <span>{{ _("Log Analytics workspace is not configured \u2014 last message times cannot be retrieved.") }}</span>
     </div>
   </div>
   {% endif %}
@@ -58,8 +58,8 @@
             <i class="bi bi-alarm"></i>
           </div>
           <div>
-            <div class="alarm-ov-title">Alarm 1 — Inactivity</div>
-            <div class="alarm-ov-desc">HL7 server message inactivity monitoring</div>
+            <div class="alarm-ov-title">{{ _("Alarm 1 \u2014 Inactivity") }}</div>
+            <div class="alarm-ov-desc">{{ _("HL7 server message inactivity monitoring") }}</div>
           </div>
         </div>
 
@@ -68,45 +68,45 @@
           {% elif n_suppressed > 0 %}suppressed
           {% elif alarm1_rows %}healthy
           {% else %}unknown{% endif %}">
-          {% if n_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
-          {% elif n_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
-          {% elif alarm1_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
-          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+          {% if n_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+          {% elif n_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif alarm1_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+          {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
       </div>
 
       <div id="alarm1-kpis" class="alarm-ov-kpis"{% if not alarm1_rows %} style="display:none"{% endif %}>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-total" class="alarm-ov-kpi-num">{{ alarm1_rows | length }}</div>
-          <div class="alarm-ov-kpi-lbl">Monitored</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Monitored") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-critical" class="alarm-ov-kpi-num {% if n_critical > 0 %}ov-text-red{% endif %}">{{ n_critical }}</div>
-          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("In Alarm") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-suppressed" class="alarm-ov-kpi-num {% if n_suppressed > 0 %}ov-text-amber{% endif %}">{{ n_suppressed }}</div>
-          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-unknown" class="alarm-ov-kpi-num">{{ n_unknown }}</div>
-          <div class="alarm-ov-kpi-lbl">Unknown</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Unknown") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ n_healthy }}</div>
-          <div class="alarm-ov-kpi-lbl">Healthy</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Healthy") }}</div>
         </div>
       </div>
       <p id="alarm1-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm1_rows %} display:none{% endif %}">
-        No servers have been configured for this alarm yet.
+        {{ _("No servers have been configured for this alarm yet.") }}
       </p>
 
       <div class="alarm-ov-actions">
         <a href="{{ url_for('alarm_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-eye me-1"></i> View Details
+          <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
         <a href="{{ url_for('alarm_config_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-gear-fill me-1"></i> Configure
+          <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
 
@@ -134,8 +134,8 @@
             <i class="bi bi-alarm"></i>
           </div>
           <div>
-            <div class="alarm-ov-title">Alarm 2 — Outgoing Message Volume</div>
-            <div class="alarm-ov-desc">Fires when outgoing messages sent drops at or below threshold</div>
+            <div class="alarm-ov-title">{{ _("Alarm 2 \u2014 Outgoing Message Volume") }}</div>
+            <div class="alarm-ov-desc">{{ _("Fires when outgoing messages sent drops at or below threshold") }}</div>
           </div>
         </div>
 
@@ -144,45 +144,45 @@
           {% elif a2_suppressed > 0 %}suppressed
           {% elif alarm2_rows %}healthy
           {% else %}unknown{% endif %}">
-          {% if a2_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
-          {% elif a2_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
-          {% elif alarm2_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
-          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+          {% if a2_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+          {% elif a2_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif alarm2_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+          {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
       </div>
 
       <div id="alarm2-kpis" class="alarm-ov-kpis"{% if not alarm2_rows %} style="display:none"{% endif %}>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-total" class="alarm-ov-kpi-num">{{ alarm2_rows | length }}</div>
-          <div class="alarm-ov-kpi-lbl">Monitored</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Monitored") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-critical" class="alarm-ov-kpi-num {% if a2_critical > 0 %}ov-text-red{% endif %}">{{ a2_critical }}</div>
-          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("In Alarm") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-suppressed" class="alarm-ov-kpi-num {% if a2_suppressed > 0 %}ov-text-amber{% endif %}">{{ a2_suppressed }}</div>
-          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-unknown" class="alarm-ov-kpi-num">{{ a2_unknown }}</div>
-          <div class="alarm-ov-kpi-lbl">Unknown</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Unknown") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ a2_healthy }}</div>
-          <div class="alarm-ov-kpi-lbl">Healthy</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Healthy") }}</div>
         </div>
       </div>
       <p id="alarm2-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm2_rows %} display:none{% endif %}">
-        No rules have been configured for this alarm yet.
+        {{ _("No rules have been configured for this alarm yet.") }}
       </p>
 
       <div class="alarm-ov-actions">
         <a href="{{ url_for('alarm2_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-eye me-1"></i> View Details
+          <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
         <a href="{{ url_for('alarm2_config_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-gear-fill me-1"></i> Configure
+          <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
 
@@ -210,8 +210,8 @@
             <i class="bi bi-alarm"></i>
           </div>
           <div>
-            <div class="alarm-ov-title">Alarm 3 — Message Processing Failures</div>
-            <div class="alarm-ov-desc">Fires when MESSAGE_FAILED events meet or exceed threshold</div>
+            <div class="alarm-ov-title">{{ _("Alarm 3 \u2014 Message Processing Failures") }}</div>
+            <div class="alarm-ov-desc">{{ _("Fires when MESSAGE_FAILED events meet or exceed threshold") }}</div>
           </div>
         </div>
 
@@ -220,45 +220,45 @@
           {% elif a3_suppressed > 0 %}suppressed
           {% elif alarm3_rows %}healthy
           {% else %}unknown{% endif %}">
-          {% if a3_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
-          {% elif a3_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>Suppressed
-          {% elif alarm3_rows %}<i class="bi bi-check-circle-fill me-1"></i>All OK
-          {% else %}<i class="bi bi-question-circle me-1"></i>Not Configured{% endif %}
+          {% if a3_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+          {% elif a3_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif alarm3_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+          {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
       </div>
 
       <div id="alarm3-kpis" class="alarm-ov-kpis"{% if not alarm3_rows %} style="display:none"{% endif %}>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-total" class="alarm-ov-kpi-num">{{ alarm3_rows | length }}</div>
-          <div class="alarm-ov-kpi-lbl">Monitored</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Monitored") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-critical" class="alarm-ov-kpi-num {% if a3_critical > 0 %}ov-text-red{% endif %}">{{ a3_critical }}</div>
-          <div class="alarm-ov-kpi-lbl">In Alarm</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("In Alarm") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-suppressed" class="alarm-ov-kpi-num {% if a3_suppressed > 0 %}ov-text-amber{% endif %}">{{ a3_suppressed }}</div>
-          <div class="alarm-ov-kpi-lbl">Suppressed</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-unknown" class="alarm-ov-kpi-num">{{ a3_unknown }}</div>
-          <div class="alarm-ov-kpi-lbl">Unknown</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Unknown") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-healthy" class="alarm-ov-kpi-num ov-text-green">{{ a3_healthy }}</div>
-          <div class="alarm-ov-kpi-lbl">Healthy</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Healthy") }}</div>
         </div>
       </div>
       <p id="alarm3-no-cfg" style="font-size:0.82rem; color:var(--text-muted); margin:0;{% if alarm3_rows %} display:none{% endif %}">
-        No rules have been configured for this alarm yet.
+        {{ _("No rules have been configured for this alarm yet.") }}
       </p>
 
       <div class="alarm-ov-actions">
         <a href="{{ url_for('alarm3_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-eye me-1"></i> View Details
+          <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
         <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash btn-dash-sm">
-          <i class="bi bi-gear-fill me-1"></i> Configure
+          <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
 

@@ -19,8 +19,12 @@ dependencies = [
     "azure-servicebus==7.14.3",
     "azure-identity==1.23.0",  
     "urllib3>=2.6.3",
-    "setuptools>=82.0.0",  
+    "setuptools>=82.0.0",
+    "otel-lib",
 ]  
+
+[tool.uv.sources]
+otel-lib = { path = "../otel_lib" }
 
 [dependency-groups]
 dev = [
