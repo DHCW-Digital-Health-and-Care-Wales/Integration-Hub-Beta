@@ -418,12 +418,12 @@ def _all_known_rules(rules_cfg: dict) -> list[dict]:
         seen.add(r["id"])
         if not rules_cfg.get(r["id"], {}).get("deleted", False):
             merged.append(r)
-    for rid in rules_cfg:
-        if rid not in seen and not rules_cfg[rid].get("deleted", False):
+    for rid, rcfg in rules_cfg.items():
+        if rid not in seen and not rcfg.get("deleted", False):
             merged.append({"id": rid,
-                           "display_name": rules_cfg[rid].get("display_name", rid),
-                           "health_board": rules_cfg[rid].get("health_board", ""),
-                           "peer_service":  rules_cfg[rid].get("peer_service",  "")})
+                           "display_name": rcfg.get("display_name", rid),
+                           "health_board": rcfg.get("health_board", ""),
+                           "peer_service":  rcfg.get("peer_service",  "")})
     return merged
 
 

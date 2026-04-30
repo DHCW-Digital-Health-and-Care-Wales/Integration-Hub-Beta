@@ -1,36 +1,36 @@
 import logging
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
+
+import otel_lib.otel as otel_module
+from otel_lib import OtelCorrelationFilter, configure_otel, extract_trace_context, get_tracer, inject_trace_context
+from otel_lib.otel import _configure_noop
 
 
 class TestConfigureOtel(unittest.TestCase):
 
     def setUp(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         # Reset root logger filters between tests
         root_logger = logging.getLogger()
         root_logger.filters = []
 
     def tearDown(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         root_logger = logging.getLogger()
         root_logger.filters = []
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_no_connection_string_uses_noop(self) -> None:
-        from otel_lib import configure_otel
         configure_otel("test-service")
         provider = trace.get_tracer_provider()
         self.assertIsInstance(provider, TracerProvider)
 
     @patch.dict("os.environ", {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True)
     def test_configure_otel_empty_connection_string_uses_noop(self) -> None:
-        from otel_lib import configure_otel
         configure_otel("test-service")
         provider = trace.get_tracer_provider()
         self.assertIsInstance(provider, TracerProvider)
@@ -41,9 +41,7 @@ class TestConfigureOtel(unittest.TestCase):
         clear=True,
     )
     def test_configure_otel_with_connection_string_calls_azure_monitor(self) -> None:
-        from otel_lib import configure_otel
-        import otel_lib.otel as otel_module
-        with patch.object(otel_module, "configure_azure_monitor") as mock_configure:
+        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure:
             configure_otel("test-service")
             mock_configure.assert_called_once()
 
@@ -53,8 +51,6 @@ class TestConfigureOtel(unittest.TestCase):
         clear=True,
     )
     def test_configure_otel_azure_monitor_failure_falls_back_to_noop(self) -> None:
-        from otel_lib import configure_otel
-        import otel_lib.otel as otel_module
         with patch.object(otel_module, "configure_azure_monitor", side_effect=Exception("boom")):
             configure_otel("test-service")
         provider = trace.get_tracer_provider()
@@ -62,7 +58,6 @@ class TestConfigureOtel(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_installs_log_filter(self) -> None:
-        from otel_lib import configure_otel, OtelCorrelationFilter
         configure_otel("test-service")
         root_logger = logging.getLogger()
         filter_types = [type(f) for f in root_logger.filters]
@@ -70,7 +65,6 @@ class TestConfigureOtel(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_does_not_duplicate_log_filter(self) -> None:
-        from otel_lib import configure_otel, OtelCorrelationFilter
         configure_otel("test-service")
         configure_otel("test-service")
         root_logger = logging.getLogger()
@@ -79,7 +73,6 @@ class TestConfigureOtel(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_sets_service_name(self) -> None:
-        from otel_lib.otel import _configure_noop
         captured: list[TracerProvider] = []
         original_set = trace.set_tracer_provider
 
@@ -101,12 +94,10 @@ class TestConfigureOtel(unittest.TestCase):
 class TestGetTracer(unittest.TestCase):
 
     def test_get_tracer_returns_tracer(self) -> None:
-        from otel_lib import get_tracer
         tracer = get_tracer("test.module")
         self.assertIsNotNone(tracer)
 
     def test_get_tracer_different_names(self) -> None:
-        from otel_lib import get_tracer
         tracer1 = get_tracer("module.a")
         tracer2 = get_tracer("module.b")
         self.assertIsNotNone(tracer1)
@@ -116,18 +107,15 @@ class TestGetTracer(unittest.TestCase):
 class TestInjectExtractTraceContext(unittest.TestCase):
 
     def setUp(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         logging.getLogger().filters = []
 
     def tearDown(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         logging.getLogger().filters = []
 
     @patch.dict("os.environ", {}, clear=True)
     def test_inject_adds_traceparent_key(self) -> None:
-        from otel_lib import configure_otel, get_tracer, inject_trace_context
         configure_otel("test-service")
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span("test-span"):
@@ -136,7 +124,6 @@ class TestInjectExtractTraceContext(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_inject_does_not_mutate_input(self) -> None:
-        from otel_lib import configure_otel, get_tracer, inject_trace_context
         configure_otel("test-service")
         tracer = get_tracer(__name__)
         original = {"key": "value"}
@@ -147,7 +134,6 @@ class TestInjectExtractTraceContext(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_extract_returns_context(self) -> None:
-        from otel_lib import configure_otel, extract_trace_context, get_tracer, inject_trace_context
         configure_otel("test-service")
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span("root"):
@@ -157,13 +143,11 @@ class TestInjectExtractTraceContext(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_extract_empty_dict_returns_empty_context(self) -> None:
-        from otel_lib import extract_trace_context
         ctx = extract_trace_context({})
         self.assertIsNotNone(ctx)
 
     @patch.dict("os.environ", {}, clear=True)
     def test_inject_extract_round_trip_preserves_trace_id(self) -> None:
-        from otel_lib import configure_otel, extract_trace_context, get_tracer, inject_trace_context
         configure_otel("test-service")
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span("root") as span:
@@ -178,18 +162,15 @@ class TestInjectExtractTraceContext(unittest.TestCase):
 class TestOtelCorrelationFilter(unittest.TestCase):
 
     def setUp(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         logging.getLogger().filters = []
 
     def tearDown(self) -> None:
-        import otel_lib.otel as otel_module
         otel_module._otel_configured = False
         logging.getLogger().filters = []
 
     @patch.dict("os.environ", {}, clear=True)
     def test_filter_attaches_zeroed_ids_when_no_active_span(self) -> None:
-        from otel_lib import OtelCorrelationFilter
         f = OtelCorrelationFilter()
         record = logging.LogRecord("test", logging.INFO, "", 0, "msg", (), None)
         f.filter(record)
@@ -198,7 +179,6 @@ class TestOtelCorrelationFilter(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_filter_attaches_real_ids_within_span(self) -> None:
-        from otel_lib import OtelCorrelationFilter, configure_otel, get_tracer
         configure_otel("test-service")
         tracer = get_tracer(__name__)
         f = OtelCorrelationFilter()
@@ -212,7 +192,6 @@ class TestOtelCorrelationFilter(unittest.TestCase):
         self.assertEqual(record.otel_span_id, expected_span_id)  # type: ignore[attr-defined]
 
     def test_filter_always_returns_true(self) -> None:
-        from otel_lib import OtelCorrelationFilter
         f = OtelCorrelationFilter()
         record = logging.LogRecord("test", logging.INFO, "", 0, "msg", (), None)
         result = f.filter(record)

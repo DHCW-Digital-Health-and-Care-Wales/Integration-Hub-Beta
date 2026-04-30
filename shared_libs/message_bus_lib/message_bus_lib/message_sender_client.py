@@ -9,6 +9,7 @@ from azure.servicebus.exceptions import (
     OperationTimeoutError,
     ServiceBusError,
 )
+from otel_lib import inject_trace_context
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ class MessageSenderClient:
 
         if self.propagate_trace_context:
             try:
-                from otel_lib import inject_trace_context
                 props = inject_trace_context(props)
             except ImportError:
                 pass  # otel_lib not installed — skip trace propagation

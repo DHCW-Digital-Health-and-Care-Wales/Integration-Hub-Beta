@@ -83,7 +83,11 @@ def get_trace(operation_id: str) -> dict:
         return _empty()
 
     if response.status in (LogsQueryStatus.FAILURE, LogsQueryStatus.PARTIAL):
-        log.warning("Log Analytics trace query returned non-success status (%s): %s", response.status, response.partial_error)
+        log.warning(
+            "Log Analytics trace query returned non-success status (%s): %s",
+            response.status,
+            response.partial_error,
+        )
         return _empty()
 
     tables = response.tables

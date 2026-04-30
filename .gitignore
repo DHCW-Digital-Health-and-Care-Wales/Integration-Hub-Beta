@@ -176,3 +176,6 @@ cython_debug/
 tmp
 .DS_Store
 dashboard/alarm_state.json
+dashboard/alarm2_state.json
+dashboard/alarm_state.json
+dashboard/alarm2_state.json

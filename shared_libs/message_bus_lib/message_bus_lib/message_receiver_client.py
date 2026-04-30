@@ -4,6 +4,7 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Callable, Optional
 
+import opentelemetry.context as otel_context
 from azure.servicebus import (
     AutoLockRenewer,
     ServiceBusClient,
@@ -13,6 +14,7 @@ from azure.servicebus import (
     ServiceBusReceiver,
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
+from otel_lib import extract_trace_context
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +89,6 @@ class MessageReceiverClient:
             return handler(msg)
 
         try:
-            from otel_lib import extract_trace_context
-            import opentelemetry.context as otel_context
-
             props = dict(msg.application_properties or {})
             # Service Bus stores string keys as bytes in some SDK versions; normalise them.
             normalised = {k.decode() if isinstance(k, bytes) else k: v for k, v in props.items()}

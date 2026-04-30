@@ -81,7 +81,8 @@ class TestParseSpans(unittest.TestCase):
     def test_appRequests_mapped_to_spans(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = self._run([
-            [ts, "AppRequests", "POST /api/hl7", 42.5, True, "200", "/api/hl7", "parent1", "id1", "phw-transformer", None, ""],
+            [ts, "AppRequests", "POST /api/hl7", 42.5, True, "200",
+             "/api/hl7", "parent1", "id1", "phw-transformer", None, ""],
         ])
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["spans"]), 1)
@@ -96,7 +97,8 @@ class TestParseSpans(unittest.TestCase):
     def test_appDependencies_mapped_to_spans(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = self._run([
-            [ts, "AppDependencies", "ServiceBus.Send", 15.0, True, "200", "my-queue", "parent2", "id2", "phw-transformer", None, ""],
+            [ts, "AppDependencies", "ServiceBus.Send", 15.0, True, "200",
+             "my-queue", "parent2", "id2", "phw-transformer", None, ""],
         ])
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["spans"]), 1)
@@ -105,7 +107,8 @@ class TestParseSpans(unittest.TestCase):
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = self._run([
             [ts, "AppRequests", "POST /", 10.0, False, "500", "", "", "id0", "app", None, ""],
-            [ts, "AppExceptions", "System.NullReferenceException", None, None, None, None, None, None, "phw-transformer", 1, "Object ref not set"],
+            [ts, "AppExceptions", "System.NullReferenceException", None, None, None,
+             None, None, None, "phw-transformer", 1, "Object ref not set"],
         ])
         self.assertEqual(len(result["exceptions"]), 1)
         exc = result["exceptions"][0]
@@ -117,7 +120,8 @@ class TestParseSpans(unittest.TestCase):
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         result = self._run([
             [ts, "AppRequests", "GET /health", 5.0, True, "200", "", "", "id0", "app", None, ""],
-            [ts, "AppTraces", "Processing HL7 message", None, None, None, None, None, None, "phw-transformer", 1, "Processing HL7 message"],
+            [ts, "AppTraces", "Processing HL7 message", None, None, None,
+             None, None, None, "phw-transformer", 1, "Processing HL7 message"],
         ])
         self.assertEqual(len(result["logs"]), 1)
         entry = result["logs"][0]

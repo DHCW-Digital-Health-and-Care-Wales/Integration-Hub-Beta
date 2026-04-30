@@ -18,13 +18,6 @@ from typing import Any, Callable
 from flask import Flask, Response, jsonify, render_template, request
 
 from dashboard import config
-from dashboard.services.alarms import (
-    generate_rule_id as generate_alarm1_rule_id,
-    get_alarm_status,
-    get_config_page_data,
-    load_alarm_config,
-    save_alarm_config,
-)
 from dashboard.services.alarm2 import (
     generate_rule_id,
     get_alarm2_config_page_data,
@@ -34,10 +27,21 @@ from dashboard.services.alarm2 import (
 )
 from dashboard.services.alarm3 import (
     generate_rule_id as generate_alarm3_rule_id,
+)
+from dashboard.services.alarm3 import (
     get_alarm3_config_page_data,
     get_alarm3_status,
     load_alarm3_config,
     save_alarm3_config,
+)
+from dashboard.services.alarms import (
+    generate_rule_id as generate_alarm1_rule_id,
+)
+from dashboard.services.alarms import (
+    get_alarm_status,
+    get_config_page_data,
+    load_alarm_config,
+    save_alarm_config,
 )
 from dashboard.services.arm import discover_flows, queue_to_microservice_ids
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today

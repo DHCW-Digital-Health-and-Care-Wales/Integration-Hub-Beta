@@ -395,12 +395,12 @@ def _all_known_rules(rules_cfg: dict) -> list[dict]:
         seen.add(r["id"])
         if not rules_cfg.get(r["id"], {}).get("deleted", False):
             merged.append(r)
-    for rid in rules_cfg:
-        if rid not in seen and not rules_cfg[rid].get("deleted", False):
+    for rid, rule_data in rules_cfg.items():
+        if rid not in seen and not rule_data.get("deleted", False):
             merged.append({
                 "id":           rid,
-                "display_name": rules_cfg[rid].get("display_name", rid),
-                "workflow_id":  rules_cfg[rid].get("workflow_id", ""),
+                "display_name": rule_data.get("display_name", rid),
+                "workflow_id":  rule_data.get("workflow_id", ""),
             })
     return merged
 

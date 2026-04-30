@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 _otel_configured: bool = False
 
 
-def configure_otel(service_name: str, service_version: str = "1.0.0") -> None:
+def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
     """Configure OpenTelemetry for the service.
 
     Reads APPLICATIONINSIGHTS_CONNECTION_STRING from the environment. If the
@@ -34,9 +34,10 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> None:
     Args:
         service_name: The OTel service.name resource attribute (e.g. "phw-hl7-transformer").
         service_version: The OTel service.version resource attribute.
-    """
-    global _otel_configured
 
+    Returns:
+        True to indicate OTel has been configured.
+    """
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
 
     if connection_string:
@@ -48,7 +49,7 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> None:
         _configure_noop(service_name, service_version)
 
     _install_log_filter()
-    _otel_configured = True
+    return True
 
 
 def _configure_azure_monitor(service_name: str, service_version: str) -> None:
@@ -63,7 +64,7 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
                     "service.version": service_version,
                 }
             )
-        )
+        ) # type: ignore
         logger.info("OpenTelemetry configured with Azure Monitor exporter for service '%s'.", service_name)
     except Exception:
         logger.exception("Failed to configure Azure Monitor exporter — falling back to no-op.")
