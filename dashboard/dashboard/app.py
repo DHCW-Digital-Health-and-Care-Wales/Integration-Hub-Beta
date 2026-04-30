@@ -142,7 +142,12 @@ app.secret_key = config.FLASK_SECRET_KEY
 def _get_locale() -> str:
     return session.get("lang", config.DEFAULT_LANGUAGE)
 
-babel = Babel(app, locale_selector=_get_locale)
+babel = Babel(
+    app,
+    locale_selector=_get_locale,
+    # translations/ lives one level above the Flask root_path (dashboard/dashboard/)
+    default_translation_directories=str(Path(__file__).parent.parent / "translations"),
+)
 
 
 @app.context_processor

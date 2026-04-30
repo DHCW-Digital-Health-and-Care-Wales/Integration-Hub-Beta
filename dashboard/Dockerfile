@@ -24,7 +24,11 @@ RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 # Copy application source and install the project
 COPY dashboard/ /app/dashboard/
+COPY translations/ /app/translations/
 RUN uv --native-tls sync --locked --no-dev
+
+# Compile Babel translation catalogs (.po → .mo)
+RUN uv run pybabel compile -d /app/translations
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
