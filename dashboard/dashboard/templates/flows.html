@@ -401,7 +401,142 @@
       {% endif %}
 
     </div><!-- /flow-detail-body -->
-      </div><!-- /flow-detail-card -->
+
+      {# ── Alarms for this flow ───────────────────────────────────────────── #}
+      {% set flow_alarms = alarm_map.get(flow.id) %}
+      {% if flow_alarms %}
+      <div style="padding:0 1.25rem 1.25rem; border-top:1px solid var(--border-color); margin-top:-1px;">
+        <div class="section-title mt-3 mb-2">
+          <i class="bi bi-bell-fill" style="color:var(--accent-amber)"></i> Alarms
+        </div>
+        <div class="flow-alarm-grid">
+
+          {# ── Alarm 1 — Inactivity ── #}
+          {% set a = flow_alarms.alarm1 %}
+          {% if a %}
+            {% set st = a.status %}
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+              <div class="fac-header">
+                <span class="fac-name">
+                  <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
+                     style="color:{% if a.alarm_enabled %}var(--accent-amber){% else %}var(--text-muted){% endif %}"></i>
+                  Inactivity
+                </span>
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                  {% if a.alarm_enabled %}
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% endif %}
+                  {% else %}
+                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                  {% endif %}
+                  <a href="{{ url_for('alarm_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                </div>
+              </div>
+              <div class="fac-values">
+                <div class="fac-kv"><span class="fac-key">Day</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Evening</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Weekend</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+              </div>
+            </div>
+          {% else %}
+            <div class="flow-alarm-chip fac--unconfigured">
+              <div class="fac-header">
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> Inactivity</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+              </div>
+            </div>
+          {% endif %}
+
+          {# ── Alarm 2 — Outgoing Volume ── #}
+          {% set a = flow_alarms.alarm2 %}
+          {% if a %}
+            {% set st = a.status %}
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+              <div class="fac-header">
+                <span class="fac-name">
+                  <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
+                     style="color:{% if a.alarm_enabled %}var(--accent-cyan){% else %}var(--text-muted){% endif %}"></i>
+                  Volume
+                </span>
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                  {% if a.alarm_enabled %}
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% endif %}
+                  {% else %}
+                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                  {% endif %}
+                  <a href="{{ url_for('alarm2_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                </div>
+              </div>
+              <div class="fac-values">
+                <div class="fac-kv"><span class="fac-key">Window</span><span class="fac-val">{{ a.window_duration_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Threshold</span><span class="fac-val">≤ {{ a.threshold }} msgs</span></div>
+                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+              </div>
+            </div>
+          {% else %}
+            <div class="flow-alarm-chip fac--unconfigured">
+              <div class="fac-header">
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> Volume</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+              </div>
+            </div>
+          {% endif %}
+
+          {# ── Alarm 3 — Failures ── #}
+          {% set a = flow_alarms.alarm3 %}
+          {% if a %}
+            {% set st = a.status %}
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+              <div class="fac-header">
+                <span class="fac-name">
+                  <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
+                     style="color:{% if a.alarm_enabled %}var(--accent-red){% else %}var(--text-muted){% endif %}"></i>
+                  Failures
+                </span>
+                <div style="display:flex;align-items:center;gap:0.35rem;">
+                  {% if a.alarm_enabled %}
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% endif %}
+                  {% else %}
+                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                  {% endif %}
+                  <a href="{{ url_for('alarm3_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                </div>
+              </div>
+              <div class="fac-values">
+                <div class="fac-kv"><span class="fac-key">Window</span><span class="fac-val">{{ a.window_duration_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Threshold</span><span class="fac-val">≥ {{ a.threshold }} failures</span></div>
+                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+              </div>
+            </div>
+          {% else %}
+            <div class="flow-alarm-chip fac--unconfigured">
+              <div class="fac-header">
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> Failures</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+              </div>
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /flow-detail-card -->
       {% else %}
       <div class="no-data" style="padding:1.5rem;">
         <i class="bi bi-cloud-slash"></i>

@@ -137,6 +137,7 @@
             <th>
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>Alerting Gap
             </th>
+            <th style="width:2.5rem;"></th>
           </tr>
         </thead>
         <tbody>
@@ -195,6 +196,15 @@
                   <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} min left
                 </div>
               {% endif %}
+            </td>
+
+            <td style="text-align:center;">
+              <a href="{{ url_for('alarm3_config_page') }}#rule-{{ row.id }}"
+                 title="Go to config for {{ row.display_name }}"
+                 class="btn-dash"
+                 style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;">
+                <i class="bi bi-gear-fill"></i>
+              </a>
             </td>
 
           </tr>

@@ -3,12 +3,11 @@
 Config is persisted to ``alarm2_config.json`` in the dashboard root directory.
 State (last alarm fired time per rule) is persisted to ``alarm2_state.json``.
 
-Each rule monitors a specific health_board / peer_service combination and has
+Each rule monitors MESSAGE_SENT events for a specific workflow_id and has
 the following settings:
   alarm_enabled            – bool, whether Alarm 2 is active for this rule
   display_name             – human-readable label
-  health_board             – customDimensions["health_board"] filter value
-  peer_service             – customDimensions["peer_service"] filter value
+  workflow_id              – Properties["workflow_id"] filter value (e.g. "phw-to-mpi")
   window_duration_minutes  – lookback window for the messages_sent query
   threshold                – fire when sum(messages_sent) <= this value
   alerting_gap_minutes     – cooldown before the alarm re-fires
@@ -45,10 +44,9 @@ DEFAULT_ALERTING_GAP   = 60
 # Seed list of known rules — always present even if not yet enabled.
 KNOWN_RULES: list[dict] = [
     {
-        "id":            "phw-to-mpi-outgoing",
-        "display_name":  "PHW → MPI Outgoing",
-        "health_board":  "SHARED",
-        "peer_service":  "MPI",
+        "id":           "phw-to-mpi-outgoing",
+        "display_name": "PHW → MPI Outgoing",
+        "workflow_id":  "phw-to-mpi",
     },
 ]
 
@@ -132,21 +130,18 @@ def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
     results: dict[str, int | None] = {}
 
     for window_minutes, window_rules in by_window.items():
-        # Build a single query that returns totals per health_board/peer_service.
-        # Uses the workspace-based AppMetrics table (Properties instead of customDimensions).
-        pairs_kql = " or ".join(
-            f'(tostring(Properties["health_board"]) == "{re.sub(r"[^a-zA-Z0-9_\\-]", "", r["health_board"])}"'
-            f' and tostring(Properties["peer_service"]) == "{re.sub(r"[^a-zA-Z0-9_\\-]", "", r["peer_service"])}")'
+        safe_ids = [
+            re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"])
             for r in window_rules
-        )
+        ]
+        ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
         query = f"""
         AppMetrics
         | where TimeGenerated > ago({window_minutes}m)
         | where Name == "messages_sent"
-        | where {pairs_kql}
-        | extend health_board = tostring(Properties["health_board"]),
-                 peer_service  = tostring(Properties["peer_service"])
-        | summarize Total = sum(Sum) by health_board, peer_service
+        | extend workflow_id = tostring(Properties["workflow_id"])
+        | where workflow_id in ({ids_kql})
+        | summarize Total = sum(Sum) by workflow_id
         """
         try:
             client = LogsQueryClient(get_azure_credential())
@@ -161,22 +156,18 @@ def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
                     results[r["id"]] = None
                 continue
 
-            # Build lookup: (health_board, peer_service) → total
-            found: dict[tuple[str, str], int] = {}
+            found: dict[str, int] = {}
             for table in response.tables:
                 for row in table.rows:
                     row_dict = dict(zip(table.columns, row))
-                    hb  = (row_dict.get("health_board") or "").strip()
-                    ps  = (row_dict.get("peer_service")  or "").strip()
+                    wid = (row_dict.get("workflow_id") or "").strip()
                     val = row_dict.get("Total")
-                    if hb and ps:
-                        found[(hb, ps)] = int(val) if val is not None else 0
+                    if wid:
+                        found[wid] = int(val) if val is not None else 0
 
             for r in window_rules:
-                key = (r["health_board"].strip(), r["peer_service"].strip())
-                # A missing key means the KQL summarize returned no row for this
-                # pair — treat as 0 (no messages sent, not a query failure).
-                results[r["id"]] = found.get(key, 0)
+                # Missing key = no messages found in window → treat as 0.
+                results[r["id"]] = found.get(r["workflow_id"].strip(), 0)
 
         except Exception as exc:
             log.error("alarm2 query failed for window=%dm: %s", window_minutes, exc)
@@ -196,8 +187,7 @@ def _send_alarm2_email(
     messages_total: int,
     threshold: int,
     window_minutes: int,
-    health_board: str,
-    peer_service: str,
+    workflow_id: str,
     now: datetime,
     email_alerts_enabled: bool = False,
 ) -> None:
@@ -226,26 +216,22 @@ def _send_alarm2_email(
     <td style="border-bottom:1px solid #eee;">{display_name}</td>
   </tr>
   <tr>
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Health Board</td>
-    <td style="border-bottom:1px solid #eee;font-family:monospace;">{health_board}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Workflow ID</td>
+    <td style="border-bottom:1px solid #eee;font-family:monospace;">{workflow_id}</td>
   </tr>
   <tr style="background:#fff;">
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Peer Service</td>
-    <td style="border-bottom:1px solid #eee;font-family:monospace;">{peer_service}</td>
-  </tr>
-  <tr>
     <td style="font-weight:bold;border-bottom:1px solid #eee;">Messages Sent</td>
     <td style="border-bottom:1px solid #eee;color:#c0392b;font-weight:bold;">{messages_total:,}</td>
   </tr>
-  <tr style="background:#fff;">
+  <tr>
     <td style="font-weight:bold;border-bottom:1px solid #eee;">Threshold</td>
     <td style="border-bottom:1px solid #eee;">&lt;= {threshold:,}</td>
   </tr>
-  <tr>
+  <tr style="background:#fff;">
     <td style="font-weight:bold;border-bottom:1px solid #eee;">Lookback Window</td>
     <td style="border-bottom:1px solid #eee;">{window_label}</td>
   </tr>
-  <tr style="background:#fff;">
+  <tr>
     <td style="font-weight:bold;">Fired At (UTC)</td>
     <td>{now.strftime("%d %b %Y  %H:%M:%S UTC")}</td>
   </tr>
@@ -337,8 +323,7 @@ def get_alarm2_status() -> list[dict]:
                 rule_cfg.get("display_name") or rule.get("display_name", rid),
                 total, threshold,
                 int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                rule_cfg.get("health_board", rule.get("health_board", "")),
-                rule_cfg.get("peer_service",  rule.get("peer_service",  "")),
+                rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                 now,
                 email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
             )
@@ -354,8 +339,7 @@ def get_alarm2_status() -> list[dict]:
                     rule_cfg.get("display_name") or rule.get("display_name", rid),
                     total, threshold,
                     int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                    rule_cfg.get("health_board", rule.get("health_board", "")),
-                    rule_cfg.get("peer_service",  rule.get("peer_service",  "")),
+                    rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                     now,
                     email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
                 )
@@ -387,8 +371,7 @@ def _build_row(
     return {
         "id":                      rid,
         "display_name":            rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
-        "health_board":            rule_cfg.get("health_board",  rule_seed.get("health_board",  "")),
-        "peer_service":            rule_cfg.get("peer_service",   rule_seed.get("peer_service",   "")),
+        "workflow_id":             rule_cfg.get("workflow_id",  rule_seed.get("workflow_id",  "")),
         "window_duration_minutes": window,
         "window_label":            _window_label(window),
         "threshold":               int(rule_cfg.get("threshold",          DEFAULT_THRESHOLD)),
@@ -422,15 +405,13 @@ def _all_known_rules(rules_cfg: dict) -> list[dict]:
         if rid not in seen and not rcfg.get("deleted", False):
             merged.append({"id": rid,
                            "display_name": rcfg.get("display_name", rid),
-                           "health_board": rcfg.get("health_board", ""),
-                           "peer_service":  rcfg.get("peer_service",  "")})
+                           "workflow_id":  rcfg.get("workflow_id", "")})
     return merged
 
 
-def generate_rule_id(health_board: str, peer_service: str, existing_ids: set[str]) -> str:
-    """Generate a unique kebab-case rule ID from health_board + peer_service."""
-    base = re.sub(r"[^a-z0-9]+", "-",
-                  f"{health_board}-{peer_service}".lower()).strip("-")
+def generate_rule_id(workflow_id: str, existing_ids: set[str]) -> str:
+    """Generate a unique kebab-case rule ID from workflow_id."""
+    base = re.sub(r"[^a-z0-9]+", "-", workflow_id.lower()).strip("-") + "-outgoing"
     rid = base
     i = 2
     while rid in existing_ids:
@@ -449,10 +430,8 @@ def get_alarm2_config_page_data() -> list[dict]:
             "display_name":            rules_cfg.get(r["id"], {}).get("display_name")
                                        or r.get("display_name", r["id"]),
             "alarm_enabled":           rules_cfg.get(r["id"], {}).get("alarm_enabled", False),
-            "health_board":            rules_cfg.get(r["id"], {}).get("health_board",
-                                                                       r.get("health_board", "")),
-            "peer_service":            rules_cfg.get(r["id"], {}).get("peer_service",
-                                                                       r.get("peer_service", "")),
+            "workflow_id":             rules_cfg.get(r["id"], {}).get("workflow_id",
+                                                                       r.get("workflow_id", "")),
             "window_duration_minutes": int(rules_cfg.get(r["id"], {}).get(
                                            "window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
             "threshold":               int(rules_cfg.get(r["id"], {}).get(

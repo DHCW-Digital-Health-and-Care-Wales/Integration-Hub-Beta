@@ -40,9 +40,9 @@
       <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-cyan); flex-shrink:0;"></i>
       <div>
         <strong style="color:var(--text-primary);">How Alarm 2 works</strong><br>
-        The alarm queries <code>customMetrics</code> in Log Analytics for the <code>messages_sent</code>
-        metric, filtered by <strong>Health Board</strong> and <strong>Peer Service</strong>
-        dimensions over the configured <strong>Window</strong>.
+        The alarm queries <code>AppMetrics</code> in Log Analytics for the <code>messages_sent</code>
+        metric, filtered by <strong>Workflow ID</strong>
+        over the configured <strong>Window</strong>.
         It fires when the total count of messages sent is at or below the <strong>Threshold</strong>.
         Once fired, it will not re-fire until the <strong>Alerting Gap</strong> has elapsed.
       </div>
@@ -53,7 +53,7 @@
 
     {% if rules %}
     {% for r in rules %}
-    <div class="dash-card mb-3">
+    <div class="dash-card mb-3" id="rule-{{ r.id }}">
 
       <!-- Rule header -->
       <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2"
@@ -130,30 +130,17 @@
             <div class="cfg-hint">Human-readable label shown in the dashboard</div>
           </div>
 
-          <!-- Health Board -->
+          <!-- Workflow ID -->
           <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="health_board_{{ r.id }}">
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-cyan)"></i>
-              Health Board
+            <label class="cfg-label" for="workflow_id_{{ r.id }}">
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
+              Workflow ID
             </label>
             <input type="text" class="dash-input w-100"
-                   id="health_board_{{ r.id }}" name="health_board_{{ r.id }}"
-                   value="{{ r.health_board }}" maxlength="80"
-                   placeholder="e.g. SHARED">
-            <div class="cfg-hint">customDimensions["health_board"] filter value</div>
-          </div>
-
-          <!-- Peer Service -->
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="peer_service_{{ r.id }}">
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-purple)"></i>
-              Peer Service
-            </label>
-            <input type="text" class="dash-input w-100"
-                   id="peer_service_{{ r.id }}" name="peer_service_{{ r.id }}"
-                   value="{{ r.peer_service }}" maxlength="80"
-                   placeholder="e.g. MPI">
-            <div class="cfg-hint">customDimensions["peer_service"] filter value</div>
+                   id="workflow_id_{{ r.id }}" name="workflow_id_{{ r.id }}"
+                   value="{{ r.workflow_id }}" maxlength="120"
+                   placeholder="e.g. phw-to-mpi">
+            <div class="cfg-hint">Properties["workflow_id"] filter value</div>
           </div>
 
           <!-- Window duration -->
@@ -233,25 +220,14 @@
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_health_board">
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-cyan)"></i>
-              Health Board <span style="color:var(--accent-red)">*</span>
+            <label class="cfg-label" for="new_workflow_id">
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
+              Workflow ID <span style="color:var(--accent-red)">*</span>
             </label>
             <input type="text" class="dash-input w-100"
-                   id="new_health_board" name="new_health_board"
-                   maxlength="80" placeholder="e.g. PIMS">
-            <div class="cfg-hint">customDimensions["health_board"] filter value</div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_peer_service">
-              <i class="bi bi-filter-circle me-1" style="color:var(--accent-purple)"></i>
-              Peer Service <span style="color:var(--accent-red)">*</span>
-            </label>
-            <input type="text" class="dash-input w-100"
-                   id="new_peer_service" name="new_peer_service"
-                   maxlength="80" placeholder="e.g. MPI">
-            <div class="cfg-hint">customDimensions["peer_service"] filter value</div>
+                   id="new_workflow_id" name="new_workflow_id"
+                   maxlength="120" placeholder="e.g. phw-to-mpi">
+            <div class="cfg-hint">Properties["workflow_id"] filter value</div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
@@ -369,6 +345,14 @@
     pointer-events: none;
     border-left: 3px solid var(--accent-red) !important;
   }
+  @keyframes rule-card-highlight {
+    0%   { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    65%  { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    100% { box-shadow: none; background: transparent; }
+  }
+  .rule-card--highlighted {
+    animation: rule-card-highlight 2.8s ease-out forwards;
+  }
 </style>
 
 <script>
@@ -435,7 +419,7 @@
       if (!visible) {
         // Scroll to and focus the first field
         addPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        document.getElementById('new_health_board').focus();
+        document.getElementById('new_workflow_id').focus();
       }
     });
   }
@@ -458,6 +442,22 @@
       window.showUnsavedDialog(backBtn.href);
     });
   }
+  // Highlight the rule card targeted by the URL fragment
+  (function () {
+    var hash = window.location.hash;
+    if (!hash) return;
+    var card = document.querySelector(hash + '.dash-card');
+    if (!card) return;
+    card.classList.add('rule-card--highlighted');
+    // Let the browser finish its own native fragment scroll first,
+    // then override it to centre the card in the viewport.
+    setTimeout(function () {
+      var rect       = card.getBoundingClientRect();
+      var cardMid    = rect.top + window.scrollY + rect.height / 2;
+      var targetTop  = cardMid - window.innerHeight / 2;
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }, 50);
+  })();
 </script>
 
 {% endblock %}
