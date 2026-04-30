@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Trace {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}{% endblock %}
+{% block title %}{{ _("Trace") }} {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -10,11 +10,11 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-diagram-2" style="color:var(--accent-cyan)"></i>
-        Trace: {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}
+        {{ _("Trace") }}: {{ operation_id[:16] }}{% if operation_id|length > 16 %}…{% endif %}
       </h1>
       <p class="page-subtitle">
         <a href="javascript:history.back()" style="color:var(--accent-cyan); text-decoration:none;">
-          <i class="bi bi-arrow-left"></i> Back
+          <i class="bi bi-arrow-left"></i> {{ _("Back") }}
         </a>
         {% if trace_data.start_time %}
         &nbsp;·&nbsp; <span style="color:var(--text-muted);">
@@ -39,7 +39,7 @@
       <div class="kpi-icon blue"><i class="bi bi-diagram-2"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ trace_data.spans | length }}</div>
-        <div class="kpi-label">Spans</div>
+        <div class="kpi-label">{{ _("Spans") }}</div>
       </div>
     </div>
 
@@ -47,7 +47,7 @@
       <div class="kpi-icon blue"><i class="bi bi-stopwatch"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ trace_data.duration_ms }}ms</div>
-        <div class="kpi-label">Total Duration</div>
+        <div class="kpi-label">{{ _("Total Duration") }}</div>
       </div>
     </div>
 
@@ -58,7 +58,7 @@
              title="{{ trace_data.spans | map(attribute='app_name') | select | unique | join(', ') }}">
           {{ trace_data.spans | map(attribute='app_name') | select | unique | join(', ') or '—' }}
         </div>
-        <div class="kpi-label">Apps Involved</div>
+        <div class="kpi-label">{{ _("Apps Involved") }}</div>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
         <div class="kpi-number {% if trace_data.exceptions | length > 0 %}text-danger{% endif %}">
           {{ trace_data.exceptions | length }}
         </div>
-        <div class="kpi-label">Exceptions</div>
+        <div class="kpi-label">{{ _("Exceptions") }}</div>
       </div>
     </div>
 
@@ -81,7 +81,7 @@
     <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color);">
       <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
         <i class="bi bi-bar-chart-steps me-1" style="color:var(--accent-cyan);"></i>
-        Span Waterfall
+        {{ _("Span Waterfall") }}
       </h6>
     </div>
     <div style="padding:1rem 1.25rem; overflow-x:auto;">
@@ -104,16 +104,16 @@
   {% if trace_data.exceptions %}
   <div class="queue-table-wrapper mb-3">
     <div class="queue-table-header">
-      <h6><i class="bi bi-bug-fill text-danger me-1"></i> Exceptions</h6>
+      <h6><i class="bi bi-bug-fill text-danger me-1"></i> {{ _("Exceptions") }}</h6>
     </div>
     <div class="scroll-panel">
       <table class="dash-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>App</th>
-            <th>Type</th>
-            <th>Message</th>
+            <th>{{ _("Timestamp") }}</th>
+            <th>{{ _("App") }}</th>
+            <th>{{ _("Type") }}</th>
+            <th>{{ _("Message") }}</th>
           </tr>
         </thead>
         <tbody>
@@ -137,7 +137,7 @@
   {% if trace_data.logs %}
   <div class="queue-table-wrapper">
     <div class="queue-table-header" style="cursor:pointer; user-select:none;" onclick="toggleLogs()">
-      <h6><i class="bi bi-journal-text me-1"></i> Trace Logs ({{ trace_data.logs | length }})</h6>
+      <h6><i class="bi bi-journal-text me-1"></i> {{ _("Trace Logs") }} ({{ trace_data.logs | length }})</h6>
       <span id="logs-toggle-icon" style="color:var(--text-muted);"><i class="bi bi-chevron-right"></i></span>
     </div>
     <div id="logs-panel" style="display:none;">
@@ -145,10 +145,10 @@
         <table class="dash-table">
           <thead>
             <tr>
-              <th>Timestamp</th>
-              <th>App</th>
-              <th>Severity</th>
-              <th>Message</th>
+              <th>{{ _("Timestamp") }}</th>
+              <th>{{ _("App") }}</th>
+              <th>{{ _("Severity") }}</th>
+              <th>{{ _("Message") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -174,12 +174,12 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem;">
       <i class="bi bi-search" style="font-size:2.5rem; color:var(--text-dim); opacity:0.6;"></i>
-      <span style="font-size:1rem; font-weight:600;">No trace found</span>
+      <span style="font-size:1rem; font-weight:600;">{{ _("No trace found") }}</span>
       <span style="color:var(--text-muted);">
         {% if not operation_id | replace('0', '') %}
-          This exception has no trace context — it was not part of a traced request.
+          {{ _("This exception has no trace context \u2014 it was not part of a traced request.") }}
         {% else %}
-          No spans were found for operation ID:
+          {{ _("No spans were found for operation ID:") }}
           <code style="font-size:0.78rem; color:var(--accent-cyan);">{{ operation_id }}</code>
         {% endif %}
       </span>

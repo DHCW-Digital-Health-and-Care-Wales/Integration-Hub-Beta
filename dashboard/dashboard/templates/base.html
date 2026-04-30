@@ -108,13 +108,13 @@
 
 <!-- Live update toast -->
 <div id="live-indicator">
-  <i class="bi bi-arrow-repeat"></i> Updated
+  <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
 </div>
 
 {% if data_is_stale | default(false) %}
 <!-- Stale data toast — hidden by JS once fresh data arrives -->
 <div id="stale-toast">
-  <i class="bi bi-arrow-repeat spin-slow"></i> Refreshing data…
+  <i class="bi bi-arrow-repeat spin-slow"></i> {{ _("Refreshing data\u2026") }}
 </div>
 {% endif %}
 
@@ -132,7 +132,7 @@
     <!-- Toggler -->
     <button class="navbar-toggler border-0 text-white" type="button"
             data-bs-toggle="collapse" data-bs-target="#mainNav"
-            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            aria-controls="mainNav" aria-expanded="false" aria-label="{{ _('Toggle navigation') }}">
       <i class="bi bi-list fs-5"></i>
     </button>
 
@@ -142,42 +142,42 @@
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"
              href="{{ url_for('index') }}">
-            <i class="bi bi-grid-1x2-fill"></i> Overview
+            <i class="bi bi-grid-1x2-fill"></i> {{ _("Overview") }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'flows_page' %}active{% endif %}"
              href="{{ url_for('flows_page') }}">
-            <i class="bi bi-diagram-3-fill"></i> Flows
+            <i class="bi bi-diagram-3-fill"></i> {{ _("Flows") }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'service_bus_page' %}active{% endif %}"
              href="{{ url_for('service_bus_page') }}">
-            <i class="bi bi-stack"></i> Service Bus
+            <i class="bi bi-stack"></i> {{ _("Service Bus") }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'exceptions_page' %}active{% endif %}"
              href="{{ url_for('exceptions_page') }}">
-            <i class="bi bi-exclamation-triangle-fill"></i> Exceptions
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ _("Exceptions") }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'messages_page' %}active{% endif %}"
              href="{{ url_for('messages_page') }}">
-            <i class="bi bi-chat-square-text-fill"></i> Messages
+            <i class="bi bi-chat-square-text-fill"></i> {{ _("Messages") }}
           </a>
         </li>
 
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint in ['alarms_overview_page', 'alarm_page', 'alarm_config_page', 'alarm2_page', 'alarm2_config_page', 'alarm3_page', 'alarm3_config_page'] %}active{% endif %}"
              href="{{ url_for('alarms_overview_page') }}" role="link">
-            <i class="bi bi-bell-fill"></i> Alarms
+            <i class="bi bi-bell-fill"></i> {{ _("Alarms") }}
           </a>
         </li>
 
@@ -189,18 +189,18 @@
           <span id="nav-health-badge"
                 class="nav-health-badge {{ status.system_health }}"
                 data-system-health>
-            {% if status.system_health == 'healthy' %}ALL HEALTHY
-            {% elif status.system_health == 'warning' %}WARNINGS
-            {% elif status.system_health == 'critical' %}CRITICAL
-            {% else %}UNKNOWN{% endif %}
+            {% if status.system_health == 'healthy' %}{{ _("ALL HEALTHY") }}
+            {% elif status.system_health == 'warning' %}{{ _("WARNINGS") }}
+            {% elif status.system_health == 'critical' %}{{ _("CRITICAL") }}
+            {% else %}{{ _("UNKNOWN") }}{% endif %}
           </span>
         {% endif %}
         <span class="text-muted" style="font-size:0.7rem;">
           <i class="bi bi-circle-fill" style="font-size:0.45rem; color:var(--accent-green);"></i>
-          LIVE
+          {{ _("LIVE") }}
         </span>
         <!-- Theme toggle -->
-        <button id="theme-toggle" title="Toggle light/dark theme"
+        <button id="theme-toggle" title="{{ _('Toggle light/dark theme') }}"
                 style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:1rem;transition:background 0.15s;">
           <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
         </button>
@@ -224,8 +224,8 @@
 </main>
 
 <footer class="dash-footer">
-  NHS Wales — Integration Hub Dashboard &nbsp;|&nbsp;
-  Powered by Azure Service Bus &amp; Application Insights &nbsp;|&nbsp;
+  {{ _("NHS Wales \u2014 Integration Hub Dashboard") }} &nbsp;|&nbsp;
+  {{ _("Powered by Azure Service Bus & Application Insights") }} &nbsp;|&nbsp;
   <span id="footer-time"></span>
 </footer>
 
@@ -334,17 +334,17 @@
           <div id="unsaved-modal-title" style="
             font-size:1rem; font-weight:700;
             color:var(--text-primary,#f1f5f9); line-height:1.25;">
-            Unsaved Changes
+            {{ _("Unsaved Changes") }}
           </div>
           <div style="font-size:0.78rem; color:var(--text-muted,#94a3b8); margin-top:2px;">
-            You have changes that haven't been saved yet.
+            {{ _("You have changes that haven't been saved yet.") }}
           </div>
         </div>
       </div>
 
       <!-- Body -->
       <p style="font-size:0.83rem; color:var(--text-muted,#94a3b8); margin:0 0 1.5rem;">
-        Would you like to stay on this page and save your changes, or leave and discard them?
+        {{ _("Would you like to stay on this page and save your changes, or leave and discard them?") }}
       </p>
 
       <!-- Buttons -->
@@ -356,7 +356,7 @@
           border-radius:8px; padding:0.45rem 1rem;
           font-size:0.82rem; font-weight:600; cursor:pointer;
           transition:background .15s, border-color .15s;">
-          <i class="bi bi-box-arrow-left me-1"></i>Leave without saving
+          <i class="bi bi-box-arrow-left me-1"></i>{{ _("Leave without saving") }}
         </button>
         <button id="unsaved-modal-stay" type="button" style="
           background:var(--accent-cyan,#06b6d4);
@@ -364,7 +364,7 @@
           border-radius:8px; padding:0.45rem 1rem;
           font-size:0.82rem; font-weight:600; cursor:pointer;
           transition:background .15s;">
-          <i class="bi bi-floppy-fill me-1"></i>Stay &amp; save
+          <i class="bi bi-floppy-fill me-1"></i>{{ _("Stay & save") }}
         </button>
       </div>
     </div>

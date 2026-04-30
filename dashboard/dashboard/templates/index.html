@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Overview{% endblock %}
+{% block title %}{{ _("Overview") }}{% endblock %}
 
 {% block head %}
 <script>window.REFRESH_INTERVAL = {{ refresh_interval }};</script>
@@ -14,18 +14,18 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-grid-1x2-fill" style="color:var(--accent-blue)"></i>
-        Mission Control
+        {{ _("Mission Control") }}
       </h1>
-      <p class="page-subtitle">Real-time view of all HL7 integration flows</p>
+      <p class="page-subtitle">{{ _("Real-time view of all HL7 integration flows") }}</p>
     </div>
     <div class="refresh-bar">
-      <span>Last updated: <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
+      <span>{{ _("Last updated:") }} <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
       <div class="refresh-countdown">
         <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
-        <span id="countdown-num" class="countdown-num">{{ refresh_interval }}</span>s
+        <span id="countdown-num" class="countdown-num">{{ refresh_interval }}</span>{{ _("s") }}
       </div>
-      <button class="btn-dash" id="manual-refresh" title="Refresh now">
-        <i class="bi bi-arrow-repeat"></i> Refresh
+      <button class="btn-dash" id="manual-refresh" title="{{ _('Refresh now') }}">
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </button>
     </div>
   </div>
@@ -37,7 +37,7 @@
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-total-active">{{ status.kpis.total_active_messages }}</div>
-        <div class="kpi-label">Active Messages</div>
+        <div class="kpi-label">{{ _("Active Messages") }}</div>
       </div>
     </a>
 
@@ -48,7 +48,7 @@
       <div class="kpi-body">
         <div class="kpi-number {% if status.kpis.total_dlq_messages > 0 %}text-danger{% endif %}"
              id="kpi-total-dlq">{{ status.kpis.total_dlq_messages }}</div>
-        <div class="kpi-label">Dead-Letter Messages</div>
+        <div class="kpi-label">{{ _("Dead-Letter Messages") }}</div>
       </div>
     </a>
 
@@ -58,7 +58,7 @@
       </div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-exceptions-1h">{{ status.kpis.exception_count_1h }}</div>
-        <div class="kpi-label">Exceptions (1h)</div>
+        <div class="kpi-label">{{ _("Exceptions (1h)") }}</div>
       </div>
     </a>
 
@@ -66,7 +66,7 @@
       <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number" id="kpi-flows-healthy">{{ status.kpis.flows_healthy }}</div>
-        <div class="kpi-label">Flows Healthy</div>
+        <div class="kpi-label">{{ _("Flows Healthy") }}</div>
       </div>
     </a>
 
@@ -75,7 +75,7 @@
       <div class="kpi-body">
         <div class="kpi-number {% if status.kpis.flows_warning > 0 %}text-warning{% endif %}"
              id="kpi-flows-warning">{{ status.kpis.flows_warning }}</div>
-        <div class="kpi-label">Flows Warning</div>
+        <div class="kpi-label">{{ _("Flows Warning") }}</div>
       </div>
     </a>
 
@@ -84,7 +84,7 @@
       <div class="kpi-body">
         <div class="kpi-number {% if status.kpis.flows_critical > 0 %}text-danger{% endif %}"
              id="kpi-flows-critical">{{ status.kpis.flows_critical }}</div>
-        <div class="kpi-label">Flows Critical</div>
+        <div class="kpi-label">{{ _("Flows Critical") }}</div>
       </div>
     </a>
 
@@ -92,22 +92,22 @@
 
   <!-- ======================== Flow Cards ======================== -->
   <div class="section-header">
-    <span class="section-title"><i class="bi bi-diagram-3"></i> Integration Flows</span>
+    <span class="section-title"><i class="bi bi-diagram-3"></i> {{ _("Integration Flows") }}</span>
     <a href="{{ url_for('flows_page') }}" class="btn-dash" style="font-size:0.72rem;">
-      <i class="bi bi-arrow-right-circle"></i> Detailed View
+      <i class="bi bi-arrow-right-circle"></i> {{ _("Detailed View") }}
     </a>
   </div>
 
   <div class="flow-filter-bar">
     <div class="flow-search-wrap">
       <i class="bi bi-search flow-search-icon"></i>
-      <input id="flow-search" type="search" placeholder="Search flows…" autocomplete="off" oninput="filterFlows()">
+      <input id="flow-search" type="search" placeholder="{{ _('Search flows\u2026') }}" autocomplete="off" oninput="filterFlows()">
     </div>
     <div class="flow-filter-btns">
-      <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">All</button>
-      <button class="flow-filter-btn healthy"           data-filter="healthy"  onclick="setFlowFilter(this,'healthy')">Healthy</button>
-      <button class="flow-filter-btn warning"           data-filter="warning"  onclick="setFlowFilter(this,'warning')">Warning</button>
-      <button class="flow-filter-btn critical"          data-filter="critical" onclick="setFlowFilter(this,'critical')">Critical</button>
+      <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">{{ _("All") }}</button>
+      <button class="flow-filter-btn healthy"           data-filter="healthy"  onclick="setFlowFilter(this,'healthy')">{{ _("Healthy") }}</button>
+      <button class="flow-filter-btn warning"           data-filter="warning"  onclick="setFlowFilter(this,'warning')">{{ _("Warning") }}</button>
+      <button class="flow-filter-btn critical"          data-filter="critical" onclick="setFlowFilter(this,'critical')">{{ _("Critical") }}</button>
     </div>
   </div>
 
@@ -116,11 +116,11 @@
       <thead>
         <tr>
           <th style="width:16px;"></th>
-          <th>Flow</th>
-          <th>Route</th>
-          <th class="text-end">Active</th>
-          <th class="text-end">DLQ</th>
-          <th>Status</th>
+          <th>{{ _("Flow") }}</th>
+          <th>{{ _("Route") }}</th>
+          <th class="text-end">{{ _("Active") }}</th>
+          <th class="text-end">{{ _("DLQ") }}</th>
+          <th>{{ _("Status") }}</th>
         </tr>
       </thead>
       <tbody>
@@ -151,12 +151,12 @@
         </tr>
         {% else %}
         <tr><td colspan="6" class="text-center" style="color:var(--text-dim); padding:2rem;">
-          No flow data available — check Azure credentials
+          {{ _("No flow data available \u2014 check Azure credentials") }}
         </td></tr>
         {% endfor %}
       </tbody>
     </table>
-    <p class="flow-no-results" id="flow-no-results" style="display:none; padding:1rem 1.25rem; margin:0;">No flows match your search.</p>
+    <p class="flow-no-results" id="flow-no-results" style="display:none; padding:1rem 1.25rem; margin:0;">{{ _("No flows match your search.") }}</p>
   </div><!-- /flows-compact-wrap -->
 
   <!-- Two-column lower section -->
@@ -166,9 +166,9 @@
     <div class="col-12 col-xl-5">
       <div class="queue-table-wrapper h-100">
         <div class="queue-table-header">
-          <h6><i class="bi bi-exclamation-triangle text-danger me-1"></i> Recent Exceptions <span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">(last hour)</span></h6>
+          <h6><i class="bi bi-exclamation-triangle text-danger me-1"></i> {{ _("Recent Exceptions") }} <span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">({{ _("last hour") }})</span></h6>
           <a href="{{ url_for('exceptions_page') }}" class="btn-dash" style="font-size:0.7rem;">
-            View All <i class="bi bi-arrow-right"></i>
+            {{ _("View All") }} <i class="bi bi-arrow-right"></i>
           </a>
         </div>
         <div class="scroll-panel" style="max-height:280px;">
@@ -176,11 +176,11 @@
           <table class="dash-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>App</th>
-                <th>Type</th>
-                <th>Message</th>
-                <th>Trace</th>
+                <th>{{ _("Time") }}</th>
+                <th>{{ _("App") }}</th>
+                <th>{{ _("Type") }}</th>
+                <th>{{ _("Message") }}</th>
+                <th>{{ _("Trace") }}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,9 +201,9 @@
                 <td style="font-size:0.68rem; white-space:nowrap;">
                   {% if exc.operation_id and exc.operation_id | replace('0', '') %}
                   <a href="{{ url_for('trace_page', operation_id=exc.operation_id) }}"
-                     title="View trace"
+                     title="{{ _('View trace') }}"
                      style="color:var(--accent-cyan);">
-                    <i class="bi bi-diagram-2"></i> trace
+                    <i class="bi bi-diagram-2"></i> {{ _("trace") }}
                   </a>
                   {% else %}—{% endif %}
                 </td>
@@ -214,7 +214,7 @@
           {% else %}
           <div class="no-data py-4">
             <i class="bi bi-check-circle" style="font-size:1.5rem; color:var(--accent-green); opacity:0.8;"></i>
-            <span style="font-size:0.8rem;">No exceptions in the last hour</span>
+            <span style="font-size:0.8rem;">{{ _("No exceptions in the last hour") }}</span>
           </div>
           {% endif %}
         </div>
@@ -225,9 +225,9 @@
     <div class="col-12 col-xl-7">
       <div class="queue-table-wrapper">
         <div class="queue-table-header">
-          <h6><i class="bi bi-stack text-info me-1"></i> Queue Health</h6>
+          <h6><i class="bi bi-stack text-info me-1"></i> {{ _("Queue Health") }}</h6>
           <a href="{{ url_for('service_bus_page') }}" class="btn-dash" style="font-size:0.7rem;">
-            Full View <i class="bi bi-arrow-right"></i>
+            {{ _("Full View") }} <i class="bi bi-arrow-right"></i>
           </a>
         </div>
         {% if status.queues %}
@@ -235,11 +235,11 @@
           <table class="dash-table" id="queue-table">
             <thead>
               <tr>
-                <th data-sort="name">Queue Name <span class="sort-icon"></span></th>
-                <th data-sort="active" class="text-end">Active <span class="sort-icon"></span></th>
-                <th data-sort="dlq"    class="text-end">DLQ <span class="sort-icon"></span></th>
-                <th data-sort="sched"  class="text-end">Sched. <span class="sort-icon"></span></th>
-                <th>Status</th>
+                <th data-sort="name">{{ _("Queue Name") }} <span class="sort-icon"></span></th>
+                <th data-sort="active" class="text-end">{{ _("Active") }} <span class="sort-icon"></span></th>
+                <th data-sort="dlq"    class="text-end">{{ _("DLQ") }} <span class="sort-icon"></span></th>
+                <th data-sort="sched"  class="text-end">{{ _("Sched.") }} <span class="sort-icon"></span></th>
+                <th>{{ _("Status") }}</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +263,7 @@
         {% else %}
         <div class="no-data">
           <i class="bi bi-cloud-slash"></i>
-          <span>Queue data unavailable — check Azure Service Bus credentials</span>
+          <span>{{ _("Queue data unavailable \u2014 check Azure Service Bus credentials") }}</span>
         </div>
         {% endif %}
       </div>

@@ -41,11 +41,11 @@
   #lamp-canvas-el { display: block; width: 100%; height: 100%; }
 </style>
 
-<div id="lamp-modal-overlay" role="dialog" aria-modal="true" aria-label="Street Lamp Simulator">
+<div id="lamp-modal-overlay" role="dialog" aria-modal="true" aria-label="{{ _('Street Lamp Simulator') }}">
   <div id="lamp-modal">
-    <button id="lamp-modal-close" title="Close (Esc)">&#x2715;</button>
+    <button id="lamp-modal-close" title="{{ _('Close (Esc)') }}">&#x2715;</button>
     <canvas id="lamp-canvas-el"></canvas>
-    <div id="lamp-hint-badge">👆 Drag · 🤏 Pinch zoom · ESC to close</div>
+    <div id="lamp-hint-badge">{{ _("👆 Drag · 🤏 Pinch zoom · ESC to close") }}</div>
   </div>
 </div>
 

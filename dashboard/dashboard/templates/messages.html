@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Messages{% endblock %}
+{% block title %}{{ _("Messages") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,12 +9,12 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-chat-square-text-fill" style="color:var(--accent-purple)"></i>
-        HL7 Messages
+        {{ _("HL7 Messages") }}
       </h1>
-      <p class="page-subtitle">Messages processed today via Application Insights custom events</p>
+      <p class="page-subtitle">{{ _("Messages processed today via Application Insights custom events") }}</p>
     </div>
     <a href="{{ url_for('messages_page') }}" class="btn-dash">
-      <i class="bi bi-arrow-repeat"></i> Refresh
+      <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
     </a>
   </div>
 
@@ -22,11 +22,11 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-cyan); padding:0.7rem 1rem; display:flex; align-items:center; justify-content:space-between;">
     <span style="font-size:0.82rem;">
       <i class="bi bi-funnel-fill" style="color:var(--accent-cyan)"></i>
-      Filtered by queue: <strong style="color:var(--accent-cyan)">{{ queue_filter }}</strong>
+      {{ _("Filtered by queue:") }} <strong style="color:var(--accent-cyan)">{{ queue_filter }}</strong>
       {% if flow_label %}<span style="color:var(--text-muted)"> · {{ flow_label }}</span>{% endif %}
     </span>
     <a href="{{ url_for('messages_page') }}" class="btn-dash btn-dash--sm">
-      <i class="bi bi-x-lg"></i> Clear filter
+      <i class="bi bi-x-lg"></i> {{ _("Clear filter") }}
     </a>
   </div>
   {% endif %}
@@ -38,7 +38,7 @@
       <div class="kpi-icon purple"><i class="bi bi-chat-square-text-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ messages | length }}</div>
-        <div class="kpi-label">Messages Today</div>
+        <div class="kpi-label">{{ _("Messages Today") }}</div>
       </div>
     </a>
     {% set apps = messages | map(attribute='app') | select | unique | list %}
@@ -46,7 +46,7 @@
       <div class="kpi-icon cyan"><i class="bi bi-app-indicator"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ apps | length }}</div>
-        <div class="kpi-label">Distinct Apps</div>
+        <div class="kpi-label">{{ _("Distinct Apps") }}</div>
       </div>
     </div>
     {% set events = messages | map(attribute='event') | select | unique | list %}
@@ -54,7 +54,7 @@
       <div class="kpi-icon blue"><i class="bi bi-lightning-charge-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ events | length }}</div>
-        <div class="kpi-label">Event Types</div>
+        <div class="kpi-label">{{ _("Event Types") }}</div>
       </div>
     </div>
   </div>
@@ -62,23 +62,23 @@
 
   <!-- Messages chart -->
   <div class="section-header">
-    <span class="section-title"><i class="bi bi-graph-up"></i> Service Bus Messages</span>
+    <span class="section-title"><i class="bi bi-graph-up"></i> {{ _("Service Bus Messages") }}</span>
   </div>
   <div class="dash-card mb-3">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
-      <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Show data for the last:</span>
+      <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Show data for the last:") }}</span>
       <div style="display:flex; align-items:center; gap:6px;">
         <div id="metrics-timespan-btns" style="display:flex; gap:4px;">
-          <button class="btn-dash btn-dash--sm metrics-ts-btn active" data-hours="1">1 hour</button>
-          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="6">6 hours</button>
-          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="12">12 hours</button>
-          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="24">1 day</button>
-          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="168">7 days</button>
-          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="720">30 days</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn active" data-hours="1">{{ _("1 hour") }}</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="6">{{ _("6 hours") }}</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="12">{{ _("12 hours") }}</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="24">{{ _("1 day") }}</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="168">{{ _("7 days") }}</button>
+          <button class="btn-dash btn-dash--sm metrics-ts-btn" data-hours="720">{{ _("30 days") }}</button>
         </div>
         <button id="chart-reset-zoom" class="btn-dash btn-dash--sm"
                 style="display:none; color:var(--accent-cyan); border-color:var(--accent-cyan);">
-          <i class="bi bi-zoom-out"></i> Reset Zoom
+          <i class="bi bi-zoom-out"></i> {{ _("Reset Zoom") }}
         </button>
       </div>
     </div>
@@ -87,30 +87,30 @@
     </div>
     <div id="messages-chart-legend" style="display:flex; gap:1.5rem; justify-content:center; margin-top:0.6rem; font-size:0.72rem; color:var(--text-muted);"></div>
     <div id="messages-chart-loading" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:0.8rem; color:var(--text-dim); display:none;">
-      <i class="bi bi-arrow-repeat spin"></i> Loading metrics…
+      <i class="bi bi-arrow-repeat spin"></i> {{ _("Loading metrics\u2026") }}
     </div>
   </div>
 
   {% if messages %}
   <div class="queue-table-wrapper" id="msg-log-section">
     <div class="queue-table-header">
-      <h6><i class="bi bi-list-ul me-1"></i> Message Log</h6>
+      <h6><i class="bi bi-list-ul me-1"></i> {{ _("Message Log") }}</h6>
       <div style="display:flex; align-items:center; gap:0.75rem;">
         <div class="flow-search-wrap" style="min-width:220px;">
           <i class="bi bi-search flow-search-icon"></i>
-          <input id="msg-search" type="search" placeholder="Filter by application…" autocomplete="off" oninput="filterMessages()">
+          <input id="msg-search" type="search" placeholder="{{ _('Filter by application\u2026') }}" autocomplete="off" oninput="filterMessages()">
         </div>
-        <span id="msg-count" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap;">{{ messages | length }} messages</span>
+        <span id="msg-count" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap;">{{ messages | length }} {{ _("messages") }}</span>
       </div>
     </div>
     <div class="scroll-panel" style="max-height:600px;">
       <table class="dash-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Event</th>
-            <th>Application</th>
-            <th>Details</th>
+            <th>{{ _("Timestamp") }}</th>
+            <th>{{ _("Event") }}</th>
+            <th>{{ _("Application") }}</th>
+            <th>{{ _("Details") }}</th>
           </tr>
         </thead>
         <tbody id="msg-tbody">
@@ -143,12 +143,12 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem;">
       <i class="bi bi-chat-square-text" style="font-size:2.5rem; opacity:0.4;"></i>
-      <span style="font-size:0.9rem; font-weight:600;">No messages found</span>
+      <span style="font-size:0.9rem; font-weight:600;">{{ _("No messages found") }}</span>
       <span style="color:var(--text-muted); font-size:0.8rem;">
         {% if not config_ok %}
-          Azure Log Analytics credentials are not configured.
+          {{ _("Azure Log Analytics credentials are not configured.") }}
         {% else %}
-          No messages were processed today.
+          {{ _("No messages were processed today.") }}
         {% endif %}
       </span>
     </div>

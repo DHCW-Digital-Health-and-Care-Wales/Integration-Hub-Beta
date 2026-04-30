@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Configure Alarms{% endblock %}
+{% block title %}{{ _("Configure Alarms") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,18 +9,18 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-gear-fill" style="color:var(--accent-cyan)"></i>
-        Alarm Configuration
+        {{ _("Alarm Configuration") }}
       </h1>
       <p class="page-subtitle">
-        Configure Alarm 1 (message inactivity) settings per HL7 server
+        {{ _("Configure Alarm 1 (message inactivity) settings per HL7 server") }}
       </p>
     </div>
     <div class="d-flex align-items-center gap-2">
       <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" id="back-to-summary">
-        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
       </a>
       <a href="{{ url_for('alarm_page') }}" class="btn-dash">
-        <i class="bi bi-alarm"></i> View Alarm 1
+        <i class="bi bi-alarm"></i> {{ _("View Alarm 1") }}
       </a>
     </div>
   </div>
@@ -29,7 +29,7 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green); padding:0.8rem 1.1rem;">
     <div class="d-flex align-items-center gap-2" style="color:var(--accent-green); font-size:0.83rem;">
       <i class="bi bi-check-circle-fill"></i>
-      <span>Configuration saved successfully.</span>
+      <span>{{ _("Configuration saved successfully.") }}</span>
     </div>
   </div>
   {% endif %}
@@ -39,18 +39,18 @@
     <div class="d-flex align-items-start gap-2">
       <i class="bi bi-info-circle-fill mt-1" style="color:var(--accent-cyan); flex-shrink:0;"></i>
       <div>
-        <strong style="color:var(--text-primary);">How Alarm 1 works</strong><br>
-        The alarm fires when an HL7 server has received no messages for longer than
-        the <strong>period threshold</strong> for the current time window (Day / Evening / Weekend).
-        Once fired, it will not re-fire until the <strong>Alerting Gap</strong> has elapsed
-        — this prevents repeated alerts for the same ongoing outage.
+        <strong style="color:var(--text-primary);">{{ _("How Alarm 1 works") }}</strong><br>
+        {{ _("The alarm fires when an HL7 server has received no messages for longer than") }}
+        {{ _("the") }} <strong>{{ _("period threshold") }}</strong> {{ _("for the current time window (Day / Evening / Weekend).") }}
+        {{ _("Once fired, it will not re-fire until the") }} <strong>{{ _("Alerting Gap") }}</strong> {{ _("has elapsed") }}
+        {{ _("\u2014 this prevents repeated alerts for the same ongoing outage.") }}
         <div class="mt-2 d-flex gap-4 flex-wrap" style="font-size:0.75rem;">
           <span><i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-            <strong>Day</strong>: Mon–Fri 08:00–17:00</span>
+            <strong>{{ _("Day") }}</strong>: {{ _("Mon\u2013Fri 08:00\u201317:00") }}</span>
           <span><i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-            <strong>Evening</strong>: Mon–Fri 17:00–08:00</span>
+            <strong>{{ _("Evening") }}</strong>: {{ _("Mon\u2013Fri 17:00\u201308:00") }}</span>
           <span><i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-            <strong>Weekend</strong>: Fri 17:00 → Mon 08:00</span>
+            <strong>{{ _("Weekend") }}</strong>: {{ _("Fri 17:00 \u2192 Mon 08:00") }}</span>
         </div>
       </div>
     </div>
@@ -74,7 +74,7 @@
           <div class="d-flex align-items-center gap-2">
             <label for="enabled_{{ s.id }}"
                    style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
-              Alarm 1
+              {{ _("Alarm 1") }}
             </label>
             <div class="form-check form-switch" style="margin:0; padding-left:0;">
               <input class="form-check-input"
@@ -88,7 +88,7 @@
             <span id="label_{{ s.id }}"
                   style="font-size:0.78rem; font-weight:600; min-width:60px;
                          color:{% if s.alarm_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
-              {% if s.alarm_enabled %}Enabled{% else %}Disabled{% endif %}
+              {% if s.alarm_enabled %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif %}
             </span>
           </div>
           <!-- divider -->
@@ -97,7 +97,7 @@
           <div class="d-flex align-items-center gap-2">
             <label for="email_{{ s.id }}"
                    style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
-              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>Email
+              <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>{{ _("Email") }}
             </label>
             <div class="form-check form-switch" style="margin:0; padding-left:0;">
               <input class="form-check-input"
@@ -106,13 +106,13 @@
                      id="email_{{ s.id }}"
                      name="email_{{ s.id }}"
                      {% if s.email_alerts_enabled %}checked{% endif %}
-                     {% if not smtp_configured %}disabled title="Configure SMTP in .env to enable"{% endif %}
+                     {% if not smtp_configured %}disabled title="{{ _('Configure SMTP in .env to enable') }}"{% endif %}
                      style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
             </div>
             <span id="email_label_{{ s.id }}"
                   style="font-size:0.78rem; font-weight:600; min-width:60px;
                          color:{% if s.email_alerts_enabled and smtp_configured %}var(--accent-green){% else %}var(--text-muted){% endif %};">
-              {% if s.email_alerts_enabled and smtp_configured %}Enabled{% else %}Disabled{% endif %}
+              {% if s.email_alerts_enabled and smtp_configured %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif %}
             </span>
           </div>
           <!-- divider -->
@@ -121,7 +121,7 @@
           <button type="button"
                   class="btn-dash btn-remove-rule"
                   data-rule-id="{{ s.id }}"
-                  title="Remove this server">
+                  title="{{ _('Remove this server') }}">
             <i class="bi bi-trash3"></i>
           </button>
         </div>
@@ -134,19 +134,19 @@
           <!-- Display name -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="display_name_{{ s.id }}">
-              <i class="bi bi-tag me-1"></i>Display Name
+              <i class="bi bi-tag me-1"></i>{{ _("Display Name") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="display_name_{{ s.id }}" name="display_name_{{ s.id }}"
                    value="{{ s.display_name }}" maxlength="80">
-            <div class="cfg-hint">Human-readable label shown in the dashboard</div>
+            <div class="cfg-hint">{{ _("Human-readable label shown in the dashboard") }}</div>
           </div>
 
           <!-- Workflow ID -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="workflow_id_{{ s.id }}">
               <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
-              Workflow ID
+              {{ _("Workflow ID") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="workflow_id_{{ s.id }}" name="workflow_id_{{ s.id }}"
@@ -159,64 +159,64 @@
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="day_threshold_{{ s.id }}">
               <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-              Day Threshold
+              {{ _("Day Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="day_threshold_{{ s.id }}" name="day_threshold_{{ s.id }}"
                      value="{{ s.day_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">No messages for this long (Mon–Fri 08:00–17:00) → alarm fires</div>
+            <div class="cfg-hint">{{ _("No messages for this long (Mon\u2013Fri 08:00\u201317:00) \u2192 alarm fires") }}</div>
           </div>
 
           <!-- Evening threshold -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="evening_threshold_{{ s.id }}">
               <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-              Evening Threshold
+              {{ _("Evening Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="evening_threshold_{{ s.id }}" name="evening_threshold_{{ s.id }}"
                      value="{{ s.evening_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">No messages for this long (Mon–Fri 17:00–08:00) → alarm fires</div>
+            <div class="cfg-hint">{{ _("No messages for this long (Mon\u2013Fri 17:00\u201308:00) \u2192 alarm fires") }}</div>
           </div>
 
           <!-- Weekend threshold -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="weekend_threshold_{{ s.id }}">
               <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-              Weekend Threshold
+              {{ _("Weekend Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="weekend_threshold_{{ s.id }}" name="weekend_threshold_{{ s.id }}"
                      value="{{ s.weekend_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">No messages for this long (Fri 17:00–Mon 08:00) → alarm fires</div>
+            <div class="cfg-hint">{{ _("No messages for this long (Fri 17:00\u2013Mon 08:00) \u2192 alarm fires") }}</div>
           </div>
 
           <!-- Alerting gap -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="alerting_gap_{{ s.id }}">
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
-              Alerting Gap
+              {{ _("Alerting Gap") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="alerting_gap_{{ s.id }}" name="alerting_gap_{{ s.id }}"
                      value="{{ s.alerting_gap_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">Minimum gap between successive alarm fires</div>
+            <div class="cfg-hint">{{ _("Minimum gap between successive alarm fires") }}</div>
           </div>
 
         </div>
@@ -231,7 +231,7 @@
     <div class="dash-card mb-3" id="add-server-panel" style="display:none;">
       <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
         <div style="font-weight:600; font-size:0.92rem;">
-          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>New Rule
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>{{ _("New Rule") }}
         </div>
       </div>
       <div class="p-3">
@@ -240,7 +240,7 @@
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_workflow_id">
               <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>
-              Workflow ID <span style="color:var(--accent-red)">*</span>
+              {{ _("Workflow ID") }} <span style="color:var(--accent-red)">*</span>
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_workflow_id" name="new_workflow_id"
@@ -250,63 +250,63 @@
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_display_name">
-              <i class="bi bi-tag me-1"></i>Display Name
+              <i class="bi bi-tag me-1"></i>{{ _("Display Name") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_display_name" name="new_display_name"
                    maxlength="80" placeholder="e.g. PHW HL7 Server">
-            <div class="cfg-hint">Human-readable label (auto-generated if blank)</div>
+            <div class="cfg-hint">{{ _("Human-readable label (auto-generated if blank)") }}</div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_day_threshold">
               <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-              Day Threshold
+              {{ _("Day Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_day_threshold" name="new_day_threshold"
                      value="60" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_evening_threshold">
               <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-              Evening Threshold
+              {{ _("Evening Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_evening_threshold" name="new_evening_threshold"
                      value="120" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_weekend_threshold">
               <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-              Weekend Threshold
+              {{ _("Weekend Threshold") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_weekend_threshold" name="new_weekend_threshold"
                      value="240" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_alerting_gap">
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>
-              Alerting Gap
+              {{ _("Alerting Gap") }}
             </label>
             <div class="cfg-input-row">
               <input type="number" class="dash-input cfg-num"
                      id="new_alerting_gap" name="new_alerting_gap"
                      value="60" min="1" max="44640" step="1">
-              <span class="cfg-unit">min</span>
+              <span class="cfg-unit">{{ _("min") }}</span>
             </div>
           </div>
 
@@ -316,10 +316,10 @@
 
     <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
       <button type="button" id="add-server-btn" class="btn-dash">
-        <i class="bi bi-plus-circle me-1"></i> Add Rule
+        <i class="bi bi-plus-circle me-1"></i> {{ _("Add Rule") }}
       </button>
       <button type="submit" class="btn-dash btn-dash--primary">
-        <i class="bi bi-floppy-fill"></i> Save All Settings
+        <i class="bi bi-floppy-fill"></i> {{ _("Save All Settings") }}
       </button>
     </div>
 
@@ -328,7 +328,7 @@
       <div class="no-data" style="padding:2.5rem; text-align:center;">
         <i class="bi bi-hdd-network" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
         <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">
-          No Alarm 1 rules found. Add one below.
+          {{ _("No Alarm 1 rules found. Add one below.") }}
         </p>
       </div>
     </div>
@@ -337,14 +337,14 @@
     <div class="dash-card mb-3 mt-3" id="add-server-panel-empty" style="display:none;">
       <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
         <div style="font-weight:600; font-size:0.92rem;">
-          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>New Rule
+          <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>{{ _("New Rule") }}
         </div>
       </div>
       <div class="p-3">
         <div class="row g-3">
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_workflow_id_empty">
-              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>Workflow ID <span style="color:var(--accent-red)">*</span>
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Workflow ID") }} <span style="color:var(--accent-red)">*</span>
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_workflow_id_empty" name="new_workflow_id"
@@ -352,7 +352,7 @@
           </div>
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_display_name_empty">
-              <i class="bi bi-tag me-1"></i>Display Name
+              <i class="bi bi-tag me-1"></i>{{ _("Display Name") }}
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_display_name_empty" name="new_display_name"
@@ -363,10 +363,10 @@
     </div>
     <div class="d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-2">
       <button type="button" id="add-server-btn-empty" class="btn-dash">
-        <i class="bi bi-plus-circle me-1"></i> Add Rule
+        <i class="bi bi-plus-circle me-1"></i> {{ _("Add Rule") }}
       </button>
       <button type="submit" class="btn-dash btn-dash--primary">
-        <i class="bi bi-floppy-fill"></i> Save All Settings
+        <i class="bi bi-floppy-fill"></i> {{ _("Save All Settings") }}
       </button>
     </div>
     {% endif %}

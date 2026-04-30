@@ -56,10 +56,10 @@
   }
 </style>
 
-<div id="mc-modal-overlay" role="dialog" aria-modal="true" aria-label="Minecraft Classic">
+<div id="mc-modal-overlay" role="dialog" aria-modal="true" aria-label="{{ _('Minecraft Classic') }}">
   <div id="mc-modal">
     <div id="mc-title-badge">⛏ Minecraft Classic</div>
-    <button id="mc-modal-close" title="Close (Esc)">&#x2715;</button>
+    <button id="mc-modal-close" title="{{ _('Close (Esc)') }}">&#x2715;</button>
     <iframe
       id="mc-iframe"
       src="about:blank"
@@ -67,7 +67,7 @@
       allow="fullscreen"
       title="Minecraft Classic"
     ></iframe>
-    <div id="mc-hint-badge">ESC to close · Click inside to capture mouse</div>
+    <div id="mc-hint-badge">{{ _("ESC to close · Click inside to capture mouse") }}</div>
   </div>
 </div>
 

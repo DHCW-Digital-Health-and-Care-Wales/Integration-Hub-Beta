@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Alarm 1 — Inactivity{% endblock %}
+{% block title %}{{ _("Alarm 1 \u2014 Inactivity") }}{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
@@ -9,21 +9,21 @@
     <div>
       <h1 class="page-title">
         <i class="bi bi-alarm" style="color:var(--accent-amber)"></i>
-        Alarm 1 — Message Inactivity
+        {{ _("Alarm 1 \u2014 Message Inactivity") }}
       </h1>
       <p class="page-subtitle">
-        Workflows that have not received a message within their configured threshold
+        {{ _("Workflows that have not received a message within their configured threshold") }}
       </p>
     </div>
     <div class="d-flex align-items-center gap-2">
       <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash">
-        <i class="bi bi-arrow-left me-1"></i> Alarms Summary
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
       </a>
       <a href="{{ url_for('alarm_config_page') }}" class="btn-dash">
-        <i class="bi bi-gear-fill"></i> Configure
+        <i class="bi bi-gear-fill"></i> {{ _("Configure") }}
       </a>
       <a href="{{ url_for('alarm_page') }}" class="btn-dash">
-        <i class="bi bi-arrow-repeat"></i> Refresh
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
     </div>
   </div>
@@ -32,8 +32,8 @@
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
     <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
       <i class="bi bi-exclamation-triangle-fill"></i>
-      <span>Log Analytics workspace is not configured — last message times cannot be retrieved.
-        Last message data will show as <strong>Unknown</strong>.</span>
+      <span>{{ _("Log Analytics workspace is not configured \u2014 last message times cannot be retrieved.") }}
+        {{ _("Last message data will show as") }} <strong>{{ _("Unknown") }}</strong>.</span>
     </div>
   </div>
   {% endif %}
@@ -44,9 +44,9 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem; text-align:center;">
       <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">No alarms have been configured yet.</p>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("No alarms have been configured yet.") }}</p>
       <a href="{{ url_for('alarm_config_page') }}" class="btn-dash mt-2">
-        <i class="bi bi-gear-fill"></i> Configure Alarms
+        <i class="bi bi-gear-fill"></i> {{ _("Configure Alarms") }}
       </a>
     </div>
   </div>
@@ -55,7 +55,7 @@
   <div class="dash-card">
     <div class="no-data" style="padding:3rem; text-align:center;">
       <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:var(--accent-green); opacity:0.85;"></i>
-      <p style="margin-top:1rem; color:var(--text-muted);">All monitored workflows are within their inactivity threshold.</p>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("All monitored workflows are within their inactivity threshold.") }}</p>
     </div>
   </div>
   {% endif %}
@@ -76,35 +76,35 @@
       <div class="kpi-icon blue"><i class="bi bi-bell-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ alarm_rows | length }}</div>
-        <div class="kpi-label">Monitored</div>
+        <div class="kpi-label">{{ _("Monitored") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon red"><i class="bi bi-exclamation-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_critical }}</div>
-        <div class="kpi-label">In Alarm</div>
+        <div class="kpi-label">{{ _("In Alarm") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="bi bi-bell-slash-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_suppressed }}</div>
-        <div class="kpi-label">Suppressed</div>
+        <div class="kpi-label">{{ _("Suppressed") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="bi bi-question-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_unknown }}</div>
-        <div class="kpi-label">Unknown</div>
+        <div class="kpi-label">{{ _("Unknown") }}</div>
       </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon green"><i class="bi bi-check-circle-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ n_healthy }}</div>
-        <div class="kpi-label">Healthy</div>
+        <div class="kpi-label">{{ _("Healthy") }}</div>
       </div>
     </div>
 
@@ -112,54 +112,54 @@
 
   <!-- Current period indicator -->
   <div class="mb-3 d-flex align-items-center gap-2" style="font-size:0.78rem; color:var(--text-muted);">
-    <span>Active period:</span>
+    <span>{{ _("Active period:") }}</span>
     {% if current_period == 'day' %}
       <span style="color:var(--accent-amber); font-weight:600;">
-        <i class="bi bi-sun-fill me-1"></i>Day (Mon–Fri 08:00–17:00)
+        <i class="bi bi-sun-fill me-1"></i>{{ _("Day (Mon\u2013Fri 08:00\u201317:00)") }}
       </span>
-      <span>— day threshold applies</span>
+      <span>{{ _("\u2014 day threshold applies") }}</span>
     {% elif current_period == 'evening' %}
       <span style="color:var(--accent-blue); font-weight:600;">
-        <i class="bi bi-moon-fill me-1"></i>Evening (Mon–Fri 17:00–08:00)
+        <i class="bi bi-moon-fill me-1"></i>{{ _("Evening (Mon\u2013Fri 17:00\u201308:00)") }}
       </span>
-      <span>— evening threshold applies</span>
+      <span>{{ _("\u2014 evening threshold applies") }}</span>
     {% else %}
       <span style="color:var(--accent-purple); font-weight:600;">
-        <i class="bi bi-calendar-week-fill me-1"></i>Weekend (Fri 17:00 – Mon 08:00)
+        <i class="bi bi-calendar-week-fill me-1"></i>{{ _("Weekend (Fri 17:00 \u2013 Mon 08:00)") }}
       </span>
-      <span>— weekend threshold applies</span>
+      <span>{{ _("\u2014 weekend threshold applies") }}</span>
     {% endif %}
   </div>
 
   <!-- Alarm table -->
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
-      <h6><i class="bi bi-table me-1"></i> Alarm 1's</h6>
-      <span class="text-muted" style="font-size:0.72rem;">Refreshed at {{ refreshed_at }}</span>
+      <h6><i class="bi bi-table me-1"></i> {{ _("Alarm 1's") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ _("Refreshed at") }} {{ refreshed_at }}</span>
     </div>
 
     <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
       <table class="dash-table w-100">
         <thead>
           <tr>
-            <th>Status</th>
-            <th>Rule</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Rule") }}</th>
             <th>
-              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>Workflow ID
+              <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Workflow ID") }}
             </th>
-            <th>Last Message</th>
-            <th>Time Since</th>
+            <th>{{ _("Last Message") }}</th>
+            <th>{{ _("Time Since") }}</th>
             <th>
-              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>Day
-            </th>
-            <th>
-              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>Evening
+              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>{{ _("Day") }}
             </th>
             <th>
-              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>Weekend
+              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>{{ _("Evening") }}
             </th>
             <th>
-              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>Alerting Gap
+              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>{{ _("Weekend") }}
+            </th>
+            <th>
+              <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>{{ _("Alerting Gap") }}
             </th>
           </tr>
         </thead>
@@ -170,19 +170,19 @@
             <td>
               {% if row.status == 'critical' %}
                 <span class="status-badge critical">
-                  <i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm
+                  <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
                 </span>
               {% elif row.status == 'suppressed' %}
                 <span class="status-badge suppressed">
-                  <i class="bi bi-bell-slash-fill me-1"></i>Suppressed
+                  <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
                 </span>
               {% elif row.status == 'unknown' %}
                 <span class="status-badge unknown">
-                  <i class="bi bi-question-circle me-1"></i>Unknown
+                  <i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}
                 </span>
               {% else %}
                 <span class="status-badge healthy">
-                  <i class="bi bi-check-circle-fill me-1"></i>OK
+                  <i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}
                 </span>
               {% endif %}
             </td>
@@ -198,11 +198,11 @@
               {{ row.last_message_display }}
               {% if row.status in ('critical', 'suppressed') %}
                 <div style="color:var(--accent-red); font-weight:600; font-family:inherit; font-size:0.78rem; margin-top:2px;">
-                  {{ row.duration_label }} ago
+                  {{ row.duration_label }} {{ _("ago") }}
                 </div>
               {% elif row.status == 'healthy' and row.duration_label %}
                 <div style="color:var(--accent-green); font-family:inherit; font-size:0.78rem; margin-top:2px;">
-                  {{ row.duration_label }} ago
+                  {{ row.duration_label }} {{ _("ago") }}
                 </div>
               {% endif %}
             </td>
@@ -221,30 +221,30 @@
             <!-- Day threshold — highlight if active -->
             <td style="font-size:0.82rem;
               {% if row.current_period == 'day' %}color:var(--accent-amber); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
-              {{ row.day_threshold_minutes }} min
+              {{ row.day_threshold_minutes }} {{ _("min") }}
               {% if row.current_period == 'day' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
             </td>
 
             <!-- Evening threshold -->
             <td style="font-size:0.82rem;
               {% if row.current_period == 'evening' %}color:var(--accent-blue); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
-              {{ row.evening_threshold_minutes }} min
+              {{ row.evening_threshold_minutes }} {{ _("min") }}
               {% if row.current_period == 'evening' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
             </td>
 
             <!-- Weekend threshold -->
             <td style="font-size:0.82rem;
               {% if row.current_period == 'weekend' %}color:var(--accent-purple); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
-              {{ row.weekend_threshold_minutes }} min
+              {{ row.weekend_threshold_minutes }} {{ _("min") }}
               {% if row.current_period == 'weekend' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
             </td>
 
             <!-- Alerting gap / cooldown remaining -->
             <td style="font-size:0.82rem;">
-              <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} min</span>
+              <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} {{ _("min") }}</span>
               {% if row.status == 'suppressed' and row.cooldown_remaining %}
                 <div style="color:var(--accent-amber); font-size:0.75rem; margin-top:2px;">
-                  <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} min left
+                  <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} {{ _("min left") }}
                 </div>
               {% endif %}
             </td>
