@@ -353,12 +353,15 @@
 </style>
 
 <script>
+  var i18nEnabled  = {{ _("Enabled")  | tojson }};
+  var i18nDisabled = {{ _("Disabled") | tojson }};
+
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
     var rid = cb.id.replace('enabled_', '');
     var lbl = document.getElementById('label_' + rid);
     cb.addEventListener('change', function () {
       if (!lbl) return;
-      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
       lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
     });
   });
@@ -367,7 +370,7 @@
     var lbl = document.getElementById('email_label_' + rid);
     if (!lbl) return;
     cb.addEventListener('change', function () {
-      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
       lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
     });
   });

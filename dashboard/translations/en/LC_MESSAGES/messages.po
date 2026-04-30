@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-04-30 15:55+0100\n"
+"POT-Creation-Date: 2026-04-30 17:00+0100\n"
 "PO-Revision-Date: 2026-04-30 14:50+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -82,10 +82,10 @@ msgid "Last message data will show as"
 msgstr ""
 
 #: dashboard/templates/alarm.html:36 dashboard/templates/alarm.html:100
-#: dashboard/templates/alarm.html:181 dashboard/templates/alarm2.html:36
-#: dashboard/templates/alarm2.html:99 dashboard/templates/alarm2.html:160
+#: dashboard/templates/alarm.html:182 dashboard/templates/alarm2.html:36
+#: dashboard/templates/alarm2.html:99 dashboard/templates/alarm2.html:158
 #: dashboard/templates/alarm3.html:36 dashboard/templates/alarm3.html:99
-#: dashboard/templates/alarm3.html:157
+#: dashboard/templates/alarm3.html:158
 #: dashboard/templates/alarms_overview.html:93
 #: dashboard/templates/alarms_overview.html:169
 #: dashboard/templates/alarms_overview.html:245
@@ -112,9 +112,9 @@ msgstr ""
 msgid "Monitored"
 msgstr ""
 
-#: dashboard/templates/alarm.html:86 dashboard/templates/alarm.html:173
-#: dashboard/templates/alarm2.html:85 dashboard/templates/alarm2.html:152
-#: dashboard/templates/alarm3.html:85 dashboard/templates/alarm3.html:149
+#: dashboard/templates/alarm.html:86 dashboard/templates/alarm.html:174
+#: dashboard/templates/alarm2.html:85 dashboard/templates/alarm2.html:150
+#: dashboard/templates/alarm3.html:85 dashboard/templates/alarm3.html:150
 #: dashboard/templates/alarms_overview.html:71
 #: dashboard/templates/alarms_overview.html:85
 #: dashboard/templates/alarms_overview.html:147
@@ -124,9 +124,9 @@ msgstr ""
 msgid "In Alarm"
 msgstr ""
 
-#: dashboard/templates/alarm.html:93 dashboard/templates/alarm.html:177
-#: dashboard/templates/alarm2.html:92 dashboard/templates/alarm2.html:156
-#: dashboard/templates/alarm3.html:92 dashboard/templates/alarm3.html:153
+#: dashboard/templates/alarm.html:93 dashboard/templates/alarm.html:178
+#: dashboard/templates/alarm2.html:92 dashboard/templates/alarm2.html:154
+#: dashboard/templates/alarm3.html:92 dashboard/templates/alarm3.html:154
 #: dashboard/templates/alarms_overview.html:72
 #: dashboard/templates/alarms_overview.html:89
 #: dashboard/templates/alarms_overview.html:148
@@ -194,13 +194,17 @@ msgstr ""
 msgid "Rule"
 msgstr ""
 
-#: dashboard/templates/alarm.html:148 dashboard/templates/alarm3.html:126
+#: dashboard/templates/alarm.html:148 dashboard/templates/alarm2.html:126
+#: dashboard/templates/alarm2_config.html:44
+#: dashboard/templates/alarm2_config.html:137
+#: dashboard/templates/alarm2_config.html:225
+#: dashboard/templates/alarm3.html:126
 #: dashboard/templates/alarm3_config.html:44
-#: dashboard/templates/alarm3_config.html:136
-#: dashboard/templates/alarm3_config.html:224
-#: dashboard/templates/alarm_config.html:149
-#: dashboard/templates/alarm_config.html:243
-#: dashboard/templates/alarm_config.html:347
+#: dashboard/templates/alarm3_config.html:134
+#: dashboard/templates/alarm3_config.html:222
+#: dashboard/templates/alarm_config.html:147
+#: dashboard/templates/alarm_config.html:241
+#: dashboard/templates/alarm_config.html:345
 msgid "Workflow ID"
 msgstr ""
 
@@ -224,54 +228,54 @@ msgstr ""
 msgid "Weekend"
 msgstr ""
 
-#: dashboard/templates/alarm.html:162 dashboard/templates/alarm2.html:141
+#: dashboard/templates/alarm.html:162 dashboard/templates/alarm2.html:138
 #: dashboard/templates/alarm2_config.html:47
-#: dashboard/templates/alarm2_config.html:195
-#: dashboard/templates/alarm2_config.html:286
+#: dashboard/templates/alarm2_config.html:182
+#: dashboard/templates/alarm2_config.html:262
 #: dashboard/templates/alarm3.html:138
 #: dashboard/templates/alarm3_config.html:46
-#: dashboard/templates/alarm3_config.html:181
-#: dashboard/templates/alarm3_config.html:261
+#: dashboard/templates/alarm3_config.html:179
+#: dashboard/templates/alarm3_config.html:259
 #: dashboard/templates/alarm_config.html:45
-#: dashboard/templates/alarm_config.html:210
-#: dashboard/templates/alarm_config.html:303
+#: dashboard/templates/alarm_config.html:208
+#: dashboard/templates/alarm_config.html:301
 msgid "Alerting Gap"
 msgstr ""
 
-#: dashboard/templates/alarm.html:185 dashboard/templates/alarm2.html:164
-#: dashboard/templates/alarm3.html:161
+#: dashboard/templates/alarm.html:186 dashboard/templates/alarm2.html:162
+#: dashboard/templates/alarm3.html:162
 msgid "OK"
 msgstr ""
 
-#: dashboard/templates/alarm.html:201 dashboard/templates/alarm.html:205
+#: dashboard/templates/alarm.html:202 dashboard/templates/alarm.html:206
 msgid "ago"
 msgstr ""
 
-#: dashboard/templates/alarm.html:224 dashboard/templates/alarm.html:231
-#: dashboard/templates/alarm.html:238 dashboard/templates/alarm.html:244
-#: dashboard/templates/alarm2.html:196
-#: dashboard/templates/alarm2_config.html:170
-#: dashboard/templates/alarm2_config.html:202
-#: dashboard/templates/alarm2_config.html:266
-#: dashboard/templates/alarm2_config.html:292
-#: dashboard/templates/alarm3.html:192
-#: dashboard/templates/alarm3_config.html:156
-#: dashboard/templates/alarm3_config.html:188
-#: dashboard/templates/alarm3_config.html:241
-#: dashboard/templates/alarm3_config.html:267
-#: dashboard/templates/alarm_config.html:169
-#: dashboard/templates/alarm_config.html:185
-#: dashboard/templates/alarm_config.html:201
-#: dashboard/templates/alarm_config.html:217
-#: dashboard/templates/alarm_config.html:270
-#: dashboard/templates/alarm_config.html:283
-#: dashboard/templates/alarm_config.html:296
-#: dashboard/templates/alarm_config.html:309
+#: dashboard/templates/alarm.html:225 dashboard/templates/alarm.html:232
+#: dashboard/templates/alarm.html:239 dashboard/templates/alarm.html:245
+#: dashboard/templates/alarm2.html:193
+#: dashboard/templates/alarm2_config.html:157
+#: dashboard/templates/alarm2_config.html:189
+#: dashboard/templates/alarm2_config.html:242
+#: dashboard/templates/alarm2_config.html:268
+#: dashboard/templates/alarm3.html:193
+#: dashboard/templates/alarm3_config.html:154
+#: dashboard/templates/alarm3_config.html:186
+#: dashboard/templates/alarm3_config.html:239
+#: dashboard/templates/alarm3_config.html:265
+#: dashboard/templates/alarm_config.html:167
+#: dashboard/templates/alarm_config.html:183
+#: dashboard/templates/alarm_config.html:199
+#: dashboard/templates/alarm_config.html:215
+#: dashboard/templates/alarm_config.html:268
+#: dashboard/templates/alarm_config.html:281
+#: dashboard/templates/alarm_config.html:294
+#: dashboard/templates/alarm_config.html:307
 msgid "min"
 msgstr ""
 
-#: dashboard/templates/alarm.html:247 dashboard/templates/alarm2.html:199
-#: dashboard/templates/alarm3.html:195
+#: dashboard/templates/alarm.html:248 dashboard/templates/alarm2.html:196
+#: dashboard/templates/alarm3.html:196
 msgid "min left"
 msgstr ""
 
@@ -312,36 +316,22 @@ msgstr ""
 msgid "Alarm 2 Rules"
 msgstr ""
 
-#: dashboard/templates/alarm2.html:126
-#: dashboard/templates/alarm2_config.html:44
-#: dashboard/templates/alarm2_config.html:137
-#: dashboard/templates/alarm2_config.html:238
-msgid "Health Board"
-msgstr ""
-
 #: dashboard/templates/alarm2.html:129
-#: dashboard/templates/alarm2_config.html:44
-#: dashboard/templates/alarm2_config.html:150
-#: dashboard/templates/alarm2_config.html:249
-msgid "Peer Service"
-msgstr ""
-
-#: dashboard/templates/alarm2.html:132
 msgid "Messages Sent"
 msgstr ""
 
-#: dashboard/templates/alarm2.html:135
+#: dashboard/templates/alarm2.html:132
 #: dashboard/templates/alarm2_config.html:46
-#: dashboard/templates/alarm2_config.html:179
-#: dashboard/templates/alarm2_config.html:273
+#: dashboard/templates/alarm2_config.html:166
+#: dashboard/templates/alarm2_config.html:249
 #: dashboard/templates/alarm3.html:132
 #: dashboard/templates/alarm3_config.html:45
-#: dashboard/templates/alarm3_config.html:165
-#: dashboard/templates/alarm3_config.html:248
+#: dashboard/templates/alarm3_config.html:163
+#: dashboard/templates/alarm3_config.html:246
 msgid "Threshold"
 msgstr ""
 
-#: dashboard/templates/alarm2.html:138
+#: dashboard/templates/alarm2.html:135
 #: dashboard/templates/alarm2_config.html:45
 #: dashboard/templates/alarm3.html:135
 #: dashboard/templates/alarm3_config.html:44
@@ -383,12 +373,9 @@ msgstr ""
 msgid "metric, filtered by"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:44
-msgid "and"
-msgstr ""
-
 #: dashboard/templates/alarm2_config.html:45
-msgid "dimensions over the configured"
+#: dashboard/templates/alarm3_config.html:44
+msgid "over the configured"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:46
@@ -412,106 +399,118 @@ msgstr ""
 
 #: dashboard/templates/alarm2_config.html:82
 #: dashboard/templates/alarm2_config.html:104
-#: dashboard/templates/alarm3_config.html:81
-#: dashboard/templates/alarm3_config.html:103
-#: dashboard/templates/alarm_config.html:91
-#: dashboard/templates/alarm_config.html:115
+#: dashboard/templates/alarm2_config.html:359
+#: dashboard/templates/alarm3_config.html:79
+#: dashboard/templates/alarm3_config.html:101
+#: dashboard/templates/alarm3_config.html:356
+#: dashboard/templates/alarm_config.html:89
+#: dashboard/templates/alarm_config.html:113
+#: dashboard/templates/alarm_config.html:437
 msgid "Enabled"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:82
 #: dashboard/templates/alarm2_config.html:104
-#: dashboard/templates/alarm3_config.html:81
-#: dashboard/templates/alarm3_config.html:103
-#: dashboard/templates/alarm_config.html:91
-#: dashboard/templates/alarm_config.html:115
+#: dashboard/templates/alarm2_config.html:360
+#: dashboard/templates/alarm3_config.html:79
+#: dashboard/templates/alarm3_config.html:101
+#: dashboard/templates/alarm3_config.html:357
+#: dashboard/templates/alarm_config.html:89
+#: dashboard/templates/alarm_config.html:113
+#: dashboard/templates/alarm_config.html:438 dashboard/templates/flows.html:433
+#: dashboard/templates/flows.html:474 dashboard/templates/flows.html:514
 msgid "Disabled"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:91
-#: dashboard/templates/alarm3_config.html:90
-#: dashboard/templates/alarm_config.html:100
+#: dashboard/templates/alarm3_config.html:88
+#: dashboard/templates/alarm_config.html:98
 msgid "Email"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:98
-#: dashboard/templates/alarm3_config.html:97
-#: dashboard/templates/alarm_config.html:109
+#: dashboard/templates/alarm3_config.html:95
+#: dashboard/templates/alarm_config.html:107
 msgid "Configure SMTP in .env to enable"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:113
-#: dashboard/templates/alarm3_config.html:112
+#: dashboard/templates/alarm3_config.html:110
 msgid "Remove this rule"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:125
-#: dashboard/templates/alarm2_config.html:227
-#: dashboard/templates/alarm3_config.html:124
-#: dashboard/templates/alarm3_config.html:213
-#: dashboard/templates/alarm_config.html:137
-#: dashboard/templates/alarm_config.html:253
-#: dashboard/templates/alarm_config.html:355
+#: dashboard/templates/alarm2_config.html:214
+#: dashboard/templates/alarm3_config.html:122
+#: dashboard/templates/alarm3_config.html:211
+#: dashboard/templates/alarm_config.html:135
+#: dashboard/templates/alarm_config.html:251
+#: dashboard/templates/alarm_config.html:353
 msgid "Display Name"
 msgstr ""
 
 #: dashboard/templates/alarm2_config.html:130
-#: dashboard/templates/alarm3_config.html:129
-#: dashboard/templates/alarm_config.html:142
+#: dashboard/templates/alarm3_config.html:127
+#: dashboard/templates/alarm_config.html:140
 msgid "Human-readable label shown in the dashboard"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:163
-#: dashboard/templates/alarm2_config.html:260
-#: dashboard/templates/alarm3_config.html:149
-#: dashboard/templates/alarm3_config.html:235
+#: dashboard/templates/alarm2_config.html:143
+#: dashboard/templates/alarm2_config.html:230
+msgid "filter value"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:150
+#: dashboard/templates/alarm2_config.html:236
+#: dashboard/templates/alarm3_config.html:147
+#: dashboard/templates/alarm3_config.html:233
 msgid "Lookback Window"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:172
+#: dashboard/templates/alarm2_config.html:159
 msgid "Time window for the messages_sent query (e.g. 2880 = 2 days)"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:188
+#: dashboard/templates/alarm2_config.html:175
 msgid "Alarm fires when messages sent &lt;= this value"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:204
-#: dashboard/templates/alarm3_config.html:190
-#: dashboard/templates/alarm_config.html:219
+#: dashboard/templates/alarm2_config.html:191
+#: dashboard/templates/alarm3_config.html:188
+#: dashboard/templates/alarm_config.html:217
 msgid "Minimum gap between successive alarm fires"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:219
-#: dashboard/templates/alarm3_config.html:205
-#: dashboard/templates/alarm_config.html:234
-#: dashboard/templates/alarm_config.html:340
+#: dashboard/templates/alarm2_config.html:206
+#: dashboard/templates/alarm3_config.html:203
+#: dashboard/templates/alarm_config.html:232
+#: dashboard/templates/alarm_config.html:338
 msgid "New Rule"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:232
-#: dashboard/templates/alarm3_config.html:218
-#: dashboard/templates/alarm_config.html:258
+#: dashboard/templates/alarm2_config.html:219
+#: dashboard/templates/alarm3_config.html:216
+#: dashboard/templates/alarm_config.html:256
 msgid "Human-readable label (auto-generated if blank)"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:302
-#: dashboard/templates/alarm2_config.html:433
-#: dashboard/templates/alarm3_config.html:277
-#: dashboard/templates/alarm3_config.html:395
-#: dashboard/templates/alarm_config.html:319
-#: dashboard/templates/alarm_config.html:366
+#: dashboard/templates/alarm2_config.html:278
+#: dashboard/templates/alarm2_config.html:420
+#: dashboard/templates/alarm3_config.html:275
+#: dashboard/templates/alarm3_config.html:404
+#: dashboard/templates/alarm_config.html:317
+#: dashboard/templates/alarm_config.html:364
 msgid "Add Rule"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:305
-#: dashboard/templates/alarm3_config.html:280
-#: dashboard/templates/alarm_config.html:322
-#: dashboard/templates/alarm_config.html:369
+#: dashboard/templates/alarm2_config.html:281
+#: dashboard/templates/alarm3_config.html:278
+#: dashboard/templates/alarm_config.html:320
+#: dashboard/templates/alarm_config.html:367
 msgid "Save All Settings"
 msgstr ""
 
-#: dashboard/templates/alarm2_config.html:313
+#: dashboard/templates/alarm2_config.html:289
 msgid "No Alarm 2 rules found."
 msgstr ""
 
@@ -580,27 +579,23 @@ msgstr ""
 msgid "filtered by"
 msgstr ""
 
-#: dashboard/templates/alarm3_config.html:44
-msgid "over the configured"
-msgstr ""
-
 #: dashboard/templates/alarm3_config.html:45
 msgid "It fires when the failure count is at or above the"
 msgstr ""
 
-#: dashboard/templates/alarm3_config.html:69
+#: dashboard/templates/alarm3_config.html:67
 msgid "Alarm 3"
 msgstr ""
 
-#: dashboard/templates/alarm3_config.html:158
+#: dashboard/templates/alarm3_config.html:156
 msgid "Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)"
 msgstr ""
 
-#: dashboard/templates/alarm3_config.html:174
+#: dashboard/templates/alarm3_config.html:172
 msgid "Alarm fires when failure count &gt;= this value"
 msgstr ""
 
-#: dashboard/templates/alarm3_config.html:288
+#: dashboard/templates/alarm3_config.html:286
 msgid "No Alarm 3 rules found."
 msgstr ""
 
@@ -658,42 +653,42 @@ msgstr ""
 msgid "Fri 17:00 → Mon 08:00"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:77
+#: dashboard/templates/alarm_config.html:75
 msgid "Alarm 1"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:124
+#: dashboard/templates/alarm_config.html:122
 msgid "Remove this server"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:162
-#: dashboard/templates/alarm_config.html:264
+#: dashboard/templates/alarm_config.html:160
+#: dashboard/templates/alarm_config.html:262
 msgid "Day Threshold"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:171
+#: dashboard/templates/alarm_config.html:169
 msgid "No messages for this long (Mon–Fri 08:00–17:00) → alarm fires"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:178
-#: dashboard/templates/alarm_config.html:277
+#: dashboard/templates/alarm_config.html:176
+#: dashboard/templates/alarm_config.html:275
 msgid "Evening Threshold"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:187
+#: dashboard/templates/alarm_config.html:185
 msgid "No messages for this long (Mon–Fri 17:00–08:00) → alarm fires"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:194
-#: dashboard/templates/alarm_config.html:290
+#: dashboard/templates/alarm_config.html:192
+#: dashboard/templates/alarm_config.html:288
 msgid "Weekend Threshold"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:203
+#: dashboard/templates/alarm_config.html:201
 msgid "No messages for this long (Fri 17:00–Mon 08:00) → alarm fires"
 msgstr ""
 
-#: dashboard/templates/alarm_config.html:331
+#: dashboard/templates/alarm_config.html:329
 msgid "No Alarm 1 rules found. Add one below."
 msgstr ""
 
@@ -748,90 +743,86 @@ msgstr ""
 msgid "Updated"
 msgstr ""
 
-#: dashboard/templates/base.html:117
-msgid "Refreshing data…"
-msgstr ""
-
-#: dashboard/templates/base.html:135
+#: dashboard/templates/base.html:128
 msgid "Toggle navigation"
 msgstr ""
 
-#: dashboard/templates/base.html:145 dashboard/templates/index.html:3
+#: dashboard/templates/base.html:138 dashboard/templates/index.html:3
 msgid "Overview"
 msgstr ""
 
-#: dashboard/templates/base.html:152
+#: dashboard/templates/base.html:145
 msgid "Flows"
 msgstr ""
 
-#: dashboard/templates/base.html:159 dashboard/templates/service_bus.html:3
+#: dashboard/templates/base.html:152 dashboard/templates/service_bus.html:3
 msgid "Service Bus"
 msgstr ""
 
-#: dashboard/templates/base.html:166 dashboard/templates/exceptions.html:3
+#: dashboard/templates/base.html:159 dashboard/templates/exceptions.html:3
 #: dashboard/templates/trace.html:73 dashboard/templates/trace.html:107
 msgid "Exceptions"
 msgstr ""
 
-#: dashboard/templates/base.html:173 dashboard/templates/messages.html:3
+#: dashboard/templates/base.html:166 dashboard/templates/messages.html:3
 msgid "Messages"
 msgstr ""
 
-#: dashboard/templates/base.html:180
+#: dashboard/templates/base.html:173
 msgid "Alarms"
 msgstr ""
 
-#: dashboard/templates/base.html:192
+#: dashboard/templates/base.html:185
 msgid "ALL HEALTHY"
 msgstr ""
 
-#: dashboard/templates/base.html:193
+#: dashboard/templates/base.html:186
 msgid "WARNINGS"
 msgstr ""
 
-#: dashboard/templates/base.html:194
+#: dashboard/templates/base.html:187
 msgid "CRITICAL"
 msgstr ""
 
-#: dashboard/templates/base.html:195
+#: dashboard/templates/base.html:188
 msgid "UNKNOWN"
 msgstr ""
 
-#: dashboard/templates/base.html:200
+#: dashboard/templates/base.html:193
 msgid "LIVE"
 msgstr ""
 
-#: dashboard/templates/base.html:203
+#: dashboard/templates/base.html:196
 msgid "Toggle light/dark theme"
 msgstr ""
 
-#: dashboard/templates/base.html:227
+#: dashboard/templates/base.html:220
 msgid "NHS Wales — Integration Hub Dashboard"
 msgstr ""
 
-#: dashboard/templates/base.html:228
+#: dashboard/templates/base.html:221
 msgid "Powered by Azure Service Bus & Application Insights"
 msgstr ""
 
-#: dashboard/templates/base.html:337
+#: dashboard/templates/base.html:320
 msgid "Unsaved Changes"
 msgstr ""
 
-#: dashboard/templates/base.html:340
+#: dashboard/templates/base.html:323
 msgid "You have changes that haven't been saved yet."
 msgstr ""
 
-#: dashboard/templates/base.html:347
+#: dashboard/templates/base.html:330
 msgid ""
 "Would you like to stay on this page and save your changes, or leave and "
 "discard them?"
 msgstr ""
 
-#: dashboard/templates/base.html:359
+#: dashboard/templates/base.html:342
 msgid "Leave without saving"
 msgstr ""
 
-#: dashboard/templates/base.html:367
+#: dashboard/templates/base.html:350
 msgid "Stay & save"
 msgstr ""
 
@@ -1057,7 +1048,7 @@ msgstr ""
 msgid "replica(s)"
 msgstr ""
 
-#: dashboard/templates/flows.html:408 dashboard/templates/flows.html:416
+#: dashboard/templates/flows.html:543 dashboard/templates/flows.html:551
 #: dashboard/templates/index.html:154
 msgid "No flow data available — check Azure credentials"
 msgstr ""
@@ -1394,4 +1385,19 @@ msgstr ""
 #: dashboard/templates/trace.html:182
 msgid "No spans were found for operation ID:"
 msgstr ""
+
+#~ msgid "Health Board"
+#~ msgstr ""
+
+#~ msgid "Peer Service"
+#~ msgstr ""
+
+#~ msgid "and"
+#~ msgstr ""
+
+#~ msgid "dimensions over the configured"
+#~ msgstr ""
+
+#~ msgid "Refreshing data…"
+#~ msgstr ""
 
