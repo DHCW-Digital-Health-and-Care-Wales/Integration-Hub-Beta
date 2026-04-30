@@ -375,6 +375,7 @@ dependencies = [
     { name = "hl7apy" },
     { name = "message-bus-lib" },
     { name = "metric-sender-lib" },
+    { name = "otel-lib" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -399,6 +400,7 @@ requires-dist = [
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
     { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
+    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -504,6 +506,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "otel-lib" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -513,6 +516,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -902,6 +906,34 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9b/1b/6229c45445e08e798fa825f5376f6d6a4211d29052a4088eed6d577fa653/opentelemetry_util_http-0.57b0.tar.gz", hash = "sha256:f7417595ead0eb42ed1863ec9b2f839fc740368cd7bbbfc1d0a47bc1ab0aba11", size = 9405, upload-time = "2025-07-29T15:43:19.916Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/a6/b98d508d189b9c208f5978d0906141747d7e6df7c7cafec03657ed1ed559/opentelemetry_util_http-0.57b0-py3-none-any.whl", hash = "sha256:e54c0df5543951e471c3d694f85474977cd5765a3b7654398c83bab3d2ffb8e9", size = 7643, upload-time = "2025-07-29T15:42:41.744Z" },
+]
+
+[[package]]
+name = "otel-lib"
+version = "0.1.0"
+source = { directory = "../shared_libs/otel_lib" }
+dependencies = [
+    { name = "azure-monitor-opentelemetry" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.2" },
+    { name = "mypy", specifier = "==1.18.2" },
+    { name = "ruff", specifier = "==0.15.0" },
 ]
 
 [[package]]
