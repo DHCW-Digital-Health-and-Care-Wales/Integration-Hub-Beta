@@ -175,7 +175,5 @@ cython_debug/
 .secrets
 tmp
 .DS_Store
-dashboard/alarm_state.json
-dashboard/alarm2_state.json
-dashboard/alarm_state.json
-dashboard/alarm2_state.json
+
+dashboard/alarm*_state.json

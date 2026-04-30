@@ -394,8 +394,9 @@
 
       if (stayBtn)  stayBtn.addEventListener('click',  closeModal);
       if (leaveBtn) leaveBtn.addEventListener('click', function () {
+        var dest = _dest;
         closeModal();
-        window.location.href = _dest;
+        window.location.href = dest;
       });
       // Close on backdrop click
       if (backdrop) backdrop.addEventListener('click', function (e) {
