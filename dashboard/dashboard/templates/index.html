@@ -9,6 +9,7 @@
 {% block content %}
 
 {# ── Splash screen — shown only when JS is active; hides as soon as content is ready ── #}
+{% if splash_enabled %}
 <div id="splash-screen" style="display:none;" aria-hidden="true">
   <div id="splash-inner">
     <img src="{{ url_for('static', filename='DHCW-logo-RGB-White.png') }}"
@@ -20,8 +21,9 @@
     </div>
   </div>
 </div>
-{# Make splash visible immediately if JS is enabled (JS-only so it can't get permanently stuck) #}
-<script>document.getElementById('splash-screen').style.display='flex';</script>
+{# Make splash visible immediately if JS is enabled AND this is the first load this session #}
+<script>try{if(!sessionStorage.getItem('ih-splash-shown')){document.getElementById('splash-screen').style.display='flex';}}catch(e){}</script>
+{% endif %}
 
 <div class="page-wrapper">
 
@@ -602,7 +604,9 @@
 <script>
   (function () {
     var splash = document.getElementById('splash-screen');
-    if (!splash) return;
+    // Splash is hidden (display:none) if session flag already set — nothing to do.
+    if (!splash || splash.style.display === 'none') return;
+
     var MIN_MS = 700;
     var start  = Date.now();
 
@@ -610,6 +614,8 @@
       if (splash.parentNode) splash.parentNode.removeChild(splash);
     }
     function dismissSplash() {
+      // Mark as shown so navigating back to this page skips the splash.
+      try { sessionStorage.setItem('ih-splash-shown', '1'); } catch(e) {}
       var wait = Math.max(0, MIN_MS - (Date.now() - start));
       setTimeout(function () {
         splash.classList.add('splash-fade');

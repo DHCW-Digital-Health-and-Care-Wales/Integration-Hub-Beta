@@ -6,7 +6,7 @@
   <title>{% block title %}Integration Hub Dashboard{% endblock %} — NHS Wales</title>
 
   <!-- Apply saved theme before CSS loads to prevent flash -->
-  <script>(function(){try{var t=localStorage.getItem('ih-theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})()</script>
+  <script>(function(){try{var t=localStorage.getItem('ih-theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('ih-loading');}catch(e){}})()</script>
 
   <!-- Bootstrap 5.3.3 (vendored) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" />
@@ -282,6 +282,14 @@
   })();
 
   // Stale toast removed — pages use their own refresh-bar pattern
+
+  // Re-enable CSS transitions after first paint to prevent navigation FOUC.
+  // Two rAF calls ensure we're past the initial render before transitions fire.
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      document.documentElement.classList.remove('ih-loading');
+    });
+  });
 </script>
 
 {% block scripts %}{% endblock %}

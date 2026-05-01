@@ -75,6 +75,10 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* Suppress all transitions during initial page load to prevent FOUC.
+   The ih-loading class is removed by base.html after the first paint. */
+.ih-loading, .ih-loading * { transition: none !important; }
+
 /* Subtle grid background — dark only */
 [data-theme="dark"] body::before {
   content: '';

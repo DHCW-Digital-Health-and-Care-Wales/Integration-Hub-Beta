@@ -423,6 +423,7 @@ def index() -> str:
         status=status,
         refresh_interval=config.API_CACHE_TTL,
         data_is_stale=_is_cache_stale("status"),
+        splash_enabled=config.SPLASH_SCREEN_ENABLED,
         alarm1_rows=alarm1_rows or [],
         alarm2_rows=alarm2_rows or [],
         alarm3_rows=alarm3_rows or [],

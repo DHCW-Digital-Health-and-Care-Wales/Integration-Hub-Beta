@@ -45,3 +45,6 @@ ALERT_EMAIL_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
 ACS_CONNECTION_STRING = os.getenv("ACS_CONNECTION_STRING", "")
+
+# UI
+SPLASH_SCREEN_ENABLED = os.getenv("SPLASH_SCREEN_ENABLED", "true").lower() == "true"
