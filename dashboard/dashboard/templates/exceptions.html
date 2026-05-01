@@ -120,15 +120,19 @@
 
 {% block scripts %}
 <script>
+  var i18nSeverityOnly    = {{ _("Severity {sev} only") | tojson }};
+  var i18nShowAll         = {{ _("Show all") | tojson }};
+  var i18nSortedByRecent  = {{ _("Sorted by most recent") | tojson }};
+
   function setSeverityFilter(sev) {
     var items = document.querySelectorAll('#exception-items .exception-item');
     items.forEach(function(el) {
       el.style.display = (parseInt(el.dataset.severity) === sev) ? '' : 'none';
     });
-    // Show a reset link in the header
     var header = document.querySelector('#exception-log .queue-table-header span');
     if (header) {
-      header.innerHTML = 'Severity ' + sev + ' only &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">Show all</a>';
+      var label = i18nSeverityOnly.replace('{sev}', sev);
+      header.innerHTML = label + ' &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">' + i18nShowAll + '</a>';
     }
   }
 
@@ -137,7 +141,7 @@
       el.style.display = '';
     });
     var header = document.querySelector('#exception-log .queue-table-header span');
-    if (header) header.textContent = 'Sorted by most recent';
+    if (header) header.textContent = i18nSortedByRecent;
   }
 </script>
 {% endblock %}

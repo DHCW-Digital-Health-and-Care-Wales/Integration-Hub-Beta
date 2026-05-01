@@ -430,7 +430,7 @@
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}
                   {% else %}
-                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                    <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
                   <a href="{{ url_for('alarm_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
                 </div>
@@ -471,7 +471,7 @@
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}
                   {% else %}
-                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                    <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
                   <a href="{{ url_for('alarm2_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
                 </div>
@@ -511,7 +511,7 @@
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}
                   {% else %}
-                    <span style="font-size:0.65rem; color:var(--text-muted);">Disabled</span>
+                    <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
                   <a href="{{ url_for('alarm3_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
                 </div>

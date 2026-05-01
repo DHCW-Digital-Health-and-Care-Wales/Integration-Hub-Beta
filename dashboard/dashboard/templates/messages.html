@@ -171,9 +171,11 @@
     });
     const countEl = document.getElementById('msg-count');
     if (countEl) {
+      var i18nXofY      = {{ _("{visible} of {total} messages") | tojson }};
+      var i18nNMessages = {{ _("{total} messages") | tojson }};
       countEl.textContent = q
-        ? visible + ' of ' + rows.length + ' messages'
-        : rows.length + ' messages';
+        ? i18nXofY.replace('{visible}', visible).replace('{total}', rows.length)
+        : i18nNMessages.replace('{total}', rows.length);
     }
   }
 </script>

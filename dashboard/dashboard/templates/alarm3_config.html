@@ -136,7 +136,7 @@
             <input type="text" class="dash-input w-100"
                    id="workflow_id_{{ r.id }}" name="workflow_id_{{ r.id }}"
                    value="{{ r.workflow_id }}" maxlength="120"
-                   placeholder="e.g. phw-to-mpi">
+                   placeholder="{{ _('e.g. phw-to-mpi') }}">
             <div class="cfg-hint">parse_json(Properties)["workflow_id"] filter value</div>
           </div>
 
@@ -212,7 +212,7 @@
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_display_name" name="new_display_name"
-                   maxlength="80" placeholder="e.g. PHW → MPI Failures">
+                   maxlength="80" placeholder="{{ _('e.g. PHW → MPI Failures') }}">
             <div class="cfg-hint">{{ _("Human-readable label (auto-generated if blank)") }}</div>
           </div>
 
@@ -223,7 +223,7 @@
             </label>
             <input type="text" class="dash-input w-100"
                    id="new_workflow_id" name="new_workflow_id"
-                   maxlength="120" placeholder="e.g. phw-to-mpi">
+                   maxlength="120" placeholder="{{ _('e.g. phw-to-mpi') }}">
             <div class="cfg-hint">parse_json(Properties)["workflow_id"] filter value</div>
           </div>
 
@@ -353,12 +353,16 @@
 </style>
 
 <script>
+  var i18nEnabled  = {{ _("Enabled")  | tojson }};
+  var i18nDisabled = {{ _("Disabled") | tojson }};
+  var i18nRemoveRule = {{ _("Remove rule \"{id}\"? This will take effect when you save.") | tojson }};
+
   document.querySelectorAll('[id^="enabled_"]').forEach(function (cb) {
     var rid = cb.id.replace('enabled_', '');
     var lbl = document.getElementById('label_' + rid);
     cb.addEventListener('change', function () {
       if (!lbl) return;
-      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
       lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
     });
   });
@@ -367,7 +371,7 @@
     var lbl = document.getElementById('email_label_' + rid);
     if (!lbl) return;
     cb.addEventListener('change', function () {
-      lbl.textContent = cb.checked ? 'Enabled' : 'Disabled';
+      lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
       lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
     });
   });
@@ -377,7 +381,7 @@
       var rid  = btn.dataset.ruleId;
       var card = btn.closest('.dash-card');
       if (!card) return;
-      if (!confirm('Remove rule "' + rid + '"? This will take effect when you save.')) return;
+      if (!confirm(i18nRemoveRule.replace('%(id)s', rid))) return;
       card.classList.add('rule-card--removing');
       card.querySelectorAll('input, select, textarea').forEach(function (el) {
         el.disabled = true;
