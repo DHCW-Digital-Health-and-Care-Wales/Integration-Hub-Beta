@@ -145,6 +145,12 @@ class MessageReceiverClient:
             # are surfaced as ServiceBusError. Treat them as recoverable and retry after a delay.
             logger.warning("Transient Service Bus error, will retry later: %s", exc)
             self._set_delay_before_retry()
+        except Exception as exc:
+            # Catch unexpected SDK-internal errors such as AttributeError when the underlying
+            # AMQP session is None after a dropped connection (pyamqp transport bug). The receiver
+            # is created fresh on each call so there is no stale state — just schedule a retry.
+            logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
+            self._set_delay_before_retry()
         finally:
             if autolock_renewer:
                 autolock_renewer.close()

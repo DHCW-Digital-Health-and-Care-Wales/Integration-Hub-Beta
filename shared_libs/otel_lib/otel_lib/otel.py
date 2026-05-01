@@ -57,13 +57,21 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     try:
         # azure-monitor-opentelemetry sets up the TracerProvider internally; we
         # only need to supply the resource so the service.name is correct.
+        # Disable instrumentors for libraries not used by our HL7 services to
+        # prevent ModuleNotFoundError when e.g. psycopg2 is not installed.
         configure_azure_monitor(
             resource=Resource.create(
                 {
                     "service.name": service_name,
                     "service.version": service_version,
                 }
-            )
+            ),
+            instrumentation_options={
+                "django":   {"enabled": False},
+                "fastapi":  {"enabled": False},
+                "flask":    {"enabled": False},
+                "psycopg2": {"enabled": False},
+            },
         ) # type: ignore
         logger.info("OpenTelemetry configured with Azure Monitor exporter for service '%s'.", service_name)
     except Exception:
