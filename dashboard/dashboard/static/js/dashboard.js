@@ -186,6 +186,51 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Alarm summary widgets                                                 */
+  /* ------------------------------------------------------------------ */
+  function _updateAlarmSummaryCard(prefix, summary) {
+    if (!summary) return;
+    const card    = document.getElementById(`${prefix}-summary-card`);
+    const badge   = document.getElementById(`${prefix}-summary-badge`);
+    const critEl  = document.getElementById(`${prefix}-sum-critical`);
+    const suppEl  = document.getElementById(`${prefix}-sum-suppressed`);
+    const hlthEl  = document.getElementById(`${prefix}-sum-healthy`);
+    if (!card) return;
+
+    const { critical = 0, suppressed = 0, healthy = 0, total = 0 } = summary;
+
+    card.classList.remove("alarm-summary--critical", "alarm-summary--suppressed");
+    if (critical > 0)        card.classList.add("alarm-summary--critical");
+    else if (suppressed > 0) card.classList.add("alarm-summary--suppressed");
+
+    if (badge) {
+      badge.className = "status-badge " +
+        (critical > 0 ? "critical" : suppressed > 0 ? "suppressed" : total > 0 ? "healthy" : "unknown");
+      badge.innerHTML = critical > 0
+        ? '<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm'
+        : suppressed > 0
+        ? '<i class="bi bi-bell-slash-fill me-1"></i>Suppressed'
+        : total > 0
+        ? '<i class="bi bi-check-circle-fill me-1"></i>All OK'
+        : '<i class="bi bi-question-circle me-1"></i>Not Configured';
+    }
+
+    if (critEl) {
+      animateCounter(critEl, critical);
+      critEl.className = "alarm-sum-num" + (critical > 0 ? " alarm-sum-red" : "");
+    }
+    if (suppEl) {
+      animateCounter(suppEl, suppressed);
+      suppEl.className = "alarm-sum-num" + (suppressed > 0 ? " alarm-sum-amber" : "");
+    }
+    if (hlthEl) animateCounter(hlthEl, healthy);
+  }
+
+  function updateAlarm1Summary(summary) { _updateAlarmSummaryCard("alarm1", summary); }
+  function updateAlarm2Summary(summary) { _updateAlarmSummaryCard("alarm2", summary); }
+  function updateAlarm3Summary(summary) { _updateAlarmSummaryCard("alarm3", summary); }
+
+  /* ------------------------------------------------------------------ */
   /* Poll /api/status                                                      */
   /* ------------------------------------------------------------------ */
   async function refreshData() {
@@ -199,6 +244,9 @@
       updateFlowCards(data.flows);
       updateSystemHealth(data.system_health);
       updateQueueTable(data.queues);
+      updateAlarm1Summary(data.alarm1_summary);
+      updateAlarm2Summary(data.alarm2_summary);
+      updateAlarm3Summary(data.alarm3_summary);
 
       if (lastRefreshedEl) {
         const d = new Date(data.refreshed_at);

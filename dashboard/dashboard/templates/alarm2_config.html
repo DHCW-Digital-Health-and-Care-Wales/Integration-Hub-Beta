@@ -424,24 +424,15 @@
     });
   }
 
-  // ── Unsaved-changes guard ──────────────────────────────────────────────
-  var formDirty = false;
-  var configForm = document.querySelector('form');
+  // ── Register form with the base.html unsaved-changes guard ────────────
+  (function () {
+    var form = document.querySelector('main form');
+    if (!form) return;
+    form.addEventListener('change', function () { window._formDirty = true; });
+    form.addEventListener('input',  function () { window._formDirty = true; });
+    form.addEventListener('submit', function () { window._formDirty = false; });
+  })();
 
-  if (configForm) {
-    configForm.addEventListener('change', function () { formDirty = true; });
-    configForm.addEventListener('input',  function () { formDirty = true; });
-    configForm.addEventListener('submit', function () { formDirty = false; });
-  }
-
-  var backBtn = document.getElementById('back-to-summary');
-  if (backBtn) {
-    backBtn.addEventListener('click', function (e) {
-      if (!formDirty) return;
-      e.preventDefault();
-      window.showUnsavedDialog(backBtn.href);
-    });
-  }
   // Highlight the rule card targeted by the URL fragment
   (function () {
     var hash = window.location.hash;

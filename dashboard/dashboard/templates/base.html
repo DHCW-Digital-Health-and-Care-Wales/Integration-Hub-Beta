@@ -387,6 +387,7 @@
       if (stayBtn)  stayBtn.addEventListener('click',  closeModal);
       if (leaveBtn) leaveBtn.addEventListener('click', function () {
         var dest = _dest;
+        window._formDirty = false;
         closeModal();
         window.location.href = dest;
       });
@@ -396,6 +397,30 @@
       });
       // Expose globally for config pages
       window.showUnsavedDialog = openModal;
+
+      // ── Global unsaved-changes state (config pages set this) ──────────
+      window._formDirty = false;
+
+      // Intercept ALL internal link clicks when dirty
+      document.addEventListener('click', function (e) {
+        if (!window._formDirty) return;
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+            href.startsWith('http://') || href.startsWith('https://') ||
+            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openModal(link.href);
+      }, true); // capture phase so it runs before the nav-bar loading handler
+
+      // Intercept browser back / forward / tab close
+      window.addEventListener('beforeunload', function (e) {
+        if (!window._formDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
     })();
   </script>
 </body>

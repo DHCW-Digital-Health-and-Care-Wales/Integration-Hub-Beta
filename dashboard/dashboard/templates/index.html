@@ -7,6 +7,22 @@
 {% endblock %}
 
 {% block content %}
+
+{# ── Splash screen — shown only when JS is active; hides as soon as content is ready ── #}
+<div id="splash-screen" style="display:none;" aria-hidden="true">
+  <div id="splash-inner">
+    <img src="{{ url_for('static', filename='DHCW-logo-RGB-White.png') }}"
+         alt="DHCW" id="splash-logo" />
+    <div id="splash-title">Integration Hub</div>
+    <div id="splash-subtitle">{{ _("Monitoring Dashboard") }}</div>
+    <div id="splash-dots" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+{# Make splash visible immediately if JS is enabled (JS-only so it can't get permanently stuck) #}
+<script>document.getElementById('splash-screen').style.display='flex';</script>
+
 <div class="page-wrapper">
 
   <!-- Page header -->
@@ -159,6 +175,223 @@
     <p class="flow-no-results" id="flow-no-results" style="display:none; padding:1rem 1.25rem; margin:0;">{{ _("No flows match your search.") }}</p>
   </div><!-- /flows-compact-wrap -->
 
+  <!-- ======================== Alarms Summary ======================== -->
+  <div class="section-header mt-3">
+    <span class="section-title"><i class="bi bi-bell-fill"></i> {{ _("Alarms") }}</span>
+    <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" style="font-size:0.72rem;">
+      <i class="bi bi-arrow-right-circle"></i> {{ _("All Alarms") }}
+    </a>
+  </div>
+
+  <div class="row g-3 mb-3" id="alarms-summary-row">
+
+    {# ------------------------------------------------------------------ #}
+    {# Alarm 1 — Message Inactivity                                       #}
+    {# ------------------------------------------------------------------ #}
+    {% set a1_critical   = alarm1_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set a1_suppressed = alarm1_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set a1_healthy    = alarm1_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div class="col-12 col-md-4">
+      <div id="alarm1-summary-card" class="queue-table-wrapper h-100
+        {% if a1_critical > 0 %}alarm-summary--critical
+        {% elif a1_suppressed > 0 %}alarm-summary--suppressed{% endif %}">
+
+        <div class="queue-table-header">
+          <h6>
+            <i class="bi bi-alarm me-1"
+               style="color:{% if a1_critical > 0 %}var(--accent-red){% elif a1_suppressed > 0 %}var(--accent-amber){% elif alarm1_rows %}var(--accent-green){% else %}var(--text-muted){% endif %}">
+            </i>
+            {{ _("Alarm 1") }}
+            <span style="font-size:0.7rem; font-weight:400; color:var(--text-muted);">{{ _("Message Inactivity") }}</span>
+          </h6>
+          <span id="alarm1-summary-badge" class="status-badge
+            {% if a1_critical > 0 %}critical
+            {% elif a1_suppressed > 0 %}suppressed
+            {% elif alarm1_rows %}healthy
+            {% else %}unknown{% endif %}">
+            {% if a1_critical > 0 %}
+              <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+            {% elif a1_suppressed > 0 %}
+              <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+            {% elif alarm1_rows %}
+              <i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+            {% else %}
+              <i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}
+            {% endif %}
+          </span>
+        </div>
+
+        {% if alarm1_rows %}
+        <div class="d-flex gap-4 px-3 pt-1 pb-2">
+          <div>
+            <div id="alarm1-sum-critical" class="alarm-sum-num{% if a1_critical > 0 %} alarm-sum-red{% endif %}">{{ a1_critical }}</div>
+            <div class="alarm-sum-lbl">{{ _("In Alarm") }}</div>
+          </div>
+          <div>
+            <div id="alarm1-sum-suppressed" class="alarm-sum-num{% if a1_suppressed > 0 %} alarm-sum-amber{% endif %}">{{ a1_suppressed }}</div>
+            <div class="alarm-sum-lbl">{{ _("Suppressed") }}</div>
+          </div>
+          <div>
+            <div id="alarm1-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a1_healthy }}</div>
+            <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
+          </div>
+        </div>
+        {% else %}
+        <p class="alarm-sum-empty">
+          {{ _("No rules configured.") if no_alarm1_configured else _("No data available.") }}
+        </p>
+        {% endif %}
+
+        <div class="alarm-sum-footer">
+          <a href="{{ url_for('alarm_page') }}" class="btn-dash btn-dash-sm">
+            <i class="bi bi-eye me-1"></i>{{ _("View Details") }}
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Alarm 2 — Outgoing Volume     (add col-12 col-md-4 card here)      #}
+    {# ------------------------------------------------------------------ #}
+
+    {# ------------------------------------------------------------------ #}
+    {# Alarm 2 — Outgoing Message Volume                                  #}
+    {# ------------------------------------------------------------------ #}
+    {% set a2_critical   = alarm2_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set a2_suppressed = alarm2_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set a2_healthy    = alarm2_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div class="col-12 col-md-4">
+      <div id="alarm2-summary-card" class="queue-table-wrapper h-100
+        {% if a2_critical > 0 %}alarm-summary--critical
+        {% elif a2_suppressed > 0 %}alarm-summary--suppressed{% endif %}">
+
+        <div class="queue-table-header">
+          <h6>
+            <i class="bi bi-alarm me-1"
+               style="color:{% if a2_critical > 0 %}var(--accent-red){% elif a2_suppressed > 0 %}var(--accent-amber){% elif alarm2_rows %}var(--accent-green){% else %}var(--text-muted){% endif %}">
+            </i>
+            {{ _("Alarm 2") }}
+            <span style="font-size:0.7rem; font-weight:400; color:var(--text-muted);">{{ _("Outgoing Volume") }}</span>
+          </h6>
+          <span id="alarm2-summary-badge" class="status-badge
+            {% if a2_critical > 0 %}critical
+            {% elif a2_suppressed > 0 %}suppressed
+            {% elif alarm2_rows %}healthy
+            {% else %}unknown{% endif %}">
+            {% if a2_critical > 0 %}
+              <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+            {% elif a2_suppressed > 0 %}
+              <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+            {% elif alarm2_rows %}
+              <i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+            {% else %}
+              <i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}
+            {% endif %}
+          </span>
+        </div>
+
+        {% if alarm2_rows %}
+        <div class="d-flex gap-4 px-3 pt-1 pb-2">
+          <div>
+            <div id="alarm2-sum-critical" class="alarm-sum-num{% if a2_critical > 0 %} alarm-sum-red{% endif %}">{{ a2_critical }}</div>
+            <div class="alarm-sum-lbl">{{ _("In Alarm") }}</div>
+          </div>
+          <div>
+            <div id="alarm2-sum-suppressed" class="alarm-sum-num{% if a2_suppressed > 0 %} alarm-sum-amber{% endif %}">{{ a2_suppressed }}</div>
+            <div class="alarm-sum-lbl">{{ _("Suppressed") }}</div>
+          </div>
+          <div>
+            <div id="alarm2-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a2_healthy }}</div>
+            <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
+          </div>
+        </div>
+        {% else %}
+        <p class="alarm-sum-empty">
+          {{ _("No rules configured.") if no_alarm2_configured else _("No data available.") }}
+        </p>
+        {% endif %}
+
+        <div class="alarm-sum-footer">
+          <a href="{{ url_for('alarm2_page') }}" class="btn-dash btn-dash-sm">
+            <i class="bi bi-eye me-1"></i>{{ _("View Details") }}
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Alarm 3 — Message Processing Failures                              #}
+    {# ------------------------------------------------------------------ #}
+    {% set a3_critical   = alarm3_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
+    {% set a3_suppressed = alarm3_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+    {% set a3_healthy    = alarm3_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+
+    <div class="col-12 col-md-4">
+      <div id="alarm3-summary-card" class="queue-table-wrapper h-100
+        {% if a3_critical > 0 %}alarm-summary--critical
+        {% elif a3_suppressed > 0 %}alarm-summary--suppressed{% endif %}">
+
+        <div class="queue-table-header">
+          <h6>
+            <i class="bi bi-alarm me-1"
+               style="color:{% if a3_critical > 0 %}var(--accent-red){% elif a3_suppressed > 0 %}var(--accent-amber){% elif alarm3_rows %}var(--accent-green){% else %}var(--text-muted){% endif %}">
+            </i>
+            {{ _("Alarm 3") }}
+            <span style="font-size:0.7rem; font-weight:400; color:var(--text-muted);">{{ _("Processing Failures") }}</span>
+          </h6>
+          <span id="alarm3-summary-badge" class="status-badge
+            {% if a3_critical > 0 %}critical
+            {% elif a3_suppressed > 0 %}suppressed
+            {% elif alarm3_rows %}healthy
+            {% else %}unknown{% endif %}">
+            {% if a3_critical > 0 %}
+              <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
+            {% elif a3_suppressed > 0 %}
+              <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+            {% elif alarm3_rows %}
+              <i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
+            {% else %}
+              <i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}
+            {% endif %}
+          </span>
+        </div>
+
+        {% if alarm3_rows %}
+        <div class="d-flex gap-4 px-3 pt-1 pb-2">
+          <div>
+            <div id="alarm3-sum-critical" class="alarm-sum-num{% if a3_critical > 0 %} alarm-sum-red{% endif %}">{{ a3_critical }}</div>
+            <div class="alarm-sum-lbl">{{ _("In Alarm") }}</div>
+          </div>
+          <div>
+            <div id="alarm3-sum-suppressed" class="alarm-sum-num{% if a3_suppressed > 0 %} alarm-sum-amber{% endif %}">{{ a3_suppressed }}</div>
+            <div class="alarm-sum-lbl">{{ _("Suppressed") }}</div>
+          </div>
+          <div>
+            <div id="alarm3-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a3_healthy }}</div>
+            <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
+          </div>
+        </div>
+        {% else %}
+        <p class="alarm-sum-empty">
+          {{ _("No rules configured.") if no_alarm3_configured else _("No data available.") }}
+        </p>
+        {% endif %}
+
+        <div class="alarm-sum-footer">
+          <a href="{{ url_for('alarm3_page') }}" class="btn-dash btn-dash-sm">
+            <i class="bi bi-eye me-1"></i>{{ _("View Details") }}
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /alarms-summary-row -->
+
   <!-- Two-column lower section -->
   <div class="row g-3 mt-0">
 
@@ -272,8 +505,128 @@
   </div><!-- /row -->
 
 </div><!-- /page-wrapper -->
+
+<style>
+  .alarm-summary--critical  { border-left: 3px solid var(--accent-red); }
+  .alarm-summary--suppressed { border-left: 3px solid var(--accent-amber); }
+
+  .alarm-sum-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .alarm-sum-red   { color: var(--accent-red); }
+  .alarm-sum-amber { color: var(--accent-amber); }
+  .alarm-sum-green { color: var(--accent-green); }
+
+  .alarm-sum-lbl {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .alarm-sum-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding: 0.25rem 1rem 0.5rem;
+    margin: 0;
+  }
+
+  .alarm-sum-footer {
+    padding: 0.25rem 0.75rem 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* ── Splash screen ── */
+  #splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: var(--bg-primary, #0f1623);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.45s ease;
+  }
+  #splash-screen.splash-fade { opacity: 0; pointer-events: none; }
+  #splash-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: splashIn 0.45s ease both;
+  }
+  #splash-logo  { height: 56px; width: auto; display: block; }
+  #splash-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    letter-spacing: 0.02em;
+  }
+  #splash-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  #splash-dots { display: flex; gap: 8px; margin-top: 6px; }
+  #splash-dots span {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent-cyan, #12a3c9);
+    animation: splashDot 1.1s ease-in-out infinite;
+  }
+  #splash-dots span:nth-child(2) { animation-delay: 0.18s; }
+  #splash-dots span:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes splashIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes splashDot {
+    0%, 80%, 100% { transform: scale(0.55); opacity: 0.35; }
+    40%           { transform: scale(1.0);  opacity: 1.0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #splash-screen { transition: none; }
+    #splash-inner, #splash-dots span { animation: none; }
+  }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  (function () {
+    var splash = document.getElementById('splash-screen');
+    if (!splash) return;
+    var MIN_MS = 700;
+    var start  = Date.now();
+
+    function removeSplash() {
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+    }
+    function dismissSplash() {
+      var wait = Math.max(0, MIN_MS - (Date.now() - start));
+      setTimeout(function () {
+        splash.classList.add('splash-fade');
+        // Belt-and-braces: if transitionend never fires, remove after 600 ms
+        var fallback = setTimeout(removeSplash, 600);
+        splash.addEventListener('transitionend', function () {
+          clearTimeout(fallback);
+          removeSplash();
+        }, { once: true });
+      }, wait);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', dismissSplash);
+    } else {
+      dismissSplash();
+    }
+  })();
+</script>
 {% endblock %}

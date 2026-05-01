@@ -313,14 +313,21 @@ def _is_cache_stale(key: str, ttl: float | None = None) -> bool:
 
 
 def _build_status() -> dict:
-    queues = get_queues()
-    active_flows = get_active_flows()
+    # Run the three independent Azure API calls concurrently to cut cold-cache
+    # latency from ~3× to ~1× round-trip time.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        fut_queues = pool.submit(get_queues)
+        fut_flows  = pool.submit(get_active_flows)
+        fut_exc    = pool.submit(get_exceptions, hours=1)
+        queues        = fut_queues.result()
+        active_flows  = fut_flows.result()
+        exceptions_1h = fut_exc.result()
+
     flows = build_flow_data(queues, active_flows)
 
     total_active = sum(q.get("active_message_count", 0) for q in queues)
     total_dlq = sum(q.get("dead_letter_message_count", 0) for q in queues)
 
-    exceptions_1h = get_exceptions(hours=1)
     exception_count = len(exceptions_1h)
 
     flow_statuses = [f["health"] for f in flows]
@@ -398,11 +405,25 @@ def set_language() -> Response:
 @app.route("/")
 def index() -> str:
     status = _get_cached_status()
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
+        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ])
+    cfg1 = load_alarm_config()
+    cfg2 = load_alarm2_config()
+    cfg3 = load_alarm3_config()
     return render_template(
         "index.html",
         status=status,
         refresh_interval=config.API_CACHE_TTL,
         data_is_stale=_is_cache_stale("status"),
+        alarm1_rows=alarm1_rows or [],
+        alarm2_rows=alarm2_rows or [],
+        alarm3_rows=alarm3_rows or [],
+        no_alarm1_configured=not any(r.get("alarm_enabled", False) for r in cfg1.get("rules", {}).values()),
+        no_alarm2_configured=not any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values()),
+        no_alarm3_configured=not any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values()),
     )
 
 
@@ -503,10 +524,34 @@ def trace_page(operation_id: str) -> str | tuple[str, int]:
     return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
 
 
+def _alarm_summary(rows: list[dict] | None) -> dict:
+    """Compute a compact status count dict from an alarm rows list."""
+    rows = rows or []
+    return {
+        "critical":   sum(1 for r in rows if r.get("status") == "critical"),
+        "suppressed": sum(1 for r in rows if r.get("status") == "suppressed"),
+        "unknown":    sum(1 for r in rows if r.get("status") == "unknown"),
+        "healthy":    sum(1 for r in rows if r.get("status") == "healthy"),
+        "total":      len(rows),
+    }
+
+
 @app.route("/api/status")
 def api_status() -> Response:
     force = request.args.get("force", "false").lower() == "true"
     data = _get_cached_status(force=force)
+    # Merge compact alarm summaries so dashboard.js can keep widgets live.
+    # These are non-blocking cache reads — no extra Azure calls.
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
+        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ])
+    data = dict(data)
+    data["alarm1_summary"] = _alarm_summary(alarm1_rows)
+    data["alarm2_summary"] = _alarm_summary(alarm2_rows)
+    data["alarm3_summary"] = _alarm_summary(alarm3_rows)
+    # TODO: add alarm1_summary and alarm2_summary here when those widgets are added
     return jsonify(data)
 
 
@@ -699,6 +744,7 @@ def alarm_config_page() -> str:
         save_alarm_config(cfg)
         with _cache_lock:
             _cache_data["alarms"]["ts"] = 0.0
+            _cache_data["alarms"]["data"] = None
         saved = True
 
     rules = get_config_page_data()
@@ -788,6 +834,7 @@ def alarm2_config_page() -> str:
         save_alarm2_config(cfg)
         with _cache_lock:
             _cache_data["alarm2"]["ts"] = 0.0
+            _cache_data["alarm2"]["data"] = None
         saved = True
 
     rules = get_alarm2_config_page_data()
@@ -874,6 +921,7 @@ def alarm3_config_page() -> str:
         save_alarm3_config(cfg)
         with _cache_lock:
             _cache_data["alarm3"]["ts"] = 0.0
+            _cache_data["alarm3"]["data"] = None
         saved = True
 
     rules = get_alarm3_config_page_data()
