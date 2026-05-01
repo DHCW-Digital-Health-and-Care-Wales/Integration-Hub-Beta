@@ -734,11 +734,12 @@ def alarm_config_page() -> str:
 
         # Add new rule
         new_wid = (request.form.get("new_workflow_id") or "").strip()
+        new_rid = None
         if new_wid:
             new_rid = generate_alarm1_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_rid] = {
                 "display_name":              (request.form.get("new_display_name") or "").strip(),
-                "alarm_enabled":             False,
+                "alarm_enabled":             "new_enabled" in request.form,
                 "workflow_id":               new_wid,
                 "day_threshold_minutes":     _int("new_day_threshold", 60),
                 "evening_threshold_minutes": _int("new_evening_threshold", 120),
@@ -758,6 +759,7 @@ def alarm_config_page() -> str:
         "alarm_config.html",
         rules=rules,
         saved=saved,
+        new_rule_id=new_rid if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )
@@ -824,12 +826,13 @@ def alarm2_config_page() -> str:
 
         # --- Add new rule if submitted ---
         new_wid = (request.form.get("new_workflow_id") or "").strip()
+        new_id = None
         if new_wid:
             new_id = generate_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_id] = {
                 "display_name":            (request.form.get("new_display_name") or "").strip()
                                            or new_wid,
-                "alarm_enabled":           False,
+                "alarm_enabled":           "new_enabled" in request.form,
                 "workflow_id":             new_wid,
                 "window_duration_minutes": _int("new_window_duration", 2880, minimum=1),
                 "threshold":               _int("new_threshold", 0, minimum=0),
@@ -848,6 +851,7 @@ def alarm2_config_page() -> str:
         "alarm2_config.html",
         rules=rules,
         saved=saved,
+        new_rule_id=new_id if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )
@@ -911,12 +915,13 @@ def alarm3_config_page() -> str:
             entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
 
         new_wid = (request.form.get("new_workflow_id") or "").strip()
+        new_id = None
         if new_wid:
             new_id = generate_alarm3_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_id] = {
                 "display_name":            (request.form.get("new_display_name") or "").strip()
                                            or f"{new_wid} Failures",
-                "alarm_enabled":           False,
+                "alarm_enabled":           "new_enabled" in request.form,
                 "workflow_id":             new_wid,
                 "window_duration_minutes": _int("new_window_duration", 15, minimum=1),
                 "threshold":               _int("new_threshold", 1, minimum=1),
@@ -935,6 +940,7 @@ def alarm3_config_page() -> str:
         "alarm3_config.html",
         rules=rules,
         saved=saved,
+        new_rule_id=new_id if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )

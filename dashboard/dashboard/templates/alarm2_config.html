@@ -231,6 +231,26 @@
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
+            <label class="cfg-label">
+              <i class="bi bi-toggle-on me-1" style="color:var(--accent-green)"></i>{{ _("Enabled") }}
+            </label>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <div class="form-check form-switch" style="margin:0; padding-left:0;">
+                <input class="form-check-input"
+                       type="checkbox"
+                       role="switch"
+                       id="new_enabled" name="new_enabled"
+                       checked
+                       style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+              </div>
+              <span id="new_enabled_label"
+                    style="font-size:0.78rem; font-weight:600; min-width:60px; color:var(--accent-green);">
+                {{ _("Enabled") }}
+              </span>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label" for="new_window_duration">
               <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
               {{ _("Lookback Window") }}
@@ -434,6 +454,32 @@
     form.addEventListener('input',  function () { window._formDirty = true; });
     form.addEventListener('submit', function () { window._formDirty = false; });
   })();
+
+  (function () {
+    var cb  = document.getElementById('new_enabled');
+    var lbl = document.getElementById('new_enabled_label');
+    if (cb && lbl) {
+      cb.addEventListener('change', function () {
+        lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
+        lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
+      });
+    }
+  })();
+
+  // Scroll to and highlight a newly created rule
+  {% if new_rule_id %}
+  (function () {
+    var card = document.getElementById('rule-{{ new_rule_id }}');
+    if (!card) return;
+    card.classList.add('rule-card--highlighted');
+    setTimeout(function () {
+      var rect      = card.getBoundingClientRect();
+      var cardMid   = rect.top + window.scrollY + rect.height / 2;
+      var targetTop = cardMid - window.innerHeight / 2;
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }, 50);
+  })();
+  {% endif %}
 
   // Highlight the rule card targeted by the URL fragment
   (function () {
