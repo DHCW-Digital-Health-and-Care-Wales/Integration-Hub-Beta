@@ -62,6 +62,7 @@ def save_alarm_config(cfg: dict) -> None:
 
 
 def _load_alarm_state() -> dict:
+    """Load per-rule alarm state (last_alarm_at timestamps) from JSON. Returns empty state on missing/corrupt file."""
     if not STATE_PATH.exists():
         return {"rules": {}}
     try:
@@ -72,6 +73,7 @@ def _load_alarm_state() -> dict:
 
 
 def _save_alarm_state(state: dict) -> None:
+    """Persist per-rule alarm state to JSON, logging errors without raising."""
     try:
         STATE_PATH.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
     except OSError as exc:
@@ -125,6 +127,11 @@ def _applicable_threshold(server_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 
 def _display_name(server_id: str) -> str:
+    """Derive a human-readable display name from a Container App resource ID.
+
+    Strips region/environment prefixes (e.g. ``uks-dev-``) and the trailing
+    ``-ca`` suffix, then expands known abbreviations such as ``hl7``, ``phw``, ``mpi``.
+    """
     # Handle Container App naming: uks-dev-phw-hl7server-ca → PHW HL7 Server
     # Strip known prefix/suffix patterns and normalise separators
     name = server_id
@@ -151,6 +158,7 @@ def _display_name(server_id: str) -> str:
 
 
 def _format_duration(minutes: float) -> str:
+    """Format a duration in minutes as a human-readable string (e.g. ``"2.5 hours"``)."""
     if minutes < 1:
         return "< 1 minute"
     if minutes < 60:
@@ -438,6 +446,7 @@ def _build_row(
     cooldown_remaining: float | None,
     now: datetime,
 ) -> dict:
+    """Build the status-row dict for a single Alarm 1 rule."""
     period = get_current_period(now)
     period_threshold = _applicable_threshold(rule_cfg, now)
     workflow_id = rule_cfg.get("workflow_id", "").strip()

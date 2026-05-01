@@ -140,6 +140,7 @@ app.secret_key = config.FLASK_SECRET_KEY
 # ---------------------------------------------------------------------------
 
 def _get_locale() -> str:
+    """Return the active locale code from the session, defaulting to the configured language."""
     return session.get("lang", config.DEFAULT_LANGUAGE)
 
 babel = Babel(
@@ -152,6 +153,7 @@ babel = Babel(
 
 @app.context_processor
 def inject_language() -> dict:
+    """Inject the current language code into every template context."""
     return {"current_lang": session.get("lang", config.DEFAULT_LANGUAGE)}
 # ---------------------------------------------------------------------------
 # Simple in-memory cache for /api/status
@@ -302,6 +304,7 @@ def _multi_cached_nowait(
 
 
 def _get_cached_status(force: bool = False) -> dict:
+    """Return the cached system status dict, optionally forcing a fresh rebuild."""
     if force:
         return _cached("status", _build_status, force=True)
     return _cached_nowait("status", _build_status)
@@ -318,6 +321,11 @@ def _is_cache_stale(key: str, ttl: float | None = None) -> bool:
 
 
 def _build_status() -> dict:
+    """Fetch live Azure data and build the full system-status payload.
+
+    Runs queue, active-flow, and exception queries concurrently to minimise
+    latency on a cold-cache rebuild.
+    """
     # Run the three independent Azure API calls concurrently to cut cold-cache
     # latency from ~3× to ~1× round-trip time.
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -397,6 +405,7 @@ def _build_alarm_map() -> dict[str, dict]:
 
 @app.route("/set-language", methods=["POST"])
 def set_language() -> Response:
+    """Set the UI language preference in the session and redirect back to the referring page."""
     lang = request.form.get("lang", "en")
     if lang in ("en", "cy"):
         session["lang"] = lang
@@ -409,6 +418,7 @@ def set_language() -> Response:
 
 @app.route("/")
 def index() -> str:
+    """Render the dashboard overview page with system status and alarm summaries."""
     status = _get_cached_status()
     alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
         ("alarms", get_alarm_status,  config.API_CACHE_TTL),
@@ -435,6 +445,7 @@ def index() -> str:
 
 @app.route("/flows")
 def flows_page() -> str:
+    """Render the Flows page with per-container metrics and alarm status overlay."""
     status = _get_cached_status()
     container_metrics = _cached_nowait(
         "flows",
@@ -453,6 +464,7 @@ def flows_page() -> str:
 
 @app.route("/exceptions")
 def exceptions_page() -> str:
+    """Render the Exceptions page, filtered to the requested time window (default 24 h)."""
     hours = int(request.args.get("hours", 24))
     exceptions = _cached_nowait(
         f"exceptions_{hours}",
@@ -470,6 +482,7 @@ def exceptions_page() -> str:
 
 @app.route("/service-bus")
 def service_bus_page() -> str:
+    """Render the Service Bus page showing queue depths and dead-letter counts."""
     cached_sb = _cached_nowait(
         "servicebus",
         lambda: {"queues": get_queues()},
@@ -487,6 +500,7 @@ def service_bus_page() -> str:
 
 @app.route("/messages")
 def messages_page() -> str:
+    """Render the Messages page, optionally filtered to a specific Service Bus queue."""
     queue_filter = request.args.get("queue", "").strip()
     flow_label = None
     microservice_ids: list[str] | None = None
@@ -524,6 +538,7 @@ def messages_page() -> str:
 
 @app.route("/trace/<operation_id>")
 def trace_page(operation_id: str) -> str | tuple[str, int]:
+    """Render the distributed trace view for a given Application Insights operation ID."""
     trace_data = get_trace(operation_id)
     if not trace_data["ok"]:
         return render_template("trace.html", operation_id=operation_id, trace_data=trace_data), 404
@@ -544,6 +559,10 @@ def _alarm_summary(rows: list[dict] | None) -> dict:
 
 @app.route("/api/status")
 def api_status() -> Response:
+    """JSON endpoint returning current system status plus compact alarm summaries.
+
+    Accepts ``?force=true`` to bypass the cache and force a fresh Azure query.
+    """
     force = request.args.get("force", "false").lower() == "true"
     data = _get_cached_status(force=force)
     # Merge compact alarm summaries so dashboard.js can keep widgets live.
@@ -575,6 +594,7 @@ def api_refresh() -> Response:
 
 @app.route("/api/flows")
 def api_flows() -> Response:
+    """JSON endpoint returning live flow health and container-app metrics."""
     queues = get_queues()
     active_flows = get_active_flows()
     flows = build_flow_data(queues, active_flows)
@@ -589,12 +609,19 @@ def api_flows() -> Response:
 
 @app.route("/api/messages")
 def api_messages() -> Response:
+    """JSON endpoint returning all messages processed today."""
     messages = get_messages_today()
     return jsonify({"messages": messages, "count": len(messages)})
 
 
 @app.route("/api/servicebus-metrics")
 def api_servicebus_metrics() -> Response:
+    """JSON endpoint returning Service Bus message-count metrics for a given time window.
+
+    Query params:
+        hours: one of 1, 6, 12, 24, 168, 720 (defaults to 1).
+        queue:  optional queue name filter.
+    """
     hours = request.args.get("hours", "1", type=str)
     allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
     timespan_hours = allowed.get(hours, 1)
@@ -637,6 +664,7 @@ def api_alarms_status() -> Response:
 
 @app.route("/alarms")
 def alarms_overview_page() -> str:
+    """Render the Alarms overview page showing all three alarm-type summaries."""
     if request.args.get("refresh") == "1":
         with _cache_lock:
             _cache_data["alarms"]["ts"] = 0.0
@@ -673,6 +701,7 @@ def alarms_overview_page() -> str:
 
 @app.route("/alarms/inactivity")
 def alarm_page() -> str:
+    """Render the Inactivity Alarm status page (Alarm 1)."""
     alarm_rows = _cached_nowait(
         "alarms",
         get_alarm_status,
@@ -695,7 +724,13 @@ def alarm_page() -> str:
 
 @app.route("/alarm-config", methods=["GET", "POST"])
 def alarm_config_page() -> str:
+    """Render and process the Inactivity Alarm configuration page (Alarm 1).
+
+    GET  – displays the current rule list.
+    POST – applies deletions, updates existing rules, and optionally adds a new rule.
+    """
     saved = False
+    new_rid: str | None = None
 
     if request.method == "POST":
         cfg = load_alarm_config()
@@ -767,6 +802,7 @@ def alarm_config_page() -> str:
 
 @app.route("/alarms/outgoing-messages")
 def alarm2_page() -> str:
+    """Render the Outgoing Messages Alarm status page (Alarm 2)."""
     alarm2_rows = _cached_nowait(
         "alarm2",
         get_alarm2_status,
@@ -788,7 +824,13 @@ def alarm2_page() -> str:
 
 @app.route("/alarm2-config", methods=["GET", "POST"])
 def alarm2_config_page() -> str:
+    """Render and process the Outgoing Messages Alarm configuration page (Alarm 2).
+
+    GET  – displays the current rule list.
+    POST – applies deletions, updates existing rules, and optionally adds a new rule.
+    """
     saved = False
+    new_id: str | None = None
 
     if request.method == "POST":
         cfg = load_alarm2_config()
@@ -859,6 +901,7 @@ def alarm2_config_page() -> str:
 
 @app.route("/alarms/failures")
 def alarm3_page() -> str:
+    """Render the Failures Alarm status page (Alarm 3)."""
     alarm3_rows = _cached_nowait(
         "alarm3",
         get_alarm3_status,
@@ -880,7 +923,13 @@ def alarm3_page() -> str:
 
 @app.route("/alarm3-config", methods=["GET", "POST"])
 def alarm3_config_page() -> str:
+    """Render and process the Failures Alarm configuration page (Alarm 3).
+
+    GET  – displays the current rule list.
+    POST – applies deletions, updates existing rules, and optionally adds a new rule.
+    """
     saved = False
+    new_id: str | None = None
 
     if request.method == "POST":
         cfg = load_alarm3_config()
@@ -948,6 +997,7 @@ def alarm3_config_page() -> str:
 
 @app.template_filter("format_bytes")
 def format_bytes(size: int | float) -> str:
+    """Jinja2 filter: convert a byte count to a human-readable string (e.g. ``1.4 MB``)."""
     for unit in ("B", "KB", "MB", "GB"):
         if size < 1024:
             return f"{size:.1f} {unit}"
@@ -957,6 +1007,7 @@ def format_bytes(size: int | float) -> str:
 
 @app.template_filter("health_badge")
 def health_badge(health: str) -> str:
+    """Jinja2 filter: map a health string to a Bootstrap colour token (e.g. ``"healthy"`` → ``"success"``)."""
     colours = {
         "healthy": "success",
         "warning": "warning",

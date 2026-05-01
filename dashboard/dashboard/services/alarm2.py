@@ -56,6 +56,7 @@ KNOWN_RULES: list[dict] = [
 # ---------------------------------------------------------------------------
 
 def load_alarm2_config() -> dict:
+    """Load Alarm 2 config from JSON. Returns empty config on missing/corrupt file."""
     if not CONFIG_PATH.exists():
         return {"rules": {}}
     try:
@@ -66,10 +67,12 @@ def load_alarm2_config() -> dict:
 
 
 def save_alarm2_config(cfg: dict) -> None:
+    """Persist Alarm 2 config to JSON."""
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
 
 
 def _load_alarm2_state() -> dict:
+    """Load per-rule Alarm 2 state (last_alarm_at timestamps) from JSON. Returns empty state on missing/corrupt file."""
     if not STATE_PATH.exists():
         return {"rules": {}}
     try:
@@ -80,6 +83,7 @@ def _load_alarm2_state() -> dict:
 
 
 def _save_alarm2_state(state: dict) -> None:
+    """Persist per-rule Alarm 2 state to JSON, logging errors without raising."""
     try:
         STATE_PATH.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
     except OSError as exc:
@@ -91,6 +95,7 @@ def _save_alarm2_state(state: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def _parse_dt(raw: object) -> datetime | None:
+    """Parse a datetime from a Log Analytics row value or ISO string, normalising to UTC."""
     if raw is None:
         return None
     if isinstance(raw, datetime):
@@ -103,6 +108,7 @@ def _parse_dt(raw: object) -> datetime | None:
 
 
 def _format_count(total: int | None) -> str:
+    """Format a message count for display, returning ``"—"`` when the value is unknown."""
     if total is None:
         return "—"
     return f"{total:,}"
@@ -191,6 +197,7 @@ def _send_alarm2_email(
     now: datetime,
     email_alerts_enabled: bool = False,
 ) -> None:
+    """Send an HTML email via Azure Communication Services when Alarm 2 fires."""
     if not config.ALERT_EMAIL_ENABLED:
         return
     if not email_alerts_enabled:
@@ -367,6 +374,7 @@ def _build_row(
     cooldown_remaining: float | None,
     now: datetime,
 ) -> dict:
+    """Build the status-row dict for a single Alarm 2 rule."""
     window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
     return {
         "id":                      rid,
@@ -384,6 +392,7 @@ def _build_row(
 
 
 def _window_label(minutes: int) -> str:
+    """Convert a window duration in minutes to a short human-readable string (e.g. ``"2 days"``)."""
     if minutes < 60:
         return f"{minutes} min"
     hours = minutes / 60
