@@ -9,6 +9,7 @@ dead-letter alerts, Application Insights exceptions, and Container Apps metrics.
 
 ```bash
 uv sync
+uv run pybabel compile -d translations
 uv run flask --app dashboard.app run
 ```
 
