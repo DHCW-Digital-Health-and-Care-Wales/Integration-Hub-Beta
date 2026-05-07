@@ -4,6 +4,7 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Callable, Optional
 
+import opentelemetry.context as otel_context
 from azure.servicebus import (
     AutoLockRenewer,
     ServiceBusClient,
@@ -13,6 +14,7 @@ from azure.servicebus import (
     ServiceBusReceiver,
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
+from otel_lib import extract_trace_context
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +25,17 @@ class MessageReceiverClient:
     MAX_WAIT_TIME_SECONDS = 60
     LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
 
-    def __init__(self, sb_client: ServiceBusClient, queue_name: str, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        sb_client: ServiceBusClient,
+        queue_name: str,
+        session_id: Optional[str] = None,
+        propagate_trace_context: bool = True,
+    ):
         self.sb_client = sb_client
         self.queue_name = queue_name
         self.session_id = session_id
+        self.propagate_trace_context = propagate_trace_context
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
@@ -37,7 +46,7 @@ class MessageReceiverClient:
         def per_message_adapter(receiver: ServiceBusReceiver, messages: list[ServiceBusReceivedMessage]) -> bool:
             for i, msg in enumerate(messages):
                 try:
-                    is_success = message_processor(msg)
+                    is_success = self._invoke_with_trace_context(message_processor, msg)
                 except Exception:
                     logger.exception("Unexpected error processing message: %s", msg.message_id)
                     self._abort_message_processing(receiver, messages[i:])
@@ -71,6 +80,26 @@ class MessageReceiverClient:
             return is_success
 
         self._receive_and_process(num_of_messages, batch_adapter)
+
+    def _invoke_with_trace_context(
+        self, handler: Callable[[ServiceBusReceivedMessage], bool], msg: ServiceBusReceivedMessage
+    ) -> bool:
+        """Call handler, restoring the W3C trace context from the message properties first."""
+        if not self.propagate_trace_context:
+            return handler(msg)
+
+        try:
+            props = dict(msg.application_properties or {})
+            # Service Bus stores string keys as bytes in some SDK versions; normalise them.
+            normalised = {k.decode() if isinstance(k, bytes) else k: v for k, v in props.items()}
+            ctx = extract_trace_context(normalised)
+            token = otel_context.attach(ctx)
+            try:
+                return handler(msg)
+            finally:
+                otel_context.detach(token)
+        except ImportError:
+            return handler(msg)
 
     def _receive_and_process(
         self,
@@ -115,6 +144,12 @@ class MessageReceiverClient:
             # Transient AMQP-level errors (e.g. session not yet established, connection dropped)
             # are surfaced as ServiceBusError. Treat them as recoverable and retry after a delay.
             logger.warning("Transient Service Bus error, will retry later: %s", exc)
+            self._set_delay_before_retry()
+        except Exception as exc:
+            # Catch unexpected SDK-internal errors such as AttributeError when the underlying
+            # AMQP session is None after a dropped connection (pyamqp transport bug). The receiver
+            # is created fresh on each call so there is no stale state — just schedule a retry.
+            logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
             self._set_delay_before_retry()
         finally:
             if autolock_renewer:

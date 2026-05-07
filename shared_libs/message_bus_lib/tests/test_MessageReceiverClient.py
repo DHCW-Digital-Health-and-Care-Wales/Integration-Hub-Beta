@@ -329,7 +329,7 @@ class TestAutoLockRenewerLifecycle(unittest.TestCase):
     def test_autolock_renewer_closed_when_receiver_creation_raises(
         self, _sleep: MagicMock, mock_renewer_cls: MagicMock
     ) -> None:
-        """AutoLockRenewer must be closed even if the receiver context manager raises on entry."""
+        """AutoLockRenewer must be closed and retry scheduled when receiver creation raises."""
         mock_renewer = MagicMock()
         mock_renewer_cls.return_value = mock_renewer
 
@@ -338,10 +338,13 @@ class TestAutoLockRenewerLifecycle(unittest.TestCase):
             "Receiver creation failed"
         )
 
-        with self.assertRaises(RuntimeError):
-            self.message_receiver_client.receive_messages(1, lambda msg: True)
+        # Should NOT raise — unexpected exceptions are now caught and retried
+        self.message_receiver_client.receive_messages(1, lambda msg: True)
 
+        # AutoLockRenewer must still be closed via the finally block
         mock_renewer.close.assert_called_once()
+        # A retry must have been scheduled
+        self.assertIsNotNone(self.message_receiver_client.next_retry_time)
 
     @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
     @patch("time.sleep", return_value=None)

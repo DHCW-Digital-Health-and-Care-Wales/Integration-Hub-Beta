@@ -21,6 +21,10 @@ parameters:
     type: string
     displayName: 'Bandit source directory (defaults to last part of appName if not specified)'
     default: ''
+  - name: usePytest
+    type: boolean
+    default: false
+    displayName: 'Use pytest instead of unittest discover'
 
 jobs:
   - job: CodeQuality_${{ replace(parameters.appName, '/', '_') }}
@@ -186,17 +190,29 @@ jobs:
           echo "##[endgroup]"
         displayName: 'Code Quality Validation - ${{ parameters.appDisplayName }}'
           
-      - script: |
-          set -euo pipefail
-          echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
-          cd ${{ parameters.appName }}
-          
-          echo "🧪 Running unit tests..."
-          if ! python -m unittest discover tests -v; then
-            echo "##[error]Unit tests failed!"
-            exit 1
-          fi
-          
-          echo "✅ All unit tests passed"
-          echo "##[endgroup]"
-        displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'
+      - ${{ if parameters.usePytest }}:
+        - script: |
+            set -euo pipefail
+            echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
+            cd ${{ parameters.appName }}
+            echo "🧪 Running unit tests..."
+            if ! uv run --no-sync pytest tests -v; then
+              echo "##[error]Unit tests failed!"
+              exit 1
+            fi
+            echo "✅ All unit tests passed"
+            echo "##[endgroup]"
+          displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'
+      - ${{ else }}:
+        - script: |
+            set -euo pipefail
+            echo "##[group]Unit Tests - ${{ parameters.appDisplayName }}"
+            cd ${{ parameters.appName }}
+            echo "🧪 Running unit tests..."
+            if ! python -m unittest discover tests -v; then
+              echo "##[error]Unit tests failed!"
+              exit 1
+            fi
+            echo "✅ All unit tests passed"
+            echo "##[endgroup]"
+          displayName: 'Unit Tests - ${{ parameters.appDisplayName }}'

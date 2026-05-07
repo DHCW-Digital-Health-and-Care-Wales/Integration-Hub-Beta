@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Integration Hub Dashboard{% endblock %} — NHS Wales</title>
+
+  <!-- Apply saved theme before CSS loads to prevent flash -->
+  <script>(function(){try{var t=localStorage.getItem('ih-theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('ih-loading');}catch(e){}})()</script>
+
+  <!-- Bootstrap 5.3.3 (vendored) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" />
+
+  <!-- Bootstrap Icons 1.11.3 (vendored) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" />
+
+  <!-- Inter font (vendored) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/inter.css') }}" />
+
+  <!-- Dashboard CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <style>
+    /* ── Lego panel ── */
+    #lego-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      width: 280px;
+      flex-direction: column;
+      align-items: stretch;
+      background: #1b294a;
+      border: 1px solid #12a3c9;
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(18,163,201,0.2);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    #lego-panel.lego-panel--visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #lego-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #FFD700;
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid rgba(18,163,201,0.25);
+    }
+    #lego-close-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+    #lego-close-btn:hover { color: #fff; }
+    #lego-canvas { display: block; width: 260px !important; height: 295px !important; }
+    #lego-lyrics {
+      padding: 8px 12px 4px;
+      min-height: 2.4em;
+      font-size: 0.7rem;
+      color: #12a3c9;
+      text-align: center;
+      font-style: italic;
+      transition: opacity 0.3s ease;
+    }
+    #lego-hint {
+      padding: 4px 12px 10px;
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.25);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+    /* ── Floating musical notes ── */
+    .lego-note {
+      position: absolute;
+      font-size: 1.3rem;
+      pointer-events: none;
+      animation: legoNoteFloat 2.2s ease-out forwards;
+      bottom: 120px;
+    }
+    @keyframes legoNoteFloat {
+      0%   { transform: translateY(0)     rotate(-12deg); opacity: 1;   }
+      60%  { opacity: 1; }
+      100% { transform: translateY(-105px) rotate(18deg);  opacity: 0;  }
+    }
+  </style>
+
+
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- Page navigation loading bar -->
+<div id="page-load-bar"></div>
+
+<!-- Live update toast -->
+<div id="live-indicator">
+  <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid gap-3">
+
+    <!-- Brand -->
+    <a class="navbar-brand" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='DHCW-logo-RGB-White.png') }}"
+           alt="DHCW" style="height:44px;width:auto;display:block;" />
+      <span class="brand-title">Integration Hub</span>
+    </a>
+
+    <!-- Toggler -->
+    <button class="navbar-toggler border-0 text-white" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="{{ _('Toggle navigation') }}">
+      <i class="bi bi-list fs-5"></i>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto gap-1">
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"
+             href="{{ url_for('index') }}">
+            <i class="bi bi-grid-1x2-fill"></i> {{ _("Overview") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'flows_page' %}active{% endif %}"
+             href="{{ url_for('flows_page') }}">
+            <i class="bi bi-diagram-3-fill"></i> {{ _("Flows") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'service_bus_page' %}active{% endif %}"
+             href="{{ url_for('service_bus_page') }}">
+            <i class="bi bi-stack"></i> {{ _("Service Bus") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'exceptions_page' %}active{% endif %}"
+             href="{{ url_for('exceptions_page') }}">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ _("Exceptions") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'messages_page' %}active{% endif %}"
+             href="{{ url_for('messages_page') }}">
+            <i class="bi bi-chat-square-text-fill"></i> {{ _("Messages") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint in ['alarms_overview_page', 'alarm_page', 'alarm_config_page', 'alarm2_page', 'alarm2_config_page', 'alarm3_page', 'alarm3_config_page'] %}active{% endif %}"
+             href="{{ url_for('alarms_overview_page') }}" role="link">
+            <i class="bi bi-bell-fill"></i> {{ _("Alarms") }}
+          </a>
+        </li>
+
+      </ul>
+
+      <!-- System health in nav -->
+      <div class="d-flex align-items-center gap-2">
+        {% if status is defined and status %}
+          <span id="nav-health-badge"
+                class="nav-health-badge {{ status.system_health }}"
+                data-system-health>
+            {% if status.system_health == 'healthy' %}{{ _("ALL HEALTHY") }}
+            {% elif status.system_health == 'warning' %}{{ _("WARNINGS") }}
+            {% elif status.system_health == 'critical' %}{{ _("CRITICAL") }}
+            {% else %}{{ _("UNKNOWN") }}{% endif %}
+          </span>
+        {% endif %}
+        <span class="text-muted" style="font-size:0.7rem;">
+          <i class="bi bi-circle-fill" style="font-size:0.45rem; color:var(--accent-green);"></i>
+          {{ _("LIVE") }}
+        </span>
+        <!-- Theme toggle -->
+        <button id="theme-toggle" title="{{ _('Toggle light/dark theme') }}"
+                style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:1rem;transition:background 0.15s;">
+          <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
+        </button>
+        <!-- Language toggle -->
+        <form method="post" action="{{ url_for('set_language') }}" style="margin:0;">
+          <input type="hidden" name="lang" value="{{ 'en' if current_lang == 'cy' else 'cy' }}">
+          <button type="submit"
+                  title="{{ _('Switch to English') if current_lang == 'cy' else _('Switch to Welsh') }}"
+                  style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:0.72rem;font-weight:600;letter-spacing:0.04em;transition:background 0.15s;white-space:nowrap;">
+            {{ 'EN' if current_lang == 'cy' else 'CY' }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Page content -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="dash-footer">
+  {{ _("NHS Wales \u2014 Integration Hub Dashboard") }} &nbsp;|&nbsp;
+  {{ _("Powered by Azure Service Bus & Application Insights") }} &nbsp;|&nbsp;
+  <span id="footer-time"></span>
+</footer>
+
+<!-- Easter egg: LEGO man singing "Everything is Awesome" (Konami: ↑↑↓↓←→←→BA) -->
+<div id="lego-panel" style="display:none;">
+  <div id="lego-panel-header">
+    <span>🧱 Everything is Awesome!</span>
+    <button id="lego-close-btn" title="Close">&#x2715;</button>
+  </div>
+  <canvas id="lego-canvas" width="260" height="295"></canvas>
+  <div id="lego-lyrics"></div>
+  <div id="lego-hint">↑↑↓↓←→←→BA &nbsp;·&nbsp; ESC to close</div>
+</div>
+
+<!-- Bootstrap JS (vendored — no CDN dependency, no Zscaler interference) -->
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+<script>
+  // Footer clock
+  (function () {
+    const el = document.getElementById("footer-time");
+    function tick() {
+      if (el) el.textContent = new Date().toLocaleString("en-GB", {
+        dateStyle: "medium", timeStyle: "medium"
+      });
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // Theme toggle
+  (function () {
+    const html = document.documentElement;
+    const btn  = document.getElementById('theme-toggle');
+    const icon = document.getElementById('theme-icon');
+    function apply(t) {
+      html.setAttribute('data-theme', t);
+      try { localStorage.setItem('ih-theme', t); } catch(e) {}
+      if (icon) icon.className = t === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+    }
+    apply(html.getAttribute('data-theme') || 'dark');
+    if (btn) btn.addEventListener('click', function() {
+      apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+
+  // Navigation loading bar
+  (function () {
+    const bar = document.getElementById('page-load-bar');
+    if (!bar) return;
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href') || '';
+      // Only trigger for internal page navigations, not anchors / external / JS links
+      if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+          href.startsWith('http://') || href.startsWith('https://') ||
+          link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      bar.classList.add('loading');
+    });
+  })();
+
+  // Stale toast removed — pages use their own refresh-bar pattern
+
+  // Re-enable CSS transitions after first paint to prevent navigation FOUC.
+  // Two rAF calls ensure we're past the initial render before transitions fire.
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      document.documentElement.classList.remove('ih-loading');
+    });
+  });
+</script>
+
+{% block scripts %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='js/enhanced-ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/alternate_ui.js') }}"></script>
+
+  <!-- ── Unsaved-changes modal (shared, used by config pages) ─────────── -->
+  <div id="unsaved-modal-backdrop" aria-hidden="true" style="
+    display:none; position:fixed; inset:0; z-index:9000;
+    background:rgba(0,0,0,0.55); backdrop-filter:blur(3px);
+    align-items:center; justify-content:center;">
+    <div id="unsaved-modal" role="dialog" aria-modal="true"
+         aria-labelledby="unsaved-modal-title" style="
+      background:var(--bg-card, #1e2535);
+      border:1px solid var(--border-color, rgba(255,255,255,0.08));
+      border-radius:14px;
+      padding:2rem 2rem 1.5rem;
+      max-width:420px; width:calc(100% - 2rem);
+      box-shadow:0 24px 60px rgba(0,0,0,0.45);
+      animation:modalIn .18s ease;">
+
+      <!-- Icon + title -->
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div style="
+          width:44px; height:44px; border-radius:12px; flex-shrink:0;
+          background:rgba(245,158,11,0.15);
+          display:flex; align-items:center; justify-content:center;
+          font-size:1.35rem; color:var(--accent-amber,#f59e0b);">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div>
+          <div id="unsaved-modal-title" style="
+            font-size:1rem; font-weight:700;
+            color:var(--text-primary,#f1f5f9); line-height:1.25;">
+            {{ _("Unsaved Changes") }}
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted,#94a3b8); margin-top:2px;">
+            {{ _("You have changes that haven't been saved yet.") }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <p style="font-size:0.83rem; color:var(--text-muted,#94a3b8); margin:0 0 1.5rem;">
+        {{ _("Would you like to stay on this page and save your changes, or leave and discard them?") }}
+      </p>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-2 justify-content-end flex-wrap">
+        <button id="unsaved-modal-leave" type="button" style="
+          background:transparent;
+          color:var(--accent-red,#ef4444);
+          border:1px solid rgba(239,68,68,0.35);
+          border-radius:8px; padding:0.45rem 1rem;
+          font-size:0.82rem; font-weight:600; cursor:pointer;
+          transition:background .15s, border-color .15s;">
+          <i class="bi bi-box-arrow-left me-1"></i>{{ _("Leave without saving") }}
+        </button>
+        <button id="unsaved-modal-stay" type="button" style="
+          background:var(--accent-cyan,#06b6d4);
+          color:#fff; border:1px solid var(--accent-cyan,#06b6d4);
+          border-radius:8px; padding:0.45rem 1rem;
+          font-size:0.82rem; font-weight:600; cursor:pointer;
+          transition:background .15s;">
+          <i class="bi bi-floppy-fill me-1"></i>{{ _("Stay & save") }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes modalIn {
+      from { opacity:0; transform:translateY(-10px) scale(0.97); }
+      to   { opacity:1; transform:translateY(0)     scale(1);    }
+    }
+    #unsaved-modal-leave:hover {
+      background: rgba(239,68,68,0.1);
+      border-color: var(--accent-red, #ef4444);
+    }
+    #unsaved-modal-stay:hover {
+      background: color-mix(in srgb, var(--accent-cyan,#06b6d4) 82%, white);
+    }
+  </style>
+
+  <script>
+    (function () {
+      var backdrop = document.getElementById('unsaved-modal-backdrop');
+      var stayBtn  = document.getElementById('unsaved-modal-stay');
+      var leaveBtn = document.getElementById('unsaved-modal-leave');
+      var _dest    = null;
+
+      function openModal(dest) {
+        _dest = dest;
+        backdrop.style.display = 'flex';
+        stayBtn.focus();
+      }
+      function closeModal() {
+        backdrop.style.display = 'none';
+        _dest = null;
+      }
+
+      if (stayBtn)  stayBtn.addEventListener('click',  closeModal);
+      if (leaveBtn) leaveBtn.addEventListener('click', function () {
+        var dest = _dest;
+        window._formDirty = false;
+        closeModal();
+        window.location.href = dest;
+      });
+      // Close on backdrop click
+      if (backdrop) backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) closeModal();
+      });
+      // Expose globally for config pages
+      window.showUnsavedDialog = openModal;
+
+      // ── Global unsaved-changes state (config pages set this) ──────────
+      window._formDirty = false;
+
+      // Intercept ALL internal link clicks when dirty
+      document.addEventListener('click', function (e) {
+        if (!window._formDirty) return;
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+            href.startsWith('http://') || href.startsWith('https://') ||
+            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openModal(link.href);
+      }, true); // capture phase so it runs before the nav-bar loading handler
+
+      // Intercept browser back / forward / tab close
+      window.addEventListener('beforeunload', function (e) {
+        if (!window._formDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+    })();
+  </script>
+</body>
+</html>

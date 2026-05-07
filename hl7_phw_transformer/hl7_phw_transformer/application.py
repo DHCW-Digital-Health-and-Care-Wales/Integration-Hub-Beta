@@ -4,6 +4,7 @@ import os
 from event_logger_lib import EventLogger  # noqa: F401
 from health_check_lib.health_check_server import TCPHealthCheckServer  # noqa: F401
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory  # noqa: F401
+from otel_lib import configure_otel
 
 from .app_config import AppConfig  # noqa: F401
 from .phw_transformer import PhwTransformer
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    configure_otel("phw-hl7-transformer")
     transformer = PhwTransformer()
     transformer.run()
 

@@ -96,16 +96,16 @@ wheels = [
 
 [[package]]
 name = "azure-servicebus"
-version = "7.14.2"
+version = "7.14.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
     { name = "isodate" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/b5/82bbdd24c6221519a10c10cae931e67dc97f8db3c9bf2318c6dbe27ac282/azure_servicebus-7.14.2.tar.gz", hash = "sha256:4014b7ac882e0d9ff876a3302818607e1a640b93e9d482073d639f5b04266e5c", size = 523514, upload-time = "2025-04-09T22:15:37.454Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/d2/a5c11d4c955e2875de2383c1af8e43ce4899e8418b22e61d32d2bf103626/azure_servicebus-7.14.3.tar.gz", hash = "sha256:70a63384557aec0bee727740e7b25ded29e9e701b77611764577fd7402389402", size = 534786, upload-time = "2025-10-31T05:30:03.342Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/9e/37a27b8e575f88a7463e82d777651ebd8bedb77970f170819b1b3d176f96/azure_servicebus-7.14.2-py3-none-any.whl", hash = "sha256:154bdde487ae3bd581fd49d207da4892091d9b61ab95f4cd4deab6dd4bb4649a", size = 411426, upload-time = "2025-04-09T22:15:39.537Z" },
+    { url = "https://files.pythonhosted.org/packages/04/e9/d9fd0b2bef14d85b408c51802142b1c8b7bc3ab08514c89432547b1d87d3/azure_servicebus-7.14.3-py3-none-any.whl", hash = "sha256:386f8d32dae8881661ec8d791c38978eca2bbf7ea9f489d6cff8ad9cc6990234", size = 412522, upload-time = "2025-10-31T05:30:05.252Z" },
 ]
 
 [[package]]
@@ -287,7 +287,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
-    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
@@ -311,7 +311,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
@@ -383,6 +383,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "otel-lib" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -391,8 +392,9 @@ dependencies = [
 requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
-    { name = "azure-servicebus", specifier = "==7.14.2" },
-    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "otel-lib", directory = "../otel_lib" },
+    { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
@@ -401,7 +403,6 @@ dev = [
     { name = "bandit", specifier = "==1.9.2" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.15.0" },
-    { name = "uv-secure", extras = ["faster-async"], specifier = "==0.14.4" },
 ]
 
 [[package]]
@@ -722,6 +723,34 @@ wheels = [
 ]
 
 [[package]]
+name = "otel-lib"
+version = "0.1.0"
+source = { directory = "../otel_lib" }
+dependencies = [
+    { name = "azure-monitor-opentelemetry" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.2" },
+    { name = "mypy", specifier = "==1.18.2" },
+    { name = "ruff", specifier = "==0.15.0" },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -744,15 +773,20 @@ name = "processor-manager-lib"
 version = "0.1.0"
 source = { directory = "../processor_manager_lib" }
 dependencies = [
+    { name = "opentelemetry-api" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "setuptools", specifier = "==80.9.0" },
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "otel-lib", directory = "../otel_lib" }]
 
 [[package]]
 name = "psutil"
@@ -907,11 +941,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "80.9.0"
+version = "82.0.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/db/cfac1baf10650ab4d1c111714410d2fbb77ac5a616db26775db562c8fab2/setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9", size = 1152316, upload-time = "2026-03-09T12:47:17.221Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb", size = 1006223, upload-time = "2026-03-09T12:47:15.026Z" },
 ]
 
 [[package]]
@@ -935,6 +969,7 @@ dependencies = [
     { name = "health-check-lib" },
     { name = "hl7apy" },
     { name = "message-bus-lib" },
+    { name = "otel-lib" },
     { name = "processor-manager-lib" },
     { name = "urllib3" },
 ]
@@ -950,11 +985,12 @@ dev = [
 requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
-    { name = "azure-servicebus", specifier = "==7.14.2" },
+    { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "event-logger-lib", directory = "../event_logger_lib" },
     { name = "health-check-lib", directory = "../health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },
     { name = "message-bus-lib", directory = "../message_bus_lib" },
+    { name = "otel-lib", directory = "../otel_lib" },
     { name = "processor-manager-lib", directory = "../processor_manager_lib" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
