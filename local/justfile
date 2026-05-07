@@ -20,6 +20,7 @@
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
+# - adt-receiver   : Standalone ADT receiver (all ADT trigger events, port 3475)
 #
 # Tips:
 # -----
@@ -63,6 +64,7 @@ python := "python3"
     echo "  - paris-to-mpi   : PARIS to MPI integration"
     echo "  - chemo-to-mpi   : Chemo to MPI integration"
     echo "  - pims-to-mpi    : PIMS to MPI integration"
+    echo "  - adt-receiver   : Standalone ADT receiver (all ADT trigger events, port 3475)"
     echo ""
     echo "💡 Run 'just start <profile>' to start services"
 
@@ -154,6 +156,7 @@ python := "python3"
     echo "   - 2577 (PARIS)"
     echo "   - 2578 (Chemo)"
     echo "   - 2579 (PIMS)"
+    echo "   - 3475 (ADT Receiver)"
 
 # Follow logs from Docker containers (optionally filter by service name)
 @logs *services:

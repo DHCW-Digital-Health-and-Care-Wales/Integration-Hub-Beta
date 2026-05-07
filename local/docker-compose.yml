@@ -264,6 +264,29 @@ services:
         aliases:
           - "mpi-hl7-server"
 
+  adt-receiver:
+    container_name: adt-receiver
+    build:
+      context: ../adt_receiver
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./adt-receiver.env
+    ports:
+      - "3475:3475"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - adt-receiver
+    networks:
+      integration-hub:
+        aliases:
+          - "adt-receiver"
+
   # ========================================
   # TRAINING SERVERS (Week 1 & Week 2)
   # ========================================
