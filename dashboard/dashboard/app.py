@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from flask_babel import Babel
@@ -409,7 +410,20 @@ def set_language() -> Response:
     lang = request.form.get("lang", "en")
     if lang in ("en", "cy"):
         session["lang"] = lang
-    return redirect(request.referrer or url_for("index"))
+
+    fallback = url_for("index")
+    referrer = request.referrer
+    if not referrer:
+        return redirect(fallback)
+
+    parsed = urlparse(referrer.replace("\\", ""))
+    if parsed.scheme in ("http", "https") and parsed.netloc == request.host and parsed.path:
+        safe_target = parsed.path
+        if parsed.query:
+            safe_target = f"{safe_target}?{parsed.query}"
+        return redirect(safe_target)
+
+    return redirect(fallback)
 
 
 # ---------------------------------------------------------------------------
