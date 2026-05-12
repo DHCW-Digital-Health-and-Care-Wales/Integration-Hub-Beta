@@ -75,26 +75,11 @@ stages:
 
           - script: |
               set -euo pipefail
-              echo "##[group]Install Shared Dependencies"
               export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
 
-              uv pip install --system -e shared_libs/message_bus_lib/
-              uv pip install --system -e shared_libs/health_check_lib/
-              uv pip install --system -e shared_libs/processor_manager_lib/
-              uv pip install --system -e shared_libs/event_logger_lib/
-              uv pip install --system -e shared_libs/field_utils_lib/
-              uv pip install --system -e shared_libs/transformer_base_lib/
-              uv pip install --system -e shared_libs/hl7_validation/
-
-              echo "✅ Shared libraries installed"
-              echo "##[endgroup]"
-            displayName: 'Install Shared Dependencies'
-            env:
-              UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
-
-          - script: |
-              set -euo pipefail
-              export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
+              has_dev_dependency_group() {
+                python -c 'import pathlib, sys, tomllib; data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")); sys.exit(0 if data.get("dependency-groups", {}).get("dev") else 1)'
+              }
 
               # Define all apps: "appDir|displayName|banditDir|testRunner"
               # banditDir empty = use basename of appDir
@@ -120,6 +105,10 @@ stages:
 
               OVERALL_RESULT=0
               FAILED_APPS=""
+              VENV_ROOT="$(Pipeline.Workspace)/.pr-validation-envs"
+
+              rm -rf "$VENV_ROOT"
+              mkdir -p "$VENV_ROOT"
 
               for entry in "${APPS[@]}"; do
                 IFS='|' read -r APP_DIR DISPLAY_NAME BANDIT_DIR TEST_RUNNER <<< "$entry"
@@ -135,39 +124,38 @@ stages:
                 echo "╚══════════════════════════════════════════════════════════════╝"
                 
                 APP_FAILED=0
+                APP_ENV_READY=0
+                APP_ENV="$VENV_ROOT/$(echo "$APP_DIR" | tr '/.' '__')"
 
                 # Install app dependencies
                 echo "##[group]📦 Install $DISPLAY_NAME dependencies"
                 cd "$(Build.SourcesDirectory)/$APP_DIR"
-
-                if ! uv pip install --system . 2>&1; then
-                  echo "##[error]Dependency install failed for $DISPLAY_NAME"
+                rm -rf "$APP_ENV"
+                if ! uv venv "$APP_ENV"; then
+                  echo "##[error]Failed to create isolated environment for $DISPLAY_NAME"
                   APP_FAILED=1
-                fi
-
-                if python - <<'PY'
-import pathlib
-import tomllib
-
-pyproject_path = pathlib.Path("pyproject.toml")
-if not pyproject_path.exists():
-    raise SystemExit(1)
-
-with pyproject_path.open("rb") as pyproject_file:
-    data = tomllib.load(pyproject_file)
-
-dependency_groups = data.get("dependency-groups", {})
-raise SystemExit(0 if "dev" in dependency_groups else 1)
-PY
-                then
-                  if ! uv pip install --system --group dev . 2>&1; then
-                    echo "##[error]Dev dependency install failed for $DISPLAY_NAME"
-                    APP_FAILED=1
-                  fi
                 else
-                  echo "No dev dependency group defined"
-                fi
+                  # shellcheck disable=SC1091
+                  source "$APP_ENV/bin/activate"
+                  if has_dev_dependency_group; then
+                    if ! uv sync --active --locked --group dev; then
+                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                      APP_FAILED=1
+                    fi
+                  else
+                    echo "No dev dependency group defined"
+                    if ! uv sync --active --locked --no-dev; then
+                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                      APP_FAILED=1
+                    fi
+                  fi
 
+                  if [ $APP_FAILED -eq 0 ]; then
+                    APP_ENV_READY=1
+                  else
+                    deactivate >/dev/null 2>&1 || true
+                  fi
+                fi
                 echo "##[endgroup]"
 
                 # Ruff
@@ -195,7 +183,7 @@ PY
 
                 # UV audit
                 echo "##[group]🛡️ UV Audit — $DISPLAY_NAME"
-                if ! uv audit --ignore GHSA-5239-wwwm-4pmq 2>&1; then
+                if ! uv audit --locked --ignore GHSA-5239-wwwm-4pmq; then
                   echo "##[error]UV audit failed for $DISPLAY_NAME"
                   APP_FAILED=1
                 fi
@@ -219,21 +207,30 @@ PY
                 # Unit Tests
                 echo "##[group]🧪 Tests — $DISPLAY_NAME"
                 if [ -d "tests" ]; then
-                  if [ "$TEST_RUNNER" = "pytest" ]; then
-                    if ! uv run --no-sync pytest tests -v; then
-                      echo "##[error]Tests failed for $DISPLAY_NAME"
-                      APP_FAILED=1
-                    fi
+                  if [ $APP_ENV_READY -eq 0 ]; then
+                    echo "##[error]Skipping tests for $DISPLAY_NAME because dependency installation failed"
+                    APP_FAILED=1
                   else
-                    if ! python -m unittest discover tests -v; then
-                      echo "##[error]Tests failed for $DISPLAY_NAME"
-                      APP_FAILED=1
+                    if [ "$TEST_RUNNER" = "pytest" ]; then
+                      if ! python -m pytest tests -v; then
+                        echo "##[error]Tests failed for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    else
+                      if ! python -m unittest discover tests -v; then
+                        echo "##[error]Tests failed for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
                     fi
                   fi
                 else
                   echo "No tests directory found, skipping"
                 fi
                 echo "##[endgroup]"
+
+                if [ $APP_ENV_READY -eq 1 ]; then
+                  deactivate >/dev/null 2>&1 || true
+                fi
 
                 if [ $APP_FAILED -eq 1 ]; then
                   OVERALL_RESULT=1
