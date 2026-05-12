@@ -196,7 +196,10 @@ PY
 
                 # UV audit
                 echo "##[group]🛡️ UV Audit — $DISPLAY_NAME"
-                uv audit --ignore GHSA-5239-wwwm-4pmq 2>&1 || echo "##[warning]UV audit issues for $DISPLAY_NAME"
+                if ! uv audit --ignore GHSA-5239-wwwm-4pmq 2>&1; then
+                  echo "##[error]UV audit failed for $DISPLAY_NAME"
+                  APP_FAILED=1
+                fi
                 echo "##[endgroup]"
 
                 # MyPy
