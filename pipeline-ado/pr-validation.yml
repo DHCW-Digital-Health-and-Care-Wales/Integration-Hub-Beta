@@ -140,8 +140,35 @@ stages:
                 # Install app dependencies
                 echo "##[group]📦 Install $DISPLAY_NAME dependencies"
                 cd "$(Build.SourcesDirectory)/$APP_DIR"
-                uv pip install --system . 2>&1 || true
-                uv pip install --system --group dev . 2>&1 || echo "No dev dependencies"
+
+                if ! uv pip install --system . 2>&1; then
+                  echo "##[error]Dependency install failed for $DISPLAY_NAME"
+                  APP_FAILED=1
+                fi
+
+                if python - <<'PY'
+import pathlib
+import tomllib
+
+pyproject_path = pathlib.Path("pyproject.toml")
+if not pyproject_path.exists():
+    raise SystemExit(1)
+
+with pyproject_path.open("rb") as pyproject_file:
+    data = tomllib.load(pyproject_file)
+
+dependency_groups = data.get("dependency-groups", {})
+raise SystemExit(0 if "dev" in dependency_groups else 1)
+PY
+                then
+                  if ! uv pip install --system --group dev . 2>&1; then
+                    echo "##[error]Dev dependency install failed for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  fi
+                else
+                  echo "No dev dependency group defined"
+                fi
+
                 echo "##[endgroup]"
 
                 # Ruff
