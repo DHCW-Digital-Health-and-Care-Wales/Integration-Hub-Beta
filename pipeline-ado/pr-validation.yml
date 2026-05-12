@@ -137,26 +137,30 @@ stages:
                   echo "##[error]Failed to create isolated environment for $DISPLAY_NAME"
                   APP_FAILED=1
                 else
-                  source "$APP_ENV/bin/activate"
-                  set +e
-                  has_dev_dependency_group
-                  DEV_GROUP_STATUS=$?
-                  set -e
-
-                  if [ $DEV_GROUP_STATUS -eq 0 ]; then
-                    if ! uv sync --active --locked --group dev; then
-                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
-                      APP_FAILED=1
-                    fi
-                  elif [ $DEV_GROUP_STATUS -eq 1 ]; then
-                    echo "No dev dependency group defined"
-                    if ! uv sync --active --locked --no-dev; then
-                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
-                      APP_FAILED=1
-                    fi
-                  else
-                    echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
+                  if ! source "$APP_ENV/bin/activate"; then
+                    echo "##[error]Failed to activate isolated environment for $DISPLAY_NAME"
                     APP_FAILED=1
+                  else
+                    set +e
+                    has_dev_dependency_group
+                    DEV_GROUP_STATUS=$?
+                    set -e
+
+                    if [ $DEV_GROUP_STATUS -eq 0 ]; then
+                      if ! uv sync --active --locked --group dev; then
+                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    elif [ $DEV_GROUP_STATUS -eq 1 ]; then
+                      echo "No dev dependency group defined"
+                      if ! uv sync --active --locked --no-dev; then
+                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    else
+                      echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
+                      APP_FAILED=1
+                    fi
                   fi
 
                   if [ $APP_FAILED -eq 0 ]; then
