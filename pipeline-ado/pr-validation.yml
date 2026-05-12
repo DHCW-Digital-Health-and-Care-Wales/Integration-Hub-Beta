@@ -137,7 +137,6 @@ stages:
                   echo "##[error]Failed to create isolated environment for $DISPLAY_NAME"
                   APP_FAILED=1
                 else
-                  # shellcheck disable=SC1091
                   source "$APP_ENV/bin/activate"
                   set +e
                   has_dev_dependency_group
