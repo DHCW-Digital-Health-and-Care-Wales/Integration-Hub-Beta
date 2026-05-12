@@ -65,7 +65,6 @@ stages:
               uv tool install ruff
               uv tool install bandit
               uv tool install mypy
-              uv tool install pip-audit
 
               uv --version
               echo "✅ UV and tools installed"
