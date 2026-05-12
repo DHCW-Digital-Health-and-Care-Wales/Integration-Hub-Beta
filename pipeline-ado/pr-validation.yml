@@ -140,22 +140,25 @@ stages:
                   # shellcheck disable=SC1091
                   source "$APP_ENV/bin/activate"
                   if has_dev_dependency_group; then
+                    DEV_GROUP_STATUS=0
+                  else
+                    DEV_GROUP_STATUS=$?
+                  fi
+
+                  if [ $DEV_GROUP_STATUS -eq 0 ]; then
                     if ! uv sync --active --locked --group dev; then
                       echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
                       APP_FAILED=1
                     fi
-                  else
-                    DEV_GROUP_STATUS=$?
-                    if [ $DEV_GROUP_STATUS -eq 1 ]; then
-                      echo "No dev dependency group defined"
-                      if ! uv sync --active --locked --no-dev; then
-                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
-                        APP_FAILED=1
-                      fi
-                    else
-                      echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
+                  elif [ $DEV_GROUP_STATUS -eq 1 ]; then
+                    echo "No dev dependency group defined"
+                    if ! uv sync --active --locked --no-dev; then
+                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
                       APP_FAILED=1
                     fi
+                  else
+                    echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
+                    APP_FAILED=1
                   fi
 
                   if [ $APP_FAILED -eq 0 ]; then
