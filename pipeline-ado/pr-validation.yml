@@ -78,7 +78,9 @@ stages:
               export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
 
               has_dev_dependency_group() {
-                python -c 'import pathlib, sys, tomllib; data = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")); sys.exit(0 if data.get("dependency-groups", {}).get("dev") else 1)'
+                local python_script
+                python_script=$'import pathlib\nimport sys\nimport tomllib\n\npyproject_path = pathlib.Path("pyproject.toml")\nif not pyproject_path.is_file():\n    print("##[error]pyproject.toml is missing", file=sys.stderr)\n    raise SystemExit(2)\n\ntry:\n    data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))\nexcept tomllib.TOMLDecodeError as exc:\n    print(f"##[error]Failed to parse pyproject.toml: {exc}", file=sys.stderr)\n    raise SystemExit(2)\n\nraise SystemExit(0 if data.get("dependency-groups", {}).get("dev") else 1)\n'
+                python -c "$python_script"
               }
 
               # Define all apps: "appDir|displayName|banditDir|testRunner"
@@ -143,9 +145,15 @@ stages:
                       APP_FAILED=1
                     fi
                   else
-                    echo "No dev dependency group defined"
-                    if ! uv sync --active --locked --no-dev; then
-                      echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                    DEV_GROUP_STATUS=$?
+                    if [ $DEV_GROUP_STATUS -eq 1 ]; then
+                      echo "No dev dependency group defined"
+                      if ! uv sync --active --locked --no-dev; then
+                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    else
+                      echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
                       APP_FAILED=1
                     fi
                   fi
@@ -183,6 +191,7 @@ stages:
 
                 # UV audit
                 echo "##[group]🛡️ UV Audit — $DISPLAY_NAME"
+                # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
                 if ! uv audit --locked --ignore GHSA-5239-wwwm-4pmq; then
                   echo "##[error]UV audit failed for $DISPLAY_NAME"
                   APP_FAILED=1
