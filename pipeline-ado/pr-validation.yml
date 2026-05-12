@@ -139,11 +139,10 @@ stages:
                 else
                   # shellcheck disable=SC1091
                   source "$APP_ENV/bin/activate"
-                  if has_dev_dependency_group; then
-                    DEV_GROUP_STATUS=0
-                  else
-                    DEV_GROUP_STATUS=$?
-                  fi
+                  set +e
+                  has_dev_dependency_group
+                  DEV_GROUP_STATUS=$?
+                  set -e
 
                   if [ $DEV_GROUP_STATUS -eq 0 ]; then
                     if ! uv sync --active --locked --group dev; then
@@ -218,6 +217,7 @@ stages:
 
                 # Unit Tests
                 echo "##[group]🧪 Tests — $DISPLAY_NAME"
+                # Tests run inside the per-app virtual environment activated during dependency installation.
                 if [ -d "tests" ]; then
                   if [ $APP_ENV_READY -eq 0 ]; then
                     echo "##[error]Skipping tests for $DISPLAY_NAME because dependency installation failed"
