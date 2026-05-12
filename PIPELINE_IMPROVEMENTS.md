@@ -104,7 +104,7 @@ Unit tests run (pytest/unittest) but results are **not published to ADO**. Test 
 **Files:** None (missing capability)
 **Impact:** MEDIUM | **Effort:** MEDIUM
 
-Trivy scans only run during builds. Released container images in ACR are **never re-scanned** for newly discovered vulnerabilities. Dependency audits (`pip-audit`, `uv audit`) also only run during builds.
+Trivy scans only run during builds. Released container images in ACR are **never re-scanned** for newly discovered vulnerabilities. Dependency audits (`uv audit`) also only run during builds.
 
 **Recommendation:**
 - Create `nightly-security-scan.yml` with a cron schedule
