@@ -133,6 +133,10 @@ jobs:
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.source=$(Build.Repository.Uri)\""
           BUILD_CMD="$BUILD_CMD --file ${{ parameters.dockerfilePath }}"
           
+          # Registry-based layer caching — avoids rebuilding Python dependency layers
+          BUILD_CMD="$BUILD_CMD --cache-from type=registry,ref=$(DOCKER_REGISTRY)/$(IMAGE_NAME):buildcache"
+          BUILD_CMD="$BUILD_CMD --cache-to type=registry,ref=$(DOCKER_REGISTRY)/$(IMAGE_NAME):buildcache,mode=max"
+          
           # Add additional contexts if provided
           if [ -n "${{ parameters.additionalContexts }}" ]; then
             echo "Adding additional build contexts: ${{ parameters.additionalContexts }}"

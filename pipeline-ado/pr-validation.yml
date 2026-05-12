@@ -1,5 +1,6 @@
-# PR Validation Pipeline using Templates
-# This pipeline validates code quality, security, and tests for all apps
+# PR Validation Pipeline — Single Job
+# Consolidates 16 code quality checks into one job to avoid 16× agent allocation overhead.
+# Tools and shared libs are installed once; checks loop through all apps sequentially.
 trigger: none
 
 pr:
@@ -30,131 +31,240 @@ stages:
   - stage: PRValidation
     displayName: 'PR Code Quality & Unit Tests'
     jobs:
-      # HL7 Server validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_server'
-          appDisplayName: 'HL7 Server'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+      - job: CodeQualityAll
+        displayName: 'Code Quality & Tests — All Apps'
+        pool:
+          name: ${{ variables.POOL_NAME_NON_PROD }}
+        timeoutInMinutes: 30
 
-      # HL7 Transformer validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_phw_transformer'
-          appDisplayName: 'HL7 Transformer'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
+            fetchDepth: 1
 
-      # HL7 Sender validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_sender'
-          appDisplayName: 'HL7 Sender'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          - task: UsePythonVersion@0
+            displayName: 'Use Python $(pythonVersion)'
+            inputs:
+              versionSpec: '$(pythonVersion)'
 
-      # HL7 Subscription Sender validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_subscription_sender'
-          appDisplayName: 'HL7 Subscription Sender'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          - task: Cache@2
+            displayName: 'Cache UV tools and packages'
+            continueOnError: true
+            inputs:
+              key: 'uv-cache | "python-$(pythonVersion)" | "$(Agent.OS)" | "pr-validation"'
+              restoreKeys: |
+                uv-cache | "python-$(pythonVersion)" | "$(Agent.OS)"
+              path: $(Pipeline.Workspace)/.uv-cache
 
-      # HL7 Mock Receiver validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_mock_receiver'
-          appDisplayName: 'HL7 Mock Receiver'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          - script: |
+              set -euo pipefail
+              echo "##[group]Install UV and code quality tools"
+              export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
 
-      # HL7 Chemo Transformer validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_chemo_transformer'
-          appDisplayName: 'HL7 Chemo Transformer'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              python -m pip install uv
+              uv tool install ruff
+              uv tool install bandit
+              uv tool install mypy
 
-      # HL7 PIMS Transformer validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'hl7_pims_transformer'
-          appDisplayName: 'HL7 PIMS Transformer'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              uv --version
+              echo "✅ UV and tools installed"
+              echo "##[endgroup]"
+            displayName: 'Install UV and Code Quality Tools'
+            env:
+              UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
 
-      # Message Store Service validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'message_store_service'
-          appDisplayName: 'Message Store Service'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+          - script: |
+              set -euo pipefail
+              export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
 
-      # BusWatch validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'buswatch'
-          appDisplayName: 'BusWatch'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              has_dev_dependency_group() {
+                local python_script
+                python_script=$'import pathlib\nimport sys\nimport tomllib\n\npyproject_path = pathlib.Path("pyproject.toml")\nif not pyproject_path.is_file():\n    print("##[error]pyproject.toml is missing", file=sys.stderr)\n    raise SystemExit(2)\n\ntry:\n    data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))\nexcept tomllib.TOMLDecodeError as exc:\n    print(f"##[error]Failed to parse pyproject.toml: {exc}", file=sys.stderr)\n    raise SystemExit(2)\n\nraise SystemExit(0 if data.get("dependency-groups", {}).get("dev") else 1)\n'
+                python -c "$python_script"
+              }
 
-      # Shared Libraries validation
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/message_bus_lib'
-          appDisplayName: 'Message Bus Library'
-          banditSourceDir: 'message_bus_lib'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              # Define all apps: "appDir|displayName|banditDir|testRunner"
+              # banditDir empty = use basename of appDir
+              # testRunner: unittest (default) or pytest
+              APPS=(
+                "hl7_server|HL7 Server||unittest"
+                "hl7_phw_transformer|PHW HL7 Transformer||unittest"
+                "hl7_sender|HL7 Sender||unittest"
+                "hl7_subscription_sender|HL7 Subscription Sender||unittest"
+                "hl7_mock_receiver|HL7 Mock Receiver||unittest"
+                "hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
+                "hl7_pims_transformer|PIMS HL7 Transformer||unittest"
+                "message_store_service|Message Store Service||unittest"
+                "buswatch|BusWatch||unittest"
+                "shared_libs/message_bus_lib|Message Bus Library|message_bus_lib|unittest"
+                "shared_libs/event_logger_lib|Event Logger Library|event_logger_lib|unittest"
+                "shared_libs/health_check_lib|Health Check Library|health_check_lib|unittest"
+                "shared_libs/hl7_validation|HL7 Validation Library|hl7_validation|unittest"
+                "shared_libs/processor_manager_lib|Processor Manager Library|processor_manager_lib|unittest"
+                "shared_libs/transformer_base_lib|Transformer Base Library|transformer_base_lib|unittest"
+                "shared_libs/field_utils_lib|Field Utils Library|field_utils_lib|unittest"
+              )
 
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/event_logger_lib'
-          appDisplayName: 'Event Logger Library'
-          banditSourceDir: 'event_logger_lib'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              OVERALL_RESULT=0
+              FAILED_APPS=""
+              VENV_ROOT="$(Pipeline.Workspace)/.pr-validation-envs"
 
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/health_check_lib'
-          appDisplayName: 'Health Check Library'
-          banditSourceDir: 'health_check_lib'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              rm -rf "$VENV_ROOT"
+              mkdir -p "$VENV_ROOT"
 
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/hl7_validation'
-          appDisplayName: 'HL7 Validation Library'
-          banditSourceDir: 'hl7_validation'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+              for entry in "${APPS[@]}"; do
+                IFS='|' read -r APP_DIR DISPLAY_NAME BANDIT_DIR TEST_RUNNER <<< "$entry"
+                
+                # Default bandit dir to basename of app dir
+                if [ -z "$BANDIT_DIR" ]; then
+                  BANDIT_DIR=$(basename "$APP_DIR")
+                fi
 
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/processor_manager_lib'
-          appDisplayName: 'Processor Manager Library'
-          banditSourceDir: 'processor_manager_lib'
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
-         
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/transformer_base_lib'
-          appDisplayName: 'Transformer Base Library'
-          banditSourceDir: 'transformer_base_lib'
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+                echo ""
+                echo "╔══════════════════════════════════════════════════════════════╗"
+                echo "║  $DISPLAY_NAME"
+                echo "╚══════════════════════════════════════════════════════════════╝"
+                
+                APP_FAILED=0
+                APP_ENV_READY=0
+                APP_ENV="$VENV_ROOT/$(echo "$APP_DIR" | tr '/.' '__')"
 
-      - template: templates/code-quality-template.yml
-        parameters:
-          appName: 'shared_libs/field_utils_lib'
-          appDisplayName: 'Field Utils Library'
-          banditSourceDir: 'field_utils_lib'
+                # Install app dependencies
+                echo "##[group]📦 Install $DISPLAY_NAME dependencies"
+                cd "$(Build.SourcesDirectory)/$APP_DIR"
+                rm -rf "$APP_ENV"
+                if ! uv venv "$APP_ENV"; then
+                  echo "##[error]Failed to create isolated environment for $DISPLAY_NAME"
+                  APP_FAILED=1
+                else
+                  if ! source "$APP_ENV/bin/activate"; then
+                    echo "##[error]Failed to activate isolated environment for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  else
+                    set +e
+                    has_dev_dependency_group
+                    DEV_GROUP_STATUS=$?
+                    set -e
 
-          pythonVersion: $(pythonVersion)
-          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+                    if [ $DEV_GROUP_STATUS -eq 0 ]; then
+                      if ! uv sync --active --locked --group dev; then
+                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    elif [ $DEV_GROUP_STATUS -eq 1 ]; then
+                      echo "No dev dependency group defined"
+                      if ! uv sync --active --locked --no-dev; then
+                        echo "##[error]Failed to install dependencies for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    else
+                      echo "##[error]Unable to inspect dependency groups for $DISPLAY_NAME"
+                      APP_FAILED=1
+                    fi
+                  fi
+
+                  if [ $APP_FAILED -eq 0 ]; then
+                    APP_ENV_READY=1
+                  else
+                    deactivate >/dev/null 2>&1 || true
+                  fi
+                fi
+                echo "##[endgroup]"
+
+                # Ruff
+                echo "##[group]🔍 Ruff — $DISPLAY_NAME"
+                if ! uv tool run ruff check --output-format=github .; then
+                  echo "##[error]Ruff failed for $DISPLAY_NAME"
+                  APP_FAILED=1
+                fi
+                echo "##[endgroup]"
+
+                # Bandit
+                echo "##[group]🔒 Bandit — $DISPLAY_NAME"
+                if [ -d "tests" ]; then
+                  if ! uv tool run bandit -r "$BANDIT_DIR" tests --severity-level medium; then
+                    echo "##[error]Bandit failed for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  fi
+                else
+                  if ! uv tool run bandit -r "$BANDIT_DIR" --severity-level medium; then
+                    echo "##[error]Bandit failed for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  fi
+                fi
+                echo "##[endgroup]"
+
+                # UV audit
+                echo "##[group]🛡️ UV Audit — $DISPLAY_NAME"
+                # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
+                if ! uv audit --locked --ignore GHSA-5239-wwwm-4pmq; then
+                  echo "##[error]UV audit failed for $DISPLAY_NAME"
+                  APP_FAILED=1
+                fi
+                echo "##[endgroup]"
+
+                # MyPy
+                echo "##[group]🏷️ MyPy — $DISPLAY_NAME"
+                if [ -d "tests" ]; then
+                  if ! uv tool run mypy "$BANDIT_DIR" tests --ignore-missing-imports; then
+                    echo "##[error]MyPy failed for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  fi
+                else
+                  if ! uv tool run mypy "$BANDIT_DIR" --ignore-missing-imports; then
+                    echo "##[error]MyPy failed for $DISPLAY_NAME"
+                    APP_FAILED=1
+                  fi
+                fi
+                echo "##[endgroup]"
+
+                # Unit Tests
+                echo "##[group]🧪 Tests — $DISPLAY_NAME"
+                # Tests run inside the per-app virtual environment activated during dependency installation.
+                if [ -d "tests" ]; then
+                  if [ $APP_ENV_READY -eq 0 ]; then
+                    echo "##[error]Skipping tests for $DISPLAY_NAME because dependency installation failed"
+                    APP_FAILED=1
+                  else
+                    if [ "$TEST_RUNNER" = "pytest" ]; then
+                      if ! python -m pytest tests -v; then
+                        echo "##[error]Tests failed for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    else
+                      if ! python -m unittest discover tests -v; then
+                        echo "##[error]Tests failed for $DISPLAY_NAME"
+                        APP_FAILED=1
+                      fi
+                    fi
+                  fi
+                else
+                  echo "No tests directory found, skipping"
+                fi
+                echo "##[endgroup]"
+
+                if [ $APP_ENV_READY -eq 1 ]; then
+                  deactivate >/dev/null 2>&1 || true
+                fi
+
+                if [ $APP_FAILED -eq 1 ]; then
+                  OVERALL_RESULT=1
+                  FAILED_APPS="$FAILED_APPS  ❌ $DISPLAY_NAME\n"
+                  echo "##[error]❌ $DISPLAY_NAME — FAILED"
+                else
+                  echo "✅ $DISPLAY_NAME — PASSED"
+                fi
+              done
+
+              echo ""
+              echo "════════════════════════════════════════════════════════════════"
+              if [ $OVERALL_RESULT -eq 0 ]; then
+                echo "✅ All 16 apps passed code quality and tests"
+              else
+                echo "##[error]Some apps failed:"
+                echo -e "$FAILED_APPS"
+                exit 1
+              fi
+            displayName: 'Run Code Quality & Tests — All Apps'
+            env:
+              UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache

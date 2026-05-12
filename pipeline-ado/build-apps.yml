@@ -1,0 +1,356 @@
+# Consolidated Build Pipeline — build all (or selected) containers in one operation
+# Individual *-build.yml files remain for per-path CI triggers
+trigger: none
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+  - name: buildApps
+    displayName: 'Apps to build (leave all checked for full build)'
+    type: object
+    default:
+      - hl7server
+      - hl7sender
+      - hl7mockreceiver
+      - hl7subscriptionsender
+      - hl7pimstransformer
+      - hl7phwtransformer
+      - hl7chemotransformer
+      - messagestoreservice
+      - messagereplayjob
+      - dashboard
+      - networktestapp
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+# All CodeQuality stages run in parallel; each Build stage depends only on its own CQ gate.
+# Stages are conditionally included at compile time based on the buildApps parameter.
+stages:
+  # ── Code Quality ────────────────────────────────────────────────────────────
+  - ${{ if containsValue(parameters.buildApps, 'hl7server') }}:
+    - stage: CodeQuality_hl7server
+      displayName: 'Code Quality — HL7 Server'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_server'
+            appDisplayName: 'HL7 Server'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7sender') }}:
+    - stage: CodeQuality_hl7sender
+      displayName: 'Code Quality — HL7 Sender'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_sender'
+            appDisplayName: 'HL7 Sender'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7mockreceiver') }}:
+    - stage: CodeQuality_hl7mockreceiver
+      displayName: 'Code Quality — HL7 Mock Receiver'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_mock_receiver'
+            appDisplayName: 'HL7 Mock Receiver'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7subscriptionsender') }}:
+    - stage: CodeQuality_hl7subscriptionsender
+      displayName: 'Code Quality — HL7 Subscription Sender'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_subscription_sender'
+            appDisplayName: 'HL7 Subscription Sender'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7pimstransformer') }}:
+    - stage: CodeQuality_hl7pimstransformer
+      displayName: 'Code Quality — Pims HL7 Transformer'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_pims_transformer'
+            appDisplayName: 'Pims HL7 Transformer'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7phwtransformer') }}:
+    - stage: CodeQuality_hl7phwtransformer
+      displayName: 'Code Quality — Phw HL7 Transformer'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_phw_transformer'
+            appDisplayName: 'Phw HL7 Transformer'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7chemotransformer') }}:
+    - stage: CodeQuality_hl7chemotransformer
+      displayName: 'Code Quality — Chemocare HL7 Transformer'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_chemo_transformer'
+            appDisplayName: 'Chemocare HL7 Transformer'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'messagestoreservice') }}:
+    - stage: CodeQuality_messagestoreservice
+      displayName: 'Code Quality — Message Store Service'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'message_store_service'
+            appDisplayName: 'Message Store Service'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'messagereplayjob') }}:
+    - stage: CodeQuality_messagereplayjob
+      displayName: 'Code Quality — Message Replay Job'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'message_replay_job'
+            appDisplayName: 'Message Replay Job'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'dashboard') }}:
+    - stage: CodeQuality_dashboard
+      displayName: 'Code Quality — Dashboard'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'dashboard'
+            appDisplayName: 'Dashboard'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+            banditSourceDir: 'dashboard'
+            usePytest: true
+
+  # ── Build & Push ────────────────────────────────────────────────────────────
+  - ${{ if containsValue(parameters.buildApps, 'hl7server') }}:
+    - stage: Build_hl7server
+      displayName: 'Build — HL7 Server'
+      dependsOn: CodeQuality_hl7server
+      condition: in(dependencies.CodeQuality_hl7server.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7Server'
+            displayName: 'Build and Push HL7 Server'
+            appName: 'hl7server'
+            dockerfilePath: 'hl7_server/Dockerfile'
+            buildContext: 'hl7_server'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7sender') }}:
+    - stage: Build_hl7sender
+      displayName: 'Build — HL7 Sender'
+      dependsOn: CodeQuality_hl7sender
+      condition: in(dependencies.CodeQuality_hl7sender.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7Sender'
+            displayName: 'Build and Push HL7 Sender'
+            appName: 'hl7sender'
+            dockerfilePath: 'hl7_sender/Dockerfile'
+            buildContext: 'hl7_sender'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7mockreceiver') }}:
+    - stage: Build_hl7mockreceiver
+      displayName: 'Build — HL7 Mock Receiver'
+      dependsOn: CodeQuality_hl7mockreceiver
+      condition: in(dependencies.CodeQuality_hl7mockreceiver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7MockReceiver'
+            displayName: 'Build and Push HL7 Mock Receiver'
+            appName: 'hl7mockreceiver'
+            dockerfilePath: 'hl7_mock_receiver/Dockerfile'
+            buildContext: 'hl7_mock_receiver'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7subscriptionsender') }}:
+    - stage: Build_hl7subscriptionsender
+      displayName: 'Build — HL7 Subscription Sender'
+      dependsOn: CodeQuality_hl7subscriptionsender
+      condition: in(dependencies.CodeQuality_hl7subscriptionsender.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7SubscriptionSender'
+            displayName: 'Build and Push HL7 Subscription Sender'
+            appName: 'hl7subsndr'
+            dockerfilePath: 'hl7_subscription_sender/Dockerfile'
+            buildContext: 'hl7_subscription_sender'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7pimstransformer') }}:
+    - stage: Build_hl7pimstransformer
+      displayName: 'Build — Pims HL7 Transformer'
+      dependsOn: CodeQuality_hl7pimstransformer
+      condition: in(dependencies.CodeQuality_hl7pimstransformer.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushPimsHL7Transformer'
+            displayName: 'Build and Push Pims HL7 Transformer'
+            appName: 'pims-hl7transformer'
+            dockerfilePath: 'hl7_pims_transformer/Dockerfile'
+            buildContext: 'hl7_pims_transformer'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7phwtransformer') }}:
+    - stage: Build_hl7phwtransformer
+      displayName: 'Build — Phw HL7 Transformer'
+      dependsOn: CodeQuality_hl7phwtransformer
+      condition: in(dependencies.CodeQuality_hl7phwtransformer.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushPhwHL7Transformer'
+            displayName: 'Build and Push Phw HL7 Transformer'
+            appName: 'phw-hl7transformer'
+            dockerfilePath: 'hl7_phw_transformer/Dockerfile'
+            buildContext: 'hl7_phw_transformer'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7chemotransformer') }}:
+    - stage: Build_hl7chemotransformer
+      displayName: 'Build — Chemocare HL7 Transformer'
+      dependsOn: CodeQuality_hl7chemotransformer
+      condition: in(dependencies.CodeQuality_hl7chemotransformer.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushChemoHL7Transformer'
+            displayName: 'Build and Push Chemocare HL7 Transformer'
+            appName: 'chemo-hl7transformer'
+            dockerfilePath: 'hl7_chemo_transformer/Dockerfile'
+            buildContext: 'hl7_chemo_transformer'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'messagestoreservice') }}:
+    - stage: Build_messagestoreservice
+      displayName: 'Build — Message Store Service'
+      dependsOn: CodeQuality_messagestoreservice
+      condition: in(dependencies.CodeQuality_messagestoreservice.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushMessageStoreService'
+            displayName: 'Build and Push Message Store Service'
+            appName: 'message-store-service'
+            dockerfilePath: 'message_store_service/Dockerfile'
+            buildContext: 'message_store_service'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'messagereplayjob') }}:
+    - stage: Build_messagereplayjob
+      displayName: 'Build — Message Replay Job'
+      dependsOn: CodeQuality_messagereplayjob
+      condition: in(dependencies.CodeQuality_messagereplayjob.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushMessageReplayJob'
+            displayName: 'Build and Push Message Replay Job'
+            appName: 'message-replay-job'
+            dockerfilePath: 'message_replay_job/Dockerfile'
+            buildContext: 'message_replay_job'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  # Dashboard uses a different service connection
+  - ${{ if containsValue(parameters.buildApps, 'dashboard') }}:
+    - stage: Build_dashboard
+      displayName: 'Build — Dashboard'
+      dependsOn: CodeQuality_dashboard
+      condition: in(dependencies.CodeQuality_dashboard.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushDashboard'
+            displayName: 'Build and Push Dashboard'
+            appName: 'dashboard'
+            dockerfilePath: 'dashboard/Dockerfile'
+            buildContext: 'dashboard'
+            acrName: $(acrName)
+            azureServiceConnection: 'DEV-MonitoringDashboard'
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  # Network Test App has no code quality stage
+  - ${{ if containsValue(parameters.buildApps, 'networktestapp') }}:
+    - stage: Build_networktestapp
+      displayName: 'Build — Network Test App'
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushNetworkTestApp'
+            displayName: 'Build and Push Network Test App'
+            appName: 'networktestapp'
+            dockerfilePath: 'network_test_app/Dockerfile'
+            buildContext: 'network_test_app'
+            additionalContexts: 'ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}

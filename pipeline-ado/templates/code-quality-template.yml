@@ -45,9 +45,21 @@ jobs:
         inputs:
           versionSpec: '${{ parameters.pythonVersion }}'
 
+      - task: Cache@2
+        displayName: 'Cache UV tools and packages'
+        continueOnError: true
+        inputs:
+          key: 'uv-cache | "python-${{ parameters.pythonVersion }}" | "$(Agent.OS)" | ${{ parameters.appName }}/pyproject.toml'
+          restoreKeys: |
+            uv-cache | "python-${{ parameters.pythonVersion }}" | "$(Agent.OS)"
+          path: $(Pipeline.Workspace)/.uv-cache
+
       - script: |
           set -euo pipefail  # Bash strict mode
           echo "##[group]Install UV and code quality tools"
+
+          # Use pipeline cache directory
+          export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
 
           python -m pip install --upgrade pip
           python -m pip install uv
@@ -63,6 +75,8 @@ jobs:
           echo "✅ UV and global code quality tools installed"
           echo "##[endgroup]"
         displayName: 'Install UV and Code Quality Tools'
+        env:
+          UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
 
       - script: |
           set -euo pipefail
@@ -90,6 +104,8 @@ jobs:
 
           echo "##[endgroup]"
         displayName: 'Install Shared Dependencies'
+        env:
+          UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
 
       - script: |
           set -euo pipefail
@@ -106,6 +122,8 @@ jobs:
           echo "✅ Dependencies installed successfully"
           echo "##[endgroup]"
         displayName: 'Install ${{ parameters.appDisplayName }} Dependencies'
+        env:
+          UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
 
       - script: |
           set -euo pipefail
