@@ -39,6 +39,21 @@ class EventLogger:
             )
             return
 
+        # If otel_lib.configure_otel() has already initialised Azure Monitor,
+        # skip to avoid duplicate exporters and background threads.
+        try:
+            from otel_lib import is_configured as otel_is_configured
+
+            if otel_is_configured():
+                logger.info(
+                    "Azure Monitor already initialised by otel_lib — "
+                    "EventLogger skipping duplicate configure_azure_monitor call."
+                )
+                EventLogger._azure_monitor_initialized = True
+                return
+        except ImportError:
+            pass  # otel_lib not installed — fall through to legacy init
+
         # Check if this library should initialize Azure Monitor
         azure_monitor_owner = (
             os.getenv("AZURE_MONITOR_OWNER", "event_logger").strip().lower()
