@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
@@ -182,44 +182,66 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
+        import requests  # noqa: PLC0415
         from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
-        from azure.monitor.querymetrics import MetricsClient  # noqa: PLC0415
 
         cred = get_azure_credential()
-        apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
-        metrics_client = MetricsClient("https://management.azure.com", cred)
+        # Use the per-resource metrics REST endpoint — requires only Microsoft.Insights/metrics/read
+        # on each resource, not the subscription-level metrics:getBatch permission needed by the
+        # batch SDK (MetricsClient.query_resources).
+        token = cred.get_token("https://management.azure.com/.default").token
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
+        apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
         apps = list(
             apps_client.container_apps.list_by_resource_group(
                 config.AZURE_CONTAINER_APPS_RESOURCE_GROUP
             )
         )
 
+        now = datetime.now(timezone.utc)
+        start = (now - timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
         results = []
         for app in apps:
-            resource_id = app.id
             try:
-                response = metrics_client.query_resource(  # type: ignore[attr-defined]
-                    resource_uri=resource_id,
-                    metric_names=["CpuUsage", "MemoryWorkingSetBytes", "Replicas"],
-                    timespan=timedelta(minutes=5),
-                    granularity=timedelta(minutes=1),
-                    aggregations=["Average", "Maximum"],
+                # Build the query string manually — requests would percent-encode commas in
+                # metricnames and slashes in timespan, causing a 400 from Azure Monitor.
+                # Correct metric names per Microsoft.App/containerapps:
+                #   CpuPercentage, WorkingSetBytes, Replicas
+                query = (
+                    "api-version=2018-01-01"
+                    "&metricnames=CpuPercentage,WorkingSetBytes,Replicas"
+                    f"&timespan={start}/{end}"
+                    "&interval=PT5M"
+                    "&aggregation=Average"
+                    "&metricnamespace=microsoft.app/containerapps"
                 )
+                url = (
+                    f"https://management.azure.com{app.id}"
+                    f"/providers/microsoft.insights/metrics?{query}"
+                )
+                resp = requests.get(url, headers=headers, timeout=10)
+                resp.raise_for_status()
+                data = resp.json()
+
                 metrics: dict = {}
-                for m in response.metrics:
-                    for ts in m.timeseries:
-                        for dp in reversed(ts.data):
-                            val = dp.average if dp.average is not None else dp.maximum
+                for m in data.get("value", []):
+                    metric_name = m.get("name", {}).get("value", "")
+                    for ts in m.get("timeseries", []):
+                        for dp in reversed(ts.get("data", [])):
+                            val = dp.get("average")
                             if val is not None:
-                                metrics[m.name] = round(val, 2)
+                                metrics[metric_name] = round(val, 2)
                                 break
+
                 results.append(
                     {
                         "name": app.name,
                         "location": app.location,
-                        "cpu_usage": metrics.get("CpuUsage", 0),
-                        "memory_bytes": metrics.get("MemoryWorkingSetBytes", 0),
+                        "cpu_usage": metrics.get("CpuPercentage", 0),
+                        "memory_bytes": metrics.get("WorkingSetBytes", 0),
                         "replicas": int(metrics.get("Replicas", 0)),
                     }
                 )
