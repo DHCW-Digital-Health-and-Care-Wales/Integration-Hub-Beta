@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 _otel_configured: bool = False
 
 
+def is_configured() -> bool:
+    """Return True if ``configure_otel`` has already been called successfully."""
+    return _otel_configured
+
+
 def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
     """Configure OpenTelemetry for the service.
 
@@ -31,6 +36,8 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
     Also installs an OtelCorrelationFilter on the root logger so every log
     record carries the current trace_id and span_id.
 
+    This function is safe to call multiple times — subsequent calls are no-ops.
+
     Args:
         service_name: The OTel service.name resource attribute (e.g. "phw-hl7-transformer").
         service_version: The OTel service.version resource attribute.
@@ -38,6 +45,11 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
     Returns:
         True to indicate OTel has been configured.
     """
+    global _otel_configured
+    if _otel_configured:
+        logger.debug("OpenTelemetry already configured — skipping re-initialisation.")
+        return True
+
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
 
     if connection_string:
@@ -49,6 +61,7 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
         _configure_noop(service_name, service_version)
 
     _install_log_filter()
+    _otel_configured = True
     return True
 
 

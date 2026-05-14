@@ -6,7 +6,14 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
 import otel_lib.otel as otel_module
-from otel_lib import OtelCorrelationFilter, configure_otel, extract_trace_context, get_tracer, inject_trace_context
+from otel_lib import (
+    OtelCorrelationFilter,
+    configure_otel,
+    extract_trace_context,
+    get_tracer,
+    inject_trace_context,
+    is_configured,
+)
 from otel_lib.otel import _configure_noop
 
 
@@ -70,6 +77,25 @@ class TestConfigureOtel(unittest.TestCase):
         root_logger = logging.getLogger()
         otel_filters = [f for f in root_logger.filters if isinstance(f, OtelCorrelationFilter)]
         self.assertEqual(len(otel_filters), 1)
+
+    def test_is_configured_false_before_configure(self) -> None:
+        self.assertFalse(is_configured())
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_is_configured_true_after_configure(self) -> None:
+        configure_otel("test-service")
+        self.assertTrue(is_configured())
+
+    @patch.dict(
+        "os.environ",
+        {"APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key;IngestionEndpoint=https://example.com"},
+        clear=True,
+    )
+    def test_configure_otel_guard_prevents_double_azure_monitor_call(self) -> None:
+        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure:
+            configure_otel("test-service")
+            configure_otel("test-service-again")
+            mock_configure.assert_called_once()
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_sets_service_name(self) -> None:
