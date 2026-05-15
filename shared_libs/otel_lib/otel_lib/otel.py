@@ -8,8 +8,6 @@ from opentelemetry import trace
 from opentelemetry.propagate import extract, inject
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 try:
     from azure.monitor.opentelemetry import configure_azure_monitor  # type: ignore[import-untyped]
@@ -93,7 +91,13 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
 
 
 def _configure_noop(service_name: str, service_version: str) -> None:
-    """Install a minimal TracerProvider with an in-memory (effectively no-op) exporter."""
+    """Install a minimal TracerProvider with no exporter.
+
+    Without a SpanProcessor, finished spans are silently discarded and
+    garbage-collected.  Previous versions used ``InMemorySpanExporter``
+    which stored every span in an ever-growing list, causing a memory leak
+    in long-running services.
+    """
     resource = Resource.create(
         {
             "service.name": service_name,
@@ -101,8 +105,6 @@ def _configure_noop(service_name: str, service_version: str) -> None:
         }
     )
     provider = TracerProvider(resource=resource)
-    # InMemorySpanExporter discards spans; this keeps OTel APIs functional without output.
-    provider.add_span_processor(SimpleSpanProcessor(InMemorySpanExporter()))
     trace.set_tracer_provider(provider)
 
 
