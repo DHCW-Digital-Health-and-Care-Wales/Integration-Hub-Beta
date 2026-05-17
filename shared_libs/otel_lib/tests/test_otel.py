@@ -51,6 +51,18 @@ class TestConfigureOtel(unittest.TestCase):
         with patch("otel_lib.otel.configure_azure_monitor") as mock_configure:
             configure_otel("test-service")
             mock_configure.assert_called_once()
+            _, kwargs = mock_configure.call_args
+            opts = kwargs["instrumentation_options"]
+            # Every supported auto-instrumentor must be disabled — our services
+            # use manual telemetry only.  Active instrumentors (especially
+            # azure_sdk and urllib3) create metric time-series that accumulate
+            # without bound and cause growing CPU usage.
+            for lib in ("azure_sdk", "django", "fastapi", "flask",
+                        "psycopg2", "requests", "urllib", "urllib3"):
+                self.assertFalse(
+                    opts[lib]["enabled"],
+                    f"Auto-instrumentor '{lib}' should be disabled",
+                )
 
     @patch.dict(
         "os.environ",
