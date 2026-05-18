@@ -5,10 +5,10 @@ import socket
 from typing import Any, Optional, Type
 
 from hl7.client import MLLPClient
-from hl7apy.consts import MLLP_ENCODING_CHARS
 
 logger = logging.getLogger(__name__)
-ENCODING_CHARS = MLLP_ENCODING_CHARS.SB + MLLP_ENCODING_CHARS.EB + MLLP_ENCODING_CHARS.CR
+# MLLP framing characters per the MLLP standard: Start Block (VT), End Block (FS), Carriage Return
+ENCODING_CHARS = "\x0b\x1c\x0d"
 WINDOWS_OS = "nt"
 
 
