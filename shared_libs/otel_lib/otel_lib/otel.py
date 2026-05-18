@@ -68,8 +68,14 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     try:
         # azure-monitor-opentelemetry sets up the TracerProvider internally; we
         # only need to supply the resource so the service.name is correct.
-        # Disable instrumentors for libraries not used by our HL7 services to
-        # prevent ModuleNotFoundError when e.g. psycopg2 is not installed.
+        #
+        # Disable ALL auto-instrumentors — our HL7 services use manual
+        # telemetry only (EventLogger, wrap_handler spans).  Active
+        # auto-instrumentors create spans and HTTP-client metrics for every
+        # Azure SDK / urllib3 call, and azure_sdk tracing wraps every Service
+        # Bus send/receive.  The resulting metric time-series accumulate
+        # without bound inside the MeterProvider and cause steadily growing
+        # CPU usage over the lifetime of the container.
         configure_azure_monitor(
             resource=Resource.create(
                 {
@@ -78,10 +84,14 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
                 }
             ),
             instrumentation_options={
-                "django":   {"enabled": False},
-                "fastapi":  {"enabled": False},
-                "flask":    {"enabled": False},
-                "psycopg2": {"enabled": False},
+                "azure_sdk": {"enabled": False},
+                "django":    {"enabled": False},
+                "fastapi":   {"enabled": False},
+                "flask":     {"enabled": False},
+                "psycopg2":  {"enabled": False},
+                "requests":  {"enabled": False},
+                "urllib":    {"enabled": False},
+                "urllib3":   {"enabled": False},
             },
         ) # type: ignore
         logger.info("OpenTelemetry configured with Azure Monitor exporter for service '%s'.", service_name)
