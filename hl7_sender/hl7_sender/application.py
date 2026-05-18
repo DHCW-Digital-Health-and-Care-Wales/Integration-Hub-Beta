@@ -2,11 +2,11 @@ import configparser
 import logging
 import os
 
+import hl7
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7_validation import convert_er7_to_xml
-from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_store_client import MessageStoreClient
@@ -141,9 +141,10 @@ def _process_message(
             message_body, "Message received for HL7 sending", correlation_id=correlation_id_opt
         )
 
-        hl7_msg = parse_message(message_body)
-        msh_segment = hl7_msg.msh
-        message_id = msh_segment.msh_10.value
+        # Use the lightweight hl7 library to extract the message control ID from MSH.10
+        # rather than hl7apy, which loads and caches full HL7 schema definitions.
+        hl7_msg = hl7.parse(message_body)
+        message_id = str(hl7_msg.segment("MSH")[10])
         logger.info(f"Message ID: {message_id}")
 
         if _is_first_delivery_attempt(message):

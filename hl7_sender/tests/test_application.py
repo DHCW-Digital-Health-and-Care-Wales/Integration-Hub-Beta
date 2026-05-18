@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 from azure.servicebus import ServiceBusMessage
-from hl7apy.core import Message
 
 from hl7_sender.app_config import AppConfig
 from hl7_sender.application import (
@@ -12,12 +11,17 @@ from hl7_sender.application import (
     main,
 )
 
+# A minimal but valid ADT^A01 HL7 message used across tests.
+# MSH.10 = MSGID1234 (message control ID used in log assertion checks).
+TEST_HL7_STRING = (
+    "MSH|^~\\&|SendingApp|Facility|ReceivingApp|Facility|20250101000000||ADT^A01|MSGID1234|P|2.5\r"
+    "EVN||20250101000000\r"
+    "PID|1||123456^^^Hospital^MR||Doe^John\r"
+)
 
-def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]:
-    hl7_message = Message("ADT_A01")
-    hl7_message.msh.msh_10 = "MSGID1234"
-    hl7_string = hl7_message.to_er7()
-    service_bus_message = ServiceBusMessage(body=hl7_string)
+
+def _setup() -> tuple[ServiceBusMessage, str, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]:
+    service_bus_message = ServiceBusMessage(body=TEST_HL7_STRING)
     mock_hl7_sender_client = MagicMock()
     mock_event_logger = MagicMock()
     mock_metric_sender = MagicMock()
@@ -26,8 +30,7 @@ def _setup() -> tuple[ServiceBusMessage, Message, str, MagicMock, MagicMock, Mag
 
     return (
         service_bus_message,
-        hl7_message,
-        hl7_string,
+        TEST_HL7_STRING,
         mock_hl7_sender_client,
         mock_event_logger,
         mock_metric_sender,
@@ -52,12 +55,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_metric_sender.send_message_sent_metric.assert_not_called()
         self.assertFalse(result)
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    def test_process_message_success(self, mock_ack_processor: Mock, mock_parse_message: Mock) -> None:
+    def test_process_message_success(self, mock_ack_processor: Mock) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -65,7 +66,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_ack_processor.return_value = True
@@ -80,7 +80,6 @@ class TestProcessMessage(unittest.TestCase):
             TEST_SESSION_ID,
         )
 
-        mock_parse_message.assert_called_once_with(hl7_string)
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
@@ -89,14 +88,10 @@ class TestProcessMessage(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    def test_process_message_success_with_negative_ack(
-        self, mock_ack_processor: Mock, mock_parse_message: Mock
-    ) -> None:
+    def test_process_message_success_with_negative_ack(self, mock_ack_processor: Mock) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -104,7 +99,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_ack_processor.return_value = False
@@ -119,7 +113,6 @@ class TestProcessMessage(unittest.TestCase):
             TEST_SESSION_ID,
         )
 
-        mock_parse_message.assert_called_once_with(hl7_string)
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
@@ -128,8 +121,7 @@ class TestProcessMessage(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @patch("hl7_sender.application.parse_message")
-    def test_process_message_send_errors(self, mock_parse_message: Mock) -> None:
+    def test_process_message_send_errors(self) -> None:
         error_cases = [
             {"description": "timeout_error", "error": TimeoutError("No ACK received within 30 seconds")},
             {"description": "connection_error", "error": ConnectionError("Connection failed")},
@@ -139,7 +131,6 @@ class TestProcessMessage(unittest.TestCase):
             with self.subTest(error=case["description"]):
                 (
                     service_bus_message,
-                    hl7_message,
                     hl7_string,
                     mock_hl7_sender_client,
                     mock_event_logger,
@@ -147,7 +138,6 @@ class TestProcessMessage(unittest.TestCase):
                     mock_throttler,
                     mock_message_store,
                 ) = _setup()
-                mock_parse_message.return_value = hl7_message
                 mock_hl7_sender_client.send_message.side_effect = case["error"]
 
                 result = _process_message(
@@ -163,11 +153,10 @@ class TestProcessMessage(unittest.TestCase):
                 self._assert_error_handling(result, mock_event_logger, mock_metric_sender)
                 mock_throttler.wait_if_needed.assert_called_once()
 
-    @patch("hl7_sender.application.parse_message")
-    def test_process_message_unexpected_error(self, mock_parse_message: Mock) -> None:
+    @patch("hl7.parse", side_effect=Exception("Unexpected error"))
+    def test_process_message_unexpected_error(self, mock_parse: Mock) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -175,7 +164,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.side_effect = Exception("Unexpected error")
 
         result = _process_message(
             service_bus_message,
@@ -239,15 +227,13 @@ class TestProcessMessage(unittest.TestCase):
                 "test-messagestore-queue", "test_microservice_id", "test-service"
             )
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
     def test_process_message_sends_to_message_store_before_sending(
-        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock
     ) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -255,7 +241,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.return_value = hl7_message
         mock_ack_processor.return_value = True
         mock_convert_xml.return_value = "<xml>content</xml>"
         message_stored = {"value": False}
@@ -289,15 +274,13 @@ class TestProcessMessage(unittest.TestCase):
         self.assertIn("correlation_id", call_kwargs)
         self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_skipped_on_retry_delivery(
-        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock
     ) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -306,7 +289,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_message_store,
         ) = _setup()
         service_bus_message.delivery_count = 1  # type: ignore[attr-defined]  # Simulate a retry delivery attempt
-        mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
         mock_convert_xml.return_value = "<xml/>"
@@ -325,15 +307,13 @@ class TestProcessMessage(unittest.TestCase):
         mock_message_store.send_to_store.assert_not_called()
         mock_hl7_sender_client.send_message.assert_called_once_with(hl7_string)
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_xml_generation_failure_still_sends(
-        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock
     ) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -341,7 +321,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
         mock_convert_xml.side_effect = ValueError("Cannot parse")
@@ -367,15 +346,13 @@ class TestProcessMessage(unittest.TestCase):
             correlation_id=call_kwargs.get("correlation_id", ""),
         )
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_failure_does_not_block_result(
-        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock
     ) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -383,7 +360,6 @@ class TestProcessMessage(unittest.TestCase):
             mock_throttler,
             mock_message_store,
         ) = _setup()
-        mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
         mock_convert_xml.return_value = "<xml/>"
@@ -402,15 +378,13 @@ class TestProcessMessage(unittest.TestCase):
         self.assertTrue(result)
         mock_event_logger.log_message_processed.assert_called_once()
 
-    @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
     @patch("hl7_sender.application.convert_er7_to_xml")
     def test_message_store_forwards_upstream_metadata(
-        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock
     ) -> None:
         (
             service_bus_message,
-            hl7_message,
             hl7_string,
             mock_hl7_sender_client,
             mock_event_logger,
@@ -429,7 +403,6 @@ class TestProcessMessage(unittest.TestCase):
             "FlowName": "phw",
         }
 
-        mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
         mock_ack_processor.return_value = True
         mock_convert_xml.return_value = "<xml/>"
