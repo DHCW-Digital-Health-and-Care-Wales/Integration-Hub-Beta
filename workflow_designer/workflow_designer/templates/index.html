@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Flows — Workflow Designer{% endblock %}
+
+{% block content %}
+<section class="hero-banner p-4 p-lg-5 mb-4 shadow-sm">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+            <span class="badge rounded-pill hero-pill mb-3">Terraform workflow generator</span>
+            <h1 class="display-6 fw-bold mb-3">Design new HL7 flows for the NHS Wales Integration Hub.</h1>
+            <p class="lead mb-0">Capture source, validation, queueing, transformer and sender details in a guided UI, then download ready-to-drop Terraform snippets.</p>
+        </div>
+        <div class="col-lg-4 text-lg-end d-flex flex-column flex-lg-row gap-2 justify-content-lg-end">
+            <a class="btn btn-light btn-lg px-4" href="{{ url_for('designer') }}">
+                <i class="bi bi-diagram-3 me-2"></i>Canvas Designer
+            </a>
+            <a class="btn btn-outline-light btn-lg px-4" href="{{ url_for('new_flow') }}">
+                <i class="bi bi-plus-circle me-2"></i>Form
+            </a>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="section-title h4 mb-1">Available flows</h2>
+            <p class="text-secondary mb-0">Read-only cards show the current Integration Hub reference patterns.</p>
+        </div>
+        <span class="badge text-bg-light border">{{ flows|length }} flows</span>
+    </div>
+
+    <div class="row g-4">
+        {% for flow in flows %}
+            <div class="col-xl-4 col-md-6">
+                <div class="card card-soft h-100">
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                            <div>
+                                <h3 class="h5 mb-1">{{ flow.flow_id }}</h3>
+                                <div class="text-secondary small">{{ flow.source_system }} <i class="bi bi-arrow-right mx-1"></i> {{ flow.destination }}</div>
+                            </div>
+                            {% if flow.readonly %}
+                                <span class="badge rounded-pill text-bg-secondary">Read only</span>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <span class="badge rounded-pill badge-pattern">{{ flow.pattern }}</span>
+                        </div>
+                        <div class="row g-3 small text-secondary mb-4">
+                            <div class="col-6">
+                                <div class="fw-semibold text-dark">MLLP Port</div>
+                                <div>{{ flow.mllp_port }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-semibold text-dark">HL7 Version</div>
+                                <div>{{ flow.hl7_version }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-semibold text-dark">Validation</div>
+                                <div>{{ flow.validation_flow }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-semibold text-dark">Sending App</div>
+                                <div>{{ flow.sending_app }}</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto d-flex flex-wrap gap-2">
+                            <a class="btn btn-brand" href="{{ url_for('view_flow', flow_id=flow.flow_id) }}">
+                                <i class="bi bi-eye me-1"></i>View / Download
+                            </a>
+                            <form method="post" action="{{ url_for('delete_flow', flow_id=flow.flow_id) }}" class="d-inline">
+                                <button class="btn btn-outline-danger" {% if flow.readonly %}disabled{% endif %}>
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

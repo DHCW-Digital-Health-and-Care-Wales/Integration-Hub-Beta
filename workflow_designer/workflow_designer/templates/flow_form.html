@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — Workflow Designer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="section-title h3 mb-1">{{ title }}</h1>
+        <p class="text-secondary mb-0">Choose the correct Integration Hub pattern and generate the Terraform package.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('index') }}">Back to Flows</a>
+</div>
+
+<form method="post" class="row g-4" id="workflow-form">
+    <div class="col-xl-7">
+        <div class="panel-soft p-4 mb-4">
+            <h2 class="h5 section-title mb-3">1. Flow Identity</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="source_system" class="form-label">Source system</label>
+                    <input type="text" class="form-control" id="source_system" name="source_system" value="{{ form_data.source_system }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="destination" class="form-label">Destination</label>
+                    <input type="text" class="form-control" id="destination" name="destination" value="{{ form_data.destination }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="flow_id" class="form-label">Flow ID</label>
+                    <input type="text" class="form-control" id="flow_id" name="flow_id" value="{{ form_data.flow_id }}" placeholder="source-to-destination" data-manually-edited="{{ 'true' if is_edit or form_data.flow_id else 'false' }}" required>
+                    <div class="form-text">Auto-suggested from source and destination in kebab-case.</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="health_board" class="form-label">Health board</label>
+                    <input type="text" class="form-control" id="health_board" name="health_board" value="{{ form_data.health_board }}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-soft p-4 mb-4">
+            <h2 class="h5 section-title mb-3">2. MLLP Configuration</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="mllp_port" class="form-label">MLLP port</label>
+                    <input type="number" class="form-control" id="mllp_port" name="mllp_port" value="{{ form_data.mllp_port }}" min="1" max="65535" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="hl7_version" class="form-label">HL7 version</label>
+                    <input type="text" class="form-control" id="hl7_version" name="hl7_version" value="{{ form_data.hl7_version }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="sending_app" class="form-label">Sending application</label>
+                    <input type="text" class="form-control" id="sending_app" name="sending_app" value="{{ form_data.sending_app }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="validation_flow" class="form-label">Validation flow</label>
+                    <input type="text" class="form-control" id="validation_flow" name="validation_flow" value="{{ form_data.validation_flow }}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-soft p-4 mb-4">
+            <h2 class="h5 section-title mb-3">3. Pipeline Architecture</h2>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="has_transformer" name="has_transformer" {% if form_data.has_transformer %}checked{% endif %}>
+                <label class="form-check-label" for="has_transformer">Include flow-specific transformer</label>
+            </div>
+            <div id="transformer-fields" class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label for="transformer_image_name" class="form-label">Transformer image name</label>
+                    <input type="text" class="form-control" id="transformer_image_name" name="transformer_image_name" value="{{ form_data.transformer_image_name }}" placeholder="phw-hl7transformer">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" id="has_dedicated_sender" name="has_dedicated_sender" {% if form_data.has_dedicated_sender %}checked{% endif %}>
+                        <label class="form-check-label" for="has_dedicated_sender">Dedicated sender</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="enable_message_store" name="enable_message_store" {% if form_data.enable_message_store %}checked{% endif %}>
+                <label class="form-check-label" for="enable_message_store">Grant server access to message store queue</label>
+            </div>
+        </div>
+
+        <div class="panel-soft p-4">
+            <h2 class="h5 section-title mb-3">4. Destination</h2>
+            <div id="destination-fields" class="row g-3">
+                <div class="col-md-8">
+                    <label for="destination_host" class="form-label">Destination host</label>
+                    <input type="text" class="form-control" id="destination_host" name="destination_host" value="{{ form_data.destination_host }}" placeholder="mpi.internal.nhs.wales">
+                </div>
+                <div class="col-md-4">
+                    <label for="destination_port" class="form-label">Destination port</label>
+                    <input type="number" class="form-control" id="destination_port" name="destination_port" value="{{ form_data.destination_port }}" min="1" max="65535">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="panel-soft p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 section-title mb-0">Live pipeline preview</h2>
+                <span class="badge rounded-pill badge-pattern" id="pattern-label"></span>
+            </div>
+            <svg id="pipeline-preview" class="svg-preview" viewBox="0 0 760 300" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="row g-2 mt-3 small text-secondary">
+                <div class="col-6"><strong>Source:</strong> <span id="summary-source"></span></div>
+                <div class="col-6"><strong>Destination:</strong> <span id="summary-destination"></span></div>
+                <div class="col-6"><strong>Port:</strong> <span id="summary-port"></span></div>
+                <div class="col-6"><strong>Validation:</strong> <span id="summary-validation"></span></div>
+            </div>
+        </div>
+        <div class="panel-soft p-4">
+            <h2 class="h5 section-title mb-3">What will be generated?</h2>
+            <ul class="mb-4 text-secondary">
+                <li>Main <code>flow_*.tf</code> definition</li>
+                <li><code>locals.tf</code> additions</li>
+                <li><code>variables.tf</code> additions</li>
+            </ul>
+            <button class="btn btn-brand btn-lg w-100" type="submit">
+                <i class="bi bi-magic me-2"></i>Generate Terraform
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById('workflow-form');
+const sourceInput = document.getElementById('source_system');
+const destinationInput = document.getElementById('destination');
+const flowIdInput = document.getElementById('flow_id');
+const healthBoardInput = document.getElementById('health_board');
+const validationInput = document.getElementById('validation_flow');
+const portInput = document.getElementById('mllp_port');
+const transformerToggle = document.getElementById('has_transformer');
+const dedicatedSenderToggle = document.getElementById('has_dedicated_sender');
+const transformerFields = document.getElementById('transformer-fields');
+const destinationFields = document.getElementById('destination-fields');
+const patternLabel = document.getElementById('pattern-label');
+const preview = document.getElementById('pipeline-preview');
+
+function slugify(value) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function suggestFlowId() {
+    if (flowIdInput.dataset.manuallyEdited === 'true') {
+        return;
+    }
+    const source = slugify(sourceInput.value);
+    const destination = slugify(destinationInput.value || 'mpi');
+    flowIdInput.value = source && destination ? `${source}-to-${destination}` : '';
+}
+
+function renderDiagram() {
+    const source = sourceInput.value || 'SOURCE';
+    const destination = destinationInput.value || 'MPI';
+    const hasTransformer = transformerToggle.checked;
+    const dedicatedSender = hasTransformer && dedicatedSenderToggle.checked;
+    const nodes = [
+        { title: 'HL7 Server', subtitle: `MLLP ${portInput.value || '2575'}`, color: '#325083' },
+    ];
+
+    if (hasTransformer) {
+        nodes.push({ title: 'Transformer Queue', subtitle: `${slugify(source) || 'source'}_transformer`, color: '#12A3C9' });
+        nodes.push({ title: 'Transformer', subtitle: document.getElementById('transformer_image_name').value || 'transformer-image', color: '#F8CA4D', text: '#1B294A' });
+        if (dedicatedSender) {
+            nodes.push({ title: 'Sender Queue', subtitle: `${slugify(source) || 'source'}_sender`, color: '#12A3C9' });
+            nodes.push({ title: 'Dedicated Sender', subtitle: document.getElementById('destination_host').value || 'destination-host', color: '#2f855a' });
+            patternLabel.textContent = 'Transform + Dedicated Sender';
+        } else {
+            nodes.push({ title: 'Shared Sender Queue', subtitle: 'sender', color: '#12A3C9' });
+            patternLabel.textContent = 'Transform + Shared Sender';
+        }
+    } else {
+        nodes.push({ title: 'Shared Sender Queue', subtitle: 'sender', color: '#12A3C9' });
+        patternLabel.textContent = 'Direct (no transformer)';
+    }
+
+    nodes.push({ title: destination, subtitle: document.getElementById('destination_host').value || 'shared-mpi-sender', color: '#1B294A' });
+
+    const width = 140;
+    const height = 80;
+    const spacing = 14;
+    const startX = 24;
+    const y = 110;
+
+    preview.innerHTML = '';
+    nodes.forEach((node, index) => {
+        const x = startX + index * (width + spacing);
+        const textColor = node.text || '#ffffff';
+        preview.insertAdjacentHTML('beforeend', `
+            <rect x="${x}" y="${y}" rx="18" ry="18" width="${width}" height="${height}" fill="${node.color}"></rect>
+            <text x="${x + width / 2}" y="${y + 28}" text-anchor="middle" font-size="16" font-weight="600" fill="${textColor}">${node.title}</text>
+            <text x="${x + width / 2}" y="${y + 50}" text-anchor="middle" font-size="12" fill="${textColor}">${node.subtitle}</text>
+        `);
+        if (index < nodes.length - 1) {
+            const arrowX = x + width + 3;
+            preview.insertAdjacentHTML('beforeend', `
+                <line x1="${arrowX}" y1="${y + 40}" x2="${arrowX + spacing - 6}" y2="${y + 40}" stroke="#325083" stroke-width="4" stroke-linecap="round"></line>
+                <polygon points="${arrowX + spacing - 6},${y + 40} ${arrowX + spacing - 16},${y + 34} ${arrowX + spacing - 16},${y + 46}" fill="#325083"></polygon>
+            `);
+        }
+    });
+
+    document.getElementById('summary-source').textContent = source;
+    document.getElementById('summary-destination').textContent = destination;
+    document.getElementById('summary-port').textContent = portInput.value || '2575';
+    document.getElementById('summary-validation').textContent = validationInput.value || 'n/a';
+}
+
+function syncVisibility() {
+    transformerFields.style.display = transformerToggle.checked ? '' : 'none';
+    dedicatedSenderToggle.disabled = !transformerToggle.checked;
+    if (!transformerToggle.checked) {
+        dedicatedSenderToggle.checked = false;
+    }
+    destinationFields.style.display = (!transformerToggle.checked || dedicatedSenderToggle.checked) ? '' : 'none';
+}
+
+flowIdInput.addEventListener('input', () => {
+    flowIdInput.dataset.manuallyEdited = flowIdInput.value.trim() ? 'true' : 'false';
+});
+[sourceInput, destinationInput].forEach((element) => element.addEventListener('input', suggestFlowId));
+form.querySelectorAll('input').forEach((element) => {
+    element.addEventListener('input', () => {
+        syncVisibility();
+        renderDiagram();
+    });
+    element.addEventListener('change', () => {
+        syncVisibility();
+        renderDiagram();
+    });
+});
+
+syncVisibility();
+renderDiagram();
+</script>
+{% endblock %}

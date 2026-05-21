@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ flow.flow_id }} — Workflow Preview{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="section-title h3 mb-1">{{ flow.flow_id }}</h1>
+        <p class="text-secondary mb-0">{{ flow.source_system }} <i class="bi bi-arrow-right mx-1"></i> {{ flow.destination }} · {{ flow.pattern }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-brand" href="{{ url_for('download_flow', flow_id=flow.flow_id) }}"><i class="bi bi-download me-1"></i>Download flow.tf</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('download_package', flow_id=flow.flow_id) }}"><i class="bi bi-file-earmark-zip me-1"></i>Download All (.zip)</a>
+        {% if not flow.readonly %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('edit_flow', flow_id=flow.flow_id) }}"><i class="bi bi-pencil-square me-1"></i>Edit</a>
+        {% endif %}
+        <a class="btn btn-outline-dark" href="{{ url_for('index') }}">Back to Flows</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-5">
+        <div class="panel-soft p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 section-title mb-0">Pipeline diagram</h2>
+                <span class="badge rounded-pill badge-pattern">{{ flow.pattern }}</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center justify-content-start gap-2 gap-lg-3 mb-4">
+                {% for step in diagram_steps %}
+                    <div class="diagram-node tone-{{ step.tone }}">
+                        <i class="bi {{ step.icon }}"></i>
+                        <div class="fw-semibold">{{ step.title }}</div>
+                        <div class="small">{{ step.subtitle }}</div>
+                    </div>
+                    {% if not loop.last %}
+                        <div class="diagram-arrow"><i class="bi bi-arrow-right"></i></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="row g-3 small text-secondary">
+                <div class="col-6"><strong>Port:</strong> {{ flow.mllp_port }}</div>
+                <div class="col-6"><strong>HL7:</strong> {{ flow.hl7_version }}</div>
+                <div class="col-6"><strong>Sending app:</strong> {{ flow.sending_app }}</div>
+                <div class="col-6"><strong>Validation:</strong> {{ flow.validation_flow }}</div>
+                <div class="col-6"><strong>Health board:</strong> {{ flow.health_board }}</div>
+                <div class="col-6"><strong>Message store:</strong> {{ 'Enabled' if flow.enable_message_store else 'Disabled' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="panel-soft p-4 h-100">
+            <ul class="nav nav-tabs" id="tf-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#flow-tf" type="button">flow_{{ flow.flow_var_name }}.tf</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#locals-tf" type="button">locals.tf additions</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#variables-tf" type="button">variables.tf additions</button>
+                </li>
+            </ul>
+            <div class="tab-content pt-3">
+                <div class="tab-pane fade show active" id="flow-tf" role="tabpanel">
+                    <div class="code-panel p-3"><pre>{{ flow_tf }}</pre></div>
+                </div>
+                <div class="tab-pane fade" id="locals-tf" role="tabpanel">
+                    <div class="code-panel p-3"><pre>{{ locals_snippet }}</pre></div>
+                </div>
+                <div class="tab-pane fade" id="variables-tf" role="tabpanel">
+                    <div class="code-panel p-3"><pre>{{ variables_snippet }}</pre></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

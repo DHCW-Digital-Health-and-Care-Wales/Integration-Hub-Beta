@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% block title %}Canvas Designer — Workflow Designer{% endblock %}
+{% block body_class %}designer-page{% endblock %}
+{% block main_class %}p-0 overflow-hidden{% endblock %}
+{% block app_footer %}{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/designer.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="designer-layout">
+<aside class="palette-panel">
+    <div class="palette-section">
+      <div class="palette-title">Components</div>
+      <div class="palette-item palette-server" draggable="true" data-node="hl7_server">
+        <i class="bi bi-hdd-network"></i>
+        <div>
+          <strong>HL7 Server</strong>
+          <small>MLLP listener</small>
+        </div>
+      </div>
+      <div class="palette-item palette-transformer" draggable="true" data-node="hl7_transformer">
+        <i class="bi bi-shuffle"></i>
+        <div>
+          <strong>Transformer</strong>
+          <small>HL7 message mapper</small>
+        </div>
+      </div>
+      <div class="palette-item palette-sender" draggable="true" data-node="hl7_sender">
+        <i class="bi bi-send"></i>
+        <div>
+          <strong>HL7 Sender</strong>
+          <small>Outbound delivery</small>
+        </div>
+      </div>
+      <div class="palette-item palette-subscription-sender" draggable="true" data-node="subscription_sender"
+           title="Subscription Sender — fan-out delivery via Service Bus topic subscription">
+        <i class="fas fa-share-alt"></i>
+        <div>
+          <strong>Subscription Sender</strong>
+          <small>Topic subscription fan-out</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="palette-section">
+      <div class="palette-title">How to use</div>
+      <ul class="designer-tips">
+        <li>Drag components onto the canvas.</li>
+        <li>Move nodes freely by dragging their headers.</li>
+        <li>Drag from an output port to an input port to wire the flow.</li>
+        <li>Click a node or edge to edit/view details.</li>
+      </ul>
+    </div>
+
+    {% if existing_flows %}
+    <div class="palette-section palette-existing-flows">
+      <hr class="palette-divider">
+      <div class="palette-title">Existing Flows</div>
+      {% for f in existing_flows %}
+      <div class="existing-flow-item">
+        <i class="bi bi-diagram-3"></i>
+        <a href="{{ url_for('view_flow', flow_id=f.flow_id) }}" class="existing-flow-link">{{ f.flow_id }}</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+  <div class="palette-resize-handle" id="palette-resize-handle"></div>
+
+  <div class="designer-canvas-wrapper">
+    <div class="canvas-toolbar">
+      <div class="flow-id-group">
+        <label for="flow-id-input">Flow ID</label>
+        <input id="flow-id-input" type="text" placeholder="e.g. phw-to-mpi" pattern="[a-z0-9\-]+" autocomplete="off">
+      </div>
+      <button id="btn-validate" class="btn btn-sm btn-outline-secondary" type="button">
+        <i class="bi bi-check2-circle me-1"></i>Validate
+      </button>
+      <button id="btn-clear" class="btn btn-sm btn-outline-secondary" type="button">
+        <i class="bi bi-trash me-1"></i>Clear
+      </button>
+      <button id="btn-generate" class="btn btn-sm btn-brand" type="button">
+        <i class="bi bi-eye me-1"></i>Preview Output
+      </button>
+    </div>
+
+    <div id="error-container"></div>
+
+    <div id="freeform-canvas">
+      <div id="canvas-inner">
+        <svg id="canvas-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"></polygon>
+            </marker>
+            <marker id="arrowhead-sel" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"></polygon>
+            </marker>
+          </defs>
+          <path id="rubber-band"></path>
+        </svg>
+        <div id="canvas-nodes"></div>
+        <div id="canvas-empty-state">
+          <i class="bi bi-bezier2"></i>
+          <div>Drag components here to start building a flow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="properties-panel">
+    <div class="properties-header">Properties</div>
+    <div id="properties-panel-body">
+      <div class="empty-props">
+        <i class="bi bi-cursor"></i>
+        <span>Select a node or connection to view its details.</span>
+      </div>
+    </div>
+  </aside>
+
+  <footer class="designer-status-bar">
+    <div class="status-block">
+      <span class="status-label">Pattern</span>
+      <span id="status-bar-pattern" class="status-value">Unknown</span>
+    </div>
+    <div class="status-block">
+      <span class="status-label">Validation</span>
+      <span id="status-bar-validity" class="status-pill status-incomplete">Incomplete</span>
+    </div>
+    <div class="status-help">Freeform node graph &middot; drag headers to move &middot; drag ports to connect</div>
+  </footer>
+</div>
+
+<div id="preview-backdrop" class="preview-backdrop" style="display:none;">
+  <div class="preview-modal">
+    <div class="preview-header">
+      <div>
+        <div class="preview-kicker">Terraform Output Preview</div>
+        <div id="preview-flow-title" class="preview-title"></div>
+      </div>
+      <button class="preview-close" type="button" onclick="closePreview()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="preview-banner">
+      <i class="bi bi-shield-check"></i>
+      <strong>Preview only</strong>
+      <span>No Azure resources are created and no Terraform commands are executed.</span>
+    </div>
+
+    <div class="preview-body">
+      <div class="preview-section-title"><i class="bi bi-list-check"></i>Resources that would be created</div>
+      <div id="preview-summary" class="preview-summary"></div>
+
+      <div class="preview-section-title"><i class="bi bi-file-earmark-code"></i>Generated files</div>
+      <div class="preview-tabs">
+        <button class="preview-tab active" data-tab="flow" type="button" onclick="switchTab('flow')">flow_*.tf</button>
+        <button class="preview-tab" data-tab="locals" type="button" onclick="switchTab('locals')">locals additions</button>
+        <button class="preview-tab" data-tab="variables" type="button" onclick="switchTab('variables')">variables additions</button>
+      </div>
+      <div id="tab-flow" class="preview-tab-content" style="display:block;"><pre id="code-flow" class="tf-code"></pre></div>
+      <div id="tab-locals" class="preview-tab-content" style="display:none;"><pre id="code-locals" class="tf-code"></pre></div>
+      <div id="tab-variables" class="preview-tab-content" style="display:none;"><pre id="code-variables" class="tf-code"></pre></div>
+
+      <div class="preview-actions">
+        <button id="btn-copy-tf" type="button" class="btn btn-sm btn-outline-secondary" onclick="copyCurrentTab()">
+          <i class="bi bi-clipboard me-1"></i>Copy
+        </button>
+        <button type="button" class="btn btn-sm btn-brand" onclick="downloadPreviewFile('flow')">
+          <i class="bi bi-download me-1"></i>Download flow.tf
+        </button>
+        <button type="button" class="btn btn-sm btn-brand" onclick="downloadPreviewZip()">
+          <i class="bi bi-file-zip me-1"></i>Download all (.zip)
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="closePreview()">
+          <i class="bi bi-pencil me-1"></i>Back to canvas
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/designer.js') }}"></script>
+{% endblock %}
