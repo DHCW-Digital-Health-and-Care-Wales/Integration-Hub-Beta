@@ -868,14 +868,18 @@ table.dash-table td {
 
 /* Clickable Container App card — expands to show CPU & memory history */
 .app-metric-card--clickable {
-  cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.app-metric-card-header {
+  cursor: pointer;
+}
+.app-metric-card-header:focus-visible {
+  outline: none;
+}
 .app-metric-card--clickable:hover,
-.app-metric-card--clickable:focus-visible {
+.app-metric-card--clickable:focus-within {
   border-color: var(--accent-cyan);
   box-shadow: 0 0 0 1px var(--accent-cyan);
-  outline: none;
 }
 .app-metric-card--open {
   border-color: var(--accent-cyan);
