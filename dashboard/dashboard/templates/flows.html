@@ -380,10 +380,8 @@
         <div class="col-12 col-sm-6 col-lg-4">
           <div class="app-metric-card app-metric-card--clickable"
                data-app-name="{{ app.name }}">
-            <div class="app-metric-card-header"
-                 role="button" tabindex="0"
-                 onclick="toggleAppHistory(this.closest('.app-metric-card--clickable'))"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAppHistory(this.closest('.app-metric-card--clickable'));}">
+            <button type="button" class="app-metric-card-header" aria-expanded="false"
+                    onclick="toggleAppHistory(this.closest('.app-metric-card--clickable'))">
               <div class="app-metric-name">
                 <i class="bi bi-chevron-right app-metric-chevron"></i> {{ app.name }}
               </div>
@@ -401,7 +399,7 @@
               <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
                 <i class="bi bi-layers"></i> {{ app.replicas }} {{ _("replica(s)") }}
               </div>
-            </div>
+            </button>
             <div class="app-metric-history" hidden>
               <div class="app-history-controls">
                 <span class="app-history-label">{{ _("History") }}</span>

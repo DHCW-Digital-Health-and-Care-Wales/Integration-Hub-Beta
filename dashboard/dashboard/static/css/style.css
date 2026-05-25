@@ -872,6 +872,14 @@ table.dash-table td {
 }
 .app-metric-card-header {
   cursor: pointer;
+  /* Reset <button> element defaults */
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
 }
 .app-metric-card-header:focus-visible {
   outline: none;

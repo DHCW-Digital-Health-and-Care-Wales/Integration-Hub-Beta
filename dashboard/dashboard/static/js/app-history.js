@@ -183,18 +183,21 @@
   window.toggleAppHistory = function (card) {
     var panel = card.querySelector('.app-metric-history');
     if (!panel) return;
+    var header = card.querySelector('.app-metric-card-header');
     var chev = card.querySelector('.app-metric-chevron');
     var isOpen = !panel.hasAttribute('hidden');
 
     if (isOpen) {
       panel.setAttribute('hidden', '');
       card.classList.remove('app-metric-card--open');
+      if (header) { header.setAttribute('aria-expanded', 'false'); }
       if (chev) { chev.classList.remove('bi-chevron-down'); chev.classList.add('bi-chevron-right'); }
       return;
     }
 
     panel.removeAttribute('hidden');
     card.classList.add('app-metric-card--open');
+    if (header) { header.setAttribute('aria-expanded', 'true'); }
     if (chev) { chev.classList.remove('bi-chevron-right'); chev.classList.add('bi-chevron-down'); }
 
     // Wire up range buttons once.
