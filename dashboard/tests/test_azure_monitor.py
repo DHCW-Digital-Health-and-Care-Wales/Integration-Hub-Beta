@@ -70,7 +70,7 @@ def _make_metric_response(cpu_points: list[dict], mem_points: list[dict]) -> dic
     }
 
 
-class TestGetContainerAppMetricHistoryInvalidName:
+class TestGetContainerAppMetricHistoryValidation:
     def test_empty_name_returns_empty(self) -> None:
         result = azure_monitor.get_container_app_metric_history("", hours=1)
         assert result == {"name": "", "timestamps": [], "cpu": [], "memory_mb": []}

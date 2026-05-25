@@ -16,6 +16,10 @@ from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
+# Azure Container App naming rules: lowercase letters, digits, hyphens;
+# 1–32 characters; must start and end with a letter or digit.
+_CONTAINER_APP_NAME_RE = re.compile(r"[a-z0-9]([a-z0-9\-]{0,30}[a-z0-9])?$")
+
 
 def _get_logs_client() -> Any:
     cred = get_azure_credential()
@@ -282,9 +286,8 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
         return empty
 
     # Validate the app name to avoid URL injection — Container App names follow
-    # Azure naming rules (lowercase letters, digits, hyphens; 1–32 chars;
-    # must start and end with a letter or digit).
-    if not re.fullmatch(r"[a-z0-9]([a-z0-9\-]{0,30}[a-z0-9])?", app_name):
+    # Azure naming rules (see _CONTAINER_APP_NAME_RE).
+    if not _CONTAINER_APP_NAME_RE.fullmatch(app_name):
         log.warning("Invalid container app name: %r", app_name)
         return empty
 
