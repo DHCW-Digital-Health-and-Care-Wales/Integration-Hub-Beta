@@ -253,3 +253,103 @@ def get_container_app_metrics() -> list[dict]:
     except Exception as exc:
         log.error("Failed to fetch Container App metrics: %s", exc)
         return []
+
+
+def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
+    """
+    Query Azure Monitor for CPU and memory time-series for a single Container App.
+
+    Returns a dict::
+
+        {
+            "name": "<app_name>",
+            "timestamps": ["2024-01-01T00:00:00Z", ...],
+            "cpu":        [12.3, 14.1, ...],     # CpuPercentage (%)
+            "memory_mb":  [128.4, 130.2, ...],   # WorkingSetBytes converted to MiB
+        }
+
+    Falls back to a dict with empty lists on any error.
+    """
+    empty = {"name": app_name, "timestamps": [], "cpu": [], "memory_mb": []}
+
+    if not all(
+        [
+            config.AZURE_SUBSCRIPTION_ID,
+            config.AZURE_CONTAINER_APPS_RESOURCE_GROUP,
+        ]
+    ):
+        log.warning("Container Apps resource configuration missing")
+        return empty
+
+    # Validate the app name to avoid URL injection — Container App names use the
+    # Azure naming rules (lowercase letters, digits, hyphens).
+    if not re.fullmatch(r"[a-zA-Z0-9\-]{1,64}", app_name):
+        log.warning("Invalid container app name: %r", app_name)
+        return empty
+
+    # Choose an appropriate aggregation interval based on the requested window.
+    if hours <= 1:
+        interval = "PT1M"
+    elif hours <= 6:
+        interval = "PT5M"
+    elif hours <= 24:
+        interval = "PT15M"
+    else:
+        interval = "PT1H"
+
+    try:
+        import requests  # noqa: PLC0415
+
+        cred = get_azure_credential()
+        token = cred.get_token("https://management.azure.com/.default").token
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+        now = datetime.now(timezone.utc)
+        start = (now - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        resource_id = (
+            f"/subscriptions/{config.AZURE_SUBSCRIPTION_ID}"
+            f"/resourceGroups/{config.AZURE_CONTAINER_APPS_RESOURCE_GROUP}"
+            f"/providers/Microsoft.App/containerApps/{app_name}"
+        )
+        query = (
+            "api-version=2018-01-01"
+            "&metricnames=CpuPercentage,WorkingSetBytes"
+            f"&timespan={start}/{end}"
+            f"&interval={interval}"
+            "&aggregation=Average"
+            "&metricnamespace=microsoft.app/containerapps"
+        )
+        url = f"https://management.azure.com{resource_id}/providers/microsoft.insights/metrics?{query}"
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Build a unified timestamp axis from the CPU series (both series share
+        # the same interval so timestamps line up).
+        cpu_points: dict[str, float] = {}
+        mem_points: dict[str, float] = {}
+        for m in data.get("value", []):
+            metric_name = m.get("name", {}).get("value", "")
+            for ts in m.get("timeseries", []):
+                for dp in ts.get("data", []):
+                    t = dp.get("timeStamp")
+                    val = dp.get("average")
+                    if t is None or val is None:
+                        continue
+                    if metric_name == "CpuPercentage":
+                        cpu_points[t] = round(float(val), 2)
+                    elif metric_name == "WorkingSetBytes":
+                        mem_points[t] = round(float(val) / 1048576, 2)
+
+        timestamps = sorted(set(cpu_points) | set(mem_points))
+        return {
+            "name": app_name,
+            "timestamps": timestamps,
+            "cpu": [cpu_points.get(t, 0.0) for t in timestamps],
+            "memory_mb": [mem_points.get(t, 0.0) for t in timestamps],
+        }
+    except Exception as exc:
+        log.error("Failed to fetch metric history for %s: %s", app_name, exc)
+        return empty
