@@ -379,28 +379,30 @@
         {% for app in apps %}
         <div class="col-12 col-sm-6 col-lg-4">
           <div class="app-metric-card app-metric-card--clickable"
-               role="button" tabindex="0"
-               data-app-name="{{ app.name }}"
-               onclick="toggleAppHistory(this)"
-               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAppHistory(this);}">
-            <div class="app-metric-name">
-              <i class="bi bi-chevron-right app-metric-chevron"></i> {{ app.name }}
-            </div>
-            <div>
-              <div class="metric-bar-label"><span>{{ _("CPU") }}</span><span>{{ app.cpu_usage }}%</span></div>
-              <div class="metric-bar"><div class="metric-bar-fill cpu" style="width:{{ [app.cpu_usage, 100] | min }}%"></div></div>
-            </div>
-            <div>
-              <div class="metric-bar-label">
-                <span>{{ _("Memory") }}</span>
-                <span>{{ (app.memory_bytes / 1048576) | round(1) }} MB</span>
+               data-app-name="{{ app.name }}">
+            <div class="app-metric-card-header"
+                 role="button" tabindex="0"
+                 onclick="toggleAppHistory(this.closest('.app-metric-card--clickable'))"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAppHistory(this.closest('.app-metric-card--clickable'));}">
+              <div class="app-metric-name">
+                <i class="bi bi-chevron-right app-metric-chevron"></i> {{ app.name }}
               </div>
-              <div class="metric-bar"><div class="metric-bar-fill mem" style="width:{{ [(app.memory_bytes / 536870912 * 100), 100] | min | round(1) }}%"></div></div>
+              <div>
+                <div class="metric-bar-label"><span>{{ _("CPU") }}</span><span>{{ app.cpu_usage }}%</span></div>
+                <div class="metric-bar"><div class="metric-bar-fill cpu" style="width:{{ [app.cpu_usage, 100] | min }}%"></div></div>
+              </div>
+              <div>
+                <div class="metric-bar-label">
+                  <span>{{ _("Memory") }}</span>
+                  <span>{{ (app.memory_bytes / 1048576) | round(1) }} MB</span>
+                </div>
+                <div class="metric-bar"><div class="metric-bar-fill mem" style="width:{{ [(app.memory_bytes / 536870912 * 100), 100] | min | round(1) }}%"></div></div>
+              </div>
+              <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
+                <i class="bi bi-layers"></i> {{ app.replicas }} {{ _("replica(s)") }}
+              </div>
             </div>
-            <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.2rem;">
-              <i class="bi bi-layers"></i> {{ app.replicas }} {{ _("replica(s)") }}
-            </div>
-            <div class="app-metric-history" hidden onclick="event.stopPropagation();">
+            <div class="app-metric-history" hidden>
               <div class="app-history-controls">
                 <span class="app-history-label">{{ _("History") }}</span>
                 <div class="app-history-range-buttons" role="group">

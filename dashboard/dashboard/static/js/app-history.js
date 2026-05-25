@@ -127,7 +127,11 @@
     canvases.forEach(function (cv) {
       var series = cv.getAttribute('data-series');
       var vals = (data && data[series]) || [];
-      var points = ts.map(function (t, i) { return { t: t, v: Number(vals[i] || 0) }; });
+      var points = ts.reduce(function (acc, t, i) {
+        var v = vals[i];
+        if (v != null) { acc.push({ t: t, v: Number(v) }); }
+        return acc;
+      }, []);
       var isCpu = series === 'cpu';
       drawLineChart(cv, points, {
         color: isCpu

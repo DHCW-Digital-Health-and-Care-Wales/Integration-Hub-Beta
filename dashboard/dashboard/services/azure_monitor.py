@@ -264,8 +264,8 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
         {
             "name": "<app_name>",
             "timestamps": ["2024-01-01T00:00:00Z", ...],
-            "cpu":        [12.3, 14.1, ...],     # CpuPercentage (%)
-            "memory_mb":  [128.4, 130.2, ...],   # WorkingSetBytes converted to MiB
+            "cpu":        [12.3, None, 14.1, ...],   # CpuPercentage (%); None where data is absent
+            "memory_mb":  [128.4, 130.2, ...],       # WorkingSetBytes converted to MiB; None where absent
         }
 
     Falls back to a dict with empty lists on any error.
@@ -281,9 +281,10 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
         log.warning("Container Apps resource configuration missing")
         return empty
 
-    # Validate the app name to avoid URL injection — Container App names use the
-    # Azure naming rules (lowercase letters, digits, hyphens).
-    if not re.fullmatch(r"[a-zA-Z0-9\-]{1,64}", app_name):
+    # Validate the app name to avoid URL injection — Container App names follow
+    # Azure naming rules (lowercase letters, digits, hyphens; 1–32 chars;
+    # must start and end with a letter or digit).
+    if not re.fullmatch(r"[a-z0-9]([a-z0-9\-]{0,30}[a-z0-9])?", app_name):
         log.warning("Invalid container app name: %r", app_name)
         return empty
 
@@ -347,8 +348,8 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
         return {
             "name": app_name,
             "timestamps": timestamps,
-            "cpu": [cpu_points.get(t, 0.0) for t in timestamps],
-            "memory_mb": [mem_points.get(t, 0.0) for t in timestamps],
+            "cpu": [cpu_points.get(t) for t in timestamps],
+            "memory_mb": [mem_points.get(t) for t in timestamps],
         }
     except Exception as exc:
         log.error("Failed to fetch metric history for %s: %s", app_name, exc)
