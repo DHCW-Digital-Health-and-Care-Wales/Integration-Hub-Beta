@@ -46,7 +46,11 @@ from dashboard.services.alarms import (
     save_alarm_config,
 )
 from dashboard.services.arm import discover_flows, queue_to_microservice_ids
-from dashboard.services.azure_monitor import get_exceptions, get_messages_today
+from dashboard.services.azure_monitor import (
+    get_container_app_metric_history,
+    get_exceptions,
+    get_messages_today,
+)
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
 from dashboard.services.service_bus import get_message_metrics, get_queues
@@ -619,6 +623,20 @@ def api_flows() -> Response:
             "container_metrics": container_metrics,
         }
     )
+
+
+@app.route("/api/container-app/<name>/history")
+def api_container_app_history(name: str) -> Response:
+    """JSON endpoint returning CPU% and memory (MiB) history for a Container App.
+
+    Query params:
+        hours: window size — one of 1, 6, 24, 168 (defaults to 1).
+    """
+    hours_raw = request.args.get("hours", "1", type=str)
+    allowed = {"1": 1, "6": 6, "24": 24, "168": 168}
+    hours = allowed.get(hours_raw, 1)
+    history = get_container_app_metric_history(name, hours=hours)
+    return jsonify(history)
 
 
 @app.route("/api/messages")

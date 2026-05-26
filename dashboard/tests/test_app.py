@@ -119,6 +119,35 @@ class TestApiRoutes:
         assert "messages" in data
         assert "count" in data
 
+    def test_api_container_app_history_returns_json(self, client: FlaskClient) -> None:
+        fake_history = {
+            "name": "my-app",
+            "timestamps": ["2024-01-01T00:00:00Z"],
+            "cpu": [12.5],
+            "memory_mb": [128.0],
+        }
+        with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+            response = client.get("/api/container-app/my-app/history")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data == fake_history
+        mock_fn.assert_called_once_with("my-app", hours=1)
+
+    def test_api_container_app_history_accepts_valid_hours(self, client: FlaskClient) -> None:
+        fake_history = {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
+        for hours_str, hours_int in [("1", 1), ("6", 6), ("24", 24), ("168", 168)]:
+            with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+                response = client.get(f"/api/container-app/my-app/history?hours={hours_str}")
+            assert response.status_code == 200
+            mock_fn.assert_called_once_with("my-app", hours=hours_int)
+
+    def test_api_container_app_history_defaults_to_1h_for_invalid_hours(self, client: FlaskClient) -> None:
+        fake_history = {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
+        with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+            response = client.get("/api/container-app/my-app/history?hours=999")
+        assert response.status_code == 200
+        mock_fn.assert_called_once_with("my-app", hours=1)
+
 
 class TestEnvLoading:
     def test_load_dotenv_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

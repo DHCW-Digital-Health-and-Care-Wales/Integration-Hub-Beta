@@ -866,6 +866,101 @@ table.dash-table td {
 .metric-bar-fill.cpu  { background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
 .metric-bar-fill.mem  { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
 
+/* Clickable Container App card — expands to show CPU & memory history */
+.app-metric-card--clickable {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.app-metric-card-header {
+  cursor: pointer;
+  /* Reset <button> element defaults */
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.app-metric-card-header:focus-visible {
+  outline: none;
+}
+.app-metric-card--clickable:hover,
+.app-metric-card--clickable:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px var(--accent-cyan);
+}
+.app-metric-card--open {
+  border-color: var(--accent-cyan);
+}
+.app-metric-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-right: 0.15rem;
+  transition: transform 0.15s ease;
+}
+.app-metric-history {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  cursor: default;
+}
+.app-history-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.app-history-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.app-history-range-buttons {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.app-history-range-buttons .btn-range {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.app-history-range-buttons .btn-range:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-cyan);
+}
+.app-history-range-buttons .btn-range.active {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+.app-history-status {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.app-history-chart-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.app-history-chart-title {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.app-history-chart {
+  width: 100%;
+  display: block;
+}
+
 /* ---------- Buttons ---------- */
 .btn-dash {
   background: var(--bg-secondary);
