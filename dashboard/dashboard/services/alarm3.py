@@ -90,6 +90,45 @@ def _save_alarm3_state(state: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Pause / unpause helpers
+# ---------------------------------------------------------------------------
+
+def pause_alarm3_rule(rule_id: str, duration_minutes: int, reason: str = "") -> None:
+    """Pause a specific Alarm 3 rule for ``duration_minutes``.
+
+    Writes ``paused_until`` (ISO timestamp) and ``pause_reason`` into the rule's
+    state entry.  The alarm evaluator will skip the rule and return ``status='paused'``
+    until that time has elapsed.
+    """
+    state = _load_alarm3_state()
+    state_rules = state.setdefault("rules", {})
+    now = datetime.now(timezone.utc)
+    paused_until = now + timedelta(minutes=duration_minutes)
+    state_rules.setdefault(rule_id, {}).update({
+        "paused_until": paused_until.isoformat(),
+        "pause_reason": reason.strip(),
+    })
+    _save_alarm3_state(state)
+    log.info("Alarm 3 rule %s paused for %d minutes (until %s). Reason: %s",
+             rule_id, duration_minutes, paused_until.isoformat(), reason or "(none)")
+
+
+def unpause_alarm3_rule(rule_id: str) -> None:
+    """Remove a manual pause from a specific Alarm 3 rule, restoring normal evaluation."""
+    state = _load_alarm3_state()
+    state_rules = state.get("rules", {})
+    rule_state = state_rules.get(rule_id, {})
+    rule_state.pop("paused_until", None)
+    rule_state.pop("pause_reason", None)
+    if rule_state:
+        state_rules[rule_id] = rule_state
+    elif rule_id in state_rules:
+        del state_rules[rule_id]
+    _save_alarm3_state(state)
+    log.info("Alarm 3 rule %s unpaused", rule_id)
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -306,6 +345,27 @@ def get_alarm3_status() -> list[dict]:
         gap       = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
         count     = counts.get(rid)
 
+        # Check for manual pause before any alarm evaluation.
+        rule_state = state_rules.get(rid, {})
+        paused_until = _parse_dt(rule_state.get("paused_until"))
+        if paused_until and paused_until > now:
+            pause_remaining = (paused_until - now).total_seconds() / 60
+            results.append(_build_row(rid, rule, rule_cfg, count=count, status="paused",
+                                      cooldown_remaining=None, now=now,
+                                      pause_remaining=pause_remaining,
+                                      pause_reason=rule_state.get("pause_reason", ""),
+                                      paused_until=paused_until))
+            continue
+        # Clear stale pause state if the pause window has elapsed.
+        if paused_until and paused_until <= now:
+            rule_state.pop("paused_until", None)
+            rule_state.pop("pause_reason", None)
+            if rule_state:
+                state_rules[rid] = rule_state
+            elif rid in state_rules:
+                del state_rules[rid]
+            state_dirty = True
+
         if count is None:
             results.append(_build_row(rid, rule, rule_cfg, count=None, status="unknown",
                                       cooldown_remaining=None, now=now))
@@ -364,7 +424,7 @@ def get_alarm3_status() -> list[dict]:
     if state_dirty:
         _save_alarm3_state({"rules": state_rules})
 
-    _order = {"critical": 0, "suppressed": 1, "unknown": 2, "healthy": 3}
+    _order = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
     results.sort(key=lambda r: _order.get(r["status"], 9))
     return results
 
@@ -377,6 +437,9 @@ def _build_row(
     status: str,
     cooldown_remaining: float | None,
     now: datetime,
+    pause_remaining: float | None = None,
+    pause_reason: str = "",
+    paused_until: datetime | None = None,
 ) -> dict:
     """Build the status-row dict for a single Alarm 3 rule."""
     window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
@@ -392,6 +455,9 @@ def _build_row(
         "failure_display":         f"{count:,}" if count is not None else "—",
         "status":                  status,
         "cooldown_remaining":      round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
+        "pause_remaining":         round(pause_remaining, 0) if pause_remaining is not None else None,
+        "pause_reason":            pause_reason,
+        "paused_until":            paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
     }
 
 

@@ -65,6 +65,7 @@
   <!-- KPI strip -->
   {% set n_critical   = alarm_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
   {% set n_suppressed = alarm_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
+  {% set n_paused     = alarm_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
   {% set n_unknown    = alarm_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
   {% set n_healthy    = alarm_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
   {% set current_period = alarm_rows[0].current_period if alarm_rows else 'day' %}
@@ -91,6 +92,13 @@
       <div class="kpi-body">
         <div class="kpi-number">{{ n_suppressed }}</div>
         <div class="kpi-label">{{ _("Suppressed") }}</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-pause-circle-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ n_paused }}</div>
+        <div class="kpi-label">{{ _("Paused") }}</div>
       </div>
     </div>
     <div class="kpi-card">
@@ -177,6 +185,10 @@
                 <span class="status-badge suppressed">
                   <i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
                 </span>
+              {% elif row.status == 'paused' %}
+                <span class="status-badge paused" {% if row.pause_reason %}title="{{ row.pause_reason }}"{% endif %}>
+                  <i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}
+                </span>
               {% elif row.status == 'unknown' %}
                 <span class="status-badge unknown">
                   <i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}
@@ -248,15 +260,42 @@
                   <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} {{ _("min left") }}
                 </div>
               {% endif %}
+              {% if row.status == 'paused' and row.pause_remaining %}
+                <div style="color:var(--accent-cyan); font-size:0.75rem; margin-top:2px;">
+                  <i class="bi bi-pause-circle me-1"></i>{{ row.pause_remaining | int }} {{ _("min left") }}
+                </div>
+              {% endif %}
             </td>
 
-            <td style="text-align:center;">
+            <td style="text-align:center; white-space:nowrap;">
+              <!-- Gear icon → config -->
               <a href="{{ url_for('alarm_config_page') }}#rule-{{ row.id }}"
                  title="Go to config for {{ row.display_name }}"
                  class="btn-dash"
                  style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;">
                 <i class="bi bi-gear-fill"></i>
               </a>
+              {% if row.status == 'paused' %}
+              <!-- Resume button -->
+              <button type="button"
+                      class="btn-dash btn-resume ms-1"
+                      data-rule-id="{{ row.id }}"
+                      data-rule-name="{{ row.display_name }}"
+                      title="Resume alarm for {{ row.display_name }}"
+                      style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem; color:var(--accent-green); border-color:rgba(74,222,128,0.35);">
+                <i class="bi bi-play-fill"></i>
+              </button>
+              {% else %}
+              <!-- Pause button -->
+              <button type="button"
+                      class="btn-dash btn-pause ms-1"
+                      data-rule-id="{{ row.id }}"
+                      data-rule-name="{{ row.display_name }}"
+                      title="Pause alarm for {{ row.display_name }}"
+                      style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;">
+                <i class="bi bi-pause-fill"></i>
+              </button>
+              {% endif %}
             </td>
 
           </tr>
@@ -306,12 +345,207 @@
     border-left: 3px solid var(--border-color);
   }
 
-  /* Suppressed badge — amber, reusing status-badge base styles */
-  .status-badge.suppressed {
-    background: rgba(245,158,11,0.12);
-    color: var(--accent-amber);
-    border-color: rgba(245,158,11,0.35);
+  /* Paused badge — cyan teal */
+  .status-badge.paused {
+    background: rgba(18,163,201,0.12);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.35);
   }
+
+  /* Duration pill selected state */
+  .duration-opt--selected {
+    background: rgba(18,163,201,0.15);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.5);
+  }
+
+  /* Darker modal backdrop */
+  .modal-backdrop { opacity: 0.75 !important; }
 </style>
+
+<!-- ── Pause Modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="pauseModal" tabindex="-1" aria-labelledby="pauseModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="pauseModalLabel">
+          <i class="bi bi-pause-circle-fill me-2" style="color:var(--accent-cyan)"></i>
+          {{ _("Pause Alarm") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          {{ _("Temporarily silence") }} <strong id="pauseRuleName"></strong>.
+          {{ _("The alarm will automatically resume when the pause window expires.") }}
+        </p>
+
+        <label class="form-label" style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted);">
+          {{ _("Pause Duration") }}
+        </label>
+        <div class="d-flex flex-wrap gap-2 mb-3" id="durationPicker">
+          {% for label, mins in [("30 min", 30), ("1 hour", 60), ("2 hours", 120), ("4 hours", 240), ("8 hours", 480), ("24 hours", 1440)] %}
+          <button type="button"
+                  class="btn-dash duration-opt {% if mins == 60 %}duration-opt--selected{% endif %}"
+                  data-minutes="{{ mins }}"
+                  style="font-size:0.78rem; padding:0.3rem 0.7rem;">
+            {{ _(label) }}
+          </button>
+          {% endfor %}
+          <button type="button"
+                  class="btn-dash duration-opt"
+                  data-minutes="custom"
+                  style="font-size:0.78rem; padding:0.3rem 0.7rem;">
+            {{ _("Custom…") }}
+          </button>
+        </div>
+
+        <!-- Custom duration row (hidden by default) -->
+        <div id="customDurationRow" class="d-flex align-items-center gap-2 mb-3" style="display:none !important;">
+          <input type="number" id="customDurationValue" min="1" max="9999" value="90"
+                 class="form-control"
+                 style="width:90px; background:var(--input-bg,rgba(255,255,255,0.05)); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.85rem;">
+          <select id="customDurationUnit"
+                  class="form-select"
+                  style="width:110px; background:var(--card-bg-solid,#1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.85rem;">
+            <option value="1">{{ _("minutes") }}</option>
+            <option value="60" selected>{{ _("hours") }}</option>
+          </select>
+          <span style="font-size:0.78rem; color:var(--text-muted);">= <span id="customDurationPreview">90 hours</span></span>
+        </div>
+
+        <label for="pauseReasonInput" class="form-label" style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted);">
+          {{ _("Reason") }} <span style="font-weight:400; text-transform:none;">({{ _("optional") }})</span>
+        </label>
+        <textarea id="pauseReasonInput"
+                  class="form-control"
+                  rows="2"
+                  maxlength="200"
+                  placeholder="{{ _('e.g. Planned maintenance, known issue…') }}"
+                  style="background:var(--input-bg,rgba(255,255,255,0.05)); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.85rem; resize:none;"></textarea>
+        <div id="pauseError" class="mt-2" style="color:var(--accent-red); font-size:0.8rem; display:none;"></div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash" id="pauseConfirmBtn"
+                style="color:var(--accent-cyan); border-color:rgba(18,163,201,0.45);">
+          <i class="bi bi-pause-circle-fill me-1"></i>{{ _("Confirm Pause") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  let activeRuleId = null;
+  let selectedMinutes = 60;
+  let isCustom = false;
+
+  const customRow    = document.getElementById('customDurationRow');
+  const customVal    = document.getElementById('customDurationValue');
+  const customUnit   = document.getElementById('customDurationUnit');
+  const customPreview = document.getElementById('customDurationPreview');
+
+  function updateCustomPreview() {
+    const v = parseInt(customVal.value, 10) || 1;
+    const u = parseInt(customUnit.value, 10);
+    const totalMins = v * u;
+    customPreview.textContent = totalMins === 1 ? '1 minute' :
+      totalMins < 60 ? totalMins + ' minutes' :
+      totalMins % 60 === 0 ? (totalMins / 60) + (totalMins / 60 === 1 ? ' hour' : ' hours') :
+      (totalMins / 60).toFixed(1) + ' hours';
+    selectedMinutes = totalMins;
+  }
+
+  customVal.addEventListener('input', updateCustomPreview);
+  customUnit.addEventListener('change', updateCustomPreview);
+  updateCustomPreview();
+
+  /* ── Duration pill selection ── */
+  document.getElementById('durationPicker').addEventListener('click', function (e) {
+    const btn = e.target.closest('.duration-opt');
+    if (!btn) return;
+    document.querySelectorAll('.duration-opt').forEach(b => b.classList.remove('duration-opt--selected'));
+    btn.classList.add('duration-opt--selected');
+
+    if (btn.dataset.minutes === 'custom') {
+      isCustom = true;
+      customRow.style.setProperty('display', 'flex', 'important');
+      updateCustomPreview();
+    } else {
+      isCustom = false;
+      customRow.style.setProperty('display', 'none', 'important');
+      selectedMinutes = parseInt(btn.dataset.minutes, 10);
+    }
+  });
+
+  /* ── Open modal for Pause ── */
+  document.querySelectorAll('.btn-pause').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activeRuleId = btn.dataset.ruleId;
+      document.getElementById('pauseRuleName').textContent = btn.dataset.ruleName;
+      document.getElementById('pauseReasonInput').value = '';
+      document.getElementById('pauseError').style.display = 'none';
+      // Reset to 1-hour default
+      document.querySelectorAll('.duration-opt').forEach(b => {
+        b.classList.toggle('duration-opt--selected', b.dataset.minutes === '60');
+      });
+      isCustom = false;
+      selectedMinutes = 60;
+      customRow.style.setProperty('display', 'none', 'important');
+      new bootstrap.Modal(document.getElementById('pauseModal')).show();
+    });
+  });
+
+  /* ── Confirm pause ── */
+  document.getElementById('pauseConfirmBtn').addEventListener('click', function () {
+    if (!activeRuleId) return;
+    if (isCustom) { updateCustomPreview(); }
+    const reason = document.getElementById('pauseReasonInput').value.trim();
+    const errEl  = document.getElementById('pauseError');
+    errEl.style.display = 'none';
+
+    if (!selectedMinutes || selectedMinutes < 1) {
+      errEl.textContent = {{ _("Please select a valid duration.") | tojson }};
+      errEl.style.display = 'block';
+      return;
+    }
+
+    fetch('/alarm1/pause/' + encodeURIComponent(activeRuleId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration_minutes: selectedMinutes, reason: reason }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('pauseModal')).hide();
+        window.location.reload();
+      } else {
+        errEl.textContent = data.error || {{ _("An error occurred. Please try again.") | tojson }};
+        errEl.style.display = 'block';
+      }
+    })
+    .catch(function () {
+      errEl.textContent = {{ _("Network error. Please try again.") | tojson }};
+      errEl.style.display = 'block';
+    });
+  });
+
+  /* ── Resume (unpause) ── */
+  document.querySelectorAll('.btn-resume').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      fetch('/alarm1/unpause/' + encodeURIComponent(btn.dataset.ruleId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      .then(function () { window.location.reload(); });
+    });
+  });
+}());
+</script>
 
 {% endblock %}
