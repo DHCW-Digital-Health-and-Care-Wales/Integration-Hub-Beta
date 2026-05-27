@@ -530,7 +530,7 @@
       }
     })
     .catch(function () {
-      errEl.textContent = '{{ _("Network error. Please try again.") }}';
+      errEl.textContent = {{ _("Network error. Please try again.") | tojson }};
       errEl.style.display = 'block';
     });
   });
