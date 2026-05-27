@@ -321,6 +321,45 @@ def _send_alarm_email(
 
 
 # ---------------------------------------------------------------------------
+# Pause / unpause helpers
+# ---------------------------------------------------------------------------
+
+def pause_alarm_rule(rule_id: str, duration_minutes: int, reason: str = "") -> None:
+    """Pause a specific Alarm 1 rule for ``duration_minutes``.
+
+    Writes ``paused_until`` (ISO timestamp) and ``pause_reason`` into the rule's
+    state entry.  The alarm evaluator will skip the rule and return ``status='paused'``
+    until that time has elapsed.
+    """
+    state = _load_alarm_state()
+    state_rules = state.setdefault("rules", {})
+    now = datetime.now(timezone.utc)
+    paused_until = now + timedelta(minutes=duration_minutes)
+    state_rules.setdefault(rule_id, {}).update({
+        "paused_until": paused_until.isoformat(),
+        "pause_reason": reason.strip(),
+    })
+    _save_alarm_state(state)
+    log.info("Alarm 1 rule %s paused for %d minutes (until %s). Reason: %s",
+             rule_id, duration_minutes, paused_until.isoformat(), reason or "(none)")
+
+
+def unpause_alarm_rule(rule_id: str) -> None:
+    """Remove a manual pause from a specific Alarm 1 rule, restoring normal evaluation."""
+    state = _load_alarm_state()
+    state_rules = state.get("rules", {})
+    rule_state = state_rules.get(rule_id, {})
+    rule_state.pop("paused_until", None)
+    rule_state.pop("pause_reason", None)
+    if rule_state:
+        state_rules[rule_id] = rule_state
+    elif rule_id in state_rules:
+        del state_rules[rule_id]
+    _save_alarm_state(state)
+    log.info("Alarm 1 rule %s unpaused", rule_id)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -365,6 +404,33 @@ def get_alarm_status() -> list[dict]:
         workflow_id = rule_cfg.get("workflow_id", "").strip()
         period_threshold = _applicable_threshold(rule_cfg, now)
         last_msg = last_times.get(workflow_id) if workflow_id else None
+
+        # Check for manual pause before any alarm evaluation.
+        rule_state = state_rules.get(rid, {})
+        paused_until = _parse_dt(rule_state.get("paused_until"))
+        if paused_until and paused_until > now:
+            pause_remaining = (paused_until - now).total_seconds() / 60
+            results.append(_build_row(
+                rid, rule_cfg,
+                last_msg=last_msg,
+                status="paused",
+                minutes_since=(now - last_msg).total_seconds() / 60 if last_msg else None,
+                cooldown_remaining=None,
+                now=now,
+                pause_remaining=pause_remaining,
+                pause_reason=rule_state.get("pause_reason", ""),
+                paused_until=paused_until,
+            ))
+            continue
+        # Clear stale pause state if the pause window has elapsed.
+        if paused_until and paused_until <= now:
+            rule_state.pop("paused_until", None)
+            rule_state.pop("pause_reason", None)
+            if rule_state:
+                state_rules[rid] = rule_state
+            elif rid in state_rules:
+                del state_rules[rid]
+            state_dirty = True
 
         if last_msg is None:
             results.append(_build_row(
@@ -432,7 +498,7 @@ def get_alarm_status() -> list[dict]:
     if state_dirty:
         _save_alarm_state({"rules": state_rules})
 
-    _order = {"critical": 0, "suppressed": 1, "unknown": 2, "healthy": 3}
+    _order = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
     results.sort(key=lambda r: _order.get(r["status"], 9))
     return results
 
@@ -445,6 +511,9 @@ def _build_row(
     minutes_since: float | None,
     cooldown_remaining: float | None,
     now: datetime,
+    pause_remaining: float | None = None,
+    pause_reason: str = "",
+    paused_until: datetime | None = None,
 ) -> dict:
     """Build the status-row dict for a single Alarm 1 rule."""
     period = get_current_period(now)
@@ -468,6 +537,9 @@ def _build_row(
         "minutes_since": round(minutes_since, 1) if minutes_since is not None else None,
         "duration_label": _format_duration(minutes_since) if minutes_since is not None else "No data",
         "cooldown_remaining": round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
+        "pause_remaining": round(pause_remaining, 0) if pause_remaining is not None else None,
+        "pause_reason": pause_reason,
+        "paused_until": paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
     }
 
 

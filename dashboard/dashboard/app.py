@@ -10,7 +10,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
@@ -20,12 +20,25 @@ from flask import Flask, Response, jsonify, redirect, render_template, request, 
 from flask_babel import Babel
 
 from dashboard import config
+from dashboard.services.alarm1 import (
+    generate_rule_id as generate_alarm1_rule_id,
+)
+from dashboard.services.alarm1 import (
+    get_alarm_status,
+    get_config_page_data,
+    load_alarm_config,
+    pause_alarm_rule,
+    save_alarm_config,
+    unpause_alarm_rule,
+)
 from dashboard.services.alarm2 import (
     generate_rule_id,
     get_alarm2_config_page_data,
     get_alarm2_status,
     load_alarm2_config,
+    pause_alarm2_rule,
     save_alarm2_config,
+    unpause_alarm2_rule,
 )
 from dashboard.services.alarm3 import (
     generate_rule_id as generate_alarm3_rule_id,
@@ -34,16 +47,9 @@ from dashboard.services.alarm3 import (
     get_alarm3_config_page_data,
     get_alarm3_status,
     load_alarm3_config,
+    pause_alarm3_rule,
     save_alarm3_config,
-)
-from dashboard.services.alarms import (
-    generate_rule_id as generate_alarm1_rule_id,
-)
-from dashboard.services.alarms import (
-    get_alarm_status,
-    get_config_page_data,
-    load_alarm_config,
-    save_alarm_config,
+    unpause_alarm3_rule,
 )
 from dashboard.services.arm import discover_flows, queue_to_microservice_ids
 from dashboard.services.azure_monitor import (
@@ -830,6 +836,188 @@ def alarm_config_page() -> str:
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
     )
+
+
+@app.route("/alarm1/pause/<rule_id>", methods=["POST"])
+def alarm1_pause(rule_id: str) -> Response:
+    """Pause an Alarm 1 rule for a given duration with an optional reason.
+
+    Expects a JSON body: ``{"duration_minutes": int, "reason": str}``.
+    Optimistically updates the in-memory cache so the page reload is instant
+    rather than waiting for a fresh Azure Log Analytics query.
+    """
+    data = request.get_json(silent=True) or {}
+    try:
+        duration = int(data.get("duration_minutes", 60))
+        if duration < 1:
+            raise ValueError("duration_minutes must be >= 1")
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    reason = str(data.get("reason", "")).strip()
+    pause_alarm_rule(rule_id, duration, reason)
+
+    # Optimistically patch the cached row so the page reload is instant.
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    now = datetime.now(timezone.utc)
+    paused_until_dt = now + timedelta(minutes=duration)
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarms", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "paused"
+                    row["pause_remaining"] = float(duration)
+                    row["pause_reason"] = reason
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarms"]["data"] = cached_rows
+            _cache_data["alarms"]["ts"] = time.monotonic()  # mark as fresh
+    return jsonify({"ok": True})
+
+
+@app.route("/alarm1/unpause/<rule_id>", methods=["POST"])
+def alarm1_unpause(rule_id: str) -> Response:
+    """Remove a manual pause from an Alarm 1 rule, restoring normal evaluation.
+
+    Optimistically sets the row to 'unknown' in the cache so the reload is
+    instant, then marks the cache as stale so a background refresh re-evaluates
+    the true alarm status shortly afterwards.
+    """
+    unpause_alarm_rule(rule_id)
+
+    # Optimistically patch the cached row: show 'unknown' instantly,
+    # then let the stale cache trigger a background re-evaluation.
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarms", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "unknown"
+                    row.pop("pause_remaining", None)
+                    row.pop("pause_reason", None)
+                    row.pop("paused_until", None)
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarms"]["data"] = cached_rows
+        # Mark stale — background refresh will resolve the true status shortly.
+        if "alarms" in _cache_data:
+            _cache_data["alarms"]["ts"] = 0.0
+    return jsonify({"ok": True})
+
+
+@app.route("/alarm2/pause/<rule_id>", methods=["POST"])
+def alarm2_pause(rule_id: str) -> Response:
+    """Pause an Alarm 2 rule for a given duration with an optional reason."""
+    data = request.get_json(silent=True) or {}
+    try:
+        duration = int(data.get("duration_minutes", 60))
+        if duration < 1:
+            raise ValueError("duration_minutes must be >= 1")
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    reason = str(data.get("reason", "")).strip()
+    pause_alarm2_rule(rule_id, duration, reason)
+
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    now = datetime.now(timezone.utc)
+    paused_until_dt = now + timedelta(minutes=duration)
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarm2", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "paused"
+                    row["pause_remaining"] = float(duration)
+                    row["pause_reason"] = reason
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarm2"]["data"] = cached_rows
+            _cache_data["alarm2"]["ts"] = time.monotonic()
+    return jsonify({"ok": True})
+
+
+@app.route("/alarm2/unpause/<rule_id>", methods=["POST"])
+def alarm2_unpause(rule_id: str) -> Response:
+    """Remove a manual pause from an Alarm 2 rule, restoring normal evaluation."""
+    unpause_alarm2_rule(rule_id)
+
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarm2", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "unknown"
+                    row.pop("pause_remaining", None)
+                    row.pop("pause_reason", None)
+                    row.pop("paused_until", None)
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarm2"]["data"] = cached_rows
+        if "alarm2" in _cache_data:
+            _cache_data["alarm2"]["ts"] = 0.0
+    return jsonify({"ok": True})
+
+
+@app.route("/alarm3/pause/<rule_id>", methods=["POST"])
+def alarm3_pause(rule_id: str) -> Response:
+    """Pause an Alarm 3 rule for a given duration with an optional reason."""
+    data = request.get_json(silent=True) or {}
+    try:
+        duration = int(data.get("duration_minutes", 60))
+        if duration < 1:
+            raise ValueError("duration_minutes must be >= 1")
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    reason = str(data.get("reason", "")).strip()
+    pause_alarm3_rule(rule_id, duration, reason)
+
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    now = datetime.now(timezone.utc)
+    paused_until_dt = now + timedelta(minutes=duration)
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarm3", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "paused"
+                    row["pause_remaining"] = float(duration)
+                    row["pause_reason"] = reason
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarm3"]["data"] = cached_rows
+            _cache_data["alarm3"]["ts"] = time.monotonic()
+    return jsonify({"ok": True})
+
+
+@app.route("/alarm3/unpause/<rule_id>", methods=["POST"])
+def alarm3_unpause(rule_id: str) -> Response:
+    """Remove a manual pause from an Alarm 3 rule, restoring normal evaluation."""
+    unpause_alarm3_rule(rule_id)
+
+    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+    with _cache_lock:
+        cached_rows = _cache_data.get("alarm3", {}).get("data")
+        if isinstance(cached_rows, list):
+            for row in cached_rows:
+                if row.get("id") == rule_id:
+                    row["status"] = "unknown"
+                    row.pop("pause_remaining", None)
+                    row.pop("pause_reason", None)
+                    row.pop("paused_until", None)
+                    break
+            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            _cache_data["alarm3"]["data"] = cached_rows
+        if "alarm3" in _cache_data:
+            _cache_data["alarm3"]["ts"] = 0.0
+    return jsonify({"ok": True})
 
 
 @app.route("/alarms/outgoing-messages")
