@@ -2,6 +2,8 @@ import configparser
 import logging
 import os
 
+from otel_lib import configure_otel
+
 from .message_store_service import MessageStoreService
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "ERROR").upper())
@@ -18,6 +20,7 @@ MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 
 
 def main() -> None:
+    configure_otel("message-store-service")
     service = MessageStoreService(MAX_BATCH_SIZE)
     service.run()
 
