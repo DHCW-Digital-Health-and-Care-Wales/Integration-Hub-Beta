@@ -470,7 +470,7 @@
         bootstrap.Modal.getInstance(document.getElementById('pauseModal')).hide();
         window.location.reload();
       } else {
-        errEl.textContent = data.error || '{{ _("An error occurred. Please try again.") }}';
+        errEl.textContent = data.error || {{ _("An error occurred. Please try again.") | tojson }};
         errEl.style.display = 'block';
       }
     })
