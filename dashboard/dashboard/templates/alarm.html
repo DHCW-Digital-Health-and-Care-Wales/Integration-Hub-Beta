@@ -509,7 +509,7 @@
     errEl.style.display = 'none';
 
     if (!selectedMinutes || selectedMinutes < 1) {
-      errEl.textContent = '{{ _("Please select a valid duration.") }}';
+      errEl.textContent = {{ _("Please select a valid duration.") | tojson }};
       errEl.style.display = 'block';
       return;
     }
