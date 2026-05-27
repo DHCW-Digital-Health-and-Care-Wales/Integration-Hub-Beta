@@ -979,7 +979,8 @@ def alarm3_pause(rule_id: str) -> Response:
         if duration < 1:
             raise ValueError("duration_minutes must be >= 1")
     except (TypeError, ValueError) as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 400
+        logging.warning("Invalid alarm3 pause payload", exc_info=True)
+        return jsonify({"ok": False, "error": "Invalid request payload."}), 400
 
     reason = str(data.get("reason", "")).strip()
     pause_alarm3_rule(rule_id, duration, reason)
