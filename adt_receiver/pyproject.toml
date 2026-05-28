@@ -12,6 +12,8 @@ dependencies = [
     "health-check-lib",
     "event-logger-lib",
     "metric-sender-lib",
+    "idna==3.15",  # Updated to fix vulnerability
+    "urllib3==2.7.0"  # Updated to fix vulnerabilities    
 ]
 
 [dependency-groups]
