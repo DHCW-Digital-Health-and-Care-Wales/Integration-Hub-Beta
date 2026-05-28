@@ -15,6 +15,7 @@ pr:
       - hl7_mock_receiver/*
       - hl7_chemo_transformer/*
       - hl7_pims_transformer/*
+      - adt_receiver/*
       - shared_libs/*
       - pipeline-ado/*
 
@@ -71,6 +72,14 @@ stages:
         parameters:
           appName: 'hl7_pims_transformer'
           appDisplayName: 'HL7 PIMS Transformer'
+          pythonVersion: $(pythonVersion)
+          poolName: ${{ variables.POOL_NAME_NON_PROD }}
+
+      # Training ADT Receiver validation
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'training_adt_receiver'
+          appDisplayName: 'Training ADT Receiver'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
 

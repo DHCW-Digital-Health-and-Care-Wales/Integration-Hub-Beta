@@ -1,0 +1,52 @@
+# Training ADT Receiver Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - adt_receiver/*
+      - shared_lbs/*
+      - pipeline-ado/templates/*
+      - ca-ca-certs/*
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: Semantic version
+    type: string
+    default: '0.1.0'
+    
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: template/code-quality-template.yml
+        parameters:
+          appName: 'training_adt_receiver'
+          appDisplayName: 'Training ADT Receiver'
+          pythonVersion: '3.13'
+          poolName: ${{ variables.POOL_NAME }}
+
+  - stage: BuildAndPushTrainingADTReceiver
+    displayName: 'Build and Push Training ADT Receiver'
+    dependsOn: CodeQuality
+    jobs:
+      - template: template/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildAndPushTrainingADTReceiver'
+          displayName: 'Build and Push Training ADT Receiver'
+          appName: 'trn-adtreceiver'
+          dockerfilePath: 'adt_receiver/Dockerfile'
+          buildContext: 'adt_receiver'
+          additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
