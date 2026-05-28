@@ -31,7 +31,7 @@ parameters:
   - name: selectedEnvironment
     displayName: 'Select Environment'
     type: string
-    default: 'all'
+    default: 'dev'
     values:
       - all
       - dev
