@@ -29,7 +29,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'training_adt_receiver'
+          appName: 'adt_receiver'
           appDisplayName: 'Training ADT Receiver'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}

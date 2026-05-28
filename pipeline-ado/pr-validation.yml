@@ -78,7 +78,7 @@ stages:
       # Training ADT Receiver validation
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'training_adt_receiver'
+          appName: 'adt_receiver'
           appDisplayName: 'Training ADT Receiver'
           pythonVersion: $(pythonVersion)
           poolName: ${{ variables.POOL_NAME_NON_PROD }}
