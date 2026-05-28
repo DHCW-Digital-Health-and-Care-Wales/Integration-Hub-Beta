@@ -27,7 +27,7 @@ stages:
   - stage: CodeQuality
     displayName: 'Code Quality & Tests'
     jobs:
-      - template: template/code-quality-template.yml
+      - template: templates/code-quality-template.yml
         parameters:
           appName: 'training_adt_receiver'
           appDisplayName: 'Training ADT Receiver'
@@ -38,7 +38,7 @@ stages:
     displayName: 'Build and Push Training ADT Receiver'
     dependsOn: CodeQuality
     jobs:
-      - template: template/docker-build-push-template.yml
+      - template: templates/docker-build-push-template.yml
         parameters:
           jobName: 'BuildAndPushTrainingADTReceiver'
           displayName: 'Build and Push Training ADT Receiver'
