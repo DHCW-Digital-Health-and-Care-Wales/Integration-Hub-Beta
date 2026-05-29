@@ -43,16 +43,19 @@
     {% set n_suppressed = alarm1_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set n_unknown    = alarm1_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
     {% set n_healthy    = alarm1_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set n_paused     = alarm1_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div id="alarm1-card" class="dash-card alarm-ov-card
       {% if n_critical > 0 %}alarm-ov-card--critical
-      {% elif n_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+      {% elif n_suppressed > 0 %}alarm-ov-card--suppressed
+      {% elif n_paused > 0 %}alarm-ov-card--paused{% endif %}">
 
       <div class="alarm-ov-header">
         <div class="d-flex align-items-center gap-2">
           <div id="alarm1-icon" class="alarm-ov-icon
             {% if n_critical > 0 %}red
             {% elif n_suppressed > 0 %}amber
+            {% elif n_paused > 0 %}cyan
             {% elif alarm1_rows %}green
             {% else %}muted{% endif %}">
             <i class="bi bi-alarm"></i>
@@ -66,10 +69,12 @@
         <span id="alarm1-badge" class="status-badge
           {% if n_critical > 0 %}critical
           {% elif n_suppressed > 0 %}suppressed
+          {% elif n_paused > 0 %}paused
           {% elif alarm1_rows %}healthy
           {% else %}unknown{% endif %}">
           {% if n_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
           {% elif n_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif n_paused > 0 %}<i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}
           {% elif alarm1_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
           {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
@@ -87,6 +92,10 @@
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-suppressed" class="alarm-ov-kpi-num {% if n_suppressed > 0 %}ov-text-amber{% endif %}">{{ n_suppressed }}</div>
           <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm1-kpi-paused" class="alarm-ov-kpi-num {% if n_paused > 0 %}ov-text-cyan{% endif %}">{{ n_paused }}</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Paused") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm1-kpi-unknown" class="alarm-ov-kpi-num">{{ n_unknown }}</div>
@@ -119,16 +128,19 @@
     {% set a2_suppressed = alarm2_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set a2_unknown    = alarm2_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
     {% set a2_healthy    = alarm2_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set a2_paused     = alarm2_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div id="alarm2-card" class="dash-card alarm-ov-card
       {% if a2_critical > 0 %}alarm-ov-card--critical
-      {% elif a2_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+      {% elif a2_suppressed > 0 %}alarm-ov-card--suppressed
+      {% elif a2_paused > 0 %}alarm-ov-card--paused{% endif %}">
 
       <div class="alarm-ov-header">
         <div class="d-flex align-items-center gap-2">
           <div id="alarm2-icon" class="alarm-ov-icon
             {% if a2_critical > 0 %}red
             {% elif a2_suppressed > 0 %}amber
+            {% elif a2_paused > 0 %}cyan
             {% elif alarm2_rows %}green
             {% else %}muted{% endif %}">
             <i class="bi bi-alarm"></i>
@@ -142,10 +154,12 @@
         <span id="alarm2-badge" class="status-badge
           {% if a2_critical > 0 %}critical
           {% elif a2_suppressed > 0 %}suppressed
+          {% elif a2_paused > 0 %}paused
           {% elif alarm2_rows %}healthy
           {% else %}unknown{% endif %}">
           {% if a2_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
           {% elif a2_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif a2_paused > 0 %}<i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}
           {% elif alarm2_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
           {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
@@ -163,6 +177,10 @@
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-suppressed" class="alarm-ov-kpi-num {% if a2_suppressed > 0 %}ov-text-amber{% endif %}">{{ a2_suppressed }}</div>
           <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm2-kpi-paused" class="alarm-ov-kpi-num {% if a2_paused > 0 %}ov-text-cyan{% endif %}">{{ a2_paused }}</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Paused") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm2-kpi-unknown" class="alarm-ov-kpi-num">{{ a2_unknown }}</div>
@@ -195,16 +213,19 @@
     {% set a3_suppressed = alarm3_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set a3_unknown    = alarm3_rows | selectattr('status', 'equalto', 'unknown')    | list | length %}
     {% set a3_healthy    = alarm3_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set a3_paused     = alarm3_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div id="alarm3-card" class="dash-card alarm-ov-card
       {% if a3_critical > 0 %}alarm-ov-card--critical
-      {% elif a3_suppressed > 0 %}alarm-ov-card--suppressed{% endif %}">
+      {% elif a3_suppressed > 0 %}alarm-ov-card--suppressed
+      {% elif a3_paused > 0 %}alarm-ov-card--paused{% endif %}">
 
       <div class="alarm-ov-header">
         <div class="d-flex align-items-center gap-2">
           <div id="alarm3-icon" class="alarm-ov-icon
             {% if a3_critical > 0 %}red
             {% elif a3_suppressed > 0 %}amber
+            {% elif a3_paused > 0 %}cyan
             {% elif alarm3_rows %}green
             {% else %}muted{% endif %}">
             <i class="bi bi-alarm"></i>
@@ -218,10 +239,12 @@
         <span id="alarm3-badge" class="status-badge
           {% if a3_critical > 0 %}critical
           {% elif a3_suppressed > 0 %}suppressed
+          {% elif a3_paused > 0 %}paused
           {% elif alarm3_rows %}healthy
           {% else %}unknown{% endif %}">
           {% if a3_critical > 0 %}<i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}
           {% elif a3_suppressed > 0 %}<i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}
+          {% elif a3_paused > 0 %}<i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}
           {% elif alarm3_rows %}<i class="bi bi-check-circle-fill me-1"></i>{{ _("All OK") }}
           {% else %}<i class="bi bi-question-circle me-1"></i>{{ _("Not Configured") }}{% endif %}
         </span>
@@ -239,6 +262,10 @@
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-suppressed" class="alarm-ov-kpi-num {% if a3_suppressed > 0 %}ov-text-amber{% endif %}">{{ a3_suppressed }}</div>
           <div class="alarm-ov-kpi-lbl">{{ _("Suppressed") }}</div>
+        </div>
+        <div class="alarm-ov-kpi">
+          <div id="alarm3-kpi-paused" class="alarm-ov-kpi-num {% if a3_paused > 0 %}ov-text-cyan{% endif %}">{{ a3_paused }}</div>
+          <div class="alarm-ov-kpi-lbl">{{ _("Paused") }}</div>
         </div>
         <div class="alarm-ov-kpi">
           <div id="alarm3-kpi-unknown" class="alarm-ov-kpi-num">{{ a3_unknown }}</div>
@@ -284,6 +311,7 @@
 
   .alarm-ov-card--critical  { border-left: 3px solid var(--accent-red); }
   .alarm-ov-card--suppressed { border-left: 3px solid var(--accent-amber); }
+  .alarm-ov-card--paused    { border-left: 3px solid var(--accent-cyan); }
   .alarm-ov-card--disabled  { opacity: 0.45; pointer-events: none; }
 
   .alarm-ov-header {
@@ -306,6 +334,7 @@
   }
   .alarm-ov-icon.red   { background: rgba(239,68,68,0.15);  color: var(--accent-red); }
   .alarm-ov-icon.amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+  .alarm-ov-icon.cyan  { background: rgba(18,163,201,0.15); color: var(--accent-cyan); }
   .alarm-ov-icon.green { background: rgba(34,197,94,0.15);  color: var(--accent-green); }
   .alarm-ov-icon.muted { background: rgba(148,163,184,0.1); color: var(--text-muted); }
 
@@ -350,6 +379,7 @@
 
   .ov-text-red   { color: var(--accent-red) !important; }
   .ov-text-amber { color: var(--accent-amber) !important; }
+  .ov-text-cyan  { color: var(--accent-cyan) !important; }
   .ov-text-green { color: var(--accent-green) !important; }
 
   .alarm-ov-actions {
@@ -367,6 +397,12 @@
     background: rgba(245,158,11,0.12);
     color: var(--accent-amber);
     border-color: rgba(245,158,11,0.35);
+  }
+
+  .status-badge.paused {
+    background: rgba(18,163,201,0.12);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.35);
   }
 
   /* Poll indicator */
@@ -399,21 +435,24 @@
   function updateCard(n, rows) {
     var nCritical   = rows.filter(function(r){ return r.status === 'critical';   }).length;
     var nSuppressed = rows.filter(function(r){ return r.status === 'suppressed'; }).length;
+    var nPaused     = rows.filter(function(r){ return r.status === 'paused';     }).length;
     var nUnknown    = rows.filter(function(r){ return r.status === 'unknown';    }).length;
     var nHealthy    = rows.filter(function(r){ return r.status === 'healthy';    }).length;
     var total       = rows.length;
 
     // Card border
     var card = el('alarm' + n + '-card');
-    card.classList.remove('alarm-ov-card--critical', 'alarm-ov-card--suppressed');
+    card.classList.remove('alarm-ov-card--critical', 'alarm-ov-card--suppressed', 'alarm-ov-card--paused');
     if      (nCritical   > 0) card.classList.add('alarm-ov-card--critical');
     else if (nSuppressed > 0) card.classList.add('alarm-ov-card--suppressed');
+    else if (nPaused     > 0) card.classList.add('alarm-ov-card--paused');
 
     // Icon colour
     var icon = el('alarm' + n + '-icon');
     icon.className = 'alarm-ov-icon ' + (
       nCritical   > 0 ? 'red'   :
       nSuppressed > 0 ? 'amber' :
+      nPaused     > 0 ? 'cyan'  :
       total       > 0 ? 'green' : 'muted'
     );
 
@@ -425,6 +464,9 @@
     } else if (nSuppressed > 0) {
       badge.className = 'status-badge suppressed';
       badge.innerHTML = '<i class="bi bi-bell-slash-fill me-1"></i>Suppressed';
+    } else if (nPaused > 0) {
+      badge.className = 'status-badge paused';
+      badge.innerHTML = '<i class="bi bi-pause-circle-fill me-1"></i>Paused';
     } else if (total > 0) {
       badge.className = 'status-badge healthy';
       badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>All OK';
@@ -442,12 +484,14 @@
       el('alarm' + n + '-kpi-total').textContent     = total;
       el('alarm' + n + '-kpi-critical').textContent   = nCritical;
       el('alarm' + n + '-kpi-suppressed').textContent = nSuppressed;
+      el('alarm' + n + '-kpi-paused').textContent     = nPaused;
       el('alarm' + n + '-kpi-unknown').textContent    = nUnknown;
       el('alarm' + n + '-kpi-healthy').textContent    = nHealthy;
 
-      // Colour the critical/suppressed/healthy KPI numbers
+      // Colour the KPI numbers
       el('alarm' + n + '-kpi-critical').className   = 'alarm-ov-kpi-num' + (nCritical   > 0 ? ' ov-text-red'   : '');
       el('alarm' + n + '-kpi-suppressed').className = 'alarm-ov-kpi-num' + (nSuppressed > 0 ? ' ov-text-amber' : '');
+      el('alarm' + n + '-kpi-paused').className     = 'alarm-ov-kpi-num' + (nPaused     > 0 ? ' ov-text-cyan'  : '');
       el('alarm' + n + '-kpi-healthy').className    = 'alarm-ov-kpi-num ov-text-green';
     } else {
       kpisEl.style.display  = 'none';
