@@ -416,23 +416,12 @@ def _build_alarm_map() -> dict[str, dict]:
 
 @app.route("/set-language", methods=["POST"])
 def set_language() -> Response:
-    """Set the UI language preference in the session and redirect back to the referring page."""
+    """Set the UI language preference in the session and redirect to a safe default page."""
     lang = request.form.get("lang", "en")
     if lang in ("en", "cy"):
         session["lang"] = lang
 
     fallback = url_for("index")
-    referrer = request.referrer
-    if not referrer:
-        return make_response(redirect(fallback))
-
-    parsed = urlparse(referrer.replace("\\", ""))
-    if parsed.scheme in ("http", "https") and parsed.netloc == request.host and parsed.path:
-        safe_target = parsed.path
-        if parsed.query:
-            safe_target = f"{safe_target}?{parsed.query}"
-        return make_response(redirect(safe_target))
-
     return make_response(redirect(fallback))
 # ---------------------------------------------------------------------------
 # Page routes
