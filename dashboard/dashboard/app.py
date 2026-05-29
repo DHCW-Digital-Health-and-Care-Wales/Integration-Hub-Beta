@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
-from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_babel import Babel  # type: ignore[import-untyped]
