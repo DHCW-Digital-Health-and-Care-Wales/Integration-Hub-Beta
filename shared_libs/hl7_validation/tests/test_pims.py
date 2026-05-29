@@ -20,6 +20,23 @@ class TestPPimsValidation(unittest.TestCase):
 
         validate_er7_with_flow_schema(er7, "pims")
 
+    def test_pims_a40_adt_a40_structure_convert_and_validate(self) -> None:
+        # Validates messages where MSH-9.3 is explicitly ADT_A40 (as sent by PIMS / BroMor).
+        # Requires ADT_A40.xsd in the pims resources — same segment structure as ADT_A39.
+        er7 = "\r".join(
+            [
+                "MSH|^~\\&|PIMS|BroMor HL7Sender|CPI|BroMor|20250630155035+0000||ADT^A40^ADT_A40|73711860|P|2.3.1",
+                "EVN||20250630155034+0000||||20250630155034+0000",
+                "PID|||1000000001^01^^^NI~T100001^^^^PI||TEST^TEST^TEST^^MS.||20000101+^D|F|||"
+                "1, TEST^TEST TEST^TEST^TEST^CF11 9AD||07000000001 TEST PTNR^PRN^PH~07000000001 PT^ORN^CP|"
+                "50500 02920^WPN^PH||S^NONE||||||0|||||||^D||||20250630155034+0000",
+                "PD1||||G1000001~W10001",
+                "MRG|00100001",
+            ]
+        )
+
+        validate_er7_with_flow_schema(er7, "pims")
+
     def test_pims_a04_convert_and_validate(self) -> None:
         er7 = "\r".join(
             [
