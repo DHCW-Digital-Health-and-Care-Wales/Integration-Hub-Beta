@@ -16,10 +16,10 @@ from threading import Lock
 from typing import Any, Callable
 from urllib.parse import urlparse
 
-from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
-from flask_babel import Babel
+from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, session, url_for
+from flask_babel import Babel  # type: ignore[import-untyped]
 
-from dashboard import config
+import dashboard.config as config
 from dashboard.services.alarm1 import (
     generate_rule_id as generate_alarm1_rule_id,
 )
@@ -416,26 +416,13 @@ def _build_alarm_map() -> dict[str, dict]:
 
 @app.route("/set-language", methods=["POST"])
 def set_language() -> Response:
-    """Set the UI language preference in the session and redirect back to the referring page."""
+    """Set the UI language preference in the session and redirect to a safe default page."""
     lang = request.form.get("lang", "en")
     if lang in ("en", "cy"):
         session["lang"] = lang
 
     fallback = url_for("index")
-    referrer = request.referrer
-    if not referrer:
-        return redirect(fallback)
-
-    parsed = urlparse(referrer.replace("\\", ""))
-    if parsed.scheme in ("http", "https") and parsed.netloc == request.host and parsed.path:
-        safe_target = parsed.path
-        if parsed.query:
-            safe_target = f"{safe_target}?{parsed.query}"
-        return redirect(safe_target)
-
-    return redirect(fallback)
-
-
+    return make_response(redirect(fallback))
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
@@ -839,7 +826,7 @@ def alarm_config_page() -> str:
 
 
 @app.route("/alarm1/pause/<rule_id>", methods=["POST"])
-def alarm1_pause(rule_id: str) -> Response:
+def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
     """Pause an Alarm 1 rule for a given duration with an optional reason.
 
     Expects a JSON body: ``{"duration_minutes": int, "reason": str}``.
@@ -910,7 +897,7 @@ def alarm1_unpause(rule_id: str) -> Response:
 
 
 @app.route("/alarm2/pause/<rule_id>", methods=["POST"])
-def alarm2_pause(rule_id: str) -> Response:
+def alarm2_pause(rule_id: str) -> tuple[Response, int] | Response:
     """Pause an Alarm 2 rule for a given duration with an optional reason."""
     data = request.get_json(silent=True) or {}
     try:
@@ -971,7 +958,7 @@ def alarm2_unpause(rule_id: str) -> Response:
 
 
 @app.route("/alarm3/pause/<rule_id>", methods=["POST"])
-def alarm3_pause(rule_id: str) -> Response:
+def alarm3_pause(rule_id: str) -> tuple[Response, int] | Response:
     """Pause an Alarm 3 rule for a given duration with an optional reason."""
     data = request.get_json(silent=True) or {}
     try:
