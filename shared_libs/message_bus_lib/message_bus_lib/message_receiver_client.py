@@ -90,8 +90,17 @@ class MessageReceiverClient:
 
         try:
             props = dict(msg.application_properties or {})
-            # Service Bus stores string keys as bytes in some SDK versions; normalise them.
-            normalised = {k.decode() if isinstance(k, bytes) else k: v for k, v in props.items()}
+            # Normalise keys (bytes → str) and values (bytes → str); drop non-string values
+            # such as integers that are valid Service Bus properties but cannot be OTel headers
+            # and would cause re.search to raise TypeError inside the W3C propagator.
+            normalised: dict[str, str] = {}
+            for k, v in props.items():
+                str_key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
+                if isinstance(v, bytes):
+                    normalised[str_key] = v.decode("utf-8")
+                elif isinstance(v, str):
+                    normalised[str_key] = v
+                # Skip int/float/bool/None — not valid propagation header values
             ctx = extract_trace_context(normalised)
             token = otel_context.attach(ctx)
             try:

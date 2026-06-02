@@ -378,5 +378,55 @@ class TestAutoLockRenewerLifecycle(unittest.TestCase):
         mock_renewer_cls.assert_not_called()
 
 
+class TestInvokeWithTraceContext(unittest.TestCase):
+    """Tests for _invoke_with_trace_context value-normalisation logic."""
+
+    def _make_client(self) -> MessageReceiverClient:
+        sb_client = MagicMock()
+        return MessageReceiverClient(sb_client, "test-queue", propagate_trace_context=True)
+
+    def _make_message(self, props: dict | None) -> MagicMock:
+        msg = MagicMock()
+        msg.application_properties = props
+        return msg
+
+    def test_integer_value_in_application_properties_does_not_raise(self) -> None:
+        """Integer values in application_properties must be silently dropped so the
+        W3C propagator never receives a non-string carrier value (regression for
+        TypeError: expected string or bytes-like object, got 'int')."""
+        client = self._make_client()
+        msg = self._make_message({"SomeIntProp": 42, "OtherProp": "hello"})
+
+        called_with = []
+
+        def processor(m: Any) -> bool:
+            called_with.append(m)
+            return True
+
+        # Must not raise TypeError
+        result = client._invoke_with_trace_context(processor, msg)
+
+        self.assertTrue(result)
+        self.assertEqual(called_with, [msg])
+
+    def test_bytes_key_and_value_are_decoded(self) -> None:
+        """Bytes keys and values should be decoded to str before being passed to extract."""
+        client = self._make_client()
+        msg = self._make_message({b"SomeProp": b"some-value"})
+
+        result = client._invoke_with_trace_context(lambda m: True, msg)
+
+        self.assertTrue(result)
+
+    def test_none_application_properties_does_not_raise(self) -> None:
+        """None application_properties should be handled gracefully."""
+        client = self._make_client()
+        msg = self._make_message(None)
+
+        result = client._invoke_with_trace_context(lambda m: True, msg)
+
+        self.assertTrue(result)
+
+
 if __name__ == "__main__":
     unittest.main()
