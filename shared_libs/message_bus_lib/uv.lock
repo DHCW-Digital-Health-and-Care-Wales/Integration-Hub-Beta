@@ -320,6 +320,7 @@ dependencies = [
     { name = "azure-identity" },
     { name = "azure-servicebus" },
     { name = "otel-lib" },
+    { name = "pyjwt" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -337,6 +338,7 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "otel-lib", directory = "../otel_lib" },
+    { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -673,6 +675,7 @@ dependencies = [
     { name = "azure-monitor-opentelemetry" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
+    { name = "pyjwt" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -682,6 +685,7 @@ requires-dist = [
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
+    { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]

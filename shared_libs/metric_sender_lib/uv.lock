@@ -324,6 +324,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "pyjwt" },
     { name = "setuptools" },
     { name = "urllib3" },
 ]
@@ -340,6 +341,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=82.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
