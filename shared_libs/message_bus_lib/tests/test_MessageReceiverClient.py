@@ -378,5 +378,62 @@ class TestAutoLockRenewerLifecycle(unittest.TestCase):
         mock_renewer_cls.assert_not_called()
 
 
+class TestInvokeWithTraceContext(unittest.TestCase):
+    """Tests for _invoke_with_trace_context value-normalisation logic."""
+
+    def _make_client(self) -> MessageReceiverClient:
+        sb_client = MagicMock()
+        return MessageReceiverClient(sb_client, "test-queue", propagate_trace_context=True)
+
+    def _make_message(self, props: dict | None) -> MagicMock:
+        msg = MagicMock()
+        msg.application_properties = props
+        return msg
+
+    @patch("message_bus_lib.message_receiver_client.otel_context.attach", return_value=object())
+    @patch("message_bus_lib.message_receiver_client.otel_context.detach")
+    @patch("message_bus_lib.message_receiver_client.extract_trace_context")
+    def test_integer_value_in_application_properties_does_not_raise(
+        self, mock_extract: MagicMock, _detach: MagicMock, _attach: MagicMock
+    ) -> None:
+        """Integer values in application_properties must be silently dropped so the
+        W3C propagator never receives a non-string carrier value (regression for
+        TypeError: expected string or bytes-like object, got 'int')."""
+        mock_extract.return_value = MagicMock()
+
+        client = self._make_client()
+        # Use a real propagation header key to ensure the regression is exercised.
+        msg = self._make_message({"traceparent": 42, "OtherProp": "hello"})
+
+        result = client._invoke_with_trace_context(lambda m: True, msg)
+
+        self.assertTrue(result)
+        mock_extract.assert_called_once_with({"OtherProp": "hello"})
+    def test_bytes_key_and_value_are_decoded(self) -> None:
+        """Bytes keys and values should be decoded to str before being passed to extract."""
+        client = self._make_client()
+        msg = self._make_message({b"SomeProp": b"some-value"})
+
+        result = client._invoke_with_trace_context(lambda m: True, msg)
+
+        self.assertTrue(result)
+
+    @patch("message_bus_lib.message_receiver_client.otel_context.attach", return_value=object())
+    @patch("message_bus_lib.message_receiver_client.otel_context.detach")
+    @patch("message_bus_lib.message_receiver_client.extract_trace_context")
+    def test_none_application_properties_does_not_raise(
+        self, mock_extract: MagicMock, _detach: MagicMock, _attach: MagicMock
+    ) -> None:
+        """None application_properties should be handled gracefully."""
+        mock_extract.return_value = MagicMock()
+
+        client = self._make_client()
+        msg = self._make_message(None)
+
+        result = client._invoke_with_trace_context(lambda m: True, msg)
+
+        self.assertTrue(result)
+        mock_extract.assert_called_once_with({})
+
 if __name__ == "__main__":
     unittest.main()
