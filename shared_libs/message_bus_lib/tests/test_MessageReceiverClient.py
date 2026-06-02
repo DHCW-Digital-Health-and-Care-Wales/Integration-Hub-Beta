@@ -418,15 +418,22 @@ class TestInvokeWithTraceContext(unittest.TestCase):
 
         self.assertTrue(result)
 
-    def test_none_application_properties_does_not_raise(self) -> None:
+    @patch("message_bus_lib.message_receiver_client.otel_context.attach", return_value=object())
+    @patch("message_bus_lib.message_receiver_client.otel_context.detach")
+    @patch("message_bus_lib.message_receiver_client.extract_trace_context")
+    def test_none_application_properties_does_not_raise(
+        self, mock_extract: MagicMock, _detach: MagicMock, _attach: MagicMock
+    ) -> None:
         """None application_properties should be handled gracefully."""
+        mock_extract.return_value = MagicMock()
+
         client = self._make_client()
         msg = self._make_message(None)
 
         result = client._invoke_with_trace_context(lambda m: True, msg)
 
         self.assertTrue(result)
-
+        mock_extract.assert_called_once_with({})
 
 if __name__ == "__main__":
     unittest.main()
