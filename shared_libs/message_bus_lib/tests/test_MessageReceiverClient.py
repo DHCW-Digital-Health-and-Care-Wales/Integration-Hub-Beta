@@ -390,25 +390,25 @@ class TestInvokeWithTraceContext(unittest.TestCase):
         msg.application_properties = props
         return msg
 
-    def test_integer_value_in_application_properties_does_not_raise(self) -> None:
+    @patch("message_bus_lib.message_receiver_client.otel_context.attach", return_value=object())
+    @patch("message_bus_lib.message_receiver_client.otel_context.detach")
+    @patch("message_bus_lib.message_receiver_client.extract_trace_context")
+    def test_integer_value_in_application_properties_does_not_raise(
+        self, mock_extract: MagicMock, _detach: MagicMock, _attach: MagicMock
+    ) -> None:
         """Integer values in application_properties must be silently dropped so the
         W3C propagator never receives a non-string carrier value (regression for
         TypeError: expected string or bytes-like object, got 'int')."""
+        mock_extract.return_value = MagicMock()
+
         client = self._make_client()
-        msg = self._make_message({"SomeIntProp": 42, "OtherProp": "hello"})
+        # Use a real propagation header key to ensure the regression is exercised.
+        msg = self._make_message({"traceparent": 42, "OtherProp": "hello"})
 
-        called_with = []
-
-        def processor(m: Any) -> bool:
-            called_with.append(m)
-            return True
-
-        # Must not raise TypeError
-        result = client._invoke_with_trace_context(processor, msg)
+        result = client._invoke_with_trace_context(lambda m: True, msg)
 
         self.assertTrue(result)
-        self.assertEqual(called_with, [msg])
-
+        mock_extract.assert_called_once_with({"OtherProp": "hello"})
     def test_bytes_key_and_value_are_decoded(self) -> None:
         """Bytes keys and values should be decoded to str before being passed to extract."""
         client = self._make_client()
