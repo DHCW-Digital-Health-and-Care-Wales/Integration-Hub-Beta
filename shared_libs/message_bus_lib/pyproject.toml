@@ -17,7 +17,8 @@ classifiers = [
 dependencies = [  
     "azure-core>=1.38.0",
     "azure-servicebus==7.14.3",
-    "azure-identity==1.23.0",  
+    "azure-identity==1.23.0",
+    "pyjwt>=2.13.0",
     "urllib3>=2.6.3",
     "setuptools>=82.0.0",
     "otel-lib",

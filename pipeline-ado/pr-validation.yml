@@ -11,17 +11,17 @@ pr:
       - release-*
   paths:
     include:
-      - hl7_server/*
-      - hl7_phw_transformer/*
-      - hl7_sender/*
-      - hl7_subscription_sender/*
-      - hl7_mock_receiver/*
-      - hl7_chemo_transformer/*
-      - hl7_pims_transformer/*
-      - buswatch/*
-      - message_store_service/*
-      - shared_libs/*
-      - pipeline-ado/*
+      - hl7_server/**
+      - hl7_phw_transformer/**
+      - hl7_sender/**
+      - hl7_subscription_sender/**
+      - hl7_mock_receiver/**
+      - hl7_chemo_transformer/**
+      - hl7_pims_transformer/**
+      - buswatch/**
+      - message_store_service/**
+      - shared_libs/**
+      - pipeline-ado/**
 
 variables:
   pythonVersion: '3.13'
@@ -100,6 +100,8 @@ stages:
                 "shared_libs/event_logger_lib|Event Logger Library|event_logger_lib|unittest"
                 "shared_libs/health_check_lib|Health Check Library|health_check_lib|unittest"
                 "shared_libs/hl7_validation|HL7 Validation Library|hl7_validation|unittest"
+                "shared_libs/metric_sender_lib|Metric Sender Library|metric_sender_lib|unittest"
+                "shared_libs/otel_lib|OTel Library|otel_lib|unittest"
                 "shared_libs/processor_manager_lib|Processor Manager Library|processor_manager_lib|unittest"
                 "shared_libs/transformer_base_lib|Transformer Base Library|transformer_base_lib|unittest"
                 "shared_libs/field_utils_lib|Field Utils Library|field_utils_lib|unittest"
@@ -259,7 +261,7 @@ stages:
               echo ""
               echo "════════════════════════════════════════════════════════════════"
               if [ $OVERALL_RESULT -eq 0 ]; then
-                echo "✅ All 16 apps passed code quality and tests"
+                echo "✅ All apps passed code quality and tests"
               else
                 echo "##[error]Some apps failed:"
                 echo -e "$FAILED_APPS"

@@ -43,7 +43,7 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
     Returns:
         True to indicate OTel has been configured.
     """
-    global _otel_configured
+    global _otel_configured  # noqa: PLW0603
     if _otel_configured:
         logger.debug("OpenTelemetry already configured — skipping re-initialisation.")
         return True
