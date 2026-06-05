@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Replay queue{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-arrow-repeat" style="color:var(--accent-purple)"></i>
+        Replay Queue
+      </h1>
+      <p class="page-subtitle">
+        Rows queued in <span class="font-mono">monitoring.MessageReplayQueue</span>. Filter by batch
+        reference, then remove entries you no longer want to replay.
+      </p>
+    </div>
+    <a href="{{ url_for('replay_queue', batch=batch_filter, sort_by=sort_by, sort_dir=sort_dir, start_date=start_date, end_date=end_date) }}" class="btn-dash">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </a>
+  </div>
+
+  {% if removed_count is defined %}
+    <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green, #22c55e);">
+      <p style="margin:0; color:var(--text-muted);">
+        <i class="bi bi-check-circle-fill" style="color:var(--accent-green, #22c55e);"></i>
+        Removed <strong style="color:var(--text-primary)">{{ removed_count }}</strong>
+        entr{{ 'y' if removed_count == 1 else 'ies' }} from the replay queue.
+      </p>
+    </div>
+  {% endif %}
+
+  <!-- Filters -->
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-funnel-fill"></i> Filter</span>
+  </div>
+  <div class="dash-card mb-3">
+    <form method="get" action="{{ url_for('replay_queue') }}"
+          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.85rem 1rem; align-items:end;">
+
+      <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="batch" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Batch reference</label>
+        <input id="batch" name="batch" type="text" class="dash-input font-mono" value="{{ batch_filter }}"
+               placeholder="Full or partial batch id">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="start_date" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Created from</label>
+        <input id="start_date" name="start_date" type="date" class="dash-input" value="{{ start_date }}">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="end_date" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Created to</label>
+        <input id="end_date" name="end_date" type="date" class="dash-input" value="{{ end_date }}">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="sort_by" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Sort by</label>
+        <select id="sort_by" name="sort_by" class="dash-input">
+          <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Created</option>
+          <option value="batch_id" {% if sort_by == 'batch_id' %}selected{% endif %}>Batch reference</option>
+          <option value="replay_id" {% if sort_by == 'replay_id' %}selected{% endif %}>Replay id</option>
+          <option value="message_id" {% if sort_by == 'message_id' %}selected{% endif %}>Message id</option>
+          <option value="status" {% if sort_by == 'status' %}selected{% endif %}>Status</option>
+        </select>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="sort_dir" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Direction</label>
+        <select id="sort_dir" name="sort_dir" class="dash-input">
+          <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Descending</option>
+          <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Ascending</option>
+        </select>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button type="submit" class="btn-dash"><i class="bi bi-search"></i> Apply</button>
+        <a class="btn-dash" href="{{ url_for('replay_queue') }}"><i class="bi bi-x-lg"></i> Reset</a>
+      </div>
+    </form>
+  </div>
+
+  {% if batches %}
+    <div class="section-header">
+      <span class="section-title"><i class="bi bi-collection-fill"></i> Batches</span>
+    </div>
+    <div class="dash-card mb-3" style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+      {% for batch in batches %}
+        <a class="btn-dash btn-dash--sm font-mono"
+           href="{{ url_for('replay_queue', batch=batch.batch_id, sort_by=sort_by, sort_dir=sort_dir, start_date=start_date, end_date=end_date) }}"
+           title="{{ batch.total }} message(s), {{ batch.pending }} pending — created {{ format_timestamp(batch.created_at) }}"
+           style="{% if batch.batch_id == batch_filter %}border-color:var(--accent-blue);{% endif %}">
+          <i class="bi bi-stack"></i> {{ batch.batch_id[:8] }}…
+          <span style="opacity:0.7;">({{ batch.pending }}/{{ batch.total }})</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Queue table -->
+  <form method="post" action="{{ url_for('replay_queue_remove') }}" id="queue-form">
+    <input type="hidden" name="batch" value="{{ batch_filter }}">
+    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+    <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    <input type="hidden" name="start_date" value="{{ start_date }}">
+    <input type="hidden" name="end_date" value="{{ end_date }}">
+
+    <div class="dash-card mb-3" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+      <button type="submit" class="btn-dash">
+        <i class="bi bi-trash"></i> Remove selected from batch
+      </button>
+      <span style="font-size:0.75rem; color:var(--text-muted);">
+        Tick rows and remove them from their batch. This only deletes the queue entry &mdash; the
+        original message in <span class="font-mono">monitoring.Message</span> is untouched.
+      </span>
+    </div>
+
+    <div class="queue-table-wrapper">
+      <div class="queue-table-header">
+        <h6><i class="bi bi-list-ul me-1"></i> Queue entries</h6>
+        <span style="font-size:0.78rem; color:var(--text-muted);">
+          {{ entries | length }} entr{{ 'y' if entries | length == 1 else 'ies' }}
+          {% if batch_filter %}matching <span class="font-mono">{{ batch_filter }}</span>{% endif %}
+        </span>
+      </div>
+
+      {% set replay_next_dir = 'asc' if sort_by != 'replay_id' or sort_dir == 'desc' else 'desc' %}
+      {% set batch_next_dir = 'asc' if sort_by != 'batch_id' or sort_dir == 'desc' else 'desc' %}
+      {% set message_next_dir = 'asc' if sort_by != 'message_id' or sort_dir == 'desc' else 'desc' %}
+      {% set status_next_dir = 'asc' if sort_by != 'status' or sort_dir == 'desc' else 'desc' %}
+      {% set created_next_dir = 'asc' if sort_by != 'created_at' or sort_dir == 'desc' else 'desc' %}
+      <div style="overflow-x:auto;">
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th style="width:1%;">
+                <input type="checkbox" id="select-all" aria-label="Select all queue entries">
+              </th>
+              <th>
+                <a class="queue-link" href="{{ url_for('replay_queue', batch=batch_filter, sort_by='replay_id', sort_dir=replay_next_dir, start_date=start_date, end_date=end_date) }}">
+                  Replay id
+                  {% if sort_by == 'replay_id' %}<i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>{% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="queue-link" href="{{ url_for('replay_queue', batch=batch_filter, sort_by='batch_id', sort_dir=batch_next_dir, start_date=start_date, end_date=end_date) }}">
+                  Batch reference
+                  {% if sort_by == 'batch_id' %}<i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>{% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="queue-link" href="{{ url_for('replay_queue', batch=batch_filter, sort_by='message_id', sort_dir=message_next_dir, start_date=start_date, end_date=end_date) }}">
+                  Message id
+                  {% if sort_by == 'message_id' %}<i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>{% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="queue-link" href="{{ url_for('replay_queue', batch=batch_filter, sort_by='status', sort_dir=status_next_dir, start_date=start_date, end_date=end_date) }}">
+                  Status
+                  {% if sort_by == 'status' %}<i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>{% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="queue-link" href="{{ url_for('replay_queue', batch=batch_filter, sort_by='created_at', sort_dir=created_next_dir, start_date=start_date, end_date=end_date) }}">
+                  Created
+                  {% if sort_by == 'created_at' %}<i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>{% endif %}
+                </a>
+              </th>
+              <th>Source</th>
+              <th>Destination</th>
+              <th>Correlation Id</th>
+              <th style="text-align:right;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+              <tr>
+                <td>
+                  <input type="checkbox" class="queue-check" name="replay_ids" value="{{ entry.replay_id }}"
+                         aria-label="Select replay entry {{ entry.replay_id }}">
+                </td>
+                <td class="queue-name-cell">{{ entry.replay_id }}</td>
+                <td class="queue-name-cell font-mono">{{ entry.batch_id }}</td>
+                <td class="queue-name-cell">{{ entry.message_id }}</td>
+                <td>
+                  {% if entry.status == 'Pending' %}
+                    <span class="status-badge" style="background:rgba(248,202,77,0.15); color:var(--dhcw-yellow, #F8CA4D); border-color:var(--dhcw-yellow, #F8CA4D);">{{ entry.status }}</span>
+                  {% elif entry.status == 'Failed' %}
+                    <span class="status-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border-color:#ef4444;">{{ entry.status }}</span>
+                  {% else %}
+                    <span class="status-badge" style="background:rgba(34,197,94,0.15); color:var(--accent-green, #22c55e); border-color:var(--accent-green, #22c55e);">{{ entry.status }}</span>
+                  {% endif %}
+                </td>
+                <td style="white-space:nowrap;">{{ format_timestamp(entry.created_at) }}</td>
+                <td>{{ entry.source_system or '—' }}</td>
+                <td>{{ entry.target_system or '—' }}</td>
+                <td class="queue-name-cell">{{ entry.correlation_id or '—' }}</td>
+                <td style="text-align:right;">
+                  <a class="btn-dash btn-dash--sm" href="{{ url_for('message_detail', message_id=entry.message_id) }}">
+                    <i class="bi bi-box-arrow-up-right"></i> Open
+                  </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No replay queue entries match the current filter.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+  (function () {
+    const selectAll = document.getElementById("select-all");
+    if (!selectAll) return;
+    const checks = Array.from(document.querySelectorAll(".queue-check"));
+    selectAll.addEventListener("change", function () {
+      checks.forEach(function (c) { c.checked = selectAll.checked; });
+    });
+  })();
+</script>
+{% endblock %}

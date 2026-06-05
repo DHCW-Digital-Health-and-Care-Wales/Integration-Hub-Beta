@@ -350,6 +350,9 @@ services:
 
   # BusWatch - Allows peeking at messages on Service Bus emulator
   # http://localhost:8080
+  # Run with: just browse  (or: docker compose --profile buswatch up -d bus-watch)
+  # Kept as a separate profile so it does not consume one of the emulator's 10
+  # concurrent-connection slots when running multi-flow integration tests.
   bus-watch:
     container_name: bus-watch-server
     build:
@@ -365,15 +368,30 @@ services:
     depends_on:
       - sb-emulator
     profiles:
-      - phw-to-mpi
-      - paris-to-mpi
-      - chemo-to-mpi
-      - pims-to-mpi
-      - mpi-to-topic
+      - buswatch
     networks:
       integration-hub:
         aliases:
           - "buswatch"
+
+  replay-browser:
+    container_name: replay-browser
+    build:
+      context: ../replay_browser
+    env_file:
+      - ./.secrets
+      - ./replay-browser.env
+    ports:
+      - "8082:8080"
+    depends_on:
+      - sqlserver
+    restart: on-failure
+    profiles:
+      - tools
+    networks:
+      integration-hub:
+        aliases:
+          - "replay-browser"
 
 networks:
   integration-hub:

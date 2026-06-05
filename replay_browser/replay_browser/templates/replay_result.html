@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Replay batch created{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-arrow-repeat" style="color:var(--accent-purple)"></i>
+        Replay batch
+      </h1>
+      <p class="page-subtitle">Queue a set of stored messages for the replay job to publish.</p>
+    </div>
+    <a href="{{ url_for('list_messages') }}" class="btn-dash">
+      <i class="bi bi-chevron-left"></i> Back to messages
+    </a>
+  </div>
+
+  {% if result is none %}
+    <div class="dash-card mb-3">
+      <p style="margin:0; color:var(--text-muted);">
+        <i class="bi bi-exclamation-triangle"></i>
+        No messages were selected, so nothing was queued for replay.
+      </p>
+    </div>
+  {% else %}
+    <div class="dash-card mb-3">
+      <h6 style="margin-top:0;">
+        <i class="bi bi-check-circle-fill" style="color:var(--accent-green, #22c55e);"></i>
+        {{ 'Messages added to batch' if added else 'Replay batch created' }}
+      </h6>
+      <p style="color:var(--text-muted);">
+        <strong style="color:var(--text-primary)">{{ message_count }}</strong>
+        message{{ '' if message_count == 1 else 's' }}
+        {{ 'added to the existing batch in' if added else 'queued in' }}
+        <span class="font-mono">monitoring.MessageReplayQueue</span> with status
+        <span class="font-mono">Pending</span>.
+        {% if added and message_count == 0 %}
+          <br><i class="bi bi-info-circle"></i>
+          All selected messages were already in that batch, so nothing new was added.
+        {% endif %}
+      </p>
+
+      <label style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">
+        Replay batch id
+      </label>
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.3rem;">
+        <input type="text" class="dash-input font-mono" id="batch-id" readonly
+               value="{{ result.batch_id }}" style="max-width:340px;">
+        <button type="button" class="btn-dash btn-dash--sm" id="copy-batch">
+          <i class="bi bi-clipboard"></i> Copy
+        </button>
+        <a class="btn-dash btn-dash--sm" href="{{ url_for('replay_queue', batch=result.batch_id) }}">
+          <i class="bi bi-list-ul"></i> View in queue
+        </a>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-title"><i class="bi bi-list-ol"></i> Next steps</span>
+    </div>
+    <div class="dash-card mb-3">
+      <ol style="margin:0; padding-left:1.2rem; color:var(--text-muted); line-height:1.7;">
+        <li>
+          Set <span class="font-mono">REPLAY_BATCH_ID</span> to the id above in
+          <span class="font-mono">local/message-replay-job.env</span>.
+        </li>
+        <li>
+          Point the consuming sender's <span class="font-mono">INGRESS_QUEUE_NAME</span> at the
+          priority queue (e.g. <span class="font-mono">local-inthub-priority-messagequeue</span>).
+        </li>
+        <li>Run the replay job (e.g. <span class="font-mono">just run replay</span>).</li>
+        <li>Revert the sender's <span class="font-mono">INGRESS_QUEUE_NAME</span> when complete.</li>
+      </ol>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+  (function () {
+    const btn = document.getElementById("copy-batch");
+    const input = document.getElementById("batch-id");
+    if (!btn || !input) return;
+    btn.addEventListener("click", function () {
+      input.select();
+      navigator.clipboard.writeText(input.value).then(function () {
+        btn.innerHTML = '<i class="bi bi-check2"></i> Copied';
+        setTimeout(function () { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy'; }, 1500);
+      }).catch(function () {});
+    });
+  })();
+</script>
+{% endblock %}

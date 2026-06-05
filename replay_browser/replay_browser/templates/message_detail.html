@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Message {{ message.id }}{% endblock %}
+
+{% block head %}
+<style>
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+  }
+  .meta-tile {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+  .meta-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+  .meta-value {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+  .meta-value.font-mono { font-family: var(--font-mono); font-size: 0.78rem; }
+
+  .segment-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 0.85rem;
+    overflow: hidden;
+  }
+  .segment-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.6rem 0.9rem;
+    background: var(--table-header-bg);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .segment-card header h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+  }
+  .segment-index {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+  .field-list { padding: 0.25rem 0; }
+  .field-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 0.75rem;
+    padding: 0.45rem 0.9rem;
+    align-items: baseline;
+  }
+  .field-row:nth-child(odd) { background: rgba(51,65,85,0.15); }
+  .field-key {
+    color: var(--accent-blue);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  .field-value {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+  .field-value.empty { color: var(--text-dim); font-style: italic; }
+
+  .nested-box {
+    margin: 0.35rem 0 0.75rem 170px;
+    border-left: 2px solid var(--accent-cyan);
+    padding-left: 0.75rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .nested-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+  .nested-label {
+    color: var(--accent-cyan);
+    background: rgba(6,182,212,0.12);
+    border: 1px solid rgba(6,182,212,0.3);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .nested-subgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  .nested-tile {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.45rem 0.55rem;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .nested-subparts {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .payload {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    padding: 0.85rem;
+    max-height: 480px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+  }
+
+  .split-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  @media (max-width: 991.98px) {
+    .split-panel { grid-template-columns: 1fr; }
+    .field-row { grid-template-columns: 1fr; gap: 0.2rem; }
+    .nested-box { margin-left: 0.75rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-chat-square-text-fill" style="color:var(--accent-purple)"></i>
+        Message <span class="font-mono" style="color:var(--accent-cyan)">#{{ message.id }}</span>
+      </h1>
+      <p class="page-subtitle">HL7 payload detail and parsed segment structure.</p>
+    </div>
+    <a class="btn-dash" href="{{ url_for('list_messages') }}">
+      <i class="bi bi-arrow-left"></i> Back to list
+    </a>
+  </div>
+
+  <div class="dash-card mb-3">
+    <div class="meta-grid">
+      <div class="meta-tile"><span class="meta-label">Received</span><span class="meta-value">{{ format_timestamp(message.received_at) }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Stored</span><span class="meta-value">{{ format_timestamp(message.stored_at) }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Source</span><span class="meta-value">{{ message.source_system }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Component</span><span class="meta-value">{{ message.processing_component }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Message Type</span><span class="meta-value">{{ message_type or "—" }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Control Id</span><span class="meta-value font-mono">{{ message_control_id or "—" }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Trigger Event</span><span class="meta-value">{{ trigger_event or "—" }}</span></div>
+      <div class="meta-tile"><span class="meta-label">Correlation Id</span><span class="meta-value font-mono">{{ message.correlation_id }}</span></div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-diagram-3-fill"></i> Structured HL7</span>
+  </div>
+
+  {% if segments %}
+    {% for segment in segments %}
+      <article class="segment-card">
+        <header>
+          <h3>{{ segment.name }}</h3>
+          <span class="segment-index">Segment {{ segment.index }}</span>
+        </header>
+        <div class="field-list">
+          {% for field in segment.fields %}
+            <div class="field-row">
+              <div class="field-key">{{ segment.name }}-{{ field.number }}</div>
+              <div class="field-value {% if not field.value %}empty{% endif %}">{{ field.value if field.value else "(empty)" }}</div>
+            </div>
+
+            {% if field.repetitions %}
+              <div class="nested-box">
+                {% for repetition in field.repetitions %}
+                  <div class="nested-row">
+                    <span class="nested-label">Rep {{ repetition.index }}</span>
+                    <span class="field-value {% if not repetition.value %}empty{% endif %}">{{ repetition.value if repetition.value else "(empty)" }}</span>
+                  </div>
+                  {% if repetition.components %}
+                    <div class="nested-subgrid">
+                      {% for component in repetition.components %}
+                        <div class="nested-tile">
+                          <span class="nested-label">C{{ component.index }}</span>
+                          <span class="field-value {% if not component.value %}empty{% endif %}">{{ component.value if component.value else "(empty)" }}</span>
+                          {% if component.subcomponents %}
+                            <div class="nested-subparts">
+                              {% for subcomponent in component.subcomponents %}
+                                <span class="font-mono">S{{ subcomponent.index }} = {{ subcomponent.value if subcomponent.value else "(empty)" }}</span>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="dash-card mb-3" style="color:var(--text-muted);">
+      <i class="bi bi-info-circle"></i> No parseable HL7 segments were found in this payload.
+    </div>
+  {% endif %}
+
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-file-earmark-code-fill"></i> Payloads</span>
+  </div>
+  <div class="split-panel">
+    <div class="dash-card">
+      <h6 style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 0.6rem;">
+        <i class="bi bi-braces-asterisk"></i> Raw HL7
+      </h6>
+      <pre class="payload">{{ message.raw_payload }}</pre>
+    </div>
+    <div class="dash-card">
+      <h6 style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 0.6rem;">
+        <i class="bi bi-filetype-xml"></i> XML
+      </h6>
+      <pre class="payload">{{ message.xml_payload or "(none)" }}</pre>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
