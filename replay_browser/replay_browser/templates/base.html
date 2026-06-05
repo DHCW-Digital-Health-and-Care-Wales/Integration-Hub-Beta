@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ title or "Replay Browser" }}{% endblock %} — NHS Wales</title>
+
+  <!-- Apply saved theme before CSS loads to prevent flash -->
+  <script>(function(){try{var t=localStorage.getItem('ih-theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.add('ih-loading');}catch(e){}})()</script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/inter.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<div id="page-load-bar"></div>
+
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid gap-3">
+
+    <a class="navbar-brand" href="{{ url_for('list_messages') }}">
+      <img src="{{ url_for('static', filename='DHCW-logo-RGB-White.png') }}"
+           alt="DHCW" style="height:44px;width:auto;display:block;" />
+      <span class="brand-title">Replay Browser</span>
+    </a>
+
+    <button class="navbar-toggler border-0 text-white" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <i class="bi bi-list fs-5"></i>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto gap-1">
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'list_messages' %}active{% endif %}"
+             href="{{ url_for('list_messages') }}">
+            <i class="bi bi-chat-square-text-fill"></i> Messages
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint in ['replay_queue', 'replay_queue_remove'] %}active{% endif %}"
+             href="{{ url_for('replay_queue') }}">
+            <i class="bi bi-arrow-repeat"></i> Replay Queue
+          </a>
+        </li>
+      </ul>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted" style="font-size:0.7rem;">
+          <i class="bi bi-database-fill" style="font-size:0.7rem; color:var(--accent-cyan);"></i>
+          monitoring.Message
+        </span>
+        <button id="theme-toggle" title="Toggle light/dark theme"
+                style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:1rem;transition:background 0.15s;">
+          <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="dash-footer">
+  NHS Wales — Integration Hub Replay Browser &nbsp;|&nbsp;
+  Digital Health and Care Wales &nbsp;|&nbsp;
+  <span id="footer-time"></span>
+</footer>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+<script>
+  (function () {
+    const el = document.getElementById("footer-time");
+    function tick() {
+      if (el) el.textContent = new Date().toLocaleString("en-GB", {
+        dateStyle: "medium", timeStyle: "medium"
+      });
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  (function () {
+    const html = document.documentElement;
+    const btn  = document.getElementById('theme-toggle');
+    const icon = document.getElementById('theme-icon');
+    function apply(t) {
+      html.setAttribute('data-theme', t);
+      try { localStorage.setItem('ih-theme', t); } catch(e) {}
+      if (icon) icon.className = t === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+    }
+    apply(html.getAttribute('data-theme') || 'dark');
+    if (btn) btn.addEventListener('click', function () {
+      apply(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+
+  (function () {
+    const bar = document.getElementById('page-load-bar');
+    if (!bar) return;
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href') || '';
+      if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+          href.startsWith('http://') || href.startsWith('https://') ||
+          link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      bar.classList.add('loading');
+    });
+  })();
+
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      document.documentElement.classList.remove('ih-loading');
+    });
+  });
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

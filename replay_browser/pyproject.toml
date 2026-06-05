@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "replay-browser"
+version = "0.1.0"
+description = "Flask app to browse stored HL7 messages from IntegrationHub monitoring.Message and trigger replays"
+requires-python = ">=3.13"
+
+dependencies = [
+  "flask>=3.1.0",
+  "gunicorn>=23.0.0",
+  "pyodbc>=5.2.0",
+  "setuptools>=82.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff==0.15.1",
+  "bandit==1.9.3",
+  "mypy==1.19.1",
+]
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",
+  "A",
+  "PLC",
+  "PLE",
+  "PLW",
+  "I",
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["replay_browser*"]
+
+[tool.setuptools.package-data]
+replay_browser = ["templates/*.html", "static/**/*"]

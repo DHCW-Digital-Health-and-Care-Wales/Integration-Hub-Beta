@@ -68,6 +68,7 @@ python := "python3"
     echo "  - replay         : Message Replay Job"
     echo ""
     echo "💡 Run 'just start <profile>' to start services"
+    echo "💡 Run 'just browse' to also start the BusWatch queue inspector"
 
 # ============================================
 # Setup & Installation
@@ -126,6 +127,16 @@ python := "python3"
     echo "   - View logs: just logs phw-hl7-server"
     echo "   - Send test message: just send ./sample_messages/phw-to-mpi.sample.hl7"
     echo "   - Stop services: just stop"
+
+# Start BusWatch queue inspector alongside a flow profile (http://localhost:8080)
+# BusWatch is kept on its own 'buswatch' profile to avoid consuming one of the
+# emulator's 10 concurrent AMQP connection slots during multi-flow integration tests.
+@browse profile: (_ensure-secrets)
+    echo "▶️  Starting {{profile}} services + BusWatch queue inspector..."
+    echo ""
+    docker compose --profile {{profile}} --profile buswatch up -d
+    echo ""
+    echo "✅ Services started. BusWatch: http://localhost:8080"
 
 # Stop all Docker containers across all profiles
 @stop:

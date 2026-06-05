@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Review replay batch{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-arrow-repeat" style="color:var(--accent-purple)"></i>
+        Review replay batch
+      </h1>
+      <p class="page-subtitle">
+        Check the messages below, untick any you want to exclude, then create the replay batch.
+        Creating a batch only <strong>queues</strong> the messages &mdash; the
+        <span class="font-mono">message_replay_job</span> publishes them when run with the batch id.
+      </p>
+    </div>
+    <a href="{{ url_for('list_messages') }}" class="btn-dash">
+      <i class="bi bi-chevron-left"></i> Back to messages
+    </a>
+  </div>
+
+  {% if not messages %}
+    <div class="dash-card mb-3">
+      <p style="margin:0; color:var(--text-muted);">
+        <i class="bi bi-exclamation-triangle"></i>
+        No messages were selected. Go back and tick some rows, or use
+        &ldquo;Replay all matching filters&rdquo;.
+      </p>
+    </div>
+  {% else %}
+    <form method="post" action="{{ url_for('replay_create') }}" id="replay-create-form">
+      <div class="dash-card mb-3" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <button type="submit" name="action" value="create" class="btn-dash">
+          <i class="bi bi-plus-square"></i> Create new batch
+        </button>
+        <a href="{{ url_for('list_messages') }}" class="btn-dash">
+          <i class="bi bi-x-lg"></i> Cancel
+        </a>
+        <span style="font-size:0.78rem; color:var(--text-muted);">
+          <strong style="color:var(--text-primary)" id="keep-count">{{ messages | length }}</strong>
+          message{{ '' if messages | length == 1 else 's' }} selected
+          {% if mode == 'all_filtered' %}(all matching the current filters){% endif %}
+        </span>
+      </div>
+
+      <div class="dash-card mb-3" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <span style="font-size:0.78rem; color:var(--text-muted);">
+          <i class="bi bi-stack"></i> Or add these messages to an existing batch:
+        </span>
+        <input type="text" name="existing_batch_id" class="dash-input font-mono"
+               placeholder="Existing batch id" style="max-width:340px;">
+        <button type="submit" name="action" value="add" class="btn-dash">
+          <i class="bi bi-plus-circle"></i> Add to existing batch
+        </button>
+      </div>
+
+      <div class="queue-table-wrapper">
+        <div class="queue-table-header">
+          <h6><i class="bi bi-list-check me-1"></i> Messages to replay</h6>
+          <label style="font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:0.4rem;">
+            <input type="checkbox" id="keep-all" checked> Keep all
+          </label>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th style="width:1%;">Keep</th>
+                <th>Id</th>
+                <th>Received</th>
+                <th>Source</th>
+                <th>Component</th>
+                <th>Destination</th>
+                <th>Correlation Id</th>
+                <th>Session Id</th>
+                <th style="text-align:right;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in messages %}
+                <tr>
+                  <td>
+                    <input type="checkbox" class="keep-check" name="message_ids" value="{{ row.id }}" checked
+                           aria-label="Keep message {{ row.id }}">
+                  </td>
+                  <td class="queue-name-cell">{{ row.id }}</td>
+                  <td style="white-space:nowrap;">{{ format_timestamp(row.received_at) }}</td>
+                  <td>
+                    <span class="status-badge" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border-color:var(--accent-cyan);">
+                      {{ row.source_system }}
+                    </span>
+                  </td>
+                  <td>{{ row.processing_component }}</td>
+                  <td>{{ row.target_system or '—' }}</td>
+                  <td class="queue-name-cell">{{ row.correlation_id }}</td>
+                  <td class="queue-name-cell">{{ row.session_id }}</td>
+                  <td style="text-align:right;">
+                    <a class="btn-dash btn-dash--sm" href="{{ url_for('message_detail', message_id=row.id) }}" target="_blank" rel="noopener">
+                      <i class="bi bi-box-arrow-up-right"></i> Open
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </form>
+  {% endif %}
+
+</div>
+
+<script>
+  (function () {
+    const keepAll = document.getElementById("keep-all");
+    const checks = Array.from(document.querySelectorAll(".keep-check"));
+    const countEl = document.getElementById("keep-count");
+    function refreshCount() {
+      if (countEl) countEl.textContent = checks.filter(function (c) { return c.checked; }).length;
+    }
+    if (keepAll) {
+      keepAll.addEventListener("change", function () {
+        checks.forEach(function (c) { c.checked = keepAll.checked; });
+        refreshCount();
+      });
+    }
+    checks.forEach(function (c) { c.addEventListener("change", refreshCount); });
+  })();
+</script>
+{% endblock %}

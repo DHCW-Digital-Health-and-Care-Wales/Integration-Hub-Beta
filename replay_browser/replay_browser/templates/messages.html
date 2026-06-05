@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-chat-square-text-fill" style="color:var(--accent-purple)"></i>
+        Message Store
+      </h1>
+      <p class="page-subtitle">Browse rows from <span class="font-mono">monitoring.Message</span> and open any item to inspect its HL7 structure.</p>
+    </div>
+    <a href="{{ url_for('list_messages') }}" class="btn-dash">
+      <i class="bi bi-arrow-repeat"></i> Refresh
+    </a>
+  </div>
+
+  <!-- Filters -->
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-funnel-fill"></i> Filters</span>
+  </div>
+  <div class="dash-card mb-3">
+    <form method="get" action="{{ url_for('list_messages') }}"
+          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.85rem 1rem; align-items:end;">
+
+      <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="q" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Search</label>
+        <input id="q" name="q" type="text" class="dash-input" value="{{ search_query }}"
+               placeholder="Correlation ID, source system, HL7 text">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="destination" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Destination</label>
+        <input id="destination" name="destination" type="text" class="dash-input" value="{{ destination }}" placeholder="e.g. mpi">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="start_date" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">From date</label>
+        <input id="start_date" name="start_date" type="date" class="dash-input" value="{{ start_date }}">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="end_date" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">To date</label>
+        <input id="end_date" name="end_date" type="date" class="dash-input" value="{{ end_date }}">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="sort_by" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Sort by</label>
+        <select id="sort_by" name="sort_by" class="dash-input">
+          <option value="id" {% if sort_by == 'id' %}selected{% endif %}>Id</option>
+          <option value="received_at" {% if sort_by == 'received_at' %}selected{% endif %}>Received date</option>
+        </select>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.3rem;">
+        <label for="sort_dir" style="font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted);">Direction</label>
+        <select id="sort_dir" name="sort_dir" class="dash-input">
+          <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Descending</option>
+          <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Ascending</option>
+        </select>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <button type="submit" class="btn-dash"><i class="bi bi-search"></i> Apply</button>
+        <a class="btn-dash" href="{{ url_for('list_messages') }}"><i class="bi bi-x-lg"></i> Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results table -->
+  <form method="post" action="{{ url_for('replay_review') }}" id="replay-form">
+    <input type="hidden" name="q" value="{{ search_query }}">
+    <input type="hidden" name="destination" value="{{ destination }}">
+    <input type="hidden" name="start_date" value="{{ start_date }}">
+    <input type="hidden" name="end_date" value="{{ end_date }}">
+
+  <div class="section-header">
+    <span class="section-title"><i class="bi bi-arrow-repeat"></i> Replay</span>
+  </div>
+  <div class="dash-card mb-3" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+    <button type="submit" name="mode" value="selected" class="btn-dash">
+      <i class="bi bi-check2-square"></i> Replay selected
+    </button>
+    <button type="submit" name="mode" value="all_filtered" class="btn-dash">
+      <i class="bi bi-funnel"></i> Replay all matching filters
+    </button>
+    <span style="font-size:0.75rem; color:var(--text-muted);">
+      Tick rows to replay a selection, or replay every message matching the current filters
+      (across all {{ total_rows }} result{{ '' if total_rows == 1 else 's' }}).
+    </span>
+  </div>
+
+  <div class="queue-table-wrapper">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-list-ul me-1"></i> Messages</h6>
+      <span style="font-size:0.78rem; color:var(--text-muted);">
+        {% if total_rows == 0 %}
+          No messages found
+        {% else %}
+          Showing <strong style="color:var(--text-primary)">{{ start_index }}–{{ end_index }}</strong>
+          of <strong style="color:var(--text-primary)">{{ total_rows }}</strong>
+        {% endif %}
+      </span>
+    </div>
+
+    {% set id_next_dir = 'asc' if sort_by != 'id' or sort_dir == 'desc' else 'desc' %}
+    {% set received_next_dir = 'asc' if sort_by != 'received_at' or sort_dir == 'desc' else 'desc' %}
+    <div style="overflow-x:auto;">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th style="width:1%;">
+              <input type="checkbox" id="select-all" aria-label="Select all messages on this page">
+            </th>
+            <th>
+              <a class="queue-link"
+                 href="{{ url_for('list_messages', page=1, q=search_query, destination=destination, start_date=start_date, end_date=end_date, sort_by='id', sort_dir=id_next_dir) }}">
+                Id
+                {% if sort_by == 'id' %}
+                  <i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>
+                {% endif %}
+              </a>
+            </th>
+            <th>
+              <a class="queue-link"
+                 href="{{ url_for('list_messages', page=1, q=search_query, destination=destination, start_date=start_date, end_date=end_date, sort_by='received_at', sort_dir=received_next_dir) }}">
+                Received
+                {% if sort_by == 'received_at' %}
+                  <i class="bi bi-caret-{{ 'down' if sort_dir == 'desc' else 'up' }}-fill sort-icon" style="opacity:1;color:var(--accent-blue);"></i>
+                {% endif %}
+              </a>
+            </th>
+            <th>Source</th>
+            <th>Component</th>
+            <th>Destination</th>
+            <th>Correlation Id</th>
+            <th>Session Id</th>
+            <th style="text-align:right;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>
+                <input type="checkbox" class="replay-check" name="message_ids" value="{{ row.id }}"
+                       aria-label="Select message {{ row.id }}">
+              </td>
+              <td class="queue-name-cell">{{ row.id }}</td>
+              <td style="white-space:nowrap;">{{ format_timestamp(row.received_at) }}</td>
+              <td>
+                <span class="status-badge" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border-color:var(--accent-cyan);">
+                  {{ row.source_system }}
+                </span>
+              </td>
+              <td>{{ row.processing_component }}</td>
+              <td>{{ row.target_system or '—' }}</td>
+              <td class="queue-name-cell">{{ row.correlation_id }}</td>
+              <td class="queue-name-cell">{{ row.session_id }}</td>
+              <td style="text-align:right;">
+                <a class="btn-dash btn-dash--sm" href="{{ url_for('message_detail', message_id=row.id) }}">
+                  <i class="bi bi-box-arrow-up-right"></i> Open
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No messages match the current filters.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.25rem; border-top:1px solid var(--border-color);">
+      {% if has_previous %}
+        <a class="btn-dash btn-dash--sm" href="{{ url_for('list_messages', page=page-1, q=search_query, destination=destination, start_date=start_date, end_date=end_date, sort_by=sort_by, sort_dir=sort_dir) }}">
+          <i class="bi bi-chevron-left"></i> Previous
+        </a>
+      {% else %}
+        <span class="btn-dash btn-dash--sm" style="opacity:0.4; pointer-events:none;">
+          <i class="bi bi-chevron-left"></i> Previous
+        </span>
+      {% endif %}
+
+      <span style="font-size:0.78rem; color:var(--text-muted);">Page <strong style="color:var(--text-primary)">{{ page }}</strong></span>
+
+      {% if has_next %}
+        <a class="btn-dash btn-dash--sm" href="{{ url_for('list_messages', page=page+1, q=search_query, destination=destination, start_date=start_date, end_date=end_date, sort_by=sort_by, sort_dir=sort_dir) }}">
+          Next <i class="bi bi-chevron-right"></i>
+        </a>
+      {% else %}
+        <span class="btn-dash btn-dash--sm" style="opacity:0.4; pointer-events:none;">
+          Next <i class="bi bi-chevron-right"></i>
+        </span>
+      {% endif %}
+    </div>
+  </div>
+  </form>
+
+</div>
+
+<script>
+  (function () {
+    const STORAGE_KEY = "replayBrowser.selectedMessageIds";
+    const selectAll = document.getElementById("select-all");
+    const checks = Array.from(document.querySelectorAll(".replay-check"));
+    if (checks.length === 0) return;
+
+    function loadSelection() {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        return new Set(raw ? JSON.parse(raw) : []);
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function saveSelection(set) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
+      } catch (e) { /* ignore quota errors */ }
+    }
+
+    function syncSelectAll() {
+      if (!selectAll) return;
+      selectAll.checked = checks.length > 0 && checks.every(function (c) { return c.checked; });
+    }
+
+    // Restore selections on load (after Back, refresh, pagination, filter change).
+    const selected = loadSelection();
+    checks.forEach(function (c) {
+      if (selected.has(c.value)) c.checked = true;
+    });
+    syncSelectAll();
+
+    // Persist on every change.
+    checks.forEach(function (c) {
+      c.addEventListener("change", function () {
+        const current = loadSelection();
+        if (c.checked) current.add(c.value); else current.delete(c.value);
+        saveSelection(current);
+        syncSelectAll();
+      });
+    });
+
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        const current = loadSelection();
+        checks.forEach(function (c) {
+          c.checked = selectAll.checked;
+          if (selectAll.checked) current.add(c.value); else current.delete(c.value);
+        });
+        saveSelection(current);
+      });
+    }
+
+    // Clear stored selection once a replay is actually submitted, so the next
+    // visit to the list starts clean.
+    const form = document.getElementById("replay-form");
+    if (form) {
+      form.addEventListener("submit", function () {
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+      });
+    }
+  })();
+</script>
+{% endblock %}
