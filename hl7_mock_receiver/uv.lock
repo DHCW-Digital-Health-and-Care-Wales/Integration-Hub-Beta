@@ -386,6 +386,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "metric-sender-lib" },
     { name = "otel-lib" },
     { name = "pyjwt" },
     { name = "setuptools" },
@@ -397,6 +398,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
     { name = "otel-lib", directory = "../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=82.0.0" },
@@ -408,6 +410,38 @@ dev = [
     { name = "bandit", specifier = "==1.9.2" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.15.0" },
+]
+
+[[package]]
+name = "metric-sender-lib"
+version = "0.1.0"
+source = { directory = "../shared_libs/metric_sender_lib" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "azure-identity" },
+    { name = "azure-monitor-opentelemetry" },
+    { name = "idna" },
+    { name = "pyjwt" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
+    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "idna", specifier = ">=3.15" },
+    { name = "pyjwt", specifier = ">=2.13.0" },
+    { name = "setuptools", specifier = ">=82.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.9.1" },
+    { name = "mypy", specifier = ">=1.18.2" },
+    { name = "ruff", specifier = ">=0.14.8" },
 ]
 
 [[package]]
