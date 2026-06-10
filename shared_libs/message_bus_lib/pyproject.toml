@@ -21,10 +21,12 @@ dependencies = [
     "pyjwt>=2.13.0",
     "urllib3>=2.6.3",
     "setuptools>=82.0.0",
+  "metric-sender-lib",
     "otel-lib",
 ]  
 
 [tool.uv.sources]
+metric-sender-lib = { path = "../metric_sender_lib" }
 otel-lib = { path = "../otel_lib" }
 
 [dependency-groups]
