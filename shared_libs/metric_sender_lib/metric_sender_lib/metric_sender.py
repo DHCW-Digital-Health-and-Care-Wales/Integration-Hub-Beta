@@ -72,7 +72,19 @@ class MetricSender:
 
         try:
             credential = self._get_credential()
-            configure_azure_monitor(credential=credential)
+            configure_azure_monitor(
+                credential=credential,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": False},
+                    "django": {"enabled": False},
+                    "fastapi": {"enabled": False},
+                    "flask": {"enabled": False},
+                    "psycopg2": {"enabled": False},
+                    "requests": {"enabled": False},
+                    "urllib": {"enabled": False},
+                    "urllib3": {"enabled": False},
+                },
+            )
             self._meter = metrics.get_meter(__name__)
             logger.info("Azure Monitor metrics initialized successfully")
         except Exception as e:
