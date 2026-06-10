@@ -208,6 +208,14 @@ class MessageReceiverClient:
             # Catch unexpected SDK-internal errors such as AttributeError when the underlying
             # AMQP session is None after a dropped connection (pyamqp transport bug). The receiver
             # is created fresh on each call so there is no stale state — just schedule a retry.
+            if self._is_stale_amqp_session_error(exc):
+                logger.warning(
+                    "Detected stale AMQP session state in Service Bus client. Resetting client before retry."
+                )
+                try:
+                    self.sb_client.close()
+                except Exception as close_exc:
+                    logger.warning("Failed to close Service Bus client during stale-session recovery: %s", close_exc)
             logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
             self._set_delay_before_retry()
         finally:
@@ -235,6 +243,10 @@ class MessageReceiverClient:
             if time.time() < self.next_retry_time:
                 return False
         return True
+
+    @staticmethod
+    def _is_stale_amqp_session_error(exc: Exception) -> bool:
+        return isinstance(exc, AttributeError) and "create_receiver_link" in str(exc)
 
     def _clear_retry_state(self) -> None:
         self.retry_attempt = 0
