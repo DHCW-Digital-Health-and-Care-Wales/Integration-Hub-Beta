@@ -18,6 +18,10 @@ class EventLogger:
     def __init__(self, workflow_id: str, microservice_id: str) -> None:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
+        # Set service name for OTel (used by Azure Monitor exporter as AppRoleName)
+        if not os.getenv("OTEL_SERVICE_NAME"):
+            os.environ["OTEL_SERVICE_NAME"] = microservice_id
+        
         connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
         ).strip()

@@ -50,6 +50,9 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
         logger.debug("OpenTelemetry already configured — skipping re-initialisation.")
         return True
 
+    # Set service name via standard OTel environment variable (used by Azure SDK)
+    os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
+
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
 
     if connection_string:
@@ -70,8 +73,8 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     try:
         credential = _get_credential()
 
-        # azure-monitor-opentelemetry sets up the TracerProvider internally; we
-        # only need to supply the resource so the service.name is correct.
+    # azure-monitor-opentelemetry configures the TracerProvider and MeterProvider
+    # internally; we provide credential and resource for explicit service metadata.
         #
         # Disable ALL auto-instrumentors — our HL7 services use manual
         # telemetry only (EventLogger, wrap_handler spans).  Active
