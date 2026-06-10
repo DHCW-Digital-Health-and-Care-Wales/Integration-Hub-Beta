@@ -5,7 +5,9 @@
 (function () {
   "use strict";
 
-  const REFRESH_INTERVAL = window.REFRESH_INTERVAL || 30; // seconds
+  const REFRESH_INTERVAL   = window.REFRESH_INTERVAL   || 30; // seconds
+  const WARN_THRESHOLD     = window.QUEUE_WARN_THRESHOLD || 10;
+  const CRIT_THRESHOLD     = window.QUEUE_CRIT_THRESHOLD || 50;
 
   /* ------------------------------------------------------------------ */
   /* Countdown timer                                                      */
@@ -38,6 +40,14 @@
     el.classList.add("counter-pop");
     el.textContent = newVal;
     el.addEventListener("animationend", () => el.classList.remove("counter-pop"), { once: true });
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   /* ------------------------------------------------------------------ */
@@ -162,27 +172,65 @@
 
   /* ------------------------------------------------------------------ */
   /* Update queue table                                                    */
+  /* Full rebuild on every poll so rows are added/removed as queues       */
+  /* transition between healthy and non-healthy states.                   */
   /* ------------------------------------------------------------------ */
+  function queueStatus(q) {
+    if (q.active_message_count >= CRIT_THRESHOLD) return "critical";
+    if (q.active_message_count >= WARN_THRESHOLD || q.dead_letter_message_count > 0) return "warning";
+    return "healthy";
+  }
+
   function updateQueueTable(queues) {
-    for (const q of queues) {
-      const row = document.querySelector(`tr[data-queue-name="${q.name}"]`);
-      if (!row) continue;
+    const table = document.getElementById("queue-table");
+    if (!table) return;
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
 
-      const activeEl = row.querySelector("[data-col='active']");
-      const dlqEl    = row.querySelector("[data-col='dlq']");
+    // Filter to only non-healthy queues
+    const nonHealthy = queues.filter(q => queueStatus(q) !== "healthy");
 
-      if (activeEl) {
-        animateCounter(activeEl, q.active_message_count);
-        activeEl.className = "count-cell " +
-          (q.active_message_count >= 50 ? "critical" :
-           q.active_message_count >= 10 ? "warning"  : "zero");
-      }
-      if (dlqEl) {
-        animateCounter(dlqEl, q.dead_letter_message_count);
-        dlqEl.className = "count-cell " +
-          (q.dead_letter_message_count > 0 ? "dlq-warn" : "zero");
-      }
+    // Sort: critical first, then warning; within each group by active desc
+    const statusOrder = { critical: 0, warning: 1 };
+    nonHealthy.sort((a, b) => {
+      const diff = statusOrder[queueStatus(a)] - statusOrder[queueStatus(b)];
+      if (diff !== 0) return diff;
+      return b.active_message_count - a.active_message_count;
+    });
+
+    const rows = [];
+    for (const q of nonHealthy) {
+      const status = queueStatus(q);
+      const active = q.active_message_count;
+      const dlq    = q.dead_letter_message_count;
+      const sched  = q.scheduled_message_count || 0;
+
+      const activeClass = status === "critical" ? "critical"
+                        : active >= WARN_THRESHOLD ? "warning" : "zero";
+      const dlqClass = dlq > 0 ? "dlq-warn" : "zero";
+
+      const tr = document.createElement("tr");
+      tr.dataset.queueName = q.name;
+      tr.innerHTML =
+        `<td class="queue-name-cell" data-col="name">${escapeHtml(q.name)}</td>` +
+        `<td class="count-cell text-end ${activeClass}" data-col="active">${active}</td>` +
+        `<td class="count-cell text-end ${dlqClass}" data-col="dlq">${dlq}</td>` +
+        `<td class="count-cell text-end zero" data-col="sched">${sched}</td>` +
+        `<td><span class="status-badge ${status}">${status}</span></td>`;
+      rows.push(tr);
     }
+
+    // All-clear row when every queue is healthy
+    if (rows.length === 0) {
+      const tr = document.createElement("tr");
+      const label = window.I18N_ALL_QUEUES_HEALTHY || "All queues healthy";
+      tr.innerHTML =
+        `<td colspan="5" class="text-center" style="padding:1rem;color:var(--accent-green);">` +
+        `<i class="bi bi-check-circle me-1"></i> ${escapeHtml(label)}</td>`;
+      rows.push(tr);
+    }
+
+    tbody.replaceChildren(...rows);
   }
 
   /* ------------------------------------------------------------------ */

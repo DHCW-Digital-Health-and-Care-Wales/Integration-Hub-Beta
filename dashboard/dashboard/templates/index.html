@@ -3,7 +3,12 @@
 {% block title %}{{ _("Overview") }}{% endblock %}
 
 {% block head %}
-<script>window.REFRESH_INTERVAL = {{ refresh_interval }};</script>
+<script>
+  window.REFRESH_INTERVAL      = {{ refresh_interval }};
+  window.QUEUE_WARN_THRESHOLD  = {{ queue_warn_threshold }};
+  window.QUEUE_CRIT_THRESHOLD  = {{ queue_crit_threshold }};
+  window.I18N_ALL_QUEUES_HEALTHY = {{ _("All queues healthy") | tojson }};
+</script>
 {% endblock %}
 
 {% block content %}
@@ -479,11 +484,11 @@
             </thead>
             <tbody>
               {% set critical_qs = status.queues
-                 | selectattr('active_message_count', 'ge', 50)
+                 | selectattr('active_message_count', 'ge', queue_crit_threshold)
                  | sort(attribute='active_message_count', reverse=True)
                  | list %}
               {% set noncritical_qs = status.queues
-                 | rejectattr('active_message_count', 'ge', 50)
+                 | rejectattr('active_message_count', 'ge', queue_crit_threshold)
                  | sort(attribute='active_message_count', reverse=True)
                  | list %}
               {# Critical queues first, sorted by active message count descending #}
@@ -499,14 +504,14 @@
                 <td><span class="status-badge critical">critical</span></td>
               </tr>
               {% endfor %}
-              {# Warning queues next: non-critical but active >= 10 or has DLQ messages, sorted by active desc #}
+              {# Warning queues next: non-critical but active >= warn threshold or has DLQ messages, sorted by active desc #}
               {% for q in noncritical_qs %}
               {% set active = q.active_message_count %}
               {% set dlq = q.dead_letter_message_count %}
-              {% if active >= 10 or dlq > 0 %}
+              {% if active >= queue_warn_threshold or dlq > 0 %}
               <tr data-queue-name="{{ q.name }}">
                 <td class="queue-name-cell" data-col="name">{{ q.name }}</td>
-                <td class="count-cell text-end {{ 'warning' if active >= 10 else 'zero' }}"
+                <td class="count-cell text-end {{ 'warning' if active >= queue_warn_threshold else 'zero' }}"
                     data-col="active">{{ active }}</td>
                 <td class="count-cell text-end {{ 'dlq-warn' if dlq > 0 else 'zero' }}"
                     data-col="dlq">{{ dlq }}</td>
@@ -517,7 +522,7 @@
               {% endfor %}
               {# All-clear row shown when every queue is healthy #}
               {% if critical_qs | length == 0
-                 and noncritical_qs | selectattr('active_message_count', 'ge', 10) | list | length == 0
+                 and noncritical_qs | selectattr('active_message_count', 'ge', queue_warn_threshold) | list | length == 0
                  and noncritical_qs | selectattr('dead_letter_message_count', 'gt', 0) | list | length == 0 %}
               <tr>
                 <td colspan="5" class="text-center" style="padding: 1rem; color: var(--accent-green);">

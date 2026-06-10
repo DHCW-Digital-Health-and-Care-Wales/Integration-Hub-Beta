@@ -450,6 +450,8 @@ def index() -> str:
         no_alarm1_configured=not any(r.get("alarm_enabled", False) for r in cfg1.get("rules", {}).values()),
         no_alarm2_configured=not any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values()),
         no_alarm3_configured=not any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values()),
+        queue_warn_threshold=config.QUEUE_WARNING_THRESHOLD,
+        queue_crit_threshold=config.QUEUE_CRITICAL_THRESHOLD,
     )
 
 
