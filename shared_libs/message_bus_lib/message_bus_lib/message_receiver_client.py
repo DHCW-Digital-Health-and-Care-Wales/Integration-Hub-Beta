@@ -15,6 +15,7 @@ from azure.servicebus import (
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
 from otel_lib import extract_trace_context
+from metric_sender_lib.metric_sender_lib.metric_sender import MetricSender
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,12 @@ class MessageReceiverClient:
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
+        self.metric_sender = MetricSender(
+            workflow_id="your_workflow",        # set properly
+            microservice_id="hl7_server",       # or env/config
+            health_board="your_board",
+            peer_service="service_bus",
+        )
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
         """Process messages one at a time, stopping and abandoning on the first failure."""
@@ -201,14 +208,24 @@ class MessageReceiverClient:
 
     def _set_delay_before_retry(self) -> None:
         self.next_retry_time = time.time() + self.delay
+
         logger.info(
             "Scheduled waiting for %d seconds before next attempt (%d) to retry failed message",
             self.delay,
             self.retry_attempt,
         )
+        self.metric_sender.send_gauge_metric(
+            key="retry_delay_seconds",
+            value=self.delay,
+            attributes={
+                "queue": self.queue_name,
+                "attempt": self.retry_attempt,
+            },
+        )
+        # ✅ IMPORTANT: keep existing retry logic
         self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
         self.retry_attempt += 1
-
+    
     def close(self) -> None:
         logger.debug("ServiceBusReceiverClient closed.")
 
