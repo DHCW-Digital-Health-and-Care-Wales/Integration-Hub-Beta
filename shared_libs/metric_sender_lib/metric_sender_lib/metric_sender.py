@@ -27,6 +27,10 @@ class MetricSender:
         self._counters: Dict[str, Counter] = {}
         self._meter = None
         
+        # Set service name for OTel (used by Azure Monitor exporter as AppRoleName)
+        if not os.getenv("OTEL_SERVICE_NAME"):
+            os.environ["OTEL_SERVICE_NAME"] = microservice_id
+        
         connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
         ).strip()
