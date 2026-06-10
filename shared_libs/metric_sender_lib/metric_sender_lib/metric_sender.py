@@ -6,6 +6,7 @@ from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry import metrics
 from opentelemetry.metrics import Counter
+from opentelemetry.metrics import Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ class MetricSender:
         self.microservice_id = microservice_id
         self.health_board = health_board
         self.peer_service = peer_service
+        self._histograms: Dict[str, Histogram] = {}
         self._counters: Dict[str, Counter] = {}
-
+        self._meter = None
+        
         connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
         ).strip()
@@ -134,6 +137,33 @@ class MetricSender:
             logger.error(f"Failed to send metric '{key}': {e}")
             raise
 
+    def send_gauge_metric(
+        self, key: str, value: float, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        try:
+            metric_attributes = {
+                "workflow_id": self.workflow_id,
+                "microservice_id": self.microservice_id,
+                "health_board": self.health_board,
+                "peer_service": self.peer_service,
+            }
+
+            if attributes:
+                metric_attributes.update(attributes)
+
+            if self.azure_monitor_enabled and self._meter:
+                histogram = self._get_or_create_histogram(key)
+                histogram.record(value, attributes=metric_attributes)
+                logger.debug(
+                    f"Gauge metric sent: {key}={value} with attributes: {metric_attributes}"
+                )
+            else:
+                logger.info(
+                    f"Integration Hub Metric (local log): {key}={value}, attributes: {metric_attributes}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to send gauge metric '{key}': {e}")
+
     def send_message_received_metric(
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -143,3 +173,13 @@ class MetricSender:
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
         self.send_metric(key="messages_sent", value=1, attributes=attributes)
+
+    def _get_or_create_histogram(self, key: str) -> Histogram:
+        if key not in self._histograms:
+            self._histograms[key] = self._meter.create_histogram(
+                name=key,
+                description=f"Histogram for {key}",
+                unit="s",  # seconds
+            )
+            logger.debug(f"Created new histogram for metric: {key}")
+        return self._histograms[key]
