@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from contextlib import AbstractContextManager
 from types import TracebackType
@@ -26,12 +27,21 @@ class MessageReceiverClient:
     MAX_WAIT_TIME_SECONDS = 60
     LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
 
+    DEFAULT_WORKFLOW_ID = "unknown-workflow"
+    DEFAULT_MICROSERVICE_ID = "unknown-microservice"
+    DEFAULT_HEALTH_BOARD = "UNKNOWN"
+    DEFAULT_PEER_SERVICE = "service_bus"
+
     def __init__(
         self,
         sb_client: ServiceBusClient,
         queue_name: str,
         session_id: Optional[str] = None,
         propagate_trace_context: bool = True,
+        workflow_id: Optional[str] = None,
+        microservice_id: Optional[str] = None,
+        health_board: Optional[str] = None,
+        peer_service: Optional[str] = None,
     ):
         self.sb_client = sb_client
         self.queue_name = queue_name
@@ -40,12 +50,45 @@ class MessageReceiverClient:
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
-        self.metric_sender = MetricSender(
-            workflow_id="your_workflow",        # set properly
-            microservice_id="hl7_server",       # or env/config
-            health_board="your_board",
-            peer_service="service_bus",
+
+        resolved_workflow_id = self._resolve_metric_dimension(
+            explicit_value=workflow_id,
+            env_var_name="WORKFLOW_ID",
+            default=self.DEFAULT_WORKFLOW_ID,
         )
+        resolved_microservice_id = self._resolve_metric_dimension(
+            explicit_value=microservice_id,
+            env_var_name="MICROSERVICE_ID",
+            default=self.DEFAULT_MICROSERVICE_ID,
+        )
+        resolved_health_board = self._resolve_metric_dimension(
+            explicit_value=health_board,
+            env_var_name="HEALTH_BOARD",
+            default=self.DEFAULT_HEALTH_BOARD,
+        )
+        resolved_peer_service = self._resolve_metric_dimension(
+            explicit_value=peer_service,
+            env_var_name="PEER_SERVICE",
+            default=self.DEFAULT_PEER_SERVICE,
+        )
+
+        self.metric_sender = MetricSender(
+            workflow_id=resolved_workflow_id,
+            microservice_id=resolved_microservice_id,
+            health_board=resolved_health_board,
+            peer_service=resolved_peer_service,
+        )
+
+    @staticmethod
+    def _resolve_metric_dimension(explicit_value: Optional[str], env_var_name: str, default: str) -> str:
+        if explicit_value and explicit_value.strip():
+            return explicit_value.strip()
+
+        env_value = os.getenv(env_var_name, "").strip()
+        if env_value:
+            return env_value
+
+        return default
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
         """Process messages one at a time, stopping and abandoning on the first failure."""
