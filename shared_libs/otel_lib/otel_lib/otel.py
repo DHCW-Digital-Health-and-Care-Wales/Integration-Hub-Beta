@@ -48,6 +48,9 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
         logger.debug("OpenTelemetry already configured — skipping re-initialisation.")
         return True
 
+    # Set service name via standard OTel environment variable (used by Azure SDK)
+    os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
+
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
 
     if connection_string:
@@ -66,8 +69,9 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
 def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     """Configure OTel to export to Azure Monitor / Application Insights."""
     try:
-        # azure-monitor-opentelemetry sets up the TracerProvider internally; we
-        # only need to supply the resource so the service.name is correct.
+        # azure-monitor-opentelemetry configures the TracerProvider and MeterProvider
+        # internally. Service name is read from OTEL_SERVICE_NAME env var which we've
+        # already set in configure_otel().
         #
         # Disable ALL auto-instrumentors — our HL7 services use manual
         # telemetry only (EventLogger, wrap_handler spans).  Active
@@ -77,12 +81,6 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
         # without bound inside the MeterProvider and cause steadily growing
         # CPU usage over the lifetime of the container.
         configure_azure_monitor(
-            resource=Resource.create(
-                {
-                    "service.name": service_name,
-                    "service.version": service_version,
-                }
-            ),
             instrumentation_options={
                 "azure_sdk": {"enabled": False},
                 "django":    {"enabled": False},
