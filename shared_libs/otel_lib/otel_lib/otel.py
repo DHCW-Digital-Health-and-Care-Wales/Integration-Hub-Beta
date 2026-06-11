@@ -10,6 +10,12 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 
 try:
+    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+except ImportError:  # pragma: no cover
+    DefaultAzureCredential = None  # type: ignore[assignment]
+    ManagedIdentityCredential = None  # type: ignore[assignment]
+
+try:
     from azure.monitor.opentelemetry import configure_azure_monitor  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
     configure_azure_monitor = None  # type: ignore[assignment]
@@ -81,6 +87,7 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
         # without bound inside the MeterProvider and cause steadily growing
         # CPU usage over the lifetime of the container.
         configure_azure_monitor(
+            credential=_get_credential(),
             instrumentation_options={
                 "azure_sdk": {"enabled": False},
                 "django":    {"enabled": False},
@@ -96,6 +103,24 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     except Exception:
         logger.exception("Failed to configure Azure Monitor exporter — falling back to no-op.")
         _configure_noop(service_name, service_version)
+
+
+def _get_credential() -> Any:
+    """Return Azure credential for App Insights ingestion.
+
+    Uses INSIGHTS_UAMI_CLIENT_ID when provided; otherwise falls back to
+    DefaultAzureCredential.
+    """
+    if ManagedIdentityCredential is None or DefaultAzureCredential is None:
+        raise ImportError("azure.identity is required for Entra-authenticated Azure Monitor export")
+
+    uami_client_id = os.getenv("INSIGHTS_UAMI_CLIENT_ID", "").strip()
+    if uami_client_id:
+        logger.info("Using ManagedIdentityCredential for OTel exporter")
+        return ManagedIdentityCredential(client_id=uami_client_id)
+
+    logger.info("Using DefaultAzureCredential for OTel exporter")
+    return DefaultAzureCredential()
 
 
 def _configure_noop(service_name: str, service_version: str) -> None:
