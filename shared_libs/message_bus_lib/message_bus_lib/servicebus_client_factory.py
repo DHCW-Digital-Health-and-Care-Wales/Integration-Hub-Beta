@@ -50,12 +50,30 @@ class ServiceBusClientFactory:
     def create_topic_sender_client(self, topic_name: str, session_id: Optional[str] = None) -> MessageSenderClient:
         self.logger.debug("Creating message sender client for topic '%s' with session_id '%s'", topic_name, session_id)
         sender: ServiceBusSender = self.servicebus_client.get_topic_sender(topic_name=topic_name)
-        return MessageSenderClient(sender, topic_name, session_id)
+        return MessageSenderClient(
+            sender,
+            topic_name,
+            session_id,
+            recreate_sender=lambda: self._rebuild_topic_sender(topic_name),
+        )
 
     def create_queue_sender_client(self, queue_name: str, session_id: Optional[str] = None) -> MessageSenderClient:
         self.logger.debug("Creating message sender client for queue '%s' with session_id '%s'", queue_name, session_id)
         sender: ServiceBusSender = self.servicebus_client.get_queue_sender(queue_name=queue_name)
-        return MessageSenderClient(sender, queue_name, session_id)
+        return MessageSenderClient(
+            sender,
+            queue_name,
+            session_id,
+            recreate_sender=lambda: self._rebuild_queue_sender(queue_name),
+        )
+
+    def _rebuild_queue_sender(self, queue_name: str) -> ServiceBusSender:
+        self._rebuild_servicebus_client()
+        return self.servicebus_client.get_queue_sender(queue_name=queue_name)
+
+    def _rebuild_topic_sender(self, topic_name: str) -> ServiceBusSender:
+        self._rebuild_servicebus_client()
+        return self.servicebus_client.get_topic_sender(topic_name=topic_name)
 
     def create_message_receiver_client(
         self, queue_name: str, session_id: Optional[str] = None
