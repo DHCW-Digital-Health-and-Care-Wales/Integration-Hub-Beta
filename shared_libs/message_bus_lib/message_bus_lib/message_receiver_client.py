@@ -42,8 +42,10 @@ class MessageReceiverClient:
         microservice_id: Optional[str] = None,
         health_board: Optional[str] = None,
         peer_service: Optional[str] = None,
+        recreate_sb_client: Optional[Callable[[], ServiceBusClient]] = None,
     ):
         self.sb_client = sb_client
+        self._recreate_sb_client = recreate_sb_client
         self.queue_name = queue_name
         self.session_id = session_id
         self.propagate_trace_context = propagate_trace_context
@@ -216,6 +218,15 @@ class MessageReceiverClient:
                     self.sb_client.close()
                 except Exception as close_exc:
                     logger.warning("Failed to close Service Bus client during stale-session recovery: %s", close_exc)
+                if self._recreate_sb_client:
+                    try:
+                        self.sb_client = self._recreate_sb_client()
+                        logger.info("Service Bus client recreated after stale-session recovery")
+                    except Exception as recreate_exc:
+                        logger.warning(
+                            "Failed to recreate Service Bus client during stale-session recovery: %s",
+                            recreate_exc,
+                        )
             logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
             self._set_delay_before_retry()
         finally:
@@ -280,7 +291,7 @@ class MessageReceiverClient:
         # ✅ IMPORTANT: keep existing retry logic
         self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
         self.retry_attempt += 1
-    
+
     def close(self) -> None:
         logger.debug("ServiceBusReceiverClient closed.")
 

@@ -19,10 +19,10 @@ TIMESTAMP_IN_PAST = 1760047200.0  # Fixed timestamp for testing
 
 class TestMessageReceiverClient(unittest.TestCase):
     def setUp(self) -> None:
-        service_bus_client = MagicMock()
-        self.service_bus_receiver_client = service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        self.service_bus_client = MagicMock()
+        self.service_bus_receiver_client = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
         queue_name = "test-queue"
-        self.message_receiver_client = MessageReceiverClient(service_bus_client, queue_name)
+        self.message_receiver_client = MessageReceiverClient(self.service_bus_client, queue_name)
 
     @patch("time.sleep", return_value=None)
     def test_receive_messages_calls_complete_when_valid_message(self, sleep_mock: MagicMock) -> None:
@@ -157,6 +157,24 @@ class TestMessageReceiverClient(unittest.TestCase):
         # Assert
         self.assertEqual(self.message_receiver_client.retry_attempt, 1)
         self.assertEqual(self.message_receiver_client.delay, self.message_receiver_client.INITIAL_DELAY_SECONDS * 2)
+        self.assertIsNotNone(self.message_receiver_client.next_retry_time)
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_recreates_client_on_stale_session_error(self, _sleep_mock: MagicMock) -> None:
+        # Arrange
+        stale_error = AttributeError("'NoneType' object has no attribute 'create_receiver_link'")
+        self.service_bus_client.get_queue_receiver.return_value.__enter__.side_effect = stale_error
+        replacement_client = MagicMock()
+        recreate_client = MagicMock(return_value=replacement_client)
+        self.message_receiver_client._recreate_sb_client = recreate_client
+
+        # Act
+        self.message_receiver_client.receive_messages(1, lambda msg: True)
+
+        # Assert
+        self.service_bus_client.close.assert_called_once()
+        recreate_client.assert_called_once_with()
+        self.assertIs(self.message_receiver_client.sb_client, replacement_client)
         self.assertIsNotNone(self.message_receiver_client.next_retry_time)
 
     @patch("time.sleep", return_value=None)
