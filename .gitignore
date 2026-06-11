@@ -177,6 +177,7 @@ tmp
 .DS_Store
 
 dashboard/alarm*_state.json
-dashboard/alarm1_config.json
-dashboard/alarm2_config.json
-dashboard/alarm3_config.json
+dashboard/alarm*_config.json
+
+# Local developer scripts (not committed to source control)
+scripts/
