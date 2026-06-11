@@ -45,6 +45,17 @@ class TestServiceBusClientFactoryClose(unittest.TestCase):
 
         self.mock_sb_client.close.assert_called_once()
 
+    @patch("message_bus_lib.servicebus_client_factory.ServiceBusClient")
+    def test_rebuild_servicebus_client_replaces_underlying_client(self, mock_sb_cls: MagicMock) -> None:
+        replacement_client = MagicMock()
+        mock_sb_cls.from_connection_string.return_value = replacement_client
+
+        rebuilt = self.factory._rebuild_servicebus_client()
+
+        self.mock_sb_client.close.assert_called_once()
+        self.assertIs(rebuilt, replacement_client)
+        self.assertIs(self.factory.servicebus_client, replacement_client)
+
 class TestCreateMessageStoreClient(unittest.TestCase):
     """Tests for ServiceBusClientFactory.create_message_store_client."""
 
