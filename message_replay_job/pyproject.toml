@@ -11,7 +11,7 @@ dependencies = [
   "message-bus-lib",
   "event-logger-lib",
   "setuptools>=82.0.0",
-  "pyjwt>=2.12.0",
+  "pyjwt>=2.13.0",
 ]
 
 [dependency-groups]
