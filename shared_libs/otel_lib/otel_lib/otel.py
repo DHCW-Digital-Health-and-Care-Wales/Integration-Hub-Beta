@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Any
 
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 import opentelemetry.context as otel_context
 import opentelemetry.trace as otel_trace
 from opentelemetry import trace
@@ -66,6 +67,8 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
 def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     """Configure OTel to export to Azure Monitor / Application Insights."""
     try:
+        credential = _get_credential()
+
         # azure-monitor-opentelemetry sets up the TracerProvider internally; we
         # only need to supply the resource so the service.name is correct.
         #
@@ -77,6 +80,7 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
         # without bound inside the MeterProvider and cause steadily growing
         # CPU usage over the lifetime of the container.
         configure_azure_monitor(
+            credential=credential,
             resource=Resource.create(
                 {
                     "service.name": service_name,
@@ -98,6 +102,21 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     except Exception:
         logger.exception("Failed to configure Azure Monitor exporter — falling back to no-op.")
         _configure_noop(service_name, service_version)
+
+
+def _get_credential() -> ManagedIdentityCredential | DefaultAzureCredential:
+    """Return an Azure credential for Application Insights ingestion.
+
+    Uses user-assigned managed identity when INSIGHTS_UAMI_CLIENT_ID is set,
+    otherwise falls back to DefaultAzureCredential.
+    """
+    uami_client_id = os.getenv("INSIGHTS_UAMI_CLIENT_ID", "").strip()
+    if uami_client_id:
+        logger.info("Using ManagedIdentityCredential with client_id: %s", uami_client_id)
+        return ManagedIdentityCredential(client_id=uami_client_id)
+
+    logger.info("Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)")
+    return DefaultAzureCredential()
 
 
 def _configure_noop(service_name: str, service_version: str) -> None:
