@@ -2,9 +2,9 @@ import logging
 import os
 from typing import Any
 
-from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 import opentelemetry.context as otel_context
 import opentelemetry.trace as otel_trace
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from opentelemetry import trace
 from opentelemetry.propagate import extract, inject
 from opentelemetry.sdk.resources import Resource
@@ -14,6 +14,7 @@ try:
     from azure.monitor.opentelemetry import configure_azure_monitor  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
     configure_azure_monitor = None  # type: ignore[assignment]
+
 
 logger = logging.getLogger(__name__)
 
