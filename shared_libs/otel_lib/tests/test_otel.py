@@ -48,10 +48,13 @@ class TestConfigureOtel(unittest.TestCase):
         clear=True,
     )
     def test_configure_otel_with_connection_string_calls_azure_monitor(self) -> None:
-        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure:
+        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure, \
+             patch("otel_lib.otel.DefaultAzureCredential") as mock_default_credential:
             configure_otel("test-service")
             mock_configure.assert_called_once()
             _, kwargs = mock_configure.call_args
+            self.assertIn("credential", kwargs)
+            self.assertEqual(kwargs["credential"], mock_default_credential.return_value)
             opts = kwargs["instrumentation_options"]
             # Every supported auto-instrumentor must be disabled — our services
             # use manual telemetry only.  Active instrumentors (especially
@@ -108,6 +111,36 @@ class TestConfigureOtel(unittest.TestCase):
             configure_otel("test-service")
             configure_otel("test-service-again")
             mock_configure.assert_called_once()
+
+    @patch.dict(
+        "os.environ",
+        {
+            "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key;IngestionEndpoint=https://example.com",
+            "INSIGHTS_UAMI_CLIENT_ID": "uami-client-id",
+        },
+        clear=True,
+    )
+    def test_configure_otel_with_uami_uses_managed_identity_credential(self) -> None:
+        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure, \
+             patch("otel_lib.otel.ManagedIdentityCredential") as mock_mi_credential:
+            configure_otel("test-service")
+            _, kwargs = mock_configure.call_args
+            self.assertEqual(kwargs["credential"], mock_mi_credential.return_value)
+
+    @patch.dict(
+        "os.environ",
+        {
+            "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key;IngestionEndpoint=https://example.com",
+            "INSIGHTS_UAMI_CLIENT_ID": "   ",
+        },
+        clear=True,
+    )
+    def test_configure_otel_with_blank_uami_falls_back_to_default_credential(self) -> None:
+        with patch("otel_lib.otel.configure_azure_monitor") as mock_configure, \
+             patch("otel_lib.otel.DefaultAzureCredential") as mock_default_credential:
+            configure_otel("test-service")
+            _, kwargs = mock_configure.call_args
+            self.assertEqual(kwargs["credential"], mock_default_credential.return_value)
 
     @patch.dict("os.environ", {}, clear=True)
     def test_configure_otel_sets_service_name(self) -> None:
