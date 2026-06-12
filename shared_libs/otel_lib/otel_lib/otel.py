@@ -112,10 +112,10 @@ def _get_credential() -> ManagedIdentityCredential | DefaultAzureCredential:
     """
     uami_client_id = os.getenv("INSIGHTS_UAMI_CLIENT_ID", "").strip()
     if uami_client_id:
-        logger.info("Using ManagedIdentityCredential with client_id: %s", uami_client_id)
+        logger.debug("Using ManagedIdentityCredential (INSIGHTS_UAMI_CLIENT_ID set)")
         return ManagedIdentityCredential(client_id=uami_client_id)
 
-    logger.info("Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)")
+    logger.debug("Using DefaultAzureCredential (INSIGHTS_UAMI_CLIENT_ID not set)")
     return DefaultAzureCredential()
 
 
