@@ -415,13 +415,12 @@ def _build_alarm_map() -> dict[str, dict]:
 
 @app.route("/set-language", methods=["POST"])
 def set_language() -> Response:
-    """Set the UI language preference in the session and redirect to a safe default page."""
+    """Set the UI language preference in the session and redirect back to the referring page."""
     lang = request.form.get("lang", "en")
     if lang in ("en", "cy"):
         session["lang"] = lang
 
-    fallback = url_for("index")
-    return make_response(redirect(fallback))
+    return make_response(redirect(request.referrer or url_for("index")))
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
