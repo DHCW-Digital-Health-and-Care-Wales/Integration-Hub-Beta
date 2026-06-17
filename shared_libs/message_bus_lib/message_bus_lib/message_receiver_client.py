@@ -198,6 +198,15 @@ class MessageReceiverClient:
                         logger.exception("Unexpected error processing %d message(s)", len(messages))
                         self._abort_message_processing(receiver, messages)
                         self._set_delay_before_retry()
+                else:
+                    if self.next_retry_time is not None:
+                        logger.info(
+                            "No messages received from queue '%s' during retry window — message may not yet be "
+                            "re-available; will poll again (attempt %d, next_retry_time was %.1fs ago)",
+                            self.queue_name,
+                            self.retry_attempt,
+                            time.time() - self.next_retry_time,
+                        )
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
