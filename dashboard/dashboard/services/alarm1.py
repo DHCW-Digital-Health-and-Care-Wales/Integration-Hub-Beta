@@ -16,6 +16,7 @@ The applicable inactivity trip point is determined by the current time period
 applies regardless of period.  Once a rule returns to healthy the last-alarm
 timestamp is cleared so the next inactivity event fires immediately.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,18 +33,19 @@ from dashboard.services.credentials import get_azure_credential
 log = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm1_config.json"
-STATE_PATH  = Path(__file__).parent.parent.parent / "alarm_state.json"
+STATE_PATH = Path(__file__).parent.parent.parent / "alarm_state.json"
 
 # Defaults
-DEFAULT_DAY_THRESHOLD     = 60
+DEFAULT_DAY_THRESHOLD = 60
 DEFAULT_EVENING_THRESHOLD = 120
 DEFAULT_WEEKEND_THRESHOLD = 240
-DEFAULT_ALERTING_GAP      = 60
+DEFAULT_ALERTING_GAP = 60
 
 
 # ---------------------------------------------------------------------------
 # Config / state persistence
 # ---------------------------------------------------------------------------
+
 
 def load_alarm_config() -> dict:
     """Load alarm config from JSON file. Returns empty config on missing/corrupt file."""
@@ -84,6 +86,7 @@ def _save_alarm_state(state: dict) -> None:
 # Time-period helpers
 # ---------------------------------------------------------------------------
 
+
 def get_current_period(now: datetime) -> str:
     """Return the current time period: 'day', 'evening', or 'weekend'.
 
@@ -91,17 +94,17 @@ def get_current_period(now: datetime) -> str:
     Day     : Monday–Friday 08:00–17:00 (UTC)
     Evening : Monday–Friday 17:00–08:00, excluding weekend window (UTC)
     """
-    weekday = now.weekday()   # 0 = Monday … 4 = Friday, 5 = Sat, 6 = Sun
+    weekday = now.weekday()  # 0 = Monday … 4 = Friday, 5 = Sat, 6 = Sun
     time_mins = now.hour * 60 + now.minute
-    DAY_START = 8 * 60    # 08:00
-    DAY_END   = 17 * 60   # 17:00
+    DAY_START = 8 * 60  # 08:00
+    DAY_END = 17 * 60  # 17:00
 
     # Weekend window: Fri 17:00 → Mon 08:00
-    if weekday == 4 and time_mins >= DAY_END:   # Friday after 17:00
+    if weekday == 4 and time_mins >= DAY_END:  # Friday after 17:00
         return "weekend"
-    if weekday in (5, 6):                        # Saturday, Sunday
+    if weekday in (5, 6):  # Saturday, Sunday
         return "weekend"
-    if weekday == 0 and time_mins < DAY_START:   # Monday before 08:00
+    if weekday == 0 and time_mins < DAY_START:  # Monday before 08:00
         return "weekend"
 
     # Day window: Mon–Fri 08:00–17:00
@@ -125,6 +128,7 @@ def _applicable_threshold(server_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _display_name(server_id: str) -> str:
     """Derive a human-readable display name from a Container App resource ID.
@@ -188,6 +192,7 @@ def _parse_dt(raw: object) -> datetime | None:
 # Log Analytics queries
 # ---------------------------------------------------------------------------
 
+
 def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
     """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (30-day window)."""
     if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
@@ -238,6 +243,7 @@ def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, dat
 # Email notification
 # ---------------------------------------------------------------------------
 
+
 def _send_alarm_email(
     rule_id: str,
     workflow_id: str,
@@ -258,8 +264,11 @@ def _send_alarm_email(
         return
 
     period = get_current_period(now)
-    period_label = {"day": "Day (Mon–Fri 08:00–17:00)", "evening": "Evening (Mon–Fri 17:00–08:00)",
-                    "weekend": "Weekend (Fri 17:00–Mon 08:00)"}.get(period, period.title())
+    period_label = {
+        "day": "Day (Mon–Fri 08:00–17:00)",
+        "evening": "Evening (Mon–Fri 17:00–08:00)",
+        "weekend": "Weekend (Fri 17:00–Mon 08:00)",
+    }.get(period, period.title())
     last_msg_str = last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"
     duration_str = _format_duration(minutes_since)
 
@@ -324,6 +333,7 @@ def _send_alarm_email(
 # Pause / unpause helpers
 # ---------------------------------------------------------------------------
 
+
 def pause_alarm_rule(rule_id: str, duration_minutes: int, reason: str = "") -> None:
     """Pause a specific Alarm 1 rule for ``duration_minutes``.
 
@@ -335,13 +345,20 @@ def pause_alarm_rule(rule_id: str, duration_minutes: int, reason: str = "") -> N
     state_rules = state.setdefault("rules", {})
     now = datetime.now(timezone.utc)
     paused_until = now + timedelta(minutes=duration_minutes)
-    state_rules.setdefault(rule_id, {}).update({
-        "paused_until": paused_until.isoformat(),
-        "pause_reason": reason.strip(),
-    })
+    state_rules.setdefault(rule_id, {}).update(
+        {
+            "paused_until": paused_until.isoformat(),
+            "pause_reason": reason.strip(),
+        }
+    )
     _save_alarm_state(state)
-    log.info("Alarm 1 rule %s paused for %d minutes (until %s). Reason: %s",
-             rule_id, duration_minutes, paused_until.isoformat(), reason or "(none)")
+    log.info(
+        "Alarm 1 rule %s paused for %d minutes (until %s). Reason: %s",
+        rule_id,
+        duration_minutes,
+        paused_until.isoformat(),
+        reason or "(none)",
+    )
 
 
 def unpause_alarm_rule(rule_id: str) -> None:
@@ -363,6 +380,7 @@ def unpause_alarm_rule(rule_id: str) -> None:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def get_alarm_status() -> list[dict]:
     """Evaluate Alarm 1 for all enabled rules and return their status rows.
 
@@ -379,18 +397,17 @@ def get_alarm_status() -> list[dict]:
     rules_cfg = cfg.get("rules", {})
 
     enabled_rules = [
-        (rid, rcfg) for rid, rcfg in rules_cfg.items()
-        if not rcfg.get("deleted") and rcfg.get("alarm_enabled", False)
+        (rid, rcfg) for rid, rcfg in rules_cfg.items() if not rcfg.get("deleted") and rcfg.get("alarm_enabled", False)
     ]
     if not enabled_rules:
         return []
 
     # Collect unique workflow_ids for the batch query
-    workflow_ids = list(dict.fromkeys(
-        rcfg.get("workflow_id", "").strip()
-        for _, rcfg in enabled_rules
-        if rcfg.get("workflow_id", "").strip()
-    ))
+    workflow_ids = list(
+        dict.fromkeys(
+            rcfg.get("workflow_id", "").strip() for _, rcfg in enabled_rules if rcfg.get("workflow_id", "").strip()
+        )
+    )
     last_times = get_last_message_times_by_workflow(workflow_ids)
     now = datetime.now(timezone.utc)
 
@@ -410,17 +427,20 @@ def get_alarm_status() -> list[dict]:
         paused_until = _parse_dt(rule_state.get("paused_until"))
         if paused_until and paused_until > now:
             pause_remaining = (paused_until - now).total_seconds() / 60
-            results.append(_build_row(
-                rid, rule_cfg,
-                last_msg=last_msg,
-                status="paused",
-                minutes_since=(now - last_msg).total_seconds() / 60 if last_msg else None,
-                cooldown_remaining=None,
-                now=now,
-                pause_remaining=pause_remaining,
-                pause_reason=rule_state.get("pause_reason", ""),
-                paused_until=paused_until,
-            ))
+            results.append(
+                _build_row(
+                    rid,
+                    rule_cfg,
+                    last_msg=last_msg,
+                    status="paused",
+                    minutes_since=(now - last_msg).total_seconds() / 60 if last_msg else None,
+                    cooldown_remaining=None,
+                    now=now,
+                    pause_remaining=pause_remaining,
+                    pause_reason=rule_state.get("pause_reason", ""),
+                    paused_until=paused_until,
+                )
+            )
             continue
         # Clear stale pause state if the pause window has elapsed.
         if paused_until and paused_until <= now:
@@ -433,14 +453,17 @@ def get_alarm_status() -> list[dict]:
             state_dirty = True
 
         if last_msg is None:
-            results.append(_build_row(
-                rid, rule_cfg,
-                last_msg=None,
-                status="unknown",
-                minutes_since=None,
-                cooldown_remaining=None,
-                now=now,
-            ))
+            results.append(
+                _build_row(
+                    rid,
+                    rule_cfg,
+                    last_msg=None,
+                    status="unknown",
+                    minutes_since=None,
+                    cooldown_remaining=None,
+                    now=now,
+                )
+            )
             continue
 
         minutes_since = (now - last_msg).total_seconds() / 60
@@ -450,14 +473,17 @@ def get_alarm_status() -> list[dict]:
             if rid in state_rules:
                 del state_rules[rid]
                 state_dirty = True
-            results.append(_build_row(
-                rid, rule_cfg,
-                last_msg=last_msg,
-                status="healthy",
-                minutes_since=minutes_since,
-                cooldown_remaining=None,
-                now=now,
-            ))
+            results.append(
+                _build_row(
+                    rid,
+                    rule_cfg,
+                    last_msg=last_msg,
+                    status="healthy",
+                    minutes_since=minutes_since,
+                    cooldown_remaining=None,
+                    now=now,
+                )
+            )
             continue
 
         alerting_gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
@@ -469,9 +495,16 @@ def get_alarm_status() -> list[dict]:
             state_rules.setdefault(rid, {})["last_alarm_at"] = now.isoformat()
             state_dirty = True
             cooldown_remaining = None
-            _send_alarm_email(rid, workflow_id, display_name, minutes_since,
-                              period_threshold, last_msg, now,
-                              email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False))
+            _send_alarm_email(
+                rid,
+                workflow_id,
+                display_name,
+                minutes_since,
+                period_threshold,
+                last_msg,
+                now,
+                email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+            )
         else:
             mins_since_alarm = (now - last_alarm_at).total_seconds() / 60
             if mins_since_alarm >= alerting_gap:
@@ -479,21 +512,31 @@ def get_alarm_status() -> list[dict]:
                 state_rules[rid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
-                _send_alarm_email(rid, workflow_id, display_name, minutes_since,
-                                  period_threshold, last_msg, now,
-                                  email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False))
+                _send_alarm_email(
+                    rid,
+                    workflow_id,
+                    display_name,
+                    minutes_since,
+                    period_threshold,
+                    last_msg,
+                    now,
+                    email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+                )
             else:
                 status = "suppressed"
                 cooldown_remaining = alerting_gap - mins_since_alarm
 
-        results.append(_build_row(
-            rid, rule_cfg,
-            last_msg=last_msg,
-            status=status,
-            minutes_since=minutes_since,
-            cooldown_remaining=cooldown_remaining,
-            now=now,
-        ))
+        results.append(
+            _build_row(
+                rid,
+                rule_cfg,
+                last_msg=last_msg,
+                status=status,
+                minutes_since=minutes_since,
+                cooldown_remaining=cooldown_remaining,
+                now=now,
+            )
+        )
 
     if state_dirty:
         _save_alarm_state({"rules": state_rules})
@@ -530,9 +573,7 @@ def _build_row(
         "current_period": period,
         "period_threshold_minutes": period_threshold,
         "last_message": last_msg.isoformat() if last_msg else None,
-        "last_message_display": (
-            last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"
-        ),
+        "last_message_display": (last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"),
         "status": status,
         "minutes_since": round(minutes_since, 1) if minutes_since is not None else None,
         "duration_label": _format_duration(minutes_since) if minutes_since is not None else "No data",

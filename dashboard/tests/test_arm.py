@@ -2,6 +2,7 @@
 Unit tests for Container App discovery (arm.py).
 Tests the classification and flow-building logic — no Azure calls.
 """
+
 from __future__ import annotations
 
 from typing import Any

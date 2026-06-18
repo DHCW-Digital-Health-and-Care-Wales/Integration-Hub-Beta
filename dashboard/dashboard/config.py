@@ -15,14 +15,85 @@ AZURE_SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID", "")
 AZURE_RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "")
 AZURE_SERVICE_BUS_NAMESPACE = os.getenv("AZURE_SERVICE_BUS_NAMESPACE", "")
 
+# Environment label derived from AZURE_RESOURCE_GROUP.
+# Pattern: UK-South-DHCW-IntHub-{ENV}-App-RG → extracts {ENV} (e.g. TST, DEV, PRD).
+# Returns empty string if the RG value is absent or doesn't match the expected pattern.
+_raw_environment: str = (
+    AZURE_RESOURCE_GROUP.split("-IntHub-")[1].split("-")[0].upper() if "-IntHub-" in AZURE_RESOURCE_GROUP else ""
+)
+
+# Optional friendly-name mapping for the navbar environment label.
+# Set ENVIRONMENT_LABEL_MAP in .env as comma-separated CODE:Label pairs, e.g.:
+#   ENVIRONMENT_LABEL_MAP=TST:TESTING,PRD:PRODUCTION,PPD:PRE-PROD
+# Any code not listed falls back to the raw value extracted from AZURE_RESOURCE_GROUP.
+_label_map_raw = os.getenv("ENVIRONMENT_LABEL_MAP", "")
+ENVIRONMENT_LABEL_MAP: dict[str, str] = {
+    k.strip().upper(): v.strip() for pair in _label_map_raw.split(",") if ":" in pair for k, v in (pair.split(":", 1),)
+}
+
+ENVIRONMENT_LABEL: str = ENVIRONMENT_LABEL_MAP.get(_raw_environment, _raw_environment)
+
+# Colour name → hex lookup for the environment indicator dot in the navbar.
+# Uses the project's established accent palette. Raw hex values (e.g. #ff0000) are
+# also accepted directly in ENVIRONMENT_COLOR_MAP and will pass through unchanged.
+_COLOUR_NAMES: dict[str, str] = {
+    "green": "#22c55e",
+    "red": "#ef4444",
+    "amber": "#f59e0b",
+    "orange": "#f59e0b",
+    "purple": "#a855f7",
+    "blue": "#3b82f6",
+    "cyan": "#06b6d4",
+    "teal": "#14b8a6",
+    "yellow": "#facc15",
+    "white": "#f1f5f9",
+    "grey": "#94a3b8",
+    "gray": "#94a3b8",
+}
+
+# Default colours per environment code — used when no ENVIRONMENT_COLOR_MAP entry exists.
+_ENVIRONMENT_COLOR_DEFAULTS: dict[str, str] = {
+    "DEV": "green",
+    "TST": "purple",
+    "UAT": "amber",
+    "DTE": "green",
+    "LOAD": "cyan",
+    "PPD": "red",
+    "PRD": "red",
+    "DR": "amber",
+}
+
+# Optional per-environment colour overrides.
+# Set ENVIRONMENT_COLOR_MAP in .env as comma-separated CODE:colourname pairs, e.g.:
+#   ENVIRONMENT_COLOR_MAP=TST:purple,PRD:red,DEV:green
+# Use colour names from the list above, or a raw hex value (e.g. TST:#c026d3).
+# Any code not listed falls back to the built-in defaults above.
+_color_map_raw = os.getenv("ENVIRONMENT_COLOR_MAP", "")
+_color_map_overrides: dict[str, str] = {
+    k.strip().upper(): v.strip() for pair in _color_map_raw.split(",") if ":" in pair for k, v in (pair.split(":", 1),)
+}
+
+
+def _resolve_colour(name: str) -> str:
+    """Convert a colour name or raw hex string to a hex colour value."""
+    stripped = name.strip().lower()
+    if stripped.startswith("#"):
+        return stripped
+    return _COLOUR_NAMES.get(stripped, "#94a3b8")  # fallback: muted grey
+
+
+_env_colour_name: str = _color_map_overrides.get(
+    _raw_environment,
+    _ENVIRONMENT_COLOR_DEFAULTS.get(_raw_environment, "grey"),
+)
+ENVIRONMENT_COLOR: str = _resolve_colour(_env_colour_name)
+
 # Azure Log Analytics
 AZURE_LOG_ANALYTICS_WORKSPACE_ID = os.getenv("AZURE_LOG_ANALYTICS_WORKSPACE_ID", "")
 
 # Azure Container Apps
 AZURE_CONTAINER_APPS_ENVIRONMENT = os.getenv("AZURE_CONTAINER_APPS_ENVIRONMENT", "")
-AZURE_CONTAINER_APPS_RESOURCE_GROUP = os.getenv(
-    "AZURE_CONTAINER_APPS_RESOURCE_GROUP", AZURE_RESOURCE_GROUP
-)
+AZURE_CONTAINER_APPS_RESOURCE_GROUP = os.getenv("AZURE_CONTAINER_APPS_RESOURCE_GROUP", AZURE_RESOURCE_GROUP)
 
 # Flask
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")

@@ -38,8 +38,10 @@ def test_get_messages_today_maps_trace_properties() -> None:
         ],
     )
 
-    with patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"), \
-            patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory:
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
         mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
 
         messages = azure_monitor.get_messages_today()
@@ -53,6 +55,7 @@ def test_get_messages_today_maps_trace_properties() -> None:
 # ---------------------------------------------------------------------------
 # get_container_app_metric_history tests
 # ---------------------------------------------------------------------------
+
 
 def _make_metric_response(cpu_points: list[dict], mem_points: list[dict]) -> dict:
     """Build a minimal Azure Monitor metrics REST response."""
@@ -94,8 +97,10 @@ class TestGetContainerAppMetricHistoryValidation:
 
     def test_valid_name_passes_validation(self) -> None:
         """A valid name should not return early due to validation (requires Azure config)."""
-        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", ""), \
-                patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", ""):
+        with (
+            patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", ""),
+            patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", ""),
+        ):
             result = azure_monitor.get_container_app_metric_history("my-app", hours=1)
         # Returns empty because Azure config is missing, not because validation failed.
         assert result["name"] == "my-app"
@@ -114,10 +119,12 @@ class TestGetContainerAppMetricHistoryIntervalSelection:
         fake_cred = MagicMock()
         fake_cred.get_token.return_value = MagicMock(token="tok")
 
-        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"), \
-                patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"), \
-                patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred), \
-                patch("requests.get", return_value=fake_resp) as mock_get:
+        with (
+            patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"),
+            patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"),
+            patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred),
+            patch("requests.get", return_value=fake_resp) as mock_get,
+        ):
             azure_monitor.get_container_app_metric_history("my-app", hours=hours)
             return mock_get.call_args[0][0]
 
@@ -145,10 +152,12 @@ class TestGetContainerAppMetricHistoryParsing:
         fake_cred = MagicMock()
         fake_cred.get_token.return_value = MagicMock(token="tok")
 
-        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"), \
-                patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"), \
-                patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred), \
-                patch("requests.get", return_value=fake_resp):
+        with (
+            patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"),
+            patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"),
+            patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred),
+            patch("requests.get", return_value=fake_resp),
+        ):
             return azure_monitor.get_container_app_metric_history("my-app", hours=hours)
 
     def test_parses_cpu_and_memory(self) -> None:
@@ -219,10 +228,12 @@ class TestGetContainerAppMetricHistoryParsing:
         fake_cred = MagicMock()
         fake_cred.get_token.return_value = MagicMock(token="tok")
 
-        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"), \
-                patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"), \
-                patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred), \
-                patch("requests.get", side_effect=RuntimeError("network error")):
+        with (
+            patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"),
+            patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"),
+            patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred),
+            patch("requests.get", side_effect=RuntimeError("network error")),
+        ):
             result = azure_monitor.get_container_app_metric_history("my-app", hours=1)
 
         assert result == {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}

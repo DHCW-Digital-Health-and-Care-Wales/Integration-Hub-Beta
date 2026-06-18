@@ -2,6 +2,7 @@
 Unit tests for flow health calculation logic.
 Pure logic — no Azure calls, no mocking needed.
 """
+
 from __future__ import annotations
 
 from dashboard.services.flows import _FLOW_DEFS, flow_health, overall_health, queue_health
@@ -48,21 +49,21 @@ class TestFlowHealth:
 
     def test_healthy_when_all_queues_empty(self) -> None:
         queues_by_name = {
-            "pre-phw-transform":  self._make_queue("pre-phw-transform"),
+            "pre-phw-transform": self._make_queue("pre-phw-transform"),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
         assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "healthy"
 
     def test_warning_when_pre_queue_at_threshold(self) -> None:
         queues_by_name = {
-            "pre-phw-transform":  self._make_queue("pre-phw-transform", active=15),
+            "pre-phw-transform": self._make_queue("pre-phw-transform", active=15),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
         assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "warning"
 
     def test_critical_when_post_queue_critical(self) -> None:
         queues_by_name = {
-            "pre-phw-transform":  self._make_queue("pre-phw-transform"),
+            "pre-phw-transform": self._make_queue("pre-phw-transform"),
             "post-phw-transform": self._make_queue("post-phw-transform", active=50),
         }
         assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "critical"

@@ -19,6 +19,7 @@ Status values returned per rule:
   'healthy'    – count above threshold
   'unknown'    – query failed or no Log Analytics workspace configured
 """
+
 from __future__ import annotations
 
 import json
@@ -35,18 +36,18 @@ from dashboard.services.credentials import get_azure_credential
 log = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm2_config.json"
-STATE_PATH  = Path(__file__).parent.parent.parent / "alarm2_state.json"
+STATE_PATH = Path(__file__).parent.parent.parent / "alarm2_state.json"
 
-DEFAULT_WINDOW_MINUTES = 2880   # 2 days
-DEFAULT_THRESHOLD      = 0
-DEFAULT_ALERTING_GAP   = 60
+DEFAULT_WINDOW_MINUTES = 2880  # 2 days
+DEFAULT_THRESHOLD = 0
+DEFAULT_ALERTING_GAP = 60
 
 # Seed list of known rules — always present even if not yet enabled.
 KNOWN_RULES: list[dict] = [
     {
-        "id":           "phw-to-mpi-outgoing",
+        "id": "phw-to-mpi-outgoing",
         "display_name": "PHW → MPI Outgoing",
-        "workflow_id":  "phw-to-mpi",
+        "workflow_id": "phw-to-mpi",
     },
 ]
 
@@ -54,6 +55,7 @@ KNOWN_RULES: list[dict] = [
 # ---------------------------------------------------------------------------
 # Config / state persistence
 # ---------------------------------------------------------------------------
+
 
 def load_alarm2_config() -> dict:
     """Load Alarm 2 config from JSON. Returns empty config on missing/corrupt file."""
@@ -94,6 +96,7 @@ def _save_alarm2_state(state: dict) -> None:
 # Pause / unpause helpers
 # ---------------------------------------------------------------------------
 
+
 def pause_alarm2_rule(rule_id: str, duration_minutes: int, reason: str = "") -> None:
     """Pause a specific Alarm 2 rule for ``duration_minutes``.
 
@@ -105,13 +108,20 @@ def pause_alarm2_rule(rule_id: str, duration_minutes: int, reason: str = "") -> 
     state_rules = state.setdefault("rules", {})
     now = datetime.now(timezone.utc)
     paused_until = now + timedelta(minutes=duration_minutes)
-    state_rules.setdefault(rule_id, {}).update({
-        "paused_until": paused_until.isoformat(),
-        "pause_reason": reason.strip(),
-    })
+    state_rules.setdefault(rule_id, {}).update(
+        {
+            "paused_until": paused_until.isoformat(),
+            "pause_reason": reason.strip(),
+        }
+    )
     _save_alarm2_state(state)
-    log.info("Alarm 2 rule %s paused for %d minutes (until %s). Reason: %s",
-             rule_id, duration_minutes, paused_until.isoformat(), reason or "(none)")
+    log.info(
+        "Alarm 2 rule %s paused for %d minutes (until %s). Reason: %s",
+        rule_id,
+        duration_minutes,
+        paused_until.isoformat(),
+        reason or "(none)",
+    )
 
 
 def unpause_alarm2_rule(rule_id: str) -> None:
@@ -132,6 +142,7 @@ def unpause_alarm2_rule(rule_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_dt(raw: object) -> datetime | None:
     """Parse a datetime from a Log Analytics row value or ISO string, normalising to UTC."""
@@ -157,6 +168,7 @@ def _format_count(total: int | None) -> str:
 # Log Analytics query
 # ---------------------------------------------------------------------------
 
+
 def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
     """Query sum(messages_sent) for each rule over its configured window.
 
@@ -175,10 +187,7 @@ def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
     results: dict[str, int | None] = {}
 
     for window_minutes, window_rules in by_window.items():
-        safe_ids = [
-            re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"])
-            for r in window_rules
-        ]
+        safe_ids = [re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"]) for r in window_rules]
         ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
         query = f"""
         AppMetrics
@@ -225,6 +234,7 @@ def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
 # ---------------------------------------------------------------------------
 # Email notification
 # ---------------------------------------------------------------------------
+
 
 def _send_alarm2_email(
     rule_id: str,
@@ -307,6 +317,7 @@ def _send_alarm2_email(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def get_alarm2_status() -> list[dict]:
     """Evaluate Alarm 2 for all enabled rules and return their status rows.
 
@@ -326,7 +337,7 @@ def get_alarm2_status() -> list[dict]:
         return []
 
     totals = get_messages_totals(enabled_rules)
-    now    = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
 
     state = _load_alarm2_state()
     state_rules = state.setdefault("rules", {})
@@ -335,22 +346,31 @@ def get_alarm2_status() -> list[dict]:
     results: list[dict] = []
 
     for rule in enabled_rules:
-        rid        = rule["id"]
-        rule_cfg   = rules_cfg.get(rid, {})
-        threshold  = int(rule_cfg.get("threshold", DEFAULT_THRESHOLD))
-        gap        = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
-        total      = totals.get(rid)
+        rid = rule["id"]
+        rule_cfg = rules_cfg.get(rid, {})
+        threshold = int(rule_cfg.get("threshold", DEFAULT_THRESHOLD))
+        gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
+        total = totals.get(rid)
 
         # Check for manual pause before any alarm evaluation.
         rule_state = state_rules.get(rid, {})
         paused_until = _parse_dt(rule_state.get("paused_until"))
         if paused_until and paused_until > now:
             pause_remaining = (paused_until - now).total_seconds() / 60
-            results.append(_build_row(rid, rule, rule_cfg, total=total, status="paused",
-                                      cooldown_remaining=None, now=now,
-                                      pause_remaining=pause_remaining,
-                                      pause_reason=rule_state.get("pause_reason", ""),
-                                      paused_until=paused_until))
+            results.append(
+                _build_row(
+                    rid,
+                    rule,
+                    rule_cfg,
+                    total=total,
+                    status="paused",
+                    cooldown_remaining=None,
+                    now=now,
+                    pause_remaining=pause_remaining,
+                    pause_reason=rule_state.get("pause_reason", ""),
+                    paused_until=paused_until,
+                )
+            )
             continue
         # Clear stale pause state if the pause window has elapsed.
         if paused_until and paused_until <= now:
@@ -363,8 +383,9 @@ def get_alarm2_status() -> list[dict]:
             state_dirty = True
 
         if total is None:
-            results.append(_build_row(rid, rule, rule_cfg, total=None, status="unknown",
-                                      cooldown_remaining=None, now=now))
+            results.append(
+                _build_row(rid, rule, rule_cfg, total=None, status="unknown", cooldown_remaining=None, now=now)
+            )
             continue
 
         in_alarm = total <= threshold
@@ -373,8 +394,9 @@ def get_alarm2_status() -> list[dict]:
             if rid in state_rules:
                 del state_rules[rid]
                 state_dirty = True
-            results.append(_build_row(rid, rule, rule_cfg, total=total, status="healthy",
-                                      cooldown_remaining=None, now=now))
+            results.append(
+                _build_row(rid, rule, rule_cfg, total=total, status="healthy", cooldown_remaining=None, now=now)
+            )
             continue
 
         # --- In alarm condition ---
@@ -388,7 +410,8 @@ def get_alarm2_status() -> list[dict]:
             _send_alarm2_email(
                 rid,
                 rule_cfg.get("display_name") or rule.get("display_name", rid),
-                total, threshold,
+                total,
+                threshold,
                 int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
                 rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                 now,
@@ -404,7 +427,8 @@ def get_alarm2_status() -> list[dict]:
                 _send_alarm2_email(
                     rid,
                     rule_cfg.get("display_name") or rule.get("display_name", rid),
-                    total, threshold,
+                    total,
+                    threshold,
                     int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
                     rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                     now,
@@ -414,8 +438,9 @@ def get_alarm2_status() -> list[dict]:
                 status = "suppressed"
                 cooldown_remaining = gap - mins_since
 
-        results.append(_build_row(rid, rule, rule_cfg, total=total, status=status,
-                                  cooldown_remaining=cooldown_remaining, now=now))
+        results.append(
+            _build_row(rid, rule, rule_cfg, total=total, status=status, cooldown_remaining=cooldown_remaining, now=now)
+        )
 
     if state_dirty:
         _save_alarm2_state({"rules": state_rules})
@@ -440,20 +465,20 @@ def _build_row(
     """Build the status-row dict for a single Alarm 2 rule."""
     window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
     return {
-        "id":                      rid,
-        "display_name":            rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
-        "workflow_id":             rule_cfg.get("workflow_id",  rule_seed.get("workflow_id",  "")),
+        "id": rid,
+        "display_name": rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
+        "workflow_id": rule_cfg.get("workflow_id", rule_seed.get("workflow_id", "")),
         "window_duration_minutes": window,
-        "window_label":            _window_label(window),
-        "threshold":               int(rule_cfg.get("threshold",          DEFAULT_THRESHOLD)),
-        "alerting_gap_minutes":    int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
-        "messages_total":          total,
-        "messages_display":        _format_count(total),
-        "status":                  status,
-        "cooldown_remaining":      round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
-        "pause_remaining":         round(pause_remaining, 0) if pause_remaining is not None else None,
-        "pause_reason":            pause_reason,
-        "paused_until":            paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
+        "window_label": _window_label(window),
+        "threshold": int(rule_cfg.get("threshold", DEFAULT_THRESHOLD)),
+        "alerting_gap_minutes": int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
+        "messages_total": total,
+        "messages_display": _format_count(total),
+        "status": status,
+        "cooldown_remaining": round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
+        "pause_remaining": round(pause_remaining, 0) if pause_remaining is not None else None,
+        "pause_reason": pause_reason,
+        "paused_until": paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
     }
 
 
@@ -478,9 +503,9 @@ def _all_known_rules(rules_cfg: dict) -> list[dict]:
             merged.append(r)
     for rid, rcfg in rules_cfg.items():
         if rid not in seen and not rcfg.get("deleted", False):
-            merged.append({"id": rid,
-                           "display_name": rcfg.get("display_name", rid),
-                           "workflow_id":  rcfg.get("workflow_id", "")})
+            merged.append(
+                {"id": rid, "display_name": rcfg.get("display_name", rid), "workflow_id": rcfg.get("workflow_id", "")}
+            )
     return merged
 
 
@@ -501,19 +526,16 @@ def get_alarm2_config_page_data() -> list[dict]:
     rules_cfg = cfg.get("rules", {})
     return [
         {
-            "id":                      r["id"],
-            "display_name":            rules_cfg.get(r["id"], {}).get("display_name")
-                                       or r.get("display_name", r["id"]),
-            "alarm_enabled":           rules_cfg.get(r["id"], {}).get("alarm_enabled", False),
-            "workflow_id":             rules_cfg.get(r["id"], {}).get("workflow_id",
-                                                                       r.get("workflow_id", "")),
-            "window_duration_minutes": int(rules_cfg.get(r["id"], {}).get(
-                                           "window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-            "threshold":               int(rules_cfg.get(r["id"], {}).get(
-                                           "threshold", DEFAULT_THRESHOLD)),
-            "alerting_gap_minutes":    int(rules_cfg.get(r["id"], {}).get(
-                                           "alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
-            "email_alerts_enabled":    rules_cfg.get(r["id"], {}).get("email_alerts_enabled", False),
+            "id": r["id"],
+            "display_name": rules_cfg.get(r["id"], {}).get("display_name") or r.get("display_name", r["id"]),
+            "alarm_enabled": rules_cfg.get(r["id"], {}).get("alarm_enabled", False),
+            "workflow_id": rules_cfg.get(r["id"], {}).get("workflow_id", r.get("workflow_id", "")),
+            "window_duration_minutes": int(
+                rules_cfg.get(r["id"], {}).get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)
+            ),
+            "threshold": int(rules_cfg.get(r["id"], {}).get("threshold", DEFAULT_THRESHOLD)),
+            "alerting_gap_minutes": int(rules_cfg.get(r["id"], {}).get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
+            "email_alerts_enabled": rules_cfg.get(r["id"], {}).get("email_alerts_enabled", False),
         }
         for r in _all_known_rules(rules_cfg)
     ]

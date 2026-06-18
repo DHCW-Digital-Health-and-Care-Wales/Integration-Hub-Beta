@@ -176,8 +176,8 @@ cython_debug/
 tmp
 .DS_Store
 
+# Local developer stuff (not committed to source control)
+scripts/
+.vscode/settings.json
 dashboard/alarm*_state.json
 dashboard/alarm*_config.json
-
-# Local developer scripts (not committed to source control)
-scripts/

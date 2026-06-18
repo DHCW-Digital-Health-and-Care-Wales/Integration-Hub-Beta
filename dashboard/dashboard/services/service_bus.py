@@ -1,6 +1,7 @@
 """
 Azure Service Bus queue metrics via azure-mgmt-servicebus.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,6 +31,7 @@ def get_queues() -> list[dict]:
     """
     if config.DEMO_MODE:
         from dashboard.services.demo_data import DEMO_QUEUES  # noqa: PLC0415
+
         return DEMO_QUEUES
 
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
@@ -48,21 +50,10 @@ def get_queues() -> list[dict]:
                 {
                     "name": q.name,
                     "status": str(q.status) if q.status else "Unknown",
-                    "active_message_count": (
-                        q.count_details.active_message_count
-                        if q.count_details
-                        else 0
-                    ) or 0,
-                    "dead_letter_message_count": (
-                        q.count_details.dead_letter_message_count
-                        if q.count_details
-                        else 0
-                    ) or 0,
-                    "scheduled_message_count": (
-                        q.count_details.scheduled_message_count
-                        if q.count_details
-                        else 0
-                    ) or 0,
+                    "active_message_count": (q.count_details.active_message_count if q.count_details else 0) or 0,
+                    "dead_letter_message_count": (q.count_details.dead_letter_message_count if q.count_details else 0)
+                    or 0,
+                    "scheduled_message_count": (q.count_details.scheduled_message_count if q.count_details else 0) or 0,
                     "message_count": q.message_count or 0,
                     "size_in_bytes": q.size_in_bytes or 0,
                     "max_size_in_megabytes": q.max_size_in_megabytes or 0,
@@ -99,6 +90,7 @@ def resolve_by_suffix(names: list[str], suffix: str) -> str | None:
 # Topic & subscription helpers
 # ---------------------------------------------------------------------------
 
+
 def get_topics() -> list[dict]:
     """Return a list of topic dicts from the Service Bus namespace."""
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
@@ -114,15 +106,9 @@ def get_topics() -> list[dict]:
             {
                 "name": t.name,
                 "status": str(t.status) if t.status else "Unknown",
-                "active_message_count": (
-                    t.count_details.active_message_count if t.count_details else 0
-                ) or 0,
-                "dead_letter_message_count": (
-                    t.count_details.dead_letter_message_count if t.count_details else 0
-                ) or 0,
-                "scheduled_message_count": (
-                    t.count_details.scheduled_message_count if t.count_details else 0
-                ) or 0,
+                "active_message_count": (t.count_details.active_message_count if t.count_details else 0) or 0,
+                "dead_letter_message_count": (t.count_details.dead_letter_message_count if t.count_details else 0) or 0,
+                "scheduled_message_count": (t.count_details.scheduled_message_count if t.count_details else 0) or 0,
                 "subscription_count": t.subscription_count or 0,
                 "size_in_bytes": t.size_in_bytes or 0,
                 "max_size_in_megabytes": t.max_size_in_megabytes or 0,
@@ -156,12 +142,8 @@ def get_subscriptions(topic_name: str) -> list[dict]:
             {
                 "name": s.name,
                 "status": str(s.status) if s.status else "Unknown",
-                "active_message_count": (
-                    s.count_details.active_message_count if s.count_details else 0
-                ) or 0,
-                "dead_letter_message_count": (
-                    s.count_details.dead_letter_message_count if s.count_details else 0
-                ) or 0,
+                "active_message_count": (s.count_details.active_message_count if s.count_details else 0) or 0,
+                "dead_letter_message_count": (s.count_details.dead_letter_message_count if s.count_details else 0) or 0,
                 "message_count": s.message_count or 0,
             }
             for s in subs
@@ -174,6 +156,7 @@ def get_subscriptions(topic_name: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Service Bus metrics (Incoming / Outgoing messages over time)
 # ---------------------------------------------------------------------------
+
 
 def _zero_fill(points: list[dict], timespan_hours: int, bin_minutes: int) -> list[dict]:
     """Fill in explicit zero-value data points for all expected time bins.
@@ -222,6 +205,7 @@ def _zero_fill(points: list[dict], timespan_hours: int, bin_minutes: int) -> lis
         epoch += bin_secs
 
     return filled
+
 
 def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) -> dict:
     """Query Log Analytics for Service Bus IncomingMessages / OutgoingMessages.
@@ -289,8 +273,8 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
 
         for row in response.tables[0].rows:
             time_generated = row[0]  # datetime
-            metric_name = row[1]     # str
-            value = row[2]           # float/int
+            metric_name = row[1]  # str
+            value = row[2]  # float/int
 
             key = key_map.get(metric_name)
             if not key:
@@ -301,10 +285,12 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
             else:
                 time_str = str(time_generated)
 
-            series[key].append({
-                "time": time_str,
-                "value": int(value) if value is not None else 0,
-            })
+            series[key].append(
+                {
+                    "time": time_str,
+                    "value": int(value) if value is not None else 0,
+                }
+            )
 
         series["timespan"] = f"{timespan_hours}h"
         log.info(

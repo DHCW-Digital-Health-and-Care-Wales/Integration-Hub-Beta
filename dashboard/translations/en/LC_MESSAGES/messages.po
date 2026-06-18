@@ -829,6 +829,12 @@ msgstr ""
 msgid "LIVE"
 msgstr ""
 
+msgid "Environment"
+msgstr ""
+
+msgid "Health Status"
+msgstr ""
+
 #: dashboard/templates/base.html:196
 msgid "Toggle light/dark theme"
 msgstr ""
