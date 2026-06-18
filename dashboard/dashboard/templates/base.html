@@ -188,10 +188,12 @@
             {% else %}{{ _("UNKNOWN") }}{% endif %}
           </span>
         {% endif %}
+        {% if environment_label %}
         <span class="nav-env-label" title="{{ _('Environment') }}">
           <i class="bi bi-circle-fill" style="font-size:0.45rem; color:{{ environment_color }}; flex-shrink:0;"></i>
           {{ environment_label }}
         </span>
+        {% endif %}
         <!-- Theme toggle -->
         <button id="theme-toggle" title="{{ _('Toggle light/dark theme') }}"
                 style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:1rem;transition:background 0.15s;">
