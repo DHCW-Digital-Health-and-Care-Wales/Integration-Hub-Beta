@@ -106,11 +106,6 @@
 <!-- Page navigation loading bar -->
 <div id="page-load-bar"></div>
 
-<!-- Live update toast -->
-<div id="live-indicator">
-  <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
-</div>
-
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg">
   <div class="container-fluid gap-3">
@@ -178,19 +173,24 @@
 
       <!-- System health in nav -->
       <div class="d-flex align-items-center gap-2">
+        <!-- Live update indicator — sits left of the health badge -->
+        <div id="live-indicator">
+          <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
+        </div>
         {% if status is defined and status %}
           <span id="nav-health-badge"
                 class="nav-health-badge {{ status.system_health }}"
-                data-system-health>
+                data-system-health
+                title="{{ _('Health Status') }}">
             {% if status.system_health == 'healthy' %}{{ _("ALL HEALTHY") }}
             {% elif status.system_health == 'warning' %}{{ _("WARNINGS") }}
             {% elif status.system_health == 'critical' %}{{ _("CRITICAL") }}
             {% else %}{{ _("UNKNOWN") }}{% endif %}
           </span>
         {% endif %}
-        <span class="text-muted" style="font-size:0.7rem;">
-          <i class="bi bi-circle-fill" style="font-size:0.45rem; color:var(--accent-green);"></i>
-          {{ _("LIVE") }}
+        <span class="nav-env-label" title="{{ _('Environment') }}">
+          <i class="bi bi-circle-fill" style="font-size:0.45rem; color:{{ environment_color }}; flex-shrink:0;"></i>
+          {{ environment_label }}
         </span>
         <!-- Theme toggle -->
         <button id="theme-toggle" title="{{ _('Toggle light/dark theme') }}"

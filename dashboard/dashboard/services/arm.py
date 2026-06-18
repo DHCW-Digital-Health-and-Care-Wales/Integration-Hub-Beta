@@ -14,6 +14,7 @@ from every deployed app, groups apps by ``WORKFLOW_ID``, and constructs a
 complete set of flow definitions — replacing the need for hardcoded queue
 suffix patterns.
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,15 +32,17 @@ log = logging.getLogger(__name__)
 # Env var names to extract from Container Apps
 # ---------------------------------------------------------------------------
 
-_FLOW_ENV_VARS = frozenset({
-    "WORKFLOW_ID",
-    "MICROSERVICE_ID",
-    "EGRESS_QUEUE_NAME",
-    "EGRESS_TOPIC_NAME",
-    "INGRESS_QUEUE_NAME",
-    "INGRESS_TOPIC_NAME",
-    "INGRESS_SUBSCRIPTION_NAME",
-})
+_FLOW_ENV_VARS = frozenset(
+    {
+        "WORKFLOW_ID",
+        "MICROSERVICE_ID",
+        "EGRESS_QUEUE_NAME",
+        "EGRESS_TOPIC_NAME",
+        "INGRESS_QUEUE_NAME",
+        "INGRESS_TOPIC_NAME",
+        "INGRESS_SUBSCRIPTION_NAME",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Display metadata for known flows
@@ -113,11 +116,14 @@ _cache_timestamp: float = 0.0
 # Container App querying
 # ---------------------------------------------------------------------------
 
+
 def _is_configured() -> bool:
-    return all([
-        config.AZURE_SUBSCRIPTION_ID,
-        config.AZURE_CONTAINER_APPS_RESOURCE_GROUP,
-    ])
+    return all(
+        [
+            config.AZURE_SUBSCRIPTION_ID,
+            config.AZURE_CONTAINER_APPS_RESOURCE_GROUP,
+        ]
+    )
 
 
 def _list_container_apps() -> list[dict]:
@@ -150,11 +156,13 @@ def _list_container_apps() -> list[dict]:
             target_port = app.configuration.ingress.target_port
 
         if env_vars.get("WORKFLOW_ID"):
-            result.append({
-                "name": app.name,
-                "env": env_vars,
-                "target_port": target_port,
-            })
+            result.append(
+                {
+                    "name": app.name,
+                    "env": env_vars,
+                    "target_port": target_port,
+                }
+            )
 
     return result
 
@@ -162,6 +170,7 @@ def _list_container_apps() -> list[dict]:
 # ---------------------------------------------------------------------------
 # App role classification
 # ---------------------------------------------------------------------------
+
 
 def _classify_app(env: dict[str, str]) -> str:
     """Classify a Container App's role based on its env vars.
@@ -191,6 +200,7 @@ def _classify_app(env: dict[str, str]) -> str:
 # ---------------------------------------------------------------------------
 # Flow building
 # ---------------------------------------------------------------------------
+
 
 def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     """Build a single flow definition from a group of apps sharing a WORKFLOW_ID."""
@@ -313,6 +323,7 @@ def _merge_subscription_sender_flows(flows: dict[str, dict]) -> None:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def discover_flows(force: bool = False) -> dict[str, dict]:
     """Discover flow definitions from Container App environment variables.

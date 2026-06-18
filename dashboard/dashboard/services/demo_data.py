@@ -6,6 +6,7 @@ entirely on synthetic data — no Azure credentials required.  Useful for
 layout testing, stakeholder demos, and stress-testing the UI with many
 flows in varied health states.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -113,8 +114,8 @@ DEMO_FLOWS: dict[str, dict] = {
         "post_queue": None,
         "topic": "demo-sbt-mpi-hl7-input",
         "subscriptions": [
-            {"name": "downstream-a", "active_message_count": 0,  "dead_letter_message_count": 0},
-            {"name": "downstream-b", "active_message_count": 3,  "dead_letter_message_count": 0},
+            {"name": "downstream-a", "active_message_count": 0, "dead_letter_message_count": 0},
+            {"name": "downstream-b", "active_message_count": 3, "dead_letter_message_count": 0},
             {"name": "downstream-c", "active_message_count": 72, "dead_letter_message_count": 2},
         ],
         "destination": "Downstream Systems",
@@ -214,36 +215,36 @@ DEMO_FLOWS: dict[str, dict] = {
 DEMO_QUEUES: list[dict] = [
     # PHW — healthy
     _queue("demo-sbq-phw-hl7-transformer", active=2),
-    _queue("demo-sbq-phw-hl7-sender",      active=0),
+    _queue("demo-sbq-phw-hl7-sender", active=0),
     # Paris — warning (active ≥ 10)
-    _queue("demo-sbq-paris-pre",  active=14),
+    _queue("demo-sbq-paris-pre", active=14),
     _queue("demo-sbq-paris-post", active=1),
     # ChemoCare — critical (active ≥ 50)
     _queue("demo-sbq-chemo-hl7-transformer", active=63),
-    _queue("demo-sbq-chemo-hl7-sender",      active=5),
+    _queue("demo-sbq-chemo-hl7-sender", active=5),
     # PIMS — warning (DLQ hit)
     _queue("demo-sbq-pims-hl7-transformer", active=4, dlq=3),
-    _queue("demo-sbq-pims-hl7-sender",      active=0),
+    _queue("demo-sbq-pims-hl7-sender", active=0),
     # WDS — healthy
     _queue("demo-sbq-wds-hl7-transformer", active=0),
-    _queue("demo-sbq-wds-hl7-sender",      active=1),
+    _queue("demo-sbq-wds-hl7-sender", active=1),
     # Werfen — critical (DLQ backlog)
-    _queue("demo-sbq-werfen-pre",  active=7, dlq=12),
+    _queue("demo-sbq-werfen-pre", active=7, dlq=12),
     _queue("demo-sbq-werfen-post", active=0),
     # Radiology — healthy
-    _queue("demo-sbq-radiology-pre",  active=3),
+    _queue("demo-sbq-radiology-pre", active=3),
     _queue("demo-sbq-radiology-post", active=1),
     # Theatres — warning
-    _queue("demo-sbq-theatres-pre",  active=18),
+    _queue("demo-sbq-theatres-pre", active=18),
     _queue("demo-sbq-theatres-post", active=6),
     # Pharmacy — healthy
-    _queue("demo-sbq-pharmacy-pre",  active=0),
+    _queue("demo-sbq-pharmacy-pre", active=0),
     _queue("demo-sbq-pharmacy-post", active=0),
     # Maternity — critical
-    _queue("demo-sbq-maternity-pre",  active=87),
+    _queue("demo-sbq-maternity-pre", active=87),
     _queue("demo-sbq-maternity-post", active=22),
     # Pathology — healthy
-    _queue("demo-sbq-pathology-pre",  active=1),
+    _queue("demo-sbq-pathology-pre", active=1),
     _queue("demo-sbq-pathology-post", active=0),
 ]
 

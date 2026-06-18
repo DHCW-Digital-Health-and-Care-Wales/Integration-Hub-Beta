@@ -1,6 +1,7 @@
 """
 Tests for dashboard.services.traces.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -43,8 +44,10 @@ class TestOperationIdValidation(unittest.TestCase):
         self.assertFalse(result["ok"])
 
     def test_accepts_valid_operation_id(self) -> None:
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value = _make_client([])
             result = get_trace("abc123-DEF_456|xyz")
         # empty because no rows, but the id was accepted (no early return)
@@ -74,21 +77,47 @@ class TestNoWorkspaceConfigured(unittest.TestCase):
 class TestParseSpans(unittest.TestCase):
     def _run(self, rows: list[list[object]]) -> dict:
         columns = [
-            "TimeGenerated", "itemType", "name", "duration", "success",
-            "resultCode", "target", "parentId", "id", "appName", "severityLevel", "message",
+            "TimeGenerated",
+            "itemType",
+            "name",
+            "duration",
+            "success",
+            "resultCode",
+            "target",
+            "parentId",
+            "id",
+            "appName",
+            "severityLevel",
+            "message",
         ]
         table = FakeTable(columns, rows)
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value = _make_client([table])
             return get_trace("op123")
 
     def test_appRequests_mapped_to_spans(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        result = self._run([
-            [ts, "AppRequests", "POST /api/hl7", 42.5, True, "200",
-             "/api/hl7", "parent1", "id1", "phw-transformer", None, ""],
-        ])
+        result = self._run(
+            [
+                [
+                    ts,
+                    "AppRequests",
+                    "POST /api/hl7",
+                    42.5,
+                    True,
+                    "200",
+                    "/api/hl7",
+                    "parent1",
+                    "id1",
+                    "phw-transformer",
+                    None,
+                    "",
+                ],
+            ]
+        )
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["spans"]), 1)
         span = result["spans"][0]
@@ -101,20 +130,48 @@ class TestParseSpans(unittest.TestCase):
 
     def test_appDependencies_mapped_to_spans(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        result = self._run([
-            [ts, "AppDependencies", "ServiceBus.Send", 15.0, True, "200",
-             "my-queue", "parent2", "id2", "phw-transformer", None, ""],
-        ])
+        result = self._run(
+            [
+                [
+                    ts,
+                    "AppDependencies",
+                    "ServiceBus.Send",
+                    15.0,
+                    True,
+                    "200",
+                    "my-queue",
+                    "parent2",
+                    "id2",
+                    "phw-transformer",
+                    None,
+                    "",
+                ],
+            ]
+        )
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["spans"]), 1)
 
     def test_appExceptions_mapped_to_exceptions(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        result = self._run([
-            [ts, "AppRequests", "POST /", 10.0, False, "500", "", "", "id0", "app", None, ""],
-            [ts, "AppExceptions", "System.NullReferenceException", None, None, None,
-             None, None, None, "phw-transformer", 1, "Object ref not set"],
-        ])
+        result = self._run(
+            [
+                [ts, "AppRequests", "POST /", 10.0, False, "500", "", "", "id0", "app", None, ""],
+                [
+                    ts,
+                    "AppExceptions",
+                    "System.NullReferenceException",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "phw-transformer",
+                    1,
+                    "Object ref not set",
+                ],
+            ]
+        )
         self.assertEqual(len(result["exceptions"]), 1)
         exc = result["exceptions"][0]
         self.assertEqual(exc["name"], "System.NullReferenceException")
@@ -123,11 +180,25 @@ class TestParseSpans(unittest.TestCase):
 
     def test_appTraces_mapped_to_logs(self) -> None:
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        result = self._run([
-            [ts, "AppRequests", "GET /health", 5.0, True, "200", "", "", "id0", "app", None, ""],
-            [ts, "AppTraces", "Processing HL7 message", None, None, None,
-             None, None, None, "phw-transformer", 1, "Processing HL7 message"],
-        ])
+        result = self._run(
+            [
+                [ts, "AppRequests", "GET /health", 5.0, True, "200", "", "", "id0", "app", None, ""],
+                [
+                    ts,
+                    "AppTraces",
+                    "Processing HL7 message",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "phw-transformer",
+                    1,
+                    "Processing HL7 message",
+                ],
+            ]
+        )
         self.assertEqual(len(result["logs"]), 1)
         entry = result["logs"][0]
         self.assertEqual(entry["message"], "Processing HL7 message")
@@ -137,18 +208,30 @@ class TestParseSpans(unittest.TestCase):
 class TestDurationComputation(unittest.TestCase):
     def test_duration_ms_computed_from_timestamps(self) -> None:
         columns = [
-            "TimeGenerated", "itemType", "name", "duration", "success",
-            "resultCode", "target", "parentId", "id", "appName", "severityLevel", "message",
+            "TimeGenerated",
+            "itemType",
+            "name",
+            "duration",
+            "success",
+            "resultCode",
+            "target",
+            "parentId",
+            "id",
+            "appName",
+            "severityLevel",
+            "message",
         ]
         ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        ts2 = datetime(2024, 1, 1, 12, 0, 2, tzinfo=timezone.utc)   # 2 seconds later
+        ts2 = datetime(2024, 1, 1, 12, 0, 2, tzinfo=timezone.utc)  # 2 seconds later
         rows = [
             [ts1, "AppRequests", "span-a", 100.0, True, "200", "", "", "id1", "app", None, ""],
             [ts2, "AppDependencies", "span-b", 50.0, True, "200", "", "", "id2", "app", None, ""],
         ]
         table = FakeTable(columns, rows)
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value = _make_client([table])
             result = get_trace("op999")
         self.assertAlmostEqual(result["duration_ms"], 2000.0)
@@ -156,16 +239,28 @@ class TestDurationComputation(unittest.TestCase):
 
     def test_ok_is_false_when_no_spans(self) -> None:
         columns = [
-            "TimeGenerated", "itemType", "name", "duration", "success",
-            "resultCode", "target", "parentId", "id", "appName", "severityLevel", "message",
+            "TimeGenerated",
+            "itemType",
+            "name",
+            "duration",
+            "success",
+            "resultCode",
+            "target",
+            "parentId",
+            "id",
+            "appName",
+            "severityLevel",
+            "message",
         ]
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         rows = [
             [ts, "AppTraces", "some log", None, None, None, None, None, None, "app", 1, "some log"],
         ]
         table = FakeTable(columns, rows)
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value = _make_client([table])
             result = get_trace("op000")
         self.assertFalse(result["ok"])
@@ -173,8 +268,10 @@ class TestDurationComputation(unittest.TestCase):
 
 class TestErrorHandling(unittest.TestCase):
     def test_returns_empty_on_client_exception(self) -> None:
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value.query_workspace.side_effect = RuntimeError("network error")
             result = get_trace("abc123")
         self.assertFalse(result["ok"])
@@ -182,8 +279,10 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_returns_empty_on_failed_query_status(self) -> None:
         table = FakeTable([], [])
-        with patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"), \
-                patch("dashboard.services.traces._get_logs_client") as mock_factory:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
             mock_factory.return_value = _make_client([table], LogsQueryStatus.PARTIAL)
             result = get_trace("abc123")
         self.assertFalse(result["ok"])

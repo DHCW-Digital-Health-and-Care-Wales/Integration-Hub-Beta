@@ -5,6 +5,7 @@ Authentication order is:
 1. DefaultAzureCredential (Managed Identity, Azure CLI, etc.)
 2. ClientSecretCredential (when service principal env vars are configured)
 """
+
 from __future__ import annotations
 
 from azure.core.credentials import TokenCredential

@@ -6,6 +6,7 @@ Primary discovery: Container App environment variables via ``arm.discover_flows(
 Fallback: static ``_FLOW_DEFS`` with suffix-based queue matching (used when the
 Container Apps API is unavailable or not configured).
 """
+
 from __future__ import annotations
 
 import logging
@@ -195,6 +196,7 @@ def refresh_flows() -> dict[str, dict]:
     # --- Demo mode: return synthetic flows without hitting Azure ---
     if config.DEMO_MODE:
         from dashboard.services.demo_data import DEMO_FLOWS  # noqa: PLC0415
+
         log.info("DEMO_MODE active — using %d synthetic flow(s)", len(DEMO_FLOWS))
         FLOWS = DEMO_FLOWS
         return FLOWS
@@ -224,6 +226,7 @@ def refresh_flows() -> dict[str, dict]:
 # Dynamic flow discovery
 # ---------------------------------------------------------------------------
 
+
 def get_active_flows(force_refresh: bool = False) -> dict[str, dict]:
     """
     Return flows that are currently deployed in Azure.
@@ -242,6 +245,7 @@ def get_active_flows(force_refresh: bool = False) -> dict[str, dict]:
 # ---------------------------------------------------------------------------
 # Health calculation helpers
 # ---------------------------------------------------------------------------
+
 
 def queue_health(active: int, dlq: int) -> str:
     """Return 'critical' | 'warning' | 'healthy' for a single queue."""
@@ -350,12 +354,14 @@ def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) ->
         for sub in flow.get("subscriptions", []):
             active = sub.get("active_message_count", 0)
             dlq = sub.get("dead_letter_message_count", 0)
-            sub_summaries.append({
-                "name": sub["name"],
-                "active": active,
-                "dlq": dlq,
-                "health": queue_health(active, dlq),
-            })
+            sub_summaries.append(
+                {
+                    "name": sub["name"],
+                    "active": active,
+                    "dlq": dlq,
+                    "health": queue_health(active, dlq),
+                }
+            )
 
         result.append(
             {

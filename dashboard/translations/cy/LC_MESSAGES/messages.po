@@ -845,6 +845,12 @@ msgstr "NO IDEA, IS IT"
 msgid "LIVE"
 msgstr "LIVE"
 
+msgid "Environment"
+msgstr "Amgylchedd, innit"
+
+msgid "Health Status"
+msgstr "Statws Iechyd, like"
+
 #: dashboard/templates/base.html:196
 msgid "Toggle light/dark theme"
 msgstr "Light or dark, like"

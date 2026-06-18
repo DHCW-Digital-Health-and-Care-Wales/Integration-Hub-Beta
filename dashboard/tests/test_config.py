@@ -2,6 +2,7 @@
 Unit tests for configuration defaults.
 Verifies env vars are read correctly with safe fallbacks.
 """
+
 from __future__ import annotations
 
 import importlib

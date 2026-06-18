@@ -1,6 +1,7 @@
 """
 Integration Hub Dashboard — Flask application entry point.
 """
+
 from __future__ import annotations
 
 import logging
@@ -80,6 +81,7 @@ def _read_extra_ca_file(cert_path: Path) -> str | None:
     except ValueError:
         return None
 
+
 def _configure_ssl_trust() -> None:
     """Build an OpenSSL-compatible CA bundle that works behind corporate TLS interception.
 
@@ -149,9 +151,11 @@ app.secret_key = config.FLASK_SECRET_KEY
 # Internationalisation (Flask-Babel)
 # ---------------------------------------------------------------------------
 
+
 def _get_locale() -> str:
     """Return the active locale code from the session, defaulting to the configured language."""
     return session.get("lang", config.DEFAULT_LANGUAGE)
+
 
 babel = Babel(
     app,
@@ -163,22 +167,28 @@ babel = Babel(
 
 @app.context_processor
 def inject_language() -> dict:
-    """Inject the current language code into every template context."""
-    return {"current_lang": session.get("lang", config.DEFAULT_LANGUAGE)}
+    """Inject the current language code and environment label into every template context."""
+    return {
+        "current_lang": session.get("lang", config.DEFAULT_LANGUAGE),
+        "environment_label": config.ENVIRONMENT_LABEL,
+        "environment_color": config.ENVIRONMENT_COLOR,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Simple in-memory cache for /api/status
 # ---------------------------------------------------------------------------
 
 _cache_lock = Lock()
 _cache_data: dict = {
-    "status":     {"data": None, "ts": 0.0},
-    "flows":      {"data": None, "ts": 0.0},
+    "status": {"data": None, "ts": 0.0},
+    "flows": {"data": None, "ts": 0.0},
     "exceptions": {"data": None, "ts": 0.0},
     "servicebus": {"data": None, "ts": 0.0},
-    "messages":   {"data": None, "ts": 0.0},
-    "alarms":     {"data": None, "ts": 0.0},
-    "alarm2":     {"data": None, "ts": 0.0},
-    "alarm3":     {"data": None, "ts": 0.0},
+    "messages": {"data": None, "ts": 0.0},
+    "alarms": {"data": None, "ts": 0.0},
+    "alarm2": {"data": None, "ts": 0.0},
+    "alarm3": {"data": None, "ts": 0.0},
 }
 
 
@@ -294,9 +304,7 @@ def _multi_cached_nowait(
                                 with _bg_refresh_lock:
                                     _bg_refresh_in_flight.discard(k)
 
-                        threading.Thread(
-                            target=_refresh, args=(key, builder, _ttl), daemon=True
-                        ).start()
+                        threading.Thread(target=_refresh, args=(key, builder, _ttl), daemon=True).start()
 
     if cold:
         # Fetch all cold entries concurrently — one thread per entry.
@@ -340,10 +348,10 @@ def _build_status() -> dict:
     # latency from ~3× to ~1× round-trip time.
     with ThreadPoolExecutor(max_workers=3) as pool:
         fut_queues = pool.submit(get_queues)
-        fut_flows  = pool.submit(get_active_flows)
-        fut_exc    = pool.submit(get_exceptions, hours=1)
-        queues        = fut_queues.result()
-        active_flows  = fut_flows.result()
+        fut_flows = pool.submit(get_active_flows)
+        fut_exc = pool.submit(get_exceptions, hours=1)
+        queues = fut_queues.result()
+        active_flows = fut_flows.result()
         exceptions_1h = fut_exc.result()
 
     flows = build_flow_data(queues, active_flows)
@@ -380,21 +388,24 @@ def _build_status() -> dict:
 # Alarm map helper (used by Flows page)
 # ---------------------------------------------------------------------------
 
+
 def _build_alarm_map() -> dict[str, dict]:
     """Build a {workflow_id: {alarm1, alarm2, alarm3}} map for the Flows page.
 
     Config is read directly from JSON (fast).
     Live status is pulled from cache — non-blocking, may be absent on first load.
     """
-    a1_cfg = {r["workflow_id"]: r for r in get_config_page_data()       if r.get("workflow_id")}
+    a1_cfg = {r["workflow_id"]: r for r in get_config_page_data() if r.get("workflow_id")}
     a2_cfg = {r["workflow_id"]: r for r in get_alarm2_config_page_data() if r.get("workflow_id")}
     a3_cfg = {r["workflow_id"]: r for r in get_alarm3_config_page_data() if r.get("workflow_id")}
 
-    a1_rows, a2_rows, a3_rows = _multi_cached_nowait([
-        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
-        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-    ])
+    a1_rows, a2_rows, a3_rows = _multi_cached_nowait(
+        [
+            ("alarms", get_alarm_status, config.API_CACHE_TTL),
+            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        ]
+    )
     a1_status = {r["workflow_id"]: r["status"] for r in (a1_rows or [])}
     a2_status = {r["workflow_id"]: r["status"] for r in (a2_rows or [])}
     a3_status = {r["workflow_id"]: r["status"] for r in (a3_rows or [])}
@@ -413,6 +424,7 @@ def _build_alarm_map() -> dict[str, dict]:
 # Language selection
 # ---------------------------------------------------------------------------
 
+
 @app.route("/set-language", methods=["POST"])
 def set_language() -> Response:
     """Set the UI language preference in the session and redirect back to the referring page."""
@@ -421,19 +433,24 @@ def set_language() -> Response:
         session["lang"] = lang
 
     return make_response(redirect(request.referrer or url_for("index")))
+
+
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
+
 
 @app.route("/")
 def index() -> str:
     """Render the dashboard overview page with system status and alarm summaries."""
     status = _get_cached_status()
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
-        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
-        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-    ])
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
+        [
+            ("alarms", get_alarm_status, config.API_CACHE_TTL),
+            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        ]
+    )
     cfg1 = load_alarm_config()
     cfg2 = load_alarm2_config()
     cfg3 = load_alarm3_config()
@@ -547,6 +564,7 @@ def messages_page() -> str:
 # API routes
 # ---------------------------------------------------------------------------
 
+
 @app.route("/trace/<operation_id>")
 def trace_page(operation_id: str) -> str | tuple[str, int]:
     """Render the distributed trace view for a given Application Insights operation ID."""
@@ -560,11 +578,11 @@ def _alarm_summary(rows: list[dict] | None) -> dict:
     """Compute a compact status count dict from an alarm rows list."""
     rows = rows or []
     return {
-        "critical":   sum(1 for r in rows if r.get("status") == "critical"),
+        "critical": sum(1 for r in rows if r.get("status") == "critical"),
         "suppressed": sum(1 for r in rows if r.get("status") == "suppressed"),
-        "unknown":    sum(1 for r in rows if r.get("status") == "unknown"),
-        "healthy":    sum(1 for r in rows if r.get("status") == "healthy"),
-        "total":      len(rows),
+        "unknown": sum(1 for r in rows if r.get("status") == "unknown"),
+        "healthy": sum(1 for r in rows if r.get("status") == "healthy"),
+        "total": len(rows),
     }
 
 
@@ -578,11 +596,13 @@ def api_status() -> Response:
     data = _get_cached_status(force=force)
     # Merge compact alarm summaries so dashboard.js can keep widgets live.
     # These are non-blocking cache reads — no extra Azure calls.
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
-        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
-        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-    ])
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
+        [
+            ("alarms", get_alarm_status, config.API_CACHE_TTL),
+            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        ]
+    )
     data = dict(data)
     data["alarm1_summary"] = _alarm_summary(alarm1_rows)
     data["alarm2_summary"] = _alarm_summary(alarm2_rows)
@@ -659,6 +679,7 @@ def api_servicebus_metrics() -> Response:
 # Alarm page routes
 # ---------------------------------------------------------------------------
 
+
 @app.route("/api/alarms/status")
 def api_alarms_status() -> Response:
     """JSON endpoint returning all three alarm statuses in parallel.
@@ -673,18 +694,22 @@ def api_alarms_status() -> Response:
             _cache_data["alarm2"]["ts"] = 0.0
             _cache_data["alarm3"]["ts"] = 0.0
 
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
-        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
-        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-    ])
-    return jsonify({
-        "alarm1": alarm1_rows,
-        "alarm2": alarm2_rows,
-        "alarm3": alarm3_rows,
-        "refreshed_at": datetime.now(timezone.utc).isoformat(),
-        "poll_interval_seconds": int(config.API_CACHE_TTL),
-    })
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
+        [
+            ("alarms", get_alarm_status, config.API_CACHE_TTL),
+            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        ]
+    )
+    return jsonify(
+        {
+            "alarm1": alarm1_rows,
+            "alarm2": alarm2_rows,
+            "alarm3": alarm3_rows,
+            "refreshed_at": datetime.now(timezone.utc).isoformat(),
+            "poll_interval_seconds": int(config.API_CACHE_TTL),
+        }
+    )
 
 
 @app.route("/alarms")
@@ -698,11 +723,13 @@ def alarms_overview_page() -> str:
 
     # Fetch all three alarm statuses concurrently — cold fetches run in
     # parallel threads instead of blocking sequentially.
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait([
-        ("alarms", get_alarm_status,  config.API_CACHE_TTL),
-        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-    ])
+    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
+        [
+            ("alarms", get_alarm_status, config.API_CACHE_TTL),
+            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        ]
+    )
 
     cfg1 = load_alarm_config()
     any_alarm1 = any(s.get("alarm_enabled", False) for s in cfg1.get("rules", {}).values())
@@ -734,9 +761,7 @@ def alarm_page() -> str:
     )
     # Determine whether any alarms have been configured at all
     cfg = load_alarm_config()
-    any_configured = any(
-        s.get("alarm_enabled", False) for s in cfg.get("rules", {}).values()
-    )
+    any_configured = any(s.get("alarm_enabled", False) for s in cfg.get("rules", {}).values())
     return render_template(
         "alarm.html",
         alarm_rows=alarm_rows,
@@ -770,25 +795,21 @@ def alarm_config_page() -> str:
         # Handle deletions
         for key in list(request.form):
             if key.startswith("delete_"):
-                rid = key[len("delete_"):]
+                rid = key[len("delete_") :]
                 rules_cfg.setdefault(rid, {})["deleted"] = True
 
         # Update existing rules
-        submitted_ids = [
-            key[len("alerting_gap_"):]
-            for key in request.form
-            if key.startswith("alerting_gap_")
-        ]
+        submitted_ids = [key[len("alerting_gap_") :] for key in request.form if key.startswith("alerting_gap_")]
         for rid in submitted_ids:
             if rules_cfg.get(rid, {}).get("deleted"):
                 continue
             entry = rules_cfg.setdefault(rid, {})
-            entry["alarm_enabled"]             = f"enabled_{rid}" in request.form
-            entry["email_alerts_enabled"]      = f"email_{rid}" in request.form
-            entry["display_name"]              = (request.form.get(f"display_name_{rid}") or "").strip()
-            entry["workflow_id"]               = (request.form.get(f"workflow_id_{rid}") or "").strip()
-            entry["alerting_gap_minutes"]      = _int(f"alerting_gap_{rid}", 60)
-            entry["day_threshold_minutes"]     = _int(f"day_threshold_{rid}", 60)
+            entry["alarm_enabled"] = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
+            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60)
+            entry["day_threshold_minutes"] = _int(f"day_threshold_{rid}", 60)
             entry["evening_threshold_minutes"] = _int(f"evening_threshold_{rid}", 120)
             entry["weekend_threshold_minutes"] = _int(f"weekend_threshold_{rid}", 240)
 
@@ -798,14 +819,14 @@ def alarm_config_page() -> str:
         if new_wid:
             new_rid = generate_alarm1_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_rid] = {
-                "display_name":              (request.form.get("new_display_name") or "").strip(),
-                "alarm_enabled":             "new_enabled" in request.form,
-                "workflow_id":               new_wid,
-                "day_threshold_minutes":     _int("new_day_threshold", 60),
+                "display_name": (request.form.get("new_display_name") or "").strip(),
+                "alarm_enabled": "new_enabled" in request.form,
+                "workflow_id": new_wid,
+                "day_threshold_minutes": _int("new_day_threshold", 60),
                 "evening_threshold_minutes": _int("new_evening_threshold", 120),
                 "weekend_threshold_minutes": _int("new_weekend_threshold", 240),
-                "alerting_gap_minutes":      _int("new_alerting_gap", 60),
-                "email_alerts_enabled":      False,
+                "alerting_gap_minutes": _int("new_alerting_gap", 60),
+                "email_alerts_enabled": False,
             }
 
         save_alarm_config(cfg)
@@ -1023,9 +1044,7 @@ def alarm2_page() -> str:
         ttl=config.API_CACHE_TTL,
     )
     cfg = load_alarm2_config()
-    any_configured = any(
-        r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values()
-    )
+    any_configured = any(r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values())
     return render_template(
         "alarm2.html",
         alarm2_rows=alarm2_rows,
@@ -1059,26 +1078,22 @@ def alarm2_config_page() -> str:
         # --- Handle deletions first ---
         for key in list(request.form):
             if key.startswith("delete_"):
-                rid = key[len("delete_"):]
+                rid = key[len("delete_") :]
                 rules_cfg.setdefault(rid, {})["deleted"] = True
 
         # --- Update existing rules (skip deleted) ---
-        submitted_ids = [
-            key[len("alerting_gap_"):]
-            for key in request.form
-            if key.startswith("alerting_gap_")
-        ]
+        submitted_ids = [key[len("alerting_gap_") :] for key in request.form if key.startswith("alerting_gap_")]
         for rid in submitted_ids:
             if rules_cfg.get(rid, {}).get("deleted"):
                 continue
             entry = rules_cfg.setdefault(rid, {})
-            entry["alarm_enabled"]           = f"enabled_{rid}" in request.form
-            entry["email_alerts_enabled"]    = f"email_{rid}" in request.form
-            entry["display_name"]            = (request.form.get(f"display_name_{rid}") or "").strip()
-            entry["workflow_id"]             = (request.form.get(f"workflow_id_{rid}") or "").strip()
+            entry["alarm_enabled"] = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 2880, minimum=1)
-            entry["threshold"]               = _int(f"threshold_{rid}", 0, minimum=0)
-            entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
+            entry["threshold"] = _int(f"threshold_{rid}", 0, minimum=0)
+            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60, minimum=1)
 
         # --- Add new rule if submitted ---
         new_wid = (request.form.get("new_workflow_id") or "").strip()
@@ -1086,14 +1101,13 @@ def alarm2_config_page() -> str:
         if new_wid:
             new_id = generate_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_id] = {
-                "display_name":            (request.form.get("new_display_name") or "").strip()
-                                           or new_wid,
-                "alarm_enabled":           "new_enabled" in request.form,
-                "workflow_id":             new_wid,
+                "display_name": (request.form.get("new_display_name") or "").strip() or new_wid,
+                "alarm_enabled": "new_enabled" in request.form,
+                "workflow_id": new_wid,
                 "window_duration_minutes": _int("new_window_duration", 2880, minimum=1),
-                "threshold":               _int("new_threshold", 0, minimum=0),
-                "alerting_gap_minutes":    _int("new_alerting_gap", 60, minimum=1),
-                "email_alerts_enabled":    False,
+                "threshold": _int("new_threshold", 0, minimum=0),
+                "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
+                "email_alerts_enabled": False,
             }
 
         save_alarm2_config(cfg)
@@ -1122,9 +1136,7 @@ def alarm3_page() -> str:
         ttl=config.API_CACHE_TTL,
     )
     cfg = load_alarm3_config()
-    any_configured = any(
-        r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values()
-    )
+    any_configured = any(r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values())
     return render_template(
         "alarm3.html",
         alarm3_rows=alarm3_rows,
@@ -1157,39 +1169,34 @@ def alarm3_config_page() -> str:
 
         for key in list(request.form):
             if key.startswith("delete_"):
-                rid = key[len("delete_"):]
+                rid = key[len("delete_") :]
                 rules_cfg.setdefault(rid, {})["deleted"] = True
 
-        submitted_ids = [
-            key[len("alerting_gap_"):]
-            for key in request.form
-            if key.startswith("alerting_gap_")
-        ]
+        submitted_ids = [key[len("alerting_gap_") :] for key in request.form if key.startswith("alerting_gap_")]
         for rid in submitted_ids:
             if rules_cfg.get(rid, {}).get("deleted"):
                 continue
             entry = rules_cfg.setdefault(rid, {})
-            entry["alarm_enabled"]           = f"enabled_{rid}" in request.form
-            entry["email_alerts_enabled"]    = f"email_{rid}" in request.form
-            entry["display_name"]            = (request.form.get(f"display_name_{rid}") or "").strip()
-            entry["workflow_id"]             = (request.form.get(f"workflow_id_{rid}") or "").strip()
+            entry["alarm_enabled"] = f"enabled_{rid}" in request.form
+            entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
+            entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 15, minimum=1)
-            entry["threshold"]               = _int(f"threshold_{rid}", 1, minimum=1)
-            entry["alerting_gap_minutes"]    = _int(f"alerting_gap_{rid}", 60, minimum=1)
+            entry["threshold"] = _int(f"threshold_{rid}", 1, minimum=1)
+            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60, minimum=1)
 
         new_wid = (request.form.get("new_workflow_id") or "").strip()
         new_id = None
         if new_wid:
             new_id = generate_alarm3_rule_id(new_wid, set(rules_cfg))
             rules_cfg[new_id] = {
-                "display_name":            (request.form.get("new_display_name") or "").strip()
-                                           or f"{new_wid} Failures",
-                "alarm_enabled":           "new_enabled" in request.form,
-                "workflow_id":             new_wid,
+                "display_name": (request.form.get("new_display_name") or "").strip() or f"{new_wid} Failures",
+                "alarm_enabled": "new_enabled" in request.form,
+                "workflow_id": new_wid,
                 "window_duration_minutes": _int("new_window_duration", 15, minimum=1),
-                "threshold":               _int("new_threshold", 1, minimum=1),
-                "alerting_gap_minutes":    _int("new_alerting_gap", 60, minimum=1),
-                "email_alerts_enabled":    False,
+                "threshold": _int("new_threshold", 1, minimum=1),
+                "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
+                "email_alerts_enabled": False,
             }
 
         save_alarm3_config(cfg)

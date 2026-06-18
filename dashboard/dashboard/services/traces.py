@@ -2,6 +2,7 @@
 Trace drilldown service — queries Log Analytics for all telemetry
 associated with a given App Insights operation_id.
 """
+
 from __future__ import annotations
 
 import logging

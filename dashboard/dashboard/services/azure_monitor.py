@@ -1,6 +1,7 @@
 """
 Azure Monitor / Log Analytics queries for the Integration Hub.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,6 +52,7 @@ def get_exceptions(hours: int = 24) -> list[dict]:
     """
     if config.DEMO_MODE:
         from dashboard.services.demo_data import DEMO_EXCEPTIONS  # noqa: PLC0415
+
         return DEMO_EXCEPTIONS
 
     if not _credentials_configured():
@@ -197,11 +199,7 @@ def get_container_app_metrics() -> list[dict]:
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
         apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
-        apps = list(
-            apps_client.container_apps.list_by_resource_group(
-                config.AZURE_CONTAINER_APPS_RESOURCE_GROUP
-            )
-        )
+        apps = list(apps_client.container_apps.list_by_resource_group(config.AZURE_CONTAINER_APPS_RESOURCE_GROUP))
 
         now = datetime.now(timezone.utc)
         start = (now - timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -222,10 +220,7 @@ def get_container_app_metrics() -> list[dict]:
                     "&aggregation=Average"
                     "&metricnamespace=microsoft.app/containerapps"
                 )
-                url = (
-                    f"https://management.azure.com{app.id}"
-                    f"/providers/microsoft.insights/metrics?{query}"
-                )
+                url = f"https://management.azure.com{app.id}/providers/microsoft.insights/metrics?{query}"
                 resp = requests.get(url, headers=headers, timeout=10)
                 resp.raise_for_status()
                 data = resp.json()

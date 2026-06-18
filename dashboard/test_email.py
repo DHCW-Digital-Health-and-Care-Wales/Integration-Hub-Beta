@@ -6,6 +6,7 @@ Run from the dashboard/ directory:
 
 Delete this file after use.
 """
+
 import os
 import sys
 
@@ -20,15 +21,19 @@ if os.path.exists(_env_path):
                 os.environ.setdefault(k.strip(), v.strip())
 
 ACS_CONNECTION_STRING = os.getenv("ACS_CONNECTION_STRING", "")
-ALERT_EMAIL_TO        = os.getenv("ALERT_EMAIL_TO", "")
-ALERT_EMAIL_FROM      = os.getenv("ALERT_EMAIL_FROM", "")
+ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
+ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
 
 # ── Validate ───────────────────────────────────────────────────────────────
-missing = [k for k, v in {
-    "ACS_CONNECTION_STRING": ACS_CONNECTION_STRING,
-    "ALERT_EMAIL_TO":        ALERT_EMAIL_TO,
-    "ALERT_EMAIL_FROM":      ALERT_EMAIL_FROM,
-}.items() if not v or v == "change-me"]
+missing = [
+    k
+    for k, v in {
+        "ACS_CONNECTION_STRING": ACS_CONNECTION_STRING,
+        "ALERT_EMAIL_TO": ALERT_EMAIL_TO,
+        "ALERT_EMAIL_FROM": ALERT_EMAIL_FROM,
+    }.items()
+    if not v or v == "change-me"
+]
 
 if missing:
     print(f"ERROR: missing or placeholder values in .env: {', '.join(missing)}")
@@ -65,4 +70,3 @@ try:
 except Exception as exc:
     print(f"FAILED — {type(exc).__name__}: {exc}")
     sys.exit(1)
-
