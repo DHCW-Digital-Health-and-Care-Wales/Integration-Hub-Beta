@@ -244,3 +244,19 @@ class TestEnvironmentColour:
     def test_empty_resource_group_colour_is_grey(self) -> None:
         cfg = self._load_config({"AZURE_RESOURCE_GROUP": ""})
         assert cfg.ENVIRONMENT_COLOR == "#94a3b8"
+
+    def test_color_map_trims_whitespace_around_entries(self) -> None:
+        # Spaces after commas must not break matching
+        cfg = self._load_config({
+            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-PRD-App-RG",
+            "ENVIRONMENT_COLOR_MAP": "TST:purple, PRD:blue",
+        })
+        assert cfg.ENVIRONMENT_COLOR == "#3b82f6"
+
+    def test_color_map_key_normalised_to_uppercase(self) -> None:
+        # Lowercase keys in the map should still match the uppercased raw environment
+        cfg = self._load_config({
+            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-TST-App-RG",
+            "ENVIRONMENT_COLOR_MAP": "tst:cyan",
+        })
+        assert cfg.ENVIRONMENT_COLOR == "#06b6d4"

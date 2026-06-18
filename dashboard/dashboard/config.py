@@ -72,7 +72,12 @@ _ENVIRONMENT_COLOR_DEFAULTS: dict[str, str] = {
 # Use colour names from the list above, or a raw hex value (e.g. TST:#c026d3).
 # Any code not listed falls back to the built-in defaults above.
 _color_map_raw = os.getenv("ENVIRONMENT_COLOR_MAP", "")
-_color_map_overrides: dict[str, str] = dict(pair.split(":", 1) for pair in _color_map_raw.split(",") if ":" in pair)
+_color_map_overrides: dict[str, str] = {
+    k.strip().upper(): v.strip()
+    for pair in _color_map_raw.split(",")
+    if ":" in pair
+    for k, v in (pair.split(":", 1),)
+}
 
 
 def _resolve_colour(name: str) -> str:
