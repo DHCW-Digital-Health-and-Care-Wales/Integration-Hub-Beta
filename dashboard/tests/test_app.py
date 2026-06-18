@@ -107,24 +107,27 @@ class TestNavEnvLabel:
     """Tests that the environment chip renders correctly in the navbar."""
 
     def test_env_chip_shown_when_label_is_set(self, client: FlaskClient) -> None:
-        with patch("dashboard.app.config.ENVIRONMENT_LABEL", "TESTING"), \
-             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#a855f7"), \
-             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
-             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
-             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
+        with (
+            patch("dashboard.app.config.ENVIRONMENT_LABEL", "TESTING"),
+            patch("dashboard.app.config.ENVIRONMENT_COLOR", "#a855f7"),
+            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
             response = client.get("/")
         assert b"nav-env-label" in response.data
         assert b"TESTING" in response.data
 
     def test_env_chip_hidden_when_label_is_empty(self, client: FlaskClient) -> None:
-        with patch("dashboard.app.config.ENVIRONMENT_LABEL", ""), \
-             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#94a3b8"), \
-             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES), \
-             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS), \
-             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS):
+        with (
+            patch("dashboard.app.config.ENVIRONMENT_LABEL", ""),
+            patch("dashboard.app.config.ENVIRONMENT_COLOR", "#94a3b8"),
+            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
             response = client.get("/")
         assert b"nav-env-label" not in response.data
-
 
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (

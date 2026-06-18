@@ -120,18 +120,22 @@ class TestEnvironmentLabel:
 
     def test_label_map_trims_whitespace_around_entries(self) -> None:
         # Spaces after commas (e.g. copy-pasted values) must not break matching
-        cfg = self._load_config({
-            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-PRD-App-RG",
-            "ENVIRONMENT_LABEL_MAP": "TST:TESTING, PRD:PRODUCTION",
-        })
+        cfg = self._load_config(
+            {
+                "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-PRD-App-RG",
+                "ENVIRONMENT_LABEL_MAP": "TST:TESTING, PRD:PRODUCTION",
+            }
+        )
         assert cfg.ENVIRONMENT_LABEL == "PRODUCTION"
 
     def test_label_map_key_normalised_to_uppercase(self) -> None:
         # Lowercase keys in the map should still match the uppercased raw environment
-        cfg = self._load_config({
-            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-TST-App-RG",
-            "ENVIRONMENT_LABEL_MAP": "tst:TESTING",
-        })
+        cfg = self._load_config(
+            {
+                "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-TST-App-RG",
+                "ENVIRONMENT_LABEL_MAP": "tst:TESTING",
+            }
+        )
         assert cfg.ENVIRONMENT_LABEL == "TESTING"
 
 
@@ -247,16 +251,20 @@ class TestEnvironmentColour:
 
     def test_color_map_trims_whitespace_around_entries(self) -> None:
         # Spaces after commas must not break matching
-        cfg = self._load_config({
-            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-PRD-App-RG",
-            "ENVIRONMENT_COLOR_MAP": "TST:purple, PRD:blue",
-        })
+        cfg = self._load_config(
+            {
+                "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-PRD-App-RG",
+                "ENVIRONMENT_COLOR_MAP": "TST:purple, PRD:blue",
+            }
+        )
         assert cfg.ENVIRONMENT_COLOR == "#3b82f6"
 
     def test_color_map_key_normalised_to_uppercase(self) -> None:
         # Lowercase keys in the map should still match the uppercased raw environment
-        cfg = self._load_config({
-            "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-TST-App-RG",
-            "ENVIRONMENT_COLOR_MAP": "tst:cyan",
-        })
+        cfg = self._load_config(
+            {
+                "AZURE_RESOURCE_GROUP": "UK-South-DHCW-IntHub-TST-App-RG",
+                "ENVIRONMENT_COLOR_MAP": "tst:cyan",
+            }
+        )
         assert cfg.ENVIRONMENT_COLOR == "#06b6d4"

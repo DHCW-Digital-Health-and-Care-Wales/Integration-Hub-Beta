@@ -28,10 +28,7 @@ _raw_environment: str = (
 # Any code not listed falls back to the raw value extracted from AZURE_RESOURCE_GROUP.
 _label_map_raw = os.getenv("ENVIRONMENT_LABEL_MAP", "")
 ENVIRONMENT_LABEL_MAP: dict[str, str] = {
-    k.strip().upper(): v.strip()
-    for pair in _label_map_raw.split(",")
-    if ":" in pair
-    for k, v in (pair.split(":", 1),)
+    k.strip().upper(): v.strip() for pair in _label_map_raw.split(",") if ":" in pair for k, v in (pair.split(":", 1),)
 }
 
 ENVIRONMENT_LABEL: str = ENVIRONMENT_LABEL_MAP.get(_raw_environment, _raw_environment)
@@ -73,10 +70,7 @@ _ENVIRONMENT_COLOR_DEFAULTS: dict[str, str] = {
 # Any code not listed falls back to the built-in defaults above.
 _color_map_raw = os.getenv("ENVIRONMENT_COLOR_MAP", "")
 _color_map_overrides: dict[str, str] = {
-    k.strip().upper(): v.strip()
-    for pair in _color_map_raw.split(",")
-    if ":" in pair
-    for k, v in (pair.split(":", 1),)
+    k.strip().upper(): v.strip() for pair in _color_map_raw.split(",") if ":" in pair for k, v in (pair.split(":", 1),)
 }
 
 
