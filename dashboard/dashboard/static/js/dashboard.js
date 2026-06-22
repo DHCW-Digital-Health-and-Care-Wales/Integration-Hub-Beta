@@ -278,6 +278,61 @@
   function updateAlarm2Summary(summary) { _updateAlarmSummaryCard("alarm2", summary); }
   function updateAlarm3Summary(summary) { _updateAlarmSummaryCard("alarm3", summary); }
 
+  function updateRetryDelays(retryRows, retryKpis) {
+    if (!Array.isArray(retryRows)) return;
+
+    const reportingEl = document.getElementById("retry-flows-reporting");
+    if (reportingEl && retryKpis && typeof retryKpis.flows_reporting === "number") {
+      animateCounter(reportingEl, retryKpis.flows_reporting);
+    }
+
+    const over1mEl = document.getElementById("retry-flows-over-1m");
+    if (over1mEl && retryKpis && typeof retryKpis.flows_over_1m === "number") {
+      animateCounter(over1mEl, retryKpis.flows_over_1m);
+    }
+
+    const tbody = document.querySelector("#retry-delay-table tbody");
+    if (!tbody) return;
+
+    if (retryRows.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center" style="padding:1rem; color:var(--text-muted);">
+            No retry delays over 60 seconds were observed in the last hour.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const rowsHtml = retryRows
+      .filter((row) => row && row.workflow_id)
+      .map((row) => {
+        const wid = row.workflow_id;
+        const delayClass = row.over_1m ? "critical" : (row.delay_seconds != null ? "warning" : "zero");
+        const delayDisplay = row.delay_display || "Metric unavailable";
+        const attemptDisplay = row.attempt != null ? String(row.attempt) : "—";
+        const queueDisplay = row.queue || "—";
+        const seenDisplay = row.timestamp ? String(row.timestamp).replace("T", " ").slice(0, 19) : "—";
+        const statusClass = row.status || "unknown";
+        const statusText = row.over_1m ? "1 min +" : (row.delay_seconds != null ? "Observed" : "Unavailable");
+
+        return `
+          <tr data-retry-workflow-id="${wid}">
+            <td style="font-weight:600;">${row.flow_label || wid}</td>
+            <td class="text-end count-cell ${delayClass}" id="retry-delay-${wid}">${delayDisplay}</td>
+            <td class="text-end" id="retry-attempt-${wid}">${attemptDisplay}</td>
+            <td class="font-mono" style="font-size:0.68rem;" id="retry-queue-${wid}">${queueDisplay}</td>
+            <td class="font-mono" style="font-size:0.68rem;" id="retry-seen-${wid}">${seenDisplay}</td>
+            <td><span class="status-badge ${statusClass}" id="retry-status-${wid}">${statusText}</span></td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    tbody.innerHTML = rowsHtml;
+  }
+
   /* ------------------------------------------------------------------ */
   /* Poll /api/status                                                      */
   /* ------------------------------------------------------------------ */
@@ -295,6 +350,7 @@
       updateAlarm1Summary(data.alarm1_summary);
       updateAlarm2Summary(data.alarm2_summary);
       updateAlarm3Summary(data.alarm3_summary);
+      updateRetryDelays(data.retry_delays, data.retry_delay_kpis);
 
       if (lastRefreshedEl) {
         const d = new Date(data.refreshed_at);
