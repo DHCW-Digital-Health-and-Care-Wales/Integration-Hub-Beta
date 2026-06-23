@@ -11,6 +11,7 @@ Tests cover:
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import patch
 
 from dashboard.services.alarm2 import (
@@ -114,7 +115,7 @@ class TestBuildRow:
         "alerting_gap_minutes": 60,
     }
 
-    def _row(self, now: datetime, **overrides) -> dict:
+    def _row(self, now: datetime, **overrides: Any) -> dict:
         cfg = {**self._CFG, **overrides}
         return _build_row(
             "phw-to-mpi-outgoing", self._SEED, cfg, total=100, status="healthy", cooldown_remaining=None, now=now
