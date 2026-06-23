@@ -31,6 +31,7 @@ from pathlib import Path
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
+from dashboard.services.alarm_time_utils import PERIOD_SHORT_LABELS, get_current_period
 from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
@@ -39,7 +40,9 @@ CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm2_config.json"
 STATE_PATH = Path(__file__).parent.parent.parent / "alarm2_state.json"
 
 DEFAULT_WINDOW_MINUTES = 2880  # 2 days
-DEFAULT_THRESHOLD = 0
+DEFAULT_DAY_THRESHOLD = 0
+DEFAULT_EVENING_THRESHOLD = 0
+DEFAULT_WEEKEND_THRESHOLD = 0
 DEFAULT_ALERTING_GAP = 60
 
 # Seed list of known rules — always present even if not yet enabled.
@@ -164,6 +167,21 @@ def _format_count(total: int | None) -> str:
     return f"{total:,}"
 
 
+def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
+    """Return the message-count alarm threshold for the current time period.
+
+    Falls back to the legacy single ``threshold`` field for configs created
+    before per-period thresholds were introduced.
+    """
+    legacy = rule_cfg.get("threshold", None)
+    period = get_current_period(now)
+    if period == "weekend":
+        return int(rule_cfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD))
+    if period == "day":
+        return int(rule_cfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD))
+    return int(rule_cfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD))
+
+
 # ---------------------------------------------------------------------------
 # Log Analytics query
 # ---------------------------------------------------------------------------
@@ -244,6 +262,7 @@ def _send_alarm2_email(
     window_minutes: int,
     workflow_id: str,
     now: datetime,
+    period: str = "day",
     email_alerts_enabled: bool = False,
 ) -> None:
     """Send an HTML email via Azure Communication Services when Alarm 2 fires."""
@@ -255,7 +274,10 @@ def _send_alarm2_email(
         log.warning("Alarm 2 email enabled but ACS/ALERT_EMAIL_TO not set — skipping")
         return
 
+    from dashboard.services.alarm_time_utils import PERIOD_LABELS  # noqa: PLC0415
+
     window_label = f"{window_minutes // 60} hours" if window_minutes >= 60 else f"{window_minutes} minutes"
+    period_label = PERIOD_LABELS.get(period, period.title())
     subject = f"[Integration Hub] Alarm 2 — {display_name} low message volume ({messages_total} messages)"
     body = f"""<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;">
 <h2 style="color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:8px;">
@@ -280,8 +302,8 @@ def _send_alarm2_email(
     <td style="border-bottom:1px solid #eee;color:#c0392b;font-weight:bold;">{messages_total:,}</td>
   </tr>
   <tr>
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Threshold</td>
-    <td style="border-bottom:1px solid #eee;">&lt;= {threshold:,}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Period / Threshold</td>
+    <td style="border-bottom:1px solid #eee;">{period_label} — &lt;= {threshold:,}</td>
   </tr>
   <tr style="background:#fff;">
     <td style="font-weight:bold;border-bottom:1px solid #eee;">Lookback Window</td>
@@ -348,7 +370,8 @@ def get_alarm2_status() -> list[dict]:
     for rule in enabled_rules:
         rid = rule["id"]
         rule_cfg = rules_cfg.get(rid, {})
-        threshold = int(rule_cfg.get("threshold", DEFAULT_THRESHOLD))
+        threshold = _applicable_threshold(rule_cfg, now)
+        period = get_current_period(now)
         gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
         total = totals.get(rid)
 
@@ -415,6 +438,7 @@ def get_alarm2_status() -> list[dict]:
                 int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
                 rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                 now,
+                period=period,
                 email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
             )
         else:
@@ -432,6 +456,7 @@ def get_alarm2_status() -> list[dict]:
                     int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
                     rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
                     now,
+                    period=period,
                     email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
                 )
             else:
@@ -464,13 +489,24 @@ def _build_row(
 ) -> dict:
     """Build the status-row dict for a single Alarm 2 rule."""
     window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
+    period = get_current_period(now)
+    period_threshold = _applicable_threshold(rule_cfg, now)
     return {
         "id": rid,
         "display_name": rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
         "workflow_id": rule_cfg.get("workflow_id", rule_seed.get("workflow_id", "")),
         "window_duration_minutes": window,
         "window_label": _window_label(window),
-        "threshold": int(rule_cfg.get("threshold", DEFAULT_THRESHOLD)),
+        "day_threshold": int(rule_cfg.get("day_threshold", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
+        "evening_threshold": int(
+            rule_cfg.get("evening_threshold", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
+        ),
+        "weekend_threshold": int(
+            rule_cfg.get("weekend_threshold", rule_cfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))
+        ),
+        "current_period": period,
+        "period_threshold": period_threshold,
+        "period_short_label": PERIOD_SHORT_LABELS.get(period, period.title()),
         "alerting_gap_minutes": int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
         "messages_total": total,
         "messages_display": _format_count(total),
@@ -524,18 +560,29 @@ def get_alarm2_config_page_data() -> list[dict]:
     """Return all known rules with their current settings for the config form."""
     cfg = load_alarm2_config()
     rules_cfg = cfg.get("rules", {})
-    return [
-        {
-            "id": r["id"],
-            "display_name": rules_cfg.get(r["id"], {}).get("display_name") or r.get("display_name", r["id"]),
-            "alarm_enabled": rules_cfg.get(r["id"], {}).get("alarm_enabled", False),
-            "workflow_id": rules_cfg.get(r["id"], {}).get("workflow_id", r.get("workflow_id", "")),
-            "window_duration_minutes": int(
-                rules_cfg.get(r["id"], {}).get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)
-            ),
-            "threshold": int(rules_cfg.get(r["id"], {}).get("threshold", DEFAULT_THRESHOLD)),
-            "alerting_gap_minutes": int(rules_cfg.get(r["id"], {}).get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
-            "email_alerts_enabled": rules_cfg.get(r["id"], {}).get("email_alerts_enabled", False),
-        }
-        for r in _all_known_rules(rules_cfg)
-    ]
+    result = []
+    for r in _all_known_rules(rules_cfg):
+        rcfg = rules_cfg.get(r["id"], {})
+        # Legacy configs store a single ``threshold``; use it as fallback for all periods.
+        legacy = rcfg.get("threshold", None)
+        result.append(
+            {
+                "id": r["id"],
+                "display_name": rcfg.get("display_name") or r.get("display_name", r["id"]),
+                "alarm_enabled": rcfg.get("alarm_enabled", False),
+                "workflow_id": rcfg.get("workflow_id", r.get("workflow_id", "")),
+                "window_duration_minutes": int(rcfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
+                "day_threshold": int(
+                    rcfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD)
+                ),
+                "evening_threshold": int(
+                    rcfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD)
+                ),
+                "weekend_threshold": int(
+                    rcfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD)
+                ),
+                "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
+                "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
+            }
+        )
+    return result
