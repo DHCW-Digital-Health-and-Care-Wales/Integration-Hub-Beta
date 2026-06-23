@@ -55,7 +55,7 @@ def get_current_period(now: datetime) -> str:
 
 PERIOD_LABELS: dict[str, str] = {
     "day": "Day (Mon–Fri 08:00–17:00 UTC)",
-    "evening": "Evening (Mon–Thu 17:00–08:00 + Fri 08:00–17:00 UTC)",
+    "evening": "Evening (Mon–Fri 17:00–08:00 UTC; excluding Weekend)",
     "weekend": "Weekend (Fri 17:00–Mon 08:00 UTC)",
 }
 
