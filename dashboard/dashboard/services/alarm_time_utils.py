@@ -12,7 +12,7 @@ Time windows (all UTC):
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def get_current_period(now: datetime) -> str:
@@ -20,14 +20,18 @@ def get_current_period(now: datetime) -> str:
 
     Weekend : Friday 17:00 → Monday 08:00 (UTC)
     Day     : Monday–Friday 08:00–17:00 (UTC)
-    Evening : Monday–Friday 17:00–08:00, excluding weekend window (UTC)
+    Evening : Monday–Thursday 17:00–08:00 + Friday 08:00–17:00 (UTC)
 
     Args:
-        now: A timezone-aware (or naive UTC) datetime to evaluate.
+        now: A timezone-aware or naive (UTC) datetime to evaluate.
+             Timezone-aware datetimes are normalised to UTC before classification.
 
     Returns:
         One of ``'day'``, ``'evening'``, or ``'weekend'``.
     """
+    # Normalise to UTC so non-UTC aware datetimes are classified correctly.
+    if now.tzinfo is not None:
+        now = now.astimezone(timezone.utc)
     weekday = now.weekday()  # 0 = Monday … 4 = Friday, 5 = Sat, 6 = Sun
     time_mins = now.hour * 60 + now.minute
     DAY_START = 8 * 60  # 08:00
@@ -51,7 +55,7 @@ def get_current_period(now: datetime) -> str:
 
 PERIOD_LABELS: dict[str, str] = {
     "day": "Day (Mon–Fri 08:00–17:00 UTC)",
-    "evening": "Evening (Mon–Fri 17:00–08:00 UTC)",
+    "evening": "Evening (Mon–Thu 17:00–08:00 + Fri 08:00–17:00 UTC)",
     "weekend": "Weekend (Fri 17:00–Mon 08:00 UTC)",
 }
 
