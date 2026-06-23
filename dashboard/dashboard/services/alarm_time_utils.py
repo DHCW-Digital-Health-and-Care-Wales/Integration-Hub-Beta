@@ -20,7 +20,7 @@ def get_current_period(now: datetime) -> str:
 
     Weekend : Friday 17:00 → Monday 08:00 (UTC)
     Day     : Monday–Friday 08:00–17:00 (UTC)
-    Evening : Monday–Thursday 17:00–08:00 + Friday 08:00–17:00 (UTC)
+    Evening : Monday–Friday 17:00–08:00 (UTC), excluding the Weekend window
 
     Args:
         now: A timezone-aware or naive (UTC) datetime to evaluate.
