@@ -8,15 +8,15 @@ All boundary cases for the three time periods:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import datetime, timedelta, timezone
+from datetime import timezone as tz
 
 from dashboard.services.alarm_time_utils import get_current_period
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _utc(year: int, month: int, day: int, hour: int, minute: int = 0) -> datetime:
     """Return a UTC-aware datetime for the given components."""
@@ -39,6 +39,7 @@ NEXT_MON = (2026, 6, 29)
 # ---------------------------------------------------------------------------
 # Weekend period
 # ---------------------------------------------------------------------------
+
 
 class TestWeekendPeriod:
     """Fri 17:00 through Mon 08:00 (exclusive) is always 'weekend'."""
@@ -81,6 +82,7 @@ class TestWeekendPeriod:
 # Day period
 # ---------------------------------------------------------------------------
 
+
 class TestDayPeriod:
     """Mon–Fri 08:00–16:59 (UTC) is 'day'."""
 
@@ -115,6 +117,7 @@ class TestDayPeriod:
 # ---------------------------------------------------------------------------
 # Evening period
 # ---------------------------------------------------------------------------
+
 
 class TestEveningPeriod:
     """Weeknights (Mon–Thu 17:00 → next day 08:00) are 'evening'."""
@@ -153,13 +156,12 @@ class TestEveningPeriod:
 # UTC normalisation
 # ---------------------------------------------------------------------------
 
+
 class TestUTCNormalisation:
     """Timezone-aware non-UTC datetimes should be normalised before classification."""
 
     def test_bst_aware_datetime_normalised_to_utc(self) -> None:
         """A BST (+01:00) datetime that is 17:30 local = 16:30 UTC → 'day'."""
-        from datetime import timezone as tz
-        from datetime import timedelta
         bst = tz(timedelta(hours=1))
         # Tue 16 Jun 2026, 17:30 BST = 16:30 UTC → day
         aware_bst = datetime(2026, 6, 23, 17, 30, tzinfo=bst)  # Tuesday

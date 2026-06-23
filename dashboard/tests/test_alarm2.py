@@ -11,16 +11,12 @@ Tests cover:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from dashboard.services.alarm2 import (
-    DEFAULT_ALERTING_GAP,
     DEFAULT_DAY_THRESHOLD,
     DEFAULT_EVENING_THRESHOLD,
     DEFAULT_WEEKEND_THRESHOLD,
-    DEFAULT_WINDOW_MINUTES,
     _applicable_threshold,
     _build_row,
     _window_label,
@@ -43,10 +39,10 @@ def _utc(weekday_offset: int, hour: int) -> datetime:
     return datetime(2026, 6, base_day, hour, 0, tzinfo=timezone.utc)
 
 
-MON_DAY = _utc(0, 12)       # Monday 12:00 UTC → day
-MON_EVE = _utc(0, 18)       # Monday 18:00 UTC → evening
-FRI_EVE = _utc(4, 18)       # Friday 18:00 UTC → weekend
-SAT_MID = _utc(5, 12)       # Saturday 12:00 UTC → weekend
+MON_DAY = _utc(0, 12)  # Monday 12:00 UTC → day
+MON_EVE = _utc(0, 18)  # Monday 18:00 UTC → evening
+FRI_EVE = _utc(4, 18)  # Friday 18:00 UTC → weekend
+SAT_MID = _utc(5, 12)  # Saturday 12:00 UTC → weekend
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +116,9 @@ class TestBuildRow:
 
     def _row(self, now: datetime, **overrides) -> dict:
         cfg = {**self._CFG, **overrides}
-        return _build_row("phw-to-mpi-outgoing", self._SEED, cfg, total=100, status="healthy",
-                          cooldown_remaining=None, now=now)
+        return _build_row(
+            "phw-to-mpi-outgoing", self._SEED, cfg, total=100, status="healthy", cooldown_remaining=None, now=now
+        )
 
     def test_period_threshold_matches_day(self) -> None:
         row = self._row(MON_DAY)
@@ -146,10 +143,21 @@ class TestBuildRow:
 
     def test_legacy_threshold_fallback_in_display_fields(self) -> None:
         """Rows built from legacy config expose the legacy value for all three fields."""
-        legacy_cfg = {"threshold": 77, "workflow_id": "phw-to-mpi",
-                      "window_duration_minutes": 1440, "alerting_gap_minutes": 60}
-        row = _build_row("phw-to-mpi-outgoing", self._SEED, legacy_cfg, total=50, status="healthy",
-                         cooldown_remaining=None, now=MON_DAY)
+        legacy_cfg = {
+            "threshold": 77,
+            "workflow_id": "phw-to-mpi",
+            "window_duration_minutes": 1440,
+            "alerting_gap_minutes": 60,
+        }
+        row = _build_row(
+            "phw-to-mpi-outgoing",
+            self._SEED,
+            legacy_cfg,
+            total=50,
+            status="healthy",
+            cooldown_remaining=None,
+            now=MON_DAY,
+        )
         assert row["day_threshold"] == 77
         assert row["evening_threshold"] == 77
         assert row["weekend_threshold"] == 77
@@ -160,8 +168,15 @@ class TestBuildRow:
         assert row["messages_display"] == "100"
 
     def test_messages_display_dash_when_none(self) -> None:
-        row = _build_row("phw-to-mpi-outgoing", self._SEED, self._CFG, total=None, status="unknown",
-                         cooldown_remaining=None, now=MON_DAY)
+        row = _build_row(
+            "phw-to-mpi-outgoing",
+            self._SEED,
+            self._CFG,
+            total=None,
+            status="unknown",
+            cooldown_remaining=None,
+            now=MON_DAY,
+        )
         assert row["messages_display"] == "—"
 
     def test_status_preserved(self) -> None:
@@ -217,7 +232,7 @@ class TestGetAlarm2ConfigPageData:
                 "phw-to-mpi-outgoing": {
                     "alarm_enabled": True,
                     "workflow_id": "phw-to-mpi",
-                    "threshold": 42,          # Legacy single value
+                    "threshold": 42,  # Legacy single value
                     "window_duration_minutes": 1440,
                     "alerting_gap_minutes": 60,
                 }

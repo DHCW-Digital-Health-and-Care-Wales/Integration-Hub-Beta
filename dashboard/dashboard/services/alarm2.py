@@ -498,8 +498,12 @@ def _build_row(
         "window_duration_minutes": window,
         "window_label": _window_label(window),
         "day_threshold": int(rule_cfg.get("day_threshold", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
-        "evening_threshold": int(rule_cfg.get("evening_threshold", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))),
-        "weekend_threshold": int(rule_cfg.get("weekend_threshold", rule_cfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))),
+        "evening_threshold": int(
+            rule_cfg.get("evening_threshold", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
+        ),
+        "weekend_threshold": int(
+            rule_cfg.get("weekend_threshold", rule_cfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))
+        ),
         "current_period": period,
         "period_threshold": period_threshold,
         "period_short_label": PERIOD_SHORT_LABELS.get(period, period.title()),
@@ -568,9 +572,15 @@ def get_alarm2_config_page_data() -> list[dict]:
                 "alarm_enabled": rcfg.get("alarm_enabled", False),
                 "workflow_id": rcfg.get("workflow_id", r.get("workflow_id", "")),
                 "window_duration_minutes": int(rcfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                "day_threshold": int(rcfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD)),
-                "evening_threshold": int(rcfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD)),
-                "weekend_threshold": int(rcfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD)),
+                "day_threshold": int(
+                    rcfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD)
+                ),
+                "evening_threshold": int(
+                    rcfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD)
+                ),
+                "weekend_threshold": int(
+                    rcfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD)
+                ),
                 "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
                 "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
             }
