@@ -195,7 +195,12 @@
 
             <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
               &lt;= {{ row.period_threshold }}
-              <span class="a2-period-badge a2-badge-{{ row.current_period }}">{{ row.period_short_label }}</span>
+              <span class="a2-period-badge a2-badge-{{ row.current_period }}">
+                {%- if row.current_period == 'day' %}{{ _("Day") }}
+                {%- elif row.current_period == 'evening' %}{{ _("Evening") }}
+                {%- else %}{{ _("Weekend") }}
+                {%- endif -%}
+              </span>
             </td>
 
             <td style="font-size:0.82rem; color:var(--text-muted);">

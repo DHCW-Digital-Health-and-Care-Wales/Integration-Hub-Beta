@@ -160,17 +160,17 @@
               {{ _("Thresholds") }}
             </label>
             <div class="d-flex align-items-center gap-1 flex-wrap">
-              <span class="cfg-period-badge badge-day">{{ _("Day") }}</span>
+              <label for="day_threshold_{{ s.id }}" class="cfg-period-badge badge-day">{{ _("Day") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="day_threshold_{{ s.id }}" name="day_threshold_{{ s.id }}"
                      value="{{ s.day_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-period-badge badge-eve">{{ _("Eve") }}</span>
+              <label for="evening_threshold_{{ s.id }}" class="cfg-period-badge badge-eve">{{ _("Eve") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="evening_threshold_{{ s.id }}" name="evening_threshold_{{ s.id }}"
                      value="{{ s.evening_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</span>
+              <label for="weekend_threshold_{{ s.id }}" class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="weekend_threshold_{{ s.id }}" name="weekend_threshold_{{ s.id }}"
                      value="{{ s.weekend_threshold_minutes }}"
@@ -261,15 +261,15 @@
               {{ _("Thresholds") }}
             </label>
             <div class="d-flex align-items-center gap-1 flex-wrap">
-              <span class="cfg-period-badge badge-day">{{ _("Day") }}</span>
+              <label for="new_day_threshold" class="cfg-period-badge badge-day">{{ _("Day") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_day_threshold" name="new_day_threshold"
                      value="60" min="1" max="44640" step="1">
-              <span class="cfg-period-badge badge-eve">{{ _("Eve") }}</span>
+              <label for="new_evening_threshold" class="cfg-period-badge badge-eve">{{ _("Eve") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_evening_threshold" name="new_evening_threshold"
                      value="120" min="1" max="44640" step="1">
-              <span class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</span>
+              <label for="new_weekend_threshold" class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_weekend_threshold" name="new_weekend_threshold"
                      value="240" min="1" max="44640" step="1">
