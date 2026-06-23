@@ -28,6 +28,7 @@ from pathlib import Path
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
+from dashboard.services.alarm_time_utils import get_current_period
 from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
@@ -85,34 +86,6 @@ def _save_alarm_state(state: dict) -> None:
 # ---------------------------------------------------------------------------
 # Time-period helpers
 # ---------------------------------------------------------------------------
-
-
-def get_current_period(now: datetime) -> str:
-    """Return the current time period: 'day', 'evening', or 'weekend'.
-
-    Weekend : Friday 17:00 → Monday 08:00 (UTC)
-    Day     : Monday–Friday 08:00–17:00 (UTC)
-    Evening : Monday–Friday 17:00–08:00, excluding weekend window (UTC)
-    """
-    weekday = now.weekday()  # 0 = Monday … 4 = Friday, 5 = Sat, 6 = Sun
-    time_mins = now.hour * 60 + now.minute
-    DAY_START = 8 * 60  # 08:00
-    DAY_END = 17 * 60  # 17:00
-
-    # Weekend window: Fri 17:00 → Mon 08:00
-    if weekday == 4 and time_mins >= DAY_END:  # Friday after 17:00
-        return "weekend"
-    if weekday in (5, 6):  # Saturday, Sunday
-        return "weekend"
-    if weekday == 0 and time_mins < DAY_START:  # Monday before 08:00
-        return "weekend"
-
-    # Day window: Mon–Fri 08:00–17:00
-    if 0 <= weekday <= 4 and DAY_START <= time_mins < DAY_END:
-        return "day"
-
-    # Everything else is evening
-    return "evening"
 
 
 def _applicable_threshold(server_cfg: dict, now: datetime) -> int:

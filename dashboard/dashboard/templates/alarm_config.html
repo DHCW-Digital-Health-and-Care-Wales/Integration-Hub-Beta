@@ -153,52 +153,31 @@
             <div class="cfg-hint">parse_json(Properties)["workflow_id"] filter value</div>
           </div>
 
-          <!-- Day threshold -->
+          <!-- Thresholds (Day / Evening / Weekend) -->
           <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="day_threshold_{{ s.id }}">
-              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-              {{ _("Day Threshold") }}
+            <label class="cfg-label">
+              <i class="bi bi-clock-fill me-1" style="color:var(--accent-amber)"></i>
+              {{ _("Thresholds") }}
             </label>
-            <div class="cfg-input-row">
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+              <span class="cfg-period-badge badge-day">{{ _("Day") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="day_threshold_{{ s.id }}" name="day_threshold_{{ s.id }}"
                      value="{{ s.day_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-            <div class="cfg-hint">{{ _("No messages for this long (Mon\u2013Fri 08:00\u201317:00) \u2192 alarm fires") }}</div>
-          </div>
-
-          <!-- Evening threshold -->
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="evening_threshold_{{ s.id }}">
-              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-              {{ _("Evening Threshold") }}
-            </label>
-            <div class="cfg-input-row">
+              <span class="cfg-period-badge badge-eve">{{ _("Eve") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="evening_threshold_{{ s.id }}" name="evening_threshold_{{ s.id }}"
                      value="{{ s.evening_threshold_minutes }}"
                      min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-            <div class="cfg-hint">{{ _("No messages for this long (Mon\u2013Fri 17:00\u201308:00) \u2192 alarm fires") }}</div>
-          </div>
-
-          <!-- Weekend threshold -->
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="weekend_threshold_{{ s.id }}">
-              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-              {{ _("Weekend Threshold") }}
-            </label>
-            <div class="cfg-input-row">
+              <span class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="weekend_threshold_{{ s.id }}" name="weekend_threshold_{{ s.id }}"
                      value="{{ s.weekend_threshold_minutes }}"
                      min="1" max="44640" step="1">
               <span class="cfg-unit">{{ _("min") }}</span>
             </div>
-            <div class="cfg-hint">{{ _("No messages for this long (Fri 17:00\u2013Mon 08:00) \u2192 alarm fires") }}</div>
+            <div class="cfg-hint">{{ _("Inactivity duration before alarm fires for the current time period") }}</div>
           </div>
 
           <!-- Alerting gap -->
@@ -277,37 +256,20 @@
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_day_threshold">
-              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-              {{ _("Day Threshold") }}
+            <label class="cfg-label">
+              <i class="bi bi-clock-fill me-1" style="color:var(--accent-amber)"></i>
+              {{ _("Thresholds") }}
             </label>
-            <div class="cfg-input-row">
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+              <span class="cfg-period-badge badge-day">{{ _("Day") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="new_day_threshold" name="new_day_threshold"
                      value="60" min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_evening_threshold">
-              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-              {{ _("Evening Threshold") }}
-            </label>
-            <div class="cfg-input-row">
+              <span class="cfg-period-badge badge-eve">{{ _("Eve") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="new_evening_threshold" name="new_evening_threshold"
                      value="120" min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_weekend_threshold">
-              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-              {{ _("Weekend Threshold") }}
-            </label>
-            <div class="cfg-input-row">
+              <span class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</span>
               <input type="number" class="dash-input cfg-num"
                      id="new_weekend_threshold" name="new_weekend_threshold"
                      value="240" min="1" max="44640" step="1">
@@ -414,8 +376,20 @@
     align-items: center;
     gap: 0.4rem;
   }
-  .cfg-num { width: 88px; text-align: right; }
+  .cfg-num { width: 76px; text-align: right; }
   .cfg-unit { font-size: 0.78rem; color: var(--text-muted); }
+  .cfg-period-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-day  { background: rgba(18,163,201,0.15); color: var(--accent-cyan); }
+  .badge-eve  { background: rgba(248,202,77,0.15);  color: var(--accent-amber); }
+  .badge-wkd  { background: rgba(99,102,241,0.15);  color: #818cf8; }
   .btn-dash--primary {
     background: var(--accent-cyan);
     color: #fff;
