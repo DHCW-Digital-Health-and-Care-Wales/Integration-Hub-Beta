@@ -19,6 +19,7 @@ dependencies = [
     "flask-babel>=4.0.0",
     "gunicorn>=23.0.0",
     "python-dotenv>=1.2.2",
+    "tzdata>=2024.1",
 ]
 
 [dependency-groups]

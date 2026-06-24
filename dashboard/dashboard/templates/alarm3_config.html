@@ -193,6 +193,14 @@
 
     </div>
     {% endfor %}
+    {% else %}
+    <div class="dash-card mb-3">
+      <div class="no-data" style="padding:2.5rem; text-align:center;">
+        <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
+        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">{{ _("No Alarm 3 rules yet. Use the Add Rule button below to create one.") }}</p>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- ================================================================ -->
     <!-- Add New Rule                                                      -->
@@ -298,15 +306,6 @@
         <i class="bi bi-floppy-fill"></i> {{ _("Save All Settings") }}
       </button>
     </div>
-
-    {% else %}
-    <div class="dash-card">
-      <div class="no-data" style="padding:2.5rem; text-align:center;">
-        <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
-        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">{{ _("No Alarm 3 rules found.") }}</p>
-      </div>
-    </div>
-    {% endif %}
 
   </form>
 

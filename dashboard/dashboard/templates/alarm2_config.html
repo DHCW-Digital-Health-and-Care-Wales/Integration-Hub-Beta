@@ -41,17 +41,16 @@
       <div>
         <strong style="color:var(--text-primary);">{{ _("How Alarm 2 works") }}</strong><br>
         {{ _("The alarm queries") }} <code>AppMetrics</code> {{ _("in Log Analytics for the") }} <code>messages_sent</code>
-        {{ _("metric, filtered by") }} <strong>{{ _("Workflow ID") }}</strong>
-        {{ _("over the configured") }} <strong>{{ _("Window") }}</strong>.
-        {{ _("It fires when the total count of messages sent is at or below the threshold for the current time period.") }}
+        {{ _("metric, filtered by") }} <strong>{{ _("Workflow ID") }}</strong>.
+        {{ _("It fires when the workflow has sent no messages for longer than the threshold for the current time period.") }}
         {{ _("Once fired, it will not re-fire until the") }} <strong>{{ _("Alerting Gap") }}</strong> {{ _("has elapsed.") }}
         <div class="mt-2 d-flex gap-4 flex-wrap" style="font-size:0.75rem;">
           <span><i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
-            <strong>{{ _("Day") }}</strong>: {{ _("Mon\u2013Fri 08:00\u201317:00") }}</span>
+            <strong>{{ _("Day") }}</strong>: {{ _("Mon\u2013Fri 09:00\u201317:00") }}</span>
           <span><i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
-            <strong>{{ _("Evening") }}</strong>: {{ _("Mon–Thu 17:00–08:00") }}</span>
+            <strong>{{ _("Evening") }}</strong>: {{ _("Mon–Fri 17:00–09:00") }}</span>
           <span><i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
-            <strong>{{ _("Weekend") }}</strong>: {{ _("Fri 17:00 \u2192 Mon 08:00") }}</span>
+            <strong>{{ _("Weekend") }}</strong>: {{ _("Fri 17:00 \u2192 Mon 09:00") }}</span>
         </div>
         
       </div>
@@ -152,47 +151,31 @@
             <div class="cfg-hint">Properties["workflow_id"] {{ _("filter value") }}</div>
           </div>
 
-          <!-- Window duration -->
-          <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="window_duration_{{ r.id }}">
-              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
-              {{ _("Lookback Window") }}
-            </label>
-            <div class="cfg-input-row">
-              <input type="number" class="dash-input cfg-num"
-                     id="window_duration_{{ r.id }}" name="window_duration_{{ r.id }}"
-                     value="{{ r.window_duration_minutes }}"
-                     min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-            <div class="cfg-hint">{{ _("Time window for the messages_sent query (e.g. 2880 = 2 days)") }}</div>
-          </div>
-
           <!-- Thresholds (Day / Evening / Weekend) -->
           <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label">
-              <i class="bi bi-arrow-down-circle me-1" style="color:var(--accent-red)"></i>
-              {{ _("Thresholds") }}
+              <i class="bi bi-clock me-1" style="color:var(--accent-red)"></i>
+              {{ _("Inactivity Thresholds") }}
             </label>
             <div class="d-flex align-items-center gap-1 flex-wrap">
               <label for="day_threshold_{{ r.id }}" class="cfg-period-badge badge-day">{{ _("Day") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="day_threshold_{{ r.id }}" name="day_threshold_{{ r.id }}"
-                     value="{{ r.day_threshold }}"
+                     value="{{ r.day_threshold_minutes }}"
                      min="0" max="9999999" step="1">
               <label for="evening_threshold_{{ r.id }}" class="cfg-period-badge badge-eve">{{ _("Eve") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="evening_threshold_{{ r.id }}" name="evening_threshold_{{ r.id }}"
-                     value="{{ r.evening_threshold }}"
+                     value="{{ r.evening_threshold_minutes }}"
                      min="0" max="9999999" step="1">
               <label for="weekend_threshold_{{ r.id }}" class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="weekend_threshold_{{ r.id }}" name="weekend_threshold_{{ r.id }}"
-                     value="{{ r.weekend_threshold }}"
+                     value="{{ r.weekend_threshold_minutes }}"
                      min="0" max="9999999" step="1">
-              <span class="cfg-unit">msgs</span>
+              <span class="cfg-unit">min</span>
             </div>
-            <div class="cfg-hint">{{ _("Alarm fires when messages sent &lt;= threshold for the current period") }}</div>
+            <div class="cfg-hint">{{ _("Alarm fires when no messages sent for longer than this threshold") }}</div>
           </div>
 
           <!-- Alerting gap -->
@@ -216,6 +199,14 @@
 
     </div>
     {% endfor %}
+    {% else %}
+    <div class="dash-card mb-3">
+      <div class="no-data" style="padding:2.5rem; text-align:center;">
+        <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
+        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">{{ _("No Alarm 2 rules yet. Use the Add Rule button below to create one.") }}</p>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- ================================================================ -->
     <!-- Add New Rule                                                      -->
@@ -271,37 +262,24 @@
           </div>
 
           <div class="col-12 col-sm-6 col-xl-4">
-            <label class="cfg-label" for="new_window_duration">
-              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>
-              {{ _("Lookback Window") }}
-            </label>
-            <div class="cfg-input-row">
-              <input type="number" class="dash-input cfg-num"
-                     id="new_window_duration" name="new_window_duration"
-                     value="2880" min="1" max="44640" step="1">
-              <span class="cfg-unit">{{ _("min") }}</span>
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-xl-4">
             <label class="cfg-label">
-              <i class="bi bi-arrow-down-circle me-1" style="color:var(--accent-red)"></i>
-              {{ _("Thresholds") }}
+              <i class="bi bi-clock me-1" style="color:var(--accent-red)"></i>
+              {{ _("Inactivity Thresholds") }}
             </label>
             <div class="d-flex align-items-center gap-1 flex-wrap">
               <label for="new_day_threshold" class="cfg-period-badge badge-day">{{ _("Day") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_day_threshold" name="new_day_threshold"
-                     value="0" min="0" max="9999999" step="1">
+                     value="60" min="0" max="9999999" step="1">
               <label for="new_evening_threshold" class="cfg-period-badge badge-eve">{{ _("Eve") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_evening_threshold" name="new_evening_threshold"
-                     value="0" min="0" max="9999999" step="1">
+                     value="120" min="0" max="9999999" step="1">
               <label for="new_weekend_threshold" class="cfg-period-badge badge-wkd">{{ _("Wkd") }}</label>
               <input type="number" class="dash-input cfg-num"
                      id="new_weekend_threshold" name="new_weekend_threshold"
-                     value="0" min="0" max="9999999" step="1">
-              <span class="cfg-unit">msgs</span>
+                     value="240" min="0" max="9999999" step="1">
+              <span class="cfg-unit">min</span>
             </div>
           </div>
 
@@ -330,15 +308,6 @@
         <i class="bi bi-floppy-fill"></i> {{ _("Save All Settings") }}
       </button>
     </div>
-
-    {% else %}
-    <div class="dash-card">
-      <div class="no-data" style="padding:2.5rem; text-align:center;">
-        <i class="bi bi-bell-slash" style="font-size:2rem; color:var(--text-muted); opacity:0.4;"></i>
-        <p style="margin-top:0.75rem; color:var(--text-muted); font-size:0.85rem;">{{ _("No Alarm 2 rules found.") }}</p>
-      </div>
-    </div>
-    {% endif %}
 
   </form>
 
