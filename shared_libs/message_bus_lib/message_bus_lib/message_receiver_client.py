@@ -15,8 +15,8 @@ from azure.servicebus import (
     ServiceBusReceiver,
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
-from otel_lib import extract_trace_context
 from metric_sender_lib.metric_sender import MetricSender
+from otel_lib import extract_trace_context
 
 logger = logging.getLogger(__name__)
 

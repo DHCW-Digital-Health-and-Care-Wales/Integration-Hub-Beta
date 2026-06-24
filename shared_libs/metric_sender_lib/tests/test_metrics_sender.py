@@ -125,7 +125,19 @@ class TestMetricSender(unittest.TestCase):
             self.assertTrue(metric_sender.azure_monitor_enabled)
             self.assertEqual(metric_sender._meter, mock_meter)
             mock_get_credential.assert_called_once()
-            mock_configure.assert_called_once_with(credential=mock_credential)
+            mock_configure.assert_called_once_with(
+                credential=mock_credential,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": False},
+                    "django": {"enabled": False},
+                    "fastapi": {"enabled": False},
+                    "flask": {"enabled": False},
+                    "psycopg2": {"enabled": False},
+                    "requests": {"enabled": False},
+                    "urllib": {"enabled": False},
+                    "urllib3": {"enabled": False},
+                },
+            )
             mock_get_meter.assert_called_once_with("metric_sender_lib.metric_sender")
             mock_logger.info.assert_called_with(
                 "Azure Monitor metrics initialized successfully"
