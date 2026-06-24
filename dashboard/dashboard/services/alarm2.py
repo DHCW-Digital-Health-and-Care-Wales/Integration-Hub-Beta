@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -196,8 +197,19 @@ def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 
 
-def get_last_sent_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
-    """Query Log Analytics for the most recent messages_sent metric per workflow_id (3-day window)."""
+def get_last_sent_times_by_workflow(
+    workflow_ids: list[str], lookback_days: int = 3
+) -> dict[str, datetime | None]:
+    """Query Log Analytics for the most recent messages_sent metric per workflow_id.
+
+    Args:
+        workflow_ids:   List of workflow IDs to query.
+        lookback_days:  How far back to search. Should be at least
+                        ceil(max_threshold_minutes / 1440) so that a workflow
+                        inactive for longer than its threshold returns a real
+                        last-seen time rather than no row (which would produce
+                        'unknown' instead of 'critical').
+    """
     if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
         return {wid: None for wid in workflow_ids}
 
@@ -208,7 +220,7 @@ def get_last_sent_times_by_workflow(workflow_ids: list[str]) -> dict[str, dateti
     ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
     query = f"""
     AppMetrics
-    | where TimeGenerated > ago(3d)
+    | where TimeGenerated > ago({lookback_days}d)
     | where Name == "messages_sent"
     | extend workflow_id = tostring(Properties["workflow_id"])
     | where workflow_id in ({ids_kql})
@@ -219,7 +231,7 @@ def get_last_sent_times_by_workflow(workflow_ids: list[str]) -> dict[str, dateti
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
             query=query,
-            timespan=timedelta(days=3),
+            timespan=timedelta(days=lookback_days),
         )
         if response.status != LogsQueryStatus.SUCCESS:
             log.warning("get_last_sent_times_by_workflow: partial/failed query")
@@ -359,7 +371,25 @@ def get_alarm2_status() -> list[dict]:
             if rules_cfg.get(r["id"], {}).get("workflow_id", r.get("workflow_id", "")).strip()
         )
     )
-    last_times = get_last_sent_times_by_workflow(workflow_ids)
+
+    # Derive lookback from the largest configured threshold across all enabled rules
+    # so that a workflow inactive longer than its threshold returns a real timestamp
+    # (not a missing row, which would yield 'unknown' instead of 'critical').
+    max_threshold_minutes = max(
+        (
+            max(
+                int(rules_cfg.get(r["id"], {}).get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
+                int(rules_cfg.get(r["id"], {}).get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
+                int(rules_cfg.get(r["id"], {}).get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
+            )
+            for r in enabled_rules
+        ),
+        default=DEFAULT_WEEKEND_THRESHOLD,
+    )
+    # Convert to days, add 1-day buffer, cap at 30 days (Log Analytics typical retention).
+    lookback_days = min(math.ceil(max_threshold_minutes / 1440) + 1, 30)
+
+    last_times = get_last_sent_times_by_workflow(workflow_ids, lookback_days=lookback_days)
     now = datetime.now(timezone.utc)
 
     state = _load_alarm2_state()
