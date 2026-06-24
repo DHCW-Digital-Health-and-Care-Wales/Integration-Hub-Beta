@@ -294,7 +294,6 @@ class MessageReceiverClient:
             value=self.delay,
             attributes={
                 "queue": self.queue_name,
-                "attempt": self.retry_attempt,
             },
         )
         # ✅ IMPORTANT: keep existing retry logic

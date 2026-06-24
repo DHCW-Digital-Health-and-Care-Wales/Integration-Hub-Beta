@@ -115,6 +115,7 @@ class ServiceBusClientFactory:
 
         self.servicebus_client = self._build_service_bus_client()
         return self.servicebus_client
+
     def create_message_store_client(
         self, queue_name: str, microservice_id: str, peer_service: str
     ) -> MessageStoreClient:

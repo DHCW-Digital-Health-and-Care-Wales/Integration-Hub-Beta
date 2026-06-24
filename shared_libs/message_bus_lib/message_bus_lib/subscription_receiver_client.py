@@ -25,7 +25,7 @@ class SubscriptionReceiverClient(MessageReceiverClient):
     ):
         super().__init__(
             sb_client,
-            queue_name="",
+            queue_name=f"{topic_name}/{subscription_name}",
             session_id=session_id,
             recreate_sb_client=recreate_sb_client,
         )

@@ -26,11 +26,12 @@ class MetricSender:
         self._histograms: Dict[str, Histogram] = {}
         self._counters: Dict[str, Counter] = {}
         self._meter = None
-        
-        # Set service name for OTel (used by Azure Monitor exporter as AppRoleName)
-        if not os.getenv("OTEL_SERVICE_NAME"):
+
+        # Set service name for OTel (used by Azure Monitor exporter as AppRoleName).
+        # Replace the variable if absent or blank (blank values can appear in container configs).
+        if not os.environ.get("OTEL_SERVICE_NAME", "").strip():
             os.environ["OTEL_SERVICE_NAME"] = microservice_id
-        
+
         connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
         ).strip()
@@ -179,7 +180,7 @@ class MetricSender:
                 )
         except Exception as e:
             logger.error(f"Failed to send gauge metric '{key}': {e}")
-
+            raise
     def send_message_received_metric(
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:

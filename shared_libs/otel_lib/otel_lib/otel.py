@@ -50,8 +50,11 @@ def configure_otel(service_name: str, service_version: str = "1.0.0") -> bool:
         logger.debug("OpenTelemetry already configured — skipping re-initialisation.")
         return True
 
-    # Set service name via standard OTel environment variable (used by Azure SDK)
-    os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
+    # Set service name via standard OTel environment variable (used by Azure SDK).
+    # Use setdefault only if the variable is absent or blank — an empty/whitespace
+    # value can occur in container env configs and must be replaced with the real name.
+    if not os.environ.get("OTEL_SERVICE_NAME", "").strip():
+        os.environ["OTEL_SERVICE_NAME"] = service_name
 
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
 
