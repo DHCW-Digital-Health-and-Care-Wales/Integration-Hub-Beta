@@ -588,9 +588,13 @@ def get_alarm2_config_page_data() -> list[dict]:
                 "display_name": rcfg.get("display_name") or r.get("display_name", r["id"]),
                 "alarm_enabled": rcfg.get("alarm_enabled", False),
                 "workflow_id": rcfg.get("workflow_id", r.get("workflow_id", "")),
-                "day_threshold_minutes": int(rcfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
-                "evening_threshold_minutes": int(rcfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
-                "weekend_threshold_minutes": int(rcfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
+                "day_threshold_minutes": int(rcfg.get("day_threshold_minutes", rcfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
+                "evening_threshold_minutes": int(
+                    rcfg.get("evening_threshold_minutes", rcfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
+                ),
+                "weekend_threshold_minutes": int(
+                    rcfg.get("weekend_threshold_minutes", rcfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))
+                ),
                 "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
                 "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
             }

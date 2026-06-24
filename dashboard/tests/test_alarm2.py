@@ -281,10 +281,9 @@ class TestGetAlarm2ConfigPageData:
             data = get_alarm2_config_page_data()
 
         rule = next(r for r in data if r["id"] == "phw-to-mpi-outgoing")
-        # Legacy threshold fans out to defaults (config page reads _minutes keys directly)
-        assert rule["day_threshold_minutes"] == DEFAULT_DAY_THRESHOLD
-        assert rule["evening_threshold_minutes"] == DEFAULT_EVENING_THRESHOLD
-        assert rule["weekend_threshold_minutes"] == DEFAULT_WEEKEND_THRESHOLD
+        assert rule["day_threshold_minutes"] == 42
+        assert rule["evening_threshold_minutes"] == 42
+        assert rule["weekend_threshold_minutes"] == 42
 
     def test_missing_config_returns_defaults(self) -> None:
         with patch("dashboard.services.alarm2.load_alarm2_config", return_value={"rules": {}}):
