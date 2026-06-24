@@ -197,9 +197,7 @@ def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 
 
-def get_last_sent_times_by_workflow(
-    workflow_ids: list[str], lookback_days: int = 3
-) -> dict[str, datetime | None]:
+def get_last_sent_times_by_workflow(workflow_ids: list[str], lookback_days: int = 3) -> dict[str, datetime | None]:
     """Query Log Analytics for the most recent messages_sent metric per workflow_id.
 
     Args:
@@ -555,7 +553,9 @@ def _build_row(
         "id": rid,
         "display_name": rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
         "workflow_id": workflow_id,
-        "day_threshold_minutes": int(rule_cfg.get("day_threshold_minutes", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
+        "day_threshold_minutes": int(
+            rule_cfg.get("day_threshold_minutes", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))
+        ),
         "evening_threshold_minutes": int(
             rule_cfg.get("evening_threshold_minutes", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
         ),
@@ -618,7 +618,9 @@ def get_alarm2_config_page_data() -> list[dict]:
                 "display_name": rcfg.get("display_name") or r.get("display_name", r["id"]),
                 "alarm_enabled": rcfg.get("alarm_enabled", False),
                 "workflow_id": rcfg.get("workflow_id", r.get("workflow_id", "")),
-                "day_threshold_minutes": int(rcfg.get("day_threshold_minutes", rcfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
+                "day_threshold_minutes": int(
+                    rcfg.get("day_threshold_minutes", rcfg.get("threshold", DEFAULT_DAY_THRESHOLD))
+                ),
                 "evening_threshold_minutes": int(
                     rcfg.get("evening_threshold_minutes", rcfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
                 ),
