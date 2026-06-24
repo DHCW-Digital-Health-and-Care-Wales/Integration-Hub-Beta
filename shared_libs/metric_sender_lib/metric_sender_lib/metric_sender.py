@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
@@ -25,7 +25,7 @@ class MetricSender:
         self.peer_service = peer_service
         self._histograms: Dict[str, Histogram] = {}
         self._counters: Dict[str, Counter] = {}
-        self._meter = None
+        self._meter: Any | None = None
 
         # Set service name for OTel (used by Azure Monitor exporter as AppRoleName).
         # Replace the variable if absent or blank (blank values can appear in container configs).
@@ -110,6 +110,7 @@ class MetricSender:
             return DefaultAzureCredential()
 
     def _get_or_create_counter(self, key: str) -> Counter:
+        assert self._meter is not None
         if key not in self._counters:
             self._counters[key] = self._meter.create_counter(
                 name=key, description=f"Counter for {key}"
@@ -181,6 +182,7 @@ class MetricSender:
         except Exception as e:
             logger.error(f"Failed to send gauge metric '{key}': {e}")
             raise
+
     def send_message_received_metric(
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -192,6 +194,7 @@ class MetricSender:
         self.send_metric(key="messages_sent", value=1, attributes=attributes)
 
     def _get_or_create_histogram(self, key: str) -> Histogram:
+        assert self._meter is not None
         if key not in self._histograms:
             self._histograms[key] = self._meter.create_histogram(
                 name=key,
