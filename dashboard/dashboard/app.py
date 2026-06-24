@@ -377,7 +377,7 @@ def _build_status() -> dict:
         flow_id = metric.get("workflow_id")
         delay_seconds = metric.get("delay_seconds")
         has_metric = delay_seconds is not None and isinstance(delay_seconds, (int, float))
-        over_1m = bool(has_metric and delay_seconds and delay_seconds > 60)
+        over_1m = bool(isinstance(delay_seconds, (int, float)) and delay_seconds > 60)
         if over_1m:
             flows_over_1m += 1
 
