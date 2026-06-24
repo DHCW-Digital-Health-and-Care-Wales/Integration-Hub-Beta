@@ -110,8 +110,8 @@ class MetricSender:
             return DefaultAzureCredential()
 
     def _get_or_create_counter(self, key: str) -> Counter:
-        assert self._meter is not None
         if key not in self._counters:
+            assert self._meter is not None
             self._counters[key] = self._meter.create_counter(
                 name=key, description=f"Counter for {key}"
             )
@@ -194,8 +194,8 @@ class MetricSender:
         self.send_metric(key="messages_sent", value=1, attributes=attributes)
 
     def _get_or_create_histogram(self, key: str) -> Histogram:
-        assert self._meter is not None
         if key not in self._histograms:
+            assert self._meter is not None
             self._histograms[key] = self._meter.create_histogram(
                 name=key,
                 description=f"Histogram for {key}",

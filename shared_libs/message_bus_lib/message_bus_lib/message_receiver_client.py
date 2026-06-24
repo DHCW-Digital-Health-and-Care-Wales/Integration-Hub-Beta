@@ -154,6 +154,13 @@ class MessageReceiverClient:
                     normalised[str_key] = v
                 # Skip int/float/bool/None — not valid propagation header values
             ctx = extract_trace_context(normalised)
+            if "traceparent" not in normalised:
+                logger.warning(
+                    "No W3C traceparent found in message properties for message_id=%s — "
+                    "this attempt will appear under a new operation_Id in App Insights. "
+                    "Use CorrelationId to track across retry attempts.",
+                    getattr(msg, "message_id", "unknown"),
+                )
             token = otel_context.attach(ctx)
             try:
                 return handler(msg)
