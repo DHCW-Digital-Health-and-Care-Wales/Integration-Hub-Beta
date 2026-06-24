@@ -224,6 +224,8 @@
             <td>
               {% if row.status in ('critical', 'suppressed') %}
                 <span style="color:var(--accent-red); font-weight:600;">{{ row.duration_label }}</span>
+              {% elif row.status == 'paused' %}
+                <span style="color:var(--accent-cyan); font-weight:600;">{{ row.duration_label }}</span>
               {% elif row.status == 'unknown' %}
                 <span style="color:var(--text-muted);">—</span>
               {% else %}
