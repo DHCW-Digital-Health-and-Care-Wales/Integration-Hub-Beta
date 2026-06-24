@@ -45,6 +45,17 @@ class TestServiceBusClientFactoryClose(unittest.TestCase):
 
         self.mock_sb_client.close.assert_called_once()
 
+    @patch("message_bus_lib.servicebus_client_factory.ServiceBusClient")
+    def test_rebuild_servicebus_client_replaces_underlying_client(self, mock_sb_cls: MagicMock) -> None:
+        replacement_client = MagicMock()
+        mock_sb_cls.from_connection_string.return_value = replacement_client
+
+        rebuilt = self.factory._rebuild_servicebus_client()
+
+        self.mock_sb_client.close.assert_called_once()
+        self.assertIs(rebuilt, replacement_client)
+        self.assertIs(self.factory.servicebus_client, replacement_client)
+
 class TestCreateMessageStoreClient(unittest.TestCase):
     """Tests for ServiceBusClientFactory.create_message_store_client."""
 
@@ -111,6 +122,38 @@ class TestCreateMessageStoreClient(unittest.TestCase):
         mock_logger.warning.assert_called_with(
             "Message store is disabled — no sender client will be created."
         )
+
+
+class TestServiceBusClientFactorySenderRecovery(unittest.TestCase):
+    def setUp(self) -> None:
+        self.factory = _make_factory()
+        self.mock_sb_client: MagicMock = self.factory.servicebus_client  # type: ignore[assignment]
+
+    @patch("message_bus_lib.servicebus_client_factory.ServiceBusClient")
+    def test_rebuild_queue_sender_refreshes_client_and_returns_sender(self, mock_sb_cls: MagicMock) -> None:
+        replacement_client = MagicMock()
+        replacement_sender = MagicMock()
+        replacement_client.get_queue_sender.return_value = replacement_sender
+        mock_sb_cls.from_connection_string.return_value = replacement_client
+
+        sender = self.factory._rebuild_queue_sender("my-queue")
+
+        self.mock_sb_client.close.assert_called_once()
+        replacement_client.get_queue_sender.assert_called_once_with(queue_name="my-queue")
+        self.assertIs(sender, replacement_sender)
+
+    @patch("message_bus_lib.servicebus_client_factory.ServiceBusClient")
+    def test_rebuild_topic_sender_refreshes_client_and_returns_sender(self, mock_sb_cls: MagicMock) -> None:
+        replacement_client = MagicMock()
+        replacement_sender = MagicMock()
+        replacement_client.get_topic_sender.return_value = replacement_sender
+        mock_sb_cls.from_connection_string.return_value = replacement_client
+
+        sender = self.factory._rebuild_topic_sender("my-topic")
+
+        self.mock_sb_client.close.assert_called_once()
+        replacement_client.get_topic_sender.assert_called_once_with(topic_name="my-topic")
+        self.assertIs(sender, replacement_sender)
 
 if __name__ == "__main__":
     unittest.main()

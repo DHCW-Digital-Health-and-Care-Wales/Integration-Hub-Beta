@@ -52,6 +52,64 @@ def test_get_messages_today_maps_trace_properties() -> None:
     assert messages[0]["dimensions"]["workflow_id"] == "mpi-to-topic"
 
 
+def test_get_retry_delay_metrics_by_flow_maps_rows() -> None:
+    fake_table = FakeTable(
+        columns=["workflow_id", "timestamp", "delay_seconds", "microservice_id", "queue", "attempt"],
+        rows=[
+            [
+                "phw-to-mpi",
+                "2026-06-18T12:34:56Z",
+                61.0,
+                "mpi_hl7_sender",
+                "local-inthub-mpi-sender-ingress",
+                "3",
+            ]
+        ],
+    )
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
+
+        rows = azure_monitor.get_retry_delay_metrics_by_flow(hours=24)
+
+    assert len(rows) == 1
+    assert rows[0]["workflow_id"] == "phw-to-mpi"
+    assert rows[0]["delay_seconds"] == 61.0
+    assert rows[0]["attempt"] == 3
+    assert rows[0]["queue"] == "local-inthub-mpi-sender-ingress"
+
+
+def test_get_retry_delay_metrics_by_flow_returns_empty_when_workspace_missing() -> None:
+    with patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", ""):
+        rows = azure_monitor.get_retry_delay_metrics_by_flow(hours=24)
+    assert rows == []
+
+
+def test_get_retry_delay_metrics_by_flow_filters_threshold_strictly_greater_than_minimum() -> None:
+    fake_table = FakeTable(
+        columns=["workflow_id", "timestamp", "delay_seconds", "microservice_id", "queue", "attempt"],
+        rows=[
+            ["flow-a", "2026-06-18T12:30:00Z", 60.0, "svc-a", "queue-a", "2"],
+            ["flow-b", "2026-06-18T12:31:00Z", 61.0, "svc-b", "queue-b", "3"],
+        ],
+    )
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
+
+        rows = azure_monitor.get_retry_delay_metrics_by_flow(hours=1, min_delay_seconds=60)
+
+    assert len(rows) == 1
+    assert rows[0]["workflow_id"] == "flow-b"
+    assert rows[0]["delay_seconds"] == 61.0
+
+
 # ---------------------------------------------------------------------------
 # get_container_app_metric_history tests
 # ---------------------------------------------------------------------------

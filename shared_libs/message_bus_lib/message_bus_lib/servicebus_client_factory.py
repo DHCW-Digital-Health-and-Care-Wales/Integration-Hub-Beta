@@ -50,12 +50,30 @@ class ServiceBusClientFactory:
     def create_topic_sender_client(self, topic_name: str, session_id: Optional[str] = None) -> MessageSenderClient:
         self.logger.debug("Creating message sender client for topic '%s' with session_id '%s'", topic_name, session_id)
         sender: ServiceBusSender = self.servicebus_client.get_topic_sender(topic_name=topic_name)
-        return MessageSenderClient(sender, topic_name, session_id)
+        return MessageSenderClient(
+            sender,
+            topic_name,
+            session_id,
+            recreate_sender=lambda: self._rebuild_topic_sender(topic_name),
+        )
 
     def create_queue_sender_client(self, queue_name: str, session_id: Optional[str] = None) -> MessageSenderClient:
         self.logger.debug("Creating message sender client for queue '%s' with session_id '%s'", queue_name, session_id)
         sender: ServiceBusSender = self.servicebus_client.get_queue_sender(queue_name=queue_name)
-        return MessageSenderClient(sender, queue_name, session_id)
+        return MessageSenderClient(
+            sender,
+            queue_name,
+            session_id,
+            recreate_sender=lambda: self._rebuild_queue_sender(queue_name),
+        )
+
+    def _rebuild_queue_sender(self, queue_name: str) -> ServiceBusSender:
+        self._rebuild_servicebus_client()
+        return self.servicebus_client.get_queue_sender(queue_name=queue_name)
+
+    def _rebuild_topic_sender(self, topic_name: str) -> ServiceBusSender:
+        self._rebuild_servicebus_client()
+        return self.servicebus_client.get_topic_sender(topic_name=topic_name)
 
     def create_message_receiver_client(
         self, queue_name: str, session_id: Optional[str] = None
@@ -63,7 +81,12 @@ class ServiceBusClientFactory:
         self.logger.debug(
             "Creating message receiver client for queue '%s' with session_id '%s'", queue_name, session_id
         )
-        return MessageReceiverClient(self.servicebus_client, queue_name, session_id)
+        return MessageReceiverClient(
+            self.servicebus_client,
+            queue_name,
+            session_id,
+            recreate_sb_client=self._rebuild_servicebus_client,
+        )
 
     def create_subscription_receiver_client(
         self, topic_name: str, subscription_name: str, session_id: Optional[str] = None
@@ -74,7 +97,25 @@ class ServiceBusClientFactory:
             subscription_name,
             session_id,
         )
-        return SubscriptionReceiverClient(self.servicebus_client, topic_name, subscription_name, session_id)
+        return SubscriptionReceiverClient(
+            self.servicebus_client,
+            topic_name,
+            subscription_name,
+            session_id,
+            recreate_sb_client=self._rebuild_servicebus_client,
+        )
+
+    def _rebuild_servicebus_client(self) -> ServiceBusClient:
+        """Replace the underlying ServiceBusClient with a fresh instance."""
+        try:
+            if self.servicebus_client:
+                self.servicebus_client.close()
+        except Exception as exc:
+            self.logger.warning("Failed to close existing ServiceBusClient before rebuild: %s", exc)
+
+        self.servicebus_client = self._build_service_bus_client()
+        return self.servicebus_client
+
     def create_message_store_client(
         self, queue_name: str, microservice_id: str, peer_service: str
     ) -> MessageStoreClient:

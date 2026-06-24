@@ -544,6 +544,76 @@
 
   </div><!-- /row -->
 
+  <!-- Retry Delay Visibility (AOE) -->
+  <div class="section-header mt-3">
+    <span class="section-title"><i class="bi bi-hourglass-split"></i> {{ _("Retry Delays") }}</span>
+    <span style="font-size:0.72rem; color:var(--text-muted);">
+      {{ _("Shows flows with retry wait over 60 seconds observed in the last hour") }}
+    </span>
+  </div>
+
+  <div class="queue-table-wrapper mb-3">
+    <div class="queue-table-header">
+      <h6>
+        <i class="bi bi-stopwatch text-warning me-1"></i>
+        {{ _("Retry Wait by Flow (Last 1 Hour, Over 60s)") }}
+      </h6>
+      <div style="display:flex; gap:0.8rem; font-size:0.72rem; color:var(--text-muted);">
+        <span>{{ _("Flows Reporting:") }} <strong id="retry-flows-reporting">{{ status.retry_delay_kpis.flows_reporting }}</strong></span>
+        <span>{{ _("Over 60s:") }} <strong id="retry-flows-over-1m">{{ status.retry_delay_kpis.flows_over_1m }}</strong></span>
+      </div>
+    </div>
+    <div class="scroll-panel">
+      <table class="dash-table" id="retry-delay-table">
+        <thead>
+          <tr>
+            <th>{{ _("Flow") }}</th>
+            <th class="text-end">{{ _("Current Wait") }}</th>
+            <th class="text-end">{{ _("Attempt") }}</th>
+            <th>{{ _("Queue") }}</th>
+            <th>{{ _("Last Seen") }}</th>
+            <th>{{ _("Status") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in status.retry_delays %}
+          <tr data-retry-workflow-id="{{ row.workflow_id }}">
+            <td style="font-weight:600;">{{ row.flow_label }}</td>
+            <td class="text-end count-cell {{ 'critical' if row.over_1m else ('warning' if row.delay_seconds is not none else 'zero') }}"
+                id="retry-delay-{{ row.workflow_id }}">
+              {{ row.delay_display }}
+            </td>
+            <td class="text-end" id="retry-attempt-{{ row.workflow_id }}">{{ row.attempt if row.attempt is not none else '—' }}</td>
+            <td class="font-mono" style="font-size:0.68rem;" id="retry-queue-{{ row.workflow_id }}">
+              {{ row.queue or '—' }}
+            </td>
+            <td class="font-mono" style="font-size:0.68rem;" id="retry-seen-{{ row.workflow_id }}">
+              {{ row.timestamp | replace('T', ' ') | truncate(19, True, '') if row.timestamp else '—' }}
+            </td>
+            <td>
+              <span class="status-badge {{ row.status }}" id="retry-status-{{ row.workflow_id }}">
+                {% if row.over_1m %}
+                  {{ _("1 min +") }}
+                {% elif row.delay_seconds is not none %}
+                  {{ _("Observed") }}
+                {% else %}
+                  {{ _("Unavailable") }}
+                {% endif %}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center" style="padding:1rem; color:var(--text-muted);">
+              {{ _("No retry delays over 60 seconds were observed in the last hour.") }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div><!-- /page-wrapper -->
 
 <style>

@@ -194,6 +194,55 @@ class TestMessageSenderClient(unittest.TestCase):
         # Verify it retried 3 times (MAX_SERVICE_BUS_RETRIES)
         self.assertEqual(self.service_bus_sender_client.send_messages.call_count, 3)
 
+    def test_send_message_recreates_sender_on_stale_amqp_error(self) -> None:
+        # Arrange
+        stale_error = AttributeError("'NoneType' object has no attribute 'create_receiver_link'")
+        replacement_sender = MagicMock()
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=[stale_error, None])
+        replacement_sender.send_messages = MagicMock(return_value=None)
+
+        recreate_sender = MagicMock(return_value=replacement_sender)
+        sender_client = MessageSenderClient(
+            self.service_bus_sender_client,
+            self.TOPIC_NAME,
+            recreate_sender=recreate_sender,
+        )
+
+        # Act
+        sender_client.send_message(b"Test Message")
+
+        # Assert
+        self.service_bus_sender_client.close.assert_called_once()
+        recreate_sender.assert_called_once_with()
+        replacement_sender.send_messages.assert_called_once()
+
+    def test_send_message_raises_when_stale_amqp_error_and_recreate_unavailable(self) -> None:
+        # Arrange
+        stale_error = AttributeError("'NoneType' object has no attribute 'create_receiver_link'")
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=stale_error)
+
+        # Act / Assert
+        with self.assertRaises(AttributeError):
+            self.message_sender_client.send_message(b"Test Message")
+
+    def test_send_message_raises_when_sender_recreate_fails(self) -> None:
+        # Arrange
+        stale_error = AttributeError("'NoneType' object has no attribute 'create_receiver_link'")
+        self.service_bus_sender_client.send_messages = MagicMock(side_effect=stale_error)
+
+        recreate_sender = MagicMock(side_effect=RuntimeError("recreate failed"))
+        sender_client = MessageSenderClient(
+            self.service_bus_sender_client,
+            self.TOPIC_NAME,
+            recreate_sender=recreate_sender,
+        )
+
+        # Act / Assert
+        with self.assertRaises(AttributeError):
+            sender_client.send_message(b"Test Message")
+
+        recreate_sender.assert_called_once_with()
+
     def test_context_manager_enter(self) -> None:
         # Act
         result = self.message_sender_client.__enter__()

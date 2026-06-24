@@ -172,6 +172,80 @@ def get_messages_today(
         return []
 
 
+def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 60.0) -> list[dict]:
+    """Return latest retry delay metric per workflow from AppMetrics.
+
+    The ``retry_delay_seconds`` metric is emitted by the shared message bus
+    receiver when exponential backoff is scheduled after a failed processing
+    attempt.
+    """
+    if not _credentials_configured():
+        log.warning("Log Analytics workspace not configured — returning empty retry-delay list")
+        return []
+
+    query = f"""
+    AppMetrics
+    | where TimeGenerated > ago({hours}h)
+    | where Name == "retry_delay_seconds"
+    | extend workflow_id = tostring(Properties["workflow_id"])
+    | extend microservice_id = tostring(Properties["microservice_id"])
+    | extend queue = tostring(Properties["queue"])
+    | extend attempt = tostring(Properties["attempt"])
+    | where isnotempty(workflow_id)
+    | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
+    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
+    | where delay_seconds > {min_delay_seconds}
+    | order by workflow_id asc
+    """
+    try:
+        client = _get_logs_client()
+        response = client.query_workspace(
+            workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
+            query=query,
+            timespan=timedelta(hours=hours),
+        )
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.error("Retry-delay query failed: %s", response.partial_error)
+            return []
+
+        rows: list[dict] = []
+        for table in response.tables:
+            for row in table.rows:
+                row_dict = dict(zip(table.columns, row))
+                attempt_value = row_dict.get("attempt")
+                attempt_int: int | None
+                try:
+                    attempt_int = int(attempt_value) if attempt_value not in (None, "") else None
+                except (TypeError, ValueError):
+                    attempt_int = None
+
+                delay_raw = row_dict.get("delay_seconds")
+                delay_float: float | None
+                try:
+                    delay_float = float(delay_raw) if delay_raw is not None else None
+                except (TypeError, ValueError):
+                    delay_float = None
+
+                rows.append(
+                    {
+                        "workflow_id": str(row_dict.get("workflow_id") or ""),
+                        "timestamp": str(row_dict.get("timestamp") or ""),
+                        "delay_seconds": delay_float,
+                        "microservice_id": str(row_dict.get("microservice_id") or ""),
+                        "queue": str(row_dict.get("queue") or ""),
+                        "attempt": attempt_int,
+                    }
+                )
+        return [
+            row
+            for row in rows
+            if row.get("delay_seconds") is not None and float(row["delay_seconds"]) > min_delay_seconds
+        ]
+    except Exception as exc:
+        log.error("Failed to fetch retry delay metrics: %s", exc)
+        return []
+
+
 def get_container_app_metrics() -> list[dict]:
     """
     Query Azure Monitor metrics for Container Apps CPU and memory utilisation.

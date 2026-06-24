@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry import metrics
 from opentelemetry.metrics import Counter
+from opentelemetry.metrics import Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,14 @@ class MetricSender:
         self.microservice_id = microservice_id
         self.health_board = health_board
         self.peer_service = peer_service
+        self._histograms: Dict[str, Histogram] = {}
         self._counters: Dict[str, Counter] = {}
+        self._meter: Any | None = None
+
+        # Set service name for OTel (used by Azure Monitor exporter as AppRoleName).
+        # Replace the variable if absent or blank (blank values can appear in container configs).
+        if not os.environ.get("OTEL_SERVICE_NAME", "").strip():
+            os.environ["OTEL_SERVICE_NAME"] = microservice_id
 
         connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
@@ -69,7 +77,19 @@ class MetricSender:
 
         try:
             credential = self._get_credential()
-            configure_azure_monitor(credential=credential)
+            configure_azure_monitor(
+                credential=credential,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": False},
+                    "django": {"enabled": False},
+                    "fastapi": {"enabled": False},
+                    "flask": {"enabled": False},
+                    "psycopg2": {"enabled": False},
+                    "requests": {"enabled": False},
+                    "urllib": {"enabled": False},
+                    "urllib3": {"enabled": False},
+                },
+            )
             self._meter = metrics.get_meter(__name__)
             logger.info("Azure Monitor metrics initialized successfully")
         except Exception as e:
@@ -91,6 +111,7 @@ class MetricSender:
 
     def _get_or_create_counter(self, key: str) -> Counter:
         if key not in self._counters:
+            assert self._meter is not None
             self._counters[key] = self._meter.create_counter(
                 name=key, description=f"Counter for {key}"
             )
@@ -134,6 +155,34 @@ class MetricSender:
             logger.error(f"Failed to send metric '{key}': {e}")
             raise
 
+    def send_gauge_metric(
+        self, key: str, value: float, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        try:
+            metric_attributes = {
+                "workflow_id": self.workflow_id,
+                "microservice_id": self.microservice_id,
+                "health_board": self.health_board,
+                "peer_service": self.peer_service,
+            }
+
+            if attributes:
+                metric_attributes.update(attributes)
+
+            if self.azure_monitor_enabled and self._meter:
+                histogram = self._get_or_create_histogram(key)
+                histogram.record(value, attributes=metric_attributes)
+                logger.debug(
+                    f"Gauge metric sent: {key}={value} with attributes: {metric_attributes}"
+                )
+            else:
+                logger.info(
+                    f"Integration Hub Metric (local log): {key}={value}, attributes: {metric_attributes}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to send gauge metric '{key}': {e}")
+            raise
+
     def send_message_received_metric(
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -143,3 +192,14 @@ class MetricSender:
         self, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
         self.send_metric(key="messages_sent", value=1, attributes=attributes)
+
+    def _get_or_create_histogram(self, key: str) -> Histogram:
+        if key not in self._histograms:
+            assert self._meter is not None
+            self._histograms[key] = self._meter.create_histogram(
+                name=key,
+                description=f"Histogram for {key}",
+                unit="s",  # seconds
+            )
+            logger.debug(f"Created new histogram for metric: {key}")
+        return self._histograms[key]

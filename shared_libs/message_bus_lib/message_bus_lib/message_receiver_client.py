@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from contextlib import AbstractContextManager
 from types import TracebackType
@@ -14,6 +15,7 @@ from azure.servicebus import (
     ServiceBusReceiver,
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
+from metric_sender_lib.metric_sender import MetricSender
 from otel_lib import extract_trace_context
 
 logger = logging.getLogger(__name__)
@@ -25,20 +27,70 @@ class MessageReceiverClient:
     MAX_WAIT_TIME_SECONDS = 60
     LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
 
+    DEFAULT_WORKFLOW_ID = "unknown-workflow"
+    DEFAULT_MICROSERVICE_ID = "unknown-microservice"
+    DEFAULT_HEALTH_BOARD = "UNKNOWN"
+    DEFAULT_PEER_SERVICE = "service_bus"
+
     def __init__(
         self,
         sb_client: ServiceBusClient,
         queue_name: str,
         session_id: Optional[str] = None,
         propagate_trace_context: bool = True,
+        workflow_id: Optional[str] = None,
+        microservice_id: Optional[str] = None,
+        health_board: Optional[str] = None,
+        peer_service: Optional[str] = None,
+        recreate_sb_client: Optional[Callable[[], ServiceBusClient]] = None,
     ):
         self.sb_client = sb_client
+        self._recreate_sb_client = recreate_sb_client
         self.queue_name = queue_name
         self.session_id = session_id
         self.propagate_trace_context = propagate_trace_context
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
+
+        resolved_workflow_id = self._resolve_metric_dimension(
+            explicit_value=workflow_id,
+            env_var_name="WORKFLOW_ID",
+            default=self.DEFAULT_WORKFLOW_ID,
+        )
+        resolved_microservice_id = self._resolve_metric_dimension(
+            explicit_value=microservice_id,
+            env_var_name="MICROSERVICE_ID",
+            default=self.DEFAULT_MICROSERVICE_ID,
+        )
+        resolved_health_board = self._resolve_metric_dimension(
+            explicit_value=health_board,
+            env_var_name="HEALTH_BOARD",
+            default=self.DEFAULT_HEALTH_BOARD,
+        )
+        resolved_peer_service = self._resolve_metric_dimension(
+            explicit_value=peer_service,
+            env_var_name="PEER_SERVICE",
+            default=self.DEFAULT_PEER_SERVICE,
+        )
+
+        self.metric_sender = MetricSender(
+            workflow_id=resolved_workflow_id,
+            microservice_id=resolved_microservice_id,
+            health_board=resolved_health_board,
+            peer_service=resolved_peer_service,
+        )
+
+    @staticmethod
+    def _resolve_metric_dimension(explicit_value: Optional[str], env_var_name: str, default: str) -> str:
+        if explicit_value and explicit_value.strip():
+            return explicit_value.strip()
+
+        env_value = os.getenv(env_var_name, "").strip()
+        if env_value:
+            return env_value
+
+        return default
 
     def receive_messages(self, num_of_messages: int, message_processor: Callable[[ServiceBusMessage], bool]) -> None:
         """Process messages one at a time, stopping and abandoning on the first failure."""
@@ -102,6 +154,13 @@ class MessageReceiverClient:
                     normalised[str_key] = v
                 # Skip int/float/bool/None — not valid propagation header values
             ctx = extract_trace_context(normalised)
+            if "traceparent" not in normalised:
+                logger.warning(
+                    "No W3C traceparent found in message properties for message_id=%s — "
+                    "this attempt will appear under a new operation_Id in App Insights. "
+                    "Use CorrelationId to track across retry attempts.",
+                    getattr(msg, "message_id", "unknown"),
+                )
             token = otel_context.attach(ctx)
             try:
                 return handler(msg)
@@ -146,6 +205,15 @@ class MessageReceiverClient:
                         logger.exception("Unexpected error processing %d message(s)", len(messages))
                         self._abort_message_processing(receiver, messages)
                         self._set_delay_before_retry()
+                else:
+                    if self.next_retry_time is not None:
+                        logger.info(
+                            "No messages received from queue '%s' during retry window — message may not yet be "
+                            "re-available; will poll again (attempt %d, next_retry_time was %.1fs ago)",
+                            self.queue_name,
+                            self.retry_attempt,
+                            time.time() - self.next_retry_time,
+                        )
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
@@ -158,6 +226,23 @@ class MessageReceiverClient:
             # Catch unexpected SDK-internal errors such as AttributeError when the underlying
             # AMQP session is None after a dropped connection (pyamqp transport bug). The receiver
             # is created fresh on each call so there is no stale state — just schedule a retry.
+            if self._is_stale_amqp_session_error(exc):
+                logger.warning(
+                    "Detected stale AMQP session state in Service Bus client. Resetting client before retry."
+                )
+                try:
+                    self.sb_client.close()
+                except Exception as close_exc:
+                    logger.warning("Failed to close Service Bus client during stale-session recovery: %s", close_exc)
+                if self._recreate_sb_client:
+                    try:
+                        self.sb_client = self._recreate_sb_client()
+                        logger.info("Service Bus client recreated after stale-session recovery")
+                    except Exception as recreate_exc:
+                        logger.warning(
+                            "Failed to recreate Service Bus client during stale-session recovery: %s",
+                            recreate_exc,
+                        )
             logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
             self._set_delay_before_retry()
         finally:
@@ -186,6 +271,10 @@ class MessageReceiverClient:
                 return False
         return True
 
+    @staticmethod
+    def _is_stale_amqp_session_error(exc: Exception) -> bool:
+        return isinstance(exc, AttributeError) and "create_receiver_link" in str(exc)
+
     def _clear_retry_state(self) -> None:
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
@@ -201,11 +290,21 @@ class MessageReceiverClient:
 
     def _set_delay_before_retry(self) -> None:
         self.next_retry_time = time.time() + self.delay
+
         logger.info(
             "Scheduled waiting for %d seconds before next attempt (%d) to retry failed message",
             self.delay,
             self.retry_attempt,
         )
+        self.metric_sender.send_gauge_metric(
+            key="retry_delay_seconds",
+            value=self.delay,
+            attributes={
+                "queue": self.queue_name,
+                "attempt": self.retry_attempt,
+            },
+        )
+        # ✅ IMPORTANT: keep existing retry logic
         self.delay = min(self.delay * 2, self.MAX_DELAY_SECONDS)
         self.retry_attempt += 1
 

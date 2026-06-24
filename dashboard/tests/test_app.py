@@ -27,6 +27,13 @@ def client() -> Generator[FlaskClient, None, None]:
         yield c
 
 
+@pytest.fixture(autouse=True)
+def _stub_retry_delay_metrics() -> Generator[None, None, None]:
+    """Keep route tests offline by stubbing retry-delay metric queries."""
+    with patch("dashboard.app.get_retry_delay_metrics_by_flow", return_value=[]):
+        yield
+
+
 EMPTY_QUEUES: list = []
 EMPTY_EXCEPTIONS: list = []
 EMPTY_MESSAGES: list = []

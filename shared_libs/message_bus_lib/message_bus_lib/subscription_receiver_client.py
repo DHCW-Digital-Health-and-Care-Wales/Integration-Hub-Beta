@@ -1,6 +1,6 @@
 import logging
 from contextlib import AbstractContextManager
-from typing import Optional
+from typing import Callable, Optional
 
 from azure.servicebus import (
     AutoLockRenewer,
@@ -16,9 +16,19 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionReceiverClient(MessageReceiverClient):
     def __init__(
-        self, sb_client: ServiceBusClient, topic_name: str, subscription_name: str, session_id: Optional[str] = None
+        self,
+        sb_client: ServiceBusClient,
+        topic_name: str,
+        subscription_name: str,
+        session_id: Optional[str] = None,
+        recreate_sb_client: Optional[Callable[[], ServiceBusClient]] = None,
     ):
-        super().__init__(sb_client, queue_name="", session_id=session_id)
+        super().__init__(
+            sb_client,
+            queue_name=f"{topic_name}/{subscription_name}",
+            session_id=session_id,
+            recreate_sb_client=recreate_sb_client,
+        )
         self.topic_name = topic_name
         self.subscription_name = subscription_name
 

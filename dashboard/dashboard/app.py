@@ -56,6 +56,7 @@ from dashboard.services.azure_monitor import (
     get_container_app_metric_history,
     get_exceptions,
     get_messages_today,
+    get_retry_delay_metrics_by_flow,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
@@ -367,6 +368,34 @@ def _build_status() -> dict:
     warning_count = flow_statuses.count("warning")
     critical_count = flow_statuses.count("critical")
 
+    retry_metrics = get_retry_delay_metrics_by_flow(hours=1, min_delay_seconds=60)
+    flow_labels = {flow.get("id"): flow.get("label", flow.get("id")) for flow in flows}
+    retry_rows: list[dict] = []
+    flows_over_1m = 0
+
+    for metric in retry_metrics:
+        flow_id = metric.get("workflow_id")
+        delay_seconds = metric.get("delay_seconds")
+        has_metric = delay_seconds is not None
+        over_1m = bool(has_metric and delay_seconds > 60)
+        if over_1m:
+            flows_over_1m += 1
+
+        retry_rows.append(
+            {
+                "workflow_id": flow_id,
+                "flow_label": flow_labels.get(flow_id, flow_id),
+                "delay_seconds": delay_seconds,
+                "delay_display": f"{int(delay_seconds)}s" if has_metric else "Metric unavailable",
+                "attempt": metric.get("attempt"),
+                "queue": metric.get("queue") or "",
+                "microservice_id": metric.get("microservice_id") or "",
+                "timestamp": metric.get("timestamp") or "",
+                "status": "warning" if over_1m else "healthy",
+                "over_1m": over_1m,
+            }
+        )
+
     return {
         "refreshed_at": datetime.now(timezone.utc).isoformat(),
         "system_health": sys_health,
@@ -381,6 +410,11 @@ def _build_status() -> dict:
         "flows": flows,
         "queues": queues,
         "recent_exceptions": exceptions_1h[:5],
+        "retry_delays": retry_rows,
+        "retry_delay_kpis": {
+            "flows_over_1m": flows_over_1m,
+            "flows_reporting": len(retry_rows),
+        },
     }
 
 

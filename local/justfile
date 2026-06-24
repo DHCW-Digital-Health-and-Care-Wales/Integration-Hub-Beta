@@ -35,6 +35,9 @@
 # Configuration Variables
 # ============================================
 
+# Use PowerShell as the recipe shell on Windows hosts.
+set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
 
