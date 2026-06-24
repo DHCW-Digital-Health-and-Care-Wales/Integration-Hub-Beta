@@ -525,9 +525,13 @@ def _build_row(
         "id": rid,
         "display_name": rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
         "workflow_id": workflow_id,
-        "day_threshold_minutes": int(rule_cfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
-        "evening_threshold_minutes": int(rule_cfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
-        "weekend_threshold_minutes": int(rule_cfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
+        "day_threshold_minutes": int(rule_cfg.get("day_threshold_minutes", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
+        "evening_threshold_minutes": int(
+            rule_cfg.get("evening_threshold_minutes", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
+        ),
+        "weekend_threshold_minutes": int(
+            rule_cfg.get("weekend_threshold_minutes", rule_cfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))
+        ),
         "alerting_gap_minutes": int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
         "current_period": period,
         "period_threshold_minutes": period_threshold,
