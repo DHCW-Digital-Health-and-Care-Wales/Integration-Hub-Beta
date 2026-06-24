@@ -377,7 +377,7 @@ def _build_status() -> dict:
         flow_id = metric.get("workflow_id")
         delay_seconds = metric.get("delay_seconds")
         has_metric = delay_seconds is not None
-        over_1m = bool(has_metric and delay_seconds > 60)
+        over_1m = bool(delay_seconds is not None and delay_seconds > 60)
         if over_1m:
             flows_over_1m += 1
 
@@ -386,7 +386,7 @@ def _build_status() -> dict:
                 "workflow_id": flow_id,
                 "flow_label": flow_labels.get(flow_id, flow_id),
                 "delay_seconds": delay_seconds,
-                "delay_display": f"{int(delay_seconds)}s" if has_metric else "Metric unavailable",
+                "delay_display": f"{int(delay_seconds)}s" if delay_seconds is not None else "Metric unavailable",
                 "attempt": metric.get("attempt"),
                 "queue": metric.get("queue") or "",
                 "microservice_id": metric.get("microservice_id") or "",

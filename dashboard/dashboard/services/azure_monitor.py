@@ -215,7 +215,7 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
                 attempt_value = row_dict.get("attempt")
                 attempt_int: int | None
                 try:
-                    attempt_int = int(attempt_value) if attempt_value not in (None, "") else None
+                    attempt_int = int(attempt_value) if attempt_value is not None and attempt_value != "" else None
                 except (TypeError, ValueError):
                     attempt_int = None
 
