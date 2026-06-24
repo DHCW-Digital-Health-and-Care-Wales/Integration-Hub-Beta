@@ -376,7 +376,6 @@ def _build_status() -> dict:
     for metric in retry_metrics:
         flow_id = metric.get("workflow_id")
         delay_seconds = metric.get("delay_seconds")
-        has_metric = delay_seconds is not None
         over_1m = bool(delay_seconds is not None and delay_seconds > 60)
         if over_1m:
             flows_over_1m += 1
