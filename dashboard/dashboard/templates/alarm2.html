@@ -117,6 +117,28 @@
 
   </div>
 
+  {% set current_period = alarm2_rows[0].current_period if alarm2_rows else 'day' %}
+  <!-- Current period indicator -->
+  <div class="mb-3 d-flex align-items-center gap-2" style="font-size:0.78rem; color:var(--text-muted);">
+    <span>{{ _("Active period:") }}</span>
+    {% if current_period == 'day' %}
+      <span style="color:var(--accent-amber); font-weight:600;">
+        <i class="bi bi-sun-fill me-1"></i>{{ _("Day (Mon\u2013Fri 09:00\u201317:00)") }}
+      </span>
+      <span>{{ _("\u2014 day threshold applies") }}</span>
+    {% elif current_period == 'evening' %}
+      <span style="color:var(--accent-blue); font-weight:600;">
+        <i class="bi bi-moon-fill me-1"></i>{{ _("Evening (Mon\u2013Fri 17:00\u201309:00)") }}
+      </span>
+      <span>{{ _("\u2014 evening threshold applies") }}</span>
+    {% else %}
+      <span style="color:var(--accent-purple); font-weight:600;">
+        <i class="bi bi-calendar-week-fill me-1"></i>{{ _("Weekend (Fri 17:00 \u2013 Mon 09:00)") }}
+      </span>
+      <span>{{ _("\u2014 weekend threshold applies") }}</span>
+    {% endif %}
+  </div>
+
   <!-- Alarm table -->
   <div class="queue-table-wrapper">
     <div class="queue-table-header">
@@ -133,14 +155,16 @@
             <th>
               <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Workflow ID") }}
             </th>
+            <th>{{ _("Last Message") }}</th>
+            <th>{{ _("Time Since") }}</th>
             <th>
-              <i class="bi bi-send-fill me-1" style="color:var(--accent-green)"></i>{{ _("Messages Sent") }}
+              <i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>{{ _("Day") }}
             </th>
             <th>
-              <i class="bi bi-arrow-down-circle me-1" style="color:var(--accent-red)"></i>{{ _("Threshold") }}
+              <i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>{{ _("Evening") }}
             </th>
             <th>
-              <i class="bi bi-calendar-range me-1" style="color:var(--accent-blue)"></i>{{ _("Window") }}
+              <i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>{{ _("Weekend") }}
             </th>
             <th>
               <i class="bi bi-clock-history me-1" style="color:var(--accent-red)"></i>{{ _("Alerting Gap") }}
@@ -183,28 +207,51 @@
 
             <td style="font-family:monospace; font-size:0.82rem;">{{ row.workflow_id }}</td>
 
-            <td style="font-size:0.88rem;">
+            <td style="font-family:monospace; font-size:0.82rem;">
+              {{ row.last_message_display }}
               {% if row.status in ('critical', 'suppressed') %}
-                <span style="color:var(--accent-red); font-weight:600;">{{ row.messages_display }}</span>
-              {% elif row.status == 'unknown' %}
-                <span style="color:var(--text-muted);">—</span>
-              {% else %}
-                <span style="color:var(--accent-green); font-weight:600;">{{ row.messages_display }}</span>
+                <div style="color:var(--accent-red); font-weight:600; font-family:inherit; font-size:0.78rem; margin-top:2px;">
+                  {{ row.duration_label }} {{ _("ago") }}
+                </div>
+              {% elif row.status == 'healthy' and row.duration_label %}
+                <div style="color:var(--accent-green); font-family:inherit; font-size:0.78rem; margin-top:2px;">
+                  {{ row.duration_label }} {{ _("ago") }}
+                </div>
               {% endif %}
             </td>
 
-            <td style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">
-              &lt;= {{ row.period_threshold }}
-              <span class="a2-period-badge a2-badge-{{ row.current_period }}">
-                {%- if row.current_period == 'day' %}{{ _("Day") }}
-                {%- elif row.current_period == 'evening' %}{{ _("Evening") }}
-                {%- else %}{{ _("Weekend") }}
-                {%- endif -%}
-              </span>
+            <!-- Time Since -->
+            <td>
+              {% if row.status in ('critical', 'suppressed') %}
+                <span style="color:var(--accent-red); font-weight:600;">{{ row.duration_label }}</span>
+              {% elif row.status == 'paused' %}
+                <span style="color:var(--accent-cyan); font-weight:600;">{{ row.duration_label }}</span>
+              {% elif row.status == 'unknown' %}
+                <span style="color:var(--text-muted);">—</span>
+              {% else %}
+                <span style="color:var(--accent-green);">{{ row.duration_label }}</span>
+              {% endif %}
             </td>
 
-            <td style="font-size:0.82rem; color:var(--text-muted);">
-              {{ row.window_label }}
+            <!-- Day threshold — highlight if active -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'day' %}color:var(--accent-amber); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.day_threshold_minutes }} {{ _("min") }}
+              {% if row.current_period == 'day' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
+            </td>
+
+            <!-- Evening threshold -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'evening' %}color:var(--accent-blue); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.evening_threshold_minutes }} {{ _("min") }}
+              {% if row.current_period == 'evening' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
+            </td>
+
+            <!-- Weekend threshold -->
+            <td style="font-size:0.82rem;
+              {% if row.current_period == 'weekend' %}color:var(--accent-purple); font-weight:600;{% else %}color:var(--text-muted);{% endif %}">
+              {{ row.weekend_threshold_minutes }} {{ _("min") }}
+              {% if row.current_period == 'weekend' %}<i class="bi bi-arrow-left ms-1" style="font-size:0.65rem;"></i>{% endif %}
             </td>
 
             <td style="font-size:0.82rem;">

@@ -238,9 +238,9 @@ def _send_alarm_email(
 
     period = get_current_period(now)
     period_label = {
-        "day": "Day (Mon–Fri 08:00–17:00)",
-        "evening": "Evening (Mon–Fri 17:00–08:00)",
-        "weekend": "Weekend (Fri 17:00–Mon 08:00)",
+        "day": "Day (Mon–Fri 09:00–17:00)",
+        "evening": "Evening (Mon–Fri 17:00–09:00)",
+        "weekend": "Weekend (Fri 17:00–Mon 09:00)",
     }.get(period, period.title())
     last_msg_str = last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"
     duration_str = _format_duration(minutes_since)

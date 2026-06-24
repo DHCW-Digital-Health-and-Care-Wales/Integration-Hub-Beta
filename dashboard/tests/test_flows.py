@@ -5,6 +5,8 @@ Pure logic — no Azure calls, no mocking needed.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from dashboard.services.flows import _FLOW_DEFS, flow_health, overall_health, queue_health
 
 # Test flows with hardcoded queue names - independent of config.py
@@ -22,25 +24,68 @@ TEST_FLOWS = {
     },
 }
 
+# Patch config thresholds to known values so tests are env-independent
+_THRESHOLD_KWARGS: dict[str, int] = {
+    "QUEUE_WARNING_THRESHOLD": 10,
+    "QUEUE_CRITICAL_THRESHOLD": 50,
+    "DLQ_WARNING_THRESHOLD": 1,
+}
+
 
 class TestQueueHealth:
     def test_healthy_when_empty(self) -> None:
-        assert queue_health(0, 0) == "healthy"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(0, 0) == "healthy"
 
     def test_healthy_below_warning(self) -> None:
-        assert queue_health(9, 0) == "healthy"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(9, 0) == "healthy"
 
     def test_warning_at_threshold(self) -> None:
-        assert queue_health(10, 0) == "warning"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(10, 0) == "warning"
 
     def test_warning_with_dlq(self) -> None:
-        assert queue_health(0, 1) == "warning"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(0, 1) == "warning"
 
     def test_critical_at_threshold(self) -> None:
-        assert queue_health(50, 0) == "critical"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(50, 0) == "critical"
 
     def test_critical_overrides_dlq(self) -> None:
-        assert queue_health(50, 5) == "critical"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert queue_health(50, 5) == "critical"
 
 
 class TestFlowHealth:
@@ -52,14 +97,26 @@ class TestFlowHealth:
             "pre-phw-transform": self._make_queue("pre-phw-transform"),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
-        assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "healthy"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "healthy"
 
     def test_warning_when_pre_queue_at_threshold(self) -> None:
         queues_by_name = {
             "pre-phw-transform": self._make_queue("pre-phw-transform", active=15),
             "post-phw-transform": self._make_queue("post-phw-transform"),
         }
-        assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "warning"
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert flow_health("phw-to-mpi", queues_by_name, TEST_FLOWS) == "warning"
 
     def test_critical_when_post_queue_critical(self) -> None:
         queues_by_name = {

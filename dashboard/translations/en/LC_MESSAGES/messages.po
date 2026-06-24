@@ -151,7 +151,7 @@ msgid "Active period:"
 msgstr ""
 
 #: dashboard/templates/alarm.html:118
-msgid "Day (Mon–Fri 08:00–17:00)"
+msgid "Day (Mon–Fri 09:00–17:00)"
 msgstr ""
 
 #: dashboard/templates/alarm.html:120
@@ -159,7 +159,7 @@ msgid "— day threshold applies"
 msgstr ""
 
 #: dashboard/templates/alarm.html:123
-msgid "Evening (Mon–Fri 17:00–08:00)"
+msgid "Evening (Mon–Fri 17:00–09:00)"
 msgstr ""
 
 #: dashboard/templates/alarm.html:125
@@ -167,7 +167,7 @@ msgid "— evening threshold applies"
 msgstr ""
 
 #: dashboard/templates/alarm.html:128
-msgid "Weekend (Fri 17:00 – Mon 08:00)"
+msgid "Weekend (Fri 17:00 – Mon 09:00)"
 msgstr ""
 
 #: dashboard/templates/alarm.html:130
@@ -666,7 +666,7 @@ msgid "— this prevents repeated alerts for the same ongoing outage."
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:49
-msgid "Mon–Fri 08:00–17:00"
+msgid "Mon–Fri 09:00–17:00"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:51
@@ -674,7 +674,7 @@ msgid "Mon–Fri 17:00–08:00"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:53
-msgid "Fri 17:00 → Mon 08:00"
+msgid "Fri 17:00 → Mon 09:00"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:75
@@ -709,7 +709,7 @@ msgid "Weekend Threshold"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:201
-msgid "No messages for this long (Fri 17:00–Mon 08:00) → alarm fires"
+msgid "No messages for this long (Fri 17:00–Mon 09:00) → alarm fires"
 msgstr ""
 
 #: dashboard/templates/alarm_config.html:255
