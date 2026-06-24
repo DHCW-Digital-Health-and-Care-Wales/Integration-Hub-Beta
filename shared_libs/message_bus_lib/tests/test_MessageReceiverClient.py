@@ -20,7 +20,9 @@ TIMESTAMP_IN_PAST = 1760047200.0  # Fixed timestamp for testing
 class TestMessageReceiverClient(unittest.TestCase):
     def setUp(self) -> None:
         self.service_bus_client = MagicMock()
-        self.service_bus_receiver_client = self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        self.service_bus_receiver_client = (
+            self.service_bus_client.get_queue_receiver.return_value.__enter__.return_value
+        )
         queue_name = "test-queue"
         self.message_receiver_client = MessageReceiverClient(self.service_bus_client, queue_name)
 
