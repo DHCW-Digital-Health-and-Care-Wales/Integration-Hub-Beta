@@ -160,8 +160,8 @@ class TestBuildRow:
         assert row["weekend_threshold_minutes"] == 5
 
     def test_legacy_threshold_fallback_in_display_fields(self) -> None:
-        """Rows built from legacy config: display fields show defaults (legacy 'threshold'
-        only affects alarm evaluation via _applicable_threshold, not the display columns)."""
+        """Rows built from legacy config expose the legacy 'threshold' value for all three
+        display fields, so the table shows a meaningful number rather than the default."""
         legacy_cfg = {
             "threshold": 77,
             "workflow_id": "phw-to-mpi",
@@ -177,9 +177,9 @@ class TestBuildRow:
             cooldown_remaining=None,
             now=MON_DAY,
         )
-        assert row["day_threshold_minutes"] == DEFAULT_DAY_THRESHOLD
-        assert row["evening_threshold_minutes"] == DEFAULT_EVENING_THRESHOLD
-        assert row["weekend_threshold_minutes"] == DEFAULT_WEEKEND_THRESHOLD
+        assert row["day_threshold_minutes"] == 77
+        assert row["evening_threshold_minutes"] == 77
+        assert row["weekend_threshold_minutes"] == 77
 
     def test_last_message_display_populated(self) -> None:
         row = self._row(MON_DAY)
