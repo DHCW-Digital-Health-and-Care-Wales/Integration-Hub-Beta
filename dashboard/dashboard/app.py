@@ -386,7 +386,7 @@ def _build_status() -> dict:
                 "workflow_id": flow_id,
                 "flow_label": flow_labels.get(flow_id, flow_id),
                 "delay_seconds": delay_seconds,
-                "delay_display": f"{int(delay_seconds)}s" if has_metric and delay_seconds is not None else "Metric unavailable",
+                "delay_display": f"{int(delay_seconds)}s" if has_metric else "Metric unavailable",
                 "attempt": metric.get("attempt"),
                 "queue": metric.get("queue") or "",
                 "microservice_id": metric.get("microservice_id") or "",
