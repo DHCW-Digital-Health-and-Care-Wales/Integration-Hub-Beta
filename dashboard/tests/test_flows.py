@@ -25,17 +25,20 @@ TEST_FLOWS = {
 }
 
 # Patch config thresholds to known values so tests are env-independent
-_THRESHOLD_PATCH = {
-    "dashboard.services.flows.config.QUEUE_WARNING_THRESHOLD": 10,
-    "dashboard.services.flows.config.QUEUE_CRITICAL_THRESHOLD": 50,
-    "dashboard.services.flows.config.DLQ_WARNING_THRESHOLD": 1,
+_THRESHOLD_KWARGS: dict[str, int] = {
+    "QUEUE_WARNING_THRESHOLD": 10,
+    "QUEUE_CRITICAL_THRESHOLD": 50,
+    "DLQ_WARNING_THRESHOLD": 1,
 }
 
 
 class TestQueueHealth:
     def test_healthy_when_empty(self) -> None:
         with patch.multiple(
-            "dashboard.services.flows.config", **{k.split(".")[-1]: v for k, v in _THRESHOLD_PATCH.items()}
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
         ):
             assert queue_health(0, 0) == "healthy"
 
