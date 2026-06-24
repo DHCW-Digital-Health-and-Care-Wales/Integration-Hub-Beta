@@ -167,7 +167,7 @@ def _parse_dt(raw: object) -> datetime | None:
 
 
 def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
-    """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (3-day window)."""
+    """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (30-day window)."""
     if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
         return {wid: None for wid in workflow_ids}
 
@@ -178,7 +178,7 @@ def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, dat
     ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
     query = f"""
     AppTraces
-    | where TimeGenerated > ago(3d)
+    | where TimeGenerated > ago(30d)
     | where Message == "Integration Hub Event"
     | where Properties contains "MESSAGE_RECEIVED"
     | extend workflow_id = tostring(parse_json(Properties)["workflow_id"])
@@ -190,7 +190,7 @@ def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, dat
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
             query=query,
-            timespan=timedelta(days=3),
+            timespan=timedelta(days=30),
         )
         if response.status != LogsQueryStatus.SUCCESS:
             log.warning("get_last_message_times_by_workflow: partial/failed query")
