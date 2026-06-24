@@ -73,8 +73,8 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
     try:
         credential = _get_credential()
 
-    # azure-monitor-opentelemetry configures the TracerProvider and MeterProvider
-    # internally; we provide credential and resource for explicit service metadata.
+        # azure-monitor-opentelemetry configures the TracerProvider and MeterProvider
+        # internally; we provide credential and resource for explicit service metadata.
         #
         # Disable ALL auto-instrumentors — our HL7 services use manual
         # telemetry only (EventLogger, wrap_handler spans).  Active
