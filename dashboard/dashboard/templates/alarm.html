@@ -123,17 +123,17 @@
     <span>{{ _("Active period:") }}</span>
     {% if current_period == 'day' %}
       <span style="color:var(--accent-amber); font-weight:600;">
-        <i class="bi bi-sun-fill me-1"></i>{{ _("Day (Mon\u2013Fri 08:00\u201317:00)") }}
+        <i class="bi bi-sun-fill me-1"></i>{{ _("Day (Mon\u2013Fri 09:00\u201317:00)") }}
       </span>
       <span>{{ _("\u2014 day threshold applies") }}</span>
     {% elif current_period == 'evening' %}
       <span style="color:var(--accent-blue); font-weight:600;">
-        <i class="bi bi-moon-fill me-1"></i>{{ _("Evening (Mon\u2013Fri 17:00\u201308:00)") }}
+        <i class="bi bi-moon-fill me-1"></i>{{ _("Evening (Mon\u2013Fri 17:00\u201309:00)") }}
       </span>
       <span>{{ _("\u2014 evening threshold applies") }}</span>
     {% else %}
       <span style="color:var(--accent-purple); font-weight:600;">
-        <i class="bi bi-calendar-week-fill me-1"></i>{{ _("Weekend (Fri 17:00 \u2013 Mon 08:00)") }}
+        <i class="bi bi-calendar-week-fill me-1"></i>{{ _("Weekend (Fri 17:00 \u2013 Mon 09:00)") }}
       </span>
       <span>{{ _("\u2014 weekend threshold applies") }}</span>
     {% endif %}

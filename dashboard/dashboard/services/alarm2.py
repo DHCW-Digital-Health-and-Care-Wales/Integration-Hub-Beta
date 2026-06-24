@@ -1,22 +1,23 @@
-"""Alarm 2 service — outgoing message volume monitoring.
+"""Alarm 2 service — outgoing message inactivity monitoring.
 
 Config is persisted to ``alarm2_config.json`` in the dashboard root directory.
 State (last alarm fired time per rule) is persisted to ``alarm2_state.json``.
 
-Each rule monitors MESSAGE_SENT events for a specific workflow_id and has
-the following settings:
-  alarm_enabled            – bool, whether Alarm 2 is active for this rule
-  display_name             – human-readable label
-  workflow_id              – Properties["workflow_id"] filter value (e.g. "phw-to-mpi")
-  window_duration_minutes  – lookback window for the messages_sent query
-  threshold                – fire when sum(messages_sent) <= this value
-  alerting_gap_minutes     – cooldown before the alarm re-fires
-  email_alerts_enabled     – bool, whether to send email on alarm
+Each rule monitors the most recent ``messages_sent`` metric for a specific
+workflow_id and has the following settings:
+  alarm_enabled              – bool, whether Alarm 2 is active for this rule
+  display_name               – human-readable label
+  workflow_id                – Properties["workflow_id"] filter value (e.g. "phw-to-mpi")
+  day_threshold_minutes      – minutes of inactivity during Day to trip the alarm
+  evening_threshold_minutes  – minutes of inactivity during Evening to trip the alarm
+  weekend_threshold_minutes  – minutes of inactivity during Weekend to trip the alarm
+  alerting_gap_minutes       – cooldown before the alarm re-fires
+  email_alerts_enabled       – bool, whether to send email on alarm
 
 Status values returned per rule:
-  'critical'   – count at/below threshold, cooldown has expired
-  'suppressed' – count at/below threshold but within the re-alarm cooldown
-  'healthy'    – count above threshold
+  'critical'   – inactivity exceeds threshold, cooldown has expired
+  'suppressed' – inactivity exceeds threshold but within the re-alarm cooldown
+  'healthy'    – last message sent within the inactivity threshold
   'unknown'    – query failed or no Log Analytics workspace configured
 """
 
@@ -39,10 +40,9 @@ log = logging.getLogger(__name__)
 CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm2_config.json"
 STATE_PATH = Path(__file__).parent.parent.parent / "alarm2_state.json"
 
-DEFAULT_WINDOW_MINUTES = 2880  # 2 days
-DEFAULT_DAY_THRESHOLD = 0
-DEFAULT_EVENING_THRESHOLD = 0
-DEFAULT_WEEKEND_THRESHOLD = 0
+DEFAULT_DAY_THRESHOLD = 60
+DEFAULT_EVENING_THRESHOLD = 120
+DEFAULT_WEEKEND_THRESHOLD = 240
 DEFAULT_ALERTING_GAP = 60
 
 # Seed list of known rules — always present even if not yet enabled.
@@ -160,15 +160,22 @@ def _parse_dt(raw: object) -> datetime | None:
         return None
 
 
-def _format_count(total: int | None) -> str:
-    """Format a message count for display, returning ``"—"`` when the value is unknown."""
-    if total is None:
-        return "—"
-    return f"{total:,}"
+def _format_duration(minutes: float) -> str:
+    """Format a duration in minutes as a human-readable string (e.g. ``"2.5 hours"``)."""
+    if minutes < 1:
+        return "< 1 minute"
+    if minutes < 60:
+        m = int(minutes)
+        return f"{m} minute{'s' if m != 1 else ''}"
+    hours = minutes / 60
+    if hours < 24:
+        return f"{hours:.1f} hour{'s' if hours != 1.0 else ''}"
+    days = hours / 24
+    return f"{days:.1f} day{'s' if days != 1.0 else ''}"
 
 
 def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
-    """Return the message-count alarm threshold for the current time period.
+    """Return the inactivity trip threshold in minutes for the current time period.
 
     Falls back to the legacy single ``threshold`` field for configs created
     before per-period thresholds were introduced.
@@ -176,10 +183,12 @@ def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
     legacy = rule_cfg.get("threshold", None)
     period = get_current_period(now)
     if period == "weekend":
-        return int(rule_cfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD))
+        return int(
+            rule_cfg.get("weekend_threshold_minutes", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD)
+        )
     if period == "day":
-        return int(rule_cfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD))
-    return int(rule_cfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD))
+        return int(rule_cfg.get("day_threshold_minutes", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD))
+    return int(rule_cfg.get("evening_threshold_minutes", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD))
 
 
 # ---------------------------------------------------------------------------
@@ -187,66 +196,49 @@ def _applicable_threshold(rule_cfg: dict, now: datetime) -> int:
 # ---------------------------------------------------------------------------
 
 
-def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
-    """Query sum(messages_sent) for each rule over its configured window.
+def get_last_sent_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
+    """Query Log Analytics for the most recent messages_sent metric per workflow_id (3-day window)."""
+    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
+        return {wid: None for wid in workflow_ids}
 
-    Rules are grouped by window_duration_minutes so we only issue one query
-    per unique window size.  Returns {rule_id: total | None}.
+    safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", wid) for wid in workflow_ids if wid]
+    if not safe_ids:
+        return {wid: None for wid in workflow_ids}
+
+    ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
+    query = f"""
+    AppMetrics
+    | where TimeGenerated > ago(3d)
+    | where Name == "messages_sent"
+    | extend workflow_id = tostring(Properties["workflow_id"])
+    | where workflow_id in ({ids_kql})
+    | summarize last_message = max(TimeGenerated) by workflow_id
     """
-    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not rules:
-        return {r["id"]: None for r in rules}
+    try:
+        client = LogsQueryClient(get_azure_credential())
+        response = client.query_workspace(
+            workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
+            query=query,
+            timespan=timedelta(days=3),
+        )
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.warning("get_last_sent_times_by_workflow: partial/failed query")
+            return {wid: None for wid in workflow_ids}
 
-    # Group rules by window size to minimise round-trips.
-    by_window: dict[int, list[dict]] = {}
-    for rule in rules:
-        w = int(rule.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
-        by_window.setdefault(w, []).append(rule)
+        found: dict[str, datetime | None] = {}
+        for table in response.tables:
+            for row in table.rows:
+                row_dict = dict(zip(table.columns, row))
+                wid = (row_dict.get("workflow_id") or "").strip()
+                ts = _parse_dt(row_dict.get("last_message"))
+                if wid:
+                    found[wid] = ts
 
-    results: dict[str, int | None] = {}
+        return {wid: found.get(wid) for wid in workflow_ids}
 
-    for window_minutes, window_rules in by_window.items():
-        safe_ids = [re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"]) for r in window_rules]
-        ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
-        query = f"""
-        AppMetrics
-        | where TimeGenerated > ago({window_minutes}m)
-        | where Name == "messages_sent"
-        | extend workflow_id = tostring(Properties["workflow_id"])
-        | where workflow_id in ({ids_kql})
-        | summarize Total = sum(Sum) by workflow_id
-        """
-        try:
-            client = LogsQueryClient(get_azure_credential())
-            response = client.query_workspace(
-                workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
-                query=query,
-                timespan=timedelta(minutes=window_minutes),
-            )
-            if response.status != LogsQueryStatus.SUCCESS:
-                log.warning("alarm2 query partial/failed for window=%dm", window_minutes)
-                for r in window_rules:
-                    results[r["id"]] = None
-                continue
-
-            found: dict[str, int] = {}
-            for table in response.tables:
-                for row in table.rows:
-                    row_dict = dict(zip(table.columns, row))
-                    wid = (row_dict.get("workflow_id") or "").strip()
-                    val = row_dict.get("Total")
-                    if wid:
-                        found[wid] = int(val) if val is not None else 0
-
-            for r in window_rules:
-                # Missing key = no messages found in window → treat as 0.
-                results[r["id"]] = found.get(r["workflow_id"].strip(), 0)
-
-        except Exception as exc:
-            log.error("alarm2 query failed for window=%dm: %s", window_minutes, exc)
-            for r in window_rules:
-                results[r["id"]] = None
-
-    return results
+    except Exception as exc:
+        log.error("Failed to fetch last sent times: %s", exc)
+        return {wid: None for wid in workflow_ids}
 
 
 # ---------------------------------------------------------------------------
@@ -256,13 +248,12 @@ def get_messages_totals(rules: list[dict]) -> dict[str, int | None]:
 
 def _send_alarm2_email(
     rule_id: str,
-    display_name: str,
-    messages_total: int,
-    threshold: int,
-    window_minutes: int,
     workflow_id: str,
+    display_name: str,
+    minutes_since: float,
+    period_threshold: int,
+    last_msg: datetime | None,
     now: datetime,
-    period: str = "day",
     email_alerts_enabled: bool = False,
 ) -> None:
     """Send an HTML email via Azure Communication Services when Alarm 2 fires."""
@@ -276,15 +267,18 @@ def _send_alarm2_email(
 
     from dashboard.services.alarm_time_utils import PERIOD_LABELS  # noqa: PLC0415
 
-    window_label = f"{window_minutes // 60} hours" if window_minutes >= 60 else f"{window_minutes} minutes"
+    period = get_current_period(now)
     period_label = PERIOD_LABELS.get(period, period.title())
-    subject = f"[Integration Hub] Alarm 2 — {display_name} low message volume ({messages_total} messages)"
+    last_msg_str = last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"
+    duration_str = _format_duration(minutes_since)
+
+    subject = f"[Integration Hub] Alarm 2 — {display_name} outgoing inactivity ({duration_str})"
     body = f"""<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;">
 <h2 style="color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:8px;">
-  &#x26A0; Integration Hub — Alarm 2: Low Outgoing Message Volume
+  &#x26A0; Integration Hub — Alarm 2: Outgoing Message Inactivity
 </h2>
 <p style="color:#555;font-size:14px;">
-  The following flow has sent fewer messages than the configured threshold.
+  The following workflow has sent no messages for longer than its configured threshold.
 </p>
 <table cellpadding="8" cellspacing="0"
        style="border-collapse:collapse;font-size:14px;width:100%;
@@ -298,16 +292,16 @@ def _send_alarm2_email(
     <td style="border-bottom:1px solid #eee;font-family:monospace;">{workflow_id}</td>
   </tr>
   <tr style="background:#fff;">
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Messages Sent</td>
-    <td style="border-bottom:1px solid #eee;color:#c0392b;font-weight:bold;">{messages_total:,}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Last Sent (UTC)</td>
+    <td style="border-bottom:1px solid #eee;">{last_msg_str}</td>
   </tr>
   <tr>
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Period / Threshold</td>
-    <td style="border-bottom:1px solid #eee;">{period_label} — &lt;= {threshold:,}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Inactive For</td>
+    <td style="border-bottom:1px solid #eee;color:#c0392b;font-weight:bold;">{duration_str}</td>
   </tr>
   <tr style="background:#fff;">
-    <td style="font-weight:bold;border-bottom:1px solid #eee;">Lookback Window</td>
-    <td style="border-bottom:1px solid #eee;">{window_label}</td>
+    <td style="font-weight:bold;border-bottom:1px solid #eee;">Period / Threshold</td>
+    <td style="border-bottom:1px solid #eee;">{period_label} — {period_threshold} min</td>
   </tr>
   <tr>
     <td style="font-weight:bold;">Fired At (UTC)</td>
@@ -344,9 +338,9 @@ def get_alarm2_status() -> list[dict]:
     """Evaluate Alarm 2 for all enabled rules and return their status rows.
 
     Status values:
-        'critical'   – message count at/below threshold, cooldown expired
-        'suppressed' – message count at/below threshold, within cooldown
-        'healthy'    – message count above threshold
+        'critical'   – inactivity exceeds threshold, cooldown expired
+        'suppressed' – inactivity exceeds threshold, within cooldown
+        'healthy'    – last message sent within the inactivity threshold
         'unknown'    – query failed or Log Analytics not configured
     """
     cfg = load_alarm2_config()
@@ -358,7 +352,14 @@ def get_alarm2_status() -> list[dict]:
     if not enabled_rules:
         return []
 
-    totals = get_messages_totals(enabled_rules)
+    workflow_ids = list(
+        dict.fromkeys(
+            rules_cfg.get(r["id"], {}).get("workflow_id", r.get("workflow_id", "")).strip()
+            for r in enabled_rules
+            if rules_cfg.get(r["id"], {}).get("workflow_id", r.get("workflow_id", "")).strip()
+        )
+    )
+    last_times = get_last_sent_times_by_workflow(workflow_ids)
     now = datetime.now(timezone.utc)
 
     state = _load_alarm2_state()
@@ -370,10 +371,10 @@ def get_alarm2_status() -> list[dict]:
     for rule in enabled_rules:
         rid = rule["id"]
         rule_cfg = rules_cfg.get(rid, {})
-        threshold = _applicable_threshold(rule_cfg, now)
-        period = get_current_period(now)
+        workflow_id = rule_cfg.get("workflow_id", rule.get("workflow_id", "")).strip()
+        period_threshold = _applicable_threshold(rule_cfg, now)
         gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
-        total = totals.get(rid)
+        last_msg = last_times.get(workflow_id) if workflow_id else None
 
         # Check for manual pause before any alarm evaluation.
         rule_state = state_rules.get(rid, {})
@@ -385,8 +386,9 @@ def get_alarm2_status() -> list[dict]:
                     rid,
                     rule,
                     rule_cfg,
-                    total=total,
+                    last_msg=last_msg,
                     status="paused",
+                    minutes_since=(now - last_msg).total_seconds() / 60 if last_msg else None,
                     cooldown_remaining=None,
                     now=now,
                     pause_remaining=pause_remaining,
@@ -405,24 +407,44 @@ def get_alarm2_status() -> list[dict]:
                 del state_rules[rid]
             state_dirty = True
 
-        if total is None:
+        if last_msg is None:
             results.append(
-                _build_row(rid, rule, rule_cfg, total=None, status="unknown", cooldown_remaining=None, now=now)
+                _build_row(
+                    rid,
+                    rule,
+                    rule_cfg,
+                    last_msg=None,
+                    status="unknown",
+                    minutes_since=None,
+                    cooldown_remaining=None,
+                    now=now,
+                )
             )
             continue
 
-        in_alarm = total <= threshold
+        minutes_since = (now - last_msg).total_seconds() / 60
+        in_alarm = minutes_since > period_threshold
 
         if not in_alarm:
             if rid in state_rules:
                 del state_rules[rid]
                 state_dirty = True
             results.append(
-                _build_row(rid, rule, rule_cfg, total=total, status="healthy", cooldown_remaining=None, now=now)
+                _build_row(
+                    rid,
+                    rule,
+                    rule_cfg,
+                    last_msg=last_msg,
+                    status="healthy",
+                    minutes_since=minutes_since,
+                    cooldown_remaining=None,
+                    now=now,
+                )
             )
             continue
 
         # --- In alarm condition ---
+        display_name = rule_cfg.get("display_name") or rule.get("display_name", rid)
         last_alarm_at = _parse_dt(state_rules.get(rid, {}).get("last_alarm_at"))
 
         if last_alarm_at is None:
@@ -432,39 +454,46 @@ def get_alarm2_status() -> list[dict]:
             cooldown_remaining = None
             _send_alarm2_email(
                 rid,
-                rule_cfg.get("display_name") or rule.get("display_name", rid),
-                total,
-                threshold,
-                int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
+                workflow_id,
+                display_name,
+                minutes_since,
+                period_threshold,
+                last_msg,
                 now,
-                period=period,
                 email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
             )
         else:
-            mins_since = (now - last_alarm_at).total_seconds() / 60
-            if mins_since >= gap:
+            mins_since_alarm = (now - last_alarm_at).total_seconds() / 60
+            if mins_since_alarm >= gap:
                 status = "critical"
                 state_rules[rid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
                 _send_alarm2_email(
                     rid,
-                    rule_cfg.get("display_name") or rule.get("display_name", rid),
-                    total,
-                    threshold,
-                    int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                    rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
+                    workflow_id,
+                    display_name,
+                    minutes_since,
+                    period_threshold,
+                    last_msg,
                     now,
-                    period=period,
                     email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
                 )
             else:
                 status = "suppressed"
-                cooldown_remaining = gap - mins_since
+                cooldown_remaining = gap - mins_since_alarm
 
         results.append(
-            _build_row(rid, rule, rule_cfg, total=total, status=status, cooldown_remaining=cooldown_remaining, now=now)
+            _build_row(
+                rid,
+                rule,
+                rule_cfg,
+                last_msg=last_msg,
+                status=status,
+                minutes_since=minutes_since,
+                cooldown_remaining=cooldown_remaining,
+                now=now,
+            )
         )
 
     if state_dirty:
@@ -479,8 +508,9 @@ def _build_row(
     rid: str,
     rule_seed: dict,
     rule_cfg: dict,
-    total: int | None,
+    last_msg: datetime | None,
     status: str,
+    minutes_since: float | None,
     cooldown_remaining: float | None,
     now: datetime,
     pause_remaining: float | None = None,
@@ -488,45 +518,30 @@ def _build_row(
     paused_until: datetime | None = None,
 ) -> dict:
     """Build the status-row dict for a single Alarm 2 rule."""
-    window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
     period = get_current_period(now)
     period_threshold = _applicable_threshold(rule_cfg, now)
+    workflow_id = rule_cfg.get("workflow_id", rule_seed.get("workflow_id", "")).strip()
     return {
         "id": rid,
         "display_name": rule_cfg.get("display_name") or rule_seed.get("display_name", rid),
-        "workflow_id": rule_cfg.get("workflow_id", rule_seed.get("workflow_id", "")),
-        "window_duration_minutes": window,
-        "window_label": _window_label(window),
-        "day_threshold": int(rule_cfg.get("day_threshold", rule_cfg.get("threshold", DEFAULT_DAY_THRESHOLD))),
-        "evening_threshold": int(
-            rule_cfg.get("evening_threshold", rule_cfg.get("threshold", DEFAULT_EVENING_THRESHOLD))
-        ),
-        "weekend_threshold": int(
-            rule_cfg.get("weekend_threshold", rule_cfg.get("threshold", DEFAULT_WEEKEND_THRESHOLD))
-        ),
-        "current_period": period,
-        "period_threshold": period_threshold,
-        "period_short_label": PERIOD_SHORT_LABELS.get(period, period.title()),
+        "workflow_id": workflow_id,
+        "day_threshold_minutes": int(rule_cfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
+        "evening_threshold_minutes": int(rule_cfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
+        "weekend_threshold_minutes": int(rule_cfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
         "alerting_gap_minutes": int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
-        "messages_total": total,
-        "messages_display": _format_count(total),
+        "current_period": period,
+        "period_threshold_minutes": period_threshold,
+        "period_short_label": PERIOD_SHORT_LABELS.get(period, period.title()),
+        "last_message": last_msg.isoformat() if last_msg else None,
+        "last_message_display": (last_msg.strftime("%d %b %Y  %H:%M:%S UTC") if last_msg else "Never / unknown"),
         "status": status,
+        "minutes_since": round(minutes_since, 1) if minutes_since is not None else None,
+        "duration_label": _format_duration(minutes_since) if minutes_since is not None else "No data",
         "cooldown_remaining": round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
         "pause_remaining": round(pause_remaining, 0) if pause_remaining is not None else None,
         "pause_reason": pause_reason,
         "paused_until": paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
     }
-
-
-def _window_label(minutes: int) -> str:
-    """Convert a window duration in minutes to a short human-readable string (e.g. ``"2 days"``)."""
-    if minutes < 60:
-        return f"{minutes} min"
-    hours = minutes / 60
-    if hours < 24:
-        return f"{hours:.0f} hr{'s' if hours != 1 else ''}"
-    days = hours / 24
-    return f"{days:.0f} day{'s' if days != 1 else ''}"
 
 
 def _all_known_rules(rules_cfg: dict) -> list[dict]:
@@ -563,24 +578,15 @@ def get_alarm2_config_page_data() -> list[dict]:
     result = []
     for r in _all_known_rules(rules_cfg):
         rcfg = rules_cfg.get(r["id"], {})
-        # Legacy configs store a single ``threshold``; use it as fallback for all periods.
-        legacy = rcfg.get("threshold", None)
         result.append(
             {
                 "id": r["id"],
                 "display_name": rcfg.get("display_name") or r.get("display_name", r["id"]),
                 "alarm_enabled": rcfg.get("alarm_enabled", False),
                 "workflow_id": rcfg.get("workflow_id", r.get("workflow_id", "")),
-                "window_duration_minutes": int(rcfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                "day_threshold": int(
-                    rcfg.get("day_threshold", legacy if legacy is not None else DEFAULT_DAY_THRESHOLD)
-                ),
-                "evening_threshold": int(
-                    rcfg.get("evening_threshold", legacy if legacy is not None else DEFAULT_EVENING_THRESHOLD)
-                ),
-                "weekend_threshold": int(
-                    rcfg.get("weekend_threshold", legacy if legacy is not None else DEFAULT_WEEKEND_THRESHOLD)
-                ),
+                "day_threshold_minutes": int(rcfg.get("day_threshold_minutes", DEFAULT_DAY_THRESHOLD)),
+                "evening_threshold_minutes": int(rcfg.get("evening_threshold_minutes", DEFAULT_EVENING_THRESHOLD)),
+                "weekend_threshold_minutes": int(rcfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
                 "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
                 "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
             }

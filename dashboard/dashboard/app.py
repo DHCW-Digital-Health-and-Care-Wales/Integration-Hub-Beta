@@ -1091,10 +1091,9 @@ def alarm2_config_page() -> str:
             entry["email_alerts_enabled"] = f"email_{rid}" in request.form
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
-            entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 2880, minimum=1)
-            entry["day_threshold"] = _int(f"day_threshold_{rid}", 0, minimum=0)
-            entry["evening_threshold"] = _int(f"evening_threshold_{rid}", 0, minimum=0)
-            entry["weekend_threshold"] = _int(f"weekend_threshold_{rid}", 0, minimum=0)
+            entry["day_threshold_minutes"] = _int(f"day_threshold_{rid}", 60, minimum=0)
+            entry["evening_threshold_minutes"] = _int(f"evening_threshold_{rid}", 120, minimum=0)
+            entry["weekend_threshold_minutes"] = _int(f"weekend_threshold_{rid}", 240, minimum=0)
             entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60, minimum=1)
 
         # --- Add new rule if submitted ---
@@ -1106,10 +1105,9 @@ def alarm2_config_page() -> str:
                 "display_name": (request.form.get("new_display_name") or "").strip() or new_wid,
                 "alarm_enabled": "new_enabled" in request.form,
                 "workflow_id": new_wid,
-                "window_duration_minutes": _int("new_window_duration", 2880, minimum=1),
-                "day_threshold": _int("new_day_threshold", 0, minimum=0),
-                "evening_threshold": _int("new_evening_threshold", 0, minimum=0),
-                "weekend_threshold": _int("new_weekend_threshold", 0, minimum=0),
+                "day_threshold_minutes": _int("new_day_threshold", 60, minimum=0),
+                "evening_threshold_minutes": _int("new_evening_threshold", 120, minimum=0),
+                "weekend_threshold_minutes": _int("new_weekend_threshold", 240, minimum=0),
                 "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
                 "email_alerts_enabled": False,
             }

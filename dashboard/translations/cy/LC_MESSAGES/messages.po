@@ -152,24 +152,24 @@ msgid "Active period:"
 msgstr "On the go now:"
 
 #: dashboard/templates/alarm.html:118
-msgid "Day (Mon–Fri 08:00–17:00)"
-msgstr "Daytime (Mon–Fri 08:00–17:00)"
+msgid "Day (Mon–Fri 09:00–17:00)"
+msgstr "Daytime (Mon–Fri 09:00–17:00)"
 
 #: dashboard/templates/alarm.html:120
 msgid "— day threshold applies"
 msgstr "— day limit's on, like"
 
 #: dashboard/templates/alarm.html:123
-msgid "Evening (Mon–Fri 17:00–08:00)"
-msgstr "Evening time (Mon–Fri 17:00–08:00)"
+msgid "Evening (Mon–Fri 17:00–09:00)"
+msgstr "Evening time (Mon–Fri 17:00–09:00)"
 
 #: dashboard/templates/alarm.html:125
 msgid "— evening threshold applies"
 msgstr "— evening limit's on, mun"
 
 #: dashboard/templates/alarm.html:128
-msgid "Weekend (Fri 17:00 – Mon 08:00)"
-msgstr "Weekend, like (Fri 17:00 – Mon 08:00)"
+msgid "Weekend (Fri 17:00 – Mon 09:00)"
+msgstr "Weekend, like (Fri 17:00 – Mon 09:00)"
 
 #: dashboard/templates/alarm.html:130
 msgid "— weekend threshold applies"
@@ -682,8 +682,8 @@ msgid "Mon–Fri 17:00–08:00"
 msgstr "Mon–Fri 17:00–08:00, mun"
 
 #: dashboard/templates/alarm_config.html:53
-msgid "Fri 17:00 → Mon 08:00"
-msgstr "Fri 17:00 → Mon 08:00, butt"
+msgid "Fri 17:00 → Mon 09:00"
+msgstr "Fri 17:00 → Mon 09:00, butt"
 
 #: dashboard/templates/alarm_config.html:75
 msgid "Alarm 1"
@@ -721,9 +721,9 @@ msgid "Weekend Threshold"
 msgstr "Weekend Limit, Mun"
 
 #: dashboard/templates/alarm_config.html:201
-msgid "No messages for this long (Fri 17:00–Mon 08:00) → alarm fires"
+msgid "No messages for this long (Fri 17:00–Mon 09:00) → alarm fires"
 msgstr ""
-"No messages for this long over the weekend (Fri 17:00–Mon 08:00) → goes "
+"No messages for this long over the weekend (Fri 17:00–Mon 09:00) → goes "
 "off, butt"
 
 #: dashboard/templates/alarm_config.html:255
