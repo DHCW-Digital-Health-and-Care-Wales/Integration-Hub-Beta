@@ -184,16 +184,16 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return []
 
     query = f"""
-    customMetrics
+    AppMetrics
     | where TimeGenerated > ago({hours}h)
-    | where name == "retry_delay_seconds"
-    | extend workflow_id = tostring(customDimensions.workflow_id)
-    | extend microservice_id = tostring(customDimensions.microservice_id)
-    | extend queue = tostring(customDimensions.queue)
-    | extend attempt = tostring(customDimensions.attempt)
+    | where Name == "retry_delay_seconds"
+    | extend workflow_id = tostring(Properties.workflow_id)
+    | extend microservice_id = tostring(Properties.microservice_id)
+    | extend queue = tostring(Properties.queue)
+    | extend attempt = tostring(Properties.attempt)
     | where isnotempty(workflow_id)
-    | summarize arg_max(TimeGenerated, value, microservice_id, queue, attempt) by workflow_id
-    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(value), microservice_id, queue, attempt
+    | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
+    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
     | where delay_seconds > {min_delay_seconds}
     | order by workflow_id asc
     """
