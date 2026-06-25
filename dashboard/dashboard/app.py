@@ -376,17 +376,21 @@ def _build_status() -> dict:
     for metric in retry_metrics:
         flow_id = metric.get("workflow_id")
         delay_seconds = metric.get("delay_seconds")
-        has_metric = delay_seconds is not None
-        over_1m = bool(has_metric and delay_seconds > 60)
+        has_metric = delay_seconds is not None and isinstance(delay_seconds, (int, float))
+        over_1m = bool(has_metric and delay_seconds and delay_seconds > 60)
         if over_1m:
             flows_over_1m += 1
 
+        delay_display = (
+            f"{int(delay_seconds)}s" if has_metric and delay_seconds is not None
+            else "Metric unavailable"
+        )
         retry_rows.append(
             {
                 "workflow_id": flow_id,
                 "flow_label": flow_labels.get(flow_id, flow_id),
                 "delay_seconds": delay_seconds,
-                "delay_display": f"{int(delay_seconds)}s" if has_metric else "Metric unavailable",
+                "delay_display": delay_display,
                 "attempt": metric.get("attempt"),
                 "queue": metric.get("queue") or "",
                 "microservice_id": metric.get("microservice_id") or "",

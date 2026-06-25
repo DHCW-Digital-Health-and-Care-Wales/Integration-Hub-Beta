@@ -10,6 +10,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import requests
+from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
@@ -184,16 +186,16 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return []
 
     query = f"""
-    AppMetrics
+    customMetrics
     | where TimeGenerated > ago({hours}h)
-    | where Name == "retry_delay_seconds"
-    | extend workflow_id = tostring(Properties["workflow_id"])
-    | extend microservice_id = tostring(Properties["microservice_id"])
-    | extend queue = tostring(Properties["queue"])
-    | extend attempt = tostring(Properties["attempt"])
+    | where name == "retry_delay_seconds"
+    | extend workflow_id = tostring(customDimensions.workflow_id)
+    | extend microservice_id = tostring(customDimensions.microservice_id)
+    | extend queue = tostring(customDimensions.queue)
+    | extend attempt = tostring(customDimensions.attempt)
     | where isnotempty(workflow_id)
-    | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
-    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
+    | summarize arg_max(TimeGenerated, value, microservice_id, queue, attempt) by workflow_id
+    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(value), microservice_id, queue, attempt
     | where delay_seconds > {min_delay_seconds}
     | order by workflow_id asc
     """
@@ -215,7 +217,9 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
                 attempt_value = row_dict.get("attempt")
                 attempt_int: int | None
                 try:
-                    attempt_int = int(attempt_value) if attempt_value not in (None, "") else None
+                    attempt_int = (
+                        int(attempt_value) if attempt_value not in (None, "") and attempt_value is not None else None
+                    )
                 except (TypeError, ValueError):
                     attempt_int = None
 
@@ -262,9 +266,6 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
-        import requests  # noqa: PLC0415
-        from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
-
         cred = get_azure_credential()
         # Use the per-resource metrics REST endpoint — requires only Microsoft.Insights/metrics/read
         # on each resource, not the subscription-level metrics:getBatch permission needed by the
