@@ -533,7 +533,10 @@ def get_alarm3_config_page_data() -> list[dict]:
             "threshold": int(rules_cfg.get(r["id"], {}).get("threshold", DEFAULT_THRESHOLD)),
             "alerting_gap_minutes": int(rules_cfg.get(r["id"], {}).get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
             "email_alerts_enabled": rules_cfg.get(r["id"], {}).get("email_alerts_enabled", False),
-            "email_ooh_enabled": rules_cfg.get(r["id"], {}).get("email_ooh_enabled", False),
+            "email_ooh_enabled": (
+                rules_cfg.get(r["id"], {}).get("email_ooh_enabled", False)
+                and rules_cfg.get(r["id"], {}).get("email_alerts_enabled", False)
+            ),
         }
         for r in _all_known_rules(rules_cfg)
     ]

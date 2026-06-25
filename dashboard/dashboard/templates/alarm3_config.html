@@ -428,6 +428,13 @@
     cb.addEventListener('change', function () {
       oohGroup.style.display   = cb.checked ? 'flex'  : 'none';
       oohDivider.style.display = cb.checked ? 'block' : 'none';
+      // When Email is disabled, uncheck OOH so it is not submitted with the form
+      if (!cb.checked) {
+        var oohCb  = document.getElementById('email_ooh_' + rid);
+        var oohLbl = document.getElementById('email_ooh_label_' + rid);
+        if (oohCb) { oohCb.checked = false; }
+        if (oohLbl) { oohLbl.textContent = i18nDisabled; oohLbl.style.color = 'var(--text-muted)'; }
+      }
     });
   });
 
