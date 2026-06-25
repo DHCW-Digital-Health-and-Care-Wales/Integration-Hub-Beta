@@ -10,6 +10,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import requests
+from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
@@ -184,7 +186,7 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return []
 
     query = f"""
-    AppMetrics
+    customMetrics
     | where TimeGenerated > ago({hours}h)
     | where Name == "retry_delay_seconds"
     | extend workflow_id = tostring(Properties.workflow_id)
@@ -192,8 +194,8 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
     | extend queue = tostring(Properties.queue)
     | extend attempt = tostring(Properties.attempt)
     | where isnotempty(workflow_id)
-    | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
-    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
+    | summarize arg_max(TimeGenerated, value, microservice_id, queue, attempt) by workflow_id
+    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(value), microservice_id, queue, attempt
     | where delay_seconds > {min_delay_seconds}
     | order by workflow_id asc
     """
@@ -265,9 +267,6 @@ def get_container_app_metrics() -> list[dict]:
         return []
 
     try:
-        import requests  # noqa: PLC0415
-        from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
-
         cred = get_azure_credential()
         # Use the per-resource metrics REST endpoint — requires only Microsoft.Insights/metrics/read
         # on each resource, not the subscription-level metrics:getBatch permission needed by the

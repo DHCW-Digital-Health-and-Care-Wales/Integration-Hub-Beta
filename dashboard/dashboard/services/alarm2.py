@@ -629,6 +629,7 @@ def get_alarm2_config_page_data() -> list[dict]:
                 ),
                 "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
                 "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
+                "email_ooh_enabled": rcfg.get("email_ooh_enabled", False) and rcfg.get("email_alerts_enabled", False),
             }
         )
     return result
