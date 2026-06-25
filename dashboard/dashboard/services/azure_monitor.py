@@ -188,11 +188,11 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
     query = f"""
     customMetrics
     | where TimeGenerated > ago({hours}h)
-    | where name == "retry_delay_seconds"
-    | extend workflow_id = tostring(customDimensions.workflow_id)
-    | extend microservice_id = tostring(customDimensions.microservice_id)
-    | extend queue = tostring(customDimensions.queue)
-    | extend attempt = tostring(customDimensions.attempt)
+    | where Name == "retry_delay_seconds"
+    | extend workflow_id = tostring(Properties.workflow_id)
+    | extend microservice_id = tostring(Properties.microservice_id)
+    | extend queue = tostring(Properties.queue)
+    | extend attempt = tostring(Properties.attempt)
     | where isnotempty(workflow_id)
     | summarize arg_max(TimeGenerated, value, microservice_id, queue, attempt) by workflow_id
     | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(value), microservice_id, queue, attempt
@@ -218,7 +218,8 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
                 attempt_int: int | None
                 try:
                     attempt_int = (
-                        int(attempt_value) if attempt_value not in (None, "") and attempt_value is not None else None
+                        int(attempt_value) if attempt_value not in (None, "")
+                        and attempt_value is not None else None
                     )
                 except (TypeError, ValueError):
                     attempt_int = None
