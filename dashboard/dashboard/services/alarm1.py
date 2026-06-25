@@ -573,6 +573,7 @@ def get_config_page_data() -> list[dict]:
             "weekend_threshold_minutes": int(rcfg.get("weekend_threshold_minutes", DEFAULT_WEEKEND_THRESHOLD)),
             "alerting_gap_minutes": int(rcfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP)),
             "email_alerts_enabled": rcfg.get("email_alerts_enabled", False),
+            "email_ooh_enabled": rcfg.get("email_ooh_enabled", False),
         }
         for rid, rcfg in rules_cfg.items()
         if not rcfg.get("deleted")

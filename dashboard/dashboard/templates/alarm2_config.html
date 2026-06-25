@@ -114,6 +114,29 @@
           </div>
           <!-- divider -->
           <div style="width:1px; height:24px; background:var(--border-color);"></div>
+          <!-- Email OOH toggle -->
+          <div id="ooh_group_{{ r.id }}"
+               style="display:{% if r.email_alerts_enabled %}flex{% else %}none{% endif %}; align-items:center; gap:0.5rem;">
+            <label for="email_ooh_{{ r.id }}"
+                   style="font-size:0.8rem; color:var(--text-muted); cursor:pointer; margin:0;">
+              <i class="bi bi-moon-fill me-1" style="color:var(--accent-cyan);"></i>{{ _("Email OOH") }}
+            </label>
+            <div class="form-check form-switch" style="margin:0; padding-left:0;">
+              <input class="form-check-input"
+                     type="checkbox" role="switch"
+                     id="email_ooh_{{ r.id }}"
+                     name="email_ooh_{{ r.id }}"
+                     {% if r.email_ooh_enabled %}checked{% endif %}
+                     style="width:2.8em; height:1.4em; cursor:pointer; margin:0;">
+            </div>
+            <span id="email_ooh_label_{{ r.id }}"
+                  style="font-size:0.78rem; font-weight:600; min-width:60px;
+                         color:{% if r.email_ooh_enabled %}var(--accent-green){% else %}var(--text-muted){% endif %};">
+              {% if r.email_ooh_enabled %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif %}
+            </span>
+          </div>
+          <!-- divider -->
+          <div id="ooh_divider_{{ r.id }}" style="width:1px; height:24px; background:var(--border-color); display:{% if r.email_alerts_enabled %}block{% else %}none{% endif %};"></div>
           <!-- Remove rule -->
           <button type="button"
                   class="btn-dash btn-remove-rule"
@@ -403,6 +426,37 @@
   document.querySelectorAll('[id^="email_"]').forEach(function (cb) {
     var rid = cb.id.replace('email_', '');
     var lbl = document.getElementById('email_label_' + rid);
+    if (!lbl) return;
+    cb.addEventListener('change', function () {
+      lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;
+      lbl.style.color = cb.checked ? 'var(--accent-green)' : 'var(--text-muted)';
+    });
+  });
+
+  // Show/hide Email OOH group when the Email toggle changes
+  document.querySelectorAll('[id^="email_"]').forEach(function (cb) {
+    if (cb.id.indexOf('email_ooh_') === 0) return;
+    var rid = cb.id.replace('email_', '');
+    var oohGroup   = document.getElementById('ooh_group_'   + rid);
+    var oohDivider = document.getElementById('ooh_divider_' + rid);
+    if (!oohGroup) return;
+    cb.addEventListener('change', function () {
+      oohGroup.style.display   = cb.checked ? 'flex'  : 'none';
+      oohDivider.style.display = cb.checked ? 'block' : 'none';
+      // When Email is disabled, uncheck OOH so it is not submitted with the form
+      if (!cb.checked) {
+        var oohCb  = document.getElementById('email_ooh_' + rid);
+        var oohLbl = document.getElementById('email_ooh_label_' + rid);
+        if (oohCb) { oohCb.checked = false; }
+        if (oohLbl) { oohLbl.textContent = i18nDisabled; oohLbl.style.color = 'var(--text-muted)'; }
+      }
+    });
+  });
+
+  // Email OOH toggle label update
+  document.querySelectorAll('[id^="email_ooh_"]').forEach(function (cb) {
+    var rid = cb.id.replace('email_ooh_', '');
+    var lbl = document.getElementById('email_ooh_label_' + rid);
     if (!lbl) return;
     cb.addEventListener('change', function () {
       lbl.textContent = cb.checked ? i18nEnabled : i18nDisabled;

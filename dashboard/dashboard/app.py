@@ -840,6 +840,7 @@ def alarm_config_page() -> str:
             entry = rules_cfg.setdefault(rid, {})
             entry["alarm_enabled"] = f"enabled_{rid}" in request.form
             entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60)
@@ -861,6 +862,7 @@ def alarm_config_page() -> str:
                 "weekend_threshold_minutes": _int("new_weekend_threshold", 240),
                 "alerting_gap_minutes": _int("new_alerting_gap", 60),
                 "email_alerts_enabled": False,
+                "email_ooh_enabled": False,
             }
 
         save_alarm_config(cfg)
@@ -1123,6 +1125,7 @@ def alarm2_config_page() -> str:
             entry = rules_cfg.setdefault(rid, {})
             entry["alarm_enabled"] = f"enabled_{rid}" in request.form
             entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["day_threshold_minutes"] = _int(f"day_threshold_{rid}", 60, minimum=0)
@@ -1144,6 +1147,7 @@ def alarm2_config_page() -> str:
                 "weekend_threshold_minutes": _int("new_weekend_threshold", 240, minimum=0),
                 "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
                 "email_alerts_enabled": False,
+                "email_ooh_enabled": False,
             }
 
         save_alarm2_config(cfg)
@@ -1215,6 +1219,7 @@ def alarm3_config_page() -> str:
             entry = rules_cfg.setdefault(rid, {})
             entry["alarm_enabled"] = f"enabled_{rid}" in request.form
             entry["email_alerts_enabled"] = f"email_{rid}" in request.form
+            entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
             entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 15, minimum=1)
@@ -1233,6 +1238,7 @@ def alarm3_config_page() -> str:
                 "threshold": _int("new_threshold", 1, minimum=1),
                 "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
                 "email_alerts_enabled": False,
+                "email_ooh_enabled": False,
             }
 
         save_alarm3_config(cfg)
@@ -1275,4 +1281,4 @@ def health_badge(health: str) -> str:
 
 
 if __name__ == "__main__":
-    app.run(debug=config.FLASK_DEBUG, host="0.0.0.0", port=5000)  # nosec B104
+    app.run(debug=config.FLASK_DEBUG, host="127.0.0.1", port=8080)
