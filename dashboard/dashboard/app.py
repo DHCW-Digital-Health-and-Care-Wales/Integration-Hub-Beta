@@ -55,6 +55,7 @@ from dashboard.services.arm import discover_flows, queue_to_microservice_ids
 from dashboard.services.azure_monitor import (
     get_container_app_metric_history,
     get_exceptions,
+    get_hl7_throughput_metrics,
     get_messages_today,
     get_retry_delay_metrics_by_flow,
 )
@@ -710,6 +711,28 @@ def api_servicebus_metrics() -> Response:
     timespan_hours = allowed.get(hours, 1)
     queue = request.args.get("queue", "").strip() or None
     metrics = get_message_metrics(timespan_hours, queue_name=queue)
+    return jsonify(metrics)
+
+
+@app.route("/api/hl7-throughput")
+def api_hl7_throughput() -> Response:
+    """JSON endpoint returning HL7 message throughput metrics grouped into 15-minute intervals.
+
+    Query params:
+        hours: one of 1, 6, 12, 24, 168, 720 (defaults to 24).
+        health_board: optional health board filter (e.g. SBU).
+        service: optional service filter (e.g. WPAS).
+    """
+    hours = request.args.get("hours", "24", type=str)
+    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
+    timespan_hours = allowed.get(hours, 24)
+    health_board = request.args.get("health_board", "").strip() or None
+    service = request.args.get("service", "").strip() or None
+    metrics = get_hl7_throughput_metrics(
+        hours=timespan_hours,
+        health_board=health_board,
+        service=service,
+    )
     return jsonify(metrics)
 
 
