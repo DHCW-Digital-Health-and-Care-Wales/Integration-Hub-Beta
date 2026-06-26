@@ -183,6 +183,91 @@ def get_messages_today(
         return []
 
 
+def get_hl7_throughput_metrics(
+    hours: int = 24,
+    health_board: str | None = None,
+    service: str | None = None,
+) -> dict:
+    """Query Log Analytics for HL7 message throughput metrics grouped into 15-minute intervals.
+
+    Returns a dict with ``incoming`` list of ``{"time": ISO-string, "value": int}`` data points.
+
+    Counts MESSAGE_RECEIVED events from HL7 server microservices.
+    Filters by health board (e.g. "SBU") and/or service (e.g. "WPAS") if provided.
+    """
+    empty: dict = {"incoming": [], "outgoing": [], "timespan": f"{hours}h"}
+
+    workspace_id = config.AZURE_LOG_ANALYTICS_WORKSPACE_ID
+    if not workspace_id:
+        log.warning("Log Analytics workspace not configured — skipping HL7 throughput metrics")
+        return empty
+
+    # Build filter for health board and service (these would be in microservice_id or dimensions)
+    filters = ""
+    if health_board:
+        safe_hb = re.sub(r"[^a-zA-Z0-9\-_]", "", health_board)
+        filters += f' and Properties contains "{safe_hb}"'
+    if service:
+        safe_svc = re.sub(r"[^a-zA-Z0-9\-_]", "", service)
+        filters += f' and Properties contains "{safe_svc}"'
+
+    kql = (
+        "AppTraces\n"
+        "| where TimeGenerated > ago(" + str(hours) + "h)\n"
+        '| where Message == "Integration Hub Event"\n'
+        '| where Properties contains "event_type=MESSAGE_RECEIVED"\n'
+        '| where Properties contains "hl7server"\n'
+        f'{filters}\n'
+        "| summarize Value=count() by bin(TimeGenerated, 15m)\n"
+        "| order by TimeGenerated asc\n"
+    )
+
+    try:
+        cred = get_azure_credential()
+        client = LogsQueryClient(cred)
+
+        response = client.query_workspace(
+            workspace_id=workspace_id,
+            query=kql,
+            timespan=timedelta(hours=hours),
+        )
+
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.error("Log Analytics query failed: %s", response.partial_error)
+            return empty
+
+        series: dict[str, Any] = {"incoming": [], "outgoing": []}
+
+        if response.tables and len(response.tables) > 0:
+            for row in response.tables[0].rows:
+                time_generated = row[0]  # datetime
+                value = row[1]  # int
+
+                if isinstance(time_generated, datetime):
+                    time_str = time_generated.astimezone(timezone.utc).isoformat()
+                else:
+                    time_str = str(time_generated)
+
+                # All MESSAGE_RECEIVED events go into "incoming"
+                series["incoming"].append(
+                    {
+                        "time": time_str,
+                        "value": int(value) if value is not None else 0,
+                    }
+                )
+
+        series["timespan"] = f"{hours}h"
+        log.info(
+            "Fetched %d incoming HL7 throughput metric points",
+            len(series["incoming"]),
+        )
+
+        return series
+    except Exception as exc:
+        log.error("Failed to fetch HL7 throughput metrics: %s", exc)
+        return empty
+
+
 def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 60.0) -> list[dict]:
     """Return latest retry delay metric per workflow from AppMetrics.
 
