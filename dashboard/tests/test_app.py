@@ -144,7 +144,6 @@ class TestApiRoutes:
 
         assert response.status_code == 200
         assert response.get_json() == {"status": "ok"}
->>>>>>> 7e07f40 (Add app.py auth fallback)
 
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (
