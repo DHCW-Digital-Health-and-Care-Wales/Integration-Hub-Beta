@@ -624,6 +624,12 @@ def _alarm_summary(rows: list[dict] | None) -> dict:
     }
 
 
+@app.route("/healthz")
+def healthz() -> dict:
+    """Lightweight health check endpoint. Returns immediately without Azure calls."""
+    return {"status": "ok"}
+
+
 @app.route("/api/status")
 def api_status() -> Response:
     """JSON endpoint returning current system status plus compact alarm summaries.
