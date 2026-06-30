@@ -110,6 +110,7 @@ class TestPageRoutes:
         assert b"credentials are not configured" not in response.data
 
 
+<<<<<<< HEAD
 class TestNavEnvLabel:
     """Tests that the environment chip renders correctly in the navbar."""
 
@@ -135,6 +136,15 @@ class TestNavEnvLabel:
         ):
             response = client.get("/")
         assert b"nav-env-label" not in response.data
+=======
+class TestApiRoutes:
+    def test_healthz_returns_ok_without_azure_calls(self, client: FlaskClient) -> None:
+        with patch("dashboard.app._get_cached_status", side_effect=AssertionError("healthz should not query Azure")):
+            response = client.get("/healthz")
+
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "ok"}
+>>>>>>> 7e07f40 (Add app.py auth fallback)
 
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (
