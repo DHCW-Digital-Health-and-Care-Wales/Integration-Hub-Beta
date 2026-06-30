@@ -509,12 +509,6 @@ def index() -> str:
     )
 
 
-@app.route("/healthz")
-def healthz() -> Response:
-    """Lightweight health endpoint for container startup and readiness probes."""
-    return jsonify({"status": "ok"})
-
-
 @app.route("/flows")
 def flows_page() -> str:
     """Render the Flows page with per-container metrics and alarm status overlay."""
