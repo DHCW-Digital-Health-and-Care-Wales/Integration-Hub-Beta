@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import sys
 
+
 def _load_env_file() -> None:
     """Load dashboard/.env into the process environment if present."""
     env_path = os.path.join(os.path.dirname(__file__), ".env")
