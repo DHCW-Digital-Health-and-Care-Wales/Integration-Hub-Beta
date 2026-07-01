@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -185,26 +186,41 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         log.warning("Log Analytics workspace not configured — returning empty retry-delay list")
         return []
 
-    query = f"""
-    AppMetrics
-    | where TimeGenerated > ago({hours}h)
-    | where Name == "retry_delay_seconds"
-    | extend workflow_id = tostring(Properties["workflow_id"])
-    | extend microservice_id = tostring(Properties["microservice_id"])
-    | extend queue = tostring(Properties["queue"])
-    | extend attempt = tostring(Properties["attempt"])
-    | where isnotempty(workflow_id)
-    | summarize arg_max(TimeGenerated, Value, microservice_id, queue, attempt) by workflow_id
-    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Value), microservice_id, queue, attempt
-    | where delay_seconds > {min_delay_seconds}
-    | order by workflow_id asc
-    """
+    # Guard against invalid runtime values being interpolated into KQL.
+    try:
+        query_hours = int(hours)
+    except (TypeError, ValueError):
+        query_hours = 1
+    if query_hours < 1:
+        query_hours = 1
+
+    try:
+        query_min_delay = float(min_delay_seconds)
+    except (TypeError, ValueError):
+        query_min_delay = 60.0
+    if not math.isfinite(query_min_delay) or query_min_delay < 0:
+        query_min_delay = 60.0
+
+        query = f"""
+        AppMetrics
+        | where TimeGenerated > ago({query_hours}h)
+        | where Name == "retry_delay_seconds"
+        | extend workflow_id = tostring(Properties["workflow_id"])
+        | extend microservice_id = tostring(Properties["microservice_id"])
+        | extend queue = tostring(Properties["queue"])
+        | extend attempt = tostring(Properties["attempt"])
+        | where isnotempty(workflow_id)
+        | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
+        | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
+        | where delay_seconds > {query_min_delay}
+        | order by workflow_id asc
+        """
     try:
         client = _get_logs_client()
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
             query=query,
-            timespan=timedelta(hours=hours),
+            timespan=timedelta(hours=query_hours),
         )
         if response.status != LogsQueryStatus.SUCCESS:
             log.error("Retry-delay query failed: %s", response.partial_error)
@@ -244,7 +260,7 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return [
             row
             for row in rows
-            if row.get("delay_seconds") is not None and float(row["delay_seconds"]) > min_delay_seconds
+            if row.get("delay_seconds") is not None and float(row["delay_seconds"]) > query_min_delay
         ]
     except Exception as exc:
         log.error("Failed to fetch retry delay metrics: %s", exc)
