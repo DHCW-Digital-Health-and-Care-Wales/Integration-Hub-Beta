@@ -260,7 +260,7 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return [
             row
             for row in rows
-            if row.get("delay_seconds") is not None and float(row["delay_seconds"]) > query_min_delay
+            if row.get("delay_seconds") is not None and row["delay_seconds"] > query_min_delay
         ]
     except Exception as exc:
         log.error("Failed to fetch retry delay metrics: %s", exc)
