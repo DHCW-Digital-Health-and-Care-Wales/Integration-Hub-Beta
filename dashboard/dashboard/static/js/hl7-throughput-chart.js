@@ -4,8 +4,9 @@
  *
  * Features:
  *   - Smooth Catmull-Rom spline curves with gradient fills
+ *   - Two series: messages received (in) and messages sent (out)
  *   - Filtering by health board and service
- *   - Time range selection (24h, 7d, 30d)
+ *   - Time range selection (24h, 3d, 7d, 14d, 30d)
  *   - Retina-aware canvas sizing
  *   - No external dependencies
  */
@@ -24,8 +25,10 @@
     gridLine:        'rgba(51,65,85,0.45)',
     axisText:        '#94a3b8',
     // Series
-    incomingLine:    '#3b82f6',
-    incomingFill:    'rgba(59,130,246,0.18)',
+    incomingLine:    '#12A3C9',
+    incomingFill:    'rgba(18,163,201,0.18)',
+    outgoingLine:    '#F8CA4D',
+    outgoingFill:    'rgba(248,202,77,0.16)',
     // Tooltip
     tooltipBg:       'rgba(15,23,42,0.96)',
     tooltipBorder:   'rgba(59,130,246,0.45)',
@@ -42,7 +45,7 @@
 
   var canvas, ctx, dpr;
   var chartData = null;
-  var currentHours = 720; // Default to 30 days
+  var currentHours = 24; // Default to last 24 hours
   var currentHealthBoard = null;
   var currentService = null;
 
@@ -156,10 +159,14 @@
     if (!el || !chartData) return;
 
     var inTotal = sumValues(chartData.incoming);
+    var outTotal = sumValues(chartData.outgoing);
 
     el.innerHTML =
       legendDot(COLORS.incomingLine) +
-      'Received&ensp;<strong style="color:' + COLORS.incomingLine + '">' + formatNumber(inTotal) + '</strong>';
+      'Received&ensp;<strong style="color:' + COLORS.incomingLine + '">' + formatNumber(inTotal) + '</strong>' +
+      '<span style="margin:0 0.75rem"></span>' +
+      legendDot(COLORS.outgoingLine) +
+      'Sent&ensp;<strong style="color:' + COLORS.outgoingLine + '">' + formatNumber(outTotal) + '</strong>';
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -173,7 +180,10 @@
     ctx.fillStyle = 'rgba(15, 23, 42, 1)';
     ctx.fillRect(0, 0, w, h);
 
-    if (!chartData || chartData.incoming.length === 0) {
+    var incoming = (chartData && chartData.incoming) || [];
+    var outgoing = (chartData && chartData.outgoing) || [];
+
+    if (incoming.length === 0 && outgoing.length === 0) {
       drawEmpty('No data available');
       return;
     }
@@ -182,11 +192,22 @@
     chartMetrics.width = w - PAD.left - PAD.right;
     chartMetrics.height = h - PAD.top - PAD.bottom;
 
-    var incoming = chartData.incoming || [];
-    chartMetrics.minTime = incoming.length > 0 ? parseISO(incoming[0].time) : 0;
-    chartMetrics.maxTime = incoming.length > 0 ? parseISO(incoming[incoming.length - 1].time) : 0;
+    // Time domain spans whichever series has data.
+    var times = [];
+    if (incoming.length > 0) {
+      times.push(parseISO(incoming[0].time), parseISO(incoming[incoming.length - 1].time));
+    }
+    if (outgoing.length > 0) {
+      times.push(parseISO(outgoing[0].time), parseISO(outgoing[outgoing.length - 1].time));
+    }
+    chartMetrics.minTime = Math.min.apply(null, times);
+    chartMetrics.maxTime = Math.max.apply(null, times);
+    if (chartMetrics.minTime === chartMetrics.maxTime) {
+      chartMetrics.maxTime = chartMetrics.minTime + 1;
+    }
     chartMetrics.maxValue = Math.max(
       maxOfSeries(incoming),
+      maxOfSeries(outgoing),
       1
     );
 
@@ -196,13 +217,14 @@
     // Draw axes
     drawAxes();
 
-    // Draw series
+    // Draw series (outgoing first so the larger incoming line sits on top)
+    drawSeries(outgoing, COLORS.outgoingLine, COLORS.outgoingFill);
     drawSeries(incoming, COLORS.incomingLine, COLORS.incomingFill);
 
     // Draw crosshair on hover
     if (hoverPos) {
       drawCrosshair(hoverPos);
-      drawTooltip(incoming, hoverPos);
+      drawTooltip(hoverPos);
     }
   }
 
@@ -262,11 +284,13 @@
 
     // X-axis labels (sample timestamps)
     ctx.textAlign = 'center';
+    var spanMs = chartMetrics.maxTime - chartMetrics.minTime;
+    var multiDay = spanMs > 24 * 60 * 60 * 1000;
     var xTicks = [0, 0.25, 0.5, 0.75, 1.0];
     xTicks.forEach(function (tick) {
       var x = x0 + tick * chartMetrics.width;
       var t = chartMetrics.minTime + tick * (chartMetrics.maxTime - chartMetrics.minTime);
-      var label = formatTime(t);
+      var label = multiDay ? formatDateShort(t) : formatTime(t);
       ctx.fillText(label, x, y0 + 16);
     });
   }
@@ -362,37 +386,52 @@
     ctx.setLineDash([]);
   }
 
-  function drawTooltip(series, pos) {
-    if (!series || series.length === 0) return;
+  function drawTooltip(pos) {
+    if (!chartData) return;
 
-    // Find nearest point
+    var incoming = chartData.incoming || [];
+    var outgoing = chartData.outgoing || [];
+    var ref = incoming.length >= outgoing.length ? incoming : outgoing;
+    if (ref.length === 0) return;
+
     var x0 = PAD.left;
-    var nearest = null;
-    var minDist = Infinity;
+    var span = chartMetrics.maxTime - chartMetrics.minTime;
 
-    series.forEach(function (pt) {
-      var t = parseISO(pt.time);
-      var x = x0 + ((t - chartMetrics.minTime) / (chartMetrics.maxTime - chartMetrics.minTime)) * chartMetrics.width;
+    // Find nearest bin index by screen X using the reference series.
+    var nearestIdx = -1;
+    var nearestX = 0;
+    var minDist = Infinity;
+    for (var i = 0; i < ref.length; i++) {
+      var t = parseISO(ref[i].time);
+      var x = x0 + ((t - chartMetrics.minTime) / span) * chartMetrics.width;
       var dist = Math.abs(x - pos.x);
       if (dist < minDist) {
         minDist = dist;
-        nearest = { ...pt, screenX: x };
+        nearestIdx = i;
+        nearestX = x;
       }
-    });
+    }
 
-    if (!nearest || minDist > 30) return;
+    if (nearestIdx < 0 || minDist > 30) return;
 
-    var label = formatDateTime(parseISO(nearest.time));
-    var value = formatNumber(nearest.value);
-    var text = label + ' — ' + value + ' msg';
+    var binTime = parseISO(ref[nearestIdx].time);
+    var inVal = valueAtTime(incoming, binTime);
+    var outVal = valueAtTime(outgoing, binTime);
 
-    // Measure text
-    ctx.font = '0.75rem system-ui';
-    var metrics = ctx.measureText(text);
-    var tw = metrics.width + 12;
-    var th = 24;
+    var line1 = formatDateTime(binTime);
+    var line2 = 'Received: ' + formatNumber(inVal);
+    var line3 = 'Sent: ' + formatNumber(outVal);
 
-    var tx = Math.max(PAD.left + 8, Math.min(nearest.screenX - tw / 2, cssWidth() - PAD.right - 8 - tw));
+    // Measure widest line
+    ctx.font = '0.72rem system-ui';
+    var tw = Math.max(
+      ctx.measureText(line1).width,
+      ctx.measureText(line2).width,
+      ctx.measureText(line3).width
+    ) + 20;
+    var th = 56;
+
+    var tx = Math.max(PAD.left + 8, Math.min(nearestX - tw / 2, cssWidth() - PAD.right - 8 - tw));
     var ty = PAD.top + 8;
 
     // Draw tooltip box with shadow
@@ -411,9 +450,16 @@
     ctx.strokeRect(tx, ty, tw, th);
 
     // Text
+    ctx.textAlign = 'left';
+    var lx = tx + 10;
     ctx.fillStyle = COLORS.tooltipText;
-    ctx.textAlign = 'center';
-    ctx.fillText(text, tx + tw / 2, ty + 16);
+    ctx.font = '600 0.72rem system-ui';
+    ctx.fillText(line1, lx, ty + 16);
+    ctx.font = '0.72rem system-ui';
+    ctx.fillStyle = COLORS.incomingLine;
+    ctx.fillText(line2, lx, ty + 34);
+    ctx.fillStyle = COLORS.outgoingLine;
+    ctx.fillText(line3, lx, ty + 50);
   }
 
   function drawEmpty(msg) {
@@ -487,6 +533,16 @@
     return sum;
   }
 
+  function valueAtTime(series, ms) {
+    if (!series) return 0;
+    for (var i = 0; i < series.length; i++) {
+      if (parseISO(series[i].time) === ms) {
+        return series[i].value || 0;
+      }
+    }
+    return 0;
+  }
+
   function formatNumber(num) {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -507,6 +563,13 @@
     var hours = d.getHours().toString().padStart(2, '0');
     var mins = d.getMinutes().toString().padStart(2, '0');
     return date + '/' + month + ' ' + hours + ':' + mins;
+  }
+
+  function formatDateShort(ms) {
+    var d = new Date(ms);
+    var date = d.getDate().toString().padStart(2, '0');
+    var month = (d.getMonth() + 1).toString().padStart(2, '0');
+    return date + '/' + month;
   }
 
   function legendDot(color) {

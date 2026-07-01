@@ -623,24 +623,36 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
       <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:0.5rem;">
-          <label style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Health Board:") }}</label>
-          <input id="hl7-hb-filter" type="text" placeholder="{{ _('All') }}" autocomplete="off" 
-                 style="padding:0.4rem 0.6rem; border:1px solid var(--border-color); border-radius:4px; font-size:0.75rem; width:100px; background:var(--bg-secondary); color:var(--text-primary); outline:none;"
-                 oninput="applyHL7Filters()">
+          <label for="hl7-hb-filter" style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Health Board:") }}</label>
+          <select id="hl7-hb-filter" autocomplete="off"
+                  style="padding:0.4rem 0.6rem; border:1px solid var(--border-color); border-radius:4px; font-size:0.75rem; min-width:120px; background:var(--bg-secondary); color:var(--text-primary); outline:none;"
+                  onchange="applyHL7Filters()">
+            <option value="">{{ _("All") }}</option>
+            {% for hb in throughput_filters.health_boards %}
+            <option value="{{ hb }}">{{ hb }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div style="display:flex; align-items:center; gap:0.5rem;">
-          <label style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Service:") }}</label>
-          <input id="hl7-service-filter" type="text" placeholder="{{ _('All') }}" autocomplete="off"
-                 style="padding:0.4rem 0.6rem; border:1px solid var(--border-color); border-radius:4px; font-size:0.75rem; width:100px; background:var(--bg-secondary); color:var(--text-primary); outline:none;"
-                 oninput="applyHL7Filters()">
+          <label for="hl7-service-filter" style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Service:") }}</label>
+          <select id="hl7-service-filter" autocomplete="off"
+                  style="padding:0.4rem 0.6rem; border:1px solid var(--border-color); border-radius:4px; font-size:0.75rem; min-width:140px; background:var(--bg-secondary); color:var(--text-primary); outline:none;"
+                  onchange="applyHL7Filters()">
+            <option value="">{{ _("All") }}</option>
+            {% for svc in throughput_filters.services %}
+            <option value="{{ svc }}">{{ svc }}</option>
+            {% endfor %}
+          </select>
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">{{ _("Time Range:") }}</span>
         <div id="hl7-timespan-btns" style="display:flex; gap:4px;">
-          <button class="btn-dash btn-dash--sm hl7-ts-btn" data-hours="24" onclick="changeHL7Timespan(24)">{{ _("24h") }}</button>
+          <button class="btn-dash btn-dash--sm hl7-ts-btn active" data-hours="24" onclick="changeHL7Timespan(24)">{{ _("24h") }}</button>
+          <button class="btn-dash btn-dash--sm hl7-ts-btn" data-hours="72" onclick="changeHL7Timespan(72)">{{ _("3d") }}</button>
           <button class="btn-dash btn-dash--sm hl7-ts-btn" data-hours="168" onclick="changeHL7Timespan(168)">{{ _("7d") }}</button>
-          <button class="btn-dash btn-dash--sm hl7-ts-btn active" data-hours="720" onclick="changeHL7Timespan(720)">{{ _("30d") }}</button>
+          <button class="btn-dash btn-dash--sm hl7-ts-btn" data-hours="336" onclick="changeHL7Timespan(336)">{{ _("14d") }}</button>
+          <button class="btn-dash btn-dash--sm hl7-ts-btn" data-hours="720" onclick="changeHL7Timespan(720)">{{ _("30d") }}</button>
         </div>
       </div>
     </div>

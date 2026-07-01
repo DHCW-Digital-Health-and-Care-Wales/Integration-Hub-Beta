@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from azure.monitor.query import LogsQueryStatus
@@ -295,3 +296,103 @@ class TestGetContainerAppMetricHistoryParsing:
             result = azure_monitor.get_container_app_metric_history("my-app", hours=1)
 
         assert result == {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
+
+
+# ---------------------------------------------------------------------------
+# get_hl7_throughput_metrics tests
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_throughput_bin_picks_resolution_by_window() -> None:
+    assert azure_monitor._resolve_throughput_bin(24) == ("15m", 15)
+    assert azure_monitor._resolve_throughput_bin(72) == ("15m", 15)
+    assert azure_monitor._resolve_throughput_bin(168) == ("1h", 60)
+    assert azure_monitor._resolve_throughput_bin(336) == ("1h", 60)
+    assert azure_monitor._resolve_throughput_bin(720) == ("6h", 360)
+
+
+def test_get_hl7_throughput_returns_empty_when_workspace_missing() -> None:
+    with patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", ""):
+        result = azure_monitor.get_hl7_throughput_metrics(hours=24)
+    assert result == {"incoming": [], "outgoing": [], "timespan": "24h", "bin_minutes": 15}
+
+
+def test_get_hl7_throughput_maps_both_series() -> None:
+    now = datetime.now(timezone.utc)
+    fake_table = FakeTable(
+        columns=["TimeGenerated", "Name", "Value"],
+        rows=[
+            [now, "messages_received", 12.0],
+            [now, "messages_sent", 8.0],
+        ],
+    )
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
+
+        result = azure_monitor.get_hl7_throughput_metrics(hours=24)
+
+    assert result["timespan"] == "24h"
+    assert result["bin_minutes"] == 15
+    # Zero-filling fills quiet bins with 0, so each series sums to its single point.
+    assert sum(p["value"] for p in result["incoming"]) == 12
+    assert sum(p["value"] for p in result["outgoing"]) == 8
+
+
+def test_get_hl7_throughput_sanitises_filters() -> None:
+    captured: dict = {}
+
+    def _capture(**kwargs: object) -> FakeResponse:
+        captured["query"] = kwargs.get("query")
+        return FakeResponse([])
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.side_effect = _capture
+
+        azure_monitor.get_hl7_throughput_metrics(
+            hours=24,
+            health_board='PHW"; drop',
+            service="phw-to-mpi",
+        )
+
+    query = captured["query"]
+    # Injection characters are stripped; only the safe characters survive.
+    assert 'Properties["health_board"]) == "PHWdrop"' in query
+    assert 'Properties["workflow_id"]) == "phw-to-mpi"' in query
+
+
+def test_get_throughput_filter_options_maps_distinct_values() -> None:
+    fake_table = FakeTable(
+        columns=["health_board", "workflow_id"],
+        rows=[
+            ["PHW", "phw-to-mpi"],
+            ["SBU", "chemo-to-mpi"],
+            ["PHW", "phw-to-mpi"],
+            ["", ""],
+        ],
+    )
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
+
+        result = azure_monitor.get_throughput_filter_options()
+
+    assert result == {
+        "health_boards": ["PHW", "SBU"],
+        "services": ["chemo-to-mpi", "phw-to-mpi"],
+    }
+
+
+def test_get_throughput_filter_options_returns_empty_when_workspace_missing() -> None:
+    with patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", ""):
+        result = azure_monitor.get_throughput_filter_options()
+    assert result == {"health_boards": [], "services": []}
