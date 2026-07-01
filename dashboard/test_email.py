@@ -7,6 +7,8 @@ Run from the dashboard/ directory:
 Delete this file after use.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 
