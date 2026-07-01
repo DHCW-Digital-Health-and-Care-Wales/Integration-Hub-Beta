@@ -136,6 +136,14 @@ class TestNavEnvLabel:
             response = client.get("/")
         assert b"nav-env-label" not in response.data
 
+
+class TestApiRoutes:
+        with patch("dashboard.app._get_cached_status", side_effect=AssertionError("healthz should not query Azure")):
+            response = client.get("/healthz")
+
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "ok"}
+
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
