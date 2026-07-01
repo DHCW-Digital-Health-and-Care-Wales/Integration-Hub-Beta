@@ -201,20 +201,20 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
     if not math.isfinite(query_min_delay) or query_min_delay < 0:
         query_min_delay = 60.0
 
-        query = f"""
-        AppMetrics
-        | where TimeGenerated > ago({query_hours}h)
-        | where Name == "retry_delay_seconds"
-        | extend workflow_id = tostring(Properties["workflow_id"])
-        | extend microservice_id = tostring(Properties["microservice_id"])
-        | extend queue = tostring(Properties["queue"])
-        | extend attempt = tostring(Properties["attempt"])
-        | where isnotempty(workflow_id)
-        | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
-        | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
-        | where delay_seconds > {query_min_delay}
-        | order by workflow_id asc
-        """
+    query = f"""
+    AppMetrics
+    | where TimeGenerated > ago({query_hours}h)
+    | where Name == "retry_delay_seconds"
+    | extend workflow_id = tostring(Properties["workflow_id"])
+    | extend microservice_id = tostring(Properties["microservice_id"])
+    | extend queue = tostring(Properties["queue"])
+    | extend attempt = tostring(Properties["attempt"])
+    | where isnotempty(workflow_id)
+    | summarize arg_max(TimeGenerated, Sum, microservice_id, queue, attempt) by workflow_id
+    | project workflow_id, timestamp=TimeGenerated, delay_seconds=todouble(Sum), microservice_id, queue, attempt
+    | where delay_seconds > {query_min_delay}
+    | order by workflow_id asc
+    """
     try:
         client = _get_logs_client()
         response = client.query_workspace(
