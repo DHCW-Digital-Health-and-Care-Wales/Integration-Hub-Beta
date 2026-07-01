@@ -58,6 +58,7 @@ from dashboard.services.azure_monitor import (
     get_hl7_throughput_metrics,
     get_messages_today,
     get_retry_delay_metrics_by_flow,
+    get_throughput_filter_options,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
@@ -493,6 +494,10 @@ def index() -> str:
     cfg1 = load_alarm_config()
     cfg2 = load_alarm2_config()
     cfg3 = load_alarm3_config()
+    # Filter options change rarely, so cache them for longer than the live status.
+    throughput_filters = _cached_nowait(
+        "throughput_filters", get_throughput_filter_options, ttl=300
+    ) or {"health_boards": [], "services": []}
     return render_template(
         "index.html",
         status=status,
@@ -507,6 +512,7 @@ def index() -> str:
         no_alarm3_configured=not any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values()),
         queue_warn_threshold=config.QUEUE_WARNING_THRESHOLD,
         queue_crit_threshold=config.QUEUE_CRITICAL_THRESHOLD,
+        throughput_filters=throughput_filters,
     )
 
 
@@ -722,15 +728,16 @@ def api_servicebus_metrics() -> Response:
 
 @app.route("/api/hl7-throughput")
 def api_hl7_throughput() -> Response:
-    """JSON endpoint returning HL7 message throughput metrics grouped into 15-minute intervals.
+    """JSON endpoint returning HL7 message throughput metrics (messages in and out).
 
     Query params:
-        hours: one of 1, 6, 12, 24, 168, 720 (defaults to 24).
-        health_board: optional health board filter (e.g. SBU).
-        service: optional service filter (e.g. WPAS).
+        hours: one of 24, 72, 168, 336, 720 (defaults to 24) — i.e. last
+            24 hours, 3, 7, 14 or 30 days.
+        health_board: optional health board filter (e.g. PHW).
+        service: optional service / flow filter (e.g. phw-to-mpi).
     """
     hours = request.args.get("hours", "24", type=str)
-    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
+    allowed = {"24": 24, "72": 72, "168": 168, "336": 336, "720": 720}
     timespan_hours = allowed.get(hours, 24)
     health_board = request.args.get("health_board", "").strip() or None
     service = request.args.get("service", "").strip() or None
