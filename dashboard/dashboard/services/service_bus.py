@@ -244,11 +244,19 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
         # Resource column holds only the namespace name, so we must use ResourceId.
         queue_filter_kql = f"| where tolower(ResourceId) contains '/{safe_queue.lower()}'\n"
 
+    # Scope to this environment's Service Bus namespace so that results are not
+    # polluted by other environments sharing the same Log Analytics workspace.
+    ns_filter_kql = ""
+    if config.AZURE_SERVICE_BUS_NAMESPACE:
+        safe_ns = re.sub(r"[^a-zA-Z0-9\-_]", "", config.AZURE_SERVICE_BUS_NAMESPACE)
+        ns_filter_kql = f"| where tolower(Resource) =~ tolower('{safe_ns}')\n"
+
     kql = (
         "AzureMetrics\n"
         "| where ResourceProvider == 'MICROSOFT.SERVICEBUS'\n"
         "| where MetricName in ('IncomingMessages', 'OutgoingMessages')\n"
         f"| where TimeGenerated > ago({timespan_hours}h)\n"
+        f"{ns_filter_kql}"
         f"{queue_filter_kql}"
         f"| summarize Value=sum(Total) by bin(TimeGenerated, {bin_size}), MetricName\n"
         "| order by TimeGenerated asc\n"

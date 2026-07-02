@@ -191,9 +191,13 @@ def get_failure_counts(rules: list[dict]) -> dict[str, int | None]:
     for window_minutes, window_rules in by_window.items():
         safe_ids = [re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"]) for r in window_rules]
         ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
+        resource_filter = ""
+        if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+            resource_filter = f"\n        | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
         query = f"""
         AppTraces
-        | where TimeGenerated > ago({window_minutes}m)
+        | where TimeGenerated > ago({window_minutes}m){resource_filter}
         | where Message has "Integration Hub Event"
         | extend workflow_id = tostring(parse_json(Properties)["workflow_id"]),
                  event_type  = tostring(parse_json(Properties)["event_type"])
