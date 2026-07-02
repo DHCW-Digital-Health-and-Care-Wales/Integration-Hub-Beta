@@ -52,7 +52,7 @@ def test_get_messages_today_maps_trace_properties() -> None:
     assert messages[0]["dimensions"]["workflow_id"] == "mpi-to-topic"
 
 
-def test_get_messages_today_query_includes_resource_filter_when_configured() -> None:
+def test_get_messages_today_includes_resource_filter() -> None:
     fake_table = FakeTable(columns=["timestamp", "name", "customDimensions", "appName"], rows=[])
     resource_id = "/subscriptions/test/resourceGroups/rg/providers/microsoft.insights/components/appi"
 
