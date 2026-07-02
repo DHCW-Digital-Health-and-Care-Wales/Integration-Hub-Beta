@@ -52,6 +52,21 @@ def test_get_messages_today_maps_trace_properties() -> None:
     assert messages[0]["dimensions"]["workflow_id"] == "mpi-to-topic"
 
 
+def test_get_messages_today_query_includes_resource_filter_when_configured() -> None:
+    fake_table = FakeTable(columns=["timestamp", "name", "customDimensions", "appName"], rows=[])
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch.object(azure_monitor.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", "/subscriptions/test/resourceGroups/rg/providers/microsoft.insights/components/appi"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([fake_table])
+        azure_monitor.get_messages_today()
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert "_ResourceId =~ '/subscriptions/test/resourceGroups/rg/providers/microsoft.insights/components/appi'" in query_text
+
+
 def test_get_retry_delay_metrics_by_flow_maps_rows() -> None:
     fake_table = FakeTable(
         columns=["workflow_id", "timestamp", "delay_seconds", "microservice_id", "queue", "attempt"],
