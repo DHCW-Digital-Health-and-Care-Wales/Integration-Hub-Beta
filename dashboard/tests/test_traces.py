@@ -74,6 +74,27 @@ class TestNoWorkspaceConfigured(unittest.TestCase):
         self.assertEqual(result["logs"], [])
 
 
+class TestQueryScoping(unittest.TestCase):
+    def test_resource_id_filter_is_included_only_when_configured(self) -> None:
+        with (
+            patch.object(traces.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-id"),
+            patch("dashboard.services.traces._get_logs_client") as mock_factory,
+        ):
+            mock_factory.return_value = _make_client([])
+
+            with patch.object(traces.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", "/subscriptions/test/resource"):
+                get_trace("op123")
+                query_with_resource = mock_factory.return_value.query_workspace.call_args.kwargs["query"]
+                self.assertIn("| where _ResourceId =~ '/subscriptions/test/resource'", query_with_resource)
+
+            mock_factory.return_value.query_workspace.reset_mock()
+
+            with patch.object(traces.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", ""):
+                get_trace("op123")
+                query_without_resource = mock_factory.return_value.query_workspace.call_args.kwargs["query"]
+                self.assertNotIn("_ResourceId", query_without_resource)
+
+
 class TestParseSpans(unittest.TestCase):
     def _run(self, rows: list[list[object]]) -> dict:
         columns = [
