@@ -75,6 +75,17 @@ class EventLogger:
 
         try:
             credential = self._get_credential()
+            # Pre-set OTEL_PYTHON_DISABLED_INSTRUMENTATIONS so the OTel distro
+            # bootstrapper skips the dependency-existence probe for libraries we
+            # don't use (e.g. psycopg2).  instrumentation_options does the same
+            # thing but only after the initial probe that logs the error.
+            existing = os.environ.get("OTEL_PYTHON_DISABLED_INSTRUMENTATIONS", "")
+            required = ["azure_sdk", "django", "fastapi", "flask", "psycopg2", "requests", "urllib", "urllib3"]
+            disabled = [s.strip() for s in existing.split(",") if s.strip()]
+            for instr in required:
+                if instr not in disabled:
+                    disabled.append(instr)
+            os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = ",".join(disabled)
             configure_azure_monitor(
                 credential=credential,
                 instrumentation_options={

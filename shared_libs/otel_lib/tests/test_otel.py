@@ -69,6 +69,35 @@ class TestConfigureOtel(unittest.TestCase):
 
     @patch.dict(
         "os.environ",
+        {"APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key;IngestionEndpoint=https://example.com"},
+        clear=True,
+    )
+    def test_configure_otel_sets_disabled_instrumentations_env_var(self) -> None:
+        with patch("otel_lib.otel.configure_azure_monitor"):
+            configure_otel("test-service")
+        self.assertEqual(
+            otel_module.os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"],
+            "azure_sdk,django,fastapi,flask,psycopg2,requests,urllib,urllib3",
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key;IngestionEndpoint=https://example.com",
+            "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS": "custom,psycopg2",
+        },
+        clear=True,
+    )
+    def test_configure_otel_merges_existing_disabled_instrumentations_env_var(self) -> None:
+        with patch("otel_lib.otel.configure_azure_monitor"):
+            configure_otel("test-service")
+        self.assertEqual(
+            otel_module.os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"],
+            "custom,psycopg2,azure_sdk,django,fastapi,flask,requests,urllib,urllib3",
+        )
+
+    @patch.dict(
+        "os.environ",
         {"APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=fake-key"},
         clear=True,
     )
