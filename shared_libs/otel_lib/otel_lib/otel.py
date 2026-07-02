@@ -86,6 +86,16 @@ def _configure_azure_monitor(service_name: str, service_version: str) -> None:
         # Bus send/receive.  The resulting metric time-series accumulate
         # without bound inside the MeterProvider and cause steadily growing
         # CPU usage over the lifetime of the container.
+        #
+        # Pre-set OTEL_PYTHON_DISABLED_INSTRUMENTATIONS so the OTel distro
+        # bootstrapper skips the dependency-existence probe for libraries we
+        # don't use (e.g. psycopg2).  The instrumentation_options below do the
+        # same thing, but only AFTER the initial probe that emits
+        # "No module named 'psycopg2'" noise in the logs.
+        if not os.environ.get("OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"):
+            os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = (
+                "azure_sdk,django,fastapi,flask,psycopg2,requests,urllib,urllib3"
+            )
         configure_azure_monitor(
             credential=credential,
             resource=Resource.create(
