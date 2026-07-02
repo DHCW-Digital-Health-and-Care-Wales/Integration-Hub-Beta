@@ -50,12 +50,16 @@ def get_trace(operation_id: str) -> dict:
         log.warning("Log Analytics workspace not configured — returning empty trace")
         return _empty()
 
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n| where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""union
   (AppRequests    | extend itemType = "AppRequests"),
   (AppDependencies | extend itemType = "AppDependencies"),
   (AppTraces      | extend itemType = "AppTraces"),
   (AppExceptions  | extend itemType = "AppExceptions")
-| where OperationId == "{operation_id}"
+| where OperationId == "{operation_id}"{resource_filter}
 | project
     TimeGenerated,
     itemType,

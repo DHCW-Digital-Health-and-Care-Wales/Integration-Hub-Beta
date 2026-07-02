@@ -11,6 +11,10 @@ AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET", "")
 AZURE_SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID", "")
 
+# Application Insights resource ID — used to scope Log Analytics KQL queries to this
+# environment only (important when multiple environments share one workspace).
+AZURE_APP_INSIGHTS_RESOURCE_ID = os.getenv("AZURE_APP_INSIGHTS_RESOURCE_ID", "")
+
 # Azure Service Bus
 AZURE_RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "")
 AZURE_SERVICE_BUS_NAMESPACE = os.getenv("AZURE_SERVICE_BUS_NAMESPACE", "")

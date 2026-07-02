@@ -62,9 +62,13 @@ def get_exceptions(hours: int = 24) -> list[dict]:
         log.warning("Log Analytics workspace not configured — returning empty list")
         return []
 
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""
     AppExceptions
-    | where TimeGenerated > ago({hours}h)
+    | where TimeGenerated > ago({hours}h){resource_filter}
 
     | project timestamp=TimeGenerated,
               type=ExceptionType,
@@ -135,9 +139,13 @@ def get_messages_today(
         safe_wf = re.sub(r"[^a-zA-Z0-9\-_]", "", workflow_id)
         wf_filter = f'\n    | where Properties contains "{safe_wf}"'
 
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""
     AppTraces
-    | where TimeGenerated > startofday(now())
+    | where TimeGenerated > startofday(now()){resource_filter}
     | where Message == "Integration Hub Event"{wf_filter}
     | project timestamp=TimeGenerated,
               name=Message,
@@ -201,9 +209,13 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
     if not math.isfinite(query_min_delay) or query_min_delay < 0:
         query_min_delay = 60.0
 
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""
     AppMetrics
-    | where TimeGenerated > ago({query_hours}h)
+    | where TimeGenerated > ago({query_hours}h){resource_filter}
     | where Name == "retry_delay_seconds"
     | extend workflow_id = tostring(Properties["workflow_id"])
     | extend microservice_id = tostring(Properties["microservice_id"])

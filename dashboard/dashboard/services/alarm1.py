@@ -176,9 +176,13 @@ def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, dat
         return {wid: None for wid in workflow_ids}
 
     ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""
     AppTraces
-    | where TimeGenerated > ago(30d)
+    | where TimeGenerated > ago(30d){resource_filter}
     | where Message == "Integration Hub Event"
     | where Properties contains "MESSAGE_RECEIVED"
     | extend workflow_id = tostring(parse_json(Properties)["workflow_id"])
