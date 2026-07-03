@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-04-30 17:28+0100\n"
+"POT-Creation-Date: 2026-07-03 14:19+0000\n"
 "PO-Revision-Date: 2026-04-30 14:50+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: cy\n"
@@ -17,34 +17,34 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.18.0\n"
+"Generated-By: Babel 2.10.3\n"
 
 #: dashboard/templates/SB_Emulator_MC.html:59
 msgid "Minecraft Classic"
-msgstr "Minecraft Classic"
+msgstr ""
 
 #: dashboard/templates/SB_Emulator_MC.html:62
 #: dashboard/templates/flows_config.html:46
 msgid "Close (Esc)"
-msgstr "Close it, mun (Esc)"
+msgstr ""
 
 #: dashboard/templates/SB_Emulator_MC.html:70
 msgid "ESC to close · Click inside to capture mouse"
-msgstr "ESC to close · Click by here to grab the mouse, like"
+msgstr ""
 
-#: dashboard/templates/alarm.html:3 dashboard/templates/alarms_overview.html:61
+#: dashboard/templates/alarm.html:3 dashboard/templates/alarms_overview.html:64
 msgid "Alarm 1 — Inactivity"
-msgstr "Alarm 1 — Gone Quiet, Innit"
+msgstr ""
 
 #: dashboard/templates/alarm.html:12
 msgid "Alarm 1 — Message Inactivity"
-msgstr "Alarm 1 — Messages Gone Quiet, Like"
+msgstr ""
 
 #: dashboard/templates/alarm.html:15
 msgid ""
 "Workflows that have not received a message within their configured "
 "threshold"
-msgstr "Workflows what haven't had a message for too long, see"
+msgstr ""
 
 #: dashboard/templates/alarm.html:20 dashboard/templates/alarm2.html:20
 #: dashboard/templates/alarm2_config.html:20 dashboard/templates/alarm3.html:20
@@ -53,1433 +53,1650 @@ msgstr "Workflows what haven't had a message for too long, see"
 #: dashboard/templates/alarms_overview.html:3
 #: dashboard/templates/alarms_overview.html:12
 msgid "Alarms Summary"
-msgstr "Alarms Summary, Innit"
+msgstr ""
 
 #: dashboard/templates/alarm.html:23 dashboard/templates/alarm2.html:23
 #: dashboard/templates/alarm3.html:23
-#: dashboard/templates/alarms_overview.html:109
-#: dashboard/templates/alarms_overview.html:185
-#: dashboard/templates/alarms_overview.html:261
+#: dashboard/templates/alarms_overview.html:118
+#: dashboard/templates/alarms_overview.html:203
+#: dashboard/templates/alarms_overview.html:288
 msgid "Configure"
-msgstr "Sort It Out"
+msgstr ""
 
 #: dashboard/templates/alarm.html:26 dashboard/templates/alarm2.html:26
 #: dashboard/templates/alarm3.html:26
 #: dashboard/templates/alarms_overview.html:23
-#: dashboard/templates/flows.html:27 dashboard/templates/index.html:28
+#: dashboard/templates/flows.html:27 dashboard/templates/index.html:51
 #: dashboard/templates/messages.html:17 dashboard/templates/service_bus.html:17
 msgid "Refresh"
-msgstr "Have Another Look"
+msgstr ""
 
 #: dashboard/templates/alarm.html:35
 #: dashboard/templates/alarms_overview.html:32
 msgid ""
 "Log Analytics workspace is not configured — last message times cannot be "
 "retrieved."
-msgstr "Log Analytics isn't sorted, mun — can't get the last message times, like."
+msgstr ""
 
 #: dashboard/templates/alarm.html:36
 msgid "Last message data will show as"
-msgstr "Last message data'll come up as"
+msgstr ""
 
-#: dashboard/templates/alarm.html:36 dashboard/templates/alarm.html:100
-#: dashboard/templates/alarm.html:182 dashboard/templates/alarm2.html:36
-#: dashboard/templates/alarm2.html:99 dashboard/templates/alarm2.html:158
-#: dashboard/templates/alarm3.html:36 dashboard/templates/alarm3.html:99
-#: dashboard/templates/alarm3.html:158
-#: dashboard/templates/alarms_overview.html:93
-#: dashboard/templates/alarms_overview.html:169
-#: dashboard/templates/alarms_overview.html:245
+#: dashboard/templates/alarm.html:36 dashboard/templates/alarm.html:108
+#: dashboard/templates/alarm.html:194 dashboard/templates/alarm2.html:36
+#: dashboard/templates/alarm2.html:107 dashboard/templates/alarm2.html:194
+#: dashboard/templates/alarm3.html:36 dashboard/templates/alarm3.html:107
+#: dashboard/templates/alarm3.html:170
+#: dashboard/templates/alarms_overview.html:102
+#: dashboard/templates/alarms_overview.html:187
+#: dashboard/templates/alarms_overview.html:272
 msgid "Unknown"
-msgstr "No Idea, Is It"
+msgstr ""
 
 #: dashboard/templates/alarm.html:47
 msgid "No alarms have been configured yet."
-msgstr "Nothing's been sorted for alarms yet, butt."
+msgstr ""
 
 #: dashboard/templates/alarm.html:49 dashboard/templates/alarm_config.html:3
 msgid "Configure Alarms"
-msgstr "Sort the Alarms Out"
+msgstr ""
 
 #: dashboard/templates/alarm.html:58
 msgid "All monitored workflows are within their inactivity threshold."
-msgstr "All the workflows are tidy, like — no bother."
+msgstr ""
 
-#: dashboard/templates/alarm.html:79 dashboard/templates/alarm2.html:78
-#: dashboard/templates/alarm3.html:78
-#: dashboard/templates/alarms_overview.html:81
-#: dashboard/templates/alarms_overview.html:157
-#: dashboard/templates/alarms_overview.html:233
+#: dashboard/templates/alarm.html:80 dashboard/templates/alarm2.html:79
+#: dashboard/templates/alarm3.html:79
+#: dashboard/templates/alarms_overview.html:86
+#: dashboard/templates/alarms_overview.html:171
+#: dashboard/templates/alarms_overview.html:256
 msgid "Monitored"
-msgstr "Being Watched, It Is"
+msgstr ""
 
-#: dashboard/templates/alarm.html:86 dashboard/templates/alarm.html:174
-#: dashboard/templates/alarm2.html:85 dashboard/templates/alarm2.html:150
-#: dashboard/templates/alarm3.html:85 dashboard/templates/alarm3.html:150
-#: dashboard/templates/alarms_overview.html:71
-#: dashboard/templates/alarms_overview.html:85
-#: dashboard/templates/alarms_overview.html:147
-#: dashboard/templates/alarms_overview.html:161
-#: dashboard/templates/alarms_overview.html:223
-#: dashboard/templates/alarms_overview.html:237
+#: dashboard/templates/alarm.html:87 dashboard/templates/alarm.html:182
+#: dashboard/templates/alarm2.html:86 dashboard/templates/alarm2.html:182
+#: dashboard/templates/alarm3.html:86 dashboard/templates/alarm3.html:158
+#: dashboard/templates/alarms_overview.html:75
+#: dashboard/templates/alarms_overview.html:90
+#: dashboard/templates/alarms_overview.html:160
+#: dashboard/templates/alarms_overview.html:175
+#: dashboard/templates/alarms_overview.html:245
+#: dashboard/templates/alarms_overview.html:260
+#: dashboard/templates/index.html:221 dashboard/templates/index.html:236
+#: dashboard/templates/index.html:292 dashboard/templates/index.html:307
+#: dashboard/templates/index.html:359 dashboard/templates/index.html:374
 msgid "In Alarm"
-msgstr "Kicking Off, Like"
+msgstr ""
 
-#: dashboard/templates/alarm.html:93 dashboard/templates/alarm.html:178
-#: dashboard/templates/alarm2.html:92 dashboard/templates/alarm2.html:154
-#: dashboard/templates/alarm3.html:92 dashboard/templates/alarm3.html:154
-#: dashboard/templates/alarms_overview.html:72
-#: dashboard/templates/alarms_overview.html:89
-#: dashboard/templates/alarms_overview.html:148
-#: dashboard/templates/alarms_overview.html:165
-#: dashboard/templates/alarms_overview.html:224
-#: dashboard/templates/alarms_overview.html:241
+#: dashboard/templates/alarm.html:94 dashboard/templates/alarm.html:186
+#: dashboard/templates/alarm2.html:93 dashboard/templates/alarm2.html:186
+#: dashboard/templates/alarm3.html:93 dashboard/templates/alarm3.html:162
+#: dashboard/templates/alarms_overview.html:76
+#: dashboard/templates/alarms_overview.html:94
+#: dashboard/templates/alarms_overview.html:161
+#: dashboard/templates/alarms_overview.html:179
+#: dashboard/templates/alarms_overview.html:246
+#: dashboard/templates/alarms_overview.html:264
+#: dashboard/templates/index.html:223 dashboard/templates/index.html:240
+#: dashboard/templates/index.html:294 dashboard/templates/index.html:311
+#: dashboard/templates/index.html:361 dashboard/templates/index.html:378
 msgid "Suppressed"
-msgstr "Shushed, Innit"
+msgstr ""
 
-#: dashboard/templates/alarm.html:107 dashboard/templates/alarm2.html:106
-#: dashboard/templates/alarm3.html:106
-#: dashboard/templates/alarms_overview.html:97
-#: dashboard/templates/alarms_overview.html:173
-#: dashboard/templates/alarms_overview.html:249
+#: dashboard/templates/alarm.html:101 dashboard/templates/alarm.html:190
+#: dashboard/templates/alarm2.html:100 dashboard/templates/alarm2.html:190
+#: dashboard/templates/alarm3.html:100 dashboard/templates/alarm3.html:166
+#: dashboard/templates/alarms_overview.html:77
+#: dashboard/templates/alarms_overview.html:98
+#: dashboard/templates/alarms_overview.html:162
+#: dashboard/templates/alarms_overview.html:183
+#: dashboard/templates/alarms_overview.html:247
+#: dashboard/templates/alarms_overview.html:268
+msgid "Paused"
+msgstr ""
+
+#: dashboard/templates/alarm.html:115 dashboard/templates/alarm2.html:114
+#: dashboard/templates/alarm3.html:114
+#: dashboard/templates/alarms_overview.html:106
+#: dashboard/templates/alarms_overview.html:191
+#: dashboard/templates/alarms_overview.html:276
 #: dashboard/templates/flows.html:54 dashboard/templates/flows.html:81
-#: dashboard/templates/index.html:108
+#: dashboard/templates/index.html:131 dashboard/templates/index.html:244
+#: dashboard/templates/index.html:315 dashboard/templates/index.html:382
 msgid "Healthy"
-msgstr "All Tidy"
+msgstr ""
 
-#: dashboard/templates/alarm.html:115
+#: dashboard/templates/alarm.html:123 dashboard/templates/alarm2.html:123
 msgid "Active period:"
-msgstr "On the go now:"
+msgstr ""
 
-#: dashboard/templates/alarm.html:118
+#: dashboard/templates/alarm.html:126 dashboard/templates/alarm2.html:126
 msgid "Day (Mon–Fri 09:00–17:00)"
-msgstr "Daytime (Mon–Fri 09:00–17:00)"
+msgstr ""
 
-#: dashboard/templates/alarm.html:120
+#: dashboard/templates/alarm.html:128 dashboard/templates/alarm2.html:128
 msgid "— day threshold applies"
-msgstr "— day limit's on, like"
+msgstr ""
 
-#: dashboard/templates/alarm.html:123
+#: dashboard/templates/alarm.html:131 dashboard/templates/alarm2.html:131
 msgid "Evening (Mon–Fri 17:00–09:00)"
-msgstr "Evening time (Mon–Fri 17:00–09:00)"
+msgstr ""
 
-#: dashboard/templates/alarm.html:125
+#: dashboard/templates/alarm.html:133 dashboard/templates/alarm2.html:133
 msgid "— evening threshold applies"
-msgstr "— evening limit's on, mun"
+msgstr ""
 
-#: dashboard/templates/alarm.html:128
+#: dashboard/templates/alarm.html:136 dashboard/templates/alarm2.html:136
 msgid "Weekend (Fri 17:00 – Mon 09:00)"
-msgstr "Weekend, like (Fri 17:00 – Mon 09:00)"
+msgstr ""
 
-#: dashboard/templates/alarm.html:130
+#: dashboard/templates/alarm.html:138 dashboard/templates/alarm2.html:138
 msgid "— weekend threshold applies"
-msgstr "— weekend limit's on, butt"
+msgstr ""
 
-#: dashboard/templates/alarm.html:137
+#: dashboard/templates/alarm.html:145
 msgid "Alarm 1's"
-msgstr "Alarm 1's, mind"
+msgstr ""
 
-#: dashboard/templates/alarm.html:138 dashboard/templates/alarm2.html:116
-#: dashboard/templates/alarm3.html:116
-msgid "Refreshed at"
-msgstr "Had a look at"
-
-#: dashboard/templates/alarm.html:145 dashboard/templates/alarm2.html:123
-#: dashboard/templates/alarm3.html:123 dashboard/templates/index.html:123
-#: dashboard/templates/index.html:242 dashboard/templates/service_bus.html:122
-msgid "Status"
-msgstr "How's It Looking"
-
-#: dashboard/templates/alarm.html:146 dashboard/templates/alarm2.html:124
+#: dashboard/templates/alarm.html:146 dashboard/templates/alarm2.html:146
 #: dashboard/templates/alarm3.html:124
+msgid "Refreshed at"
+msgstr ""
+
+#: dashboard/templates/alarm.html:153 dashboard/templates/alarm2.html:153
+#: dashboard/templates/alarm3.html:131 dashboard/templates/index.html:146
+#: dashboard/templates/index.html:482 dashboard/templates/index.html:575
+#: dashboard/templates/service_bus.html:122
+msgid "Status"
+msgstr ""
+
+#: dashboard/templates/alarm.html:154 dashboard/templates/alarm2.html:154
+#: dashboard/templates/alarm3.html:132
 msgid "Rule"
-msgstr "Rule, Is It"
+msgstr ""
 
-#: dashboard/templates/alarm.html:148 dashboard/templates/alarm2.html:126
+#: dashboard/templates/alarm.html:156 dashboard/templates/alarm2.html:156
 #: dashboard/templates/alarm2_config.html:44
-#: dashboard/templates/alarm2_config.html:137
-#: dashboard/templates/alarm2_config.html:225
-#: dashboard/templates/alarm3.html:126
+#: dashboard/templates/alarm2_config.html:168
+#: dashboard/templates/alarm2_config.html:259
+#: dashboard/templates/alarm3.html:134
 #: dashboard/templates/alarm3_config.html:44
-#: dashboard/templates/alarm3_config.html:134
-#: dashboard/templates/alarm3_config.html:222
-#: dashboard/templates/alarm_config.html:147
-#: dashboard/templates/alarm_config.html:241
-#: dashboard/templates/alarm_config.html:345
+#: dashboard/templates/alarm3_config.html:157
+#: dashboard/templates/alarm3_config.html:253
+#: dashboard/templates/alarm_config.html:171
+#: dashboard/templates/alarm_config.html:254
+#: dashboard/templates/alarm_config.html:351
 msgid "Workflow ID"
-msgstr "Workflow ID, Like"
+msgstr ""
 
-#: dashboard/templates/alarm.html:150
+#: dashboard/templates/alarm.html:158 dashboard/templates/alarm2.html:158
 msgid "Last Message"
-msgstr "Last Message, See"
+msgstr ""
 
-#: dashboard/templates/alarm.html:151
+#: dashboard/templates/alarm.html:159 dashboard/templates/alarm2.html:159
 msgid "Time Since"
-msgstr "How Long Ago"
+msgstr ""
 
-#: dashboard/templates/alarm.html:153 dashboard/templates/alarm_config.html:49
+#: dashboard/templates/alarm.html:161 dashboard/templates/alarm2.html:161
+#: dashboard/templates/alarm2_config.html:49
+#: dashboard/templates/alarm2_config.html:184
+#: dashboard/templates/alarm2_config.html:293
+#: dashboard/templates/alarm_config.html:49
+#: dashboard/templates/alarm_config.html:187
+#: dashboard/templates/alarm_config.html:288
 msgid "Day"
-msgstr "Day, Isn't It"
+msgstr ""
 
-#: dashboard/templates/alarm.html:156 dashboard/templates/alarm_config.html:51
+#: dashboard/templates/alarm.html:164 dashboard/templates/alarm2.html:164
+#: dashboard/templates/alarm2_config.html:51
+#: dashboard/templates/alarm_config.html:51
 msgid "Evening"
-msgstr "Evening, Like"
+msgstr ""
 
-#: dashboard/templates/alarm.html:159 dashboard/templates/alarm_config.html:53
+#: dashboard/templates/alarm.html:167 dashboard/templates/alarm2.html:167
+#: dashboard/templates/alarm2_config.html:53
+#: dashboard/templates/alarm_config.html:53
 msgid "Weekend"
-msgstr "Weekend, Mun"
+msgstr ""
 
-#: dashboard/templates/alarm.html:162 dashboard/templates/alarm2.html:138
-#: dashboard/templates/alarm2_config.html:47
-#: dashboard/templates/alarm2_config.html:182
-#: dashboard/templates/alarm2_config.html:262
-#: dashboard/templates/alarm3.html:138
+#: dashboard/templates/alarm.html:170 dashboard/templates/alarm2.html:170
+#: dashboard/templates/alarm2_config.html:46
+#: dashboard/templates/alarm2_config.html:208
+#: dashboard/templates/alarm2_config.html:312
+#: dashboard/templates/alarm3.html:146
 #: dashboard/templates/alarm3_config.html:46
-#: dashboard/templates/alarm3_config.html:179
-#: dashboard/templates/alarm3_config.html:259
+#: dashboard/templates/alarm3_config.html:202
+#: dashboard/templates/alarm3_config.html:310
 #: dashboard/templates/alarm_config.html:45
-#: dashboard/templates/alarm_config.html:208
-#: dashboard/templates/alarm_config.html:301
-msgid "Alerting Gap"
-msgstr "Gap Before Shouting Again"
-
-#: dashboard/templates/alarm.html:186 dashboard/templates/alarm2.html:162
-#: dashboard/templates/alarm3.html:162
-msgid "OK"
-msgstr "Tidy"
-
-#: dashboard/templates/alarm.html:202 dashboard/templates/alarm.html:206
-msgid "ago"
-msgstr "back, like"
-
-#: dashboard/templates/alarm.html:225 dashboard/templates/alarm.html:232
-#: dashboard/templates/alarm.html:239 dashboard/templates/alarm.html:245
-#: dashboard/templates/alarm2.html:193
-#: dashboard/templates/alarm2_config.html:157
-#: dashboard/templates/alarm2_config.html:189
-#: dashboard/templates/alarm2_config.html:242
-#: dashboard/templates/alarm2_config.html:268
-#: dashboard/templates/alarm3.html:193
-#: dashboard/templates/alarm3_config.html:154
-#: dashboard/templates/alarm3_config.html:186
-#: dashboard/templates/alarm3_config.html:239
-#: dashboard/templates/alarm3_config.html:265
-#: dashboard/templates/alarm_config.html:167
-#: dashboard/templates/alarm_config.html:183
-#: dashboard/templates/alarm_config.html:199
-#: dashboard/templates/alarm_config.html:215
-#: dashboard/templates/alarm_config.html:268
-#: dashboard/templates/alarm_config.html:281
-#: dashboard/templates/alarm_config.html:294
+#: dashboard/templates/alarm_config.html:211
 #: dashboard/templates/alarm_config.html:307
-msgid "min"
-msgstr "min"
+msgid "Alerting Gap"
+msgstr ""
 
-#: dashboard/templates/alarm.html:248 dashboard/templates/alarm2.html:196
-#: dashboard/templates/alarm3.html:196
+#: dashboard/templates/alarm.html:198 dashboard/templates/alarm2.html:198
+#: dashboard/templates/alarm3.html:174
+msgid "OK"
+msgstr ""
+
+#: dashboard/templates/alarm.html:214 dashboard/templates/alarm.html:218
+#: dashboard/templates/alarm2.html:214 dashboard/templates/alarm2.html:218
+msgid "ago"
+msgstr ""
+
+#: dashboard/templates/alarm.html:237 dashboard/templates/alarm.html:244
+#: dashboard/templates/alarm.html:251 dashboard/templates/alarm.html:257
+#: dashboard/templates/alarm2.html:239 dashboard/templates/alarm2.html:246
+#: dashboard/templates/alarm2.html:253 dashboard/templates/alarm2.html:258
+#: dashboard/templates/alarm2_config.html:215
+#: dashboard/templates/alarm2_config.html:318
+#: dashboard/templates/alarm3.html:205
+#: dashboard/templates/alarm3_config.html:177
+#: dashboard/templates/alarm3_config.html:209
+#: dashboard/templates/alarm3_config.html:290
+#: dashboard/templates/alarm3_config.html:316
+#: dashboard/templates/alarm_config.html:202
+#: dashboard/templates/alarm_config.html:218
+#: dashboard/templates/alarm_config.html:300
+#: dashboard/templates/alarm_config.html:313
+msgid "min"
+msgstr ""
+
+#: dashboard/templates/alarm.html:260 dashboard/templates/alarm.html:265
+#: dashboard/templates/alarm2.html:261 dashboard/templates/alarm2.html:266
+#: dashboard/templates/alarm3.html:208 dashboard/templates/alarm3.html:213
 msgid "min left"
-msgstr "min left, mind"
+msgstr ""
+
+#: dashboard/templates/alarm.html:373 dashboard/templates/alarm2.html:394
+#: dashboard/templates/alarm3.html:326
+msgid "Pause Alarm"
+msgstr ""
+
+#: dashboard/templates/alarm.html:375 dashboard/templates/alarm2.html:396
+#: dashboard/templates/alarm3.html:328
+msgid "Close"
+msgstr ""
+
+#: dashboard/templates/alarm.html:379 dashboard/templates/alarm2.html:400
+#: dashboard/templates/alarm3.html:332
+msgid "Temporarily silence"
+msgstr ""
+
+#: dashboard/templates/alarm.html:380 dashboard/templates/alarm2.html:401
+#: dashboard/templates/alarm3.html:333
+msgid "The alarm will automatically resume when the pause window expires."
+msgstr ""
+
+#: dashboard/templates/alarm.html:384 dashboard/templates/alarm2.html:405
+#: dashboard/templates/alarm3.html:337
+msgid "Pause Duration"
+msgstr ""
+
+#: dashboard/templates/alarm.html:399 dashboard/templates/alarm2.html:420
+#: dashboard/templates/alarm3.html:352
+msgid "Custom…"
+msgstr ""
+
+#: dashboard/templates/alarm.html:411 dashboard/templates/alarm2.html:431
+#: dashboard/templates/alarm3.html:363
+msgid "minutes"
+msgstr ""
+
+#: dashboard/templates/alarm.html:412 dashboard/templates/alarm2.html:432
+#: dashboard/templates/alarm3.html:364
+msgid "hours"
+msgstr ""
+
+#: dashboard/templates/alarm.html:418 dashboard/templates/alarm2.html:438
+#: dashboard/templates/alarm3.html:370
+msgid "Reason"
+msgstr ""
+
+#: dashboard/templates/alarm.html:418 dashboard/templates/alarm2.html:438
+#: dashboard/templates/alarm3.html:370
+msgid "optional"
+msgstr ""
+
+#: dashboard/templates/alarm.html:424 dashboard/templates/alarm2.html:444
+#: dashboard/templates/alarm3.html:376
+msgid "e.g. Planned maintenance, known issue…"
+msgstr ""
+
+#: dashboard/templates/alarm.html:429 dashboard/templates/alarm2.html:449
+#: dashboard/templates/alarm3.html:381
+msgid "Cancel"
+msgstr ""
+
+#: dashboard/templates/alarm.html:432 dashboard/templates/alarm2.html:452
+#: dashboard/templates/alarm3.html:384
+msgid "Confirm Pause"
+msgstr ""
+
+#: dashboard/templates/alarm.html:512 dashboard/templates/alarm2.html:526
+#: dashboard/templates/alarm3.html:458
+msgid "Please select a valid duration."
+msgstr ""
+
+#: dashboard/templates/alarm.html:528 dashboard/templates/alarm2.html:541
+#: dashboard/templates/alarm3.html:473
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: dashboard/templates/alarm.html:533 dashboard/templates/alarm2.html:546
+#: dashboard/templates/alarm3.html:478
+msgid "Network error. Please try again."
+msgstr ""
 
 #: dashboard/templates/alarm2.html:3 dashboard/templates/alarm2.html:12
-#: dashboard/templates/alarms_overview.html:137
+#: dashboard/templates/alarms_overview.html:149
 msgid "Alarm 2 — Outgoing Message Volume"
-msgstr "Alarm 2 — Messages Going Out, Like"
+msgstr ""
 
 #: dashboard/templates/alarm2.html:15
 msgid ""
 "Fires when the count of outgoing messages sent falls at or below the "
 "configured threshold"
-msgstr "Goes off when messages going out drops too low, see"
+msgstr ""
 
 #: dashboard/templates/alarm2.html:35
 msgid ""
 "Log Analytics workspace is not configured — message counts cannot be "
 "retrieved."
-msgstr "Log Analytics isn't sorted, mun — can't count the messages, like."
+msgstr ""
 
 #: dashboard/templates/alarm2.html:36 dashboard/templates/alarm3.html:36
 msgid "Results will show as"
-msgstr "Results'll come up as"
+msgstr ""
 
 #: dashboard/templates/alarm2.html:47
 msgid "No Alarm 2 rules have been configured yet."
-msgstr "Nothing's been sorted for Alarm 2 yet, butt."
+msgstr ""
 
 #: dashboard/templates/alarm2.html:49 dashboard/templates/alarm2_config.html:3
 msgid "Configure Alarm 2"
-msgstr "Sort Alarm 2 Out"
+msgstr ""
 
 #: dashboard/templates/alarm2.html:58
 msgid "All monitored flows are within their message volume threshold."
-msgstr "All the flows are tidy, innit — messages looking good, like."
+msgstr ""
 
-#: dashboard/templates/alarm2.html:115
+#: dashboard/templates/alarm2.html:145
 msgid "Alarm 2 Rules"
-msgstr "Alarm 2 Rules, Mun"
-
-#: dashboard/templates/alarm2.html:129
-msgid "Messages Sent"
-msgstr "Messages Gone Out"
-
-#: dashboard/templates/alarm2.html:132
-#: dashboard/templates/alarm2_config.html:46
-#: dashboard/templates/alarm2_config.html:166
-#: dashboard/templates/alarm2_config.html:249
-#: dashboard/templates/alarm3.html:132
-#: dashboard/templates/alarm3_config.html:45
-#: dashboard/templates/alarm3_config.html:163
-#: dashboard/templates/alarm3_config.html:246
-msgid "Threshold"
-msgstr "Limit, Like"
-
-#: dashboard/templates/alarm2.html:135
-#: dashboard/templates/alarm2_config.html:45
-#: dashboard/templates/alarm3.html:135
-#: dashboard/templates/alarm3_config.html:44
-msgid "Window"
-msgstr "Time Window, See"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:12
 msgid "Alarm 2 Configuration"
-msgstr "Alarm 2 — Sort It Out"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:15
 msgid "Configure Alarm 2 (outgoing message volume) settings per flow rule"
-msgstr "Sort out the settings for Alarm 2 (messages going out) for each flow, like"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:23
 msgid "View Alarm 2"
-msgstr "Have a Look at Alarm 2"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:32
 #: dashboard/templates/alarm3_config.html:32
 #: dashboard/templates/alarm_config.html:32
 msgid "Configuration saved successfully."
-msgstr "Sorted! Saved it, haven't we."
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:42
 msgid "How Alarm 2 works"
-msgstr "How Alarm 2 Works, Like"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:43
 #: dashboard/templates/alarm3_config.html:43
 msgid "The alarm queries"
-msgstr "The alarm has a look in"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:43
 msgid "in Log Analytics for the"
-msgstr "in Log Analytics for the"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:44
 msgid "metric, filtered by"
-msgstr "metric, filtered by, see"
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:45
-#: dashboard/templates/alarm3_config.html:44
-msgid "over the configured"
-msgstr "over the configured, see"
+msgid ""
+"It fires when the workflow has sent no messages for longer than the "
+"threshold for the current time period."
+msgstr ""
 
 #: dashboard/templates/alarm2_config.html:46
-msgid "It fires when the total count of messages sent is at or below the"
-msgstr "Goes off when messages sent is at or below the, like"
-
-#: dashboard/templates/alarm2_config.html:47
 #: dashboard/templates/alarm3_config.html:46
 #: dashboard/templates/alarm_config.html:45
 msgid "Once fired, it will not re-fire until the"
-msgstr "Once it goes off, won't shout again until the"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:47
+#: dashboard/templates/alarm2_config.html:46
 #: dashboard/templates/alarm3_config.html:46
 msgid "has elapsed."
-msgstr "has gone by, see."
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:70
+#: dashboard/templates/alarm2_config.html:49
+#: dashboard/templates/alarm_config.html:49
+msgid "Mon–Fri 09:00–17:00"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:51
+#: dashboard/templates/alarm_config.html:51
+msgid "Mon–Fri 17:00–09:00"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:53
+#: dashboard/templates/alarm_config.html:53
+msgid "Fri 17:00 → Mon 09:00"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:78 dashboard/templates/index.html:283
 msgid "Alarm 2"
-msgstr "Alarm 2, Like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:82
-#: dashboard/templates/alarm2_config.html:104
-#: dashboard/templates/alarm2_config.html:359
+#: dashboard/templates/alarm2_config.html:90
+#: dashboard/templates/alarm2_config.html:112
+#: dashboard/templates/alarm2_config.html:135
+#: dashboard/templates/alarm2_config.html:269
+#: dashboard/templates/alarm2_config.html:282
+#: dashboard/templates/alarm2_config.html:412
 #: dashboard/templates/alarm3_config.html:79
 #: dashboard/templates/alarm3_config.html:101
-#: dashboard/templates/alarm3_config.html:356
+#: dashboard/templates/alarm3_config.html:124
+#: dashboard/templates/alarm3_config.html:263
+#: dashboard/templates/alarm3_config.html:276
+#: dashboard/templates/alarm3_config.html:398
 #: dashboard/templates/alarm_config.html:89
 #: dashboard/templates/alarm_config.html:113
-#: dashboard/templates/alarm_config.html:437
+#: dashboard/templates/alarm_config.html:137
+#: dashboard/templates/alarm_config.html:264
+#: dashboard/templates/alarm_config.html:277
+#: dashboard/templates/alarm_config.html:455
 msgid "Enabled"
-msgstr "On, Innit"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:82
-#: dashboard/templates/alarm2_config.html:104
-#: dashboard/templates/alarm2_config.html:360
+#: dashboard/templates/alarm2_config.html:90
+#: dashboard/templates/alarm2_config.html:112
+#: dashboard/templates/alarm2_config.html:135
+#: dashboard/templates/alarm2_config.html:413
 #: dashboard/templates/alarm3_config.html:79
 #: dashboard/templates/alarm3_config.html:101
-#: dashboard/templates/alarm3_config.html:357
+#: dashboard/templates/alarm3_config.html:124
+#: dashboard/templates/alarm3_config.html:399
 #: dashboard/templates/alarm_config.html:89
 #: dashboard/templates/alarm_config.html:113
-#: dashboard/templates/alarm_config.html:438 dashboard/templates/flows.html:433
-#: dashboard/templates/flows.html:474 dashboard/templates/flows.html:514
+#: dashboard/templates/alarm_config.html:137
+#: dashboard/templates/alarm_config.html:456 dashboard/templates/flows.html:459
+#: dashboard/templates/flows.html:500 dashboard/templates/flows.html:540
 msgid "Disabled"
-msgstr "Off, Like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:91
+#: dashboard/templates/alarm2_config.html:99
 #: dashboard/templates/alarm3_config.html:88
 #: dashboard/templates/alarm_config.html:98
 msgid "Email"
-msgstr "Email, Mun"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:98
+#: dashboard/templates/alarm2_config.html:106
 #: dashboard/templates/alarm3_config.html:95
 #: dashboard/templates/alarm_config.html:107
 msgid "Configure SMTP in .env to enable"
-msgstr "Sort out SMTP in .env to get it going, like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:113
-#: dashboard/templates/alarm3_config.html:110
+#: dashboard/templates/alarm2_config.html:122
+#: dashboard/templates/alarm3_config.html:111
+#: dashboard/templates/alarm_config.html:123
+msgid "Email OOH"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:144
+#: dashboard/templates/alarm3_config.html:133
 msgid "Remove this rule"
-msgstr "Chuck This Rule Out"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:125
-#: dashboard/templates/alarm2_config.html:214
-#: dashboard/templates/alarm3_config.html:122
-#: dashboard/templates/alarm3_config.html:211
-#: dashboard/templates/alarm_config.html:135
-#: dashboard/templates/alarm_config.html:251
-#: dashboard/templates/alarm_config.html:353
+#: dashboard/templates/alarm2_config.html:156
+#: dashboard/templates/alarm2_config.html:248
+#: dashboard/templates/alarm3_config.html:145
+#: dashboard/templates/alarm3_config.html:242
+#: dashboard/templates/alarm_config.html:159
+#: dashboard/templates/alarm_config.html:243
+#: dashboard/templates/alarm_config.html:359
 msgid "Display Name"
-msgstr "Name to Show, Like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:130
-#: dashboard/templates/alarm3_config.html:127
-#: dashboard/templates/alarm_config.html:140
+#: dashboard/templates/alarm2_config.html:161
+#: dashboard/templates/alarm3_config.html:150
+#: dashboard/templates/alarm_config.html:164
 msgid "Human-readable label shown in the dashboard"
-msgstr "Label what shows up on the dashboard, see"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:142
-#: dashboard/templates/alarm2_config.html:229
-#: dashboard/templates/alarm3_config.html:139
-#: dashboard/templates/alarm3_config.html:226
-#: dashboard/templates/alarm_config.html:152
-#: dashboard/templates/alarm_config.html:245
-#: dashboard/templates/alarm_config.html:349
+#: dashboard/templates/alarm2_config.html:173
+#: dashboard/templates/alarm2_config.html:263
+#: dashboard/templates/alarm3_config.html:162
+#: dashboard/templates/alarm3_config.html:257
+#: dashboard/templates/alarm_config.html:176
+#: dashboard/templates/alarm_config.html:258
+#: dashboard/templates/alarm_config.html:355
 msgid "e.g. phw-to-mpi"
-msgstr "e.g. phw-to-mpi, like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:143
-#: dashboard/templates/alarm2_config.html:230
-#, fuzzy
+#: dashboard/templates/alarm2_config.html:174
+#: dashboard/templates/alarm2_config.html:264
 msgid "filter value"
-msgstr "filtered by, like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:150
-#: dashboard/templates/alarm2_config.html:236
-#: dashboard/templates/alarm3_config.html:147
-#: dashboard/templates/alarm3_config.html:233
-msgid "Lookback Window"
-msgstr "How Far Back to Look"
+#: dashboard/templates/alarm2_config.html:181
+#: dashboard/templates/alarm2_config.html:290
+msgid "Inactivity Thresholds"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:159
-msgid "Time window for the messages_sent query (e.g. 2880 = 2 days)"
-msgstr "How far back to look for messages_sent (e.g. 2880 = 2 days), like"
+#: dashboard/templates/alarm2_config.html:189
+#: dashboard/templates/alarm2_config.html:297
+#: dashboard/templates/alarm_config.html:192
+#: dashboard/templates/alarm_config.html:292
+msgid "Eve"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:175
-msgid "Alarm fires when messages sent &lt;= this value"
-msgstr "Goes off when messages sent is at or below this, mun"
+#: dashboard/templates/alarm2_config.html:194
+#: dashboard/templates/alarm2_config.html:301
+#: dashboard/templates/alarm_config.html:197
+#: dashboard/templates/alarm_config.html:296
+msgid "Wkd"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:191
-#: dashboard/templates/alarm3_config.html:188
-#: dashboard/templates/alarm_config.html:217
+#: dashboard/templates/alarm2_config.html:201
+msgid "Alarm fires when no messages sent for longer than this threshold"
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:217
+#: dashboard/templates/alarm3_config.html:211
+#: dashboard/templates/alarm_config.html:220
 msgid "Minimum gap between successive alarm fires"
-msgstr "Least time before it goes off again, like"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:206
-#: dashboard/templates/alarm3_config.html:203
-#: dashboard/templates/alarm_config.html:232
-#: dashboard/templates/alarm_config.html:338
+#: dashboard/templates/alarm2_config.html:229
+msgid "No Alarm 2 rules yet. Use the Add Rule button below to create one."
+msgstr ""
+
+#: dashboard/templates/alarm2_config.html:240
+#: dashboard/templates/alarm3_config.html:234
+#: dashboard/templates/alarm_config.html:235
+#: dashboard/templates/alarm_config.html:344
 msgid "New Rule"
-msgstr "New Rule, Is It"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:218
+#: dashboard/templates/alarm2_config.html:252
 msgid "e.g. PIMS → MPI"
-msgstr "e.g. PIMS → MPI, see"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:219
-#: dashboard/templates/alarm3_config.html:216
-#: dashboard/templates/alarm_config.html:256
+#: dashboard/templates/alarm2_config.html:253
+#: dashboard/templates/alarm3_config.html:247
+#: dashboard/templates/alarm_config.html:248
 msgid "Human-readable label (auto-generated if blank)"
-msgstr "Label what shows up (done for you if left blank), see"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:278
-#: dashboard/templates/alarm2_config.html:419
-#: dashboard/templates/alarm3_config.html:275
-#: dashboard/templates/alarm3_config.html:405
-#: dashboard/templates/alarm_config.html:317
-#: dashboard/templates/alarm_config.html:364
+#: dashboard/templates/alarm2_config.html:328
+#: dashboard/templates/alarm2_config.html:503
+#: dashboard/templates/alarm3_config.html:326
+#: dashboard/templates/alarm3_config.html:478
+#: dashboard/templates/alarm_config.html:323
+#: dashboard/templates/alarm_config.html:370
 msgid "Add Rule"
-msgstr "Add a Rule, Mun"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:281
-#: dashboard/templates/alarm3_config.html:278
-#: dashboard/templates/alarm_config.html:320
-#: dashboard/templates/alarm_config.html:367
+#: dashboard/templates/alarm2_config.html:331
+#: dashboard/templates/alarm3_config.html:329
+#: dashboard/templates/alarm_config.html:326
+#: dashboard/templates/alarm_config.html:373
 msgid "Save All Settings"
-msgstr "Save the Lot, Innit"
+msgstr ""
 
-#: dashboard/templates/alarm2_config.html:289
-msgid "No Alarm 2 rules found."
-msgstr "Can't find any Alarm 2 rules, butt."
-
-#: dashboard/templates/alarm2_config.html:361
-#: dashboard/templates/alarm3_config.html:358
-#, fuzzy, python-brace-format, python-format
+#: dashboard/templates/alarm2_config.html:414
+#: dashboard/templates/alarm3_config.html:400
 msgid "Remove rule \"{id}\"? This will take effect when you save."
-msgstr "Chuck rule \"%(id)s\" out, is it? It'll happen when you save, mind."
+msgstr ""
 
 #: dashboard/templates/alarm3.html:3 dashboard/templates/alarm3.html:12
-#: dashboard/templates/alarms_overview.html:213
+#: dashboard/templates/alarms_overview.html:234
 msgid "Alarm 3 — Message Processing Failures"
-msgstr "Alarm 3 — Messages Gone Wrong, Like"
+msgstr ""
 
 #: dashboard/templates/alarm3.html:15
 msgid ""
 "Fires when the count of MESSAGE_FAILED events meets or exceeds the "
 "configured threshold"
-msgstr "Goes off when too many messages have failed, see"
+msgstr ""
 
 #: dashboard/templates/alarm3.html:35
 msgid ""
 "Log Analytics workspace is not configured — failure counts cannot be "
 "retrieved."
-msgstr "Log Analytics isn't sorted, mun — can't get the failure counts, like."
+msgstr ""
 
 #: dashboard/templates/alarm3.html:47
 msgid "No Alarm 3 rules have been configured yet."
-msgstr "Nothing's been sorted for Alarm 3 yet, butt."
+msgstr ""
 
 #: dashboard/templates/alarm3.html:49 dashboard/templates/alarm3_config.html:3
 msgid "Configure Alarm 3"
-msgstr "Sort Alarm 3 Out"
+msgstr ""
 
 #: dashboard/templates/alarm3.html:58
 msgid "No MESSAGE_FAILED events detected — all monitored workflows are healthy."
-msgstr "No failures, butt — all the workflows are looking tidy, like."
+msgstr ""
 
-#: dashboard/templates/alarm3.html:115
+#: dashboard/templates/alarm3.html:123
 msgid "Alarm 3 Rules"
-msgstr "Alarm 3 Rules, Mun"
+msgstr ""
 
-#: dashboard/templates/alarm3.html:129
+#: dashboard/templates/alarm3.html:137
 msgid "Failures"
-msgstr "Gone Wrong, Like"
+msgstr ""
+
+#: dashboard/templates/alarm3.html:140
+#: dashboard/templates/alarm3_config.html:45
+#: dashboard/templates/alarm3_config.html:186
+#: dashboard/templates/alarm3_config.html:297
+msgid "Threshold"
+msgstr ""
+
+#: dashboard/templates/alarm3.html:143
+#: dashboard/templates/alarm3_config.html:44
+msgid "Window"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:12
 msgid "Alarm 3 Configuration"
-msgstr "Alarm 3 — Sort It Out"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:15
 msgid "Configure Alarm 3 (message processing failures) settings per workflow rule"
 msgstr ""
-"Sort out the settings for Alarm 3 (message failures) for each workflow, "
-"like"
 
 #: dashboard/templates/alarm3_config.html:23
 msgid "View Alarm 3"
-msgstr "Have a Look at Alarm 3"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:42
 msgid "How Alarm 3 works"
-msgstr "How Alarm 3 Works, Like"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:43
 msgid "in Log Analytics for"
-msgstr "in Log Analytics for, see"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:43
 msgid "events,"
-msgstr "events, mun,"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:44
 msgid "filtered by"
-msgstr "filtered by, like"
+msgstr ""
+
+#: dashboard/templates/alarm3_config.html:44
+msgid "over the configured"
+msgstr ""
 
 #: dashboard/templates/alarm3_config.html:45
 msgid "It fires when the failure count is at or above the"
-msgstr "Goes off when failures are at or above the, mun"
+msgstr ""
 
-#: dashboard/templates/alarm3_config.html:67
+#: dashboard/templates/alarm3_config.html:67 dashboard/templates/index.html:350
 msgid "Alarm 3"
-msgstr "Alarm 3, Like"
+msgstr ""
 
-#: dashboard/templates/alarm3_config.html:156
+#: dashboard/templates/alarm3_config.html:170
+#: dashboard/templates/alarm3_config.html:284
+msgid "Lookback Window"
+msgstr ""
+
+#: dashboard/templates/alarm3_config.html:179
 msgid "Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)"
-msgstr "How far back to look for MESSAGE_FAILED (e.g. 15 = 15 minutes), like"
+msgstr ""
 
-#: dashboard/templates/alarm3_config.html:172
+#: dashboard/templates/alarm3_config.html:195
 msgid "Alarm fires when failure count &gt;= this value"
-msgstr "Goes off when failure count hits this or more, see"
+msgstr ""
 
-#: dashboard/templates/alarm3_config.html:215
+#: dashboard/templates/alarm3_config.html:223
+msgid "No Alarm 3 rules yet. Use the Add Rule button below to create one."
+msgstr ""
+
+#: dashboard/templates/alarm3_config.html:246
 msgid "e.g. PHW → MPI Failures"
-msgstr "e.g. PHW → MPI Failures, like"
-
-#: dashboard/templates/alarm3_config.html:286
-msgid "No Alarm 3 rules found."
-msgstr "Can't find any Alarm 3 rules, butt."
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:12
-msgid "Alarm Configuration"
-msgstr "Alarm — Sort It Out"
+msgid "Alarm 1 Configuration"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:15
 msgid "Configure Alarm 1 (message inactivity) settings per HL7 server"
 msgstr ""
-"Sort out the settings for Alarm 1 (quiet messages) for each HL7 server, "
-"like"
 
 #: dashboard/templates/alarm_config.html:23
 msgid "View Alarm 1"
-msgstr "Have a Look at Alarm 1"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:42
 msgid "How Alarm 1 works"
-msgstr "How Alarm 1 Works, Like"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:43
 msgid ""
 "The alarm fires when an HL7 server has received no messages for longer "
 "than"
 msgstr ""
-"The alarm goes off when an HL7 server hasn't had a message for longer "
-"than, see"
 
 #: dashboard/templates/alarm_config.html:44
 msgid "the"
-msgstr "the"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:44
 msgid "period threshold"
-msgstr "limit for that time, like"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:44
 msgid "for the current time window (Day / Evening / Weekend)."
-msgstr "for now (Day / Evening / Weekend), mun."
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:45
 msgid "has elapsed"
-msgstr "has gone by, like"
+msgstr ""
 
 #: dashboard/templates/alarm_config.html:46
 msgid "— this prevents repeated alerts for the same ongoing outage."
-msgstr "— stops it going off again for the same bother, see."
+msgstr ""
 
-#: dashboard/templates/alarm_config.html:49
-msgid "Mon–Fri 08:00–17:00"
-msgstr "Mon–Fri 08:00–17:00, like"
-
-#: dashboard/templates/alarm_config.html:51
-msgid "Mon–Fri 17:00–08:00"
-msgstr "Mon–Fri 17:00–08:00, mun"
-
-#: dashboard/templates/alarm_config.html:53
-msgid "Fri 17:00 → Mon 09:00"
-msgstr "Fri 17:00 → Mon 09:00, butt"
-
-#: dashboard/templates/alarm_config.html:75
+#: dashboard/templates/alarm_config.html:75 dashboard/templates/index.html:212
 msgid "Alarm 1"
-msgstr "Alarm 1, See"
+msgstr ""
 
-#: dashboard/templates/alarm_config.html:122
+#: dashboard/templates/alarm_config.html:146
 msgid "Remove this server"
-msgstr "Chuck This Server Out"
-
-#: dashboard/templates/alarm_config.html:160
-#: dashboard/templates/alarm_config.html:262
-msgid "Day Threshold"
-msgstr "Daytime Limit, Like"
-
-#: dashboard/templates/alarm_config.html:169
-msgid "No messages for this long (Mon–Fri 08:00–17:00) → alarm fires"
 msgstr ""
-"No messages for this long in the day (Mon–Fri 08:00–17:00) → goes off, "
-"innit"
 
-#: dashboard/templates/alarm_config.html:176
-#: dashboard/templates/alarm_config.html:275
-msgid "Evening Threshold"
-msgstr "Evening Limit, Like"
-
-#: dashboard/templates/alarm_config.html:185
-msgid "No messages for this long (Mon–Fri 17:00–08:00) → alarm fires"
+#: dashboard/templates/alarm_config.html:184
+#: dashboard/templates/alarm_config.html:285
+msgid "Thresholds"
 msgstr ""
-"No messages for this long in the evening (Mon–Fri 17:00–08:00) → goes "
-"off, see"
 
-#: dashboard/templates/alarm_config.html:192
-#: dashboard/templates/alarm_config.html:288
-msgid "Weekend Threshold"
-msgstr "Weekend Limit, Mun"
-
-#: dashboard/templates/alarm_config.html:201
-msgid "No messages for this long (Fri 17:00–Mon 09:00) → alarm fires"
+#: dashboard/templates/alarm_config.html:204
+msgid "Inactivity duration before alarm fires for the current time period"
 msgstr ""
-"No messages for this long over the weekend (Fri 17:00–Mon 09:00) → goes "
-"off, butt"
 
-#: dashboard/templates/alarm_config.html:255
-#, fuzzy
+#: dashboard/templates/alarm_config.html:247
 msgid "e.g. PHW HL7 Server"
-msgstr "HL7 Server, Like"
+msgstr ""
 
-#: dashboard/templates/alarm_config.html:329
+#: dashboard/templates/alarm_config.html:335
 msgid "No Alarm 1 rules found. Add one below."
-msgstr "Can't find any Alarm 1 rules, butt. Add one down by there."
+msgstr ""
 
-#: dashboard/templates/alarm_config.html:357
-#, fuzzy
+#: dashboard/templates/alarm_config.html:363
 msgid "Auto-generated if blank"
-msgstr "Label what shows up (done for you if left blank), see"
+msgstr ""
 
-#: dashboard/templates/alarm_config.html:439
-#, fuzzy, python-brace-format, python-format
+#: dashboard/templates/alarm_config.html:457
 msgid "Remove server \"{id}\"? This will take effect when you save."
-msgstr "Chuck server \"%(id)s\" out, is it? It'll happen when you save, mun."
+msgstr ""
 
 #: dashboard/templates/alarms_overview.html:15
 msgid "Monitoring alerts for the Integration Hub"
-msgstr "Keeping an Eye on the Integration Hub, Like"
+msgstr ""
 
 #: dashboard/templates/alarms_overview.html:20
 msgid "Auto-refresh active"
-msgstr "Refreshing itself now, isn't it"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:62
+#: dashboard/templates/alarms_overview.html:65
 msgid "HL7 server message inactivity monitoring"
-msgstr "Watching HL7 servers for quiet, like"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:73
-#: dashboard/templates/alarms_overview.html:149
-#: dashboard/templates/alarms_overview.html:225
+#: dashboard/templates/alarms_overview.html:78
+#: dashboard/templates/alarms_overview.html:163
+#: dashboard/templates/alarms_overview.html:248
+#: dashboard/templates/index.html:225 dashboard/templates/index.html:296
+#: dashboard/templates/index.html:363
 msgid "All OK"
-msgstr "All Tidy, Mun"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:74
-#: dashboard/templates/alarms_overview.html:150
-#: dashboard/templates/alarms_overview.html:226
+#: dashboard/templates/alarms_overview.html:79
+#: dashboard/templates/alarms_overview.html:164
+#: dashboard/templates/alarms_overview.html:249
+#: dashboard/templates/index.html:227 dashboard/templates/index.html:298
+#: dashboard/templates/index.html:365
 msgid "Not Configured"
-msgstr "Not Sorted Yet, Like"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:101
+#: dashboard/templates/alarms_overview.html:110
 msgid "No servers have been configured for this alarm yet."
-msgstr "No servers sorted for this alarm yet, butt."
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:106
-#: dashboard/templates/alarms_overview.html:182
-#: dashboard/templates/alarms_overview.html:258
+#: dashboard/templates/alarms_overview.html:115
+#: dashboard/templates/alarms_overview.html:200
+#: dashboard/templates/alarms_overview.html:285
+#: dashboard/templates/index.html:255 dashboard/templates/index.html:326
+#: dashboard/templates/index.html:393
 msgid "View Details"
-msgstr "Have a Proper Look"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:138
+#: dashboard/templates/alarms_overview.html:150
 msgid "Fires when outgoing messages sent drops at or below threshold"
-msgstr "Goes off when messages going out drops too low, see"
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:177
-#: dashboard/templates/alarms_overview.html:253
+#: dashboard/templates/alarms_overview.html:195
+#: dashboard/templates/alarms_overview.html:280
 msgid "No rules have been configured for this alarm yet."
-msgstr "Nothing sorted for this alarm yet, butt."
+msgstr ""
 
-#: dashboard/templates/alarms_overview.html:214
+#: dashboard/templates/alarms_overview.html:235
 msgid "Fires when MESSAGE_FAILED events meet or exceed threshold"
-msgstr "Goes off when too many messages fail, like"
+msgstr ""
 
-#: dashboard/templates/base.html:111
-msgid "Updated"
-msgstr "Sorted Now"
-
-#: dashboard/templates/base.html:128
+#: dashboard/templates/base.html:123
 msgid "Toggle navigation"
-msgstr "Open the nav, like"
+msgstr ""
 
-#: dashboard/templates/base.html:138 dashboard/templates/index.html:3
+#: dashboard/templates/base.html:133 dashboard/templates/index.html:3
 msgid "Overview"
-msgstr "Overview, Innit"
+msgstr ""
 
-#: dashboard/templates/base.html:145
+#: dashboard/templates/base.html:140
 msgid "Flows"
-msgstr "Flows, Like"
+msgstr ""
 
-#: dashboard/templates/base.html:152 dashboard/templates/service_bus.html:3
+#: dashboard/templates/base.html:147 dashboard/templates/service_bus.html:3
 msgid "Service Bus"
-msgstr "Service Bus, See"
+msgstr ""
 
-#: dashboard/templates/base.html:159 dashboard/templates/exceptions.html:3
+#: dashboard/templates/base.html:154 dashboard/templates/exceptions.html:3
 #: dashboard/templates/trace.html:73 dashboard/templates/trace.html:107
 msgid "Exceptions"
-msgstr "Errors, Mun"
+msgstr ""
 
-#: dashboard/templates/base.html:166 dashboard/templates/messages.html:3
+#: dashboard/templates/base.html:161 dashboard/templates/messages.html:3
 msgid "Messages"
-msgstr "Messages, Like"
+msgstr ""
 
-#: dashboard/templates/base.html:173
+#: dashboard/templates/base.html:168 dashboard/templates/index.html:187
 msgid "Alarms"
-msgstr "Alarms, Butt"
+msgstr ""
+
+#: dashboard/templates/base.html:178
+msgid "Updated"
+msgstr ""
+
+#: dashboard/templates/base.html:184
+msgid "Health Status"
+msgstr ""
 
 #: dashboard/templates/base.html:185
 msgid "ALL HEALTHY"
-msgstr "ALL TIDY, INNIT"
+msgstr ""
 
 #: dashboard/templates/base.html:186
 msgid "WARNINGS"
-msgstr "WATCH OUT, LIKE"
+msgstr ""
 
 #: dashboard/templates/base.html:187
 msgid "CRITICAL"
-msgstr "GONE WRONG, MUN"
+msgstr ""
 
 #: dashboard/templates/base.html:188
 msgid "UNKNOWN"
-msgstr "NO IDEA, IS IT"
+msgstr ""
 
-#: dashboard/templates/base.html:193
-msgid "LIVE"
-msgstr "LIVE"
-
+#: dashboard/templates/base.html:192
 msgid "Environment"
-msgstr "Amgylchedd, innit"
+msgstr ""
 
-msgid "Health Status"
-msgstr "Statws Iechyd, like"
-
-#: dashboard/templates/base.html:196
+#: dashboard/templates/base.html:198
 msgid "Toggle light/dark theme"
-msgstr "Light or dark, like"
+msgstr ""
 
-#: dashboard/templates/base.html:204
+#: dashboard/templates/base.html:206
 msgid "Switch to English"
-msgstr "Switch to English, butt"
+msgstr ""
 
-#: dashboard/templates/base.html:204
+#: dashboard/templates/base.html:206
 msgid "Switch to Welsh"
-msgstr "Newid i'r Gymraeg, innit"
+msgstr ""
 
-#: dashboard/templates/base.html:220
+#: dashboard/templates/base.html:222
 msgid "NHS Wales — Integration Hub Dashboard"
-msgstr "NHS Wales — Integration Hub, Tidy"
+msgstr ""
 
-#: dashboard/templates/base.html:221
+#: dashboard/templates/base.html:223
 msgid "Powered by Azure Service Bus & Application Insights"
-msgstr "Running on Azure Service Bus & Application Insights, innit"
-
-#: dashboard/templates/base.html:320
-msgid "Unsaved Changes"
-msgstr "You Haven't Saved, Have You"
-
-#: dashboard/templates/base.html:323
-msgid "You have changes that haven't been saved yet."
-msgstr "You've got changes that haven't been saved yet, mun."
+msgstr ""
 
 #: dashboard/templates/base.html:330
+msgid "Unsaved Changes"
+msgstr ""
+
+#: dashboard/templates/base.html:333
+msgid "You have changes that haven't been saved yet."
+msgstr ""
+
+#: dashboard/templates/base.html:340
 msgid ""
 "Would you like to stay on this page and save your changes, or leave and "
 "discard them?"
-msgstr "Do you want to stay by here and save, or go and chuck it all away, like?"
+msgstr ""
 
-#: dashboard/templates/base.html:342
+#: dashboard/templates/base.html:352
 msgid "Leave without saving"
-msgstr "Go and lose it all"
+msgstr ""
 
-#: dashboard/templates/base.html:350
+#: dashboard/templates/base.html:360
 msgid "Stay & save"
-msgstr "Stay and sort it"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:12
 msgid "Application Exceptions"
-msgstr "App Errors, Mun"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:14
 #, python-format
 msgid "Last %(hours)s hours — %(count)s exception(s)"
-msgstr "Last %(hours)s hours — %(count)s error(s), like"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:18
 msgid "Show last"
-msgstr "Show last, see"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:37
 msgid "Total Exceptions"
-msgstr "Errors in Total"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:44
 msgid "Critical (Sev 1)"
-msgstr "Bad, Like (Sev 1)"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:51
 msgid "Error (Sev 2)"
-msgstr "Gone Wrong (Sev 2)"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:58
 msgid "Warning (Sev 3)"
-msgstr "Watch Out (Sev 3)"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:66
 msgid "Exception Log"
-msgstr "Error Log, Mun"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:67
 #: dashboard/templates/exceptions.html:125
 msgid "Sorted by most recent"
-msgstr "Latest first, innit"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:79
 msgid "Sev"
-msgstr "Bad?"
+msgstr ""
 
-#: dashboard/templates/exceptions.html:90 dashboard/templates/index.html:204
+#: dashboard/templates/exceptions.html:90 dashboard/templates/index.html:444
 msgid "View trace"
-msgstr "Have a look at the trace"
+msgstr ""
 
-#: dashboard/templates/exceptions.html:92 dashboard/templates/index.html:206
+#: dashboard/templates/exceptions.html:92 dashboard/templates/index.html:446
 msgid "trace"
-msgstr "trace, like"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:106
 msgid "No exceptions"
-msgstr "Nothing wrong, butt"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:109
 #: dashboard/templates/messages.html:149
 msgid "Azure Log Analytics credentials are not configured."
-msgstr "Azure Log Analytics credentials aren't sorted, mun."
+msgstr ""
 
 #: dashboard/templates/exceptions.html:111
 #, python-format
 msgid "No exceptions were found in the last %(hours)s hours."
-msgstr "Nothing went wrong in the last %(hours)s hours, fair play."
+msgstr ""
 
 #: dashboard/templates/exceptions.html:123
-#, fuzzy, python-brace-format, python-format
 msgid "Severity {sev} only"
-msgstr "How bad %(sev)s only, like"
+msgstr ""
 
 #: dashboard/templates/exceptions.html:124
-#, fuzzy
 msgid "Show all"
-msgstr "Show last, see"
+msgstr ""
 
 #: dashboard/templates/flows.html:3
 msgid "Flow Detail"
-msgstr "Flow Detail, Like"
+msgstr ""
 
-#: dashboard/templates/flows.html:16 dashboard/templates/index.html:95
+#: dashboard/templates/flows.html:16 dashboard/templates/index.html:118
 msgid "Integration Flows"
-msgstr "Integration Flows, Mun"
+msgstr ""
 
 #: dashboard/templates/flows.html:18
 msgid "Per-flow queue depths, health status and container metrics"
-msgstr "Queue depths, health and container metrics for each flow, see"
+msgstr ""
 
-#: dashboard/templates/flows.html:21 dashboard/templates/index.html:22
+#: dashboard/templates/flows.html:21 dashboard/templates/index.html:45
 msgid "Last updated:"
-msgstr "Last had a look:"
+msgstr ""
 
-#: dashboard/templates/flows.html:24 dashboard/templates/index.html:25
+#: dashboard/templates/flows.html:24 dashboard/templates/index.html:48
 msgid "s"
-msgstr "s"
+msgstr ""
 
 #: dashboard/templates/flows.html:38
 msgid "Active Msgs"
-msgstr "Messages On The Go"
+msgstr ""
 
 #: dashboard/templates/flows.html:47
 msgid "Dead-Letter"
-msgstr "Dead-Letter, Like"
+msgstr ""
 
 #: dashboard/templates/flows.html:61 dashboard/templates/flows.html:82
-#: dashboard/templates/index.html:109
+#: dashboard/templates/index.html:132
 msgid "Warning"
-msgstr "Watch Out"
+msgstr ""
 
 #: dashboard/templates/flows.html:68 dashboard/templates/flows.html:83
-#: dashboard/templates/index.html:110
+#: dashboard/templates/index.html:133
 msgid "Critical"
-msgstr "Gone Wrong"
+msgstr ""
 
-#: dashboard/templates/flows.html:77 dashboard/templates/index.html:104
+#: dashboard/templates/flows.html:77 dashboard/templates/index.html:127
 msgid "Search flows…"
-msgstr "Search flows, mun…"
+msgstr ""
 
-#: dashboard/templates/flows.html:80 dashboard/templates/index.html:107
+#: dashboard/templates/flows.html:80 dashboard/templates/index.html:130
+#: dashboard/templates/index.html:630 dashboard/templates/index.html:641
 msgid "All"
-msgstr "All of Them"
+msgstr ""
 
 #: dashboard/templates/flows.html:86 dashboard/templates/flows.html:88
-#: dashboard/templates/index.html:159
+#: dashboard/templates/index.html:182
 msgid "No flows match your search."
-msgstr "Can't find any flows like that, butt."
+msgstr ""
 
 #: dashboard/templates/flows.html:114
 msgid "flows"
-msgstr "flows, like"
+msgstr ""
 
 #: dashboard/templates/flows.html:114
 msgid "flow"
-msgstr "flow, see"
+msgstr ""
 
 #: dashboard/templates/flows.html:115
 msgid "Active:"
-msgstr "On the go:"
+msgstr ""
 
 #: dashboard/templates/flows.html:117
 msgid "DLQ:"
-msgstr "Dead-Letter:"
+msgstr ""
 
 #: dashboard/templates/flows.html:160
 msgid "Message Flow"
-msgstr "Message Flow, Innit"
+msgstr ""
 
 #: dashboard/templates/flows.html:168 dashboard/templates/flows.html:239
 msgid "HL7 Server"
-msgstr "HL7 Server, Like"
+msgstr ""
 
 #: dashboard/templates/flows.html:179
 msgid "TOPIC"
-msgstr "TOPIC"
+msgstr ""
 
 #: dashboard/templates/flows.html:190
 msgid "SUBSCRIPTIONS"
-msgstr "SUBSCRIPTIONS"
+msgstr ""
 
 #: dashboard/templates/flows.html:191
 msgid "senders"
-msgstr "senders, see"
+msgstr ""
 
 #: dashboard/templates/flows.html:209
 msgid "Subscriptions"
-msgstr "Subscriptions, Like"
+msgstr ""
 
 #: dashboard/templates/flows.html:220 dashboard/templates/flows.html:325
-#: dashboard/templates/flows.html:353 dashboard/templates/index.html:121
-#: dashboard/templates/index.html:239 dashboard/templates/service_bus.html:116
+#: dashboard/templates/flows.html:353 dashboard/templates/index.html:144
+#: dashboard/templates/index.html:479 dashboard/templates/service_bus.html:116
 msgid "Active"
-msgstr "Active"
+msgstr ""
 
 #: dashboard/templates/flows.html:224 dashboard/templates/flows.html:329
-#: dashboard/templates/flows.html:357 dashboard/templates/index.html:122
-#: dashboard/templates/index.html:240 dashboard/templates/service_bus.html:117
+#: dashboard/templates/flows.html:357 dashboard/templates/index.html:145
+#: dashboard/templates/index.html:480 dashboard/templates/service_bus.html:117
 msgid "DLQ"
-msgstr "DLQ"
+msgstr ""
 
 #: dashboard/templates/flows.html:251
 msgid "PRE-QUEUE"
-msgstr "PRE-QUEUE"
+msgstr ""
 
 #: dashboard/templates/flows.html:256 dashboard/templates/flows.html:285
 msgid "active"
-msgstr "active, innit"
+msgstr ""
 
 #: dashboard/templates/flows.html:268
 msgid "TRANSFORMER"
-msgstr "TRANSFORMER"
+msgstr ""
 
 #: dashboard/templates/flows.html:280
 msgid "POST-QUEUE"
-msgstr "POST-QUEUE"
+msgstr ""
 
 #: dashboard/templates/flows.html:296
 msgid "SENDER"
-msgstr "SENDER"
+msgstr ""
 
 #: dashboard/templates/flows.html:297
 msgid "HL7 Sender"
-msgstr "HL7 Sender, Like"
+msgstr ""
 
 #: dashboard/templates/flows.html:332
 msgid "Pre"
-msgstr "Pre"
+msgstr ""
 
 #: dashboard/templates/flows.html:333 dashboard/templates/flows.html:361
 msgid "Stage"
-msgstr "Stage, See"
+msgstr ""
 
 #: dashboard/templates/flows.html:340 dashboard/templates/flows.html:368
 msgid "Queue not found in namespace"
-msgstr "Can't find that queue, butt"
+msgstr ""
 
 #: dashboard/templates/flows.html:360
 msgid "Post"
-msgstr "Post"
+msgstr ""
 
 #: dashboard/templates/flows.html:377
 msgid "Container Apps"
-msgstr "Container Apps, Like"
+msgstr ""
 
-#: dashboard/templates/flows.html:384
+#: dashboard/templates/flows.html:389 dashboard/templates/flows.html:415
 msgid "CPU"
-msgstr "CPU"
+msgstr ""
 
-#: dashboard/templates/flows.html:389
+#: dashboard/templates/flows.html:394 dashboard/templates/flows.html:419
 msgid "Memory"
-msgstr "Memory"
+msgstr ""
 
-#: dashboard/templates/flows.html:395
+#: dashboard/templates/flows.html:400
 msgid "replica(s)"
-msgstr "replica(s), innit"
+msgstr ""
 
-#: dashboard/templates/flows.html:543 dashboard/templates/flows.html:551
-#: dashboard/templates/index.html:154
+#: dashboard/templates/flows.html:405
+msgid "History"
+msgstr ""
+
+#: dashboard/templates/flows.html:569 dashboard/templates/flows.html:577
+#: dashboard/templates/index.html:177
 msgid "No flow data available — check Azure credentials"
-msgstr "No flow data, mun — check your Azure credentials, like"
+msgstr ""
 
 #: dashboard/templates/flows_config.html:44
 msgid "Street Lamp Simulator"
-msgstr "Street Lamp Simulator, Tidy"
+msgstr ""
 
 #: dashboard/templates/flows_config.html:48
 msgid "👆 Drag · 🤏 Pinch zoom · ESC to close"
-msgstr "👆 Drag it · 🤏 Pinch to zoom · ESC to close it, like"
+msgstr ""
 
-#: dashboard/templates/index.html:17
-msgid "Mission Control"
-msgstr "Mission Control, Innit"
+#: dashboard/templates/index.html:10 dashboard/templates/index.html:529
+msgid "All queues healthy"
+msgstr ""
 
-#: dashboard/templates/index.html:19
-msgid "Real-time view of all HL7 integration flows"
-msgstr "Live look at all the HL7 flows, see"
-
-#: dashboard/templates/index.html:27
-msgid "Refresh now"
-msgstr "Have another look now"
+#: dashboard/templates/index.html:23
+msgid "Monitoring Dashboard"
+msgstr ""
 
 #: dashboard/templates/index.html:40
+msgid "Mission Control"
+msgstr ""
+
+#: dashboard/templates/index.html:42
+msgid "Real-time view of all HL7 integration flows"
+msgstr ""
+
+#: dashboard/templates/index.html:50
+msgid "Refresh now"
+msgstr ""
+
+#: dashboard/templates/index.html:63
 msgid "Active Messages"
-msgstr "Messages On The Go"
+msgstr ""
 
-#: dashboard/templates/index.html:51
+#: dashboard/templates/index.html:74
 msgid "Dead-Letter Messages"
-msgstr "Dead-Letter Messages, Like"
+msgstr ""
 
-#: dashboard/templates/index.html:61
+#: dashboard/templates/index.html:84
 msgid "Exceptions (1h)"
-msgstr "Errors (1h), Mun"
+msgstr ""
 
-#: dashboard/templates/index.html:69
+#: dashboard/templates/index.html:92
 msgid "Flows Healthy"
-msgstr "Flows All Tidy"
+msgstr ""
 
-#: dashboard/templates/index.html:78
+#: dashboard/templates/index.html:101
 msgid "Flows Warning"
-msgstr "Flows to Watch Out"
+msgstr ""
 
-#: dashboard/templates/index.html:87
+#: dashboard/templates/index.html:110
 msgid "Flows Critical"
-msgstr "Flows Gone Wrong"
-
-#: dashboard/templates/index.html:97
-msgid "Detailed View"
-msgstr "Proper Look, Like"
-
-#: dashboard/templates/index.html:119
-msgid "Flow"
-msgstr "Flow, Innit"
+msgstr ""
 
 #: dashboard/templates/index.html:120
+msgid "Detailed View"
+msgstr ""
+
+#: dashboard/templates/index.html:142 dashboard/templates/index.html:570
+msgid "Flow"
+msgstr ""
+
+#: dashboard/templates/index.html:143
 msgid "Route"
-msgstr "Route, See"
+msgstr ""
 
-#: dashboard/templates/index.html:169
+#: dashboard/templates/index.html:189
+msgid "All Alarms"
+msgstr ""
+
+#: dashboard/templates/index.html:213
+msgid "Message Inactivity"
+msgstr ""
+
+#: dashboard/templates/index.html:249 dashboard/templates/index.html:320
+#: dashboard/templates/index.html:387
+msgid "No rules configured."
+msgstr ""
+
+#: dashboard/templates/index.html:249 dashboard/templates/index.html:320
+#: dashboard/templates/index.html:387
+msgid "No data available."
+msgstr ""
+
+#: dashboard/templates/index.html:284
+msgid "Outgoing Volume"
+msgstr ""
+
+#: dashboard/templates/index.html:351
+msgid "Processing Failures"
+msgstr ""
+
+#: dashboard/templates/index.html:409
 msgid "Recent Exceptions"
-msgstr "Recent Errors, Mun"
+msgstr ""
 
-#: dashboard/templates/index.html:169
+#: dashboard/templates/index.html:409
 msgid "last hour"
-msgstr "last hour, like"
+msgstr ""
 
-#: dashboard/templates/index.html:171
+#: dashboard/templates/index.html:411
 msgid "View All"
-msgstr "See All of Them"
+msgstr ""
 
-#: dashboard/templates/index.html:179
+#: dashboard/templates/index.html:419
 msgid "Time"
-msgstr "Time, Like"
+msgstr ""
 
-#: dashboard/templates/index.html:180 dashboard/templates/trace.html:114
+#: dashboard/templates/index.html:420 dashboard/templates/trace.html:114
 #: dashboard/templates/trace.html:149
 msgid "App"
-msgstr "App, See"
+msgstr ""
 
-#: dashboard/templates/index.html:181 dashboard/templates/trace.html:115
+#: dashboard/templates/index.html:421 dashboard/templates/trace.html:115
 msgid "Type"
-msgstr "Type"
+msgstr ""
 
-#: dashboard/templates/index.html:182 dashboard/templates/trace.html:116
+#: dashboard/templates/index.html:422 dashboard/templates/trace.html:116
 #: dashboard/templates/trace.html:151
 msgid "Message"
-msgstr "Message"
+msgstr ""
 
-#: dashboard/templates/index.html:183 dashboard/templates/trace.html:3
+#: dashboard/templates/index.html:423 dashboard/templates/trace.html:3
 #: dashboard/templates/trace.html:13
 msgid "Trace"
-msgstr "Trace, Like"
+msgstr ""
 
-#: dashboard/templates/index.html:217
+#: dashboard/templates/index.html:457
 msgid "No exceptions in the last hour"
-msgstr "Nothing went wrong in the last hour, fair play"
+msgstr ""
 
-#: dashboard/templates/index.html:228
+#: dashboard/templates/index.html:468
 msgid "Queue Health"
-msgstr "Queue Health, See"
+msgstr ""
 
-#: dashboard/templates/index.html:230
+#: dashboard/templates/index.html:470
 msgid "Full View"
-msgstr "Full Look, Like"
+msgstr ""
 
-#: dashboard/templates/index.html:238
+#: dashboard/templates/index.html:478
 msgid "Queue Name"
-msgstr "Queue Name, Mun"
+msgstr ""
 
-#: dashboard/templates/index.html:241
+#: dashboard/templates/index.html:481
 msgid "Sched."
-msgstr "Sched."
+msgstr ""
 
-#: dashboard/templates/index.html:266
+#: dashboard/templates/index.html:539
 msgid "Queue data unavailable — check Azure Service Bus credentials"
-msgstr "No queue data, butt — check your Azure Service Bus credentials, like"
+msgstr ""
+
+#: dashboard/templates/index.html:549
+msgid "Retry Delays"
+msgstr ""
+
+#: dashboard/templates/index.html:551
+msgid "Shows flows with retry wait over 60 seconds observed in the last hour"
+msgstr ""
+
+#: dashboard/templates/index.html:559
+msgid "Retry Wait by Flow (Last 1 Hour, Over 60s)"
+msgstr ""
+
+#: dashboard/templates/index.html:562
+msgid "Flows Reporting:"
+msgstr ""
+
+#: dashboard/templates/index.html:563
+msgid "Over 60s:"
+msgstr ""
+
+#: dashboard/templates/index.html:571
+msgid "Current Wait"
+msgstr ""
+
+#: dashboard/templates/index.html:572
+msgid "Attempt"
+msgstr ""
+
+#: dashboard/templates/index.html:573 dashboard/templates/service_bus.html:115
+msgid "Queue"
+msgstr ""
+
+#: dashboard/templates/index.html:574
+msgid "Last Seen"
+msgstr ""
+
+#: dashboard/templates/index.html:596
+msgid "1 min +"
+msgstr ""
+
+#: dashboard/templates/index.html:598
+msgid "Observed"
+msgstr ""
+
+#: dashboard/templates/index.html:600
+msgid "Unavailable"
+msgstr ""
+
+#: dashboard/templates/index.html:608
+msgid "No retry delays over 60 seconds were observed in the last hour."
+msgstr ""
+
+#: dashboard/templates/index.html:619
+msgid "HL7 Message Throughput"
+msgstr ""
+
+#: dashboard/templates/index.html:626
+msgid "Health Board:"
+msgstr ""
+
+#: dashboard/templates/index.html:637
+msgid "Service:"
+msgstr ""
+
+#: dashboard/templates/index.html:649
+msgid "Time Range:"
+msgstr ""
+
+#: dashboard/templates/index.html:651
+msgid "24h"
+msgstr ""
+
+#: dashboard/templates/index.html:652
+msgid "3d"
+msgstr ""
+
+#: dashboard/templates/index.html:653
+msgid "7d"
+msgstr ""
+
+#: dashboard/templates/index.html:654
+msgid "14d"
+msgstr ""
+
+#: dashboard/templates/index.html:655
+msgid "30d"
+msgstr ""
+
+#: dashboard/templates/index.html:662 dashboard/templates/messages.html:90
+msgid "Loading metrics…"
+msgstr ""
 
 #: dashboard/templates/messages.html:12
 msgid "HL7 Messages"
-msgstr "HL7 Messages, Like"
+msgstr ""
 
 #: dashboard/templates/messages.html:14
 msgid "Messages processed today via Application Insights custom events"
-msgstr "Messages done today through Application Insights, see"
+msgstr ""
 
 #: dashboard/templates/messages.html:25
 msgid "Filtered by queue:"
-msgstr "Filtered by queue, like:"
+msgstr ""
 
 #: dashboard/templates/messages.html:29
 msgid "Clear filter"
-msgstr "Clear it, Mun"
+msgstr ""
 
 #: dashboard/templates/messages.html:41
 msgid "Messages Today"
-msgstr "Messages Today, Innit"
+msgstr ""
 
 #: dashboard/templates/messages.html:49
 msgid "Distinct Apps"
-msgstr "Different Apps, Like"
+msgstr ""
 
 #: dashboard/templates/messages.html:57
 msgid "Event Types"
-msgstr "Types of Events, See"
+msgstr ""
 
 #: dashboard/templates/messages.html:65
 msgid "Service Bus Messages"
-msgstr "Service Bus Messages, Mun"
+msgstr ""
 
 #: dashboard/templates/messages.html:69
 msgid "Show data for the last:"
-msgstr "Show data for the last, like:"
+msgstr ""
 
 #: dashboard/templates/messages.html:72
 msgid "1 hour"
-msgstr "1 hour, innit"
+msgstr ""
 
 #: dashboard/templates/messages.html:73
 msgid "6 hours"
-msgstr "6 hours, like"
+msgstr ""
 
 #: dashboard/templates/messages.html:74
 msgid "12 hours"
-msgstr "12 hours, see"
+msgstr ""
 
 #: dashboard/templates/messages.html:75
 msgid "1 day"
-msgstr "1 day, mun"
+msgstr ""
 
 #: dashboard/templates/messages.html:76
 msgid "7 days"
-msgstr "7 days, butt"
+msgstr ""
 
 #: dashboard/templates/messages.html:77
 msgid "30 days"
-msgstr "30 days, fair play"
+msgstr ""
 
 #: dashboard/templates/messages.html:81
 msgid "Reset Zoom"
-msgstr "Zoom back out, like"
-
-#: dashboard/templates/messages.html:90
-msgid "Loading metrics…"
-msgstr "Loading metrics now, mun…"
+msgstr ""
 
 #: dashboard/templates/messages.html:97
 msgid "Message Log"
-msgstr "Message Log, See"
+msgstr ""
 
 #: dashboard/templates/messages.html:101
 msgid "Filter by application…"
-msgstr "Filter by app, like…"
+msgstr ""
 
 #: dashboard/templates/messages.html:103
 msgid "messages"
-msgstr "messages, see"
+msgstr ""
 
 #: dashboard/templates/messages.html:110 dashboard/templates/trace.html:113
 #: dashboard/templates/trace.html:148
 msgid "Timestamp"
-msgstr "Time it happened, like"
+msgstr ""
 
 #: dashboard/templates/messages.html:111
 msgid "Event"
-msgstr "Event, Mun"
+msgstr ""
 
 #: dashboard/templates/messages.html:112
 msgid "Application"
-msgstr "Application, Like"
+msgstr ""
 
 #: dashboard/templates/messages.html:113
 msgid "Details"
-msgstr "Details, See"
+msgstr ""
 
 #: dashboard/templates/messages.html:146
 msgid "No messages found"
-msgstr "Can't find any messages, butt"
+msgstr ""
 
 #: dashboard/templates/messages.html:151
 msgid "No messages were processed today."
-msgstr "No messages have come through today, like."
+msgstr ""
 
 #: dashboard/templates/messages.html:174
-#, fuzzy, python-brace-format, python-format
 msgid "{visible} of {total} messages"
-msgstr "%(visible)s of %(total)s messages, see"
+msgstr ""
 
 #: dashboard/templates/messages.html:175
-#, fuzzy, python-brace-format, python-format
 msgid "{total} messages"
-msgstr "Last Message, See"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:12
 msgid "Azure Service Bus"
-msgstr "Azure Service Bus, Mun"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:14
 msgid "Queue depths, dead-letter counts and flow mapping"
-msgstr "Queue depths, dead-letters and flow mapping, see"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:35
 msgid "Total Active"
-msgstr "Total Active, Like"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:44
 msgid "Total DLQ"
-msgstr "Total Dead-Letters, Mun"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:51
 #: dashboard/templates/service_bus.html:118
 msgid "Scheduled"
-msgstr "Scheduled, Like"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:58
 msgid "Total Queues"
-msgstr "Queues in Total"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:65
 msgid "Warning Queues"
-msgstr "Queues to Watch Out"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:72
 msgid "Critical Queues"
-msgstr "Queues Gone Wrong"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:80
 msgid "Flow Summary"
-msgstr "Flow Summary, Innit"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:104
-#, fuzzy
 msgid "All Queues"
-msgstr "Queues in Total"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:108
 msgid "Queue Details"
-msgstr "Queue Details, See"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:109
 msgid "Click column headers to sort"
-msgstr "Click the headers to sort them, like"
-
-#: dashboard/templates/service_bus.html:115
-msgid "Queue"
-msgstr "Queue, Mun"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:119
 msgid "Total"
-msgstr "Total, Like"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:120
 msgid "Size"
-msgstr "Size, See"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:121
 msgid "Max"
-msgstr "Max, Innit"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:123
 msgid "Health"
-msgstr "Health, Like"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:161
 msgid "Service Bus data unavailable"
-msgstr "No Service Bus data, mun"
+msgstr ""
 
 #: dashboard/templates/service_bus.html:163
 msgid "Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file"
-msgstr "Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file, like"
+msgstr ""
 
 #: dashboard/templates/trace.html:17
 msgid "Back"
-msgstr "Back, Mun"
+msgstr ""
 
 #: dashboard/templates/trace.html:42
 msgid "Spans"
-msgstr "Spans, Like"
+msgstr ""
 
 #: dashboard/templates/trace.html:50
 msgid "Total Duration"
-msgstr "Total Duration, See"
+msgstr ""
 
 #: dashboard/templates/trace.html:61
 msgid "Apps Involved"
-msgstr "Apps in it, Like"
+msgstr ""
 
 #: dashboard/templates/trace.html:84
 msgid "Span Waterfall"
-msgstr "Span Waterfall, Innit"
+msgstr ""
 
 #: dashboard/templates/trace.html:140
 msgid "Trace Logs"
-msgstr "Trace Logs, See"
+msgstr ""
 
 #: dashboard/templates/trace.html:150
 msgid "Severity"
-msgstr "How Bad, Like"
+msgstr ""
 
 #: dashboard/templates/trace.html:177
 msgid "No trace found"
-msgstr "Can't find a trace, butt"
+msgstr ""
 
 #: dashboard/templates/trace.html:180
 msgid "This exception has no trace context — it was not part of a traced request."
 msgstr ""
-"This error has no trace on it, mun — it wasn't part of a traced request, "
-"like."
 
 #: dashboard/templates/trace.html:182
 msgid "No spans were found for operation ID:"
-msgstr "Can't find any spans for operation ID, see:"
+msgstr ""
 
 #~ msgid "Health Board"
 #~ msgstr "Health Board, Like"
@@ -1495,4 +1712,987 @@ msgstr "Can't find any spans for operation ID, see:"
 
 #~ msgid "Refreshing data…"
 #~ msgstr "Having a look now…"
+
+#~ msgid "Minecraft Classic"
+#~ msgstr "Minecraft Classic"
+
+#~ msgid "Close (Esc)"
+#~ msgstr "Close it, mun (Esc)"
+
+#~ msgid "ESC to close · Click inside to capture mouse"
+#~ msgstr "ESC to close · Click by here to grab the mouse, like"
+
+#~ msgid "Alarm 1 — Inactivity"
+#~ msgstr "Alarm 1 — Gone Quiet, Innit"
+
+#~ msgid "Alarm 1 — Message Inactivity"
+#~ msgstr "Alarm 1 — Messages Gone Quiet, Like"
+
+#~ msgid ""
+#~ "Workflows that have not received a "
+#~ "message within their configured threshold"
+#~ msgstr "Workflows what haven't had a message for too long, see"
+
+#~ msgid "Alarms Summary"
+#~ msgstr "Alarms Summary, Innit"
+
+#~ msgid "Configure"
+#~ msgstr "Sort It Out"
+
+#~ msgid "Refresh"
+#~ msgstr "Have Another Look"
+
+#~ msgid ""
+#~ "Log Analytics workspace is not "
+#~ "configured — last message times cannot"
+#~ " be retrieved."
+#~ msgstr ""
+#~ "Log Analytics isn't sorted, mun — "
+#~ "can't get the last message times, "
+#~ "like."
+
+#~ msgid "Last message data will show as"
+#~ msgstr "Last message data'll come up as"
+
+#~ msgid "Unknown"
+#~ msgstr "No Idea, Is It"
+
+#~ msgid "No alarms have been configured yet."
+#~ msgstr "Nothing's been sorted for alarms yet, butt."
+
+#~ msgid "Configure Alarms"
+#~ msgstr "Sort the Alarms Out"
+
+#~ msgid "All monitored workflows are within their inactivity threshold."
+#~ msgstr "All the workflows are tidy, like — no bother."
+
+#~ msgid "Monitored"
+#~ msgstr "Being Watched, It Is"
+
+#~ msgid "In Alarm"
+#~ msgstr "Kicking Off, Like"
+
+#~ msgid "Suppressed"
+#~ msgstr "Shushed, Innit"
+
+#~ msgid "Healthy"
+#~ msgstr "All Tidy"
+
+#~ msgid "Active period:"
+#~ msgstr "On the go now:"
+
+#~ msgid "Day (Mon–Fri 09:00–17:00)"
+#~ msgstr "Daytime (Mon–Fri 09:00–17:00)"
+
+#~ msgid "— day threshold applies"
+#~ msgstr "— day limit's on, like"
+
+#~ msgid "Evening (Mon–Fri 17:00–09:00)"
+#~ msgstr "Evening time (Mon–Fri 17:00–09:00)"
+
+#~ msgid "— evening threshold applies"
+#~ msgstr "— evening limit's on, mun"
+
+#~ msgid "Weekend (Fri 17:00 – Mon 09:00)"
+#~ msgstr "Weekend, like (Fri 17:00 – Mon 09:00)"
+
+#~ msgid "— weekend threshold applies"
+#~ msgstr "— weekend limit's on, butt"
+
+#~ msgid "Alarm 1's"
+#~ msgstr "Alarm 1's, mind"
+
+#~ msgid "Refreshed at"
+#~ msgstr "Had a look at"
+
+#~ msgid "Status"
+#~ msgstr "How's It Looking"
+
+#~ msgid "Rule"
+#~ msgstr "Rule, Is It"
+
+#~ msgid "Workflow ID"
+#~ msgstr "Workflow ID, Like"
+
+#~ msgid "Last Message"
+#~ msgstr "Last Message, See"
+
+#~ msgid "Time Since"
+#~ msgstr "How Long Ago"
+
+#~ msgid "Day"
+#~ msgstr "Day, Isn't It"
+
+#~ msgid "Evening"
+#~ msgstr "Evening, Like"
+
+#~ msgid "Weekend"
+#~ msgstr "Weekend, Mun"
+
+#~ msgid "Alerting Gap"
+#~ msgstr "Gap Before Shouting Again"
+
+#~ msgid "OK"
+#~ msgstr "Tidy"
+
+#~ msgid "ago"
+#~ msgstr "back, like"
+
+#~ msgid "min"
+#~ msgstr "min"
+
+#~ msgid "min left"
+#~ msgstr "min left, mind"
+
+#~ msgid "Alarm 2 — Outgoing Message Volume"
+#~ msgstr "Alarm 2 — Messages Going Out, Like"
+
+#~ msgid ""
+#~ "Fires when the count of outgoing "
+#~ "messages sent falls at or below "
+#~ "the configured threshold"
+#~ msgstr "Goes off when messages going out drops too low, see"
+
+#~ msgid ""
+#~ "Log Analytics workspace is not "
+#~ "configured — message counts cannot be"
+#~ " retrieved."
+#~ msgstr "Log Analytics isn't sorted, mun — can't count the messages, like."
+
+#~ msgid "Results will show as"
+#~ msgstr "Results'll come up as"
+
+#~ msgid "No Alarm 2 rules have been configured yet."
+#~ msgstr "Nothing's been sorted for Alarm 2 yet, butt."
+
+#~ msgid "Configure Alarm 2"
+#~ msgstr "Sort Alarm 2 Out"
+
+#~ msgid "All monitored flows are within their message volume threshold."
+#~ msgstr "All the flows are tidy, innit — messages looking good, like."
+
+#~ msgid "Alarm 2 Rules"
+#~ msgstr "Alarm 2 Rules, Mun"
+
+#~ msgid "Messages Sent"
+#~ msgstr "Messages Gone Out"
+
+#~ msgid "Threshold"
+#~ msgstr "Limit, Like"
+
+#~ msgid "Window"
+#~ msgstr "Time Window, See"
+
+#~ msgid "Alarm 2 Configuration"
+#~ msgstr "Alarm 2 — Sort It Out"
+
+#~ msgid "Configure Alarm 2 (outgoing message volume) settings per flow rule"
+#~ msgstr ""
+#~ "Sort out the settings for Alarm 2"
+#~ " (messages going out) for each flow,"
+#~ " like"
+
+#~ msgid "View Alarm 2"
+#~ msgstr "Have a Look at Alarm 2"
+
+#~ msgid "Configuration saved successfully."
+#~ msgstr "Sorted! Saved it, haven't we."
+
+#~ msgid "How Alarm 2 works"
+#~ msgstr "How Alarm 2 Works, Like"
+
+#~ msgid "The alarm queries"
+#~ msgstr "The alarm has a look in"
+
+#~ msgid "in Log Analytics for the"
+#~ msgstr "in Log Analytics for the"
+
+#~ msgid "metric, filtered by"
+#~ msgstr "metric, filtered by, see"
+
+#~ msgid "over the configured"
+#~ msgstr "over the configured, see"
+
+#~ msgid "It fires when the total count of messages sent is at or below the"
+#~ msgstr "Goes off when messages sent is at or below the, like"
+
+#~ msgid "Once fired, it will not re-fire until the"
+#~ msgstr "Once it goes off, won't shout again until the"
+
+#~ msgid "has elapsed."
+#~ msgstr "has gone by, see."
+
+#~ msgid "Alarm 2"
+#~ msgstr "Alarm 2, Like"
+
+#~ msgid "Enabled"
+#~ msgstr "On, Innit"
+
+#~ msgid "Disabled"
+#~ msgstr "Off, Like"
+
+#~ msgid "Email"
+#~ msgstr "Email, Mun"
+
+#~ msgid "Configure SMTP in .env to enable"
+#~ msgstr "Sort out SMTP in .env to get it going, like"
+
+#~ msgid "Remove this rule"
+#~ msgstr "Chuck This Rule Out"
+
+#~ msgid "Display Name"
+#~ msgstr "Name to Show, Like"
+
+#~ msgid "Human-readable label shown in the dashboard"
+#~ msgstr "Label what shows up on the dashboard, see"
+
+#~ msgid "e.g. phw-to-mpi"
+#~ msgstr "e.g. phw-to-mpi, like"
+
+#~ msgid "filter value"
+#~ msgstr "filtered by, like"
+
+#~ msgid "Lookback Window"
+#~ msgstr "How Far Back to Look"
+
+#~ msgid "Time window for the messages_sent query (e.g. 2880 = 2 days)"
+#~ msgstr "How far back to look for messages_sent (e.g. 2880 = 2 days), like"
+
+#~ msgid "Alarm fires when messages sent &lt;= this value"
+#~ msgstr "Goes off when messages sent is at or below this, mun"
+
+#~ msgid "Minimum gap between successive alarm fires"
+#~ msgstr "Least time before it goes off again, like"
+
+#~ msgid "New Rule"
+#~ msgstr "New Rule, Is It"
+
+#~ msgid "e.g. PIMS → MPI"
+#~ msgstr "e.g. PIMS → MPI, see"
+
+#~ msgid "Human-readable label (auto-generated if blank)"
+#~ msgstr "Label what shows up (done for you if left blank), see"
+
+#~ msgid "Add Rule"
+#~ msgstr "Add a Rule, Mun"
+
+#~ msgid "Save All Settings"
+#~ msgstr "Save the Lot, Innit"
+
+#~ msgid "No Alarm 2 rules found."
+#~ msgstr "Can't find any Alarm 2 rules, butt."
+
+#~ msgid "Remove rule \"{id}\"? This will take effect when you save."
+#~ msgstr "Chuck rule \"%(id)s\" out, is it? It'll happen when you save, mind."
+
+#~ msgid "Alarm 3 — Message Processing Failures"
+#~ msgstr "Alarm 3 — Messages Gone Wrong, Like"
+
+#~ msgid ""
+#~ "Fires when the count of MESSAGE_FAILED"
+#~ " events meets or exceeds the "
+#~ "configured threshold"
+#~ msgstr "Goes off when too many messages have failed, see"
+
+#~ msgid ""
+#~ "Log Analytics workspace is not "
+#~ "configured — failure counts cannot be"
+#~ " retrieved."
+#~ msgstr "Log Analytics isn't sorted, mun — can't get the failure counts, like."
+
+#~ msgid "No Alarm 3 rules have been configured yet."
+#~ msgstr "Nothing's been sorted for Alarm 3 yet, butt."
+
+#~ msgid "Configure Alarm 3"
+#~ msgstr "Sort Alarm 3 Out"
+
+#~ msgid ""
+#~ "No MESSAGE_FAILED events detected — all"
+#~ " monitored workflows are healthy."
+#~ msgstr "No failures, butt — all the workflows are looking tidy, like."
+
+#~ msgid "Alarm 3 Rules"
+#~ msgstr "Alarm 3 Rules, Mun"
+
+#~ msgid "Failures"
+#~ msgstr "Gone Wrong, Like"
+
+#~ msgid "Alarm 3 Configuration"
+#~ msgstr "Alarm 3 — Sort It Out"
+
+#~ msgid ""
+#~ "Configure Alarm 3 (message processing "
+#~ "failures) settings per workflow rule"
+#~ msgstr ""
+#~ "Sort out the settings for Alarm 3"
+#~ " (message failures) for each workflow, "
+#~ "like"
+
+#~ msgid "View Alarm 3"
+#~ msgstr "Have a Look at Alarm 3"
+
+#~ msgid "How Alarm 3 works"
+#~ msgstr "How Alarm 3 Works, Like"
+
+#~ msgid "in Log Analytics for"
+#~ msgstr "in Log Analytics for, see"
+
+#~ msgid "events,"
+#~ msgstr "events, mun,"
+
+#~ msgid "filtered by"
+#~ msgstr "filtered by, like"
+
+#~ msgid "It fires when the failure count is at or above the"
+#~ msgstr "Goes off when failures are at or above the, mun"
+
+#~ msgid "Alarm 3"
+#~ msgstr "Alarm 3, Like"
+
+#~ msgid "Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)"
+#~ msgstr "How far back to look for MESSAGE_FAILED (e.g. 15 = 15 minutes), like"
+
+#~ msgid "Alarm fires when failure count &gt;= this value"
+#~ msgstr "Goes off when failure count hits this or more, see"
+
+#~ msgid "e.g. PHW → MPI Failures"
+#~ msgstr "e.g. PHW → MPI Failures, like"
+
+#~ msgid "No Alarm 3 rules found."
+#~ msgstr "Can't find any Alarm 3 rules, butt."
+
+#~ msgid "Alarm Configuration"
+#~ msgstr "Alarm — Sort It Out"
+
+#~ msgid "Configure Alarm 1 (message inactivity) settings per HL7 server"
+#~ msgstr ""
+#~ "Sort out the settings for Alarm 1"
+#~ " (quiet messages) for each HL7 "
+#~ "server, like"
+
+#~ msgid "View Alarm 1"
+#~ msgstr "Have a Look at Alarm 1"
+
+#~ msgid "How Alarm 1 works"
+#~ msgstr "How Alarm 1 Works, Like"
+
+#~ msgid ""
+#~ "The alarm fires when an HL7 server"
+#~ " has received no messages for longer"
+#~ " than"
+#~ msgstr ""
+#~ "The alarm goes off when an HL7 "
+#~ "server hasn't had a message for "
+#~ "longer than, see"
+
+#~ msgid "the"
+#~ msgstr "the"
+
+#~ msgid "period threshold"
+#~ msgstr "limit for that time, like"
+
+#~ msgid "for the current time window (Day / Evening / Weekend)."
+#~ msgstr "for now (Day / Evening / Weekend), mun."
+
+#~ msgid "has elapsed"
+#~ msgstr "has gone by, like"
+
+#~ msgid "— this prevents repeated alerts for the same ongoing outage."
+#~ msgstr "— stops it going off again for the same bother, see."
+
+#~ msgid "Mon–Fri 08:00–17:00"
+#~ msgstr "Mon–Fri 08:00–17:00, like"
+
+#~ msgid "Mon–Fri 17:00–08:00"
+#~ msgstr "Mon–Fri 17:00–08:00, mun"
+
+#~ msgid "Fri 17:00 → Mon 09:00"
+#~ msgstr "Fri 17:00 → Mon 09:00, butt"
+
+#~ msgid "Alarm 1"
+#~ msgstr "Alarm 1, See"
+
+#~ msgid "Remove this server"
+#~ msgstr "Chuck This Server Out"
+
+#~ msgid "Day Threshold"
+#~ msgstr "Daytime Limit, Like"
+
+#~ msgid "No messages for this long (Mon–Fri 08:00–17:00) → alarm fires"
+#~ msgstr ""
+#~ "No messages for this long in the"
+#~ " day (Mon–Fri 08:00–17:00) → goes "
+#~ "off, innit"
+
+#~ msgid "Evening Threshold"
+#~ msgstr "Evening Limit, Like"
+
+#~ msgid "No messages for this long (Mon–Fri 17:00–08:00) → alarm fires"
+#~ msgstr ""
+#~ "No messages for this long in the"
+#~ " evening (Mon–Fri 17:00–08:00) → goes "
+#~ "off, see"
+
+#~ msgid "Weekend Threshold"
+#~ msgstr "Weekend Limit, Mun"
+
+#~ msgid "No messages for this long (Fri 17:00–Mon 09:00) → alarm fires"
+#~ msgstr ""
+#~ "No messages for this long over the"
+#~ " weekend (Fri 17:00–Mon 09:00) → goes"
+#~ " off, butt"
+
+#~ msgid "e.g. PHW HL7 Server"
+#~ msgstr "HL7 Server, Like"
+
+#~ msgid "No Alarm 1 rules found. Add one below."
+#~ msgstr "Can't find any Alarm 1 rules, butt. Add one down by there."
+
+#~ msgid "Auto-generated if blank"
+#~ msgstr "Label what shows up (done for you if left blank), see"
+
+#~ msgid "Remove server \"{id}\"? This will take effect when you save."
+#~ msgstr "Chuck server \"%(id)s\" out, is it? It'll happen when you save, mun."
+
+#~ msgid "Monitoring alerts for the Integration Hub"
+#~ msgstr "Keeping an Eye on the Integration Hub, Like"
+
+#~ msgid "Auto-refresh active"
+#~ msgstr "Refreshing itself now, isn't it"
+
+#~ msgid "HL7 server message inactivity monitoring"
+#~ msgstr "Watching HL7 servers for quiet, like"
+
+#~ msgid "All OK"
+#~ msgstr "All Tidy, Mun"
+
+#~ msgid "Not Configured"
+#~ msgstr "Not Sorted Yet, Like"
+
+#~ msgid "No servers have been configured for this alarm yet."
+#~ msgstr "No servers sorted for this alarm yet, butt."
+
+#~ msgid "View Details"
+#~ msgstr "Have a Proper Look"
+
+#~ msgid "Fires when outgoing messages sent drops at or below threshold"
+#~ msgstr "Goes off when messages going out drops too low, see"
+
+#~ msgid "No rules have been configured for this alarm yet."
+#~ msgstr "Nothing sorted for this alarm yet, butt."
+
+#~ msgid "Fires when MESSAGE_FAILED events meet or exceed threshold"
+#~ msgstr "Goes off when too many messages fail, like"
+
+#~ msgid "Updated"
+#~ msgstr "Sorted Now"
+
+#~ msgid "Toggle navigation"
+#~ msgstr "Open the nav, like"
+
+#~ msgid "Overview"
+#~ msgstr "Overview, Innit"
+
+#~ msgid "Flows"
+#~ msgstr "Flows, Like"
+
+#~ msgid "Service Bus"
+#~ msgstr "Service Bus, See"
+
+#~ msgid "Exceptions"
+#~ msgstr "Errors, Mun"
+
+#~ msgid "Messages"
+#~ msgstr "Messages, Like"
+
+#~ msgid "Alarms"
+#~ msgstr "Alarms, Butt"
+
+#~ msgid "ALL HEALTHY"
+#~ msgstr "ALL TIDY, INNIT"
+
+#~ msgid "WARNINGS"
+#~ msgstr "WATCH OUT, LIKE"
+
+#~ msgid "CRITICAL"
+#~ msgstr "GONE WRONG, MUN"
+
+#~ msgid "UNKNOWN"
+#~ msgstr "NO IDEA, IS IT"
+
+#~ msgid "LIVE"
+#~ msgstr "LIVE"
+
+#~ msgid "Environment"
+#~ msgstr "Amgylchedd, innit"
+
+#~ msgid "Health Status"
+#~ msgstr "Statws Iechyd, like"
+
+#~ msgid "Toggle light/dark theme"
+#~ msgstr "Light or dark, like"
+
+#~ msgid "Switch to English"
+#~ msgstr "Switch to English, butt"
+
+#~ msgid "Switch to Welsh"
+#~ msgstr "Newid i'r Gymraeg, innit"
+
+#~ msgid "NHS Wales — Integration Hub Dashboard"
+#~ msgstr "NHS Wales — Integration Hub, Tidy"
+
+#~ msgid "Powered by Azure Service Bus & Application Insights"
+#~ msgstr "Running on Azure Service Bus & Application Insights, innit"
+
+#~ msgid "Unsaved Changes"
+#~ msgstr "You Haven't Saved, Have You"
+
+#~ msgid "You have changes that haven't been saved yet."
+#~ msgstr "You've got changes that haven't been saved yet, mun."
+
+#~ msgid ""
+#~ "Would you like to stay on this "
+#~ "page and save your changes, or "
+#~ "leave and discard them?"
+#~ msgstr ""
+#~ "Do you want to stay by here "
+#~ "and save, or go and chuck it "
+#~ "all away, like?"
+
+#~ msgid "Leave without saving"
+#~ msgstr "Go and lose it all"
+
+#~ msgid "Stay & save"
+#~ msgstr "Stay and sort it"
+
+#~ msgid "Application Exceptions"
+#~ msgstr "App Errors, Mun"
+
+#~ msgid "Last %(hours)s hours — %(count)s exception(s)"
+#~ msgstr "Last %(hours)s hours — %(count)s error(s), like"
+
+#~ msgid "Show last"
+#~ msgstr "Show last, see"
+
+#~ msgid "Total Exceptions"
+#~ msgstr "Errors in Total"
+
+#~ msgid "Critical (Sev 1)"
+#~ msgstr "Bad, Like (Sev 1)"
+
+#~ msgid "Error (Sev 2)"
+#~ msgstr "Gone Wrong (Sev 2)"
+
+#~ msgid "Warning (Sev 3)"
+#~ msgstr "Watch Out (Sev 3)"
+
+#~ msgid "Exception Log"
+#~ msgstr "Error Log, Mun"
+
+#~ msgid "Sorted by most recent"
+#~ msgstr "Latest first, innit"
+
+#~ msgid "Sev"
+#~ msgstr "Bad?"
+
+#~ msgid "View trace"
+#~ msgstr "Have a look at the trace"
+
+#~ msgid "trace"
+#~ msgstr "trace, like"
+
+#~ msgid "No exceptions"
+#~ msgstr "Nothing wrong, butt"
+
+#~ msgid "Azure Log Analytics credentials are not configured."
+#~ msgstr "Azure Log Analytics credentials aren't sorted, mun."
+
+#~ msgid "No exceptions were found in the last %(hours)s hours."
+#~ msgstr "Nothing went wrong in the last %(hours)s hours, fair play."
+
+#~ msgid "Severity {sev} only"
+#~ msgstr "How bad %(sev)s only, like"
+
+#~ msgid "Show all"
+#~ msgstr "Show last, see"
+
+#~ msgid "Flow Detail"
+#~ msgstr "Flow Detail, Like"
+
+#~ msgid "Integration Flows"
+#~ msgstr "Integration Flows, Mun"
+
+#~ msgid "Per-flow queue depths, health status and container metrics"
+#~ msgstr "Queue depths, health and container metrics for each flow, see"
+
+#~ msgid "Last updated:"
+#~ msgstr "Last had a look:"
+
+#~ msgid "s"
+#~ msgstr "s"
+
+#~ msgid "Active Msgs"
+#~ msgstr "Messages On The Go"
+
+#~ msgid "Dead-Letter"
+#~ msgstr "Dead-Letter, Like"
+
+#~ msgid "Warning"
+#~ msgstr "Watch Out"
+
+#~ msgid "Critical"
+#~ msgstr "Gone Wrong"
+
+#~ msgid "Search flows…"
+#~ msgstr "Search flows, mun…"
+
+#~ msgid "All"
+#~ msgstr "All of Them"
+
+#~ msgid "No flows match your search."
+#~ msgstr "Can't find any flows like that, butt."
+
+#~ msgid "flows"
+#~ msgstr "flows, like"
+
+#~ msgid "flow"
+#~ msgstr "flow, see"
+
+#~ msgid "Active:"
+#~ msgstr "On the go:"
+
+#~ msgid "DLQ:"
+#~ msgstr "Dead-Letter:"
+
+#~ msgid "Message Flow"
+#~ msgstr "Message Flow, Innit"
+
+#~ msgid "HL7 Server"
+#~ msgstr "HL7 Server, Like"
+
+#~ msgid "TOPIC"
+#~ msgstr "TOPIC"
+
+#~ msgid "SUBSCRIPTIONS"
+#~ msgstr "SUBSCRIPTIONS"
+
+#~ msgid "senders"
+#~ msgstr "senders, see"
+
+#~ msgid "Subscriptions"
+#~ msgstr "Subscriptions, Like"
+
+#~ msgid "Active"
+#~ msgstr "Active"
+
+#~ msgid "DLQ"
+#~ msgstr "DLQ"
+
+#~ msgid "PRE-QUEUE"
+#~ msgstr "PRE-QUEUE"
+
+#~ msgid "active"
+#~ msgstr "active, innit"
+
+#~ msgid "TRANSFORMER"
+#~ msgstr "TRANSFORMER"
+
+#~ msgid "POST-QUEUE"
+#~ msgstr "POST-QUEUE"
+
+#~ msgid "SENDER"
+#~ msgstr "SENDER"
+
+#~ msgid "HL7 Sender"
+#~ msgstr "HL7 Sender, Like"
+
+#~ msgid "Pre"
+#~ msgstr "Pre"
+
+#~ msgid "Stage"
+#~ msgstr "Stage, See"
+
+#~ msgid "Queue not found in namespace"
+#~ msgstr "Can't find that queue, butt"
+
+#~ msgid "Post"
+#~ msgstr "Post"
+
+#~ msgid "Container Apps"
+#~ msgstr "Container Apps, Like"
+
+#~ msgid "CPU"
+#~ msgstr "CPU"
+
+#~ msgid "Memory"
+#~ msgstr "Memory"
+
+#~ msgid "replica(s)"
+#~ msgstr "replica(s), innit"
+
+#~ msgid "No flow data available — check Azure credentials"
+#~ msgstr "No flow data, mun — check your Azure credentials, like"
+
+#~ msgid "Street Lamp Simulator"
+#~ msgstr "Street Lamp Simulator, Tidy"
+
+#~ msgid "👆 Drag · 🤏 Pinch zoom · ESC to close"
+#~ msgstr "👆 Drag it · 🤏 Pinch to zoom · ESC to close it, like"
+
+#~ msgid "Mission Control"
+#~ msgstr "Mission Control, Innit"
+
+#~ msgid "Real-time view of all HL7 integration flows"
+#~ msgstr "Live look at all the HL7 flows, see"
+
+#~ msgid "Refresh now"
+#~ msgstr "Have another look now"
+
+#~ msgid "Active Messages"
+#~ msgstr "Messages On The Go"
+
+#~ msgid "Dead-Letter Messages"
+#~ msgstr "Dead-Letter Messages, Like"
+
+#~ msgid "Exceptions (1h)"
+#~ msgstr "Errors (1h), Mun"
+
+#~ msgid "Flows Healthy"
+#~ msgstr "Flows All Tidy"
+
+#~ msgid "Flows Warning"
+#~ msgstr "Flows to Watch Out"
+
+#~ msgid "Flows Critical"
+#~ msgstr "Flows Gone Wrong"
+
+#~ msgid "Detailed View"
+#~ msgstr "Proper Look, Like"
+
+#~ msgid "Flow"
+#~ msgstr "Flow, Innit"
+
+#~ msgid "Route"
+#~ msgstr "Route, See"
+
+#~ msgid "Recent Exceptions"
+#~ msgstr "Recent Errors, Mun"
+
+#~ msgid "last hour"
+#~ msgstr "last hour, like"
+
+#~ msgid "View All"
+#~ msgstr "See All of Them"
+
+#~ msgid "Time"
+#~ msgstr "Time, Like"
+
+#~ msgid "App"
+#~ msgstr "App, See"
+
+#~ msgid "Type"
+#~ msgstr "Type"
+
+#~ msgid "Message"
+#~ msgstr "Message"
+
+#~ msgid "Trace"
+#~ msgstr "Trace, Like"
+
+#~ msgid "No exceptions in the last hour"
+#~ msgstr "Nothing went wrong in the last hour, fair play"
+
+#~ msgid "Queue Health"
+#~ msgstr "Queue Health, See"
+
+#~ msgid "Full View"
+#~ msgstr "Full Look, Like"
+
+#~ msgid "Queue Name"
+#~ msgstr "Queue Name, Mun"
+
+#~ msgid "Sched."
+#~ msgstr "Sched."
+
+#~ msgid "Queue data unavailable — check Azure Service Bus credentials"
+#~ msgstr "No queue data, butt — check your Azure Service Bus credentials, like"
+
+#~ msgid "HL7 Messages"
+#~ msgstr "HL7 Messages, Like"
+
+#~ msgid "Messages processed today via Application Insights custom events"
+#~ msgstr "Messages done today through Application Insights, see"
+
+#~ msgid "Filtered by queue:"
+#~ msgstr "Filtered by queue, like:"
+
+#~ msgid "Clear filter"
+#~ msgstr "Clear it, Mun"
+
+#~ msgid "Messages Today"
+#~ msgstr "Messages Today, Innit"
+
+#~ msgid "Distinct Apps"
+#~ msgstr "Different Apps, Like"
+
+#~ msgid "Event Types"
+#~ msgstr "Types of Events, See"
+
+#~ msgid "Service Bus Messages"
+#~ msgstr "Service Bus Messages, Mun"
+
+#~ msgid "Show data for the last:"
+#~ msgstr "Show data for the last, like:"
+
+#~ msgid "1 hour"
+#~ msgstr "1 hour, innit"
+
+#~ msgid "6 hours"
+#~ msgstr "6 hours, like"
+
+#~ msgid "12 hours"
+#~ msgstr "12 hours, see"
+
+#~ msgid "1 day"
+#~ msgstr "1 day, mun"
+
+#~ msgid "7 days"
+#~ msgstr "7 days, butt"
+
+#~ msgid "30 days"
+#~ msgstr "30 days, fair play"
+
+#~ msgid "Reset Zoom"
+#~ msgstr "Zoom back out, like"
+
+#~ msgid "Loading metrics…"
+#~ msgstr "Loading metrics now, mun…"
+
+#~ msgid "Message Log"
+#~ msgstr "Message Log, See"
+
+#~ msgid "Filter by application…"
+#~ msgstr "Filter by app, like…"
+
+#~ msgid "messages"
+#~ msgstr "messages, see"
+
+#~ msgid "Timestamp"
+#~ msgstr "Time it happened, like"
+
+#~ msgid "Event"
+#~ msgstr "Event, Mun"
+
+#~ msgid "Application"
+#~ msgstr "Application, Like"
+
+#~ msgid "Details"
+#~ msgstr "Details, See"
+
+#~ msgid "No messages found"
+#~ msgstr "Can't find any messages, butt"
+
+#~ msgid "No messages were processed today."
+#~ msgstr "No messages have come through today, like."
+
+#~ msgid "{visible} of {total} messages"
+#~ msgstr "%(visible)s of %(total)s messages, see"
+
+#~ msgid "{total} messages"
+#~ msgstr "Last Message, See"
+
+#~ msgid "Azure Service Bus"
+#~ msgstr "Azure Service Bus, Mun"
+
+#~ msgid "Queue depths, dead-letter counts and flow mapping"
+#~ msgstr "Queue depths, dead-letters and flow mapping, see"
+
+#~ msgid "Total Active"
+#~ msgstr "Total Active, Like"
+
+#~ msgid "Total DLQ"
+#~ msgstr "Total Dead-Letters, Mun"
+
+#~ msgid "Scheduled"
+#~ msgstr "Scheduled, Like"
+
+#~ msgid "Total Queues"
+#~ msgstr "Queues in Total"
+
+#~ msgid "Warning Queues"
+#~ msgstr "Queues to Watch Out"
+
+#~ msgid "Critical Queues"
+#~ msgstr "Queues Gone Wrong"
+
+#~ msgid "Flow Summary"
+#~ msgstr "Flow Summary, Innit"
+
+#~ msgid "All Queues"
+#~ msgstr "Queues in Total"
+
+#~ msgid "Queue Details"
+#~ msgstr "Queue Details, See"
+
+#~ msgid "Click column headers to sort"
+#~ msgstr "Click the headers to sort them, like"
+
+#~ msgid "Queue"
+#~ msgstr "Queue, Mun"
+
+#~ msgid "Total"
+#~ msgstr "Total, Like"
+
+#~ msgid "Size"
+#~ msgstr "Size, See"
+
+#~ msgid "Max"
+#~ msgstr "Max, Innit"
+
+#~ msgid "Health"
+#~ msgstr "Health, Like"
+
+#~ msgid "Service Bus data unavailable"
+#~ msgstr "No Service Bus data, mun"
+
+#~ msgid "Check AZURE_SERVICE_BUS_NAMESPACE and credentials in your .env file"
+#~ msgstr ""
+#~ "Check AZURE_SERVICE_BUS_NAMESPACE and credentials"
+#~ " in your .env file, like"
+
+#~ msgid "Back"
+#~ msgstr "Back, Mun"
+
+#~ msgid "Spans"
+#~ msgstr "Spans, Like"
+
+#~ msgid "Total Duration"
+#~ msgstr "Total Duration, See"
+
+#~ msgid "Apps Involved"
+#~ msgstr "Apps in it, Like"
+
+#~ msgid "Span Waterfall"
+#~ msgstr "Span Waterfall, Innit"
+
+#~ msgid "Trace Logs"
+#~ msgstr "Trace Logs, See"
+
+#~ msgid "Severity"
+#~ msgstr "How Bad, Like"
+
+#~ msgid "No trace found"
+#~ msgstr "Can't find a trace, butt"
+
+#~ msgid ""
+#~ "This exception has no trace context "
+#~ "— it was not part of a "
+#~ "traced request."
+#~ msgstr ""
+#~ "This error has no trace on it, "
+#~ "mun — it wasn't part of a "
+#~ "traced request, like."
+
+#~ msgid "No spans were found for operation ID:"
+#~ msgstr "Can't find any spans for operation ID, see:"
 

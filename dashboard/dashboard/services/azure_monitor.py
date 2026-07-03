@@ -183,6 +183,220 @@ def get_messages_today(
         return []
 
 
+def _resolve_throughput_bin(hours: int) -> tuple[str, int]:
+    """Pick a KQL bin size and its minute count for a throughput window.
+
+    Short windows keep the 15-minute resolution requested by operations; longer
+    windows widen the bin so the chart stays readable (and the point count
+    bounded) when showing multi-day or month-long trends.
+    """
+    if hours <= 72:  # up to 3 days
+        return "15m", 15
+    if hours <= 336:  # up to 14 days
+        return "1h", 60
+    return "6h", 360  # 30 days
+
+
+def _zero_fill_series(points: list[dict], hours: int, bin_minutes: int) -> list[dict]:
+    """Insert explicit zero-value points for every empty time bin in the window.
+
+    Log Analytics only returns bins where activity occurred, so without
+    zero-filling the chart interpolates straight lines across quiet periods and
+    hides genuine inactivity. This walks every UTC-aligned bin across the window
+    and fills missing bins with ``value=0`` so spikes and gaps are accurate.
+
+    When ``points`` is empty (no activity during the window), this generates a
+    complete series of zero-value bins so inactivity is shown as a flat baseline
+    rather than "No data available".
+    """
+    bin_secs = bin_minutes * 60
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(hours=hours)
+
+    start_epoch = int(start.timestamp())
+    aligned_start_epoch = (start_epoch // bin_secs) * bin_secs
+
+    real: dict[int, int] = {}
+    for p in points:
+        try:
+            t = datetime.fromisoformat(p["time"].replace("Z", "+00:00"))
+            bin_epoch = (int(t.timestamp()) // bin_secs) * bin_secs
+            real[bin_epoch] = real.get(bin_epoch, 0) + (int(p["value"]) if p["value"] else 0)
+        except (ValueError, KeyError):
+            pass
+
+    filled: list[dict] = []
+    epoch = aligned_start_epoch
+    end_epoch = int(now.timestamp()) + bin_secs
+    while epoch <= end_epoch:
+        ts = datetime.fromtimestamp(epoch, tz=timezone.utc)
+        filled.append({"time": ts.isoformat(), "value": real.get(epoch, 0)})
+        epoch += bin_secs
+
+    return filled
+
+
+def get_hl7_throughput_metrics(
+    hours: int = 24,
+    health_board: str | None = None,
+    service: str | None = None,
+) -> dict:
+    """Query Log Analytics for HL7 message throughput (messages in and out).
+
+    Two counter metrics drive the chart:
+
+    * ``messages_received`` — emitted by the HL7 servers when a message enters
+      the environment (the *incoming* series).
+    * ``messages_sent`` — emitted by the HL7 senders when a message leaves the
+      environment (the *outgoing* series).
+
+    Both are aggregated into time bins (15 minutes for windows up to 3 days,
+    widening for longer windows — see :func:`_resolve_throughput_bin`) and
+    zero-filled so quiet periods are shown accurately.
+
+    Filtering uses the metric dimensions, which are the only place ``health_board``
+    is recorded:
+
+    * ``health_board`` — e.g. ``"PHW"`` (``Properties["health_board"]``).
+    * ``service`` — the flow / workflow id, e.g. ``"phw-to-mpi"``
+      (``Properties["workflow_id"]``).
+
+    Returns a dict with ``incoming`` and ``outgoing`` lists of
+    ``{"time": ISO-string, "value": int}`` points, a ``timespan`` label and the
+    resolved ``bin_minutes``.
+    """
+    bin_size, bin_minutes = _resolve_throughput_bin(hours)
+    empty: dict = {"incoming": [], "outgoing": [], "timespan": f"{hours}h", "bin_minutes": bin_minutes}
+
+    workspace_id = config.AZURE_LOG_ANALYTICS_WORKSPACE_ID
+    if not workspace_id:
+        log.warning("Log Analytics workspace not configured — skipping HL7 throughput metrics")
+        return empty
+
+    # Build dimension filters. Values are sanitised to a safe character set and
+    # matched exactly against the metric dimensions.
+    filters = ""
+    if health_board:
+        safe_hb = re.sub(r"[^a-zA-Z0-9\-_]", "", health_board)
+        if safe_hb:
+            filters += f'\n    | where tostring(Properties["health_board"]) == "{safe_hb}"'
+    if service:
+        safe_svc = re.sub(r"[^a-zA-Z0-9\-_]", "", service)
+        if safe_svc:
+            filters += f'\n    | where tostring(Properties["workflow_id"]) == "{safe_svc}"'
+
+    query = f"""
+    AppMetrics
+    | where TimeGenerated > ago({hours}h)
+    | where Name in ("messages_received", "messages_sent"){filters}
+    | summarize Value = sum(Sum) by bin(TimeGenerated, {bin_size}), Name
+    | order by TimeGenerated asc
+    """
+
+    try:
+        client = _get_logs_client()
+        response = client.query_workspace(
+            workspace_id=workspace_id,
+            query=query,
+            timespan=timedelta(hours=hours),
+        )
+
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.error("Log Analytics query failed: %s", response.partial_error)
+            return empty
+
+        key_map = {"messages_received": "incoming", "messages_sent": "outgoing"}
+        series: dict[str, Any] = {"incoming": [], "outgoing": []}
+
+        for table in response.tables:
+            for row in table.rows:
+                row_dict = dict(zip(table.columns, row))
+                key = key_map.get(str(row_dict.get("Name") or ""))
+                if not key:
+                    continue
+
+                time_generated = row_dict.get("TimeGenerated")
+                if isinstance(time_generated, datetime):
+                    time_str = time_generated.astimezone(timezone.utc).isoformat()
+                else:
+                    time_str = str(time_generated)
+
+                raw_value = row_dict.get("Value")
+                try:
+                    value = int(round(float(raw_value))) if raw_value is not None else 0
+                except (TypeError, ValueError):
+                    value = 0
+
+                series[key].append({"time": time_str, "value": value})
+
+        series["incoming"] = _zero_fill_series(series["incoming"], hours, bin_minutes)
+        series["outgoing"] = _zero_fill_series(series["outgoing"], hours, bin_minutes)
+        series["timespan"] = f"{hours}h"
+        series["bin_minutes"] = bin_minutes
+
+        log.info(
+            "Fetched HL7 throughput: %d incoming, %d outgoing points",
+            len(series["incoming"]),
+            len(series["outgoing"]),
+        )
+        return series
+    except Exception as exc:
+        log.error("Failed to fetch HL7 throughput metrics: %s", exc)
+        return empty
+
+
+def get_throughput_filter_options() -> dict:
+    """Return distinct health board and service values for the throughput filters.
+
+    Scans the ``messages_received`` / ``messages_sent`` metric dimensions over the
+    last 30 days so the dropdowns only ever offer values that can actually be
+    filtered. Returns ``{"health_boards": [...], "services": [...]}`` sorted
+    alphabetically; both lists are empty when Log Analytics is not configured.
+    """
+    empty: dict = {"health_boards": [], "services": []}
+
+    workspace_id = config.AZURE_LOG_ANALYTICS_WORKSPACE_ID
+    if not workspace_id:
+        return empty
+
+    query = """
+    AppMetrics
+    | where TimeGenerated > ago(30d)
+    | where Name in ("messages_received", "messages_sent")
+    | extend health_board = tostring(Properties["health_board"])
+    | extend workflow_id = tostring(Properties["workflow_id"])
+    | summarize by health_board, workflow_id
+    """
+
+    try:
+        client = _get_logs_client()
+        response = client.query_workspace(
+            workspace_id=workspace_id,
+            query=query,
+            timespan=timedelta(days=30),
+        )
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.error("Throughput filter-options query failed: %s", response.partial_error)
+            return empty
+
+        health_boards: set[str] = set()
+        services: set[str] = set()
+        for table in response.tables:
+            for row in table.rows:
+                row_dict = dict(zip(table.columns, row))
+                hb = (str(row_dict.get("health_board") or "")).strip()
+                svc = (str(row_dict.get("workflow_id") or "")).strip()
+                if hb:
+                    health_boards.add(hb)
+                if svc:
+                    services.add(svc)
+
+        return {"health_boards": sorted(health_boards), "services": sorted(services)}
+    except Exception as exc:
+        log.error("Failed to fetch throughput filter options: %s", exc)
+        return empty
+
+
 def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 60.0) -> list[dict]:
     """Return latest retry delay metric per workflow from AppMetrics.
 
