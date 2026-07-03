@@ -213,7 +213,7 @@ class TestApiRoutes:
         mock_fn.assert_called_once_with(hours=24, health_board=None, service=None)
 
     def test_api_hl7_throughput_accepts_valid_hours(self, client: FlaskClient) -> None:
-        fake_metrics = {"in": [], "out": []}
+        fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
         for hours_str, hours_int in [("24", 24), ("72", 72), ("168", 168), ("336", 336), ("720", 720)]:
             with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
                 response = client.get(f"/api/hl7-throughput?hours={hours_str}")
@@ -221,14 +221,14 @@ class TestApiRoutes:
             mock_fn.assert_called_once_with(hours=hours_int, health_board=None, service=None)
 
     def test_api_hl7_throughput_defaults_to_24h_for_invalid_hours(self, client: FlaskClient) -> None:
-        fake_metrics = {"in": [], "out": []}
+        fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
         with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
             response = client.get("/api/hl7-throughput?hours=999")
         assert response.status_code == 200
         mock_fn.assert_called_once_with(hours=24, health_board=None, service=None)
 
     def test_api_hl7_throughput_passes_filters(self, client: FlaskClient) -> None:
-        fake_metrics = {"in": [], "out": []}
+        fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
         with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
             response = client.get("/api/hl7-throughput?health_board=PHW&service=phw-to-mpi")
         assert response.status_code == 200
