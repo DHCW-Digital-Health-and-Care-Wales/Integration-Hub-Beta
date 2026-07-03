@@ -204,6 +204,10 @@ def _zero_fill_series(points: list[dict], hours: int, bin_minutes: int) -> list[
     zero-filling the chart interpolates straight lines across quiet periods and
     hides genuine inactivity. This walks every UTC-aligned bin across the window
     and fills missing bins with ``value=0`` so spikes and gaps are accurate.
+
+    When ``points`` is empty (no activity during the window), this generates a
+    complete series of zero-value bins so inactivity is shown as a flat baseline
+    rather than "No data available".
     """
     bin_secs = bin_minutes * 60
     now = datetime.now(timezone.utc)
