@@ -8,6 +8,7 @@ It provides the context needed to work effectively in this repository.
 - **Gareth** — Hub-Team lead
 - **Matt** — developer
 - **Alex** — developer
+- **Alphy** — DevOps lead
 
 ---
 
