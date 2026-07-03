@@ -205,9 +205,6 @@ def _zero_fill_series(points: list[dict], hours: int, bin_minutes: int) -> list[
     hides genuine inactivity. This walks every UTC-aligned bin across the window
     and fills missing bins with ``value=0`` so spikes and gaps are accurate.
     """
-    if not points:
-        return points
-
     bin_secs = bin_minutes * 60
     now = datetime.now(timezone.utc)
     start = now - timedelta(hours=hours)
@@ -223,9 +220,6 @@ def _zero_fill_series(points: list[dict], hours: int, bin_minutes: int) -> list[
             real[bin_epoch] = real.get(bin_epoch, 0) + (int(p["value"]) if p["value"] else 0)
         except (ValueError, KeyError):
             pass
-
-    if not real:
-        return points
 
     filled: list[dict] = []
     epoch = aligned_start_epoch

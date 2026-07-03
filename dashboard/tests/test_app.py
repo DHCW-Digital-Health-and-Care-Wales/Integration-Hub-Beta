@@ -204,6 +204,36 @@ class TestApiRoutes:
         assert response.status_code == 200
         mock_fn.assert_called_once_with("my-app", hours=1)
 
+    def test_api_hl7_throughput_returns_json(self, client: FlaskClient) -> None:
+        fake_metrics = {"in": [{"time": "2024-01-01T00:00:00+00:00", "value": 5}], "out": []}
+        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+            response = client.get("/api/hl7-throughput")
+        assert response.status_code == 200
+        assert response.get_json() == fake_metrics
+        mock_fn.assert_called_once_with(hours=24, health_board=None, service=None)
+
+    def test_api_hl7_throughput_accepts_valid_hours(self, client: FlaskClient) -> None:
+        fake_metrics = {"in": [], "out": []}
+        for hours_str, hours_int in [("24", 24), ("72", 72), ("168", 168), ("336", 336), ("720", 720)]:
+            with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+                response = client.get(f"/api/hl7-throughput?hours={hours_str}")
+            assert response.status_code == 200
+            mock_fn.assert_called_once_with(hours=hours_int, health_board=None, service=None)
+
+    def test_api_hl7_throughput_defaults_to_24h_for_invalid_hours(self, client: FlaskClient) -> None:
+        fake_metrics = {"in": [], "out": []}
+        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+            response = client.get("/api/hl7-throughput?hours=999")
+        assert response.status_code == 200
+        mock_fn.assert_called_once_with(hours=24, health_board=None, service=None)
+
+    def test_api_hl7_throughput_passes_filters(self, client: FlaskClient) -> None:
+        fake_metrics = {"in": [], "out": []}
+        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+            response = client.get("/api/hl7-throughput?health_board=PHW&service=phw-to-mpi")
+        assert response.status_code == 200
+        mock_fn.assert_called_once_with(hours=24, health_board="PHW", service="phw-to-mpi")
+
 
 class TestEnvLoading:
     def test_load_dotenv_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
