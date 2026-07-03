@@ -6,8 +6,9 @@ It provides the context needed to work effectively in this repository.
 ## Team
 
 - **Gareth** — Hub-Team lead
-- **Matt** — developer
-- **Alex** — developer
+- **Matt** — Developer
+- **Alex** — Developer
+- **Alphy** - DevOps lead
 
 ---
 
