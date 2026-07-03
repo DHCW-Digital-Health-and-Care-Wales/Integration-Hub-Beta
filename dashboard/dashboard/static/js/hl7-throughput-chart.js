@@ -479,8 +479,8 @@
     if (!canvas) return;
     var rect = canvas.getBoundingClientRect();
     hoverPos = {
-      x: (e.clientX - rect.left) * dpr,
-      y: (e.clientY - rect.top) * dpr
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
     };
     draw();
   }
