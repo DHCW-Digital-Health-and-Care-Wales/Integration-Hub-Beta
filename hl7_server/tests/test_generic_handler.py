@@ -114,6 +114,8 @@ class TestGenericHandler(unittest.TestCase):
         self.assertIn("CorrelationId", tracking_metadata_properties)
         self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
+        # MSH-10 control ID is used as Service Bus message_id for broker-level deduplication
+        self.assertEqual(call_args.kwargs.get("message_id"), "202505052323364444")
 
     @patch(
         "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",

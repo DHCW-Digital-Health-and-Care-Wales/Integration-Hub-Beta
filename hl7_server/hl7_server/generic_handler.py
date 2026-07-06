@@ -212,7 +212,9 @@ class GenericHandler(AbstractHandler):
 
     def _send_to_service_bus(self, message_control_id: str, tracking_metadata_properties: dict[str, str]) -> None:
         try:
-            self.sender_client.send_text_message(self.incoming_message, tracking_metadata_properties)
+            self.sender_client.send_text_message(
+                self.incoming_message, tracking_metadata_properties, message_id=message_control_id
+            )
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
             meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
