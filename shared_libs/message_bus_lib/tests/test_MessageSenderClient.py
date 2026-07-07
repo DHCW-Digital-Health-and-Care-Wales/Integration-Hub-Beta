@@ -170,6 +170,32 @@ class TestMessageSenderClient(unittest.TestCase):
         message_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
         self.assertEqual(message_sent.application_properties, {"key": "value"})
 
+    def test_send_message_sets_message_id(self) -> None:
+        # Arrange
+        message = b"Test Message"
+        expected_message_id = "MSG-CONTROL-001"
+
+        # Act
+        self.message_sender_client.send_message(message, message_id=expected_message_id)
+
+        # Assert
+        self.service_bus_sender_client.send_messages.assert_called_once()
+        message_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
+        self.assertEqual(message_sent.message_id, expected_message_id)
+
+    def test_send_message_without_message_id_leaves_default(self) -> None:
+        # Arrange
+        message = b"Test Message"
+
+        # Act
+        self.message_sender_client.send_message(message)
+
+        # Assert — when no message_id is supplied the SDK auto-generates one (a UUID);
+        # we verify we are not overriding it with an explicit value.
+        self.service_bus_sender_client.send_messages.assert_called_once()
+        message_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
+        self.assertNotEqual(message_sent.message_id, "custom-id")
+
     def test_send_message_raises_message_size_exceeded_error(self) -> None:
         # Arrange
         message = b"Test Message"

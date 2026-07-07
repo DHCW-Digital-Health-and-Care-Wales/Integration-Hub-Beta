@@ -27,6 +27,18 @@ class TestServiceBusClientFactoryClose(unittest.TestCase):
         self.factory = _make_factory()
         self.mock_sb_client: MagicMock = self.factory.servicebus_client  # type: ignore[assignment]
 
+    @patch("message_bus_lib.servicebus_client_factory.ServiceBusClient")
+    def test_build_client_sets_keep_alive(self, mock_sb_cls: MagicMock) -> None:
+        mock_sb_cls.from_connection_string.return_value = MagicMock()
+        config = ConnectionConfig(
+            connection_string="Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123",
+            service_bus_namespace=None,
+        )
+        ServiceBusClientFactory(config)
+        call_kwargs = mock_sb_cls.from_connection_string.call_args[1]
+        self.assertIn("keep_alive", call_kwargs)
+        self.assertGreater(call_kwargs["keep_alive"], 0)
+
     def test_close_closes_underlying_client(self) -> None:
         self.factory.close()
 
@@ -55,6 +67,9 @@ class TestServiceBusClientFactoryClose(unittest.TestCase):
         self.mock_sb_client.close.assert_called_once()
         self.assertIs(rebuilt, replacement_client)
         self.assertIs(self.factory.servicebus_client, replacement_client)
+        # keep_alive should be passed on rebuild too
+        call_kwargs = mock_sb_cls.from_connection_string.call_args[1]
+        self.assertIn("keep_alive", call_kwargs)
 
 class TestCreateMessageStoreClient(unittest.TestCase):
     """Tests for ServiceBusClientFactory.create_message_store_client."""

@@ -57,7 +57,12 @@ class MessageSenderClient:
             logger.warning("Failed to recreate Service Bus sender for '%s': %s", self.message_destination, recreate_exc)
             return False
 
-    def send_message(self, message_data: bytes, custom_properties: Optional[Dict[str, Any]] = None) -> None:
+    def send_message(
+        self,
+        message_data: bytes,
+        custom_properties: Optional[Dict[str, Any]] = None,
+        message_id: Optional[str] = None,
+    ) -> None:
         props: Dict[str, Any] = dict(custom_properties) if custom_properties else {}
 
         if self.propagate_trace_context:
@@ -70,6 +75,7 @@ class MessageSenderClient:
             body=message_data,
             application_properties=props if props else None,  # type: ignore[arg-type]
             session_id=self.session_id,
+            message_id=message_id,
         )
 
         last_error = None
@@ -100,8 +106,13 @@ class MessageSenderClient:
         if last_error:
             raise last_error
 
-    def send_text_message(self, message_text: str, custom_properties: Optional[Dict[str, Any]] = None) -> None:
-        self.send_message(message_text.encode('utf-8'), custom_properties)
+    def send_text_message(
+        self,
+        message_text: str,
+        custom_properties: Optional[Dict[str, Any]] = None,
+        message_id: Optional[str] = None,
+    ) -> None:
+        self.send_message(message_text.encode('utf-8'), custom_properties, message_id=message_id)
 
     def send_message_batch(self, messages: Sequence[ServiceBusMessage]) -> int:
         """Send pre-built ServiceBusMessages using SDK-level batching with auto-split.
