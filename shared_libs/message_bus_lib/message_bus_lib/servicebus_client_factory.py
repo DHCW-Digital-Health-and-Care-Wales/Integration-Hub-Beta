@@ -17,6 +17,7 @@ from message_bus_lib.subscription_receiver_client import SubscriptionReceiverCli
 
 SERVICEBUS_NAMESPACE_SUFFIX = ".servicebus.windows.net"
 MAX_LOCK_RENEWAL_DURATION = 300  # 5 minutes
+AMQP_KEEP_ALIVE_INTERVAL = 30  # seconds — prevents idle AMQP connections being silently dropped by Azure
 
 
 
@@ -41,11 +42,14 @@ class ServiceBusClientFactory:
 
     def _build_service_bus_client(self) -> ServiceBusClient:
         if self.config.is_using_connection_string():
-            return ServiceBusClient.from_connection_string(self.config.connection_string)  # type: ignore
+            return ServiceBusClient.from_connection_string(
+                self.config.connection_string,  # type: ignore
+                keep_alive=AMQP_KEEP_ALIVE_INTERVAL,
+            )
         else:
             fully_qualified_namespace = self.config.service_bus_namespace + SERVICEBUS_NAMESPACE_SUFFIX  # type: ignore
             credential = DefaultAzureCredential()
-            return ServiceBusClient(fully_qualified_namespace, credential)
+            return ServiceBusClient(fully_qualified_namespace, credential, keep_alive=AMQP_KEEP_ALIVE_INTERVAL)
 
     def create_topic_sender_client(self, topic_name: str, session_id: Optional[str] = None) -> MessageSenderClient:
         self.logger.debug("Creating message sender client for topic '%s' with session_id '%s'", topic_name, session_id)
