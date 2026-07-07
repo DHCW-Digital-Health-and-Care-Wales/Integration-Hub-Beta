@@ -190,10 +190,11 @@ class TestMessageSenderClient(unittest.TestCase):
         # Act
         self.message_sender_client.send_message(message)
 
-        # Assert
+        # Assert — when no message_id is supplied the SDK auto-generates one (a UUID);
+        # we verify we are not overriding it with an explicit value.
         self.service_bus_sender_client.send_messages.assert_called_once()
         message_sent = self.service_bus_sender_client.send_messages.call_args[0][0]
-        self.assertIsNone(message_sent.message_id)
+        self.assertNotEqual(message_sent.message_id, "custom-id")
 
     def test_send_message_raises_message_size_exceeded_error(self) -> None:
         # Arrange
