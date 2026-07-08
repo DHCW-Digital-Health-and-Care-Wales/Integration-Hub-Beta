@@ -8,8 +8,11 @@ from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 
 from .log_event import LogEvent, EventType
+from .redaction import redact_hl7_message
 
 logger = logging.getLogger(__name__)
+
+_REDACTION_DISABLED_VALUES = frozenset({"false", "0", "no", "off"})
 
 
 class EventLogger:
@@ -18,6 +21,13 @@ class EventLogger:
     def __init__(self, workflow_id: str, microservice_id: str) -> None:
         self.workflow_id = workflow_id
         self.microservice_id = microservice_id
+        # Redact PII from message payloads in logs by default. The full raw payload
+        # is still persisted to the message store for replay; only logging is redacted.
+        # Set HL7_LOG_REDACTION_ENABLED=false to log full payloads (e.g. local debugging).
+        self.redaction_enabled = (
+            os.getenv("HL7_LOG_REDACTION_ENABLED", "true").strip().lower()
+            not in _REDACTION_DISABLED_VALUES
+        )
         # Set service name for OTel (used by Azure Monitor exporter as AppRoleName).
         # Replace the variable if absent or blank (blank values can appear in container configs).
         if not os.environ.get("OTEL_SERVICE_NAME", "").strip():
@@ -127,12 +137,17 @@ class EventLogger:
         error_details: Optional[str] = None,
         correlation_id: Optional[str] = None,
     ) -> LogEvent:
+        logged_content = (
+            redact_hl7_message(message_content)
+            if self.redaction_enabled
+            else message_content
+        )
         return LogEvent(
             workflow_id=self.workflow_id,
             microservice_id=self.microservice_id,
             event_type=event_type,
             timestamp=datetime.now(timezone.utc),
-            message_content=message_content,
+            message_content=logged_content,
             validation_result=validation_result,
             error_details=error_details,
             correlation_id=correlation_id,

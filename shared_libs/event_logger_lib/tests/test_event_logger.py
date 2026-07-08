@@ -19,6 +19,7 @@ class TestEventLogger(unittest.TestCase):
             {
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
                 "AZURE_MONITOR_OWNER": "event_logger",
+                "HL7_LOG_REDACTION_ENABLED": "false",
             },
         ):
             with patch("event_logger_lib.event_logger.configure_azure_monitor"):
@@ -149,7 +150,12 @@ class TestEventLogger(unittest.TestCase):
     ) -> None:
         # Arrange
         with patch.dict(
-            os.environ, {"APPLICATIONINSIGHTS_CONNECTION_STRING": ""}, clear=True
+            os.environ,
+            {
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
+                "HL7_LOG_REDACTION_ENABLED": "false",
+            },
+            clear=True,
         ):
             event_logger = EventLogger(self.workflow_id, self.microservice_id)
         mock_logger.info.reset_mock()
@@ -323,6 +329,55 @@ class TestEventLogger(unittest.TestCase):
         self.assertEqual(event.message_content, message_content)
         self.assertEqual(event.validation_result, validation_result)
         self.assertEqual(event.error_details, error_details)
+
+    def _build_logger_with_redaction(self, enabled: bool) -> EventLogger:
+        EventLogger._azure_monitor_initialized = False
+        env = {
+            "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
+            "AZURE_MONITOR_OWNER": "event_logger",
+        }
+        if enabled is not None:
+            env["HL7_LOG_REDACTION_ENABLED"] = "true" if enabled else "false"
+        with patch.dict(os.environ, env, clear=True):
+            with patch("event_logger_lib.event_logger.configure_azure_monitor"):
+                with patch("event_logger_lib.event_logger.DefaultAzureCredential"):
+                    return EventLogger(self.workflow_id, self.microservice_id)
+
+    def test_redaction_enabled_by_default(self):
+        # Redaction must be on unless explicitly disabled — PII safety by default.
+        with patch.dict(
+            os.environ,
+            {
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
+                "AZURE_MONITOR_OWNER": "event_logger",
+            },
+            clear=True,
+        ):
+            with patch("event_logger_lib.event_logger.configure_azure_monitor"):
+                with patch("event_logger_lib.event_logger.DefaultAzureCredential"):
+                    logger = EventLogger(self.workflow_id, self.microservice_id)
+        self.assertTrue(logger.redaction_enabled)
+
+    def test_create_log_event_redacts_hl7_payload(self):
+        event_logger = self._build_logger_with_redaction(True)
+        hl7 = "MSH|^~\\&|SENDING_APP|SENDING_FAC|RECV_APP|RECV_FAC|20250101||ADT^A28|MSG001|P|2.5\rPID|1||123456^^^NHS||SMITH^JOHN||19870101|M"
+
+        event = event_logger._create_log_event(EventType.MESSAGE_RECEIVED, hl7)
+
+        # MSH routing metadata retained; PID patient data masked.
+        self.assertIn("ADT^A28", event.message_content)
+        self.assertIn("MSG001", event.message_content)
+        self.assertNotIn("SMITH", event.message_content)
+        self.assertNotIn("19870101", event.message_content)
+        self.assertNotIn("123456", event.message_content)
+
+    def test_create_log_event_without_redaction_keeps_payload(self):
+        event_logger = self._build_logger_with_redaction(False)
+        hl7 = "MSH|^~\\&|APP|FAC|RECV|RECV_FAC|20250101||ADT^A28|MSG001|P|2.5\rPID|1||123456||SMITH^JOHN||19870101|M"
+
+        event = event_logger._create_log_event(EventType.MESSAGE_RECEIVED, hl7)
+
+        self.assertEqual(event.message_content, hl7)
 
     def test_initialization_with_managed_identity_credential(self):
         EventLogger._azure_monitor_initialized = False
