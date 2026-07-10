@@ -1,6 +1,8 @@
 import os
+import tempfile
 import unittest
 
+import xmlschema
 from defusedxml import ElementTree as ET
 from hl7apy.parser import parse_message
 
@@ -12,8 +14,10 @@ from hl7_validation.schemas import (
 )
 from hl7_validation.validate import (
     XmlValidationError,
+    _format_schema_validation_error,
     validate_er7_with_flow_schema,
     validate_parsed_message_with_flow_schema,
+    validate_xml,
 )
 
 
@@ -111,3 +115,53 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
         msg = parse_message(er7, find_groups=False)
         with self.assertRaises(ValueError):
             validate_parsed_message_with_flow_schema(msg, er7, "unknown_flow")
+
+
+class TestSchemaValidationErrorRedaction(unittest.TestCase):
+    """Schema validation errors must never leak the XML instance (which contains PII)."""
+
+    # Minimal schema whose <sex> element only accepts M/F, so any other value fails.
+    _XSD = (
+        '<?xml version="1.0"?>'
+        '<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">'
+        '<xsd:element name="patient"><xsd:complexType><xsd:sequence>'
+        '<xsd:element name="sex"><xsd:simpleType>'
+        '<xsd:restriction base="xsd:string">'
+        '<xsd:enumeration value="M"/><xsd:enumeration value="F"/>'
+        '</xsd:restriction></xsd:simpleType></xsd:element>'
+        '</xsd:sequence></xsd:complexType></xsd:element></xsd:schema>'
+    )
+
+    # Instance carrying a fake patient identifier in place of a valid enumeration value.
+    _INSTANCE = "<patient><sex>MYSURNAME</sex></patient>"
+
+    def _make_error(self) -> "xmlschema.validators.exceptions.XMLSchemaValidationError":
+        schema = xmlschema.XMLSchema(self._XSD)
+        try:
+            schema.validate(self._INSTANCE)
+        except xmlschema.validators.exceptions.XMLSchemaValidationError as e:  # type: ignore[attr-defined]
+            return e
+        self.fail("Expected schema validation to fail")
+
+    def test_default_str_leaks_instance(self) -> None:
+        # Sanity check: the default xmlschema message DOES embed the instance value.
+        self.assertIn("MYSURNAME", str(self._make_error()))
+
+    def test_formatter_excludes_instance_pii(self) -> None:
+        safe = _format_schema_validation_error(self._make_error())
+        self.assertNotIn("MYSURNAME", safe)
+        self.assertNotIn("Instance", safe)
+        # Still useful for debugging: retains the schema-level reason and the XPath.
+        self.assertIn("must be one of", safe)
+        self.assertIn("path:", safe)
+
+    def test_validate_xml_raises_without_pii(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            xsd_path = os.path.join(tmp, "patient.xsd")
+            with open(xsd_path, "w", encoding="utf-8") as fh:
+                fh.write(self._XSD)
+
+            with self.assertRaises(XmlValidationError) as ctx:
+                validate_xml(self._INSTANCE, xsd_path)
+
+        self.assertNotIn("MYSURNAME", str(ctx.exception))

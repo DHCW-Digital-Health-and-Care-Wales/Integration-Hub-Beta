@@ -37,12 +37,33 @@ def _get_compiled_schema(xsd_path: str) -> xmlschema.XMLSchema:
     return xmlschema.XMLSchema(xsd_path)
 
 
+def _format_schema_validation_error(
+    error: "xmlschema.validators.exceptions.XMLSchemaValidationError",  # type: ignore[name-defined]
+) -> str:
+    """Build a PII-safe message from an xmlschema validation error.
+
+    ``str(error)`` embeds an ``Instance:`` block containing the full XML document
+    being validated, which for HL7 messages includes patient identifiable
+    information (PII). That string is propagated into application logs, so it must
+    never be used. We surface only the schema-level ``reason`` and the structural
+    XPath (``path``) of the offending node — neither contains field values.
+    """
+    reason = getattr(error, "reason", None)
+    path = getattr(error, "path", None)
+    parts: list[str] = []
+    if reason:
+        parts.append(str(reason))
+    if path:
+        parts.append(f"(path: {path})")
+    return " ".join(parts) if parts else "XML schema validation failed"
+
+
 def validate_xml(xml_string: str, xsd_path: str) -> None:
     try:
         schema = _get_compiled_schema(xsd_path)
         schema.validate(xml_string)
     except xmlschema.validators.exceptions.XMLSchemaValidationError as e:  # type: ignore[attr-defined]
-        raise XmlValidationError(str(e))
+        raise XmlValidationError(_format_schema_validation_error(e))
 
 
 def validate_er7_with_flow_schema(
