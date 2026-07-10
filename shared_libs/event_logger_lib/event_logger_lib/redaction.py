@@ -12,8 +12,26 @@ Redaction strategy:
   - Every other segment keeps its segment identifier and field positions, but all
     field values are masked. Empty fields are left empty so the field structure
     remains visible for debugging without leaking data.
-  - Anything that is not a recognisable HL7 message (no MSH header) is fully masked,
-    since its content is unknown and may contain PII.
+  - Anything that is not a recognisable HL7 v2 ER7 message (no MSH header) is fully
+    masked, since its content is unknown and may contain PII.
+
+Future format support (JSON / XML):
+  This function only handles HL7 v2 ER7 (pipe-delimited) format. If future services
+  log raw JSON or XML payloads *before* conversion to ER7, extend this module with
+  format detection and dedicated handlers:
+
+      def redact_message(content: str) -> str:
+          stripped = content.lstrip()
+          if stripped.startswith("MSH"):
+              return redact_hl7_message(content)   # ER7 — handled today
+          if stripped.startswith("<"):
+              return _redact_xml(content)           # HL7 v2 XML / CDA — TODO
+          if stripped.startswith("{"):
+              return _redact_json(content)          # FHIR JSON — TODO
+          return REDACTION_MASK
+
+  If messages are always normalised to ER7 before reaching EventLogger (the current
+  architecture), no change is needed and this function covers all formats implicitly.
 """
 
 from __future__ import annotations
