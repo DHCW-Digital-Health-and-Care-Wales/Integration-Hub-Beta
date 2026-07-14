@@ -165,3 +165,4 @@ class TestSchemaValidationErrorRedaction(unittest.TestCase):
                 validate_xml(self._INSTANCE, xsd_path)
 
         self.assertNotIn("MYSURNAME", str(ctx.exception))
+        self.assertIsNone(ctx.exception.__context__)
