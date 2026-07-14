@@ -59,11 +59,15 @@ def _format_schema_validation_error(
 
 
 def validate_xml(xml_string: str, xsd_path: str) -> None:
+    _error_message: Optional[str] = None
     try:
         schema = _get_compiled_schema(xsd_path)
         schema.validate(xml_string)
     except xmlschema.validators.exceptions.XMLSchemaValidationError as e:  # type: ignore[attr-defined]
-        raise XmlValidationError(_format_schema_validation_error(e)) from None
+        _error_message = _format_schema_validation_error(e)
+
+    if _error_message is not None:
+        raise XmlValidationError(_error_message)
 
 
 def validate_er7_with_flow_schema(
