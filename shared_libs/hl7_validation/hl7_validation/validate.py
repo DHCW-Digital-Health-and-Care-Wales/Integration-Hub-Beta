@@ -63,7 +63,7 @@ def validate_xml(xml_string: str, xsd_path: str) -> None:
         schema = _get_compiled_schema(xsd_path)
         schema.validate(xml_string)
     except xmlschema.validators.exceptions.XMLSchemaValidationError as e:  # type: ignore[attr-defined]
-        raise XmlValidationError(_format_schema_validation_error(e))
+        raise XmlValidationError(_format_schema_validation_error(e)) from None
 
 
 def validate_er7_with_flow_schema(
