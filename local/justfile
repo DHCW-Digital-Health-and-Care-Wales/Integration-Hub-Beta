@@ -5,14 +5,14 @@
 #
 # Quick Start Guide:
 # -----------------
-# 1. List all available commands:     just --justfile justfile.podman --list
-# 2. Install dependencies:            just --justfile justfile.podman install
-# 3. Generate secrets:                just --justfile justfile.podman secrets
-# 4. Build a profile:                 just --justfile justfile.podman build phw-to-mpi
-# 5. Start services:                  just --justfile justfile.podman start phw-to-mpi
-# 6. Send a test message:             just --justfile justfile.podman send test_message.hl7
-# 7. View logs:                       just --justfile justfile.podman logs mpi-hl7-mock-receiver
-# 8. Stop all services:               just --justfile justfile.podman stop
+# 1. List all available commands:     just --list
+# 2. Install dependencies:            just install
+# 3. Generate secrets:                just secrets
+# 4. Build a profile:                 just build phw-to-mpi
+# 5. Start services:                  just start phw-to-mpi
+# 6. Send a test message:             just send test_message.hl7
+# 7. View logs:                       just logs mpi-hl7-mock-receiver
+# 8. Stop all services:               just stop
 #
 # Available Profiles:
 # ------------------
@@ -54,7 +54,7 @@ python := "python3"
 
 # Show this help message with all available commands
 @default:
-    just --justfile justfile.podman --list --unsorted
+    just --list --unsorted
 
 # ============================================
 # Profiles
@@ -71,7 +71,7 @@ python := "python3"
     echo "  - mpi-to-topic   : MPI Outbound integration"
     echo "  - replay         : Message Replay Job"
     echo ""
-    echo "💡 Run 'just --justfile justfile.podman start <profile>' to start services"
+    echo "💡 Run 'just start <profile>' to start services"
 
 # ============================================
 # Setup & Installation
@@ -85,8 +85,8 @@ python := "python3"
     echo ""
     echo "✅ Installation complete!"
     echo "💡 Next steps:"
-    echo "   - Run 'just --justfile justfile.podman secrets' to generate required secrets"
-    echo "   - Run 'just --justfile justfile.podman start <profile>' to start services"
+    echo "   - Run 'just secrets' to generate required secrets"
+    echo "   - Run 'just start <profile>' to start services"
 
 # Generate the .secrets file with random values (required for containers)
 @secrets:
@@ -95,7 +95,7 @@ python := "python3"
     {{python}} generate_secrets.py > {{secrets_file}}
     echo "✅ Secrets file created at: ./{{secrets_file}}"
     echo "💡 This file contains randomly generated secrets for local development"
-    echo "💡 Next step: Run 'just --justfile justfile.podman start <profile>' to launch services"
+    echo "💡 Next step: Run 'just start <profile>' to launch services"
 
 # ============================================
 # Podman Container Management
@@ -111,7 +111,7 @@ python := "python3"
     podman-compose --profile {{profile}} build
     echo ""
     echo "✅ Build complete for profile: {{profile}}"
-    echo "💡 Next step: Run 'just --justfile justfile.podman start {{profile}}' to start the services"
+    echo "💡 Next step: Run 'just start {{profile}}' to start the services"
 
 # Start Podman containers for a specific profile (auto-generates secrets if needed)
 @start profile: (_ensure-secrets)
@@ -127,9 +127,9 @@ python := "python3"
     echo ""
     echo "💡 Next steps examples:"
     echo "   - Check status: podman ps"
-    echo "   - View logs: just --justfile justfile.podman logs phw-hl7-server"
-    echo "   - Send test message: just --justfile justfile.podman send ./sample_messages/phw-to-mpi.sample.hl7"
-    echo "   - Stop services: just --justfile justfile.podman stop"
+    echo "   - View logs: just logs phw-hl7-server"
+    echo "   - Send test message: just send ./sample_messages/phw-to-mpi.sample.hl7"
+    echo "   - Stop services: just stop"
 
 # Stop all Podman containers across all profiles
 @stop:
@@ -138,7 +138,7 @@ python := "python3"
     podman-compose --profile "*" down
     echo ""
     echo "✅ All services stopped"
-    echo "💡 To restart: just --justfile justfile.podman start <profile>"
+    echo "💡 To restart: just start <profile>"
 
 # ============================================
 # Testing & Debugging
@@ -155,7 +155,7 @@ python := "python3"
     mllp_send --loose --file {{file}} --port {{port}} 127.0.0.1
     echo ""
     echo "✅ Message sent!"
-    echo "💡 Check logs with: just --justfile justfile.podman logs <service-name>"
+    echo "💡 Check logs with: just logs <service-name>"
     echo "💡 Profile specific ports:"
     echo "   - 2575 (PHW)"
     echo "   - 2577 (PARIS)"
@@ -180,19 +180,19 @@ python := "python3"
 @run *profile: (_ensure-secrets)
     echo "🚀 Running complete setup..."
     echo ""
-    just --justfile justfile.podman install
+    just install
     echo ""
-    {{ if profile != "" { "echo ''\njust --justfile justfile.podman start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just --justfile justfile.podman start <profile>' to launch a specific profile\"" } }}
+    {{ if profile != "" { "echo ''\njust start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just start <profile>' to launch a specific profile\"" } }}
 
 # Rebuild containers and restart services for a profile (useful after code changes)
 @restart profile:
     echo "🔄 Rebuilding and restarting services..."
     echo ""
-    just --justfile justfile.podman build {{profile}}
+    just build {{profile}}
     echo ""
-    just --justfile justfile.podman stop
+    just stop
     echo ""
-    just --justfile justfile.podman start {{profile}}
+    just start {{profile}}
     echo ""
     echo "✅ Services rebuilt and restarted!"
 
@@ -200,13 +200,13 @@ python := "python3"
 @clean:
     echo "🧹 Cleaning up local environment..."
     echo ""
-    just --justfile justfile.podman stop
+    just stop
     echo ""
     echo "🗑️  Removing secrets file..."
     rm -f {{secrets_file}}
     echo ""
     echo "✅ Cleanup complete!"
-    echo "💡 Run 'just --justfile justfile.podman run' to set up the environment again"
+    echo "💡 Run 'just run' to set up the environment again"
 
 # ============================================
 # Internal Helper Recipes (prefixed with _)
@@ -214,4 +214,4 @@ python := "python3"
 
 # Internal: Ensure secrets file exists, generate if missing
 @_ensure-secrets:
-    {{ if path_exists(secrets_file) == "false" { "echo '🔒 Secrets file not found, generating...'\necho ''\njust --justfile justfile.podman secrets\necho ''" } else { "" } }}
+    {{ if path_exists(secrets_file) == "false" { "echo '🔒 Secrets file not found, generating...'\necho ''\njust secrets\necho ''" } else { "" } }}
