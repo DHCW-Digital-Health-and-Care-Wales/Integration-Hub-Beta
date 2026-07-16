@@ -102,15 +102,23 @@ _RE_REPLACEMENT = [
     ),
 ]
 
-# SQL reserved words and pseudo-table tokens to exclude from table list
+# SQL reserved words, SQL Server pseudo-tables (inserted/deleted — only available inside
+# triggers, never valid as base-table names), and built-in function names to exclude from
+# the table list.  These are separated into logical groups for clarity.
 _SQL_KEYWORDS = frozenset(
     {
+        # DML / DDL keywords
         "select", "from", "where", "set", "exec", "execute", "go", "begin", "end",
         "declare", "print", "if", "else", "while", "return", "raiserror", "throw",
         "nolock", "with", "on", "inner", "outer", "left", "right", "cross", "full",
         "join", "and", "or", "not", "null", "is", "as", "top", "distinct", "into",
         "delete", "update", "insert", "merge", "values", "output", "using", "when",
-        "then", "matched", "by", "inserted", "deleted", "target", "source",
+        "then", "matched", "by",
+        # Trigger pseudo-tables (cannot be user-defined base tables in SQL Server)
+        "inserted", "deleted",
+        # MERGE clause pseudo-aliases
+        "target", "source",
+        # Common built-in functions that appear after FROM/JOIN in TVF-like usage
         "sysdatetimeoffset", "getdate", "getutcdate", "newid",
     }
 )
@@ -401,10 +409,14 @@ def main() -> int:
     for sql_file in sql_files:
         try:
             content = sql_file.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            print(f"  Warning: could not read {sql_file.name}: {exc}", file=sys.stderr)
+            continue
+        try:
             procs = parse_stored_procedures(content, str(sql_file.relative_to(sql_folder)))
             all_procedures.extend(procs)
             print(f"  {sql_file.name}: {len(procs)} stored procedure(s)")
-        except Exception as exc:  # noqa: BLE001
+        except (ValueError, re.error) as exc:
             print(f"  Warning: could not parse {sql_file.name}: {exc}", file=sys.stderr)
 
     if not all_procedures:

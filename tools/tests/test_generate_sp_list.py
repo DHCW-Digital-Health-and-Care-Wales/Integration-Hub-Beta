@@ -21,7 +21,18 @@ _styles_stub.PatternFill = MagicMock  # type: ignore[attr-defined]
 _styles_stub.Alignment = MagicMock  # type: ignore[attr-defined]
 
 _utils_stub = types.ModuleType("openpyxl.utils")
-_utils_stub.get_column_letter = lambda n: chr(ord("A") + n - 1)  # type: ignore[attr-defined]
+
+
+def _get_column_letter(n: int) -> str:
+    """Minimal openpyxl.utils.get_column_letter equivalent for A–ZZ range."""
+    result = ""
+    while n > 0:
+        n, remainder = divmod(n - 1, 26)
+        result = chr(ord("A") + remainder) + result
+    return result
+
+
+_utils_stub.get_column_letter = _get_column_letter  # type: ignore[attr-defined]
 
 sys.modules.setdefault("openpyxl", _openpyxl_stub)
 sys.modules.setdefault("openpyxl.styles", _styles_stub)
