@@ -11,13 +11,11 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from zoneinfo import ZoneInfo
 from typing import Any, Callable
-
-LONDON_TZ = ZoneInfo("Europe/London")
+from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_babel import Babel  # type: ignore[import-untyped]
@@ -67,6 +65,8 @@ from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
 from dashboard.services.service_bus import get_message_metrics, get_queues
 from dashboard.services.traces import get_trace
+
+LONDON_TZ = ZoneInfo("Europe/London")
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
