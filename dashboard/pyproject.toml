@@ -15,6 +15,7 @@ dependencies = [
     "azure-mgmt-servicebus>=9.0.0",
     "azure-monitor-query>=2.0.0",
     "azure-monitor-querymetrics>=1.0.0",
+    "click>=8.3.3",
     "flask>=3.1.0",
     "flask-babel>=4.0.0",
     "gunicorn>=23.0.0",
