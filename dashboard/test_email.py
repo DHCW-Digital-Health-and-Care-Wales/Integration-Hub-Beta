@@ -1,5 +1,11 @@
 """
 Quick ACS email test — sends a test email using Azure Communication Services.
+
+Exercises the same code path as the dashboard app: resolves the ACS connection
+string via Key Vault (dashboard.services.email_service) when AZURE_KEY_VAULT_URL
+is set, falling back to the ACS_CONNECTION_STRING env var for local testing
+without Key Vault access.
+
 Run from the dashboard/ directory:
 
     uv run python test_email.py
@@ -28,25 +34,36 @@ def _load_env_file() -> None:
 
 
 def main() -> int:
-    """Send a one-off ACS test email from local dashboard configuration."""
+    """Send a one-off ACS test email using the dashboard's email_service resolver."""
     _load_env_file()
 
-    acs_connection_string = os.getenv("ACS_CONNECTION_STRING", "")
-    alert_email_to = os.getenv("ALERT_EMAIL_TO", "")
-    alert_email_from = os.getenv("ALERT_EMAIL_FROM", "")
+    from dashboard import config  # noqa: PLC0415
+    from dashboard.services.email_service import get_acs_connection_string  # noqa: PLC0415
+
+    alert_email_to = config.ALERT_EMAIL_TO
+    alert_email_from = config.ALERT_EMAIL_FROM
 
     missing = [
         key
         for key, value in {
-            "ACS_CONNECTION_STRING": acs_connection_string,
             "ALERT_EMAIL_TO": alert_email_to,
             "ALERT_EMAIL_FROM": alert_email_from,
         }.items()
         if not value or value == "change-me"
     ]
-
     if missing:
         print(f"ERROR: missing or placeholder values in .env: {', '.join(missing)}")
+        return 1
+
+    source = "Key Vault" if config.AZURE_KEY_VAULT_URL else "ACS_CONNECTION_STRING env var"
+    print(f"Resolving ACS connection string via {source} ...")
+    acs_connection_string = get_acs_connection_string()
+
+    if not acs_connection_string or acs_connection_string == "TBC":
+        print(
+            "ERROR: could not resolve a usable ACS connection string (check AZURE_KEY_VAULT_URL / "
+            "ACS_EMAIL_SECRET_NAME / Azure credentials / RBAC, or set ACS_CONNECTION_STRING for local fallback)"
+        )
         return 1
 
     from azure.communication.email import EmailClient  # noqa: PLC0415
