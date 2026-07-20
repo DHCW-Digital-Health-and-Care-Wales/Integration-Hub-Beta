@@ -30,6 +30,7 @@ dev = [
     "mypy==1.18.2",
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
+    "setuptools>=83.0.0",
 ]
 
 [tool.mypy]
@@ -56,6 +57,9 @@ skips = ["*/test_*.py", "*/*_test.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.override-dependencies]
+setuptools = ">=83.0.0"
 
 [tool.setuptools.packages.find]
 where = ["."]
