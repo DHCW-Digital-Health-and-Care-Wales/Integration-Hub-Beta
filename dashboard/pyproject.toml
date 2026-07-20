@@ -11,6 +11,7 @@ requires-python = ">=3.13"
 dependencies = [
     "azure-communication-email>=1.0.0",
     "azure-identity>=1.25.0",
+    "azure-keyvault-secrets>=4.9.0",
     "azure-mgmt-appcontainers>=4.0.0",
     "azure-mgmt-servicebus>=9.0.0",
     "azure-monitor-query>=2.0.0",
