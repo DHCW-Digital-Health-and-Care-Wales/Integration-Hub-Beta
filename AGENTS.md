@@ -191,11 +191,13 @@ uv run gunicorn dashboard.app:app --bind 0.0.0.0:8080
 
 Key files:
 - `dashboard/app.py` — Flask routes, 30s in-memory cache for `/api/status`
-- `dashboard/config.py` — All env vars (Azure creds, queue names, thresholds)
+- `dashboard/config.py` — All env vars (Azure creds, queue names, thresholds, Cosmos DB)
 - `dashboard/services/service_bus.py` — Queue depth via Azure Management API
 - `dashboard/services/azure_monitor.py` — Exceptions + message counts from Log Analytics
 - `dashboard/services/flows.py` — Flow definitions and health calculation
 - `dashboard/services/container_apps.py` — Container Apps metrics
+- `dashboard/services/cosmos_store.py` — Azure Cosmos DB persistence for alarm config/state (azure-cosmos SDK)
+- `dashboard/services/alarm1.py` / `alarm2.py` / `alarm3.py` — Alarm rules; config/state stored in Cosmos
 
 Required environment variables (see `config.py` for full list):
 ```
@@ -205,6 +207,20 @@ AZURE_SERVICE_BUS_NAMESPACE
 AZURE_LOG_ANALYTICS_WORKSPACE_ID
 FLASK_SECRET_KEY
 ```
+
+Alarm config/state persistence (Azure Cosmos DB) uses:
+```
+COSMOS_ENDPOINT            # account URI; empty disables persistence (reads return empty)
+COSMOS_KEY                 # account key -> key auth + auto-create DB/container; empty -> AAD RBAC
+COSMOS_DATABASE            # default: integration-hub-dashboard
+COSMOS_CONTAINER           # default: alarms (partition key /pk)
+COSMOS_DISABLE_SSL_VERIFY  # true only for the local emulator's self-signed cert
+```
+Locally, run the Cosmos emulator via the shared Compose stack in `local/`
+(`docker compose --profile dashboard up -d cosmos-emulator`), then start the dashboard
+on the host with `uv run flask`.
+In cloud, leave `COSMOS_KEY` empty (Managed Identity RBAC) and set `COSMOS_DISABLE_SSL_VERIFY=false`;
+the database/container must be provisioned via Terraform.
 
 The app degrades gracefully — all pages return data (or empty state) when Azure is not configured.
 
@@ -231,6 +247,7 @@ Docker Compose profiles in `local/` map to flows:
 - `paris-to-mpi` — Paris server, sender (no transformer)
 - `chemo-to-mpi` — Chemo server, transformer, sender
 - `pims-to-mpi` — PIMS server, transformer, sender
+- `dashboard` — Cosmos DB emulator for the NOC dashboard (run the dashboard itself on the host with `uv run flask`)
 
 Start a profile: `docker compose --profile phw-to-mpi up`
 

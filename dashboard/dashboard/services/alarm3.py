@@ -1,7 +1,8 @@
 """Alarm 3 service — message processing failure monitoring.
 
-Config is persisted to ``alarm3_config.json`` in the dashboard root directory.
-State (last alarm fired time per rule) is persisted to ``alarm3_state.json``.
+Config and state are persisted to Azure Cosmos DB (see :mod:`dashboard.services.cosmos_store`).
+Config is stored as the ``config`` document and per-rule alarm state (last-fired
+timestamps, pauses) as the ``state`` document, both in the ``alarm3`` partition.
 
 Each rule monitors MESSAGE_FAILED events for a specific workflow_id and has
 the following settings:
@@ -22,21 +23,22 @@ Status values returned per rule:
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
+from dashboard.services import cosmos_store
 from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm3_config.json"
-STATE_PATH = Path(__file__).parent.parent.parent / "alarm3_state.json"
+# Cosmos partition (alarm namespace) and document ids for this alarm's config/state.
+COSMOS_PK = "alarm3"
+CONFIG_DOC_ID = "config"
+STATE_DOC_ID = "state"
 
 DEFAULT_WINDOW_MINUTES = 15
 DEFAULT_THRESHOLD = 1
@@ -57,38 +59,31 @@ KNOWN_RULES: list[dict] = [
 
 
 def load_alarm3_config() -> dict:
-    """Load Alarm 3 config from JSON. Returns empty config on missing/corrupt file."""
-    if not CONFIG_PATH.exists():
+    """Load Alarm 3 config from Cosmos DB. Returns empty config when none is stored."""
+    doc = cosmos_store.get_document(COSMOS_PK, CONFIG_DOC_ID)
+    if not doc:
         return {"rules": {}}
-    try:
-        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        log.warning("Failed to load alarm3 config: %s", exc)
-        return {"rules": {}}
+    doc.setdefault("rules", {})
+    return doc
 
 
 def save_alarm3_config(cfg: dict) -> None:
-    """Persist Alarm 3 config to JSON."""
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
+    """Persist Alarm 3 config to Cosmos DB."""
+    cosmos_store.upsert_document(COSMOS_PK, CONFIG_DOC_ID, cfg)
 
 
 def _load_alarm3_state() -> dict:
-    """Load per-rule Alarm 3 state (last_alarm_at timestamps) from JSON. Returns empty state on missing/corrupt file."""
-    if not STATE_PATH.exists():
+    """Load per-rule Alarm 3 state (last_alarm_at timestamps) from Cosmos. Returns empty state when none is stored."""
+    doc = cosmos_store.get_document(COSMOS_PK, STATE_DOC_ID)
+    if not doc:
         return {"rules": {}}
-    try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        log.warning("Failed to load alarm3 state: %s", exc)
-        return {"rules": {}}
+    doc.setdefault("rules", {})
+    return doc
 
 
 def _save_alarm3_state(state: dict) -> None:
-    """Persist per-rule Alarm 3 state to JSON, logging errors without raising."""
-    try:
-        STATE_PATH.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
-    except OSError as exc:
-        log.error("Failed to save alarm3 state: %s", exc)
+    """Persist per-rule Alarm 3 state to Cosmos DB."""
+    cosmos_store.upsert_document(COSMOS_PK, STATE_DOC_ID, state)
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 """Alarm service — workflow message inactivity monitoring (Alarm 1).
 
-Config is persisted to ``alarm1_config.json`` in the dashboard root directory.
-State (last alarm fired time per rule) is persisted to ``alarm_state.json``.
+Config and state are persisted to Azure Cosmos DB (see :mod:`dashboard.services.cosmos_store`).
+Config is stored as the ``config`` document and per-rule alarm state (last-fired
+timestamps, pauses) as the ``state`` document, both in the ``alarm1`` partition.
 
 Each rule targets a specific workflow_id and has five settings:
   alarm_enabled            – bool, whether Alarm 1 is active for this rule
@@ -19,22 +20,23 @@ timestamp is cleared so the next inactivity event fires immediately.
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
+from dashboard.services import cosmos_store
 from dashboard.services.alarm_time_utils import get_current_period
 from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "alarm1_config.json"
-STATE_PATH = Path(__file__).parent.parent.parent / "alarm_state.json"
+# Cosmos partition (alarm namespace) and document ids for this alarm's config/state.
+COSMOS_PK = "alarm1"
+CONFIG_DOC_ID = "config"
+STATE_DOC_ID = "state"
 
 # Defaults
 DEFAULT_DAY_THRESHOLD = 60
@@ -49,38 +51,31 @@ DEFAULT_ALERTING_GAP = 60
 
 
 def load_alarm_config() -> dict:
-    """Load alarm config from JSON file. Returns empty config on missing/corrupt file."""
-    if not CONFIG_PATH.exists():
+    """Load alarm config from Cosmos DB. Returns empty config when none is stored."""
+    doc = cosmos_store.get_document(COSMOS_PK, CONFIG_DOC_ID)
+    if not doc:
         return {"rules": {}}
-    try:
-        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        log.warning("Failed to load alarm config: %s", exc)
-        return {"rules": {}}
+    doc.setdefault("rules", {})
+    return doc
 
 
 def save_alarm_config(cfg: dict) -> None:
-    """Persist alarm config to JSON file."""
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
+    """Persist alarm config to Cosmos DB."""
+    cosmos_store.upsert_document(COSMOS_PK, CONFIG_DOC_ID, cfg)
 
 
 def _load_alarm_state() -> dict:
-    """Load per-rule alarm state (last_alarm_at timestamps) from JSON. Returns empty state on missing/corrupt file."""
-    if not STATE_PATH.exists():
+    """Load per-rule alarm state (last_alarm_at timestamps) from Cosmos. Returns empty state when none is stored."""
+    doc = cosmos_store.get_document(COSMOS_PK, STATE_DOC_ID)
+    if not doc:
         return {"rules": {}}
-    try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        log.warning("Failed to load alarm state: %s", exc)
-        return {"rules": {}}
+    doc.setdefault("rules", {})
+    return doc
 
 
 def _save_alarm_state(state: dict) -> None:
-    """Persist per-rule alarm state to JSON, logging errors without raising."""
-    try:
-        STATE_PATH.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
-    except OSError as exc:
-        log.error("Failed to save alarm state: %s", exc)
+    """Persist per-rule alarm state to Cosmos DB."""
+    cosmos_store.upsert_document(COSMOS_PK, STATE_DOC_ID, state)
 
 
 # ---------------------------------------------------------------------------
@@ -367,7 +362,7 @@ def get_alarm_status() -> list[dict]:
         'healthy'    – last message received within the inactivity threshold
         'unknown'    – no message data found in the 30-day lookback window
 
-    State (last_alarm_at per rule) is persisted to alarm_state.json so that
+    State (last_alarm_at per rule) is persisted to Cosmos DB so that
     cooldowns survive dashboard restarts.
     """
     cfg = load_alarm_config()

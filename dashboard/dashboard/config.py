@@ -19,6 +19,21 @@ AZURE_APP_INSIGHTS_RESOURCE_ID = os.getenv("AZURE_APP_INSIGHTS_RESOURCE_ID", "")
 AZURE_RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "")
 AZURE_SERVICE_BUS_NAMESPACE = os.getenv("AZURE_SERVICE_BUS_NAMESPACE", "")
 
+# Azure Cosmos DB — persistence for alarm configuration and runtime state.
+# Locally this points at the Cosmos DB emulator; in cloud environments it points at
+# the provisioned Cosmos account. When COSMOS_ENDPOINT is empty the dashboard degrades
+# gracefully (alarm config/state simply read back empty).
+COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT", "")
+# Account key. When set (e.g. the emulator's well-known key) key-based auth is used;
+# when empty the shared Azure credential (Managed Identity / service principal) is used
+# for data-plane RBAC against the Cosmos account.
+COSMOS_KEY = os.getenv("COSMOS_KEY", "")
+COSMOS_DATABASE = os.getenv("COSMOS_DATABASE", "integration-hub")
+COSMOS_CONTAINER = os.getenv("COSMOS_CONTAINER", "alarms")
+# Disable TLS verification — required for the local Cosmos emulator's self-signed
+# certificate. Must never be enabled against a real Cosmos account.
+COSMOS_DISABLE_SSL_VERIFY = os.getenv("COSMOS_DISABLE_SSL_VERIFY", "false").lower() == "true"
+
 # Environment label derived from AZURE_RESOURCE_GROUP.
 # Pattern: UK-South-DHCW-IntHub-{ENV}-App-RG → extracts {ENV} (e.g. TST, DEV, PRD).
 # Returns empty string if the RG value is absent or doesn't match the expected pattern.

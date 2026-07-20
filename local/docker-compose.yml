@@ -375,5 +375,33 @@ services:
         aliases:
           - "buswatch"
 
+  # Azure Cosmos DB emulator - persistence backend for the NOC dashboard.
+  # First start pulls a ~1GB image and takes ~1 minute to become healthy.
+  cosmos-emulator:
+    container_name: cosmos-emulator
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    pull_policy: always
+    ports:
+      - "8081:8081"
+      - "10250-10255:10250-10255"
+    environment:
+      # Fewer partitions = faster startup and lower memory for local dev.
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "3"
+      # Persist emulator data across restarts.
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
+    volumes:
+      - cosmos-data:/tmp/cosmos/appdata
+    restart: unless-stopped
+    profiles:
+      - dashboard
+    networks:
+      integration-hub:
+        aliases:
+          - "cosmos-emulator"
+
 networks:
   integration-hub:
+
+volumes:
+  cosmos-data:
+

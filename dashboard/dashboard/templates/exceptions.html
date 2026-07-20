@@ -81,7 +81,16 @@
             </div>
           </div>
           {% if exc.message %}
-          <div class="exception-full-msg">{{ exc.message | truncate(300) }}</div>
+          <div class="exception-full-msg" id="exc-msg-{{ loop.index }}">{{ exc.message | truncate(300) }}</div>
+          {% if exc.message | length > 300 %}
+          <button type="button" class="exc-detail-toggle"
+                  data-full="{{ exc.message }}"
+                  data-short="{{ exc.message | truncate(300) }}"
+                  data-target="exc-msg-{{ loop.index }}"
+                  onclick="toggleExceptionDetail(this)">
+            <i class="bi bi-chevron-down"></i> <span>{{ _("Show full message") }}</span>
+          </button>
+          {% endif %}
           {% endif %}
           {% if exc.operation_id and exc.operation_id | replace('0', '') %}
           <div class="exception-meta mt-1">
@@ -123,6 +132,19 @@
   var i18nSeverityOnly    = {{ _("Severity {sev} only") | tojson }};
   var i18nShowAll         = {{ _("Show all") | tojson }};
   var i18nSortedByRecent  = {{ _("Sorted by most recent") | tojson }};
+  var i18nShowFullMessage = {{ _("Show full message") | tojson }};
+  var i18nShowLess        = {{ _("Show less") | tojson }};
+
+  function toggleExceptionDetail(btn) {
+    var target = document.getElementById(btn.dataset.target);
+    if (!target) return;
+    var expanded = btn.classList.toggle('expanded');
+    target.textContent = expanded ? btn.dataset.full : btn.dataset.short;
+    var icon = btn.querySelector('i');
+    var label = btn.querySelector('span');
+    if (icon) icon.className = expanded ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+    if (label) label.textContent = expanded ? i18nShowLess : i18nShowFullMessage;
+  }
 
   function setSeverityFilter(sev) {
     var items = document.querySelectorAll('#exception-items .exception-item');
