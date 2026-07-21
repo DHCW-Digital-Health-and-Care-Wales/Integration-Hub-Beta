@@ -58,8 +58,8 @@ skips = ["*/test_*.py", "*/*_test.py"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.uv.override-dependencies]
-setuptools = ">=83.0.0"
+[tool.uv]
+override-dependencies = ["setuptools>=83.0.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]

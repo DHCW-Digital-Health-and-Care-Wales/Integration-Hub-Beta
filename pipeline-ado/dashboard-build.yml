@@ -23,42 +23,8 @@ variables:
   POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
 
 stages:
-  - stage: UpdateLockfile
-    displayName: 'Update Lockfile'
-    jobs:
-      - job: RegenerateLock
-        displayName: 'Regenerate uv.lock with patched dependencies'
-        pool:
-          ${{ if eq(variables.POOL_NAME, 'Azure Pipelines') }}:
-            vmImage: 'ubuntu-latest'
-          ${{ else }}:
-            name: ${{ variables.POOL_NAME }}
-        steps:
-          - checkout: self
-            persistCredentials: true
-            fetchDepth: 1
-          - task: UsePythonVersion@0
-            inputs:
-              versionSpec: '3.13'
-          - script: |
-              set -euo pipefail
-              python -m pip install uv
-              cd dashboard
-              uv lock --upgrade-package setuptools
-              git config user.email "pipeline@dhcw.nhs.wales"
-              git config user.name "Azure Pipeline"
-              if ! git diff --quiet uv.lock; then
-                git add uv.lock
-                git commit -m "chore: upgrade setuptools in lockfile (PYSEC-2026-3447)"
-                git push
-              else
-                echo "uv.lock already up to date, no commit needed"
-              fi
-            displayName: 'Upgrade setuptools in uv.lock'
-
   - stage: CodeQuality
     displayName: 'Code Quality & Tests'
-    dependsOn: UpdateLockfile
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
