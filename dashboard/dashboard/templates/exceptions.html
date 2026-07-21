@@ -87,8 +87,10 @@
                   data-full="{{ exc.message }}"
                   data-short="{{ exc.message | truncate(300) }}"
                   data-target="exc-msg-{{ loop.index }}"
+                  aria-controls="exc-msg-{{ loop.index }}"
+                  aria-expanded="false"
                   onclick="toggleExceptionDetail(this)">
-            <i class="bi bi-chevron-down"></i> <span>{{ _("Show full message") }}</span>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i> <span>{{ _("Show full message") }}</span>
           </button>
           {% endif %}
           {% endif %}
