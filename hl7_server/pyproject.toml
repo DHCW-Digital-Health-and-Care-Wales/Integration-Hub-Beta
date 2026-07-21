@@ -22,7 +22,7 @@ dependencies = [
 		"event-logger-lib",
 		"metric-sender-lib",
 		"field-utils-lib",
-		"setuptools>=82.0.0",
+		"setuptools>=83.0.0",
 ]
 
 [dependency-groups]

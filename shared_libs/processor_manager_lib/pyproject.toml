@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=82.0.0"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "urllib3>=2.6.3",
-    "setuptools>=82.0.0",
+    "setuptools>=83.0.0",
     "opentelemetry-api>=1.29.0",
 ]
 

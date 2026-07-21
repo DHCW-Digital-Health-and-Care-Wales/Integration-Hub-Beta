@@ -11,10 +11,11 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_babel import Babel  # type: ignore[import-untyped]
@@ -64,6 +65,8 @@ from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
 from dashboard.services.service_bus import get_message_metrics, get_queues
 from dashboard.services.traces import get_trace
+
+LONDON_TZ = ZoneInfo("Europe/London")
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
@@ -403,7 +406,7 @@ def _build_status() -> dict:
         )
 
     return {
-        "refreshed_at": datetime.now(timezone.utc).isoformat(),
+        "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
         "system_health": sys_health,
         "kpis": {
             "total_active_messages": total_active,
@@ -780,7 +783,7 @@ def api_alarms_status() -> Response:
             "alarm1": alarm1_rows,
             "alarm2": alarm2_rows,
             "alarm3": alarm3_rows,
-            "refreshed_at": datetime.now(timezone.utc).isoformat(),
+            "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
             "poll_interval_seconds": int(config.API_CACHE_TTL),
         }
     )
@@ -820,7 +823,7 @@ def alarms_overview_page() -> str:
         alarm3_rows=alarm3_rows,
         no_alarm3_configured=not any_alarm3,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
         refresh_interval=int(config.API_CACHE_TTL),
     )
 
@@ -841,7 +844,7 @@ def alarm_page() -> str:
         alarm_rows=alarm_rows,
         no_alarms_configured=not any_configured,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
         data_is_stale=_is_cache_stale("alarms"),
     )
 
@@ -944,7 +947,7 @@ def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
 
     # Optimistically patch the cached row so the page reload is instant.
     _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(LONDON_TZ)
     paused_until_dt = now + timedelta(minutes=duration)
     with _cache_lock:
         cached_rows = _cache_data.get("alarms", {}).get("data")
@@ -954,7 +957,7 @@ def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
                     row["status"] = "paused"
                     row["pause_remaining"] = float(duration)
                     row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
                     break
             cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
             _cache_data["alarms"]["data"] = cached_rows
@@ -1013,7 +1016,7 @@ def alarm2_pause(rule_id: str) -> tuple[Response, int] | Response:
     pause_alarm2_rule(rule_id, duration, reason)
 
     _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(LONDON_TZ)
     paused_until_dt = now + timedelta(minutes=duration)
     with _cache_lock:
         cached_rows = _cache_data.get("alarm2", {}).get("data")
@@ -1023,7 +1026,7 @@ def alarm2_pause(rule_id: str) -> tuple[Response, int] | Response:
                     row["status"] = "paused"
                     row["pause_remaining"] = float(duration)
                     row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
                     break
             cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
             _cache_data["alarm2"]["data"] = cached_rows
@@ -1070,7 +1073,7 @@ def alarm3_pause(rule_id: str) -> tuple[Response, int] | Response:
     pause_alarm3_rule(rule_id, duration, reason)
 
     _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(LONDON_TZ)
     paused_until_dt = now + timedelta(minutes=duration)
     with _cache_lock:
         cached_rows = _cache_data.get("alarm3", {}).get("data")
@@ -1080,7 +1083,7 @@ def alarm3_pause(rule_id: str) -> tuple[Response, int] | Response:
                     row["status"] = "paused"
                     row["pause_remaining"] = float(duration)
                     row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M UTC")
+                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
                     break
             cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
             _cache_data["alarm3"]["data"] = cached_rows
@@ -1126,7 +1129,7 @@ def alarm2_page() -> str:
         alarm2_rows=alarm2_rows,
         no_alarms_configured=not any_configured,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
         data_is_stale=_is_cache_stale("alarm2"),
     )
 
@@ -1222,7 +1225,7 @@ def alarm3_page() -> str:
         alarm3_rows=alarm3_rows,
         no_alarms_configured=not any_configured,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(timezone.utc).strftime("%d %b %Y  %H:%M:%S UTC"),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
         data_is_stale=_is_cache_stale("alarm3"),
     )
 

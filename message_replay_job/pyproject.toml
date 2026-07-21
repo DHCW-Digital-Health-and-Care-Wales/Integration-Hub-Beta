@@ -10,7 +10,7 @@ dependencies = [
   "pyodbc>=5.2.0",
   "message-bus-lib",
   "event-logger-lib",
-  "setuptools>=82.0.0",
+  "setuptools>=83.0.0",
   "pyjwt>=2.13.0",
 ]
 

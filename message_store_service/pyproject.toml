@@ -13,7 +13,7 @@ dependencies = [
   "health-check-lib",
   "processor-manager-lib",
   "event-logger-lib",
-  "setuptools>=82.0.0",
+  "setuptools>=83.0.0",
 ]
 
 [dependency-groups]
