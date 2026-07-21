@@ -141,6 +141,7 @@
     var target = document.getElementById(btn.dataset.target);
     if (!target) return;
     var expanded = btn.classList.toggle('expanded');
+    btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     target.textContent = expanded ? btn.dataset.full : btn.dataset.short;
     var icon = btn.querySelector('i');
     var label = btn.querySelector('span');
