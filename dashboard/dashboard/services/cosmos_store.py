@@ -72,11 +72,18 @@ def _get_client() -> CosmosClient | None:
         # locally. Never disable verification against a real Cosmos account.
         client_kwargs: dict[str, Any] = {}
         if config.COSMOS_DISABLE_SSL_VERIFY:
-            client_kwargs["connection_verify"] = False
-            # The Dockerised emulator advertises its internal container IP via endpoint
-            # discovery, which the host cannot reach. Disabling discovery pins the client
-            # to the configured gateway endpoint (localhost:8081).
-            client_kwargs["enable_endpoint_discovery"] = False
+            endpoint = config.COSMOS_ENDPOINT.lower()
+            if "localhost" not in endpoint and "127.0.0.1" not in endpoint and "cosmos-emulator" not in endpoint:
+                log.error(
+                    "Refusing to disable Cosmos TLS verification for non-local endpoint: %s",
+                    config.COSMOS_ENDPOINT,
+                )
+            else:
+                client_kwargs["connection_verify"] = False
+                # The Dockerised emulator advertises its internal container IP via endpoint
+                # discovery, which the host cannot reach. Disabling discovery pins the client
+                # to the configured gateway endpoint (localhost:8081).
+                client_kwargs["enable_endpoint_discovery"] = False
 
         credential: Any = config.COSMOS_KEY or get_azure_credential()
         try:
