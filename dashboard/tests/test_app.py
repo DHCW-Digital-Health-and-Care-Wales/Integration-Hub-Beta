@@ -59,9 +59,6 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/")
         assert response.status_code == 200
@@ -70,9 +67,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/flows")
         assert response.status_code == 200
@@ -80,7 +75,7 @@ class TestPageRoutes:
     def test_exceptions_returns_200(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
             response = client.get("/exceptions")
         assert response.status_code == 200
@@ -88,7 +83,7 @@ class TestPageRoutes:
     def test_exceptions_empty_state_uses_config_flag(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions")
@@ -98,18 +93,18 @@ class TestPageRoutes:
         assert b"Azure Log Analytics credentials are not configured." not in response.data
 
     def test_service_bus_returns_200(self, client: FlaskClient) -> None:
-        with patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES):
+        with patch("dashboard.routes.pages.get_queues", return_value=EMPTY_QUEUES):
             response = client.get("/service-bus")
         assert response.status_code == 200
 
     def test_messages_returns_200(self, client: FlaskClient) -> None:
-        with patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES):
+        with patch("dashboard.routes.pages.get_messages_today", return_value=EMPTY_MESSAGES):
             response = client.get("/messages")
         assert response.status_code == 200
 
     def test_messages_empty_state_uses_config_flag(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES),
+            patch("dashboard.routes.pages.get_messages_today", return_value=EMPTY_MESSAGES),
             patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/messages")
@@ -128,9 +123,6 @@ class TestNavEnvLabel:
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#a855f7"),
             patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/")
         assert b"nav-env-label" in response.data
@@ -142,9 +134,6 @@ class TestNavEnvLabel:
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#94a3b8"),
             patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/")
         assert b"nav-env-label" not in response.data
@@ -220,9 +209,6 @@ class TestApiRoutes:
         with (
             patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/api/status")
         assert response.status_code == 200

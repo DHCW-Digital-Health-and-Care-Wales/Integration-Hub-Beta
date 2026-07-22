@@ -13,10 +13,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, render_template, request, session
 from flask_babel import Babel  # type: ignore[import-untyped]
 
 import dashboard.config as config
+from dashboard.routes import pages as pages_routes
 from dashboard.services import cache
 from dashboard.services.alarm1 import (
     generate_rule_id as generate_alarm1_rule_id,
@@ -49,26 +50,22 @@ from dashboard.services.alarm3 import (
     save_alarm3_config,
     unpause_alarm3_rule,
 )
-from dashboard.services.arm import discover_flows, queue_to_microservice_ids
+from dashboard.services.arm import discover_flows
 from dashboard.services.azure_monitor import (
     get_container_app_metric_history,
-    get_exceptions,
     get_hl7_throughput_metrics,
     get_messages_today,
-    get_throughput_filter_options,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, queue_to_workflow_id
+from dashboard.services.flows import build_flow_data, get_active_flows
 from dashboard.services.form_utils import parse_int_form_field
 from dashboard.services.service_bus import get_message_metrics, get_queues
 from dashboard.services.status_builder import (
     alarm_summary,
-    build_alarm_map,
     build_status,
     email_alerts_configured,
     get_cached_status,
 )
-from dashboard.services.traces import get_trace
 
 LONDON_TZ = ZoneInfo("Europe/London")
 
@@ -156,6 +153,7 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
+pages_routes.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
 # streams and makes misconfigured deployments immediately obvious.
@@ -217,166 +215,19 @@ _is_cache_stale = cache.is_cache_stale
 
 _get_cached_status = get_cached_status
 _build_status = build_status
-_build_alarm_map = build_alarm_map
 
 
 # ---------------------------------------------------------------------------
-# Language selection
+# Page routes (set_language, index, flows_page, exceptions_page,
+# service_bus_page, messages_page, trace_page) now live in
+# dashboard.routes.pages — registered near the top of this module via
+# pages_routes.register(app).
 # ---------------------------------------------------------------------------
-
-
-@app.route("/set-language", methods=["POST"])
-def set_language() -> Response:
-    """Set the UI language preference in the session and redirect back to the referring page."""
-    lang = request.form.get("lang", "en")
-    if lang in ("en", "cy"):
-        session["lang"] = lang
-
-    return make_response(redirect(request.referrer or url_for("index")))
-
-
-# ---------------------------------------------------------------------------
-# Page routes
-# ---------------------------------------------------------------------------
-
-
-@app.route("/")
-def index() -> str:
-    """Render the dashboard overview page with system status and alarm summaries."""
-    status = _get_cached_status()
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
-    cfg1 = load_alarm_config()
-    cfg2 = load_alarm2_config()
-    cfg3 = load_alarm3_config()
-    # Filter options change rarely, so cache them for longer than the live status.
-    throughput_filters = _cached_nowait(
-        "throughput_filters", get_throughput_filter_options, ttl=300
-    ) or {"health_boards": [], "services": []}
-    return render_template(
-        "index.html",
-        status=status,
-        refresh_interval=config.API_CACHE_TTL,
-        data_is_stale=_is_cache_stale("status"),
-        splash_enabled=config.SPLASH_SCREEN_ENABLED,
-        alarm1_rows=alarm1_rows or [],
-        alarm2_rows=alarm2_rows or [],
-        alarm3_rows=alarm3_rows or [],
-        no_alarm1_configured=not any(r.get("alarm_enabled", False) for r in cfg1.get("rules", {}).values()),
-        no_alarm2_configured=not any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values()),
-        no_alarm3_configured=not any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values()),
-        queue_warn_threshold=config.QUEUE_WARNING_THRESHOLD,
-        queue_crit_threshold=config.QUEUE_CRITICAL_THRESHOLD,
-        throughput_filters=throughput_filters,
-    )
-
-
-@app.route("/flows")
-def flows_page() -> str:
-    """Render the Flows page with per-container metrics and alarm status overlay."""
-    status = _get_cached_status()
-    container_metrics = _cached_nowait(
-        "flows",
-        get_container_apps_metrics,
-        ttl=config.API_CACHE_TTL,
-    )
-    return render_template(
-        "flows.html",
-        status=status,
-        container_metrics=container_metrics,
-        alarm_map=_build_alarm_map(),
-        refresh_interval=config.API_CACHE_TTL,
-        data_is_stale=_is_cache_stale("status"),
-    )
-
-
-@app.route("/exceptions")
-def exceptions_page() -> str:
-    """Render the Exceptions page, filtered to the requested time window (default 24 h)."""
-    hours = int(request.args.get("hours", 24))
-    exceptions = _cached_nowait(
-        f"exceptions_{hours}",
-        lambda: get_exceptions(hours=hours),
-        ttl=config.API_CACHE_TTL,
-    )
-    return render_template(
-        "exceptions.html",
-        exceptions=exceptions,
-        hours=hours,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        data_is_stale=_is_cache_stale(f"exceptions_{hours}"),
-    )
-
-
-@app.route("/service-bus")
-def service_bus_page() -> str:
-    """Render the Service Bus page showing queue depths and dead-letter counts."""
-    cached_sb = _cached_nowait(
-        "servicebus",
-        lambda: {"queues": get_queues()},
-        ttl=config.API_CACHE_TTL,
-    )
-    queues = cached_sb["queues"]
-    flows = build_flow_data(queues)
-    return render_template(
-        "service_bus.html",
-        queues=queues,
-        flows=flows,
-        data_is_stale=_is_cache_stale("servicebus"),
-    )
-
-
-@app.route("/messages")
-def messages_page() -> str:
-    """Render the Messages page, optionally filtered to a specific Service Bus queue."""
-    queue_filter = request.args.get("queue", "").strip()
-    flow_label = None
-    microservice_ids: list[str] | None = None
-
-    if queue_filter:
-        microservice_ids = queue_to_microservice_ids(queue_filter)
-        if not microservice_ids:
-            microservice_ids = ["__no_match__"]
-        workflow_id = queue_to_workflow_id(queue_filter)
-        if workflow_id:
-            flows = get_flows()
-            flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
-
-    messages = _cached_nowait(
-        "messages",
-        lambda: get_messages_today(microservice_ids=microservice_ids),
-        ttl=config.API_CACHE_TTL,
-    )
-    cached_sb = _cached_nowait("servicebus", lambda: {"queues": get_queues()}, ttl=config.API_CACHE_TTL)
-    queue_names = sorted(q["name"] for q in cached_sb.get("queues", []) if q.get("name"))
-    return render_template(
-        "messages.html",
-        messages=messages,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        queue_filter=queue_filter,
-        flow_label=flow_label,
-        queue_names=queue_names,
-        data_is_stale=_is_cache_stale("messages"),
-    )
 
 
 # ---------------------------------------------------------------------------
 # API routes
 # ---------------------------------------------------------------------------
-
-
-@app.route("/trace/<operation_id>")
-def trace_page(operation_id: str) -> str | tuple[str, int]:
-    """Render the distributed trace view for a given Application Insights operation ID."""
-    trace_data = get_trace(operation_id)
-    if not trace_data["ok"]:
-        return render_template("trace.html", operation_id=operation_id, trace_data=trace_data), 404
-    return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
 
 
 # These two helpers now live in dashboard.services.status_builder alongside
