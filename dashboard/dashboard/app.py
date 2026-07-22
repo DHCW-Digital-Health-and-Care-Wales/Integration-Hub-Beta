@@ -8,15 +8,13 @@ import logging
 import os
 import ssl
 import tempfile
-import time
-from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-from flask import Flask, Response, jsonify, render_template, request, session
+from flask import Flask, render_template, request, session
 from flask_babel import Babel  # type: ignore[import-untyped]
 
 import dashboard.config as config
+from dashboard.routes import alarms as alarms_routes
 from dashboard.routes import api as api_routes
 from dashboard.routes import pages as pages_routes
 from dashboard.services import cache
@@ -24,32 +22,23 @@ from dashboard.services.alarm1 import (
     generate_rule_id as generate_alarm1_rule_id,
 )
 from dashboard.services.alarm1 import (
-    get_alarm_status,
     get_config_page_data,
     load_alarm_config,
-    pause_alarm_rule,
     save_alarm_config,
-    unpause_alarm_rule,
 )
 from dashboard.services.alarm2 import (
     generate_rule_id,
     get_alarm2_config_page_data,
-    get_alarm2_status,
     load_alarm2_config,
-    pause_alarm2_rule,
     save_alarm2_config,
-    unpause_alarm2_rule,
 )
 from dashboard.services.alarm3 import (
     generate_rule_id as generate_alarm3_rule_id,
 )
 from dashboard.services.alarm3 import (
     get_alarm3_config_page_data,
-    get_alarm3_status,
     load_alarm3_config,
-    pause_alarm3_rule,
     save_alarm3_config,
-    unpause_alarm3_rule,
 )
 from dashboard.services.form_utils import parse_int_form_field
 from dashboard.services.status_builder import (
@@ -57,8 +46,6 @@ from dashboard.services.status_builder import (
     email_alerts_configured,
     get_cached_status,
 )
-
-LONDON_TZ = ZoneInfo("Europe/London")
 
 
 def _read_extra_ca_file(cert_path: Path) -> str | None:
@@ -146,6 +133,7 @@ app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 pages_routes.register(app)
 api_routes.register(app)
+alarms_routes.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
 # streams and makes misconfigured deployments immediately obvious.
@@ -193,9 +181,6 @@ def inject_language() -> dict:
 _cache_lock = cache.cache_lock
 _cache_data = cache.cache_data
 _cached = cache.cached
-_cached_nowait = cache.cached_nowait
-_multi_cached_nowait = cache.multi_cached_nowait
-_is_cache_stale = cache.is_cache_stale
 
 
 # ---------------------------------------------------------------------------
@@ -232,68 +217,10 @@ _email_alerts_configured = email_alerts_configured
 
 
 # ---------------------------------------------------------------------------
-# Alarm page routes
+# Alarm page routes (alarms_overview_page, alarm_page, alarm2_page,
+# alarm3_page, alarm1/2/3 pause+unpause) now live in dashboard.routes.alarms
+# — registered near the top of this module via alarms_routes.register(app).
 # ---------------------------------------------------------------------------
-
-
-@app.route("/alarms")
-def alarms_overview_page() -> str:
-    """Render the Alarms overview page showing all three alarm-type summaries."""
-    if request.args.get("refresh") == "1":
-        with _cache_lock:
-            _cache_data["alarms"]["ts"] = 0.0
-            _cache_data["alarm2"]["ts"] = 0.0
-            _cache_data["alarm3"]["ts"] = 0.0
-
-    # Fetch all three alarm statuses concurrently — cold fetches run in
-    # parallel threads instead of blocking sequentially.
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
-
-    cfg1 = load_alarm_config()
-    any_alarm1 = any(s.get("alarm_enabled", False) for s in cfg1.get("rules", {}).values())
-    cfg2 = load_alarm2_config()
-    any_alarm2 = any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values())
-    cfg3 = load_alarm3_config()
-    any_alarm3 = any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values())
-    return render_template(
-        "alarms_overview.html",
-        alarm1_rows=alarm1_rows,
-        no_alarm1_configured=not any_alarm1,
-        alarm2_rows=alarm2_rows,
-        no_alarm2_configured=not any_alarm2,
-        alarm3_rows=alarm3_rows,
-        no_alarm3_configured=not any_alarm3,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
-        refresh_interval=int(config.API_CACHE_TTL),
-    )
-
-
-@app.route("/alarms/inactivity")
-def alarm_page() -> str:
-    """Render the Inactivity Alarm status page (Alarm 1)."""
-    alarm_rows = _cached_nowait(
-        "alarms",
-        get_alarm_status,
-        ttl=config.API_CACHE_TTL,
-    )
-    # Determine whether any alarms have been configured at all
-    cfg = load_alarm_config()
-    any_configured = any(s.get("alarm_enabled", False) for s in cfg.get("rules", {}).values())
-    return render_template(
-        "alarm.html",
-        alarm_rows=alarm_rows,
-        no_alarms_configured=not any_configured,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
-        data_is_stale=_is_cache_stale("alarms"),
-    )
 
 
 @app.route("/alarm-config", methods=["GET", "POST"])
@@ -363,215 +290,6 @@ def alarm_config_page() -> str:
         new_rule_id=new_rid if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=_email_alerts_configured(),
-    )
-
-
-@app.route("/alarm1/pause/<rule_id>", methods=["POST"])
-def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 1 rule for a given duration with an optional reason.
-
-    Expects a JSON body: ``{"duration_minutes": int, "reason": str}``.
-    Optimistically updates the in-memory cache so the page reload is instant
-    rather than waiting for a fresh Azure Log Analytics query.
-    """
-    data = request.get_json(silent=True) or {}
-    try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError) as exc:
-        app.logger.warning("Invalid pause request payload: %s", exc)
-        return jsonify({"ok": False, "error": "Invalid duration_minutes value."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm_rule(rule_id, duration, reason)
-
-    # Optimistically patch the cached row so the page reload is instant.
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarms", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarms"]["data"] = cached_rows
-            _cache_data["alarms"]["ts"] = time.monotonic()  # mark as fresh
-    return jsonify({"ok": True})
-
-
-@app.route("/alarm1/unpause/<rule_id>", methods=["POST"])
-def alarm1_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 1 rule, restoring normal evaluation.
-
-    Optimistically sets the row to 'unknown' in the cache so the reload is
-    instant, then marks the cache as stale so a background refresh re-evaluates
-    the true alarm status shortly afterwards.
-    """
-    unpause_alarm_rule(rule_id)
-
-    # Optimistically patch the cached row: show 'unknown' instantly,
-    # then let the stale cache trigger a background re-evaluation.
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarms", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarms"]["data"] = cached_rows
-        # Mark stale — background refresh will resolve the true status shortly.
-        if "alarms" in _cache_data:
-            _cache_data["alarms"]["ts"] = 0.0
-    return jsonify({"ok": True})
-
-
-@app.route("/alarm2/pause/<rule_id>", methods=["POST"])
-def alarm2_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 2 rule for a given duration with an optional reason."""
-    data = request.get_json(silent=True) or {}
-    try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError):
-        logging.getLogger(__name__).warning(
-            "Invalid pause request payload for alarm2 rule_id=%s",
-            rule_id,
-            exc_info=True,
-        )
-        return jsonify({"ok": False, "error": "Invalid duration_minutes value."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm2_rule(rule_id, duration, reason)
-
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarm2", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarm2"]["data"] = cached_rows
-            _cache_data["alarm2"]["ts"] = time.monotonic()
-    return jsonify({"ok": True})
-
-
-@app.route("/alarm2/unpause/<rule_id>", methods=["POST"])
-def alarm2_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 2 rule, restoring normal evaluation."""
-    unpause_alarm2_rule(rule_id)
-
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarm2", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarm2"]["data"] = cached_rows
-        if "alarm2" in _cache_data:
-            _cache_data["alarm2"]["ts"] = 0.0
-    return jsonify({"ok": True})
-
-
-@app.route("/alarm3/pause/<rule_id>", methods=["POST"])
-def alarm3_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 3 rule for a given duration with an optional reason."""
-    data = request.get_json(silent=True) or {}
-    try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError):
-        logging.warning("Invalid alarm3 pause payload", exc_info=True)
-        return jsonify({"ok": False, "error": "Invalid request payload."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm3_rule(rule_id, duration, reason)
-
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarm3", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarm3"]["data"] = cached_rows
-            _cache_data["alarm3"]["ts"] = time.monotonic()
-    return jsonify({"ok": True})
-
-
-@app.route("/alarm3/unpause/<rule_id>", methods=["POST"])
-def alarm3_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 3 rule, restoring normal evaluation."""
-    unpause_alarm3_rule(rule_id)
-
-    _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
-    with _cache_lock:
-        cached_rows = _cache_data.get("alarm3", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            _cache_data["alarm3"]["data"] = cached_rows
-        if "alarm3" in _cache_data:
-            _cache_data["alarm3"]["ts"] = 0.0
-    return jsonify({"ok": True})
-
-
-@app.route("/alarms/outgoing-messages")
-def alarm2_page() -> str:
-    """Render the Outgoing Messages Alarm status page (Alarm 2)."""
-    alarm2_rows = _cached_nowait(
-        "alarm2",
-        get_alarm2_status,
-        ttl=config.API_CACHE_TTL,
-    )
-    cfg = load_alarm2_config()
-    any_configured = any(r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values())
-    return render_template(
-        "alarm2.html",
-        alarm2_rows=alarm2_rows,
-        no_alarms_configured=not any_configured,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
-        data_is_stale=_is_cache_stale("alarm2"),
     )
 
 
@@ -650,26 +368,6 @@ def alarm2_config_page() -> str:
         new_rule_id=new_id if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         smtp_configured=_email_alerts_configured(),
-    )
-
-
-@app.route("/alarms/failures")
-def alarm3_page() -> str:
-    """Render the Failures Alarm status page (Alarm 3)."""
-    alarm3_rows = _cached_nowait(
-        "alarm3",
-        get_alarm3_status,
-        ttl=config.API_CACHE_TTL,
-    )
-    cfg = load_alarm3_config()
-    any_configured = any(r.get("alarm_enabled", False) for r in cfg.get("rules", {}).values())
-    return render_template(
-        "alarm3.html",
-        alarm3_rows=alarm3_rows,
-        no_alarms_configured=not any_configured,
-        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
-        data_is_stale=_is_cache_stale("alarm3"),
     )
 
 
