@@ -153,6 +153,13 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
+# Log Cosmos persistence status at startup so it is visible in Container App log
+# streams and makes misconfigured deployments immediately obvious.
+if config.COSMOS_ENDPOINT:
+    log.info("Cosmos persistence ENABLED — endpoint: %s", config.COSMOS_ENDPOINT)
+else:
+    log.warning("Cosmos persistence DISABLED — COSMOS_ENDPOINT is not set; alarm config/state will not be persisted")
+
 # ---------------------------------------------------------------------------
 # Internationalisation (Flask-Babel)
 # ---------------------------------------------------------------------------
