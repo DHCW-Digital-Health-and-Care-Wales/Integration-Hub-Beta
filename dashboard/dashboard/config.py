@@ -134,7 +134,24 @@ DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "en")
 ALERT_EMAIL_ENABLED = os.getenv("ALERT_EMAIL_ENABLED", "false").lower() == "true"
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
+
+# ACS connection string source.
+# Preferred: fetched at runtime from Key Vault (AZURE_KEY_VAULT_URL + ACS_EMAIL_SECRET_NAME)
+# using the container's managed identity — see dashboard.services.email_service.
+# ACS_CONNECTION_STRING is a local-dev-only fallback used when no Key Vault is configured.
+AZURE_KEY_VAULT_URL = os.getenv("AZURE_KEY_VAULT_URL", "")
+ACS_EMAIL_SECRET_NAME = os.getenv("ACS_EMAIL_SECRET_NAME", "acs-email-connection-string")
 ACS_CONNECTION_STRING = os.getenv("ACS_CONNECTION_STRING", "")
+
+# How long (seconds) the ACS connection string fetched from Key Vault is cached in memory
+# before being re-fetched. Keeps alarm-firing paths fast without hitting Key Vault every time.
+ACS_SECRET_CACHE_TTL = int(os.getenv("ACS_SECRET_CACHE_TTL", "3600"))
+
+# Retry-with-backoff settings for ACS email throttling (HTTP 429 TooManyRequests).
+# The ACS Email sandbox domain has a low, fixed per-minute/per-hour send quota, so
+# alarms firing in the same evaluation cycle can hit it in quick succession.
+ALERT_EMAIL_MAX_RETRIES = int(os.getenv("ALERT_EMAIL_MAX_RETRIES", "3"))
+ALERT_EMAIL_RETRY_BACKOFF_SECONDS = float(os.getenv("ALERT_EMAIL_RETRY_BACKOFF_SECONDS", "2"))
 
 # UI
 SPLASH_SCREEN_ENABLED = os.getenv("SPLASH_SCREEN_ENABLED", "true").lower() == "true"

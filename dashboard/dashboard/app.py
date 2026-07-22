@@ -629,6 +629,20 @@ def trace_page(operation_id: str) -> str | tuple[str, int]:
     return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
 
 
+def _email_alerts_configured() -> bool:
+    """Whether alert emails can plausibly be sent (used to enable/disable UI controls).
+
+    Does not perform a live Key Vault fetch — just checks that either a local ACS
+    connection string or a Key Vault URL is configured, alongside a sender and recipient.
+    Must mirror the guard in email_service.send_alert_email() so the UI never enables
+    controls for a configuration that will silently fail to send.
+    """
+    acs_source_configured = bool(config.ACS_CONNECTION_STRING or config.AZURE_KEY_VAULT_URL)
+    return bool(
+        config.ALERT_EMAIL_ENABLED and acs_source_configured and config.ALERT_EMAIL_TO and config.ALERT_EMAIL_FROM
+    )
+
+
 def _alarm_summary(rows: list[dict] | None) -> dict:
     """Compute a compact status count dict from an alarm rows list."""
     rows = rows or []
@@ -928,7 +942,7 @@ def alarm_config_page() -> str:
         saved=saved,
         new_rule_id=new_rid if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
+        smtp_configured=_email_alerts_configured(),
     )
 
 
@@ -1213,7 +1227,7 @@ def alarm2_config_page() -> str:
         saved=saved,
         new_rule_id=new_id if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
+        smtp_configured=_email_alerts_configured(),
     )
 
 
@@ -1304,7 +1318,7 @@ def alarm3_config_page() -> str:
         saved=saved,
         new_rule_id=new_id if request.method == "POST" else None,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        smtp_configured=bool(config.ALERT_EMAIL_ENABLED and config.ACS_CONNECTION_STRING and config.ALERT_EMAIL_TO),
+        smtp_configured=_email_alerts_configured(),
     )
 
 

@@ -21,6 +21,7 @@ from dashboard.services.alarm2 import (
     _applicable_threshold,
     _build_row,
     _format_duration,
+    _send_alarm2_email,
     generate_rule_id,
     get_alarm2_config_page_data,
 )
@@ -316,3 +317,34 @@ class TestGenerateRuleId:
     def test_workflow_id_normalised_to_kebab(self) -> None:
         rid = generate_rule_id("PHW to MPI", set())
         assert rid == "phw-to-mpi-outgoing"
+
+
+class TestSendAlarm2Email:
+    """_send_alarm2_email() must not log an ERROR when send_alert_email() returns False
+    for the intentional/expected reason that ALERT_EMAIL_ENABLED is globally off — that
+    is not a failure, and send_alert_email() logs nothing itself in that case."""
+
+    def test_no_error_log_when_alert_email_globally_disabled(self, caplog: Any) -> None:
+        with (
+            patch("dashboard.services.alarm2.send_alert_email", return_value=False),
+            patch("dashboard.services.alarm2.config.ALERT_EMAIL_ENABLED", False),
+            caplog.at_level("WARNING", logger="dashboard.services.alarm2"),
+        ):
+            _send_alarm2_email(
+                "rid", "phw-to-mpi", "PHW to MPI", 30.0, 15, LAST_MSG_30_AGO, MON_DAY, email_alerts_enabled=True
+            )
+        assert not any(r.levelname == "ERROR" for r in caplog.records)
+        assert not any("Failed to send alarm 2 email" in r.message for r in caplog.records)
+
+    def test_warning_log_when_send_fails_with_email_enabled(self, caplog: Any) -> None:
+        with (
+            patch("dashboard.services.alarm2.send_alert_email", return_value=False),
+            patch("dashboard.services.alarm2.config.ALERT_EMAIL_ENABLED", True),
+            caplog.at_level("WARNING", logger="dashboard.services.alarm2"),
+        ):
+            _send_alarm2_email(
+                "rid", "phw-to-mpi", "PHW to MPI", 30.0, 15, LAST_MSG_30_AGO, MON_DAY, email_alerts_enabled=True
+            )
+        assert any(
+            r.levelname == "WARNING" and "Failed to send alarm 2 email" in r.message for r in caplog.records
+        )

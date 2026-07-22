@@ -30,6 +30,7 @@ from dashboard import config
 from dashboard.services import cosmos_store
 from dashboard.services.alarm_time_utils import get_current_period
 from dashboard.services.credentials import get_azure_credential
+from dashboard.services.email_service import send_alert_email
 
 log = logging.getLogger(__name__)
 
@@ -227,12 +228,7 @@ def _send_alarm_email(
     email_alerts_enabled: bool = False,
 ) -> None:
     """Send an HTML email via Azure Communication Services when Alarm 1 fires."""
-    if not config.ALERT_EMAIL_ENABLED:
-        return
     if not email_alerts_enabled:
-        return
-    if not config.ACS_CONNECTION_STRING or not config.ALERT_EMAIL_TO:
-        log.warning("Alarm email enabled but ACS_CONNECTION_STRING / ALERT_EMAIL_TO not set — skipping")
         return
 
     period = get_current_period(now)
@@ -285,20 +281,11 @@ def _send_alarm_email(
 </p>
 </body></html>"""
 
-    try:
-        from azure.communication.email import EmailClient  # noqa: PLC0415
-
-        client = EmailClient.from_connection_string(config.ACS_CONNECTION_STRING)
-        message = {
-            "senderAddress": config.ALERT_EMAIL_FROM,
-            "recipients": {"to": [{"address": config.ALERT_EMAIL_TO}]},
-            "content": {"subject": subject, "html": body},
-        }
-        poller = client.begin_send(message)
-        poller.result()
-        log.info("Alarm 1 email sent for %s to %s", rule_id, config.ALERT_EMAIL_TO)
-    except Exception as exc:
-        log.error("Failed to send alarm 1 email for %s: %s", rule_id, exc)
+    if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
+        # send_alert_email() already logs a warning (missing config) or error (send
+        # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
+        # is False, a False return is expected/intentional, so avoid a noisy log here.
+        log.warning("Failed to send alarm 1 email for %s", rule_id)
 
 
 # ---------------------------------------------------------------------------
