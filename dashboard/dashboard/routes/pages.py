@@ -104,12 +104,9 @@ def flows_page() -> str:
 
 def exceptions_page() -> str:
     """Render the Exceptions page, filtered to the requested time window (default 24 h)."""
-    raw_hours = request.args.get("hours", 24)
-    try:
-        hours = int(raw_hours)
-    except (TypeError, ValueError):
-        hours = 24
-    hours = max(1, hours)
+    hours_raw = request.args.get("hours", "24", type=str)
+    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "48": 48, "72": 72}
+    hours = allowed.get(hours_raw, 24)
     exceptions = cache.cached_nowait(
         f"exceptions_{hours}",
         lambda: get_exceptions(hours=hours),

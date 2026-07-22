@@ -101,14 +101,23 @@ class TestPageRoutes:
         assert response.status_code == 200
         assert b"No exceptions were found in the last 24 hours" in response.data
 
-    def test_exceptions_negative_hours_clamped_to_minimum(self, client: FlaskClient) -> None:
+    def test_exceptions_rejects_hours_value_not_in_allowed_set(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
-            response = client.get("/exceptions?hours=-5")
+            response = client.get("/exceptions?hours=999999999")
         assert response.status_code == 200
-        assert b"No exceptions were found in the last 1 hours" in response.data
+        assert b"No exceptions were found in the last 24 hours" in response.data
+
+    def test_exceptions_accepts_valid_hours_from_dropdown(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+        ):
+            response = client.get("/exceptions?hours=72")
+        assert response.status_code == 200
+        assert b"No exceptions were found in the last 72 hours" in response.data
 
     def test_service_bus_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.routes.pages.get_queues", return_value=EMPTY_QUEUES):
