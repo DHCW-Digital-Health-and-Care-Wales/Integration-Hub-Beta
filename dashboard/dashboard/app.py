@@ -63,6 +63,7 @@ from dashboard.services.azure_monitor import (
 )
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
+from dashboard.services.form_utils import parse_int_form_field
 from dashboard.services.service_bus import get_message_metrics, get_queues
 from dashboard.services.traces import get_trace
 
@@ -884,12 +885,6 @@ def alarm_config_page() -> str:
         cfg = load_alarm_config()
         rules_cfg = cfg.setdefault("rules", {})
 
-        def _int(field: str, default: int) -> int:
-            try:
-                return max(1, int(request.form.get(field, default)))
-            except (ValueError, TypeError):
-                return default
-
         # Handle deletions
         for key in list(request.form):
             if key.startswith("delete_"):
@@ -907,10 +902,10 @@ def alarm_config_page() -> str:
             entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
-            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60)
-            entry["day_threshold_minutes"] = _int(f"day_threshold_{rid}", 60)
-            entry["evening_threshold_minutes"] = _int(f"evening_threshold_{rid}", 120)
-            entry["weekend_threshold_minutes"] = _int(f"weekend_threshold_{rid}", 240)
+            entry["alerting_gap_minutes"] = parse_int_form_field(request.form, f"alerting_gap_{rid}", 60)
+            entry["day_threshold_minutes"] = parse_int_form_field(request.form, f"day_threshold_{rid}", 60)
+            entry["evening_threshold_minutes"] = parse_int_form_field(request.form, f"evening_threshold_{rid}", 120)
+            entry["weekend_threshold_minutes"] = parse_int_form_field(request.form, f"weekend_threshold_{rid}", 240)
 
         # Add new rule
         new_wid = (request.form.get("new_workflow_id") or "").strip()
@@ -921,10 +916,10 @@ def alarm_config_page() -> str:
                 "display_name": (request.form.get("new_display_name") or "").strip(),
                 "alarm_enabled": "new_enabled" in request.form,
                 "workflow_id": new_wid,
-                "day_threshold_minutes": _int("new_day_threshold", 60),
-                "evening_threshold_minutes": _int("new_evening_threshold", 120),
-                "weekend_threshold_minutes": _int("new_weekend_threshold", 240),
-                "alerting_gap_minutes": _int("new_alerting_gap", 60),
+                "day_threshold_minutes": parse_int_form_field(request.form, "new_day_threshold", 60),
+                "evening_threshold_minutes": parse_int_form_field(request.form, "new_evening_threshold", 120),
+                "weekend_threshold_minutes": parse_int_form_field(request.form, "new_weekend_threshold", 240),
+                "alerting_gap_minutes": parse_int_form_field(request.form, "new_alerting_gap", 60),
                 "email_alerts_enabled": False,
                 "email_ooh_enabled": False,
             }
@@ -1169,12 +1164,6 @@ def alarm2_config_page() -> str:
         cfg = load_alarm2_config()
         rules_cfg = cfg.setdefault("rules", {})
 
-        def _int(field: str, default: int, minimum: int = 0) -> int:
-            try:
-                return max(minimum, int(request.form.get(field, default)))
-            except (ValueError, TypeError):
-                return default
-
         # --- Handle deletions first ---
         for key in list(request.form):
             if key.startswith("delete_"):
@@ -1192,10 +1181,14 @@ def alarm2_config_page() -> str:
             entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
-            entry["day_threshold_minutes"] = _int(f"day_threshold_{rid}", 60, minimum=0)
-            entry["evening_threshold_minutes"] = _int(f"evening_threshold_{rid}", 120, minimum=0)
-            entry["weekend_threshold_minutes"] = _int(f"weekend_threshold_{rid}", 240, minimum=0)
-            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60, minimum=1)
+            entry["day_threshold_minutes"] = parse_int_form_field(request.form, f"day_threshold_{rid}", 60, minimum=0)
+            entry["evening_threshold_minutes"] = parse_int_form_field(
+                request.form, f"evening_threshold_{rid}", 120, minimum=0
+            )
+            entry["weekend_threshold_minutes"] = parse_int_form_field(
+                request.form, f"weekend_threshold_{rid}", 240, minimum=0
+            )
+            entry["alerting_gap_minutes"] = parse_int_form_field(request.form, f"alerting_gap_{rid}", 60, minimum=1)
 
         # --- Add new rule if submitted ---
         new_wid = (request.form.get("new_workflow_id") or "").strip()
@@ -1206,10 +1199,14 @@ def alarm2_config_page() -> str:
                 "display_name": (request.form.get("new_display_name") or "").strip() or new_wid,
                 "alarm_enabled": "new_enabled" in request.form,
                 "workflow_id": new_wid,
-                "day_threshold_minutes": _int("new_day_threshold", 60, minimum=0),
-                "evening_threshold_minutes": _int("new_evening_threshold", 120, minimum=0),
-                "weekend_threshold_minutes": _int("new_weekend_threshold", 240, minimum=0),
-                "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
+                "day_threshold_minutes": parse_int_form_field(request.form, "new_day_threshold", 60, minimum=0),
+                "evening_threshold_minutes": parse_int_form_field(
+                    request.form, "new_evening_threshold", 120, minimum=0
+                ),
+                "weekend_threshold_minutes": parse_int_form_field(
+                    request.form, "new_weekend_threshold", 240, minimum=0
+                ),
+                "alerting_gap_minutes": parse_int_form_field(request.form, "new_alerting_gap", 60, minimum=1),
                 "email_alerts_enabled": False,
                 "email_ooh_enabled": False,
             }
@@ -1265,12 +1262,6 @@ def alarm3_config_page() -> str:
         cfg = load_alarm3_config()
         rules_cfg = cfg.setdefault("rules", {})
 
-        def _int(field: str, default: int, minimum: int = 0) -> int:
-            try:
-                return max(minimum, int(request.form.get(field, default)))
-            except (ValueError, TypeError):
-                return default
-
         for key in list(request.form):
             if key.startswith("delete_"):
                 rid = key[len("delete_") :]
@@ -1286,9 +1277,11 @@ def alarm3_config_page() -> str:
             entry["email_ooh_enabled"] = f"email_ooh_{rid}" in request.form and entry["email_alerts_enabled"]
             entry["display_name"] = (request.form.get(f"display_name_{rid}") or "").strip()
             entry["workflow_id"] = (request.form.get(f"workflow_id_{rid}") or "").strip()
-            entry["window_duration_minutes"] = _int(f"window_duration_{rid}", 15, minimum=1)
-            entry["threshold"] = _int(f"threshold_{rid}", 1, minimum=1)
-            entry["alerting_gap_minutes"] = _int(f"alerting_gap_{rid}", 60, minimum=1)
+            entry["window_duration_minutes"] = parse_int_form_field(
+                request.form, f"window_duration_{rid}", 15, minimum=1
+            )
+            entry["threshold"] = parse_int_form_field(request.form, f"threshold_{rid}", 1, minimum=1)
+            entry["alerting_gap_minutes"] = parse_int_form_field(request.form, f"alerting_gap_{rid}", 60, minimum=1)
 
         new_wid = (request.form.get("new_workflow_id") or "").strip()
         new_id = None
@@ -1298,9 +1291,9 @@ def alarm3_config_page() -> str:
                 "display_name": (request.form.get("new_display_name") or "").strip() or f"{new_wid} Failures",
                 "alarm_enabled": "new_enabled" in request.form,
                 "workflow_id": new_wid,
-                "window_duration_minutes": _int("new_window_duration", 15, minimum=1),
-                "threshold": _int("new_threshold", 1, minimum=1),
-                "alerting_gap_minutes": _int("new_alerting_gap", 60, minimum=1),
+                "window_duration_minutes": parse_int_form_field(request.form, "new_window_duration", 15, minimum=1),
+                "threshold": parse_int_form_field(request.form, "new_threshold", 1, minimum=1),
+                "alerting_gap_minutes": parse_int_form_field(request.form, "new_alerting_gap", 60, minimum=1),
                 "email_alerts_enabled": False,
                 "email_ooh_enabled": False,
             }
