@@ -133,3 +133,99 @@ class TestSendAlertEmail:
             result = email_service.send_alert_email("subject", "<p>body</p>")
 
         assert result is False
+
+
+class TestSendAlertEmailRetry:
+    """Covers retry-with-backoff on ACS 429 (TooManyRequests) responses."""
+
+    def _throttling_error(self, retry_after: str | None = None) -> Exception:
+        exc = Exception("(TooManyRequests) Please try again after 0 seconds.")
+        exc.status_code = 429  # type: ignore[attr-defined]
+        if retry_after is not None:
+            response = MagicMock()
+            response.status_code = 429
+            response.headers = {"Retry-After": retry_after}
+            exc.response = response  # type: ignore[attr-defined]
+        return exc
+
+    def test_retries_on_429_and_succeeds(self) -> None:
+        mock_poller = MagicMock()
+        mock_poller.result.return_value = {"id": "msg-123"}
+        mock_client = MagicMock()
+        mock_client.begin_send.side_effect = [self._throttling_error("0"), mock_poller]
+
+        with (
+            patch.object(email_service.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(email_service.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_FROM", "from@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_MAX_RETRIES", 3),
+            patch.object(email_service, "get_acs_connection_string", return_value="endpoint=x"),
+            patch("azure.communication.email.EmailClient.from_connection_string", return_value=mock_client),
+            patch("dashboard.services.email_service.time.sleep") as mock_sleep,
+        ):
+            result = email_service.send_alert_email("subject", "<p>body</p>")
+
+        assert result is True
+        assert mock_client.begin_send.call_count == 2
+        mock_sleep.assert_called_once_with(0.0)
+
+    def test_gives_up_after_max_retries_on_persistent_429(self) -> None:
+        mock_client = MagicMock()
+        mock_client.begin_send.side_effect = self._throttling_error("1")
+
+        with (
+            patch.object(email_service.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(email_service.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_FROM", "from@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_MAX_RETRIES", 2),
+            patch.object(email_service, "get_acs_connection_string", return_value="endpoint=x"),
+            patch("azure.communication.email.EmailClient.from_connection_string", return_value=mock_client),
+            patch("dashboard.services.email_service.time.sleep") as mock_sleep,
+        ):
+            result = email_service.send_alert_email("subject", "<p>body</p>")
+
+        assert result is False
+        # Initial attempt + 2 retries = 3 calls total.
+        assert mock_client.begin_send.call_count == 3
+        assert mock_sleep.call_count == 2
+
+    def test_non_throttling_error_does_not_retry(self) -> None:
+        mock_client = MagicMock()
+        mock_client.begin_send.side_effect = Exception("some other ACS error")
+
+        with (
+            patch.object(email_service.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(email_service.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_FROM", "from@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_MAX_RETRIES", 3),
+            patch.object(email_service, "get_acs_connection_string", return_value="endpoint=x"),
+            patch("azure.communication.email.EmailClient.from_connection_string", return_value=mock_client),
+            patch("dashboard.services.email_service.time.sleep") as mock_sleep,
+        ):
+            result = email_service.send_alert_email("subject", "<p>body</p>")
+
+        assert result is False
+        mock_client.begin_send.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    def test_falls_back_to_exponential_backoff_without_retry_after_header(self) -> None:
+        mock_poller = MagicMock()
+        mock_poller.result.return_value = {"id": "msg-123"}
+        mock_client = MagicMock()
+        # No Retry-After header this time — exponential backoff should be used instead.
+        mock_client.begin_send.side_effect = [self._throttling_error(), mock_poller]
+
+        with (
+            patch.object(email_service.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(email_service.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_FROM", "from@example.com"),
+            patch.object(email_service.config, "ALERT_EMAIL_MAX_RETRIES", 3),
+            patch.object(email_service.config, "ALERT_EMAIL_RETRY_BACKOFF_SECONDS", 2.0),
+            patch.object(email_service, "get_acs_connection_string", return_value="endpoint=x"),
+            patch("azure.communication.email.EmailClient.from_connection_string", return_value=mock_client),
+            patch("dashboard.services.email_service.time.sleep") as mock_sleep,
+        ):
+            result = email_service.send_alert_email("subject", "<p>body</p>")
+
+        assert result is True
+        mock_sleep.assert_called_once_with(2.0)  # 2.0 * 2**0

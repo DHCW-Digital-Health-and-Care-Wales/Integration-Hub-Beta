@@ -132,5 +132,11 @@ ACS_CONNECTION_STRING = os.getenv("ACS_CONNECTION_STRING", "")
 # before being re-fetched. Keeps alarm-firing paths fast without hitting Key Vault every time.
 ACS_SECRET_CACHE_TTL = int(os.getenv("ACS_SECRET_CACHE_TTL", "3600"))
 
+# Retry-with-backoff settings for ACS email throttling (HTTP 429 TooManyRequests).
+# The ACS Email sandbox domain has a low, fixed per-minute/per-hour send quota, so
+# alarms firing in the same evaluation cycle can hit it in quick succession.
+ALERT_EMAIL_MAX_RETRIES = int(os.getenv("ALERT_EMAIL_MAX_RETRIES", "3"))
+ALERT_EMAIL_RETRY_BACKOFF_SECONDS = float(os.getenv("ALERT_EMAIL_RETRY_BACKOFF_SECONDS", "2"))
+
 # UI
 SPLASH_SCREEN_ENABLED = os.getenv("SPLASH_SCREEN_ENABLED", "true").lower() == "true"

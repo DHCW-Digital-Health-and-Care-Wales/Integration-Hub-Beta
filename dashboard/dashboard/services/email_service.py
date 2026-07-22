@@ -69,12 +69,44 @@ def get_acs_connection_string() -> str:
     return config.ACS_CONNECTION_STRING
 
 
+def _retry_after_seconds(exc: Exception, attempt: int) -> float:
+    """Determine how long to wait before retrying after a throttling error.
+
+    Prefers the server-provided ``Retry-After`` header (seconds) when present,
+    falling back to exponential backoff based on ``ALERT_EMAIL_RETRY_BACKOFF_SECONDS``.
+    """
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) if response is not None else None
+    if headers:
+        retry_after = headers.get("Retry-After") or headers.get("retry-after")
+        if retry_after:
+            try:
+                return max(float(retry_after), 0.0)
+            except ValueError:
+                pass
+
+    return config.ALERT_EMAIL_RETRY_BACKOFF_SECONDS * (2**attempt)
+
+
+def _is_throttling_error(exc: Exception) -> bool:
+    """Return True if the exception represents an ACS 429 TooManyRequests response."""
+    status_code = getattr(exc, "status_code", None)
+    if status_code == 429:
+        return True
+    response = getattr(exc, "response", None)
+    return getattr(response, "status_code", None) == 429
+
+
 def send_alert_email(subject: str, html_body: str) -> bool:
     """Send an HTML alert email via Azure Communication Services.
 
     Returns True on success, False otherwise (never raises). Callers should
     treat a False return as "email not sent" and continue — alarm evaluation
     must not be blocked by email delivery issues.
+
+    Retries with backoff on ACS 429 (TooManyRequests) responses, since the ACS
+    Email sandbox domain has a low, fixed per-minute/per-hour send quota that
+    multiple alarms firing in the same evaluation cycle can easily exceed.
     """
     if not config.ALERT_EMAIL_ENABLED:
         return False
@@ -93,10 +125,30 @@ def send_alert_email(subject: str, html_body: str) -> bool:
             "recipients": {"to": [{"address": config.ALERT_EMAIL_TO}]},
             "content": {"subject": subject, "html": html_body},
         }
-        poller = client.begin_send(message)
-        poller.result()
-        log.info("Alert email sent to %s: %s", config.ALERT_EMAIL_TO, subject)
-        return True
+
+        max_retries = config.ALERT_EMAIL_MAX_RETRIES
+        for attempt in range(max_retries + 1):
+            try:
+                poller = client.begin_send(message)
+                poller.result()
+                log.info("Alert email sent to %s: %s", config.ALERT_EMAIL_TO, subject)
+                return True
+            except Exception as exc:
+                if _is_throttling_error(exc) and attempt < max_retries:
+                    wait_seconds = _retry_after_seconds(exc, attempt)
+                    log.warning(
+                        "ACS throttled alert email (%s), retrying in %.1fs (attempt %d/%d): %s",
+                        subject,
+                        wait_seconds,
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                    )
+                    time.sleep(wait_seconds)
+                    continue
+                raise
     except Exception as exc:
         log.error("Failed to send alert email (%s): %s", subject, exc)
         return False
+
+    return False
