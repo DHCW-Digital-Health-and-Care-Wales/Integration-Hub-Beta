@@ -10,6 +10,8 @@ changes.
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
@@ -32,7 +34,19 @@ def set_language() -> Response:
     if lang in ("en", "cy"):
         session["lang"] = lang
 
-    return make_response(redirect(request.referrer or url_for("index")))
+    # Never forward the raw Referer header to redirect(): it is client-supplied and
+    # can be spoofed (and some browsers normalise "\" to "/" when resolving a
+    # redirect, enabling a network-path-reference bypass e.g. "/\evil.com"). Instead
+    # normalise backslashes and rebuild the target from only its path/query, which
+    # discards any scheme/host entirely so the redirect can never leave this site.
+    referrer = request.referrer
+    if not referrer:
+        return make_response(redirect(url_for("index")))
+
+    parsed = urlparse(referrer.replace("\\", "/"))
+    path = parsed.path or "/"
+    target = f"{path}?{parsed.query}" if parsed.query else path
+    return make_response(redirect(target))
 
 
 def index() -> str:
@@ -90,7 +104,9 @@ def flows_page() -> str:
 
 def exceptions_page() -> str:
     """Render the Exceptions page, filtered to the requested time window (default 24 h)."""
-    hours = int(request.args.get("hours", 24))
+    hours_raw = request.args.get("hours", "24", type=str)
+    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "48": 48, "72": 72}
+    hours = allowed.get(hours_raw, 24)
     exceptions = cache.cached_nowait(
         f"exceptions_{hours}",
         lambda: get_exceptions(hours=hours),
@@ -137,8 +153,12 @@ def messages_page() -> str:
             flows = get_flows()
             flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
 
+    # Vary the cache key by queue_filter: the builder's result depends on
+    # microservice_ids, so a fixed "messages" key would serve one filter's
+    # cached data to a different filter.
+    cache_key = f"messages_{queue_filter}" if queue_filter else "messages"
     messages = cache.cached_nowait(
-        "messages",
+        cache_key,
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
@@ -151,7 +171,7 @@ def messages_page() -> str:
         queue_filter=queue_filter,
         flow_label=flow_label,
         queue_names=queue_names,
-        data_is_stale=cache.is_cache_stale("messages"),
+        data_is_stale=cache.is_cache_stale(cache_key),
     )
 
 
