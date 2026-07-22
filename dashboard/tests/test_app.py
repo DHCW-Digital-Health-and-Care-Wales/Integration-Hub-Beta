@@ -47,9 +47,9 @@ EMPTY_CONTAINER_METRICS: dict = {}
 
 def _mock_patches() -> list:
     return [
-        patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
+        patch("dashboard.routes.api.get_queues", return_value=EMPTY_QUEUES),
         patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-        patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        patch("dashboard.routes.api.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         patch("dashboard.services.azure_monitor.get_messages_today", return_value=EMPTY_MESSAGES),
     ]
 
@@ -218,8 +218,8 @@ class TestApiRoutes:
 
     def test_api_flows_returns_json(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
-            patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+            patch("dashboard.routes.api.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.routes.api.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/api/flows")
         assert response.status_code == 200
@@ -227,7 +227,7 @@ class TestApiRoutes:
         assert "flows" in data
 
     def test_api_messages_returns_json(self, client: FlaskClient) -> None:
-        with patch("dashboard.app.get_messages_today", return_value=EMPTY_MESSAGES):
+        with patch("dashboard.routes.api.get_messages_today", return_value=EMPTY_MESSAGES):
             response = client.get("/api/messages")
         assert response.status_code == 200
         data = response.get_json()
@@ -241,7 +241,7 @@ class TestApiRoutes:
             "cpu": [12.5],
             "memory_mb": [128.0],
         }
-        with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+        with patch("dashboard.routes.api.get_container_app_metric_history", return_value=fake_history) as mock_fn:
             response = client.get("/api/container-app/my-app/history")
         assert response.status_code == 200
         data = response.get_json()
@@ -251,21 +251,21 @@ class TestApiRoutes:
     def test_api_container_app_history_accepts_valid_hours(self, client: FlaskClient) -> None:
         fake_history = {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
         for hours_str, hours_int in [("1", 1), ("6", 6), ("24", 24), ("168", 168)]:
-            with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+            with patch("dashboard.routes.api.get_container_app_metric_history", return_value=fake_history) as mock_fn:
                 response = client.get(f"/api/container-app/my-app/history?hours={hours_str}")
             assert response.status_code == 200
             mock_fn.assert_called_once_with("my-app", hours=hours_int)
 
     def test_api_container_app_history_defaults_to_1h_for_invalid_hours(self, client: FlaskClient) -> None:
         fake_history = {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
-        with patch("dashboard.app.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+        with patch("dashboard.routes.api.get_container_app_metric_history", return_value=fake_history) as mock_fn:
             response = client.get("/api/container-app/my-app/history?hours=999")
         assert response.status_code == 200
         mock_fn.assert_called_once_with("my-app", hours=1)
 
     def test_api_hl7_throughput_returns_json(self, client: FlaskClient) -> None:
         fake_metrics = {"in": [{"time": "2024-01-01T00:00:00+00:00", "value": 5}], "out": []}
-        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+        with patch("dashboard.routes.api.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
             response = client.get("/api/hl7-throughput")
         assert response.status_code == 200
         assert response.get_json() == fake_metrics
@@ -274,21 +274,21 @@ class TestApiRoutes:
     def test_api_hl7_throughput_accepts_valid_hours(self, client: FlaskClient) -> None:
         fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
         for hours_str, hours_int in [("24", 24), ("72", 72), ("168", 168), ("336", 336), ("720", 720)]:
-            with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+            with patch("dashboard.routes.api.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
                 response = client.get(f"/api/hl7-throughput?hours={hours_str}")
             assert response.status_code == 200
             mock_fn.assert_called_once_with(hours=hours_int, health_board=None, service=None)
 
     def test_api_hl7_throughput_defaults_to_24h_for_invalid_hours(self, client: FlaskClient) -> None:
         fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
-        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+        with patch("dashboard.routes.api.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
             response = client.get("/api/hl7-throughput?hours=999")
         assert response.status_code == 200
         mock_fn.assert_called_once_with(hours=24, health_board=None, service=None)
 
     def test_api_hl7_throughput_passes_filters(self, client: FlaskClient) -> None:
         fake_metrics: dict[str, list[dict]] = {"in": [], "out": []}
-        with patch("dashboard.app.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+        with patch("dashboard.routes.api.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
             response = client.get("/api/hl7-throughput?health_board=PHW&service=phw-to-mpi")
         assert response.status_code == 200
         mock_fn.assert_called_once_with(hours=24, health_board="PHW", service="phw-to-mpi")

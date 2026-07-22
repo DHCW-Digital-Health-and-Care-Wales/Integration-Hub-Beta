@@ -17,6 +17,7 @@ from flask import Flask, Response, jsonify, render_template, request, session
 from flask_babel import Babel  # type: ignore[import-untyped]
 
 import dashboard.config as config
+from dashboard.routes import api as api_routes
 from dashboard.routes import pages as pages_routes
 from dashboard.services import cache
 from dashboard.services.alarm1 import (
@@ -50,18 +51,8 @@ from dashboard.services.alarm3 import (
     save_alarm3_config,
     unpause_alarm3_rule,
 )
-from dashboard.services.arm import discover_flows
-from dashboard.services.azure_monitor import (
-    get_container_app_metric_history,
-    get_hl7_throughput_metrics,
-    get_messages_today,
-)
-from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows
 from dashboard.services.form_utils import parse_int_form_field
-from dashboard.services.service_bus import get_message_metrics, get_queues
 from dashboard.services.status_builder import (
-    alarm_summary,
     build_status,
     email_alerts_configured,
     get_cached_status,
@@ -154,6 +145,7 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 pages_routes.register(app)
+api_routes.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
 # streams and makes misconfigured deployments immediately obvious.
@@ -226,170 +218,22 @@ _build_status = build_status
 
 
 # ---------------------------------------------------------------------------
-# API routes
+# API routes (healthz, api_status, api_refresh, api_flows,
+# api_container_app_history, api_messages, api_servicebus_metrics,
+# api_hl7_throughput, api_alarms_status) now live in dashboard.routes.api —
+# registered near the top of this module via api_routes.register(app).
 # ---------------------------------------------------------------------------
 
 
-# These two helpers now live in dashboard.services.status_builder alongside
-# the other status/alarm-map builders. Re-imported under the original
-# private names so existing call sites and test patches keep working.
+# This helper still lives in dashboard.services.status_builder alongside
+# the other status/alarm-map builders. Re-imported here under the original
+# private name so existing call sites (alarm-config pages) keep working.
 _email_alerts_configured = email_alerts_configured
-_alarm_summary = alarm_summary
-
-
-@app.route("/healthz")
-def healthz() -> dict:
-    """Lightweight health check endpoint. Returns immediately without Azure calls."""
-    return {"status": "ok"}
-
-
-@app.route("/api/status")
-def api_status() -> Response:
-    """JSON endpoint returning current system status plus compact alarm summaries.
-
-    Accepts ``?force=true`` to bypass the cache and force a fresh Azure query.
-    """
-    force = request.args.get("force", "false").lower() == "true"
-    data = _get_cached_status(force=force)
-    # Merge compact alarm summaries so dashboard.js can keep widgets live.
-    # These are non-blocking cache reads — no extra Azure calls.
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
-    data = dict(data)
-    data["alarm1_summary"] = _alarm_summary(alarm1_rows)
-    data["alarm2_summary"] = _alarm_summary(alarm2_rows)
-    data["alarm3_summary"] = _alarm_summary(alarm3_rows)
-    # TODO: add alarm1_summary and alarm2_summary here when those widgets are added
-    return jsonify(data)
-
-
-@app.route("/api/refresh")
-def api_refresh() -> Response:
-    """Force-refresh all caches including ARM flow discovery."""
-    discover_flows(force=True)
-    # Bust every cache entry
-    with _cache_lock:
-        for entry in _cache_data.values():
-            entry["ts"] = 0.0
-    data = _get_cached_status(force=True)
-    return jsonify({"refreshed": True, "active_flows": list(get_active_flows().keys()), **data})
-
-
-@app.route("/api/flows")
-def api_flows() -> Response:
-    """JSON endpoint returning live flow health and container-app metrics."""
-    queues = get_queues()
-    active_flows = get_active_flows()
-    flows = build_flow_data(queues, active_flows)
-    container_metrics = get_container_apps_metrics()
-    return jsonify(
-        {
-            "flows": flows,
-            "container_metrics": container_metrics,
-        }
-    )
-
-
-@app.route("/api/container-app/<name>/history")
-def api_container_app_history(name: str) -> Response:
-    """JSON endpoint returning CPU% and memory (MiB) history for a Container App.
-
-    Query params:
-        hours: window size — one of 1, 6, 24, 168 (defaults to 1).
-    """
-    hours_raw = request.args.get("hours", "1", type=str)
-    allowed = {"1": 1, "6": 6, "24": 24, "168": 168}
-    hours = allowed.get(hours_raw, 1)
-    history = get_container_app_metric_history(name, hours=hours)
-    return jsonify(history)
-
-
-@app.route("/api/messages")
-def api_messages() -> Response:
-    """JSON endpoint returning all messages processed today."""
-    messages = get_messages_today()
-    return jsonify({"messages": messages, "count": len(messages)})
-
-
-@app.route("/api/servicebus-metrics")
-def api_servicebus_metrics() -> Response:
-    """JSON endpoint returning Service Bus message-count metrics for a given time window.
-
-    Query params:
-        hours: one of 1, 6, 12, 24, 168, 720 (defaults to 1).
-        queue:  optional queue name filter.
-    """
-    hours = request.args.get("hours", "1", type=str)
-    allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
-    timespan_hours = allowed.get(hours, 1)
-    queue = request.args.get("queue", "").strip() or None
-    metrics = get_message_metrics(timespan_hours, queue_name=queue)
-    return jsonify(metrics)
-
-
-@app.route("/api/hl7-throughput")
-def api_hl7_throughput() -> Response:
-    """JSON endpoint returning HL7 message throughput metrics (messages in and out).
-
-    Query params:
-        hours: one of 24, 72, 168, 336, 720 (defaults to 24) — i.e. last
-            24 hours, 3, 7, 14 or 30 days.
-        health_board: optional health board filter (e.g. PHW).
-        service: optional service / flow filter (e.g. phw-to-mpi).
-    """
-    hours = request.args.get("hours", "24", type=str)
-    allowed = {"24": 24, "72": 72, "168": 168, "336": 336, "720": 720}
-    timespan_hours = allowed.get(hours, 24)
-    health_board = request.args.get("health_board", "").strip() or None
-    service = request.args.get("service", "").strip() or None
-    metrics = get_hl7_throughput_metrics(
-        hours=timespan_hours,
-        health_board=health_board,
-        service=service,
-    )
-    return jsonify(metrics)
 
 
 # ---------------------------------------------------------------------------
 # Alarm page routes
 # ---------------------------------------------------------------------------
-
-
-@app.route("/api/alarms/status")
-def api_alarms_status() -> Response:
-    """JSON endpoint returning all three alarm statuses in parallel.
-
-    Supports ``?refresh=1`` to force a cache bust.  Useful for async page
-    loading or periodic polling from the browser.
-    """
-    force = request.args.get("refresh") == "1"
-    if force:
-        with _cache_lock:
-            _cache_data["alarms"]["ts"] = 0.0
-            _cache_data["alarm2"]["ts"] = 0.0
-            _cache_data["alarm3"]["ts"] = 0.0
-
-    alarm1_rows, alarm2_rows, alarm3_rows = _multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
-    return jsonify(
-        {
-            "alarm1": alarm1_rows,
-            "alarm2": alarm2_rows,
-            "alarm3": alarm3_rows,
-            "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
-            "poll_interval_seconds": int(config.API_CACHE_TTL),
-        }
-    )
 
 
 @app.route("/alarms")
