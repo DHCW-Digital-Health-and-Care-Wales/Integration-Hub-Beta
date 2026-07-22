@@ -9,7 +9,6 @@ import os
 import ssl
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -56,13 +55,19 @@ from dashboard.services.azure_monitor import (
     get_exceptions,
     get_hl7_throughput_metrics,
     get_messages_today,
-    get_retry_delay_metrics_by_flow,
     get_throughput_filter_options,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, overall_health, queue_to_workflow_id
+from dashboard.services.flows import build_flow_data, get_active_flows, get_flows, queue_to_workflow_id
 from dashboard.services.form_utils import parse_int_form_field
 from dashboard.services.service_bus import get_message_metrics, get_queues
+from dashboard.services.status_builder import (
+    alarm_summary,
+    build_alarm_map,
+    build_status,
+    email_alerts_configured,
+    get_cached_status,
+)
 from dashboard.services.traces import get_trace
 
 LONDON_TZ = ZoneInfo("Europe/London")
@@ -203,130 +208,16 @@ _multi_cached_nowait = cache.multi_cached_nowait
 _is_cache_stale = cache.is_cache_stale
 
 
-def _get_cached_status(force: bool = False) -> dict:
-    """Return the cached system status dict, optionally forcing a fresh rebuild."""
-    if force:
-        return _cached("status", _build_status, force=True)
-    return _cached_nowait("status", _build_status)
-
-
-def _build_status() -> dict:
-    """Fetch live Azure data and build the full system-status payload.
-
-    Runs queue, active-flow, and exception queries concurrently to minimise
-    latency on a cold-cache rebuild.
-    """
-    # Run the three independent Azure API calls concurrently to cut cold-cache
-    # latency from ~3× to ~1× round-trip time.
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        fut_queues = pool.submit(get_queues)
-        fut_flows = pool.submit(get_active_flows)
-        fut_exc = pool.submit(get_exceptions, hours=1)
-        queues = fut_queues.result()
-        active_flows = fut_flows.result()
-        exceptions_1h = fut_exc.result()
-
-    flows = build_flow_data(queues, active_flows)
-
-    total_active = sum(q.get("active_message_count", 0) for q in queues)
-    total_dlq = sum(q.get("dead_letter_message_count", 0) for q in queues)
-
-    exception_count = len(exceptions_1h)
-
-    flow_statuses = [f["health"] for f in flows]
-    sys_health = overall_health(flow_statuses)
-    healthy_count = flow_statuses.count("healthy")
-    warning_count = flow_statuses.count("warning")
-    critical_count = flow_statuses.count("critical")
-
-    retry_metrics = get_retry_delay_metrics_by_flow(hours=1, min_delay_seconds=60)
-    flow_labels = {flow.get("id"): flow.get("label", flow.get("id")) for flow in flows}
-    retry_rows: list[dict] = []
-    flows_over_1m = 0
-
-    for metric in retry_metrics:
-        flow_id = metric.get("workflow_id")
-        delay_seconds = metric.get("delay_seconds")
-        has_metric = delay_seconds is not None and isinstance(delay_seconds, (int, float))
-        over_1m = bool(has_metric and delay_seconds and delay_seconds > 60)
-        if over_1m:
-            flows_over_1m += 1
-
-        delay_display = (
-            f"{int(delay_seconds)}s" if has_metric and delay_seconds is not None
-            else "Metric unavailable"
-        )
-        retry_rows.append(
-            {
-                "workflow_id": flow_id,
-                "flow_label": flow_labels.get(flow_id, flow_id),
-                "delay_seconds": delay_seconds,
-                "delay_display": delay_display,
-                "attempt": metric.get("attempt"),
-                "queue": metric.get("queue") or "",
-                "microservice_id": metric.get("microservice_id") or "",
-                "timestamp": metric.get("timestamp") or "",
-                "status": "warning" if over_1m else "healthy",
-                "over_1m": over_1m,
-            }
-        )
-
-    return {
-        "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
-        "system_health": sys_health,
-        "kpis": {
-            "total_active_messages": total_active,
-            "total_dlq_messages": total_dlq,
-            "exception_count_1h": exception_count,
-            "flows_healthy": healthy_count,
-            "flows_warning": warning_count,
-            "flows_critical": critical_count,
-        },
-        "flows": flows,
-        "queues": queues,
-        "recent_exceptions": exceptions_1h[:5],
-        "retry_delays": retry_rows,
-        "retry_delay_kpis": {
-            "flows_over_1m": flows_over_1m,
-            "flows_reporting": len(retry_rows),
-        },
-    }
-
-
 # ---------------------------------------------------------------------------
-# Alarm map helper (used by Flows page)
-# ---------------------------------------------------------------------------
+# Status/alarm-map builders (system status payload + Flows-page alarm map)
+# live in dashboard.services.status_builder so blueprint modules can import
+# them without a circular dependency on this module. Re-imported here under
+# the original private names to keep every call site (and existing test
+# patches of the outer function) unchanged.
 
-
-def _build_alarm_map() -> dict[str, dict]:
-    """Build a {workflow_id: {alarm1, alarm2, alarm3}} map for the Flows page.
-
-    Config is read directly from JSON (fast).
-    Live status is pulled from cache — non-blocking, may be absent on first load.
-    """
-    a1_cfg = {r["workflow_id"]: r for r in get_config_page_data() if r.get("workflow_id")}
-    a2_cfg = {r["workflow_id"]: r for r in get_alarm2_config_page_data() if r.get("workflow_id")}
-    a3_cfg = {r["workflow_id"]: r for r in get_alarm3_config_page_data() if r.get("workflow_id")}
-
-    a1_rows, a2_rows, a3_rows = _multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
-    a1_status = {r["workflow_id"]: r["status"] for r in (a1_rows or [])}
-    a2_status = {r["workflow_id"]: r["status"] for r in (a2_rows or [])}
-    a3_status = {r["workflow_id"]: r["status"] for r in (a3_rows or [])}
-
-    result: dict[str, dict] = {}
-    for wid in set(a1_cfg) | set(a2_cfg) | set(a3_cfg):
-        result[wid] = {
-            "alarm1": {**a1_cfg[wid], "status": a1_status.get(wid)} if wid in a1_cfg else None,
-            "alarm2": {**a2_cfg[wid], "status": a2_status.get(wid)} if wid in a2_cfg else None,
-            "alarm3": {**a3_cfg[wid], "status": a3_status.get(wid)} if wid in a3_cfg else None,
-        }
-    return result
+_get_cached_status = get_cached_status
+_build_status = build_status
+_build_alarm_map = build_alarm_map
 
 
 # ---------------------------------------------------------------------------
@@ -488,30 +379,11 @@ def trace_page(operation_id: str) -> str | tuple[str, int]:
     return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
 
 
-def _email_alerts_configured() -> bool:
-    """Whether alert emails can plausibly be sent (used to enable/disable UI controls).
-
-    Does not perform a live Key Vault fetch — just checks that either a local ACS
-    connection string or a Key Vault URL is configured, alongside a sender and recipient.
-    Must mirror the guard in email_service.send_alert_email() so the UI never enables
-    controls for a configuration that will silently fail to send.
-    """
-    acs_source_configured = bool(config.ACS_CONNECTION_STRING or config.AZURE_KEY_VAULT_URL)
-    return bool(
-        config.ALERT_EMAIL_ENABLED and acs_source_configured and config.ALERT_EMAIL_TO and config.ALERT_EMAIL_FROM
-    )
-
-
-def _alarm_summary(rows: list[dict] | None) -> dict:
-    """Compute a compact status count dict from an alarm rows list."""
-    rows = rows or []
-    return {
-        "critical": sum(1 for r in rows if r.get("status") == "critical"),
-        "suppressed": sum(1 for r in rows if r.get("status") == "suppressed"),
-        "unknown": sum(1 for r in rows if r.get("status") == "unknown"),
-        "healthy": sum(1 for r in rows if r.get("status") == "healthy"),
-        "total": len(rows),
-    }
+# These two helpers now live in dashboard.services.status_builder alongside
+# the other status/alarm-map builders. Re-imported under the original
+# private names so existing call sites and test patches keep working.
+_email_alerts_configured = email_alerts_configured
+_alarm_summary = alarm_summary
 
 
 @app.route("/healthz")

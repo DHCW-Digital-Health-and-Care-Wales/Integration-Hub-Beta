@@ -29,8 +29,13 @@ def client() -> Generator[FlaskClient, None, None]:
 
 @pytest.fixture(autouse=True)
 def _stub_retry_delay_metrics() -> Generator[None, None, None]:
-    """Keep route tests offline by stubbing retry-delay metric queries."""
-    with patch("dashboard.app.get_retry_delay_metrics_by_flow", return_value=[]):
+    """Keep route tests offline by stubbing retry-delay metric queries.
+
+    ``get_retry_delay_metrics_by_flow`` is called from
+    ``dashboard.services.status_builder.build_status`` (extracted from
+    ``dashboard.app``), so it must be patched at its new home.
+    """
+    with patch("dashboard.services.status_builder.get_retry_delay_metrics_by_flow", return_value=[]):
         yield
 
 
@@ -52,6 +57,8 @@ def _mock_patches() -> list:
 class TestPageRoutes:
     def test_index_returns_200(self, client: FlaskClient) -> None:
         with (
+            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
@@ -61,6 +68,8 @@ class TestPageRoutes:
 
     def test_flows_returns_200(self, client: FlaskClient) -> None:
         with (
+            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
@@ -117,6 +126,8 @@ class TestNavEnvLabel:
         with (
             patch("dashboard.app.config.ENVIRONMENT_LABEL", "TESTING"),
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#a855f7"),
+            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
@@ -129,6 +140,8 @@ class TestNavEnvLabel:
         with (
             patch("dashboard.app.config.ENVIRONMENT_LABEL", ""),
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#94a3b8"),
+            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
@@ -205,6 +218,8 @@ class TestApiRoutes:
 
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (
+            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_queues", return_value=EMPTY_QUEUES),
             patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.app.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
