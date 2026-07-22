@@ -18,6 +18,32 @@ Open http://127.0.0.1:5000
 If `dashboard/.env` exists, the dashboard loads it automatically at startup.
 Values already exported in the shell still take precedence.
 
+### Alarm persistence (Cosmos DB)
+
+Alarm configuration and runtime state are persisted to Azure Cosmos DB via the
+`azure-cosmos` SDK (`dashboard/services/cosmos_store.py`). Each alarm namespace
+(`alarm1`/`alarm2`/`alarm3`) stores a `config` and a `state` document in a single
+container partitioned on `/pk`.
+
+For local development, run the Cosmos DB emulator. It lives in the shared Compose stack
+under `local/` on the `dashboard` profile:
+
+```bash
+cd ../local
+docker compose --profile dashboard up -d cosmos-emulator
+```
+
+The emulator takes ~1 minute to become healthy. Then run the dashboard on the host via
+`uv run flask` (see [Running locally](#running-locally)) — the `dashboard/.env` values
+point at the emulator on `https://localhost:8081` using Microsoft's well-known emulator
+key (not a secret) and disable TLS verification for the self-signed certificate. The
+database and container are created automatically on first use when a key is configured.
+
+In cloud environments, set `COSMOS_ENDPOINT` to the account URI, leave `COSMOS_KEY`
+empty to use Managed Identity / service-principal RBAC (data-plane role required), and
+set `COSMOS_DISABLE_SSL_VERIFY=false`. The database and container must be provisioned
+ahead of time (e.g. via Terraform).
+
 ## Running with Docker
 
 ```bash
@@ -46,6 +72,16 @@ docker run -p 8080:8080 --env-file dashboard.env integration-hub-dashboard
 
 All queue names are also overridable (e.g. `QUEUE_PHW_PRE`, `QUEUE_PHW_POST`).
 See `dashboard/config.py` for the full list.
+
+### Cosmos DB persistence variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `COSMOS_ENDPOINT` | Cosmos account URI (emulator: `https://localhost:8081`). Empty disables persistence. | — |
+| `COSMOS_KEY` | Account key. When set, key auth is used and the DB/container are auto-created; empty uses RBAC. | — |
+| `COSMOS_DATABASE` | Cosmos database name | `integration-hub-dashboard` |
+| `COSMOS_CONTAINER` | Cosmos container name (partition key `/pk`) | `alarms` |
+| `COSMOS_DISABLE_SSL_VERIFY` | Disable TLS verification — required for the local emulator only | `false` |
 
 ## Azure authentication
 

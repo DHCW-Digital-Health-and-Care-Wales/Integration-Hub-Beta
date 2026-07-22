@@ -42,6 +42,19 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-cosmos"
+version = "4.16.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/2a/0f2bba256e56626ba2cec97ab81dd002ff47ead1329767760b619afd927a/azure_cosmos-4.16.1.tar.gz", hash = "sha256:fa15d13702b470265a67e2dd9c0794021e6b776856dac6c223dcacc4d8e1d8d1", size = 2377651, upload-time = "2026-06-02T01:08:07.656Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/b4/9c984ad33ca9e5c378ea472fc9aa38e719c245a4fa58a99d6dabbe0f9a17/azure_cosmos-4.16.1-py3-none-any.whl", hash = "sha256:43717215ec1433c1ea0f0e3d465f9182fb5afff3ae2331e595367122297872f1", size = 499044, upload-time = "2026-06-02T01:08:10.111Z" },
+]
+
+[[package]]
 name = "azure-identity"
 version = "1.25.3"
 source = { registry = "https://pypi.org/simple" }
@@ -492,6 +505,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "azure-communication-email" },
+    { name = "azure-cosmos" },
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
     { name = "azure-mgmt-appcontainers" },
@@ -519,6 +533,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "azure-communication-email", specifier = ">=1.0.0" },
+    { name = "azure-cosmos", specifier = ">=4.9.0" },
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-keyvault-secrets", specifier = ">=4.9.0" },
     { name = "azure-mgmt-appcontainers", specifier = ">=4.0.0" },
