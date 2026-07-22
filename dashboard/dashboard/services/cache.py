@@ -56,8 +56,9 @@ def cached(key: str, builder: Callable[[], Any], ttl: float | None = None, force
     new_data = builder()
 
     with cache_lock:
-        cache_data[key]["data"] = new_data
-        cache_data[key]["ts"] = time.monotonic()
+        entry = cache_data.setdefault(key, {"data": None, "ts": 0.0})
+        entry["data"] = new_data
+        entry["ts"] = time.monotonic()
 
     return new_data
 
@@ -161,7 +162,7 @@ def multi_cached_nowait(
 
 
 def is_cache_stale(key: str, ttl: float | None = None) -> bool:
-    """Return True if the cache entry for *key* is expired (or was never populated)."""
+    """Return True if the cache entry for *key* is expired (returns False for cold/unpopulated entries)."""
     _ttl = ttl if ttl is not None else config.API_CACHE_TTL
     with cache_lock:
         entry = cache_data.get(key, {"data": None, "ts": 0.0})

@@ -34,13 +34,19 @@ def set_language() -> Response:
     if lang in ("en", "cy"):
         session["lang"] = lang
 
-    # Only honour the Referer header if it points at this same host: the header is
-    # client-supplied and can be spoofed, so blindly redirecting to it would allow
-    # an open redirect to an attacker-controlled site.
+    # Never forward the raw Referer header to redirect(): it is client-supplied and
+    # can be spoofed (and some browsers normalise "\" to "/" when resolving a
+    # redirect, enabling a network-path-reference bypass e.g. "/\evil.com"). Instead
+    # normalise backslashes and rebuild the target from only its path/query, which
+    # discards any scheme/host entirely so the redirect can never leave this site.
     referrer = request.referrer
-    if referrer and urlparse(referrer).netloc == request.host:
-        return make_response(redirect(referrer))
-    return make_response(redirect(url_for("index")))
+    if not referrer:
+        return make_response(redirect(url_for("index")))
+
+    parsed = urlparse(referrer.replace("\\", "/"))
+    path = parsed.path or "/"
+    target = f"{path}?{parsed.query}" if parsed.query else path
+    return make_response(redirect(target))
 
 
 def index() -> str:
@@ -98,7 +104,12 @@ def flows_page() -> str:
 
 def exceptions_page() -> str:
     """Render the Exceptions page, filtered to the requested time window (default 24 h)."""
-    hours = int(request.args.get("hours", 24))
+    raw_hours = request.args.get("hours", 24)
+    try:
+        hours = int(raw_hours)
+    except (TypeError, ValueError):
+        hours = 24
+    hours = max(1, hours)
     exceptions = cache.cached_nowait(
         f"exceptions_{hours}",
         lambda: get_exceptions(hours=hours),
