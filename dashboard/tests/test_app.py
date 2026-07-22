@@ -114,6 +114,45 @@ class TestPageRoutes:
         assert b"credentials are not configured" not in response.data
 
 
+class TestSetLanguage:
+    """Tests for the /set-language redirect-target validation (CodeQL: open redirect)."""
+
+    def test_redirects_to_same_host_referrer(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "http://localhost/flows"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "http://localhost/flows"
+
+    def test_rejects_cross_host_referrer_and_falls_back_to_index(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "http://evil.example.com/phish"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/"
+
+    def test_falls_back_to_index_when_no_referrer(self, client: FlaskClient) -> None:
+        response = client.post("/set-language", data={"lang": "en"})
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/"
+
+    def test_invalid_lang_is_ignored_but_still_redirects(self, client: FlaskClient) -> None:
+        with client.session_transaction() as sess:
+            sess["lang"] = "en"
+        response = client.post(
+            "/set-language",
+            data={"lang": "fr"},
+            headers={"Referer": "http://localhost/flows"},
+        )
+        assert response.status_code == 302
+        with client.session_transaction() as sess:
+            assert sess["lang"] == "en"
+
+
 class TestNavEnvLabel:
     """Tests that the environment chip renders correctly in the navbar."""
 

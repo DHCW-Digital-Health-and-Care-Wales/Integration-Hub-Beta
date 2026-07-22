@@ -10,6 +10,8 @@ changes.
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
@@ -32,7 +34,13 @@ def set_language() -> Response:
     if lang in ("en", "cy"):
         session["lang"] = lang
 
-    return make_response(redirect(request.referrer or url_for("index")))
+    # Only honour the Referer header if it points at this same host: the header is
+    # client-supplied and can be spoofed, so blindly redirecting to it would allow
+    # an open redirect to an attacker-controlled site.
+    referrer = request.referrer
+    if referrer and urlparse(referrer).netloc == request.host:
+        return make_response(redirect(referrer))
+    return make_response(redirect(url_for("index")))
 
 
 def index() -> str:
