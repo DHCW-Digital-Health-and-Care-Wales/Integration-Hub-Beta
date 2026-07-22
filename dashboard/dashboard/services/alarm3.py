@@ -301,8 +301,11 @@ def _send_alarm3_email(
 </p>
 </body></html>"""
 
-    if not send_alert_email(subject, body):
-        log.error("Failed to send alarm 3 email for %s", rule_id)
+    if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
+        # send_alert_email() already logs a warning (missing config) or error (send
+        # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
+        # is False, a False return is expected/intentional, so avoid a noisy log here.
+        log.warning("Failed to send alarm 3 email for %s", rule_id)
 
 
 # ---------------------------------------------------------------------------

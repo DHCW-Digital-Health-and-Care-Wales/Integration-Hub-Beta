@@ -137,6 +137,64 @@ class TestNavEnvLabel:
         assert b"nav-env-label" not in response.data
 
 
+class TestEmailAlertsConfigured:
+    """Tests for _email_alerts_configured(), which gates the email-alert UI controls.
+
+    Must mirror email_service.send_alert_email()'s guard exactly, so the UI never
+    enables controls for a configuration that will silently fail to send.
+    """
+
+    def test_true_when_fully_configured_via_key_vault(self) -> None:
+        with (
+            patch.object(app_module.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(app_module.config, "ACS_CONNECTION_STRING", ""),
+            patch.object(app_module.config, "AZURE_KEY_VAULT_URL", "https://kv.vault.azure.net/"),
+            patch.object(app_module.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(app_module.config, "ALERT_EMAIL_FROM", "from@example.com"),
+        ):
+            assert app_module._email_alerts_configured() is True
+
+    def test_false_when_alert_email_disabled(self) -> None:
+        with (
+            patch.object(app_module.config, "ALERT_EMAIL_ENABLED", False),
+            patch.object(app_module.config, "AZURE_KEY_VAULT_URL", "https://kv.vault.azure.net/"),
+            patch.object(app_module.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(app_module.config, "ALERT_EMAIL_FROM", "from@example.com"),
+        ):
+            assert app_module._email_alerts_configured() is False
+
+    def test_false_when_no_acs_source_configured(self) -> None:
+        with (
+            patch.object(app_module.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(app_module.config, "ACS_CONNECTION_STRING", ""),
+            patch.object(app_module.config, "AZURE_KEY_VAULT_URL", ""),
+            patch.object(app_module.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(app_module.config, "ALERT_EMAIL_FROM", "from@example.com"),
+        ):
+            assert app_module._email_alerts_configured() is False
+
+    def test_false_when_recipient_missing(self) -> None:
+        with (
+            patch.object(app_module.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(app_module.config, "AZURE_KEY_VAULT_URL", "https://kv.vault.azure.net/"),
+            patch.object(app_module.config, "ALERT_EMAIL_TO", ""),
+            patch.object(app_module.config, "ALERT_EMAIL_FROM", "from@example.com"),
+        ):
+            assert app_module._email_alerts_configured() is False
+
+    def test_false_when_sender_missing(self) -> None:
+        """Regression test: previously ALERT_EMAIL_FROM was not checked, so the UI could
+        enable email-alert controls even though send_alert_email() would always skip
+        sending (it requires a sender address too)."""
+        with (
+            patch.object(app_module.config, "ALERT_EMAIL_ENABLED", True),
+            patch.object(app_module.config, "AZURE_KEY_VAULT_URL", "https://kv.vault.azure.net/"),
+            patch.object(app_module.config, "ALERT_EMAIL_TO", "to@example.com"),
+            patch.object(app_module.config, "ALERT_EMAIL_FROM", ""),
+        ):
+            assert app_module._email_alerts_configured() is False
+
+
 class TestApiRoutes:
     def test_healthz_does_not_query_azure(self, client: FlaskClient) -> None:
         with patch("dashboard.app._get_cached_status", side_effect=AssertionError("healthz should not query Azure")):

@@ -626,10 +626,14 @@ def _email_alerts_configured() -> bool:
     """Whether alert emails can plausibly be sent (used to enable/disable UI controls).
 
     Does not perform a live Key Vault fetch — just checks that either a local ACS
-    connection string or a Key Vault URL is configured, alongside a recipient.
+    connection string or a Key Vault URL is configured, alongside a sender and recipient.
+    Must mirror the guard in email_service.send_alert_email() so the UI never enables
+    controls for a configuration that will silently fail to send.
     """
     acs_source_configured = bool(config.ACS_CONNECTION_STRING or config.AZURE_KEY_VAULT_URL)
-    return bool(config.ALERT_EMAIL_ENABLED and acs_source_configured and config.ALERT_EMAIL_TO)
+    return bool(
+        config.ALERT_EMAIL_ENABLED and acs_source_configured and config.ALERT_EMAIL_TO and config.ALERT_EMAIL_FROM
+    )
 
 
 def _alarm_summary(rows: list[dict] | None) -> dict:

@@ -38,7 +38,7 @@ def _fetch_from_key_vault() -> str | None:
         secret = client.get_secret(config.ACS_EMAIL_SECRET_NAME)
         return secret.value
     except Exception as exc:
-        log.error("Failed to fetch ACS connection string from Key Vault: %s", exc)
+        log.error("Failed to fetch ACS connection string from Key Vault: %s", exc, exc_info=True)
         return None
 
 
@@ -148,7 +148,7 @@ def send_alert_email(subject: str, html_body: str) -> bool:
                     continue
                 raise
     except Exception as exc:
-        log.error("Failed to send alert email (%s): %s", subject, exc)
+        log.error("Failed to send alert email (%s): %s", subject, exc, exc_info=True)
         return False
 
     return False
