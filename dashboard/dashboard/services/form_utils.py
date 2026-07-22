@@ -19,9 +19,10 @@ def parse_int_form_field(
 ) -> int:
     """Parse an integer field from a submitted form, clamped to a minimum.
 
-    Falls back to ``default`` if the field is missing or not a valid integer.
-    Mirrors the previous per-route ``_int`` closures: alarm1's implicit
-    ``max(1, ...)`` behaviour is preserved via the ``minimum=1`` default.
+    If the field is missing, returns ``max(minimum, default)``.
+    If the value is present but not a valid integer, returns ``default``.
+    Mirrors the previous per-route ``_int`` closures; alarm1's implicit
+    ``max(1, ...)`` is preserved via the ``minimum=1`` default.
     """
     try:
         return max(minimum, int(form.get(field, default)))
