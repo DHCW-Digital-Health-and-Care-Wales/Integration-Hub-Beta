@@ -199,7 +199,7 @@ class TestGetContainer:
             patch.object(cosmos_store.config, "COSMOS_DATABASE", "db"),
             patch.object(cosmos_store.config, "COSMOS_CONTAINER", "alarms"),
         ):
-            result = cosmos_store._get_alarm_container()
+            result = cosmos_store._get_container()
 
         assert result is existing_container
         database.get_container_client.assert_called_once_with("alarms")
@@ -217,9 +217,9 @@ class TestGetContainer:
             patch.object(cosmos_store.config, "COSMOS_DATABASE", "db"),
             patch.object(cosmos_store.config, "COSMOS_CONTAINER", "alarms"),
         ):
-            assert cosmos_store._get_alarm_container() is None
+            assert cosmos_store._get_container() is None
 
     def test_returns_none_when_client_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_client", return_value=None):
-            assert cosmos_store._get_alarm_container() is None
+            assert cosmos_store._get_container() is None
 

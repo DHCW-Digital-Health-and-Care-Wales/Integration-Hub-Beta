@@ -95,7 +95,7 @@ def _get_client() -> CosmosClient | None:
     return _client_cache["client"]
 
 
-def _get_alarm_container() -> Any | None:
+def _get_container() -> Any | None:
     """Return the alarm container client, creating the database/container in dev.
 
     When key-based auth is used (emulator / dev) the database and container are created
@@ -134,7 +134,7 @@ def get_document(pk: str, doc_id: str) -> dict | None:
     ``None`` when the document is missing, Cosmos is not configured, or a read error
     occurs. Errors are logged and swallowed so callers can fall back to defaults.
     """
-    container = _get_alarm_container()
+    container = _get_container()
     if container is None:
         return None
 
@@ -156,7 +156,7 @@ def upsert_document(pk: str, doc_id: str, data: dict) -> None:
     fields. Errors are logged and swallowed so a persistence outage never breaks a
     request — matching the previous JSON-file save behaviour.
     """
-    container = _get_alarm_container()
+    container = _get_container()
     if container is None:
         if is_configured():
             log.error("Cannot persist Cosmos document %s/%s — container unavailable", pk, doc_id)
