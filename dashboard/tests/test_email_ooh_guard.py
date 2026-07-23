@@ -113,9 +113,9 @@ class TestAlarm1EmailOohGuard:
         """POST to /alarm-config and return the config dict passed to save."""
         mock_save = MagicMock()
         with (
-            patch("dashboard.app.load_alarm_config", return_value={"rules": {}}),
-            patch("dashboard.app.save_alarm_config", mock_save),
-            patch("dashboard.app.get_config_page_data", return_value=[]),
+            patch("dashboard.routes.alarm_config.load_alarm_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.save_alarm_config", mock_save),
+            patch("dashboard.routes.alarm_config.get_config_page_data", return_value=[]),
         ):
             resp = client.post("/alarm-config", data=form_data)
         assert resp.status_code == 200
@@ -166,9 +166,9 @@ class TestAlarm2EmailOohGuard:
     def _post(self, client: FlaskClient, form_data: dict) -> dict:
         mock_save = MagicMock()
         with (
-            patch("dashboard.app.load_alarm2_config", return_value={"rules": {}}),
-            patch("dashboard.app.save_alarm2_config", mock_save),
-            patch("dashboard.app.get_alarm2_config_page_data", return_value=[]),
+            patch("dashboard.routes.alarm_config.load_alarm2_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.save_alarm2_config", mock_save),
+            patch("dashboard.routes.alarm_config.get_alarm2_config_page_data", return_value=[]),
         ):
             resp = client.post("/alarm2-config", data=form_data)
         assert resp.status_code == 200
@@ -212,9 +212,9 @@ class TestAlarm3EmailOohGuard:
     def _post(self, client: FlaskClient, form_data: dict) -> dict:
         mock_save = MagicMock()
         with (
-            patch("dashboard.app.load_alarm3_config", return_value={"rules": {}}),
-            patch("dashboard.app.save_alarm3_config", mock_save),
-            patch("dashboard.app.get_alarm3_config_page_data", return_value=[]),
+            patch("dashboard.routes.alarm_config.load_alarm3_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.save_alarm3_config", mock_save),
+            patch("dashboard.routes.alarm_config.get_alarm3_config_page_data", return_value=[]),
         ):
             resp = client.post("/alarm3-config", data=form_data)
         assert resp.status_code == 200
