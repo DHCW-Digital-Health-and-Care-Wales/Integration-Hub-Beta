@@ -56,7 +56,6 @@ def api_status() -> Response:
     data["alarm1_summary"] = alarm_summary(alarm1_rows)
     data["alarm2_summary"] = alarm_summary(alarm2_rows)
     data["alarm3_summary"] = alarm_summary(alarm3_rows)
-    # TODO: add alarm1_summary and alarm2_summary here when those widgets are added
     return jsonify(data)
 
 

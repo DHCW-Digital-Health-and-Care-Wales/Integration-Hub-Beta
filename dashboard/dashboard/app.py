@@ -14,6 +14,7 @@ from flask import Flask, session
 from flask_babel import Babel  # type: ignore[import-untyped]
 
 import dashboard.config as config
+import dashboard.template_filters as template_filters
 from dashboard.routes import alarm_config as alarm_config_routes
 from dashboard.routes import alarms as alarms_routes
 from dashboard.routes import api as api_routes
@@ -112,6 +113,7 @@ pages_routes.register(app)
 api_routes.register(app)
 alarms_routes.register(app)
 alarm_config_routes.register(app)
+template_filters.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
 # streams and makes misconfigured deployments immediately obvious.
@@ -201,26 +203,11 @@ _email_alerts_configured = email_alerts_configured
 # ---------------------------------------------------------------------------
 
 
-@app.template_filter("format_bytes")
-def format_bytes(size: int | float) -> str:
-    """Jinja2 filter: convert a byte count to a human-readable string (e.g. ``1.4 MB``)."""
-    for unit in ("B", "KB", "MB", "GB"):
-        if size < 1024:
-            return f"{size:.1f} {unit}"
-        size = size / 1024
-    return f"{size:.1f} TB"
-
-
-@app.template_filter("health_badge")
-def health_badge(health: str) -> str:
-    """Jinja2 filter: map a health string to a Bootstrap colour token (e.g. ``"healthy"`` → ``"success"``)."""
-    colours = {
-        "healthy": "success",
-        "warning": "warning",
-        "critical": "danger",
-        "unknown": "secondary",
-    }
-    return colours.get(health, "secondary")
+# ---------------------------------------------------------------------------
+# Jinja2 template filters (format_bytes, health_badge) now live in
+# dashboard.template_filters — registered near the top of this module via
+# template_filters.register(app).
+# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":

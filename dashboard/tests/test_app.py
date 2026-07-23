@@ -45,15 +45,6 @@ EMPTY_MESSAGES: list = []
 EMPTY_CONTAINER_METRICS: dict = {}
 
 
-def _mock_patches() -> list:
-    return [
-        patch("dashboard.routes.api.get_queues", return_value=EMPTY_QUEUES),
-        patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
-        patch("dashboard.routes.api.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
-        patch("dashboard.services.azure_monitor.get_messages_today", return_value=EMPTY_MESSAGES),
-    ]
-
-
 class TestPageRoutes:
     def test_index_returns_200(self, client: FlaskClient) -> None:
         with (
@@ -139,6 +130,31 @@ class TestPageRoutes:
         assert response.status_code == 200
         assert b"No messages were processed today." in response.data
         assert b"credentials are not configured" not in response.data
+
+    def test_messages_cache_key_varies_by_queue_filter(self, client: FlaskClient) -> None:
+        """Different queue filters must not share/overwrite the same cache entry."""
+
+        def fake_microservice_ids(queue_name: str) -> list[str]:
+            return ["svc-a"] if queue_name == "queueA" else ["svc-b"]
+
+        def fake_messages(microservice_ids: list[str] | None = None) -> list[dict]:
+            count = 1 if microservice_ids == ["svc-a"] else 2
+            return [
+                {"timestamp": "2024-01-01T00:00:00", "event": "Processed", "app": "svc", "dimensions": {}}
+                for _ in range(count)
+            ]
+
+        with (
+            patch("dashboard.routes.pages.queue_to_microservice_ids", side_effect=fake_microservice_ids),
+            patch("dashboard.routes.pages.get_messages_today", side_effect=fake_messages),
+        ):
+            response_a = client.get("/messages?queue=queueA")
+            response_b = client.get("/messages?queue=queueB")
+
+        assert response_a.status_code == 200
+        assert response_b.status_code == 200
+        assert b'<div class="kpi-number">1</div>' in response_a.data
+        assert b'<div class="kpi-number">2</div>' in response_b.data
 
 
 class TestSetLanguage:

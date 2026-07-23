@@ -153,8 +153,12 @@ def messages_page() -> str:
             flows = get_flows()
             flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
 
+    # Vary the cache key by queue_filter: the builder's result depends on
+    # microservice_ids, so a fixed "messages" key would serve one filter's
+    # cached data to a different filter.
+    cache_key = f"messages_{queue_filter}" if queue_filter else "messages"
     messages = cache.cached_nowait(
-        "messages",
+        cache_key,
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
@@ -167,7 +171,7 @@ def messages_page() -> str:
         queue_filter=queue_filter,
         flow_label=flow_label,
         queue_names=queue_names,
-        data_is_stale=cache.is_cache_stale("messages"),
+        data_is_stale=cache.is_cache_stale(cache_key),
     )
 
 
