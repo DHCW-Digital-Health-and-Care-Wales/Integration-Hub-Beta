@@ -24,7 +24,6 @@ class TestMSHMapper(unittest.TestCase):
             "msh_5",
             "msh_6",
             "msh_8",
-            "msh_9",
             "msh_10",
             "msh_11",
             "msh_12",
@@ -44,6 +43,24 @@ class TestMSHMapper(unittest.TestCase):
                 get_hl7_field_value(self.original_message.msh, field_path),
                 get_hl7_field_value(self.new_message.msh, field_path),
             )
+
+    def test_map_msh_9_conditional_mappings(self) -> None:
+        test_cases = [
+            ("A04", "A28", "ADT_A05"),
+            ("A08", "A31", "ADT_A05"),
+            ("A40", "A40", "ADT_A39"),
+        ]
+
+        for original_trigger_event, expected_msg2, expected_msg3 in test_cases:
+            with self.subTest(trigger_event=original_trigger_event):
+                original_message = parse_message(self.msh_header)
+                new_message = Message(version="2.5")
+                original_message.msh.msh_9.msg_2 = original_trigger_event
+
+                map_msh(original_message, new_message)
+
+                self.assertEqual(get_hl7_field_value(new_message.msh, "msh_9.msg_2"), expected_msg2)
+                self.assertEqual(get_hl7_field_value(new_message.msh, "msh_9.msg_3"), expected_msg3)
 
     def test_map_msh_7_datetime_transformation(self) -> None:
         result = map_msh(self.original_message, self.new_message)

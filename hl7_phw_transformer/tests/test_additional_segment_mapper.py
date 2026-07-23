@@ -10,19 +10,20 @@ from hl7_phw_transformer.mappers.additional_segment_mapper import map_non_specif
 class TestAdditionalSegmentMapper(unittest.TestCase):
     def setUp(self) -> None:
         self.base_hl7_message = (
-            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|"
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A04^ADT_A01|"
             "202505052323364444444444|P|2.5|||||GBR||EN\r"
             "EVN||20250502092900|20250505232332|||20250505232332\r"
             "PID|||8888888^^^252^PI~4444444444^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||"
             "19990101|M|^^||99, MY ROAD^MY PLACE^MY CITY^MY COUNTY^SA99 1XX^^H~^^^^^^||"
             "^^^~|||||||||||||||||||01\r"
-            "PD1|||^^W00000^|G999999\r"
+            "PD1|||^^W00000^|G999999~W111111\r"
             "PV1||U\r"
+            "MRG|00100001\r"
         )
         self.original_message = parse_message(self.base_hl7_message)
         self.new_message = Message(version="2.5")
 
-    def test_map_non_specific_segments_copies_additional_segments(self) -> None:
+    def test_map_non_specific_segments_conditional_mappings_for_a04(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
 
         segments = [s.name for s in self.new_message.children]
@@ -30,23 +31,41 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
 
         self.assertTrue(hasattr(self.new_message, 'pd1'))
         self.assertTrue(hasattr(self.new_message, 'pv1'))
+        self.assertTrue(hasattr(self.new_message, 'mrg'))
 
         pv1 = self.new_message.pv1
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "U")
+        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "N")
 
-    def test_map_non_specific_segments_copies_pd1_segment(self) -> None:
+        pd1 = self.new_message.pd1
+        self.assertEqual(get_hl7_field_value(pd1, "pd1_4.xcn_1"), "G999999")
+        self.assertEqual(get_hl7_field_value(pd1, "pd1_3.xon_3"), "W111111")
+
+        mrg = self.new_message.mrg
+        self.assertEqual(get_hl7_field_value(mrg, "mrg_1.cx_1"), "")
+        self.assertEqual(get_hl7_field_value(mrg, "mrg_1.cx_4.hd_1"), "")
+        self.assertEqual(get_hl7_field_value(mrg, "mrg_1.cx_5"), "")
+
+    def test_map_non_specific_segments_blanks_pd1_and_pv1_for_non_a04_a08(self) -> None:
+        self.original_message.msh.msh_9.msg_2 = "A40"
+
         map_non_specific_segments(self.original_message, self.new_message)
 
         self.assertTrue(hasattr(self.new_message, 'pd1'))
         pd1 = self.new_message.pd1
-        self.assertEqual(get_hl7_field_value(pd1, "pd1_4"), "G999999")
-
-    def test_map_non_specific_segments_skips_empty_fields(self) -> None:
-        map_non_specific_segments(self.original_message, self.new_message)
+        self.assertEqual(get_hl7_field_value(pd1, "pd1_4.xcn_1"), "")
+        self.assertEqual(get_hl7_field_value(pd1, "pd1_3.xon_3"), "")
 
         pv1 = self.new_message.pv1
-        self.assertEqual(get_hl7_field_value(self.original_message.pv1, "pv1_1"), "")
-        self.assertEqual(get_hl7_field_value(pv1, "pv1_1"), "")
+        self.assertEqual(get_hl7_field_value(pv1, "pv1_2"), "")
+
+    def test_map_non_specific_segments_maps_mrg_for_a40(self) -> None:
+        self.original_message.msh.msh_9.msg_2 = "A40"
+
+        map_non_specific_segments(self.original_message, self.new_message)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.mrg, "mrg_1.cx_1"), "00100001")
+        self.assertEqual(get_hl7_field_value(self.new_message.mrg, "mrg_1.cx_4.hd_1"), "103")
+        self.assertEqual(get_hl7_field_value(self.new_message.mrg, "mrg_1.cx_5"), "PI")
 
     def test_map_non_specific_segments_handles_multiple_segments(self) -> None:
         map_non_specific_segments(self.original_message, self.new_message)
@@ -54,6 +73,7 @@ class TestAdditionalSegmentMapper(unittest.TestCase):
         segments = [segment.name for segment in self.new_message.children]
         self.assertIn('PD1', segments)
         self.assertIn('PV1', segments)
+        self.assertIn('MRG', segments)
 
         non_msh_pid_segments = [s for s in self.original_message.children if s.name not in ['MSH', 'EVN', 'PID']]
         expected_count = 1 + len(non_msh_pid_segments)  # 1 for auto-created MSH
