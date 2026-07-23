@@ -45,6 +45,15 @@ EMPTY_MESSAGES: list = []
 EMPTY_CONTAINER_METRICS: dict = {}
 
 
+def _mock_patches() -> list:
+    return [
+        patch("dashboard.routes.api.get_queues", return_value=EMPTY_QUEUES),
+        patch("dashboard.app.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+        patch("dashboard.routes.api.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        patch("dashboard.services.azure_monitor.get_messages_today", return_value=EMPTY_MESSAGES),
+    ]
+
+
 class TestPageRoutes:
     def test_index_returns_200(self, client: FlaskClient) -> None:
         with (
@@ -87,6 +96,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=abc")
         assert response.status_code == 200
@@ -96,6 +106,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=999999999")
         assert response.status_code == 200
@@ -105,6 +116,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=72")
         assert response.status_code == 200
@@ -155,6 +167,63 @@ class TestPageRoutes:
         assert response_b.status_code == 200
         assert b'<div class="kpi-number">1</div>' in response_a.data
         assert b'<div class="kpi-number">2</div>' in response_b.data
+
+
+class TestSetLanguage:
+    """Tests for the /set-language redirect-target validation (CodeQL: open redirect)."""
+
+    def test_redirects_to_relative_path_from_same_host_referrer(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "http://localhost/flows"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/flows"
+
+    def test_cross_host_referrer_is_stripped_to_relative_path(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "http://evil.example.com/phish"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/phish"
+
+    def test_backslash_bypass_is_normalised_and_stripped(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "/\\evil.com"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/"
+
+    def test_preserves_query_string_from_referrer(self, client: FlaskClient) -> None:
+        response = client.post(
+            "/set-language",
+            data={"lang": "cy"},
+            headers={"Referer": "http://localhost/messages?queue=pre-phw-transform"},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/messages?queue=pre-phw-transform"
+
+    def test_falls_back_to_index_when_no_referrer(self, client: FlaskClient) -> None:
+        response = client.post("/set-language", data={"lang": "en"})
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/"
+
+    def test_invalid_lang_is_ignored_but_still_redirects(self, client: FlaskClient) -> None:
+        with client.session_transaction() as sess:
+            sess["lang"] = "en"
+        response = client.post(
+            "/set-language",
+            data={"lang": "fr"},
+            headers={"Referer": "http://localhost/flows"},
+        )
+        assert response.status_code == 302
+        with client.session_transaction() as sess:
+            assert sess["lang"] == "en"
 
 
 class TestNavEnvLabel:

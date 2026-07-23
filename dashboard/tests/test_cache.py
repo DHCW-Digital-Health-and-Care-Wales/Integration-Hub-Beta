@@ -5,7 +5,6 @@ revalidate cache engine extracted from dashboard/app.py.
 
 from __future__ import annotations
 
-import time
 from unittest.mock import patch
 
 from dashboard.services import cache
@@ -62,9 +61,9 @@ class TestCached:
             calls.append(1)
             return "value"
 
-        cache.cached("k4", builder, ttl=0.01)
-        time.sleep(0.02)
-        cache.cached("k4", builder, ttl=0.01)
+        with patch("dashboard.services.cache.time.monotonic", side_effect=[0.0, 0.0, 0.02, 0.02]):
+            cache.cached("k4", builder, ttl=0.01)
+            cache.cached("k4", builder, ttl=0.01)
         assert len(calls) == 2
 
 
@@ -77,8 +76,8 @@ class TestCachedNowait:
         assert result == "first-value"
 
     def test_returns_stale_value_immediately_and_schedules_refresh(self) -> None:
-        cache.cached("k6", lambda: "stale-value", ttl=0.01)
-        time.sleep(0.02)
+        with patch("dashboard.services.cache.time.monotonic", side_effect=[0.0, 0.0, 0.02]):
+            cache.cached("k6", lambda: "stale-value", ttl=0.01)
 
         with patch("dashboard.services.cache.threading.Thread") as mock_thread:
             result = cache.cached_nowait("k6", lambda: "new-value", ttl=0.01)
@@ -108,9 +107,9 @@ class TestIsCacheStale:
         assert cache.is_cache_stale("k8", ttl=60) is False
 
     def test_true_when_expired(self) -> None:
-        cache.cached("k9", lambda: "value", ttl=0.01)
-        time.sleep(0.02)
-        assert cache.is_cache_stale("k9", ttl=0.01) is True
+        with patch("dashboard.services.cache.time.monotonic", side_effect=[0.0, 0.0, 0.02]):
+            cache.cached("k9", lambda: "value", ttl=0.01)
+            assert cache.is_cache_stale("k9", ttl=0.01) is True
 
 
 class TestMultiCachedNowait:
