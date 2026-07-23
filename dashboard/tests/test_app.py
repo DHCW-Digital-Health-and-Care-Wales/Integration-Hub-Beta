@@ -96,6 +96,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=abc")
         assert response.status_code == 200
@@ -105,6 +106,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=999999999")
         assert response.status_code == 200
@@ -114,6 +116,7 @@ class TestPageRoutes:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch.object(app_module.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
         ):
             response = client.get("/exceptions?hours=72")
         assert response.status_code == 200
