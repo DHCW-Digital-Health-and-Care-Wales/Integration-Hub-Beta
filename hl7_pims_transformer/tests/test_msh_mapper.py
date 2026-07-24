@@ -59,6 +59,9 @@ class TestMSHMapper(unittest.TestCase):
         test_cases = [
             ("ADT^A04^ADT_A01", "ADT^A28^ADT_A05"),
             ("ADT^A08^ADT_A01", "ADT^A31^ADT_A05"),
+            ("ADT^A28^ADT_A05", "ADT^A28^ADT_A05"),
+            ("ADT^A31^ADT_A05", "ADT^A31^ADT_A05"),
+            ("ADT^ a31 ^ADT_A05", "ADT^A31^ADT_A05"),
             ("ADT^A40^ADT_A40", "ADT^A40^ADT_A39"),
         ]
         for msh_9_original_value, expected_value in test_cases:

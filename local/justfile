@@ -28,7 +28,7 @@
 # - Dependencies are handled automatically (e.g., secrets are generated when needed)
 # - Use 'just run' as a shortcut to install, generate secrets, and start services
 # - Pass multiple profiles by repeating commands or use "*" for all profiles
-# - This justfile uses podman-compose instead of docker compose
+# - This justfile uses `podman compose` for Podman Desktop compatibility
 #
 # For more information, see local/README.md and local/PODMAN_COMPOSE_SETUP.md
 
@@ -36,8 +36,8 @@
 # Configuration Variables
 # ============================================
 
-# Use PowerShell as the recipe shell on Windows hosts.
-set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+# Use Windows PowerShell as the recipe shell on Windows hosts.
+set windows-shell := ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -108,7 +108,7 @@ python := "python3"
     echo "📋 Profile selected: {{profile}}"
     echo "🔨 This may take a few minutes on first build..."
     echo ""
-    podman-compose --profile {{profile}} build
+    $env:DOCKER_BUILDKIT=1; podman compose --profile {{profile}} build
     echo ""
     echo "✅ Build complete for profile: {{profile}}"
     echo "💡 Next step: Run 'just start {{profile}}' to start the services"
@@ -120,7 +120,7 @@ python := "python3"
     echo "📋 Profile: {{profile}}"
     echo "🚀 Launching containers in detached mode..."
     echo ""
-    podman-compose --profile {{profile}} up -d
+    podman compose --profile {{profile}} up -d
     echo ""
     echo "✅ Services started successfully!"
     echo "📍 Running containers for profile: {{profile}}"
@@ -135,7 +135,7 @@ python := "python3"
 @stop:
     echo "⏹️  Stopping all Podman Compose services..."
     echo ""
-    podman-compose --profile "*" down
+    podman compose --profile "*" down
     echo ""
     echo "✅ All services stopped"
     echo "💡 To restart: just start <profile>"
@@ -170,7 +170,7 @@ python := "python3"
     {{ if services == "" { "echo '📋 Showing logs for all services'" } else { "echo '📋 Filtering logs for: " + services + "'" } }}
     echo "💡 Press Ctrl+C to stop following logs"
     echo ""
-    podman-compose logs -f {{services}}
+    podman compose logs -f {{services}}
 
 # ============================================
 # Convenience Recipes

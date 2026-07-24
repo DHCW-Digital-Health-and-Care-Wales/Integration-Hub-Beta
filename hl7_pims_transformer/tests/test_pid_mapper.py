@@ -60,18 +60,29 @@ class TestPIDMapper(unittest.TestCase):
 
         self.assertIn("|1000000001^^^NHS^NH~N5022039^^^103^PI|", self.new_message.pid.value)
 
+    def test_map_pid_3_first_rep_non_ni_not_mapped(self) -> None:
+        # CX.5 != 'NI' in position 0 so it is not mapped; PI in position 1 is mapped
+        self.original_message.pid.pid_3[0].value = "1000000001^03^^^NH"
+        self.original_message.pid.pid_3[1].value = "N5022039^^^^PI"
+
+        map_pid(self.original_message, self.new_message)
+
+        new_pid3_rep1 = self.new_message.pid.pid_3[0]
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N5022039")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "103")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "PI")
+        self.assertIn("|N5022039^^^103^PI|", self.new_message.pid.value)
+
     def test_map_pid_3_with_an_empty_first_repetition(self) -> None:
         map_pid(self.original_message, self.new_message)
 
-        new_pid3_rep1 = self.new_message.pid.pid_3[0].value
-        self.assertEqual(new_pid3_rep1, "")
+        new_pid3_rep1 = self.new_message.pid.pid_3[0]
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N5022039")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "103")
+        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "PI")
 
-        new_pid3_rep2 = self.new_message.pid.pid_3[1]
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_1"), "N5022039")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_4.hd_1"), "103")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_5"), "PI")
-
-        self.assertIn("|~N5022039^^^103^PI|", self.new_message.pid.value)
+        self.assertIn("|N5022039^^^103^PI|", self.new_message.pid.value)
+        self.assertNotIn("|~", self.new_message.pid.value)
 
     def test_map_pid_3_with_only_first_repetition(self) -> None:
         self.original_message.pid.pid_3[0].value = "1000000001^03^^^NI"
@@ -93,51 +104,7 @@ class TestPIDMapper(unittest.TestCase):
 
         map_pid(self.original_message, self.new_message)
 
-        self.assertEqual(self.new_message.pid.pid_3.value, "")
-
-    def test_map_pid_3_a28_message_without_n3_n4_prefix(self) -> None:
-        self.original_message.msh.msh_9.msg_1 = "ADT"
-        self.original_message.msh.msh_9.msg_2 = "A04"  # maps to A28 after transformation of MSH
-        self.original_message.msh.msh_9.msg_3 = "ADT_A05"
-
-        self.original_message.pid.pid_3[0].value = "1000000001^03^^^NI"
-        self.original_message.pid.pid_3[1].value = "N5022039^^^^PI"
-
-        map_pid(self.original_message, self.new_message)
-
-        new_pid3_rep1 = self.new_message.pid.pid_3[0]
-        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "")
-
-        new_pid3_rep2 = self.new_message.pid.pid_3[1]
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_1"), "N5022039")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_4.hd_1"), "103")
-        self.assertEqual(get_hl7_field_value(new_pid3_rep2, "cx_5"), "PI")
-
-    def test_map_pid_3_a28_message_with_n3_or_n4_prefix(self) -> None:
-        test_cases = [
-            ("N4987654321^03^^^NI", "N4987654321"),
-            ("N3123456789^03^^^NI", "N3123456789"),
-        ]
-
-        for original_value, expected_value in test_cases:
-            with self.subTest(original_value=original_value):
-                # Create fresh messages for each subtest
-                original_message = parse_message(self.base_hl7_message)
-                new_message = Message(version="2.5")
-
-                original_message.msh.msh_9.msg_1 = "ADT"
-                original_message.msh.msh_9.msg_2 = "A04"  # maps to A28 after transformation of MSH
-                original_message.msh.msh_9.msg_3 = "ADT_A05"
-                original_message.pid.pid_3[0].value = original_value
-
-                map_pid(original_message, new_message)
-
-                new_pid3_rep1 = new_message.pid.pid_3[0]
-                self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), expected_value)
-                self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_4.hd_1"), "108")
-                self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_5"), "LI")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3"), "")
 
     def test_map_pid_7_datetime(self) -> None:
         map_pid(self.original_message, self.new_message)

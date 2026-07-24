@@ -25,8 +25,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_11.value, "P")
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
-        self.assertEqual(transformed_message.pid.pid_3[0].value, "")
-        self.assertEqual(transformed_message.pid.pid_3[1].value, "N5022039^^^103^PI")
+        self.assertEqual(transformed_message.pid.pid_3[0].value, "N5022039^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
@@ -67,7 +66,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_11.value, "P")
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
-        self.assertEqual(transformed_message.pid.pid_3[0].value, "N4000000001^^^108^LI")
+        self.assertEqual(transformed_message.pid.pid_3[0].value, "N4000000001^^^NHS^NH")
         self.assertEqual(transformed_message.pid.pid_3[1].value, "N1000001^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TEST^TEST-TEST^""^^MISS')

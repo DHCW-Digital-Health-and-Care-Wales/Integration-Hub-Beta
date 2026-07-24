@@ -28,15 +28,15 @@ def map_msh(original_hl7_message: Message, new_message: Message) -> None:
         new_message.msh.msh_9 = new_message.msh.add_field("msh_9")
 
     new_message.msh.msh_9.msg_1 = "ADT"
-    # possible values are A04, A08 and A40
-    original_message_type_trigger_event = original_msh.msh_9.msg_2
+    # possible values are A04, A08, A28, A31 and A40
+    original_message_type_trigger_event = (get_hl7_field_value(original_msh, "msh_9.msg_2") or "").strip().upper()
 
     # Set msg_2 and msg_3 based on original trigger event (msg_2)
-    if original_message_type_trigger_event.value == "A04":
+    if original_message_type_trigger_event in {"A04", "A28"}:
         new_message.msh.msh_9.msg_2 = "A28"
         new_message.msh.msh_9.msg_3 = "ADT_A05"
 
-    elif original_message_type_trigger_event.value == "A08":
+    elif original_message_type_trigger_event in {"A08", "A31"}:
         new_message.msh.msh_9.msg_2 = "A31"
         new_message.msh.msh_9.msg_3 = "ADT_A05"
 

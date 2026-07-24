@@ -1,0 +1,12 @@
+.git/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.venv/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info/
+**/.coverage
+**/htmlcov/

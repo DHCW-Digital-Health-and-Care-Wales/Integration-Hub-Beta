@@ -64,10 +64,8 @@ services:
   message-store-service:
     container_name: message-store-service
     build:
-      context: ../message_store_service
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./message_store_service/Dockerfile.podman
     env_file:
       - ./.secrets
       - ./message-store-service.env
@@ -84,10 +82,8 @@ services:
   message-replay-job:
     container_name: message-replay-job
     build:
-      context: ../message_replay_job
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./message_replay_job/Dockerfile.podman
     env_file:
       - ./.secrets
       - ./message-replay-job.env
@@ -105,11 +101,8 @@ services:
   phw-hl7-server:
     container_name: phw-hl7-server
     build:
-      context: ../hl7_server
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_server/Dockerfile.podman
     env_file:
       - ./phw-hl7-server.env
     ports:
@@ -128,10 +121,8 @@ services:
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
-      context: ../hl7_phw_transformer
-      additional_contexts:
-      - ca-certs=../ca-certs
-      - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_phw_transformer/Dockerfile.podman
     env_file:
       - ./phw-hl7-transformer.env
     <<: *default-healthcheck
@@ -148,10 +139,8 @@ services:
   mpi-hl7-sender:
     container_name: mpi-hl7-sender
     build:
-      context: ../hl7_sender
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_sender/Dockerfile.podman
     env_file:
       - ./mpi-hl7-sender.env
     <<: *default-healthcheck
@@ -171,10 +160,8 @@ services:
   mpi-hl7-mock-receiver:
     container_name: mpi-hl7-mock-receiver
     build:
-      context: ../hl7_mock_receiver
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_mock_receiver/Dockerfile.podman
     env_file:
       - ./mpi-hl7-mock-receiver.env
     ports:
@@ -196,11 +183,8 @@ services:
   paris-hl7-server:
     container_name: paris-hl7-server
     build:
-      context: ../hl7_server
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_server/Dockerfile.podman
     env_file:
       - ./paris-hl7-server.env
     ports:
@@ -219,11 +203,8 @@ services:
   chemo-hl7-server:
     container_name: chemo-hl7-server
     build:
-      context: ../hl7_server
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_server/Dockerfile.podman
     env_file:
       - ./chemo-hl7-server.env
     ports:
@@ -242,10 +223,8 @@ services:
   chemo-hl7-transformer:
     container_name: chemo-hl7-transformer
     build:
-      context: ../hl7_chemo_transformer
-      additional_contexts:
-      - ca-certs=../ca-certs
-      - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_chemo_transformer/Dockerfile.podman
     env_file:
       - ./chemo-hl7-transformer.env
     <<: *default-healthcheck
@@ -262,11 +241,8 @@ services:
   pims-hl7-server:
     container_name: pims-hl7-server
     build:
-      context: ../hl7_server
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_server/Dockerfile.podman
     env_file:
       - ./pims-hl7-server.env
     ports:
@@ -285,10 +261,8 @@ services:
   pims-hl7-transformer:
     container_name: pims-hl7-transformer
     build:
-      context: ../hl7_pims_transformer
-      additional_contexts:
-      - ca-certs=../ca-certs
-      - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_pims_transformer/Dockerfile.podman
     env_file:
       - ./pims-hl7-transformer.env
     <<: *default-healthcheck
@@ -305,11 +279,8 @@ services:
   mpi-hl7-server:
     container_name: mpi-hl7-server
     build:
-      context: ../hl7_server
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_server/Dockerfile.podman
     env_file:
       - ./mpi-hl7-server.env
     ports:
@@ -328,11 +299,8 @@ services:
   mpi-hl7-chemo-sender:
     container_name: mpi-hl7-chemo-sender
     build:
-      context: ../hl7_subscription_sender
-      dockerfile: ./Dockerfile
-      additional_contexts:
-        - ca-certs=../ca-certs
-        - shared_libs=../shared_libs
+      context: ..
+      dockerfile: ./hl7_subscription_sender/Dockerfile.podman
     env_file:
       - ./mpi-hl7-chemo-sender.env
     ports:
