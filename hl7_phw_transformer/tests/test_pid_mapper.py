@@ -29,84 +29,53 @@ class TestPIDMapper(unittest.TestCase):
         original_pid = self.original_message.pid.to_er7()
         new_pid = self.new_message.pid.to_er7()
 
-        # Exclude PID.3 and PID.29 from this comparison as these are conditionally
-        # transformed and covered by dedicated tests.
-        def _strip_pid_3_and_29(segment_str: str) -> str:
+        # Exclude PID.29 (date of death) from this comparison as it is covered
+        # explicitly in separate tests.
+        def _strip_pid_29(segment_str: str) -> str:
             parts = segment_str.split("|")
             if parts and parts[0] == "PID" and len(parts) > 29:
-                parts[3] = ""
                 parts[29] = ""
             return "|".join(parts)
 
-        self.assertEqual(_strip_pid_3_and_29(original_pid), _strip_pid_3_and_29(new_pid))
+        self.assertEqual(_strip_pid_29(original_pid), _strip_pid_29(new_pid))
 
-    def test_map_pid_29_date_of_death_timezone_removed(self) -> None:
-        self.original_message.pid.pid_29.ts_1 = "20241231101053+0000"
+    def test_map_pid_29_date_of_death_transformation(self) -> None:
+        self.original_message.pid.pid_29.ts_1 = "2024-12-31"
         result = map_pid(self.original_message, self.new_message)
 
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), "20241231101053")
-        self.assertEqual(result, ("20241231101053+0000", "20241231101053"))
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), "2024-12-31")
+        self.assertEqual(result, ("2024-12-31", "2024-12-31"))
 
-    def test_map_pid_29_date_of_death_short_value_is_blank(self) -> None:
-        self.original_message.pid.pid_29.ts_1 = "202401"
+    def test_map_pid_29_date_of_death_resurrec(self) -> None:
+        self.original_message.pid.pid_29.ts_1 = "RESURREC"
         result = map_pid(self.original_message, self.new_message)
 
         self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), '""')
-        self.assertEqual(result, ("202401", '""'))
+        self.assertEqual(result, ("RESURREC", '""'))
 
     def test_map_pid_29_no_date_of_death(self) -> None:
         self.original_message.pid.pid_29.ts_1 = ""
         result = map_pid(self.original_message, self.new_message)
 
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), '""')
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), "")
         self.assertIsNone(result)
 
     def test_map_pid_29_empty_date_of_death(self) -> None:
         self.original_message.pid.pid_29.value = ""
         result = map_pid(self.original_message, self.new_message)
 
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), '""')
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_29.ts_1"), "")
         self.assertIsNone(result)
 
-    def test_map_pid_3_maps_rep1_for_ni(self) -> None:
-        self.original_message.pid.pid_3[0].cx_1 = "4444444444"
-        self.original_message.pid.pid_3[0].cx_5 = "NI"
-
+    def test_map_pid_3_preserves_all_repetitions(self) -> None:
         map_pid(self.original_message, self.new_message)
-
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_1"), "4444444444")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_4.hd_1"), "NHS")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_5"), "NH")
-
-    def test_map_pid_3_rep1_blank_when_not_ni(self) -> None:
-        self.original_message.pid.pid_3[0].cx_1 = "4444444444"
-        self.original_message.pid.pid_3[0].cx_5 = "PI"
-
-        map_pid(self.original_message, self.new_message)
-
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_1"), "")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_4.hd_1"), "")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[0].cx_5"), "")
-
-    def test_map_pid_3_maps_rep2_for_pi(self) -> None:
-        self.original_message.pid.pid_3[1].cx_1 = "8888888"
-        self.original_message.pid.pid_3[1].cx_5 = "PI"
-
-        map_pid(self.original_message, self.new_message)
-
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_1"), "8888888")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_4.hd_1"), "103")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_5"), "PI")
-
-    def test_map_pid_3_rep2_blank_when_not_pi(self) -> None:
-        self.original_message.pid.pid_3[1].cx_1 = "8888888"
-        self.original_message.pid.pid_3[1].cx_5 = "NI"
-
-        map_pid(self.original_message, self.new_message)
-
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_1"), "")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_4.hd_1"), "")
-        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3[1].cx_5"), "")
+        self.assertEqual(len(self.original_message.pid.pid_3), len(self.new_message.pid.pid_3))
+        for i in range(len(self.original_message.pid.pid_3)):
+            self.assertEqual(
+                self.original_message.pid.pid_3[i].value,
+                self.new_message.pid.pid_3[i].value,
+                f"PID.3 repetition {i} mismatch",
+            )
 
     def test_map_pid_11_preserves_all_repetitions(self) -> None:
         map_pid(self.original_message, self.new_message)

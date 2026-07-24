@@ -4,23 +4,31 @@ from hl7_phw_transformer.date_of_death_transformer import transform_date_of_deat
 
 
 class TestDateOfDeathTransformer(unittest.TestCase):
-    def test_timezone_is_trimmed_when_length_is_greater_than_6(self) -> None:
-        values = [
-            ("20250702085450+0000", "20250702085450"),
-            ("20241231+0100", "20241231"),
-            ("20241231", "20241231"),
+    def test_resurrec_transformation(self) -> None:
+        resurrec_variants = [
+            "RESURREC",
+            "resurrec",
+            "Resurrec",
+            "  RESURREC  ",
+            "\tRESURREC\n"
         ]
 
-        for original_value, expected_value in values:
-            with self.subTest(original_value=original_value):
-                self.assertEqual(transform_date_of_death(original_value), expected_value)
+        for variant in resurrec_variants:
+            with self.subTest(variant=variant):
+                self.assertEqual(transform_date_of_death(variant), '""')
 
-    def test_returns_blank_for_empty_or_short_values(self) -> None:
-        blank_values = [None, "", "   ", "202401", "123456"]
+    def test_valid_date_passthrough(self) -> None:
+        valid_dates = [
+            "2023-01-15",
+            "1999-12-31",
+            "2025-05-23",
+            "2000-02-29",  # Leap year date
+            "1900-01-01"
+        ]
 
-        for value in blank_values:
-            with self.subTest(value=value):
-                self.assertEqual(transform_date_of_death(value), '""')
+        for date in valid_dates:
+            with self.subTest(date=date):
+                self.assertEqual(transform_date_of_death(date), date)
 
 
 if __name__ == "__main__":

@@ -14,17 +14,6 @@ def map_msh(original_msg: Message, new_msg: Message) -> tuple[str, str] | None:
     copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=3, end=6)
     copy_segment_fields_in_range(msh_segment, new_msh, "msh", start=8, end=21)
 
-    original_trigger_event = get_hl7_field_value(msh_segment, "msh_9.msg_2")
-    if original_trigger_event == "A04":
-        new_msh.msh_9.msg_2 = "A28"
-        new_msh.msh_9.msg_3 = "ADT_A05"
-    elif original_trigger_event == "A08":
-        new_msh.msh_9.msg_2 = "A31"
-        new_msh.msh_9.msg_3 = "ADT_A05"
-    else:
-        new_msh.msh_9.msg_2 = "A40"
-        new_msh.msh_9.msg_3 = "ADT_A39"
-
     try:
         new_msh.msh_12[0].value = msh_segment.msh_12[0].value
     except Exception:
