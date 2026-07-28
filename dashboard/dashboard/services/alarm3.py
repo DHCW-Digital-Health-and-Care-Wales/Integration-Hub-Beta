@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
-from dashboard.services import cosmos_store
+from dashboard.services import alarm_base
 from dashboard.services.credentials import get_azure_credential
 from dashboard.services.email_service import send_alert_email
 
@@ -61,30 +61,22 @@ KNOWN_RULES: list[dict] = [
 
 def load_alarm3_config() -> dict:
     """Load Alarm 3 config from Cosmos DB. Returns empty config when none is stored."""
-    doc = cosmos_store.get_document(COSMOS_PK, CONFIG_DOC_ID)
-    if not doc:
-        return {"rules": {}}
-    doc.setdefault("rules", {})
-    return doc
+    return alarm_base.load_config(COSMOS_PK, CONFIG_DOC_ID)
 
 
 def save_alarm3_config(cfg: dict) -> None:
     """Persist Alarm 3 config to Cosmos DB."""
-    cosmos_store.upsert_document(COSMOS_PK, CONFIG_DOC_ID, cfg)
+    alarm_base.save_config(COSMOS_PK, cfg, CONFIG_DOC_ID)
 
 
 def _load_alarm3_state() -> dict:
     """Load per-rule Alarm 3 state (last_alarm_at timestamps) from Cosmos. Returns empty state when none is stored."""
-    doc = cosmos_store.get_document(COSMOS_PK, STATE_DOC_ID)
-    if not doc:
-        return {"rules": {}}
-    doc.setdefault("rules", {})
-    return doc
+    return alarm_base.load_state(COSMOS_PK, STATE_DOC_ID)
 
 
 def _save_alarm3_state(state: dict) -> None:
     """Persist per-rule Alarm 3 state to Cosmos DB."""
-    cosmos_store.upsert_document(COSMOS_PK, STATE_DOC_ID, state)
+    alarm_base.save_state(COSMOS_PK, state, STATE_DOC_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -99,39 +91,12 @@ def pause_alarm3_rule(rule_id: str, duration_minutes: int, reason: str = "") -> 
     state entry.  The alarm evaluator will skip the rule and return ``status='paused'``
     until that time has elapsed.
     """
-    state = _load_alarm3_state()
-    state_rules = state.setdefault("rules", {})
-    now = datetime.now(timezone.utc)
-    paused_until = now + timedelta(minutes=duration_minutes)
-    state_rules.setdefault(rule_id, {}).update(
-        {
-            "paused_until": paused_until.isoformat(),
-            "pause_reason": reason.strip(),
-        }
-    )
-    _save_alarm3_state(state)
-    log.info(
-        "Alarm 3 rule %s paused for %d minutes (until %s). Reason: %s",
-        rule_id,
-        duration_minutes,
-        paused_until.isoformat(),
-        reason or "(none)",
-    )
+    alarm_base.pause_rule(COSMOS_PK, rule_id, duration_minutes, reason, "Alarm 3", STATE_DOC_ID)
 
 
 def unpause_alarm3_rule(rule_id: str) -> None:
     """Remove a manual pause from a specific Alarm 3 rule, restoring normal evaluation."""
-    state = _load_alarm3_state()
-    state_rules = state.get("rules", {})
-    rule_state = state_rules.get(rule_id, {})
-    rule_state.pop("paused_until", None)
-    rule_state.pop("pause_reason", None)
-    if rule_state:
-        state_rules[rule_id] = rule_state
-    elif rule_id in state_rules:
-        del state_rules[rule_id]
-    _save_alarm3_state(state)
-    log.info("Alarm 3 rule %s unpaused", rule_id)
+    alarm_base.unpause_rule(COSMOS_PK, rule_id, "Alarm 3", STATE_DOC_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -141,15 +106,7 @@ def unpause_alarm3_rule(rule_id: str) -> None:
 
 def _parse_dt(raw: object) -> datetime | None:
     """Parse a datetime from a Log Analytics row value or ISO string, normalising to UTC."""
-    if raw is None:
-        return None
-    if isinstance(raw, datetime):
-        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
-    try:
-        dt = datetime.fromisoformat(str(raw))
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-    except (ValueError, TypeError):
-        return None
+    return alarm_base.parse_log_analytics_datetime(raw)
 
 
 def _window_label(minutes: int) -> str:
