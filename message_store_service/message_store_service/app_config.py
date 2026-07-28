@@ -1,8 +1,9 @@
 import os
 from dataclasses import dataclass
 
-_DEFAULT_SQL_ENCRYPT = "Yes"
-_DEFAULT_SQL_TRUST_SERVER_CERTIFICATE = "No"
+_DEFAULT_PG_PORT = 5432
+# Secure by default: local development explicitly opts out via PG_SSLMODE=disable.
+_DEFAULT_PG_SSLMODE = "require"
 
 
 @dataclass
@@ -13,13 +14,13 @@ class AppConfig:
     microservice_id: str
     health_check_hostname: str | None
     health_check_port: int | None
-    # SQL database configuration
-    sql_server: str
-    sql_database: str
-    sql_username: str | None
-    sql_password: str | None
-    sql_encrypt: str = _DEFAULT_SQL_ENCRYPT
-    sql_trust_server_certificate: str = _DEFAULT_SQL_TRUST_SERVER_CERTIFICATE
+    # PostgreSQL database configuration
+    pg_host: str
+    pg_database: str
+    pg_user: str
+    pg_password: str | None
+    pg_port: int = _DEFAULT_PG_PORT
+    pg_sslmode: str = _DEFAULT_PG_SSLMODE
     # Optional client ID for user-assigned Managed Identity auth.
     # Leave unset (None) to use the system-assigned identity.
     managed_identity_client_id: str | None = None
@@ -33,14 +34,17 @@ class AppConfig:
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
-            sql_server=_read_required_env("SQL_SERVER"),
-            sql_database=_read_required_env("SQL_DATABASE"),
-            sql_username=_read_env("SQL_USERNAME"),
-            sql_password=_read_env("MSSQL_SA_PASSWORD"),
-            sql_encrypt=_read_env("SQL_ENCRYPT") or _DEFAULT_SQL_ENCRYPT,
-            sql_trust_server_certificate=(
-                _read_env("SQL_TRUST_SERVER_CERTIFICATE") or _DEFAULT_SQL_TRUST_SERVER_CERTIFICATE
-            ),
+            pg_host=_read_required_env("PG_HOST"),
+            pg_database=_read_required_env("PG_DATABASE"),
+            # Required in both auth modes: with Entra auth the database role name is
+            # still supplied as the connection user, only the password differs.
+            pg_user=_read_required_env("PG_USER"),
+            # POSTGRES_PASSWORD is the name used by the postgres container image, so the
+            # same secret drives both the server and the clients in local development.
+            # Absent means Managed Identity auth.
+            pg_password=_read_env("POSTGRES_PASSWORD"),
+            pg_port=_read_int_env("PG_PORT") or _DEFAULT_PG_PORT,
+            pg_sslmode=_read_env("PG_SSLMODE") or _DEFAULT_PG_SSLMODE,
             managed_identity_client_id=_read_env("MANAGED_IDENTITY_CLIENT_ID"),
         )
 

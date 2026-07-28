@@ -14,19 +14,8 @@ ENV PYTHONUNBUFFERED=1
 COPY --from=ca-certs ./*.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 
-# Install Microsoft ODBC Driver 18 for SQL Server.
-# pyodbc (the Python package) is installed via uv sync, but it requires this
-# native ODBC driver at the OS level to connect to SQL Server.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gnupg \
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-        | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
-        > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 unixodbc-dev libgssapi-krb5-2 \
-    && apt-get purge -y --auto-remove curl gnupg \
-    && rm -rf /var/lib/apt/lists/*
+# No native database driver packages are required: psycopg[binary] ships a
+# self-contained libpq wheel, unlike pyodbc which needed msodbcsql18 at OS level.
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1

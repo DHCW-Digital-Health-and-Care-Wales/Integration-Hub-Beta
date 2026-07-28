@@ -1,84 +1,90 @@
 import logging
+import uuid
 from types import TracebackType
 from typing import List
 
-import pyodbc
+import psycopg
+from psycopg.rows import dict_row
 
+from .entra_token import fetch_entra_access_token
 from .replay_record import ReplayRecord
 from .replay_status import ReplayStatus
 
 logger = logging.getLogger(__name__)
 
-# ODBC driver name for SQL Server connections
-ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
-
-# Fetches the next batch of pending/failed replay rows, joined with the Messages
+# Fetches the next batch of pending/failed replay rows, joined with the message
 # table to retrieve the raw payload and correlation ID for each message.
-# Uses READPAST to skip locked rows and reduce blocking between concurrent workers,
-# and a parameterised TOP (?) for a configurable batch size.
+#
+# FOR UPDATE SKIP LOCKED is the PostgreSQL equivalent of T-SQL's READPAST: it skips
+# rows already locked by a concurrent worker instead of blocking on them. It must sit
+# inside the CTE so that only the queue table is locked — locking is not permitted on
+# the nullable side of an outer join, and there is no reason to lock the message rows.
+#
+# The locks are held until the surrounding transaction commits, which happens in
+# update_statuses. That is what stops two workers claiming the same rows.
 FETCH_BATCH_SQL = """
-WITH Batch AS (
-    SELECT TOP (?) ReplayId, MessageId
-    FROM monitoring.MessageReplayQueue WITH (READPAST)
-    WHERE Status IN ('Failed', 'Pending')
-    AND ReplayBatchId = ?
-    ORDER BY ReplayId
+WITH batch AS (
+    SELECT replay_id, message_id
+    FROM monitoring.message_replay_queue
+    WHERE status IN ('Failed', 'Pending')
+    AND replay_batch_id = %s
+    ORDER BY replay_id
+    LIMIT %s
+    FOR UPDATE SKIP LOCKED
 )
-SELECT b.ReplayId, m.Id AS MessageId, m.RawPayload, m.CorrelationId, m.SessionId
-FROM Batch b
-JOIN monitoring.Message m ON m.Id = b.MessageId
-ORDER BY b.ReplayId;
+SELECT b.replay_id, m.id AS message_id, m.raw_payload, m.correlation_id, m.session_id
+FROM batch b
+JOIN monitoring.message m ON m.id = b.message_id
+ORDER BY b.replay_id;
 """
 
 
 class DatabaseClient:
-    """Manages pyodbc connections to SQL Server for replay batch operations.
+    """Manages psycopg connections to PostgreSQL for replay batch operations.
 
     Maintains a single persistent connection that is opened lazily on the first call
     and reused for all subsequent calls. If a database error occurs the stale connection
     is discarded so that the next call transparently reconnects (reconnect-on-failure).
 
     Supports two authentication modes:
-    - **Password auth** (local dev): when ``sql_password`` is provided.
-    - **Managed Identity auth** (production): when ``sql_password`` is ``None``, uses
-      ``Authentication=ActiveDirectoryMsi``.
+    - **Password auth** (local dev): when ``pg_password`` is provided.
+    - **Managed Identity auth** (production): when ``pg_password`` is ``None``, an Entra
+      access token is acquired and passed as the connection password.
+
+    Note that ``pg_user`` is required in *both* modes: with Entra auth it is the name
+    of the database role mapped to the identity, not the identity's client ID.
     """
 
     def __init__(
         self,
-        sql_server: str,
-        sql_database: str,
-        sql_username: str | None,
-        sql_password: str | None,
-        sql_encrypt: str,
-        sql_trust_server_certificate: str,
+        pg_host: str,
+        pg_database: str,
+        pg_user: str,
+        pg_password: str | None,
+        pg_port: int = 5432,
+        pg_sslmode: str = "require",
         managed_identity_client_id: str | None = None,
     ) -> None:
-        # Validate that username and password are always provided together.
-        username_provided = bool(sql_username)
-        password_provided = bool(sql_password)
-        if username_provided != password_provided:
-            missing = "sql_password" if username_provided else "sql_username"
-            provided = "sql_username" if username_provided else "sql_password"
+        if not pg_user:
             raise ValueError(
-                f"{missing} must be provided when {provided} is set. "
-                "Password authentication requires both a username and a password."
+                "pg_user must be provided. PostgreSQL requires a role name for both password "
+                "and Entra (Managed Identity) authentication."
             )
 
-        self._sql_server = sql_server
-        self._sql_database = sql_database
-        self._sql_username = sql_username
-        self._sql_password = sql_password
-        self._sql_encrypt = sql_encrypt
-        self._sql_trust_server_certificate = sql_trust_server_certificate
+        self._pg_host = pg_host
+        self._pg_database = pg_database
+        self._pg_user = pg_user
+        self._pg_password = pg_password
+        self._pg_port = pg_port
+        self._pg_sslmode = pg_sslmode
         self._managed_identity_client_id = managed_identity_client_id
         # Persistent connection, opened lazily on first use.
-        self._connection: pyodbc.Connection | None = None
+        self._connection: psycopg.Connection | None = None
 
     def fetch_batch(self, replay_batch_id: str, batch_size: int) -> List[ReplayRecord]:
         """Fetch the next batch of pending replay records up to ``batch_size`` rows.
 
-        Executes the CTE query ordered by ReplayId, joining with the Messages table
+        Executes the CTE query ordered by replay_id, joining with the message table
         to retrieve the raw payload and correlation ID for each message.
 
         Args:
@@ -89,20 +95,25 @@ class DatabaseClient:
             A list of ReplayRecord objects, empty if no pending rows remain.
 
         Raises:
-            pyodbc.Error: On any database-level failure.
+            ValueError: If ``replay_batch_id`` is not a valid UUID.
+            psycopg.Error: On any database-level failure.
         """
+        # replay_batch_id is a uuid column; adapt explicitly rather than relying on
+        # server-side inference of an untyped text parameter.
+        batch_uuid = uuid.UUID(replay_batch_id)
+
         connection = self._get_connection()
         try:
-            cursor = connection.cursor()
-            cursor.execute(FETCH_BATCH_SQL, (batch_size, replay_batch_id))
+            cursor = connection.cursor(row_factory=dict_row)
+            cursor.execute(FETCH_BATCH_SQL, (batch_uuid, batch_size))
             rows = cursor.fetchall()
             return [
                 ReplayRecord(
-                    replay_id=row.ReplayId,
-                    message_id=row.MessageId,
-                    raw_payload=row.RawPayload,
-                    correlation_id=row.CorrelationId,
-                    session_id=row.SessionId,
+                    replay_id=row["replay_id"],
+                    message_id=row["message_id"],
+                    raw_payload=row["raw_payload"],
+                    correlation_id=row["correlation_id"],
+                    session_id=row["session_id"],
                 )
                 for row in rows
             ]
@@ -114,27 +125,30 @@ class DatabaseClient:
     def update_statuses(self, replay_ids: List[int], status: ReplayStatus) -> None:
         """Update the status of the given replay records.
 
-        Uses a single UPDATE with a dynamic WHERE IN clause for efficiency.
-        Commits on success, rolls back and discards connection on error.
+        Uses a single UPDATE with an ANY(%s) array predicate, which avoids building a
+        variable-length placeholder list and keeps the statement text stable regardless
+        of batch size (better for statement caching than the previous IN (?, ?, ...)).
+
+        Commits on success, rolls back and discards connection on error. The commit also
+        releases the row locks taken by ``fetch_batch``.
 
         Args:
-            replay_ids: The ReplayId values to update.
+            replay_ids: The replay_id values to update.
             status: The new status (e.g. ReplayStatus.LOADED, ReplayStatus.FAILED).
 
         Raises:
-            pyodbc.Error: On any database-level failure.
+            psycopg.Error: On any database-level failure.
         """
         if not replay_ids:
             return
 
         connection = self._get_connection()
-        placeholders = ", ".join("?" for _ in replay_ids)
-        sql = f"""
-UPDATE monitoring.MessageReplayQueue
-SET Status = ?, ProcessedAt = SYSUTCDATETIME()
-WHERE ReplayId IN ({placeholders});
-"""  # nosec B608 — placeholders are parameterised ? markers, not user input
-        params = [status] + list(replay_ids)
+        sql = """
+UPDATE monitoring.message_replay_queue
+SET status = %s, processed_at = now()
+WHERE replay_id = ANY(%s);
+"""
+        params: list[object] = [status, list(replay_ids)]
 
         try:
             cursor = connection.cursor()
@@ -159,7 +173,7 @@ WHERE ReplayId IN ({placeholders});
         """Explicitly close the persistent connection, if open."""
         self._close_connection()
 
-    def _get_connection(self) -> pyodbc.Connection:
+    def _get_connection(self) -> psycopg.Connection:
         """Return the existing persistent connection, creating it if necessary."""
         if self._connection is None:
             logger.debug("No active connection — opening a new one")
@@ -176,39 +190,28 @@ WHERE ReplayId IN ({placeholders});
             finally:
                 self._connection = None
 
-    def _connect(self) -> pyodbc.Connection:
-        """Create a new pyodbc connection using the appropriate auth mode."""
-        if self._sql_username and self._sql_password:
-            return self._connect_with_password()
-        return self._connect_with_managed_identity()
+    def _connect(self) -> psycopg.Connection:
+        """Create a new psycopg connection using the appropriate auth mode.
 
-    def _build_base_connection_string(self) -> str:
-        """Build the common ODBC connection string parts shared by both auth modes."""
-        return (
-            f"DRIVER={ODBC_DRIVER};"
-            f"SERVER={self._sql_server};"
-            f"DATABASE={self._sql_database};"
-            f"Encrypt={self._sql_encrypt};"
-            f"TrustServerCertificate={self._sql_trust_server_certificate}"
-        )
-
-    def _connect_with_password(self) -> pyodbc.Connection:
-        """Connect using SQL username/password (local development)."""
-        conn_str = f"{self._build_base_connection_string()};UID={self._sql_username};PWD={self._sql_password}"
-        logger.debug("Connecting to SQL Server with password auth")
-        return pyodbc.connect(conn_str, autocommit=False)
-
-    def _connect_with_managed_identity(self) -> pyodbc.Connection:
-        """Connect using Azure Managed Identity (production).
-
-        Uses ``Authentication=ActiveDirectoryMsi`` in the ODBC connection string.
-        For user-assigned identity, ``managed_identity_client_id`` is passed as ``UID``.
+        The password is either the configured static password or a freshly acquired
+        Entra access token; everything else about the connection is identical.
         """
-        uid_segment = f"UID={self._managed_identity_client_id};" if self._managed_identity_client_id else ""
-        conn_str = f"{self._build_base_connection_string()};{uid_segment}Authentication=ActiveDirectoryMsi"
+        if self._pg_password:
+            logger.debug("Connecting to PostgreSQL with password auth")
+            password = self._pg_password
+        else:
+            logger.debug("Connecting to PostgreSQL with Managed Identity auth")
+            password = fetch_entra_access_token(self._managed_identity_client_id)
 
-        logger.debug("Connecting to SQL Server with Managed Identity auth")
-        return pyodbc.connect(conn_str, autocommit=False)
+        return psycopg.connect(
+            host=self._pg_host,
+            port=self._pg_port,
+            dbname=self._pg_database,
+            user=self._pg_user,
+            password=password,
+            sslmode=self._pg_sslmode,
+            autocommit=False,
+        )
 
     # ------------------------------------------------------------------
     # Context manager

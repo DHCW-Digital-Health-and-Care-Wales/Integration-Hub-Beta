@@ -16,12 +16,12 @@ class TestAppConfig(unittest.TestCase):
                 "MICROSERVICE_ID": "microservice_id",
                 "HEALTH_CHECK_HOST": "localhost",
                 "HEALTH_CHECK_PORT": "9000",
-                "SQL_SERVER": "localhost,1433",
-                "SQL_DATABASE": "IntegrationHub",
-                "SQL_USERNAME": "sa",
-                "MSSQL_SA_PASSWORD": "secret",  # nosec B105 — test fixture, not real password
-                "SQL_ENCRYPT": "No",
-                "SQL_TRUST_SERVER_CERTIFICATE": "Yes",
+                "PG_HOST": "postgres",
+                "PG_PORT": "5433",
+                "PG_DATABASE": "integrationhub",
+                "PG_USER": "inthub",
+                "POSTGRES_PASSWORD": "secret",  # nosec B105 — test fixture, not real password
+                "PG_SSLMODE": "disable",
                 "MANAGED_IDENTITY_CLIENT_ID": "my-mi-client-id",
             }
             return values.get(name)
@@ -35,45 +35,48 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.microservice_id, "microservice_id")
         self.assertEqual(config.health_check_hostname, "localhost")
         self.assertEqual(config.health_check_port, 9000)
-        # SQL config — explicit values from env override the defaults
-        self.assertEqual(config.sql_server, "localhost,1433")
-        self.assertEqual(config.sql_database, "IntegrationHub")
-        self.assertEqual(config.sql_username, "sa")
-        self.assertEqual(config.sql_password, "secret")
-        self.assertEqual(config.sql_encrypt, "No")
-        self.assertEqual(config.sql_trust_server_certificate, "Yes")
+        # PostgreSQL config — explicit values from env override the defaults
+        self.assertEqual(config.pg_host, "postgres")
+        self.assertEqual(config.pg_port, 5433)
+        self.assertEqual(config.pg_database, "integrationhub")
+        self.assertEqual(config.pg_user, "inthub")
+        self.assertEqual(config.pg_password, "secret")
+        self.assertEqual(config.pg_sslmode, "disable")
         self.assertEqual(config.managed_identity_client_id, "my-mi-client-id")
 
     @patch("message_store_service.app_config.os.getenv")
-    def test_read_env_config_uses_secure_defaults_when_sql_tls_vars_absent(
-        self, mock_getenv: MagicMock
-    ) -> None:
+    def test_read_env_config_uses_secure_defaults_when_optional_pg_vars_absent(self, mock_getenv: MagicMock) -> None:
+        """TLS must be required and the standard port assumed when the optional vars are unset."""
+
         def getenv_side_effect(name: str) -> Optional[str]:
             values = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "INGRESS_QUEUE_NAME": "queue",
                 "MICROSERVICE_ID": "microservice_id",
-                "SQL_SERVER": "myserver.database.windows.net",
-                "SQL_DATABASE": "IntegrationHub",
+                "PG_HOST": "myserver.postgres.database.azure.com",
+                "PG_DATABASE": "integrationhub",
+                "PG_USER": "message-store-identity",
             }
             return values.get(name)
 
         mock_getenv.side_effect = getenv_side_effect
 
         config = AppConfig.read_env_config()
-        self.assertEqual(config.sql_encrypt, "Yes")
-        self.assertEqual(config.sql_trust_server_certificate, "No")
+        self.assertEqual(config.pg_sslmode, "require")
+        self.assertEqual(config.pg_port, 5432)
 
     @patch("message_store_service.app_config.os.getenv")
     def test_read_env_config_with_minimal_required_vars(self, mock_getenv: MagicMock) -> None:
         """Test with only required environment variables."""
+
         def getenv_side_effect(name: str) -> Optional[str]:
             values = {
                 "SERVICE_BUS_CONNECTION_STRING": "conn_str",
                 "INGRESS_QUEUE_NAME": "queue",
                 "MICROSERVICE_ID": "microservice_id",
-                "SQL_SERVER": "myserver.database.windows.net",
-                "SQL_DATABASE": "IntegrationHub",
+                "PG_HOST": "myserver.postgres.database.azure.com",
+                "PG_DATABASE": "integrationhub",
+                "PG_USER": "message-store-identity",
             }
             return values.get(name)
 
@@ -85,12 +88,12 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.microservice_id, "microservice_id")
         self.assertIsNone(config.health_check_hostname)
         self.assertIsNone(config.health_check_port)
-        self.assertEqual(config.sql_server, "myserver.database.windows.net")
-        self.assertEqual(config.sql_database, "IntegrationHub")
-        self.assertIsNone(config.sql_username)
-        self.assertIsNone(config.sql_password)
-        self.assertEqual(config.sql_encrypt, "Yes")
-        self.assertEqual(config.sql_trust_server_certificate, "No")
+        self.assertEqual(config.pg_host, "myserver.postgres.database.azure.com")
+        self.assertEqual(config.pg_database, "integrationhub")
+        self.assertEqual(config.pg_user, "message-store-identity")
+        # No password means Managed Identity auth.
+        self.assertIsNone(config.pg_password)
+        self.assertEqual(config.pg_sslmode, "require")
         self.assertIsNone(config.managed_identity_client_id)
 
     @patch("message_store_service.app_config.os.getenv")
@@ -99,6 +102,26 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             AppConfig.read_env_config()
         self.assertIn("Missing required configuration", str(context.exception))
+
+    @patch("message_store_service.app_config.os.getenv")
+    def test_read_env_config_missing_pg_user_raises_error(self, mock_getenv: MagicMock) -> None:
+        """PG_USER is required even under Managed Identity auth — PostgreSQL always needs a role name."""
+
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "SERVICE_BUS_CONNECTION_STRING": "conn_str",
+                "INGRESS_QUEUE_NAME": "queue",
+                "MICROSERVICE_ID": "microservice_id",
+                "PG_HOST": "myserver.postgres.database.azure.com",
+                "PG_DATABASE": "integrationhub",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        with self.assertRaises(RuntimeError) as context:
+            AppConfig.read_env_config()
+        self.assertIn("PG_USER", str(context.exception))
 
 
 if __name__ == "__main__":

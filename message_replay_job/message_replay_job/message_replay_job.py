@@ -19,19 +19,19 @@ class MessageReplayJob:
     """Orchestrates the replay of messages from SQL Server to Service Bus.
 
     Processes one ReplayBatchId per execution. Reads pending rows from the
-    MessageReplayQueue table in configurable-sized batches, sends them to the priority
+    message_replay_queue table in configurable-sized batches, sends them to the priority
     Service Bus queue, and updates their status.
     """
 
     def __init__(self, config: AppConfig) -> None:
         self._config = config
         self._db_client = DatabaseClient(
-            sql_server=config.sql_server,
-            sql_database=config.sql_database,
-            sql_username=config.sql_username,
-            sql_password=config.sql_password,
-            sql_encrypt=config.sql_encrypt,
-            sql_trust_server_certificate=config.sql_trust_server_certificate,
+            pg_host=config.pg_host,
+            pg_database=config.pg_database,
+            pg_user=config.pg_user,
+            pg_password=config.pg_password,
+            pg_port=config.pg_port,
+            pg_sslmode=config.pg_sslmode,
             managed_identity_client_id=config.managed_identity_client_id,
         )
 
