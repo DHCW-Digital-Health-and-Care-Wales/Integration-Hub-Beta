@@ -29,6 +29,8 @@ services:
       integration-hub:
         aliases:
           - "sb-emulator"
+  # NOTE: sqledge is retained deliberately. It is the Service Bus emulator's own backing
+  # store (see SQL_SERVER: sqledge on sb-emulator above) and is unrelated to the message store.
   sqledge:
     container_name: "sqledge"
     image: "mcr.microsoft.com/azure-sql-edge:latest"
@@ -42,24 +44,31 @@ services:
     env_file:
       - ./.secrets
 
-  sqlserver:
-    container_name: sqlserver
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres:
+    container_name: postgres
+    image: postgres:16-bookworm
     restart: on-failure
     ports:
-      - "1433:1433"
+      - "5432:5432"
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_PID: Express
+      POSTGRES_DB: integrationhub
+      POSTGRES_USER: inthub
     env_file:
       - ./.secrets
+    # Everything in this directory is executed in filename order on first start only
+    # (i.e. while the data directory is empty).
     volumes:
-      - ./sql-scripts:/var/opt/mssql/scripts
-    entrypoint: [ "/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh" ]
+      - ./sql-scripts/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inthub -d integrationhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     networks:
       integration-hub:
         aliases:
-          - "sqlserver"
+          - "postgres"
 
   message-store-service:
     container_name: message-store-service
@@ -73,8 +82,10 @@ services:
       - ./message-store-service.env
     <<: *default-healthcheck
     depends_on:
-      - sb-emulator
-      - sqlserver
+      sb-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     restart: on-failure
     networks:
       integration-hub:
@@ -92,8 +103,10 @@ services:
       - ./.secrets
       - ./message-replay-job.env
     depends_on:
-      - sb-emulator
-      - sqlserver
+      sb-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     restart: "no"
     profiles:
       - replay

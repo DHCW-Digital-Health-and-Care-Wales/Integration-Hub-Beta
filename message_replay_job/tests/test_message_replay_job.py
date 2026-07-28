@@ -26,12 +26,12 @@ def _make_config() -> MagicMock:
     config.connection_string = "conn_str"
     config.service_bus_namespace = None
     config.priority_queue_name = "priority-queue"
-    config.sql_server = "localhost,1433"
-    config.sql_database = "IntegrationHub"
-    config.sql_username = "sa"
-    config.sql_password = "secret"  # nosec B105 — test fixture, not real password
-    config.sql_encrypt = "yes"
-    config.sql_trust_server_certificate = "yes"
+    config.pg_host = "postgres"
+    config.pg_port = 5432
+    config.pg_database = "integrationhub"
+    config.pg_user = "inthub"
+    config.pg_password = "secret"  # nosec B105 — test fixture, not real password
+    config.pg_sslmode = "disable"
     config.managed_identity_client_id = None
     config.replay_batch_size = 100
     return config

@@ -1,11 +1,11 @@
 # Message Replay Job
 
-A containerised job that replays HL7 messages from SQL Server to an Azure Service Bus priority queue. It is triggered manually by the support team when messages need to be re-processed.
+A containerised job that replays HL7 messages from PostgreSQL to an Azure Service Bus priority queue. It is triggered manually by the support team when messages need to be re-processed.
 
 ## How It Works
 
 1. Reads the `REPLAY_BATCH_ID` (UUID) from environment variables to identify the replay batch. This should be passed in to the container app job as well when triggered.
-2. Fetches pending/failed rows from `monitoring.MessageReplayQueue` in configurable-sized batches (default 100), joined with `monitoring.Message` to retrieve the raw HL7 payload and `SessionId`.
+2. Fetches pending/failed rows from `monitoring.message_replay_queue` in configurable-sized batches (default 100), joined with `monitoring.message` to retrieve the raw HL7 payload and `session_id`. Rows are claimed with `FOR UPDATE SKIP LOCKED` so concurrent runs never collide on the same rows.
 3. Builds a `ServiceBusMessage` for each record, adding the stored `SessionId` as the message session so the priority queue routes each message to the correct downstream consumer.
 4. Sends each batch to the configured Service Bus priority queue via `MessageSenderClient` from the shared lib.
 5. Marks each batch as `Loaded` in the database after successful send.
@@ -28,7 +28,7 @@ The priority queue (`PRIORITY_QUEUE_NAME`) is session-enabled. The downstream co
 4. **Revert** `INGRESS_QUEUE_NAME` on the consuming service once the replay is complete.
 
 > [!NOTE]
-> The `SessionId` stored in `monitoring.Message` reflects the session of the component that originally stored the message (`EGRESS_SESSION_ID` for `hl7_server`, `INGRESS_SESSION_ID` for `hl7_sender`).
+> The `session_id` stored in `monitoring.message` reflects the session of the component that originally stored the message (`EGRESS_SESSION_ID` for `hl7_server`, `INGRESS_SESSION_ID` for `hl7_sender`).
 
 ## Configuration
 
@@ -39,15 +39,21 @@ The priority queue (`PRIORITY_QUEUE_NAME`) is session-enabled. The downstream co
 | `PRIORITY_QUEUE_NAME`           | Yes      | —       | Service Bus queue to send replayed messages to         |
 | `SERVICE_BUS_CONNECTION_STRING` | No\*     | —       | Service Bus connection string (local dev)              |
 | `SERVICE_BUS_NAMESPACE`         | No\*     | —       | Service Bus namespace (production, with MI)            |
-| `SQL_SERVER`                    | Yes      | —       | SQL Server host (e.g. `localhost,1433`)                |
-| `SQL_DATABASE`                  | Yes      | —       | Database name                                          |
-| `SQL_USERNAME`                  | No       | —       | SQL username (local dev, requires `MSSQL_SA_PASSWORD`) |
-| `MSSQL_SA_PASSWORD`             | No       | —       | SQL password (local dev, requires `SQL_USERNAME`)      |
-| `SQL_ENCRYPT`                   | No       | `Yes`   | Whether to encrypt the SQL connection                  |
-| `SQL_TRUST_SERVER_CERTIFICATE`  | No       | `No`    | Whether to trust the server certificate                |
+| `PG_HOST`                       | Yes      | —       | PostgreSQL host (e.g. `postgres`)                      |
+| `PG_DATABASE`                   | Yes      | —       | Database name                                          |
+| `PG_USER`                       | Yes      | —       | Database role name — required in both auth modes       |
+| `PG_PORT`                       | No       | `5432`  | PostgreSQL port                                        |
+| `POSTGRES_PASSWORD`             | No       | —       | Database password (local dev); omit to use Managed Identity |
+| `PG_SSLMODE`                    | No       | `require` | libpq SSL mode; set to `disable` for the local container |
 | `MANAGED_IDENTITY_CLIENT_ID`    | No       | —       | Client ID for user-assigned Managed Identity           |
 
 \* One of `SERVICE_BUS_CONNECTION_STRING` or `SERVICE_BUS_NAMESPACE` is needed.
+
+### Authentication modes
+
+`PG_USER` is always required — PostgreSQL needs a role name even when authenticating with an Entra token.
+Set `POSTGRES_PASSWORD` for password auth (local dev); omit it and the job acquires an Entra access token for
+`https://ossrdbms-aad.database.windows.net/.default` and passes it as the connection password.
 
 ### Build / checks
 
@@ -73,7 +79,7 @@ uv run python -m unittest discover tests
 
 ## REPLAY_BATCH_SIZE Tuning
 
-The `REPLAY_BATCH_SIZE` env variable controls how many rows are fetched per database round-trip, mapping to `TOP (?)` in the fetch query. The default is currently set to 100, which is conservative given the typical HL7 message sizes expected currently.
+The `REPLAY_BATCH_SIZE` env variable controls how many rows are fetched per database round-trip, mapping to `LIMIT %s` in the fetch query. The default is currently set to 100, which is conservative given the typical HL7 message sizes expected currently.
 
 A comparison between smaller and larger batch sizes below and the impact they have:
 

@@ -3,36 +3,34 @@ from datetime import datetime, timezone
 from types import TracebackType
 from typing import List
 
-import pyodbc
+import psycopg
 
+from .entra_token import fetch_entra_access_token
 from .message_record import MessageRecord
 
 logger = logging.getLogger(__name__)
 
-# ODBC driver name for SQL Server connections
-ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
-
-# SQL statement for batch-inserting message records into the monitoring.Message table.
+# SQL statement for batch-inserting message records into the monitoring.message table.
 # Uses parameterised placeholders to prevent SQL injection.
 INSERT_SQL = """
-INSERT INTO monitoring.Message (
-    ReceivedAt,
-    StoredAt,
-    CorrelationId,
-    SourceSystem,
-    ProcessingComponent,
-    TargetSystem,
-    RawPayload,
-    XmlPayload,
-    SessionId
+INSERT INTO monitoring.message (
+    received_at,
+    stored_at,
+    correlation_id,
+    source_system,
+    processing_component,
+    target_system,
+    raw_payload,
+    xml_payload,
+    session_id
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 
 class DatabaseClient:
-    """Manages pyodbc connections to SQL Server and provides batch message inserts.
+    """Manages psycopg connections to PostgreSQL and provides batch message inserts.
 
     Maintains a single persistent connection that is opened lazily on the first call
     to ``store_messages`` and reused for all subsequent calls.  If a database error
@@ -40,60 +38,54 @@ class DatabaseClient:
     reconnects (reconnect-on-failure strategy).
 
     Supports two authentication modes:
-    - **Password auth** (local dev): when both ``sql_username`` and ``sql_password``
-      are provided, connects with username/password via the ODBC connection string.
-      Both must be supplied together — providing only one raises a ``ValueError``.
-    - **Managed Identity auth** (production): when both ``sql_username`` and
-      ``sql_password`` are ``None``, uses ``Authentication=ActiveDirectoryMsi`` in
-      the ODBC connection string so the driver authenticates directly via Azure
-      Managed Identity.
+    - **Password auth** (local dev): when ``pg_password`` is provided, it is used
+      directly as the connection password.
+    - **Managed Identity auth** (production): when ``pg_password`` is ``None``, an
+      Entra access token is acquired and passed as the connection *password*. This is
+      how Azure Database for PostgreSQL Flexible Server accepts Entra credentials.
+      A fresh token is fetched on every reconnect because tokens expire.
 
       For a **system-assigned** Managed Identity, omit ``managed_identity_client_id``.
-      For a **user-assigned** Managed Identity, set ``managed_identity_client_id`` to
-      the client ID of the identity; it is passed as ``UID`` so the driver targets
-      the correct identity.
+      For a **user-assigned** Managed Identity, set it to the client ID of the identity.
+
+    Note that ``pg_user`` is required in *both* modes: with Entra auth it is the name
+    of the database role mapped to the identity, not the identity's client ID.
     """
 
     def __init__(
         self,
-        sql_server: str,
-        sql_database: str,
-        sql_username: str | None,
-        sql_password: str | None,
-        sql_encrypt: str,
-        sql_trust_server_certificate: str,
+        pg_host: str,
+        pg_database: str,
+        pg_user: str,
+        pg_password: str | None,
+        pg_port: int = 5432,
+        pg_sslmode: str = "require",
         managed_identity_client_id: str | None = None,
     ) -> None:
-        # Validate that username and password are always provided together.
-        username_provided = bool(sql_username)
-        password_provided = bool(sql_password)
-        if username_provided != password_provided:
-            missing = "sql_password" if username_provided else "sql_username"
-            provided = "sql_username" if username_provided else "sql_password"
+        if not pg_user:
             raise ValueError(
-                f"{missing} must be provided when {provided} is set. "
-                "Password authentication requires both a username and a password."
+                "pg_user must be provided. PostgreSQL requires a role name for both password "
+                "and Entra (Managed Identity) authentication."
             )
 
-        self._sql_server = sql_server
-        self._sql_database = sql_database
-        self._sql_username = sql_username
-        self._sql_password = sql_password
-        self._sql_encrypt = sql_encrypt
-        self._sql_trust_server_certificate = sql_trust_server_certificate
+        self._pg_host = pg_host
+        self._pg_database = pg_database
+        self._pg_user = pg_user
+        self._pg_password = pg_password
+        self._pg_port = pg_port
+        self._pg_sslmode = pg_sslmode
         # Optional client ID for user-assigned Managed Identity.
         # When None, the system-assigned identity is used automatically.
         self._managed_identity_client_id = managed_identity_client_id
         # Persistent connection, opened lazily on first use.
-        self._connection: pyodbc.Connection | None = None
+        self._connection: psycopg.Connection | None = None
 
     def store_messages(self, messages: List[MessageRecord]) -> None:
-        """Batch-insert a list of MessageRecord objects into monitoring.Message.
+        """Batch-insert a list of MessageRecord objects into monitoring.message.
 
-        Uses ``fast_executemany`` for performance and wraps the operation in an
-        atomic transaction (``autocommit=False``).  The underlying connection is
-        reused across calls; if a database error occurs the connection is closed and
-        discarded so that the next call transparently reconnects.
+        Wraps the operation in an atomic transaction (``autocommit=False``).  The
+        underlying connection is reused across calls; if a database error occurs the
+        connection is closed and discarded so that the next call transparently reconnects.
 
         If ``executemany`` raises, the transaction is rolled back so that a subsequent
         ``abandon_all`` on the Service Bus batch can safely re-queue without duplicates.
@@ -102,7 +94,7 @@ class DatabaseClient:
             messages: The batch of message records to persist.
 
         Raises:
-            pyodbc.Error: On any database-level failure (connection, execution, etc.).
+            psycopg.Error: On any database-level failure (connection, execution, etc.).
         """
         if not messages:
             logger.debug("No messages to store — skipping database insert")
@@ -113,8 +105,6 @@ class DatabaseClient:
 
         try:
             cursor = connection.cursor()
-            # Enable fast_executemany for batch performance
-            cursor.fast_executemany = True
 
             rows = [
                 (
@@ -153,7 +143,7 @@ class DatabaseClient:
         """Explicitly close the persistent connection, if open."""
         self._close_connection()
 
-    def _get_connection(self) -> pyodbc.Connection:
+    def _get_connection(self) -> psycopg.Connection:
         """Return the existing persistent connection, creating it if necessary.
 
         Uses lazy initialisation: the connection is only established on the first
@@ -176,44 +166,28 @@ class DatabaseClient:
             finally:
                 self._connection = None
 
-    def _connect(self) -> pyodbc.Connection:
-        """Create a new pyodbc connection using the appropriate auth mode."""
-        if self._sql_username and self._sql_password:
-            return self._connect_with_password()
-        return self._connect_with_managed_identity()
+    def _connect(self) -> psycopg.Connection:
+        """Create a new psycopg connection using the appropriate auth mode.
 
-    def _build_base_connection_string(self) -> str:
-        """Build the common ODBC connection string parts shared by both auth modes."""
-        return (
-            f"DRIVER={ODBC_DRIVER};"
-            f"SERVER={self._sql_server};"
-            f"DATABASE={self._sql_database};"
-            f"Encrypt={self._sql_encrypt};"
-            f"TrustServerCertificate={self._sql_trust_server_certificate}"
-        )
-
-    def _connect_with_password(self) -> pyodbc.Connection:
-        """Connect using SQL username/password (local development)."""
-        conn_str = f"{self._build_base_connection_string()};UID={self._sql_username};PWD={self._sql_password}"
-        logger.debug("Connecting to SQL Server with password auth")
-        return pyodbc.connect(conn_str, autocommit=False)
-
-    def _connect_with_managed_identity(self) -> pyodbc.Connection:
-        """Connect using Azure Managed Identity (production).
-
-        Uses ``Authentication=ActiveDirectoryMsi`` in the ODBC connection string,
-        allowing the ODBC driver to handle Managed Identity authentication directly.
-
-        - System-assigned identity: ``managed_identity_client_id`` is ``None``, so
-          ``UID`` is omitted and the driver picks up the single assigned identity.
-        - User-assigned identity: ``managed_identity_client_id`` is set to the client
-          ID of the target identity, passed as ``UID`` for explicit selection.
+        The password is either the configured static password or a freshly acquired
+        Entra access token; everything else about the connection is identical.
         """
-        uid_segment = f"UID={self._managed_identity_client_id};" if self._managed_identity_client_id else ""
-        conn_str = f"{self._build_base_connection_string()};{uid_segment}Authentication=ActiveDirectoryMsi"
+        if self._pg_password:
+            logger.debug("Connecting to PostgreSQL with password auth")
+            password = self._pg_password
+        else:
+            logger.debug("Connecting to PostgreSQL with Managed Identity auth")
+            password = fetch_entra_access_token(self._managed_identity_client_id)
 
-        logger.debug("Connecting to SQL Server with Managed Identity auth")
-        return pyodbc.connect(conn_str, autocommit=False)
+        return psycopg.connect(
+            host=self._pg_host,
+            port=self._pg_port,
+            dbname=self._pg_database,
+            user=self._pg_user,
+            password=password,
+            sslmode=self._pg_sslmode,
+            autocommit=False,
+        )
 
     # ------------------------------------------------------------------
     # Context manager

@@ -21,12 +21,12 @@ class MessageStoreService:
         self.processor_manager = ProcessorManager()
         self.batch_size = batch_size
         self.db_client = DatabaseClient(
-            sql_server=self.config.sql_server,
-            sql_database=self.config.sql_database,
-            sql_username=self.config.sql_username,
-            sql_password=self.config.sql_password,
-            sql_encrypt=self.config.sql_encrypt,
-            sql_trust_server_certificate=self.config.sql_trust_server_certificate,
+            pg_host=self.config.pg_host,
+            pg_database=self.config.pg_database,
+            pg_user=self.config.pg_user,
+            pg_password=self.config.pg_password,
+            pg_port=self.config.pg_port,
+            pg_sslmode=self.config.pg_sslmode,
             managed_identity_client_id=self.config.managed_identity_client_id,
         )
 

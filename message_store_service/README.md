@@ -1,6 +1,6 @@
 # Message Store Service
 
-Message storage service that reads HL7 messages from an Azure Service Bus queue and stores them in an Azure SQL
+Message storage service that reads HL7 messages from an Azure Service Bus queue and stores them in a PostgreSQL
 database for auditing and replaying purposes.
 
 ## Architecture
@@ -8,7 +8,7 @@ database for auditing and replaying purposes.
 The service consumes messages from a Service Bus queue in configurable batches. For each batch, it:
 
 1. Deserialises the JSON message body into a `MessageRecord`.
-2. Batch-inserts all records into the `monitoring.Message` table using `pyodbc` with `fast_executemany`.
+2. Batch-inserts all records into the `monitoring.message` table using `psycopg` with `executemany`.
 3. Acknowledges (completes) the batch only after a successful database commit.
 4. On failure, rolls back the transaction and abandons the batch so messages are re-queued automatically.
 
@@ -16,19 +16,22 @@ The `DatabaseClient` maintains a single persistent connection that is opened laz
 batches. If a database error occurs, the stale connection is discarded and transparently re-established on the next
 batch.
 
-### Database table — `monitoring.Message`
+### Database table — `monitoring.message`
 
-| Column                | Type            | Required | Description                                       |
-| --------------------- | --------------- | -------- |---------------------------------------------------|
-| `ReceivedAt`          | `datetime`      | ✅       | Timestamp the message was originally received     |
-| `StoredAt`            | `datetime`      | ✅       | Timestamp the record was written to the database  |
-| `CorrelationId`       | `nvarchar`      | ✅       | Unique identifier for tracing the message         |
-| `SourceSystem`        | `nvarchar`      | ✅       | System that originated the message                |
-| `ProcessingComponent` | `nvarchar`      | ✅       | Microservice that processed the message           |
-| `TargetSystem`        | `nvarchar`      | ❌       | Destination system (if known)                     |
-| `RawPayload`          | `nvarchar(max)` | ✅       | Original HL7 raw message payload                  |
-| `XmlPayload`          | `nvarchar(max)` | ❌       | XML-transformed payload (if available)            |
-| `SessionId`           | `nvarchar(128)` | ✅       | Service Bus session ID of the storing component   |
+| Column                 | Type             | Required | Description                                       |
+| ---------------------- | ---------------- | -------- |---------------------------------------------------|
+| `received_at`          | `timestamptz(3)` | ✅       | Timestamp the message was originally received     |
+| `stored_at`            | `timestamptz(3)` | ✅       | Timestamp the record was written to the database  |
+| `correlation_id`       | `varchar(100)`   | ✅       | Unique identifier for tracing the message         |
+| `source_system`        | `varchar(50)`    | ✅       | System that originated the message                |
+| `processing_component` | `varchar(100)`   | ✅       | Microservice that processed the message           |
+| `target_system`        | `varchar(50)`    | ❌       | Destination system (if known)                     |
+| `raw_payload`          | `text`           | ✅       | Original HL7 raw message payload                  |
+| `xml_payload`          | `xml`            | ❌       | XML-transformed payload (if available)            |
+| `session_id`           | `varchar(128)`   | ✅       | Service Bus session ID of the storing component   |
+
+> Identifiers are lower-case `snake_case` because PostgreSQL folds unquoted identifiers to lower case —
+> using the original `PascalCase` names would require double-quoting every identifier in every query.
 
 ### Service Bus message format
 
@@ -57,7 +60,8 @@ Each Service Bus message body must be a JSON object with the following fields:
 - [uv](https://docs.astral.sh/uv/) - Python package and project manager
 - macOS: `brew install uv`
 - Other platforms: See [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
-- [ODBC Driver 18 for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) — required at runtime for database connectivity
+
+> No native database driver needs installing: `psycopg[binary]` bundles its own libpq.
 
 ### Build / checks
 
@@ -105,39 +109,47 @@ You can run the service directly with python or build docker image and run it in
 | `HEALTH_CHECK_HOST` | ❌       | `127.0.0.1` | TCP health-check bind address     |
 | `HEALTH_CHECK_PORT` | ❌       | `9000`      | TCP health-check port             |
 
-#### SQL database
+#### PostgreSQL database
 
-| Variable                       | Required | Default | Description                                                                                                                            |
-| ------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `SQL_SERVER`                   | ✅       | —       | SQL Server hostname or FQDN                                                                                                            |
-| `SQL_DATABASE`                 | ✅       | —       | Target database name                                                                                                                   |
-| `SQL_ENCRYPT`                  | ❌       | `Yes`   | Enable TLS encryption — use `Yes` / `No`. Defaults to `Yes` (secure for Azure SQL)                                                     |
-| `SQL_TRUST_SERVER_CERTIFICATE` | ❌       | `No`    | Trust self-signed certificates — use `Yes` / `No`. Defaults to `No` (validates cert in prod); set to `Yes` for local dev               |
-| `SQL_USERNAME`                 | ❌       | —       | SQL username — required for **password auth** (local dev); must be set together with `MSSQL_SA_PASSWORD`                               |
-| `MSSQL_SA_PASSWORD`            | ❌       | —       | SQL password — required for **password auth** (local dev); must be set together with `SQL_USERNAME`; omit both to use Managed Identity |
-| `MANAGED_IDENTITY_CLIENT_ID`   | ❌       | —       | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                                            |
+| Variable                     | Required | Default   | Description                                                                                                          |
+| ---------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `PG_HOST`                    | ✅       | —         | PostgreSQL hostname or FQDN                                                                                          |
+| `PG_DATABASE`                | ✅       | —         | Target database name                                                                                                 |
+| `PG_USER`                    | ✅       | —         | Database role name — required in **both** auth modes                                                                 |
+| `PG_PORT`                    | ❌       | `5432`    | PostgreSQL port                                                                                                      |
+| `PG_SSLMODE`                 | ❌       | `require` | libpq SSL mode. Defaults to `require` (secure for Azure); set to `disable` for the local container                    |
+| `POSTGRES_PASSWORD`          | ❌       | —         | Database password — set for **password auth** (local dev); omit to use Managed Identity                              |
+| `MANAGED_IDENTITY_CLIENT_ID` | ❌       | —         | Client ID of a **user-assigned** Managed Identity; omit to use the system-assigned identity                          |
 
 **Note:** This service does not use Service Bus sessions.
 
 ### Authentication modes
 
-`SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause startup to fail with a clear error. Omit both to use Managed Identity.
+`PG_USER` is always required. Unlike SQL Server's `ActiveDirectoryMsi` mode, PostgreSQL needs a role name even when
+authenticating with an Entra token — only the password differs between the two modes.
 
 #### Password auth (local development)
 
-Set both `SQL_USERNAME` and `MSSQL_SA_PASSWORD`. The service connects via standard SQL Server username/password auth.
+Set `POSTGRES_PASSWORD`. The service connects with standard PostgreSQL password auth.
 
-Also set `SQL_ENCRYPT=No` and `SQL_TRUST_SERVER_CERTIFICATE=Yes` to match the plain local SQL Server container (no TLS certificate configured).
+Also set `PG_SSLMODE=disable` to match the plain local PostgreSQL container (no TLS certificate configured).
+
+`POSTGRES_PASSWORD` is deliberately named after the variable the `postgres` container image itself reads, so a single
+secret drives both the server and its clients in local development.
 
 #### Managed Identity auth (production / Azure)
 
-Leave both `SQL_USERNAME` and `MSSQL_SA_PASSWORD` unset. The service authenticates via `Authentication=ActiveDirectoryMsi` in the ODBC
-connection string.
+Leave `POSTGRES_PASSWORD` unset. The service acquires an Entra access token for
+`https://ossrdbms-aad.database.windows.net/.default` via `ManagedIdentityCredential` and passes it as the connection
+password. A fresh token is acquired on every connect, so expiry is handled by the existing reconnect logic.
 
-`SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` default to `Yes` and `No` respectively.
+`PG_SSLMODE` defaults to `require`.
 
-- **System-assigned identity**: leave `MANAGED_IDENTITY_CLIENT_ID` unset — the driver picks up the single assigned identity automatically.
-- **User-assigned identity**: set `MANAGED_IDENTITY_CLIENT_ID` to the client ID of the target identity so the driver selects the correct one.
+- **System-assigned identity**: leave `MANAGED_IDENTITY_CLIENT_ID` unset.
+- **User-assigned identity**: set `MANAGED_IDENTITY_CLIENT_ID` to the client ID of the target identity.
+
+> The Entra role must exist in the database. Azure Database for PostgreSQL requires an in-database
+> `pgaadauth_create_principal` call — this cannot be done from Terraform.
 
 ### Running directly
 

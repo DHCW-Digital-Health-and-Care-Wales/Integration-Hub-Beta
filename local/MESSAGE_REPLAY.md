@@ -5,12 +5,12 @@
 
 The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
 
-The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**. Each replayed message is automatically stamped with the `SessionId` that was stored when the message was originally processed, so the consuming `hl7_sender` instance will pick it up without any session configuration change.
+The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**. Each replayed message is automatically stamped with the `session_id` that was stored when the message was originally processed, so the consuming `hl7_sender` instance will pick it up without any session configuration change.
 
 ## Quick Start
 
-1. **Initialise database**: `just start phw-to-mpi` (starts SQL Server and seeds test messages)
-2. **Create replay batch**: Run `create-replay-batch.sql` in VS Code to get a `ReplayBatchId`
+1. **Initialise database**: `just start phw-to-mpi` (starts PostgreSQL and seeds test messages)
+2. **Create replay batch**: Run `create-replay-batch.sql` to get a `replay_batch_id`
 3. **Configure job**: Set `REPLAY_BATCH_ID` in `message-replay-job.env`
 4. **Redirect sender**: Update `INGRESS_QUEUE_NAME` in the relevant sender `.env` file to `local-inthub-priority-messagequeue`
 5. **Run job**: `just run replay` (builds and executes the replay job)
@@ -31,16 +31,15 @@ The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**
 
 **Before you start, verify you have:**
 - Python environment set up locally (for running tests and debugging)
-- A running Docker stack with SQL Server initialized (from `just start phw-to-mpi`)
-- An SQL client installed (can use the VS Code extension below as well)
-- VS Code with the **SQL Server (mssql)** extension installed and configured
-- The `MessageStoreDB` connection configured in VS Code (see [Connecting to SQL Server from Your Machine](README.md#connecting-to-sql-server-from-your-machine))
+- A running Docker stack with PostgreSQL initialised (from `just start phw-to-mpi`)
+- A PostgreSQL client — `psql` inside the container is always available, or use a VS Code extension
+- A connection to the local database configured (see [Connecting to PostgreSQL from Your Machine](README.md#connecting-to-postgresql-from-your-machine))
 - The `local/message-replay-job.env` file exists (should be in the repo)
 - Docker Desktop is running (required for `just run replay`)
 
 ## Step 1: Initialise the Database with Test Data
 
-Start a Docker profile to initialise the SQL Server container and populate test data:
+Start a Docker profile to initialise the PostgreSQL container and populate test data:
 
 ```bash
 just start phw-to-mpi
@@ -48,19 +47,23 @@ just start phw-to-mpi
 
 This command:
 
-1. Starts the SQL Server container and initialises the `IntegrationHub` database
-2. As part of DB initialisation, the `seed-messages.sql` script is run, which populates the `monitoring.Message` table with 1000 test HL7 messages. The message timestamps are distributed across multiple days to simulate real-world scenarios:
+1. Starts the PostgreSQL container and initialises the `integrationhub` database
+2. As part of DB initialisation, `sql-scripts/init/02-seed-messages.sql` is run, which populates the `monitoring.message` table with 1000 test HL7 messages. The message timestamps are distributed across multiple days to simulate real-world scenarios:
    - 25% with today's timestamp
    - 25% with yesterday's timestamp
    - 25% with tomorrow's timestamp
    - 25% with a fixed timestamp of 2025-12-31 (for testing historical message replay scenarios)
 
 **What to watch for:**
-- The terminal will show `SQL Server is now ready to accept connections` — this signals the database is ready
-- Initial startup takes 20-30 seconds; the seeding happens automatically
+- The terminal will show `database system is ready to accept connections` — this signals the database is ready
+- The init scripts run **only when the data volume is empty**. To re-seed, run `docker compose down -v` first
 - You can safely proceed to Step 2 once this appears
 
-You can verify the data loaded successfully by opening your SQL client, connecting to the `MessageStoreDB`, and checking that the `monitoring.Message` table has ~1000 rows.
+Verify the data loaded successfully:
+
+```bash
+docker compose exec postgres psql -U inthub -d integrationhub -c "SELECT count(*) FROM monitoring.message;"
+```
 
 ## Step 2: Create a Replay Batch
 
@@ -68,97 +71,97 @@ A replay batch groups messages that should be reprocessed together. It's a SQL o
 
 ### Opening the Script
 
-1. Open VS Code and use the **SQL Server (mssql)** extension with your `MessageStoreDB` connection
-2. Open the script: [sql-scripts/create-replay-batch.sql](sql-scripts/create-replay-batch.sql)
+Open the script: [sql-scripts/create-replay-batch.sql](sql-scripts/create-replay-batch.sql). It is a manual script — it lives outside `sql-scripts/init/`, so it does **not** run automatically on container start.
 
 ### Understanding the Script
 
 The script does the following:
 
 ```sql
--- Defines a unique ID for this batch
-DECLARE @BatchId UNIQUEIDENTIFIER = '00000000-0000-0000-0000-000000000001';
-
--- Inserts messages matching your criteria into the replay queue
-INSERT INTO monitoring.MessageReplayQueue
-    (ReplayBatchId, MessageId)
-SELECT @BatchId, Id
-FROM monitoring.Message m
-WHERE m.SourceSystem = '252'  -- Filter by source system (e.g., '252' = PHW)
-    AND m.ReceivedAt >= DATEADD(DAY, -1, CAST(GETDATE() AS DATE))  -- Yesterday at 00:00 or later
-    AND m.ReceivedAt < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));   -- Before tomorrow at 00:00
+-- Inserts messages matching your criteria into the replay queue, tagged with a fixed batch ID
+INSERT INTO monitoring.message_replay_queue
+    (replay_batch_id, message_id)
+SELECT '00000000-0000-0000-0000-000000000001'::uuid, m.id
+FROM monitoring.message m
+WHERE m.source_system = '252'  -- Filter by source system (e.g., '252' = PHW)
+  AND m.received_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') - interval '1 day'
+  AND m.received_at <  (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') + interval '1 day';
 ```
 
 **What this means for you:**
-- `m.SourceSystem = '252'`: Only selects messages from the PHW source system. Different systems have different IDs. You can modify this to filter different sources.
-- `ReceivedAt >= DATEADD(DAY, -1, ...)` (Yesterday at 00:00) and `ReceivedAt < DATEADD(DAY, 1, ...)` (Tomorrow at 00:00): This creates a date range that spans yesterday, today, and up to midnight tomorrow. The script will populate the database with default values for other columns like `Status` (set to `Pending` automatically).
+- `m.source_system = '252'`: Only selects messages from the PHW source system. Different systems have different IDs. You can modify this to filter different sources.
+- The date range spans yesterday 00:00 UTC up to tomorrow 00:00 UTC. Date maths is done in **UTC** to match how `received_at` is stored — the old T-SQL version used the server's local `GETDATE()`, which drifted from the stored values during BST.
+- Other columns such as `status` default to `Pending` automatically.
 
 ### Customizing the Script for Different Scenarios
 
 **Scenario A: Replay only messages from today**
 
-Replace these two lines:
+Replace the date predicates with:
 ```sql
-WHERE m.SourceSystem = '252'
-    AND m.ReceivedAt >= DATEADD(DAY, -1, CAST(GETDATE() AS DATE))
-    AND m.ReceivedAt < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));
-```
-
-With:
-```sql
-WHERE m.SourceSystem = '252'
-    AND m.ReceivedAt >= CAST(GETDATE() AS DATE)              -- Starting at midnight today
-    AND m.ReceivedAt < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));  -- Before midnight tomorrow
+WHERE m.source_system = '252'
+  AND m.received_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+  AND m.received_at <  (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') + interval '1 day';
 ```
 
 **Scenario B: Replay messages from a specific date (e.g., last Thursday, March 19)**
 
 ```sql
-WHERE m.SourceSystem = '252'
-    AND m.ReceivedAt >= '2026-03-19'           -- March 19, 2026 at 00:00
-    AND m.ReceivedAt < '2026-03-20';           -- March 20, 2026 at 00:00
+WHERE m.source_system = '252'
+  AND m.received_at >= timestamptz '2026-03-19 00:00:00+00'
+  AND m.received_at <  timestamptz '2026-03-20 00:00:00+00';
 ```
 
 **Scenario C: Replay all messages from a different source system (e.g., PIMS)**
 
 ```sql
-WHERE m.SourceSystem = 'PIMS'  -- Change to the PIMS source ID
-    AND m.ReceivedAt >= DATEADD(DAY, -1, CAST(GETDATE() AS DATE))
-    AND m.ReceivedAt < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));
+WHERE m.source_system = 'PIMS'  -- Change to the PIMS source ID
+  AND m.received_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') - interval '1 day'
+  AND m.received_at <  (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') + interval '1 day';
 ```
 
 ### Choosing a Batch ID
 
-The `@BatchId` is a unique identifier for this batch. You have two options:
+The batch ID is a unique identifier for this batch. You have two options:
 
 **Option 1: Use a hardcoded ID (current default)**
 ```sql
-DECLARE @BatchId UNIQUEIDENTIFIER = '00000000-0000-0000-0000-000000000001';
+SELECT '00000000-0000-0000-0000-000000000001'::uuid, m.id
 ```
 Simple, but you can only create one batch at a time with this ID. Note that if you run the script again, it will add more messages to the same batch.
 
 **Option 2: Generate a new ID each time (recommended for multiple replays)**
 ```sql
-DECLARE @BatchId UNIQUEIDENTIFIER = NEWID();  -- Generates a fresh UUID
+SELECT gen_random_uuid(), m.id
 ```
-Each run creates a new, separate batch. This way you keep replays organized and prevent accidental overwrites.
+Each run creates a new, separate batch, so replays stay organised. You will need to read the generated value back out and set it in `message-replay-job.env`.
+
+> `gen_random_uuid()` is built into PostgreSQL 13+; no `pgcrypto` extension is required.
 
 ### Executing the Script
 
 1. Make any customizations you need (see scenarios above)
-2. Execute the script (right-click > Execute Query, or the green play button at the top right in VS Code)
-3. The script will output the `ReplayBatchId` — **copy this value** — you'll need it in Step 3
+2. Execute it:
+   ```bash
+   docker compose exec -T postgres psql -U inthub -d integrationhub < sql-scripts/create-replay-batch.sql
+   ```
+3. The script outputs the `replay_batch_id` — **copy this value** — you'll need it in Step 3
 
 **Example output:**
 ```
-ReplayBatchId
-----------------------------------------------------
-00000000-0000-0000-0000-000000000001
+            replay_batch_id
+--------------------------------------
+ 00000000-0000-0000-0000-000000000001
 ```
 
-The script moved matching messages from the `monitoring.Message` table into the `monitoring.MessageReplayQueue` table and marked them with your batch ID. These messages now have a status of `Pending`, meaning they're ready to be replayed.
+The script copied matching message IDs from `monitoring.message` into `monitoring.message_replay_queue` and marked them with your batch ID. These rows now have status `Pending`, meaning they're ready to be replayed.
 
-**To verify:** Open your SQL client and query the `monitoring.MessageReplayQueue` table. You should see rows matching your filter criteria, all with status `Pending` and the same `ReplayBatchId` you just noted.
+**To verify:**
+
+```bash
+docker compose exec postgres psql -U inthub -d integrationhub \
+  -c "SELECT status, count(*) FROM monitoring.message_replay_queue GROUP BY status;"
+```
 
 ## Step 3: Configure the Replay Job
 
@@ -169,7 +172,7 @@ The replay job needs to know which batch to process. Open `local/message-replay-
 **REPLAY_BATCH_ID**
 
 - **What it is:** The unique ID of the batch you created in Step 2
-- **How to set it:** Copy the `ReplayBatchId` from the SQL script output and paste it here
+- **How to set it:** Copy the `replay_batch_id` from the SQL script output and paste it here
 - **Example:**
   ```
   REPLAY_BATCH_ID="00000000-0000-0000-0000-000000000001"
@@ -216,7 +219,7 @@ The priority queue is session-enabled. Before running the job, update **only** `
 INGRESS_QUEUE_NAME="local-inthub-priority-messagequeue"
 ```
 
-Leave `INGRESS_SESSION_ID` unchanged — each replayed message is automatically stamped with the `SessionId` stored in `monitoring.Message`, so the sender will pick up exactly the messages intended for it.
+Leave `INGRESS_SESSION_ID` unchanged — each replayed message is automatically stamped with the `session_id` stored in `monitoring.message`, so the sender will pick up exactly the messages intended for it.
 
 > [!IMPORTANT]
 > Restart the profile which contains your desired sender after changing the env file: `just restart <profile>` (e.g. `just restart phw-to-mpi`)
@@ -288,24 +291,24 @@ If you see this output, all messages have been successfully replayed.
 
 ## Troubleshooting Common Issues
 
-### Problem: "No rows in MessageReplayQueue table"
+### Problem: "No rows in message_replay_queue table"
 
 **Cause:** The SQL script in Step 2 didn't find any matching messages
 
 **Solution:**
 1. Double-check your `WHERE` clause filters in the SQL script
-2. Verify the `SourceSystem` ID is correct for your scenario
+2. Verify the `source_system` ID is correct for your scenario
 3. Check the date range - are there actually messages in that range?
-4. Try this diagnostic query in your SQL editor:
+4. Try this diagnostic query:
    ```sql
-   SELECT DISTINCT SourceSystem, COUNT(*) as MessageCount
-   FROM monitoring.Message
-   GROUP BY SourceSystem
-   ORDER BY MessageCount DESC
+   SELECT source_system, count(*) AS message_count
+   FROM monitoring.message
+   GROUP BY source_system
+   ORDER BY message_count DESC;
    ```
    This shows you what source systems and how many messages exist. Make sure your filter matches.
 
-### Problem: "Job runs but MessageReplayQueue status stays Pending"
+### Problem: "Job runs but message_replay_queue status stays Pending"
 
 **Cause:** The replay job encountered an error and stopped processing
 
@@ -318,7 +321,7 @@ If you see this output, all messages have been successfully replayed.
      - First, try reducing REPLAY_BATCH_SIZE to send fewer messages at a time to narrow down which specific message(s) are failing. 
      - Once identified, the offending message must be looked into. 
      - Note that simply reducing the REPLAY_BATCH_SIZE will not make an oversized single message send successfully!
-   - `Database connection failed` — Check MessageStoreDB connection
+   - `Database connection failed` — check the `postgres` container is running and healthy
 4. Once fixed, re-run `just run replay` to retry
 
 ### Problem: "REPLAY_BATCH_ID not recognized"
@@ -337,23 +340,23 @@ If you see this output, all messages have been successfully replayed.
    ```
 3. Rebuild the Docker image: `just run replay` which should pick up the new config
 
-### Problem: "SQL Server connection refused"
+### Problem: "PostgreSQL connection refused"
 
 **Cause:** The database container isn't running
 
 **Solution:**
 1. Ensure you ran `just start phw-to-mpi` in Step 1
 2. Verify Docker Desktop is running
-3. Check container status: `docker ps | grep sql` or in Docker under container - you should see `sqlserver`
+3. Check container status: `docker ps | grep postgres` — you should see `postgres`
 4. If the container isn't listed, restart: `just start phw-to-mpi`
 
 ### Problem: "I accidentally used the wrong batch ID, how do I clean up the Message replay table?"
 
-**Solution:** The `MessageReplayQueue` table can grow, so it's safe to delete batches you don't want. In your SQL editor:
+**Solution:** The `message_replay_queue` table can grow, so it's safe to delete batches you don't want:
 
 ```sql
-DELETE FROM monitoring.MessageReplayQueue
-WHERE ReplayBatchId = '00000000-0000-0000-0000-000000000001'  -- Replace with your unwanted ID
+DELETE FROM monitoring.message_replay_queue
+WHERE replay_batch_id = '00000000-0000-0000-0000-000000000001'::uuid;  -- Replace with your unwanted ID
 ```
 
 Then create a new batch with the correct criteria.
@@ -361,9 +364,9 @@ Then create a new batch with the correct criteria.
 ## How the message replay system works
 The message replay system works in these phases:
 
-1. **Batch Creation** (Step 2): You write a SQL query to filter messages from the `monitoring.Message` table based on criteria (source system, date range, etc.). These matching messages are copied to a separate `monitoring.MessageReplayQueue` table with a unique batch ID and status `Pending`.
+1. **Batch Creation** (Step 2): You write a SQL query to filter messages from the `monitoring.message` table based on criteria (source system, date range, etc.). These matching messages are copied to a separate `monitoring.message_replay_queue` table with a unique batch ID and status `Pending`.
 
-2. **Replay Execution** (Step 4): The replay job reads messages from `MessageReplayQueue` in chunks, sends each chunk to a Service Bus queue (the same queue that processes live messages), then updates each message's status to `Loaded`.
+2. **Replay Execution** (Step 4): The replay job reads messages from `message_replay_queue` in chunks, sends each chunk to a Service Bus queue (the same queue that processes live messages), then updates each message's status to `Loaded`. Rows are claimed with `FOR UPDATE SKIP LOCKED`, so concurrent runs never fight over the same rows.
 
 3. **Verification** (Steps 5-6): You verify that all messages either have status `Loaded` (success) or `Failed` (error requiring investigation).
 
@@ -376,7 +379,7 @@ We don't send all messages at once because:
 
 ### The Role of the Status column
 
-Messages in `MessageReplayQueue` move through statuses:
+Messages in `message_replay_queue` move through statuses:
 - `Pending` - Job hasn't processed this message yet
 - `Loaded` - Successfully sent to Service Bus, ready for downstream processing
 - `Failed` - The job tried to send but encountered an error (usually requires investigation)
@@ -392,13 +395,17 @@ Messages in `MessageReplayQueue` move through statuses:
 
 To verify what messages remain unprocessed or failed, execute the verification query:
 
-1. Open VS Code with your `MessageStoreDB` connection
-2. Open [sql-scripts/fetch-query.sql](sql-scripts/fetch-query.sql)
-3. Execute the query (this shows up to 500 unprocessed/failed messages)
-4. Review the results:
+1. Open [sql-scripts/fetch-query.sql](sql-scripts/fetch-query.sql)
+2. Execute it (this shows up to 500 unprocessed/failed messages):
+   ```bash
+   docker compose exec -T postgres psql -U inthub -d integrationhub < sql-scripts/fetch-query.sql
+   ```
+3. Review the results:
    - **Empty result set** - All messages in your batch have successfully been replayed (marked as `Loaded`)
    - **Rows with `Pending` status** - The job didn't process these (may indicate a crash or incomplete run)
    - **Rows with `Failed` status** - The job tried to process these but encountered an error
+
+> This query deliberately omits `FOR UPDATE SKIP LOCKED` — it is a read-only inspection query and must not take locks that would block a running replay job.
 
 ### Interpreting Results
 
