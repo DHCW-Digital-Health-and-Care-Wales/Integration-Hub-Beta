@@ -190,30 +190,40 @@ class MessageReceiverClient:
             if self.session_id:
                 autolock_renewer = AutoLockRenewer()
             with self._get_receiver(autolock_renewer) as receiver:
-                messages = receiver.receive_messages(
-                    max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
-                )
+                try:
+                    messages = receiver.receive_messages(
+                        max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
+                    )
 
-                if messages:
-                    try:
-                        is_success = processor(receiver, messages)
-                        if is_success:
-                            self._clear_retry_state()
-                        else:
+                    if messages:
+                        try:
+                            is_success = processor(receiver, messages)
+                            if is_success:
+                                self._clear_retry_state()
+                            else:
+                                self._set_delay_before_retry()
+                        except Exception:
+                            logger.exception("Unexpected error processing %d message(s)", len(messages))
+                            self._abort_message_processing(receiver, messages)
                             self._set_delay_before_retry()
-                    except Exception:
-                        logger.exception("Unexpected error processing %d message(s)", len(messages))
-                        self._abort_message_processing(receiver, messages)
-                        self._set_delay_before_retry()
-                else:
-                    if self.next_retry_time is not None:
-                        logger.info(
-                            "No messages received from queue '%s' during retry window — message may not yet be "
-                            "re-available; will poll again (attempt %d, next_retry_time was %.1fs ago)",
-                            self.queue_name,
-                            self.retry_attempt,
-                            time.time() - self.next_retry_time,
-                        )
+                    else:
+                        if self.next_retry_time is not None:
+                            logger.info(
+                                "No messages received from queue '%s' during retry window — message may not yet be "
+                                "re-available; will poll again (attempt %d, next_retry_time was %.1fs ago)",
+                                self.queue_name,
+                                self.retry_attempt,
+                                time.time() - self.next_retry_time,
+                            )
+                finally:
+                    # Shut the lock renewer down *before* the receiver's context manager closes it.
+                    # AutoLockRenewer.close(wait=True) blocks until any in-flight renewal finishes, so
+                    # this guarantees no session/message lock renewal (an AMQP management request) is
+                    # issued against an already-closed AMQP session. Closing it afterwards leaves a race
+                    # window that surfaces in the SDK as
+                    # AttributeError("'NoneType' object has no attribute 'create_receiver_link'").
+                    self._close_autolock_renewer(autolock_renewer)
+                    autolock_renewer = None
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
             time.sleep(self.MAX_WAIT_TIME_SECONDS)
@@ -246,8 +256,17 @@ class MessageReceiverClient:
             logger.warning("Unexpected error during Service Bus receive, will retry: %s", exc)
             self._set_delay_before_retry()
         finally:
-            if autolock_renewer:
-                autolock_renewer.close()
+            self._close_autolock_renewer(autolock_renewer)
+
+    @staticmethod
+    def _close_autolock_renewer(autolock_renewer: Optional[AutoLockRenewer]) -> None:
+        """Close *autolock_renewer* if present, waiting for any in-flight lock renewal to finish."""
+        if autolock_renewer is None:
+            return
+        try:
+            autolock_renewer.close(wait=True)
+        except Exception as exc:
+            logger.warning("Failed to close AutoLockRenewer: %s", exc)
 
     def _get_receiver(
         self, autolock_renewer: AutoLockRenewer | None
