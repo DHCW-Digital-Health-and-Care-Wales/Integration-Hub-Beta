@@ -181,10 +181,3 @@ scripts/
 .vscode/settings.json
 dashboard/alarm*_state.json
 dashboard/alarm*_config.json
-
-# Local-only Podman container definitions (not committed to source control)
-Dockerfile.podman
-local/docker-compose.yml
-local/justfile
-local/justfile.docker
-.dockerignore
