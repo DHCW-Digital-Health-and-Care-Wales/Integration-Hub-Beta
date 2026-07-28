@@ -1,5 +1,5 @@
-import unittest
 import socket
+import unittest
 from unittest.mock import MagicMock
 
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -27,7 +27,7 @@ class TestTCPHealthCheckServer(unittest.TestCase):
         self.server.stop()
 
         with self.assertRaises(ConnectionRefusedError):
-            
+
             socket.create_connection(("127.0.0.1", self.actual_port), timeout=1)
 
     def test_default_parameters_constructor(self):
@@ -45,7 +45,7 @@ class TestTCPHealthCheckServer(unittest.TestCase):
         self.assertEqual(server.port, port)
 
     def test_exit_server_socket_closed(self):
-        
+
         exc_type = ValueError
         exc_value = ValueError("test error")
         exc_traceback = None
