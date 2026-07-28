@@ -264,7 +264,7 @@ class MessageReceiverClient:
         if autolock_renewer is None:
             return
         try:
-            autolock_renewer.close()
+            autolock_renewer.close(wait=True)
         except Exception as exc:
             logger.warning("Failed to close AutoLockRenewer: %s", exc)
 
