@@ -31,16 +31,16 @@ def _make_record(
 
 
 class TestDatabaseClient(unittest.TestCase):
-    """Tests for DatabaseClient.store_messages with mocked pyodbc."""
+    """Tests for DatabaseClient.store_messages with mocked psycopg."""
 
     def setUp(self) -> None:
         self.client = DatabaseClient(
-            sql_server="localhost,1433",
-            sql_database="IntegrationHub",
-            sql_username="sa",
-            sql_password="secret",  # nosec B106 — test fixture, not real password
-            sql_encrypt="yes",
-            sql_trust_server_certificate="yes",
+            pg_host="localhost",
+            pg_port=5432,
+            pg_database="integrationhub",
+            pg_user="inthub",
+            pg_password="secret",  # nosec B106 — test fixture, not real password
+            pg_sslmode="disable",
         )
 
     def tearDown(self) -> None:
@@ -51,9 +51,9 @@ class TestDatabaseClient(unittest.TestCase):
     # Happy path
     # ------------------------------------------------------------------
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_calls_executemany_and_commit(self, mock_pyodbc: MagicMock) -> None:
-        """Verify fast_executemany is enabled, executemany is called with correct rows, and commit fires.
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_calls_executemany_and_commit(self, mock_psycopg: MagicMock) -> None:
+        """Verify executemany is called with the correct rows and commit fires.
 
         The persistent connection must NOT be closed after a successful insert.
         """
@@ -61,7 +61,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         record = _make_record()
 
@@ -69,10 +69,9 @@ class TestDatabaseClient(unittest.TestCase):
         self.client.store_messages([record])
 
         # Assert
-        self.assertTrue(mock_cursor.fast_executemany)
         mock_cursor.executemany.assert_called_once()
         sql_arg = mock_cursor.executemany.call_args[0][0]
-        self.assertIn("INSERT INTO monitoring.Message", sql_arg)
+        self.assertIn("INSERT INTO monitoring.message", sql_arg)
 
         rows_arg = mock_cursor.executemany.call_args[0][1]
         self.assertEqual(len(rows_arg), 1)
@@ -83,13 +82,13 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.close.assert_not_called()
 
     @patch("message_store_service.db_client.datetime")
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_batch_inserts_multiple_records(self, mock_pyodbc: MagicMock, mock_dt: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_batch_inserts_multiple_records(self, mock_psycopg: MagicMock, mock_dt: MagicMock) -> None:
         """Verify multiple records are inserted as a single executemany batch with correct per-row values."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         fixed_stored_at = datetime(2025, 6, 1, 10, 0, 1, tzinfo=timezone.utc)
         mock_dt.now.return_value = fixed_stored_at
@@ -130,21 +129,21 @@ class TestDatabaseClient(unittest.TestCase):
     # Connection reuse
     # ------------------------------------------------------------------
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_connection_is_reused_across_store_messages_calls(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_connection_is_reused_across_store_messages_calls(self, mock_psycopg: MagicMock) -> None:
         """A second store_messages call must reuse the same connection without reconnecting."""
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         self.client.store_messages([_make_record()])
         self.client.store_messages([_make_record()])
 
-        # pyodbc.connect should only have been called once
-        mock_pyodbc.connect.assert_called_once()
+        # psycopg.connect should only have been called once
+        mock_psycopg.connect.assert_called_once()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_connection_is_recreated_after_error(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_connection_is_recreated_after_error(self, mock_psycopg: MagicMock) -> None:
         """After a DB error the stale connection is discarded; the next call opens a fresh one."""
         # First call: executemany blows up
         mock_conn_1 = MagicMock()
@@ -156,7 +155,7 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn_2 = MagicMock()
         mock_conn_2.cursor.return_value = MagicMock()
 
-        mock_pyodbc.connect.side_effect = [mock_conn_1, mock_conn_2]
+        mock_psycopg.connect.side_effect = [mock_conn_1, mock_conn_2]
 
         with self.assertRaises(Exception):
             self.client.store_messages([_make_record()])
@@ -166,52 +165,52 @@ class TestDatabaseClient(unittest.TestCase):
 
         # Second call should succeed and use a brand-new connection
         self.client.store_messages([_make_record()])
-        self.assertEqual(mock_pyodbc.connect.call_count, 2)
+        self.assertEqual(mock_psycopg.connect.call_count, 2)
         mock_conn_2.commit.assert_called_once()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_explicit_close_releases_connection(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_explicit_close_releases_connection(self, mock_psycopg: MagicMock) -> None:
         """Calling close() must close and discard the cached connection."""
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         self.client.store_messages([_make_record()])
         self.client.close()
 
         mock_conn.close.assert_called_once()
         # A subsequent store_messages call must reconnect
-        mock_pyodbc.connect.reset_mock()
+        mock_psycopg.connect.reset_mock()
         mock_conn_2 = MagicMock()
         mock_conn_2.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn_2
+        mock_psycopg.connect.return_value = mock_conn_2
 
         self.client.store_messages([_make_record()])
-        mock_pyodbc.connect.assert_called_once()
+        mock_psycopg.connect.assert_called_once()
 
     # ------------------------------------------------------------------
     # Empty batch
     # ------------------------------------------------------------------
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_skips_insert_on_empty_list(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_skips_insert_on_empty_list(self, mock_psycopg: MagicMock) -> None:
         """An empty message list should not open a connection or execute SQL."""
         self.client.store_messages([])
-        mock_pyodbc.connect.assert_not_called()
+        mock_psycopg.connect.assert_not_called()
 
     # ------------------------------------------------------------------
     # Error handling
     # ------------------------------------------------------------------
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_rolls_back_on_executemany_error(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_rolls_back_on_executemany_error(self, mock_psycopg: MagicMock) -> None:
         """If executemany raises, the transaction must be rolled back, the error re-raised,
         and the stale connection discarded so the next call reconnects."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_cursor.executemany.side_effect = Exception("DB error")
         mock_conn.cursor.return_value = mock_cursor
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         with self.assertRaises(Exception) as ctx:
             self.client.store_messages([_make_record()])
@@ -222,14 +221,14 @@ class TestDatabaseClient(unittest.TestCase):
         # Connection must be closed so the next call reconnects cleanly.
         mock_conn.close.assert_called_once()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_closes_connection_on_commit_error(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_closes_connection_on_commit_error(self, mock_psycopg: MagicMock) -> None:
         """If commit raises, the connection must be rolled back and discarded."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_conn.commit.side_effect = Exception("Commit failed")
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         with self.assertRaises(Exception):
             self.client.store_messages([_make_record()])
@@ -237,8 +236,8 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.rollback.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_raises_original_error_when_rollback_also_fails(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_raises_original_error_when_rollback_also_fails(self, mock_psycopg: MagicMock) -> None:
         """If rollback itself raises (e.g. broken connection), the *original* insert error must
         still be re-raised and the stale connection must still be discarded.
 
@@ -251,7 +250,7 @@ class TestDatabaseClient(unittest.TestCase):
         # Rollback also fails (connection is broken)
         mock_conn.rollback.side_effect = Exception("rollback failed")
         mock_conn.cursor.return_value = mock_cursor
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         with self.assertRaises(Exception) as ctx:
             self.client.store_messages([_make_record()])
@@ -261,10 +260,10 @@ class TestDatabaseClient(unittest.TestCase):
         mock_conn.rollback.assert_called_once()
         mock_conn.close.assert_called_once()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_raises_on_connection_failure(self, mock_pyodbc: MagicMock) -> None:
-        """If pyodbc.connect itself fails, the error propagates."""
-        mock_pyodbc.connect.side_effect = Exception("Connection refused")
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_raises_on_connection_failure(self, mock_psycopg: MagicMock) -> None:
+        """If psycopg.connect itself fails, the error propagates."""
+        mock_psycopg.connect.side_effect = Exception("Connection refused")
 
         with self.assertRaises(Exception) as ctx:
             self.client.store_messages([_make_record()])
@@ -275,45 +274,43 @@ class TestDatabaseClient(unittest.TestCase):
     # Auth input validation
     # ------------------------------------------------------------------
 
-    def test_raises_value_error_for_asymmetric_auth_inputs(self) -> None:
-        """DatabaseClient must raise ValueError whenever exactly one of sql_username/sql_password is provided."""
-        # Each tuple: (sql_username, sql_password, expected_missing_field_in_error)
+    def test_raises_value_error_when_user_missing(self) -> None:
+        """DatabaseClient must raise ValueError when pg_user is absent.
+
+        Unlike SQL Server's ActiveDirectoryMsi mode, PostgreSQL always needs a role
+        name, so pg_user is required regardless of which auth mode is in play.
+        """
         invalid_cases = [
-            (None, "secret", "sql_username", "password set, username is None"),
-            ("", "secret", "sql_username", "password set, username is empty string"),
-            ("sa", None, "sql_password", "username set, password is None"),
-            ("sa", "", "sql_password", "username set, password is empty string"),
+            (None, "password provided, user is None"),
+            ("", "password provided, user is empty string"),
         ]
-        for username, password, expected_field, description in invalid_cases:
+        for user, description in invalid_cases:
             with self.subTest(description):
                 with self.assertRaises(ValueError) as ctx:
                     DatabaseClient(
-                        sql_server="localhost,1433",
-                        sql_database="IntegrationHub",
-                        sql_username=username,
-                        sql_password=password,
-                        sql_encrypt="yes",
-                        sql_trust_server_certificate="yes",
+                        pg_host="localhost",
+                        pg_database="integrationhub",
+                        pg_user=user,  # type: ignore[arg-type]
+                        pg_password="secret",  # nosec B106 — test fixture
                     )
-                self.assertIn(expected_field, str(ctx.exception))
+                self.assertIn("pg_user", str(ctx.exception))
 
     def test_no_error_for_valid_auth_inputs(self) -> None:
-        """DatabaseClient must construct without error for symmetric auth inputs.
-        Both credentials provided (password auth) and neither provided (Managed Identity) are valid.
+        """Both auth modes must construct without error.
+
+        A password means password auth; no password means Managed Identity auth.
         """
         valid_cases = [
-            ("sa", "secret", "both username and password provided"),
-            (None, None, "neither username nor password provided (Managed Identity)"),
+            ("secret", "password provided (password auth)"),  # nosec B106
+            (None, "no password provided (Managed Identity)"),
         ]
-        for username, password, description in valid_cases:
+        for password, description in valid_cases:
             with self.subTest(description):
                 client = DatabaseClient(
-                    sql_server="localhost,1433",
-                    sql_database="IntegrationHub",
-                    sql_username=username,
-                    sql_password=password,
-                    sql_encrypt="yes",
-                    sql_trust_server_certificate="yes",
+                    pg_host="localhost",
+                    pg_database="integrationhub",
+                    pg_user="inthub",
+                    pg_password=password,
                 )
                 client.close()
 
@@ -321,77 +318,124 @@ class TestDatabaseClient(unittest.TestCase):
     # Auth mode selection
     # ------------------------------------------------------------------
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_connect_uses_password_auth_when_password_set(self, mock_pyodbc: MagicMock) -> None:
-        """When sql_username and sql_password are both provided, connect should use UID/PWD."""
+    @patch("message_store_service.db_client.psycopg")
+    def test_connect_uses_password_auth_when_password_set(self, mock_psycopg: MagicMock) -> None:
+        """When pg_password is provided it is used directly, with no token acquisition."""
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
-        self.client.store_messages([_make_record()])
+        with patch("message_store_service.db_client.fetch_entra_access_token") as mock_token:
+            self.client.store_messages([_make_record()])
+            mock_token.assert_not_called()
 
-        conn_str = mock_pyodbc.connect.call_args[0][0]
-        self.assertIn("UID=sa", conn_str)
-        self.assertIn("PWD=secret", conn_str)
+        kwargs = mock_psycopg.connect.call_args.kwargs
+        self.assertEqual(kwargs["user"], "inthub")
+        self.assertEqual(kwargs["password"], "secret")
+        self.assertEqual(kwargs["host"], "localhost")
+        self.assertEqual(kwargs["port"], 5432)
+        self.assertEqual(kwargs["dbname"], "integrationhub")
+        self.assertEqual(kwargs["sslmode"], "disable")
+        self.assertFalse(kwargs["autocommit"])
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_connect_uses_managed_identity_system_assigned_when_no_password(self, mock_pyodbc: MagicMock) -> None:
-        """When both sql_username and sql_password are None, uses system-assigned MI (no UID)."""
+    @patch("message_store_service.db_client.fetch_entra_access_token")
+    @patch("message_store_service.db_client.psycopg")
+    def test_connect_uses_entra_token_as_password_when_no_password(
+        self, mock_psycopg: MagicMock, mock_token: MagicMock
+    ) -> None:
+        """With no password, an Entra token is fetched and passed as the password.
+
+        System-assigned identity: no client ID is passed to the token helper.
+        """
+        mock_token.return_value = "entra-token-value"
         client = DatabaseClient(
-            sql_server="myserver.database.windows.net",
-            sql_database="IntegrationHub",
-            sql_username=None,
-            sql_password=None,
-            sql_encrypt="yes",
-            sql_trust_server_certificate="no",
+            pg_host="myserver.postgres.database.azure.com",
+            pg_database="integrationhub",
+            pg_user="message-store-identity",
+            pg_password=None,
         )
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         client.store_messages([_make_record()])
 
-        conn_str = mock_pyodbc.connect.call_args[0][0]
-        self.assertIn("Authentication=ActiveDirectoryMsi", conn_str)
-        # No UID should be present for system-assigned identity
-        self.assertNotIn("UID=", conn_str)
-        self.assertNotIn("PWD=", conn_str)
+        mock_token.assert_called_once_with(None)
+        kwargs = mock_psycopg.connect.call_args.kwargs
+        self.assertEqual(kwargs["password"], "entra-token-value")
+        self.assertEqual(kwargs["user"], "message-store-identity")
+        # SSL must not be silently downgraded for a cloud connection.
+        self.assertEqual(kwargs["sslmode"], "require")
+        client.close()
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_connect_uses_managed_identity_user_assigned_when_client_id_provided(self, mock_pyodbc: MagicMock) -> None:
-        """When managed_identity_client_id is set, UID is the client ID for user-assigned MI selection."""
+    @patch("message_store_service.db_client.fetch_entra_access_token")
+    @patch("message_store_service.db_client.psycopg")
+    def test_connect_passes_client_id_for_user_assigned_identity(
+        self, mock_psycopg: MagicMock, mock_token: MagicMock
+    ) -> None:
+        """When managed_identity_client_id is set it is forwarded to the token helper."""
+        mock_token.return_value = "entra-token-value"
         client = DatabaseClient(
-            sql_server="myserver.database.windows.net",
-            sql_database="IntegrationHub",
-            sql_username=None,
-            sql_password=None,
-            sql_encrypt="yes",
-            sql_trust_server_certificate="no",
+            pg_host="myserver.postgres.database.azure.com",
+            pg_database="integrationhub",
+            pg_user="message-store-identity",
+            pg_password=None,
             managed_identity_client_id="my-mi-client-id",
         )
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         client.store_messages([_make_record()])
 
-        conn_str = mock_pyodbc.connect.call_args[0][0]
-        self.assertIn("Authentication=ActiveDirectoryMsi", conn_str)
-        self.assertIn("UID=my-mi-client-id", conn_str)
-        self.assertNotIn("PWD=", conn_str)
+        mock_token.assert_called_once_with("my-mi-client-id")
+        self.assertEqual(mock_psycopg.connect.call_args.kwargs["password"], "entra-token-value")
+        client.close()
+
+    @patch("message_store_service.db_client.fetch_entra_access_token")
+    @patch("message_store_service.db_client.psycopg")
+    def test_token_is_refetched_on_reconnect(self, mock_psycopg: MagicMock, mock_token: MagicMock) -> None:
+        """Entra tokens expire, so a fresh one must be acquired on every reconnect."""
+        mock_token.side_effect = ["token-1", "token-2"]
+
+        client = DatabaseClient(
+            pg_host="myserver.postgres.database.azure.com",
+            pg_database="integrationhub",
+            pg_user="message-store-identity",
+            pg_password=None,
+        )
+
+        # First connection fails during insert, forcing the connection to be discarded.
+        bad_conn = MagicMock()
+        bad_cursor = MagicMock()
+        bad_cursor.executemany.side_effect = Exception("DB error")
+        bad_conn.cursor.return_value = bad_cursor
+
+        good_conn = MagicMock()
+        good_conn.cursor.return_value = MagicMock()
+        mock_psycopg.connect.side_effect = [bad_conn, good_conn]
+
+        with self.assertRaises(Exception):
+            client.store_messages([_make_record()])
+        client.store_messages([_make_record()])
+
+        self.assertEqual(mock_token.call_count, 2)
+        self.assertEqual(mock_psycopg.connect.call_args_list[0].kwargs["password"], "token-1")
+        self.assertEqual(mock_psycopg.connect.call_args_list[1].kwargs["password"], "token-2")
+        client.close()
 
     # ------------------------------------------------------------------
     # Row content correctness
     # ------------------------------------------------------------------
 
     @patch("message_store_service.db_client.datetime")
-    @patch("message_store_service.db_client.pyodbc")
-    def test_store_messages_row_tuple_matches_column_order(self, mock_pyodbc: MagicMock, mock_dt: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_store_messages_row_tuple_matches_column_order(self, mock_psycopg: MagicMock, mock_dt: MagicMock) -> None:
         """Verify the tuple order matches the INSERT column order and stored_at is injected by db_client."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         fixed_stored_at = datetime(2025, 6, 1, 10, 0, 1, tzinfo=timezone.utc)
         mock_dt.now.return_value = fixed_stored_at
@@ -427,12 +471,12 @@ class TestDatabaseClient(unittest.TestCase):
         with self.client as client:
             self.assertIsInstance(client, DatabaseClient)
 
-    @patch("message_store_service.db_client.pyodbc")
-    def test_context_manager_closes_connection_on_exit(self, mock_pyodbc: MagicMock) -> None:
+    @patch("message_store_service.db_client.psycopg")
+    def test_context_manager_closes_connection_on_exit(self, mock_psycopg: MagicMock) -> None:
         """__exit__ must close and discard the persistent connection."""
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = MagicMock()
-        mock_pyodbc.connect.return_value = mock_conn
+        mock_psycopg.connect.return_value = mock_conn
 
         with self.client:
             self.client.store_messages([_make_record()])

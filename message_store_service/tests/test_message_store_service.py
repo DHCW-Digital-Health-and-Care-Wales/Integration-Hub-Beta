@@ -18,12 +18,12 @@ class TestMessageStoreServiceInit(unittest.TestCase):
     ) -> None:
         # Arrange
         mock_config = MagicMock()
-        mock_config.sql_server = "localhost,1433"
-        mock_config.sql_database = "IntegrationHub"
-        mock_config.sql_username = "sa"
-        mock_config.sql_password = "secret"  # nosec B105 — test fixture, not real password
-        mock_config.sql_encrypt = "yes"
-        mock_config.sql_trust_server_certificate = "yes"
+        mock_config.pg_host = "postgres"
+        mock_config.pg_port = 5432
+        mock_config.pg_database = "integrationhub"
+        mock_config.pg_user = "inthub"
+        mock_config.pg_password = "secret"  # nosec B105 — test fixture, not real password
+        mock_config.pg_sslmode = "disable"
         mock_config.managed_identity_client_id = None
         mock_read_env_config.return_value = mock_config
 
@@ -36,12 +36,12 @@ class TestMessageStoreServiceInit(unittest.TestCase):
         self.assertEqual(service.batch_size, 100)
         mock_processor_manager.assert_called_once()
         mock_db_client_cls.assert_called_once_with(
-            sql_server="localhost,1433",
-            sql_database="IntegrationHub",
-            sql_username="sa",
-            sql_password="secret",  # nosec B106 — test fixture, not real password
-            sql_encrypt="yes",
-            sql_trust_server_certificate="yes",
+            pg_host="postgres",
+            pg_port=5432,
+            pg_database="integrationhub",
+            pg_user="inthub",
+            pg_password="secret",  # nosec B106 — test fixture, not real password
+            pg_sslmode="disable",
             managed_identity_client_id=None,
         )
 

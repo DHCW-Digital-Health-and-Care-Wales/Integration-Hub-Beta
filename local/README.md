@@ -8,8 +8,8 @@ Integration Hub services can be run locally using [Azure Service Bus emulator](h
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Service Bus Emulator Configuration](#service-bus-emulator-configuration)
-  - [Local SQL Server](#local-sql-server)
-  - [Connecting to SQL Server from Your Machine](#connecting-to-sql-server-from-your-machine)
+  - [Local PostgreSQL](#local-postgresql)
+  - [Connecting to PostgreSQL from Your Machine](#connecting-to-postgresql-from-your-machine)
   - [macOS-Specific Setup](#macos-specific-setup)
   - [SSL Certificates (Corporate Networks)](#ssl-certificates-corporate-networks)
 - [Startup](#startup)
@@ -109,127 +109,87 @@ The [ServiceBusEmulatorConfig.json](./ServiceBusEmulatorConfig.json) file define
 > [!NOTE]
 > **RequiresSession**: Set to `true` when you need guaranteed FIFO (First-In-First-Out) message ordering. Session-enabled queues ensure messages with the same session ID are processed in order. This applies to both the local emulator and Azure Service Bus in production.
 
-### Local SQL Server
+### Local PostgreSQL
 
-A local SQL Server instance is available for development and testing. The container uses Microsoft SQL Server 2022 Express and automatically initialises the `IntegrationHub` database with the required schema.
+A local PostgreSQL instance is available for development and testing. The container uses the official `postgres:16-bookworm` image and automatically initialises the `integrationhub` database with the required schema.
 
 **Connection Details:**
 
 | Property     | Value                                      |
 | ------------ | ------------------------------------------ |
 | **Host**     | `localhost`                                |
-| **Port**     | `1433`                                     |
-| **Database** | `IntegrationHub`                           |
-| **Username** | `sa`                                       |
-| **Password** | Value of `MSSQL_SA_PASSWORD` in `.secrets` |
+| **Port**     | `5432`                                     |
+| **Database** | `integrationhub`                           |
+| **Username** | `inthub`                                   |
+| **Password** | Value of `POSTGRES_PASSWORD` in `.secrets` |
 
 **Connection String:**
 
 ```
-Server=<localhost|sqlserver>,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;
+postgresql://inthub:<POSTGRES_PASSWORD>@<localhost|postgres>:5432/integrationhub?sslmode=disable
 ```
 
 **What's initialised:**
 
-- Database: `IntegrationHub`
+- Database: `integrationhub`
 - Schema: `monitoring`
-- Table: `monitoring.Message` - stores message tracking data including payloads, timestamps, and workflow identifiers
-- Table: `monitoring.MessageReplayQueue` - used for re-sending messages from the Message Store to the Service Bus priority queue, includes a replay id, the message replay status, the message id from the `Message` table and replay batch identifier
+- Table: `monitoring.message` - stores message tracking data including payloads, timestamps, and workflow identifiers
+- Table: `monitoring.message_replay_queue` - used for re-sending messages from the Message Store to the Service Bus priority queue, includes a replay id, the message replay status, the message id from the `message` table and replay batch identifier
+
+> Identifiers are lower-case `snake_case`. PostgreSQL folds unquoted identifiers to lower case, so keeping the
+> original `PascalCase` names would mean double-quoting every identifier in every query, forever.
 
 **Customising initialisation:**
 
-To modify the database schema or add seed data, edit the SQL script at `sql-scripts/init-db.sql`. The script is executed automatically when the container starts and uses idempotent `IF NOT EXISTS` checks, making it safe to run multiple times.
+To modify the database schema or add seed data, edit the scripts in `sql-scripts/init/`. The `postgres` image runs every `.sql` file in that directory in filename order, but **only when the data volume is empty** — unlike the previous SQL Server entrypoint, they are not re-run on every start. To pick up schema changes, remove the volume with `docker compose down -v`.
 
-**Message Store Service SQL configuration:**
+**Message Store Service database configuration:**
 
-The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
+The `message-store-service` connects to the local PostgreSQL container using the following environment variables, which are set in `message-store-service.env`:
 
-| Variable                       | Value               | Description                                                                                                                                      |
-| ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SQL_SERVER`                   | `sqlserver`         | Hostname of the SQL Server container on the Docker network                                                                                       |
-| `SQL_DATABASE`                 | `IntegrationHub`    | Database name                                                                                                                                    |
-| `SQL_USERNAME`                 | `sa`                | SQL Server login (system administrator) — must be set together with `MSSQL_SA_PASSWORD`                                                          |
-| `MSSQL_SA_PASSWORD`            | _(from `.secrets`)_ | SA password — must be set together with `SQL_USERNAME`; omit both to use Managed Identity                                                        |
-| `SQL_ENCRYPT`                  | `No`                | Overrides the default (`Yes`) — disables TLS encryption for the local container (no certificate required)                                        |
-| `SQL_TRUST_SERVER_CERTIFICATE` | `Yes`               | (Only relevant when `SQL_ENCRYPT=Yes`.) Overrides the default (`No`) — trusts the self-signed certificate used by the local SQL Server container |
+| Variable      | Value            | Description                                                                    |
+| ------------- | ---------------- | ------------------------------------------------------------------------------ |
+| `PG_HOST`     | `postgres`       | Hostname of the PostgreSQL container on the Docker network                     |
+| `PG_PORT`     | `5432`           | PostgreSQL port                                                                |
+| `PG_DATABASE` | `integrationhub` | Database name                                                                  |
+| `PG_USER`     | `inthub`         | Database role — required in **both** auth modes                                |
+| `PG_SSLMODE`  | `disable`        | Overrides the default (`require`) — the local container has no TLS certificate |
 
-> **Note**: `SQL_USERNAME` and `MSSQL_SA_PASSWORD` must always be set together — providing only one will cause the service to fail at startup with a clear error. Omit both to use Managed Identity (production).
+> **Note**: `POSTGRES_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`). The same variable configures the `postgres` container itself, so one secret drives both the server and its clients. Omit it to use Managed Identity (production).
 
-> **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
+> **Note**: `PG_SSLMODE` defaults to `require` — the correct secure setting for Azure Database for PostgreSQL in production. The sample local env explicitly opts out.
 
-> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`)
+**Starting PostgreSQL:**
 
-**Starting SQL Server:**
+The PostgreSQL container starts automatically when using any profile (e.g., `just start phw-to-mpi` or `docker compose --profile phw-to-mpi up -d`).
 
-The SQL Server container starts automatically when using any profile (e.g., `just start phw-to-mpi` or `docker compose --profile phw-to-mpi up -d`).
+### Connecting to PostgreSQL from Your Machine
 
-### Connecting to SQL Server from Your Machine
+You can connect to the local PostgreSQL instance from your development machine using any PostgreSQL client. Use the connection details from [Local PostgreSQL](#local-postgresql).
 
-You can connect to the local SQL Server instance from your development machine using a SQL client or application. Use the connection details from the table above.
+**Using psql inside the container:**
 
-**Using an SQL Client**
-Use the connection details in [Local SQL Server](#local-sql-server)
+```bash
+docker compose exec postgres psql -U inthub -d integrationhub
+```
 
-> [!NOTE]
-> When connecting programmatically or with certain SQL clients, ensure you specify `DBVERSION_70` in your connection properties. This setting is required to handle XML columns properly, which are used in the `monitoring.Message` table for raw HL7 payloads:
->
-> ```
-> Server=localhost,1433;Database=IntegrationHub;UID=sa;PWD=<MSSQL_SA_PASSWORD>;TrustServerCertificate=Yes;Encrypt=No;DBVERSION_70
-> ```
+**Using VS Code:**
 
-**Using VS Code with SQL Server Extension:**
-
-1. Install the [SQL Server (mssql)](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql) extension in VS Code
-2. Open the Command Palette (`Cmd+Shift+P` on macOS) and run: `MS SQL: Add Connection`
-3. Create a new connection profile using the connection details from [Local SQL Server](#local-sql-server):
-   - **Profile Name**: `MessageStoreDB` (or your preferred name)
-   - **Connection Type**: Parameters
-   - **Server Name**: `127.0.0.1`
-   - **Authentication Type**: SQL Login
-   - **Username**: `sa`
-   - **Password**: (from `.secrets` file)
-   - **Encrypt**: `Mandatory`
-   - **Trust Server Certificate**: Checked/Enabled
-4. Click **Connect** at the bottom to save and connect to the database
-5. The connection will appear in the SQL Server Connections panel and you can query the database directly from VS Code
+1. Install a PostgreSQL extension, e.g. [PostgreSQL](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql)
+2. Add a connection using the details from [Local PostgreSQL](#local-postgresql)
+3. Set the SSL mode to `disable` — the local container serves plain TCP with no certificate
 
 ### macOS-Specific Setup (for running Python services locally)
 
 If you need to run Python-based services locally (such as the message replay job or message store service), follow these additional steps:
 
-#### Installing pyodbc on macOS
+#### Database driver
 
-1. **Install unixodbc via Homebrew:**
-
-   ```bash
-   brew install unixodbc
-   ```
-
-2. **Set DYLD_LIBRARY_PATH for non-standard Homebrew installations:**
-
-   If you're using a non-standard Homebrew path, add this to your shell profile (`~/.zshrc` or `~/.bash_profile`):
-
-   ```bash
-   export DYLD_LIBRARY_PATH="/path/to/your/homebrew/opt/unixodbc/lib"
-   ```
-
-   For example, if your Homebrew is installed in `/Users/test/homebrew/`, set:
-
-   ```bash
-   export DYLD_LIBRARY_PATH="/Users/test/homebrew/opt/unixodbc/lib"
-   ```
-
-   Then reload your shell:
-
-   ```bash
-   source ~/.zshrc
-   ```
-
-   > **Note**: If this environment variable is not set correctly, Python unit tests will fail when attempting to import `pyodbc`. If you see an error like `Library not loaded: /opt/homebrew/opt/unixodbc/lib/libodbc.2.dylib`, verify the `DYLD_LIBRARY_PATH` environment variable is configured correctly in your shell profile.
+No native driver installation is needed. `psycopg[binary]` bundles its own libpq, so `uv sync` is sufficient.
 
 #### Apple Silicon (M series) Mac Setup
 
-If you're using an Apple Silicon (M series) Mac, additional Docker configuration is required because SQL Server containers do not support the native ARM64 architecture:
+If you're using an Apple Silicon (M series) Mac, additional Docker configuration is required because the Service Bus emulator's SQL Edge backing store does not support the native ARM64 architecture:
 
 1. **Open Docker Desktop settings**
 2. Navigate to **Settings > General**
@@ -237,7 +197,7 @@ If you're using an Apple Silicon (M series) Mac, additional Docker configuration
 4. Enable the checkbox: **Use Rosetta for x86_64/amd64 emulation on Apple Silicon**
 5. Click **Apply & Restart**
 
-This configuration allows Docker to run the SQL Server container using x86/amd64 emulation when building or running locally.
+This configuration allows Docker to run the SQL Edge container using x86/amd64 emulation when building or running locally.
 
 ### SSL Certificates (Corporate Networks)
 
@@ -279,7 +239,7 @@ Each profile starts a complete integration flow with all required services:
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
-| **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
+| **replay**       | message-replay-job                                                                          | The message replay job moving messages from PostgreSQL to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 
 Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile.
