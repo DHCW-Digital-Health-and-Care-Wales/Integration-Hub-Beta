@@ -5,8 +5,7 @@ from typing import Any, Dict, Optional
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry import metrics
-from opentelemetry.metrics import Counter
-from opentelemetry.metrics import Histogram
+from opentelemetry.metrics import Counter, Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class MetricSender:
         # If otel_lib.configure_otel() has already initialised Azure Monitor,
         # skip to avoid duplicate exporters and background threads.
         try:
-            from otel_lib import is_configured as otel_is_configured
+            from otel_lib import is_configured as otel_is_configured  # noqa: PLC0415
 
             if otel_is_configured():
                 logger.info(

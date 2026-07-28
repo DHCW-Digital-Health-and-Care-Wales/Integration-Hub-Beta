@@ -6,7 +6,7 @@ from event_logger_lib import EventLogger
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.metadata_utils import extract_metadata, correlation_id_for_logger, get_metadata_log_values
+from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_metadata, get_metadata_log_values
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,8 @@ def process_message(
     meta = get_metadata_log_values(incoming_props)
     if incoming_props:
         logger.info(
-            "Received message with metadata - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, MessageReceivedAt: %s",
+            "Received message with metadata - CorrelationId: %s, WorkflowID: %s, SourceSystem: %s, "
+            "MessageReceivedAt: %s",
             meta["correlation_id"],
             meta["workflow_id"],
             meta["source_system"],

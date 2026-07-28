@@ -1,7 +1,7 @@
 import logging
 import signal
-from typing import Any, Callable, Optional
 from types import FrameType
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +48,9 @@ class ProcessorManager:
             A callable with the same signature as *handler*.
         """
         try:
-            import opentelemetry.trace as otel_trace
-            from opentelemetry.trace import StatusCode
-            from otel_lib import get_tracer
+            import opentelemetry.trace as otel_trace  # noqa: PLC0415
+            from opentelemetry.trace import StatusCode  # noqa: PLC0415
+            from otel_lib import get_tracer  # noqa: PLC0415
 
             # Only instrument when a real TracerProvider has been installed.
             provider = otel_trace.get_tracer_provider()

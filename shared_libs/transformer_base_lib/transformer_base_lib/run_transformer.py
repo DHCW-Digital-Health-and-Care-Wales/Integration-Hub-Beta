@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_transformer_app(transformer: BaseTransformer) -> None:
-    from .base_transformer import BaseTransformer
+    from .base_transformer import BaseTransformer  # noqa: PLC0415
 
     if not isinstance(transformer, BaseTransformer):
         raise TypeError("transformer must be an instance of BaseTransformer")

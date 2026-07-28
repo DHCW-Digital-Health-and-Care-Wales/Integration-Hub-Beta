@@ -25,8 +25,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_11.value, "P")
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
-        self.assertEqual(transformed_message.pid.pid_3[0].value, "")
-        self.assertEqual(transformed_message.pid.pid_3[1].value, "N5022039^^^103^PI")
+        self.assertEqual(transformed_message.pid.pid_3[0].value, "N5022039^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
@@ -67,7 +66,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_11.value, "P")
         self.assertEqual(transformed_message.msh.msh_17.value, "GBR")
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
-        self.assertEqual(transformed_message.pid.pid_3[0].value, "N4000000001^^^108^LI")
+        self.assertEqual(transformed_message.pid.pid_3[0].value, "N4000000001^^^NHS^NH")
         self.assertEqual(transformed_message.pid.pid_3[1].value, "N1000001^^^103^PI")
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TEST^TEST-TEST^""^^MISS')
@@ -132,6 +131,31 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(get_hl7_field_value(transformed_message.mrg, "mrg_1.cx_4.hd_1"), "103")
         self.assertEqual(transformed_message.mrg.mrg_1.cx_5.value, "PI")
 
+    def test_transform_pims_a40_adt_a39_message(self) -> None:
+        # Regression test: real-world PIMS A40 messages use the ADT_A39 structure, which
+        # hl7apy nests PID/PD1/MRG/PV1 inside a repeating group by default. The transformer
+        # must still map these segments correctly instead of silently dropping them.
+        original_message = parse_message(pims_messages["a40_adt_a39"])
+
+        transformed_message = transform_pims_message(original_message)
+
+        self.assertEqual(transformed_message.version, "2.5")
+
+        segments_to_check = ["msh", "evn", "pid", "mrg"]
+        for segment in segments_to_check:
+            self.assertTrue(hasattr(transformed_message, segment))
+
+        self.assertEqual(transformed_message.msh.msh_9.value, "ADT^A40^ADT_A39")
+        self.assertEqual(transformed_message.pid.pid_3[0].value, "2083964527^^^NHS^NH")
+        self.assertEqual(transformed_message.pid.pid_3[1].value, "N5022773^^^103^PI")
+        # PD1 not mapped for A40
+        self.assertEqual(transformed_message.pd1.value, "PD1")
+        # PV1 not mapped for A40
+        self.assertEqual(transformed_message.pv1.value, "PV1")
+        self.assertEqual(transformed_message.mrg.mrg_1.cx_1.value, "1234")
+        self.assertEqual(get_hl7_field_value(transformed_message.mrg, "mrg_1.cx_4.hd_1"), "103")
+        self.assertEqual(transformed_message.mrg.mrg_1.cx_5.value, "PI")
+
     @patch("hl7_pims_transformer.pims_transformer.map_msh")
     @patch("hl7_pims_transformer.pims_transformer.map_pid")
     @patch("hl7_pims_transformer.pims_transformer.map_evn")
@@ -153,10 +177,18 @@ class TestPimsTransformer(unittest.TestCase):
 
         transformed_message = transform_pims_message(original_message)
 
-        mock_map_msh.assert_called_once_with(original_message, transformed_message)
-        mock_map_pid.assert_called_once_with(original_message, transformed_message)
-        mock_map_evn.assert_called_once_with(original_message, transformed_message)
-        mock_map_pd1.assert_called_once_with(original_message, transformed_message)
-        mock_map_pv1.assert_called_once_with(original_message, transformed_message)
-        mock_map_mrg.assert_called_once_with(original_message, transformed_message)
-        mock_map_non_specific.assert_called_once_with(original_message, transformed_message)
+        # The transformer reparses the original message into a flat (non-grouped) copy before
+        # mapping, so mappers receive an equivalent message rather than the same object instance.
+        for mock_mapper in (
+            mock_map_msh,
+            mock_map_pid,
+            mock_map_evn,
+            mock_map_pd1,
+            mock_map_pv1,
+            mock_map_mrg,
+            mock_map_non_specific,
+        ):
+            mock_mapper.assert_called_once()
+            called_original_message, called_new_message = mock_mapper.call_args.args
+            self.assertEqual(called_original_message.to_er7(), original_message.to_er7())
+            self.assertIs(called_new_message, transformed_message)
