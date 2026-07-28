@@ -5,7 +5,7 @@ from .run_transformer import run_transformer_app
 
 __all__ = [
     "AppConfig",
-    "TransformerConfig", 
+    "TransformerConfig",
     "BaseTransformer",
     "run_transformer_app",
     "process_message",

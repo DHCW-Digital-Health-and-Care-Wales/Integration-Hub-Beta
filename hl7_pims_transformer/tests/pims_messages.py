@@ -29,4 +29,17 @@ pims_messages: Dict[str, str] = {
         "PD1||||G1000001~W10001\r"
         "MRG|00100001\r"
     ),
+    "a40_adt_a39": (
+        # Real-world PIMS A40 messages use the ADT_A39 structure, which hl7apy (with its
+        # default find_groups=True parsing) nests PID/PD1/MRG/PV1 inside a repeating
+        # "PATIENT" group. This fixture exercises that structure specifically.
+        "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20250121100427+0000||ADT^A40^ADT_A39|48209218|P|2.3.1\r"
+        "EVN||20250121100414+0000||||20250121100414+0000\r"
+        'PID|||2083964527^06^^^NI~N5022773^^^^PI||test^test^""^^MISS||19760121+^D|F|||'
+        "address^GILFACH GOCH^PORTH^RHONDDA CYNON TAF^CF39 8FL||^PRN^PH~07123456789^ORN^CP|"
+        "01443 443443^WPN^PH||U||||||0|||||||^D||||20250121100414+0000\r"
+        "PD1||||G9146958~W95295\r"
+        "MRG|1234\r"
+        "PV1||NA\r"
+    ),
 }

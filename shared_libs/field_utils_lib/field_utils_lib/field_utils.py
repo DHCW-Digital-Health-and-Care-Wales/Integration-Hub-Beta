@@ -173,8 +173,8 @@ def get_cx_4_hd_1_segment_codes_from_pid_field(msg: Any, pid_field: str) -> list
     the ``cx_4.hd_1`` value, trims whitespace, and preserves first-seen order.
     Missing PID segments/fields return an empty list.
     """
-    if not isinstance(pid_field, str):  
-        return [] 
+    if not isinstance(pid_field, str):
+        return []
 
     codes: list[str] = []
     seen: set[str] = set()

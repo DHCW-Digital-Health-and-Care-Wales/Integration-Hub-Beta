@@ -39,6 +39,6 @@ class BaseTransformer(ABC):
         return os.path.join(os.path.dirname(__file__), "config.ini")
 
     def run(self) -> None:
-        from .run_transformer import run_transformer_app
+        from .run_transformer import run_transformer_app  # noqa: PLC0415
 
         run_transformer_app(self)

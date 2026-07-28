@@ -80,7 +80,7 @@ class TestWrapHandler(unittest.TestCase):
         self.assertTrue(wrapped_result)
 
     def test_wrap_handler_returns_original_when_provider_is_proxy(self) -> None:
-        import opentelemetry.trace as otel_trace
+        import opentelemetry.trace as otel_trace  # noqa: PLC0415
         handler = MagicMock(return_value=True)
 
         proxy_provider = otel_trace.ProxyTracerProvider()
@@ -90,10 +90,10 @@ class TestWrapHandler(unittest.TestCase):
         self.assertIs(wrapped, handler)
 
     def test_wrap_handler_wraps_with_real_provider(self) -> None:
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from otel_lib import get_tracer
+        from opentelemetry.sdk.trace import TracerProvider  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter  # noqa: PLC0415
+        from otel_lib import get_tracer  # noqa: PLC0415
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()
@@ -112,11 +112,11 @@ class TestWrapHandler(unittest.TestCase):
         handler.assert_called_once_with(msg)
 
     def test_wrap_handler_records_exception_and_reraises(self) -> None:
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from opentelemetry.trace import StatusCode
-        from otel_lib import get_tracer
+        from opentelemetry.sdk.trace import TracerProvider  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter  # noqa: PLC0415
+        from opentelemetry.trace import StatusCode  # noqa: PLC0415
+        from otel_lib import get_tracer  # noqa: PLC0415
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()
@@ -137,10 +137,10 @@ class TestWrapHandler(unittest.TestCase):
         self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
 
     def test_wrap_handler_span_name_includes_service_name(self) -> None:
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from otel_lib import get_tracer
+        from opentelemetry.sdk.trace import TracerProvider  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter  # noqa: PLC0415
+        from otel_lib import get_tracer  # noqa: PLC0415
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()
@@ -158,10 +158,10 @@ class TestWrapHandler(unittest.TestCase):
         self.assertEqual(spans[0].name, "phw-transformer.process_message")
 
     def test_wrap_handler_sets_messaging_attributes(self) -> None:
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from otel_lib import get_tracer
+        from opentelemetry.sdk.trace import TracerProvider  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter  # noqa: PLC0415
+        from otel_lib import get_tracer  # noqa: PLC0415
 
         exporter = InMemorySpanExporter()
         provider = TracerProvider()

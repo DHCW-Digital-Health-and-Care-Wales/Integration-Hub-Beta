@@ -7,7 +7,7 @@ from typing import Optional
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 
-from .log_event import LogEvent, EventType
+from .log_event import EventType, LogEvent
 from .redaction import redact_hl7_message
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class EventLogger:
         # If otel_lib.configure_otel() has already initialised Azure Monitor,
         # skip to avoid duplicate exporters and background threads.
         try:
-            from otel_lib import is_configured as otel_is_configured
+            from otel_lib import is_configured as otel_is_configured  # noqa: PLC0415
 
             if otel_is_configured():
                 logger.info(
@@ -226,7 +226,7 @@ class EventLogger:
             # Include OTel trace correlation IDs if available on the current log record.
             # These are populated by OtelCorrelationFilter (from otel_lib) when installed.
             try:
-                import opentelemetry.trace as otel_trace
+                import opentelemetry.trace as otel_trace  # noqa: PLC0415
                 span = otel_trace.get_current_span()
                 ctx = span.get_span_context()
                 if ctx and ctx.is_valid:

@@ -12,13 +12,13 @@ class TestTransformer(BaseTransformer):
 class TestBaseTransformer(unittest.TestCase):
     def test_base_transformer_initialization(self):
         transformer = TestTransformer("test_transformer", "/custom/config/path")
-        
+
         self.assertEqual(transformer.transformer_name, "test_transformer")
         self.assertEqual(transformer.config_path, "/custom/config/path")
 
     def test_base_transformer_default_config_path(self):
         transformer = TestTransformer("test_transformer")
-        
+
         self.assertEqual(transformer.transformer_name, "test_transformer")
         self.assertTrue(transformer.config_path.endswith("config.ini"))
 

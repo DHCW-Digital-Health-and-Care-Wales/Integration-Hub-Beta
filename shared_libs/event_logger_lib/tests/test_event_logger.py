@@ -360,7 +360,10 @@ class TestEventLogger(unittest.TestCase):
 
     def test_create_log_event_redacts_hl7_payload(self):
         event_logger = self._build_logger_with_redaction(True)
-        hl7 = "MSH|^~\\&|SENDING_APP|SENDING_FAC|RECV_APP|RECV_FAC|20250101||ADT^A28|MSG001|P|2.5\rPID|1||123456^^^NHS||SMITH^JOHN||19870101|M"
+        hl7 = (
+            "MSH|^~\\&|SENDING_APP|SENDING_FAC|RECV_APP|RECV_FAC|20250101||ADT^A28|MSG001|P|2.5\r"
+            "PID|1||123456^^^NHS||SMITH^JOHN||19870101|M"
+        )
 
         event = event_logger._create_log_event(EventType.MESSAGE_RECEIVED, hl7)
 
@@ -426,7 +429,9 @@ class TestEventLogger(unittest.TestCase):
                 # Reset flag for each subtest iteration
                 EventLogger._azure_monitor_initialized = False
                 env_vars = {
-                    "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint",
+                    "APPLICATIONINSIGHTS_CONNECTION_STRING": (
+                        "InstrumentationKey=test-key;IngestionEndpoint=test-endpoint"
+                    ),
                     "AZURE_MONITOR_OWNER": "event_logger",
                 }
                 if case["insights_uami_client_id"] is not None:
