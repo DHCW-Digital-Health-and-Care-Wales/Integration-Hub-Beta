@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from field_utils_lib import get_hl7_field_value
 from hl7apy.consts import VALIDATION_LEVEL
 from hl7apy.core import Message, Segment
 
@@ -25,7 +26,7 @@ class HL7AckBuilder:
         # HL7 v2.5 section 2.9.2.2 requires MSH-11 to be copied from the initiating message, so a
         # test message is never acknowledged as production. MSH-11 is required in the ACK, so fall
         # back to "P" if the inbound message omitted it.
-        ack.msh.msh_11 = original_msg.msh.msh_11.value or Hl7Constants.PROCESSING_ID_PRODUCTION
+        ack.msh.msh_11 = get_hl7_field_value(original_msg.msh, "msh_11") or Hl7Constants.PROCESSING_ID_PRODUCTION
         ack.msh.msh_12 = original_msg.msh.msh_12.value
 
         # Build MSA segment
