@@ -346,6 +346,28 @@ class TestAutoLockRenewerLifecycle(unittest.TestCase):
 
     @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
     @patch("time.sleep", return_value=None)
+    def test_autolock_renewer_closed_before_receiver(self, _sleep: MagicMock, mock_renewer_cls: MagicMock) -> None:
+        """The renewer must be shut down while the receiver's AMQP handler is still open.
+
+        Closing it afterwards allows an in-flight session-lock renewal to issue a management
+        request against a closed AMQP session, which the SDK reports as
+        AttributeError("'NoneType' object has no attribute 'create_receiver_link'").
+        """
+        call_order: list[str] = []
+        mock_renewer = MagicMock()
+        mock_renewer.close.side_effect = lambda *args, **kwargs: call_order.append("renewer_closed")
+        mock_renewer_cls.return_value = mock_renewer
+
+        receiver_cm = self.service_bus_client.get_queue_receiver.return_value
+        receiver_cm.__exit__.side_effect = lambda *args: call_order.append("receiver_closed")
+        self.sb_receiver.receive_messages.return_value = [create_message("1")]
+
+        self.message_receiver_client.receive_messages(1, lambda msg: True)
+
+        self.assertEqual(["renewer_closed", "receiver_closed"], call_order)
+
+    @patch("message_bus_lib.message_receiver_client.AutoLockRenewer")
+    @patch("time.sleep", return_value=None)
     def test_autolock_renewer_closed_when_receiver_creation_raises(
         self, _sleep: MagicMock, mock_renewer_cls: MagicMock
     ) -> None:
