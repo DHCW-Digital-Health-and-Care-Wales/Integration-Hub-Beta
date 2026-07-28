@@ -10,6 +10,8 @@ Integration Hub services can be run locally using [Azure Service Bus emulator](h
   - [Service Bus Emulator Configuration](#service-bus-emulator-configuration)
   - [Local PostgreSQL](#local-postgresql)
   - [Connecting to PostgreSQL from Your Machine](#connecting-to-postgresql-from-your-machine)
+  - [Local PostgreSQL](#local-postgresql)
+  - [Connecting to PostgreSQL from Your Machine](#connecting-to-postgresql-from-your-machine)
   - [macOS-Specific Setup](#macos-specific-setup)
   - [SSL Certificates (Corporate Networks)](#ssl-certificates-corporate-networks)
 - [Startup](#startup)
