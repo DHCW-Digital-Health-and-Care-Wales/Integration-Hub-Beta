@@ -1,0 +1,406 @@
+name: integration-hub
+
+x-healthcheck: &default-healthcheck
+  healthcheck:
+    test: ["CMD", "python", "-c", "import socket, sys; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 9000)); s.close()"]
+    interval: 10s
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+
+services:
+  sb-emulator:
+    container_name: "sb-emulator"
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - "${HOST_WORKSPACE_PATH:-..}/local/ServiceBusEmulatorConfig.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    ports:
+      - "5672:5672"
+    restart: on-failure
+    environment:
+      SQL_SERVER: sqledge
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets
+    depends_on:
+      - sqledge
+    networks:
+      integration-hub:
+        aliases:
+          - "sb-emulator"
+  sqledge:
+    container_name: "sqledge"
+    image: "mcr.microsoft.com/azure-sql-edge:latest"
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "sqledge"
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets
+
+  sqlserver:
+    container_name: sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: on-failure
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+    env_file:
+      - ./.secrets
+    volumes:
+      - ./sql-scripts:/var/opt/mssql/scripts
+    entrypoint: [ "/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh" ]
+    networks:
+      integration-hub:
+        aliases:
+          - "sqlserver"
+
+  message-store-service:
+    container_name: message-store-service
+    build:
+      context: ../message_store_service
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./.secrets
+      - ./message-store-service.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+      - sqlserver
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "message-store-service"
+
+  message-replay-job:
+    container_name: message-replay-job
+    build:
+      context: ../message_replay_job
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./.secrets
+      - ./message-replay-job.env
+    depends_on:
+      - sb-emulator
+      - sqlserver
+    restart: "no"
+    profiles:
+      - replay
+    networks:
+      integration-hub:
+        aliases:
+          - "message-replay-job"
+
+  phw-hl7-server:
+    container_name: phw-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./phw-hl7-server.env
+    ports:
+      - "2575:2575"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "phw-hl7-server"
+
+  phw-hl7-transformer:
+    container_name: phw-hl7-transformer
+    build:
+      context: ../hl7_phw_transformer
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./phw-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "phw-hl7-transformer"
+            
+  mpi-hl7-sender:
+    container_name: mpi-hl7-sender
+    build:
+      context: ../hl7_sender
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mpi-hl7-sender.env
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
+      - pims-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "mpi-hl7-sender"
+
+  mpi-hl7-mock-receiver:
+    container_name: mpi-hl7-mock-receiver
+    build:
+      context: ../hl7_mock_receiver
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mpi-hl7-mock-receiver.env
+    ports:
+      - "2576:2576"
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
+      - pims-to-mpi
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "mpi-hl7-mock-receiver"
+
+  paris-hl7-server:
+    container_name: paris-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./paris-hl7-server.env
+    ports:
+      - "2577:2577"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - paris-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "paris-hl7-server"
+
+  chemo-hl7-server:
+    container_name: chemo-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./chemo-hl7-server.env
+    ports:
+      - "2578:2578"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - chemo-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "chemo-hl7-server"
+
+  chemo-hl7-transformer:
+    container_name: chemo-hl7-transformer
+    build:
+      context: ../hl7_chemo_transformer
+      additional_contexts:
+      - ca-certs=../ca-certs
+      - shared_libs=../shared_libs
+    env_file:
+      - ./chemo-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - chemo-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "chemo-hl7-transformer"
+
+  pims-hl7-server:
+    container_name: pims-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./pims-hl7-server.env
+    ports:
+      - "2579:2579"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - pims-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "pims-hl7-server"
+  
+  pims-hl7-transformer:
+    container_name: pims-hl7-transformer
+    build:
+      context: ../hl7_pims_transformer
+      additional_contexts:
+      - ca-certs=../ca-certs
+      - shared_libs=../shared_libs
+    env_file:
+      - ./pims-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - pims-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "pims-hl7-transformer"
+
+  mpi-hl7-server:
+    container_name: mpi-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mpi-hl7-server.env
+    ports:
+      - "2580:2580"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "mpi-hl7-server"
+
+  mpi-hl7-chemo-sender:
+    container_name: mpi-hl7-chemo-sender
+    build:
+      context: ../hl7_subscription_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mpi-hl7-chemo-sender.env
+    ports:
+      - "2581:2581"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "mpi-hl7-chemo-sender"
+
+  # BusWatch - Allows peeking at messages on Service Bus emulator
+  # http://localhost:8080
+  bus-watch:
+    container_name: bus-watch-server
+    build:
+      context: ../buswatch
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
+    env_file:
+      - ./buswatch.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - phw-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
+      - pims-to-mpi
+      - mpi-to-topic
+    networks:
+      integration-hub:
+        aliases:
+          - "buswatch"
+
+  # Azure Cosmos DB emulator - persistence backend for the NOC dashboard.
+  # First start pulls a ~1GB image and takes ~1 minute to become healthy.
+  cosmos-emulator:
+    container_name: cosmos-emulator
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    pull_policy: always
+    ports:
+      - "8081:8081"
+      - "10250-10255:10250-10255"
+    environment:
+      # Fewer partitions = faster startup and lower memory for local dev.
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "3"
+      # Persist emulator data across restarts.
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
+    volumes:
+      - cosmos-data:/tmp/cosmos/appdata
+    restart: unless-stopped
+    profiles:
+      - dashboard
+    networks:
+      integration-hub:
+        aliases:
+          - "cosmos-emulator"
+
+networks:
+  integration-hub:
+
+volumes:
+  cosmos-data:
