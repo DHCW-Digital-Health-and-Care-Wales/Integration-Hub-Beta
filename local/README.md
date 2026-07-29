@@ -264,6 +264,7 @@ This configuration allows Docker to run the SQL Server container using x86/amd64
 Profiles:
 
 - phw-to-mpi
+- lims-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
@@ -277,6 +278,7 @@ Each profile starts a complete integration flow with all required services:
 | Profile          | Services Started                                                                            | Use Case                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                                                 |
+| **lims-to-mpi**  | hl7-soap-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow                       |
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
@@ -293,6 +295,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | File                          | Configures                  | Key Variables                                                                         |
 | ----------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
 | **phw-hl7-server.env**        | PHW HL7 Server              | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`                           |
+| **lims-soap-hl7-server.env**  | HL7 SOAP Server             | `PORT=8080`, `SOAP_ENDPOINT_PATH=/soap`, `ALLOWED_ASSIGNING_AUTHORITIES=328`           |
 | **phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
 | **paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
 | **mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=mosaiq`                        |

@@ -17,6 +17,7 @@
 # Available Profiles:
 # ------------------
 # - phw-to-mpi     : Public Health Wales to MPI integration
+# - lims-to-mpi    : LIMS SOAP ingress to MPI integration
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
@@ -66,6 +67,7 @@ python := "python3"
     echo "Available profiles for use with other commands:"
     echo ""
     echo "  - phw-to-mpi     : Public Health Wales to MPI integration"
+    echo "  - lims-to-mpi    : LIMS SOAP ingress to MPI integration"
     echo "  - paris-to-mpi   : PARIS to MPI integration"
     echo "  - chemo-to-mpi   : Chemo to MPI integration"
     echo "  - pims-to-mpi    : PIMS to MPI integration"
