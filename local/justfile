@@ -20,6 +20,7 @@
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
+# - mpi-to-topic   : MPI to Outbound Integration
 #
 # Tips:
 # -----
@@ -33,6 +34,9 @@
 # ============================================
 # Configuration Variables
 # ============================================
+
+# Use PowerShell as the recipe shell on Windows hosts.
+set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -63,6 +67,8 @@ python := "python3"
     echo "  - paris-to-mpi   : PARIS to MPI integration"
     echo "  - chemo-to-mpi   : Chemo to MPI integration"
     echo "  - pims-to-mpi    : PIMS to MPI integration"
+    echo "  - mpi-to-topic   : MPI Outbound integration"
+    echo "  - replay         : Message Replay Job"
     echo ""
     echo "💡 Run 'just start <profile>' to start services"
 
@@ -124,34 +130,6 @@ python := "python3"
     echo "   - Send test message: just send ./sample_messages/phw-to-mpi.sample.hl7"
     echo "   - Stop services: just stop"
 
-
-# Build + Start Docker containers for a specific profile (auto-generates secrets if needed)
-@bstart profile: (_ensure-secrets)
-    echo "⚒️  Building Docker containers for profile: {{profile}}"
-    echo ""
-    echo "📋 Profile selected: {{profile}}"
-    echo "🔨 This may take a few minutes on first build..."
-    echo ""
-    docker compose --profile {{profile}} build
-    echo ""
-    echo "✅ Build complete for profile: {{profile}}"
-    echo ""
-    echo "▶️  Starting Docker Compose services..."
-    echo ""
-    echo "📋 Profile: {{profile}}"
-    echo "🚀 Launching containers in detached mode..."
-    echo ""
-    docker compose --profile {{profile}} up -d
-    echo ""
-    echo "✅ Services started successfully!"
-    echo "📍 Running containers for profile: {{profile}}"
-    echo ""
-    echo "💡 Next steps examples:"
-    echo "   - Check status: docker ps"
-    echo "   - View logs: just logs phw-hl7-server"
-    echo "   - Send test message: just send phw-to-mpi.sample.hl7"
-    echo "   - Stop services: just stop"
-
 # Stop all Docker containers across all profiles
 @stop:
     echo "⏹️  Stopping all Docker Compose services..."
@@ -182,6 +160,7 @@ python := "python3"
     echo "   - 2577 (PARIS)"
     echo "   - 2578 (Chemo)"
     echo "   - 2579 (PIMS)"
+    echo "   - 2580 (MPI Outbound)"
 
 # Follow logs from Docker containers (optionally filter by service name)
 @logs *services:
@@ -196,13 +175,12 @@ python := "python3"
 # Convenience Recipes
 # ============================================
 
-# Complete setup: install dependencies, generate secrets, and optionally start services
-@run *profile:
+# Complete setup: install dependencies, generate secrets (if needed), and optionally start services
+@run *profile: (_ensure-secrets)
     echo "🚀 Running complete setup..."
     echo ""
     just install
     echo ""
-    just secrets
     {{ if profile != "" { "echo ''\njust start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just start <profile>' to launch a specific profile\"" } }}
 
 # Rebuild containers and restart services for a profile (useful after code changes)

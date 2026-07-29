@@ -10,6 +10,9 @@ class AppConfig:
     port : int
     hl7_version: str
     allowed_senders: list[str]
+    connection_string: str | None
+    egress_queue_name: str | None
+    egress_session_id: str | None
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -18,7 +21,14 @@ class AppConfig:
             host=_read_required_env("HOST"),
             port= _read_int_required_env("PORT"),
             hl7_version=_read_required_env("HL7_VERSION"),
-            allowed_senders=_read_required_env_list("ALLOWED_SENDERS")
+            allowed_senders=_read_required_env_list("ALLOWED_SENDERS"),
+            connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
+            # EGRESS_QUEUE_NAME: Queue where validated messages are published
+            # The transformer component reads from this queue
+            egress_queue_name=_read_env("EGRESS_QUEUE_NAME"),
+            # EGRESS_SESSION_ID: Session ID for ordered message processing
+            # Session-enabled queues ensure messages are processed in order
+            egress_session_id=_read_env("EGRESS_SESSION_ID")
         )
 
 

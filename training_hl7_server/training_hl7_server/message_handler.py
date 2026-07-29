@@ -31,7 +31,8 @@ class MessageHandler(AbstractHandler):
         self,
         incoming_message: str,
         expected_version: str = "2.3.1",
-        allowed_senders: list[str] = ["TRAINING_APP"]
+        allowed_senders: list[str] = ["TRAINING_APP"],
+        sender_client: str = None
     ) -> None:
         """
         Initialize the message handler.
@@ -50,6 +51,10 @@ class MessageHandler(AbstractHandler):
 
         # Create an instance of AckBuilder to construct ACK responses
         self.ack_builder = AckBuilder()
+
+        # Week 2 Service Bus
+        self.sender_client = sender_client
+
 
     def reply(self) -> str:
         """
@@ -116,6 +121,18 @@ class MessageHandler(AbstractHandler):
             self._validate_version(hl7_version)
 
             self._validate_sender(sending_app)
+
+            # Week 2 Service Bus
+
+            if self.sender_client:
+                print('-' * 60)
+                print("Sending message to Service Bus WEEK 2")
+
+                self.sender_client.send_text_message(self.incoming_message)
+                print(f"Message sent to egress Service Bus: {message_control_id}")
+            else:
+                print ("No Service Bus sender client provided; skipping message send.")
+
 
             # ===================================================================
             # STEP 5: Build and return a success ACK

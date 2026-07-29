@@ -11,6 +11,11 @@ from training_hl7_server.app_config import AppConfig
 from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
 
+# Week 2 Service Bus
+
+from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 class TrainingHl7ServerApplication:
     """
@@ -31,6 +36,10 @@ class TrainingHl7ServerApplication:
         # changing code - useful for different environments (dev, test, prod)
         # We read these from the AppConfig class which provides defaults and validation
         app_config = AppConfig.read_env_config()
+        self.config = app_config  # Store config for later use
+
+        # Week 2 Service Bus Sender Client
+        self.sender_client: MessageSenderClient | None = None
 
         # HOST: The network interface to bind to
         # "0.0.0.0" means accept connections from any network interface
@@ -102,6 +111,41 @@ class TrainingHl7ServerApplication:
         print("Press Ctrl+C to stop the server")
         print()
 
+        # =====================================================================
+        # WEEK 2 ADDITION: Initialize Service Bus sender
+        # =====================================================================
+        # If Service Bus is configured, create a sender client to publish
+        # validated messages to the egress queue. The transformer component
+        # will read from this queue.
+        if self.config.connection_string and self.config.egress_queue_name:
+            print("-" * 60)
+            print("SERVICE BUS INTEGRATION ENABLED (Week 2)")
+            print(f"Egress Queue: {self.config.egress_queue_name}")
+            print(f"Session ID: {self.config.egress_session_id or '(none)'}")
+
+            # Create connection configuration for Service Bus
+            # Uses connection string for local emulator, namespace for Azure
+            client_config = ConnectionConfig(
+                connection_string=self.config.connection_string,
+                service_bus_namespace=None,  # Not used when connection_string is set
+            )
+
+            # Create the factory that builds Service Bus clients
+            factory = ServiceBusClientFactory(client_config)
+
+            # Create a queue sender client for publishing messages
+            # The session_id ensures ordered processing in session-enabled queues
+            self.sender_client = factory.create_queue_sender_client(
+                queue_name=self.config.egress_queue_name,
+                session_id=self.config.egress_session_id,
+            )
+            print("✓ Service Bus sender initialized")
+        else:
+            print("-" * 60)
+            print("SERVICE BUS INTEGRATION DISABLED")
+            print("(Set SERVICE_BUS_CONNECTION_STRING and EGRESS_QUEUE_NAME to enable)")
+
+
         # ===================================================================
         # Define message handlers
         # ===================================================================
@@ -114,9 +158,9 @@ class TrainingHl7ServerApplication:
         # 3. Call the handler's reply() method to get the ACK response
         print("Setting up message handlers...")
         handlers = {
-            "ADT^A31": (MessageHandler, self.expected_version, self.allowed_senders),
-            "ADT^A28": (MessageHandler, self.expected_version, self.allowed_senders),
-            "ADT^A40": (MessageHandler, self.expected_version, self.allowed_senders),
+            "ADT^A31": (MessageHandler, self.expected_version, self.allowed_senders, self.sender_client),
+            "ADT^A28": (MessageHandler, self.expected_version, self.allowed_senders, self.sender_client),
+            "ADT^A40": (MessageHandler, self.expected_version, self.allowed_senders, self.sender_client),
             "ERR": (ErrorHandler,)
         }
 
@@ -190,3 +234,11 @@ class TrainingHl7ServerApplication:
         if self.server_thread:
             self.server_thread.join(timeout=5)
             print("Server thread cleaned up.")
+
+        # =====================================================================
+        # WEEK 2 ADDITION: Close the Service Bus sender client
+        # =====================================================================
+        if self.sender_client:
+            print("Closing Service Bus sender...")
+            self.sender_client.close()
+            print("Service Bus sender closed.")
