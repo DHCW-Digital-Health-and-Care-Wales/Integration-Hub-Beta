@@ -12,6 +12,7 @@ parameters:
       - PHW HL7Server
       - PIMS HL7Server
       - Paris HL7Server
+      - Mosaiq HL7Server
       - Chemocare HL7Server
       - MPI HL7Server
       - WDS HL7Server
@@ -114,6 +115,11 @@ stages:
         - name: 'Paris HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'paris'
+          buildPipeline: 'HL7 Server - Build'
+          
+        - name: 'Mosaiq HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'mosaiq'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Chemocare HL7Server'

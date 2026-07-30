@@ -67,6 +67,13 @@ _DISPLAY_META: dict[str, dict] = {
         "colour": "#a855f7",
         "icon": "bi-activity",
     },
+    "mosaiq-to-mpi": {
+        "label": "Mosaiq → MPI",
+        "source": "Mosaiq",
+        "destination": "MPI",
+        "colour": "#ec4899",
+        "icon": "bi-radioactive",
+    },
     "chemocare-to-mpi": {
         "label": "ChemoCare → MPI",
         "source": "ChemoCare",
