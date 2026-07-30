@@ -33,7 +33,7 @@ variables:
 # All CodeQuality stages run in parallel; each Build stage depends only on its own CQ gate.
 # Stages are conditionally included at compile time based on the buildApps parameter.
 stages:
-  # ── Code Quality ────────────────────────────────────────────────────────────
+  # ── Code Quality ─────────────────────────────────────────────────────────
   - ${{ if containsValue(parameters.buildApps, 'hl7server') }}:
     - stage: CodeQuality_hl7server
       displayName: 'Code Quality — HL7 Server'
@@ -146,12 +146,12 @@ stages:
             banditSourceDir: 'dashboard'
             usePytest: true
 
-  # ── Build & Push ────────────────────────────────────────────────────────────
+  # ── Build & Push ─────────────────────────────────────────────────────────
   - ${{ if containsValue(parameters.buildApps, 'hl7server') }}:
     - stage: Build_hl7server
       displayName: 'Build — HL7 Server'
       dependsOn: CodeQuality_hl7server
-      condition: in(dependencies.CodeQuality_hl7server.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7server.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -170,7 +170,7 @@ stages:
     - stage: Build_hl7sender
       displayName: 'Build — HL7 Sender'
       dependsOn: CodeQuality_hl7sender
-      condition: in(dependencies.CodeQuality_hl7sender.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7sender.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -189,7 +189,7 @@ stages:
     - stage: Build_hl7mockreceiver
       displayName: 'Build — HL7 Mock Receiver'
       dependsOn: CodeQuality_hl7mockreceiver
-      condition: in(dependencies.CodeQuality_hl7mockreceiver.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7mockreceiver.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -208,7 +208,7 @@ stages:
     - stage: Build_hl7subscriptionsender
       displayName: 'Build — HL7 Subscription Sender'
       dependsOn: CodeQuality_hl7subscriptionsender
-      condition: in(dependencies.CodeQuality_hl7subscriptionsender.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7subscriptionsender.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -227,7 +227,7 @@ stages:
     - stage: Build_hl7pimstransformer
       displayName: 'Build — Pims HL7 Transformer'
       dependsOn: CodeQuality_hl7pimstransformer
-      condition: in(dependencies.CodeQuality_hl7pimstransformer.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7pimstransformer.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -246,7 +246,7 @@ stages:
     - stage: Build_hl7phwtransformer
       displayName: 'Build — Phw HL7 Transformer'
       dependsOn: CodeQuality_hl7phwtransformer
-      condition: in(dependencies.CodeQuality_hl7phwtransformer.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7phwtransformer.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -265,7 +265,7 @@ stages:
     - stage: Build_hl7chemotransformer
       displayName: 'Build — Chemocare HL7 Transformer'
       dependsOn: CodeQuality_hl7chemotransformer
-      condition: in(dependencies.CodeQuality_hl7chemotransformer.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_hl7chemotransformer.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -284,7 +284,7 @@ stages:
     - stage: Build_messagestoreservice
       displayName: 'Build — Message Store Service'
       dependsOn: CodeQuality_messagestoreservice
-      condition: in(dependencies.CodeQuality_messagestoreservice.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_messagestoreservice.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -303,7 +303,7 @@ stages:
     - stage: Build_messagereplayjob
       displayName: 'Build — Message Replay Job'
       dependsOn: CodeQuality_messagereplayjob
-      condition: in(dependencies.CodeQuality_messagereplayjob.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_messagereplayjob.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
@@ -323,7 +323,7 @@ stages:
     - stage: Build_dashboard
       displayName: 'Build — Dashboard'
       dependsOn: CodeQuality_dashboard
-      condition: in(dependencies.CodeQuality_dashboard.result, 'Succeeded', 'SucceededWithIssues')
+      condition: eq(dependencies.CodeQuality_dashboard.result, 'Succeeded')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
