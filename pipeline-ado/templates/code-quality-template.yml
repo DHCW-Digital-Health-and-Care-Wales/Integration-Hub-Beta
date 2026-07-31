@@ -131,8 +131,11 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🔐 Running pip-audit for dependency vulnerability scanning..."
-          # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
-          uv tool run pip-audit --desc --ignore-vuln GHSA-5239-wwwm-4pmq
+          if ! uv tool run pip-audit --desc --ignore-vuln GHSA-5239-wwwm-4pmq; then
+            echo "##[error]pip-audit found dependency vulnerabilities! Fix before proceeding."
+            echo "##[endgroup]"
+            exit 1
+          fi
           
           echo "✅ Dependency scan completed"
           echo "##[endgroup]"
