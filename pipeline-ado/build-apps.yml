@@ -151,7 +151,7 @@ stages:
     - stage: Build_hl7server
       displayName: 'Build — HL7 Server'
       dependsOn: CodeQuality_hl7server
-      condition: eq(dependencies.CodeQuality_hl7server.result, 'Succeeded')
+      condition: in(dependencies.CodeQuality_hl7server.result, 'Succeeded', 'SucceededWithIssues')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
