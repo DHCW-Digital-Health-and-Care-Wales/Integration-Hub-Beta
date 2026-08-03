@@ -57,7 +57,7 @@ Integration-Hub-Beta/
 
 ## Integration Flows
 
-There are six HL7 message flows. Each has a pre-transform queue, optional transformer
+There are seven HL7 message flows. Each has a pre-transform queue, optional transformer
 container, post-transform queue, sender, and destination.
 
 | Flow | Source Port | Pre-queue | Transformer | Post-queue | Destination |
