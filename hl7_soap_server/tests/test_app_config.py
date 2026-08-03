@@ -20,7 +20,7 @@ class TestAppConfig(unittest.TestCase):
     @patch.dict(os.environ, BASE_ENV, clear=True)
     def test_read_env_config_defaults(self) -> None:
         config = AppConfig.read_env_config()
-        self.assertEqual(config.host, "0.0.0.0")
+        self.assertEqual(config.host, "127.0.0.1")
         self.assertEqual(config.port, 8080)
         self.assertEqual(config.soap_endpoint_path, "/soap")
         self.assertEqual(config.schema_group, "phw")

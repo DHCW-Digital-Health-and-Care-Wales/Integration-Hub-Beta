@@ -59,7 +59,7 @@ class AppConfig:
             peer_service=_read_required_env("PEER_SERVICE"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
-            host=_read_env("HOST") or "0.0.0.0",
+            host=_read_env("HOST") or "127.0.0.1",
             port=_read_int_env("PORT") or 8080,
             soap_endpoint_path=soap_endpoint_path,
             schema_group=_read_env("HL7_SCHEMA_GROUP") or "phw",
