@@ -41,6 +41,19 @@
 # Use PowerShell as the recipe shell on Windows hosts.
 set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 
+# Enable BuildKit so Compose's `additional_contexts` (ca-certs, shared_libs) work.
+# The classic Docker builder used by podman's external compose provider does not
+# support additional build contexts and fails with "the classic builder doesn't
+# support additional contexts" otherwise.
+export DOCKER_BUILDKIT := "1"
+export COMPOSE_DOCKER_CLI_BUILD := "1"
+
+# Compose filters services by *active* profile, and `--profile "*"` is NOT a
+# wildcard (it's treated as a literal, nonexistent profile name). To operate on
+# containers across every profile (e.g. `logs`, `stop`), every real profile must
+# be passed explicitly.
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mpi-to-topic --profile replay"
+
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
 
@@ -138,7 +151,7 @@ python := "python3"
 @stop:
     echo "⏹️  Stopping all Podman Compose services..."
     echo ""
-    podman-compose --profile "*" down
+    podman-compose {{all_profiles_flags}} down
     echo ""
     echo "✅ All services stopped"
     echo "💡 To restart: just start <profile>"
@@ -168,14 +181,26 @@ python := "python3"
     echo "   - 2579 (PIMS)"
     echo "   - 2580 (MPI Outbound)"
 
-# Follow logs from Podman containers (optionally filter by service name)
+# Send a SOAP-wrapped HL7 XML message to the hl7-soap-server (default: lims-to-mpi sample, port 8082)
+@send-soap file="./sample_messages/lims-to-mpi.sample.xml" port="8082":
+    echo "🧪 Sending SOAP HL7 message..."
+    echo ""
+    echo "📄 File: {{file}}"
+    echo "🎯 Target: http://127.0.0.1:{{port}}/soap"
+    echo ""
+    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'text/xml; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}/soap"
+    echo ""
+    echo "✅ Message sent!"
+    echo "💡 Check logs with: just logs hl7-soap-server"
+
+# Follow logs from Podman containers (optionally filter by service name, e.g. `just logs hl7-soap-server`)
 @logs *services:
     echo "📖 Following container logs..."
     echo ""
     {{ if services == "" { "echo '📋 Showing logs for all services'" } else { "echo '📋 Filtering logs for: " + services + "'" } }}
     echo "💡 Press Ctrl+C to stop following logs"
     echo ""
-    podman-compose logs -f {{services}}
+    podman-compose {{all_profiles_flags}} logs -f {{services}}
 
 # ============================================
 # Convenience Recipes

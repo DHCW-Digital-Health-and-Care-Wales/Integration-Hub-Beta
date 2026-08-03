@@ -162,7 +162,6 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
-      - lims-to-mpi
     restart: on-failure
     networks:
       integration-hub:
