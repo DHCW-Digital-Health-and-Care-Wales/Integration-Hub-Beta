@@ -25,6 +25,7 @@ parameters:
       - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
+      - LIMS HL7 SOAP Server
       - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
@@ -79,6 +80,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Subscription Sender - Build'
       source: 'HL7 Subscription Sender - Build'
+      trigger: none
+    - pipeline: 'HL7 SOAP Server - Build'
+      source: 'HL7 SOAP Server - Build'
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
@@ -183,6 +187,12 @@ stages:
           appImageName: 'hl7sender'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
+
+        # LIMS SOAP Server
+        - name: 'LIMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 SOAP Server - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
