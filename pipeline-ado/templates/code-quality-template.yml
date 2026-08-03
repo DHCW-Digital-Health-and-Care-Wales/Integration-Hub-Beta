@@ -131,13 +131,15 @@ jobs:
           cd ${{ parameters.appName }}
           
           echo "🔐 Running pip-audit for dependency vulnerability scanning..."
-          # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
-          uv tool run pip-audit --desc --ignore-vuln GHSA-5239-wwwm-4pmq
+          if ! uv tool run pip-audit --desc --ignore-vuln GHSA-5239-wwwm-4pmq; then
+            echo "##[error]pip-audit found dependency vulnerabilities! Fix before proceeding."
+            echo "##[endgroup]"
+            exit 1
+          fi
           
           echo "✅ Dependency scan completed"
           echo "##[endgroup]"
         displayName: 'Dependency Security Scan - ${{ parameters.appDisplayName }}'
-        continueOnError: true
 
       - script: |
           set -euo pipefail  # Bash strict mode back to normal
@@ -174,7 +176,7 @@ jobs:
           
           echo "🛡️ Running uv audit dependency security scan..."
           # Temporary ignore for no-fix advisory on transitive Pygments; review periodically.
-          if ! uv audit --ignore GHSA-5239-wwwm-4pmq; then
+          if ! uv audit --locked --ignore GHSA-5239-wwwm-4pmq; then
             echo "##[error]uv audit found dependency security issues!"
             VALIDATION_FAILED=1
           fi
