@@ -3,8 +3,7 @@
 A local developer GUI for testing and debugging the **WPAS → PROMS FHIR transformer**
 without running a Service Bus queue, container, or any Azure infrastructure.
 
-> **Not tracked by git.** This tool lives in `my_tools/` which is listed in the
-> repo-root `.gitignore`. It will never appear in a commit or pull request.
+> Developer-only tool. The `.venv/` folder is ignored, but the source under `my_tools/proms_tester/` is committed so it can be shared.
 
 ---
 
