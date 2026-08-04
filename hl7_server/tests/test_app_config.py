@@ -121,7 +121,7 @@ class TestAppConfig(unittest.TestCase):
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 "EGRESS_SESSION_ID": "test-session",
-                # MESSAGE_STORE_QUEUE_NAME intentionally omitted to test required field validation
+                # MESSAGE_STORE_QUEUE_NAME intentionally omitted — should be required when MESSAGE_STORE_ENABLED is unset
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
@@ -135,6 +135,27 @@ class TestAppConfig(unittest.TestCase):
             AppConfig.read_env_config()
 
         self.assertIn("Missing required configuration", str(context.exception))
+
+    @patch("hl7_server.app_config.os.getenv")
+    def test_read_env_config_message_store_queue_name_optional_when_disabled(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values: Dict[str, str] = {
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
+                "MESSAGE_STORE_ENABLED": "false",
+                # MESSAGE_STORE_QUEUE_NAME intentionally omitted — should be optional when store is disabled
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test-health-board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+
+        self.assertIsNone(config.message_store_queue_name)
 
     @patch("hl7_server.app_config.os.getenv")
     def test_read_env_config_handles_none_optional_fields(self, mock_getenv: Mock) -> None:
