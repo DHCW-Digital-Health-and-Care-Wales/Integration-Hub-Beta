@@ -15,6 +15,7 @@ parameters:
       - Chemocare HL7Server
       - MPI HL7Server
       - WDS HL7Server
+      - Mosaiq HL7Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
@@ -129,6 +130,11 @@ stages:
         - name: 'WDS HL7Server'
           appImageName: 'hl7server'
           appFunctionMidfix: 'wds'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'Mosaiq HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'mosaiq'
           buildPipeline: 'HL7 Server - Build'
 
         # HL7 Transformer Variants
