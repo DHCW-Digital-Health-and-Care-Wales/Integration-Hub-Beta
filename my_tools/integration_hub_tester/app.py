@@ -12,7 +12,6 @@ Run with:
 """
 from __future__ import annotations
 
-import json
 import tkinter as tk
 from tkinter import filedialog, font, ttk
 from typing import TYPE_CHECKING
