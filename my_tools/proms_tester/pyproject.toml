@@ -1,0 +1,14 @@
+[project]
+name = "proms-tester"
+version = "0.1.0"
+description = "Local dev GUI for testing the WPAS → PROMS FHIR transformer"
+requires-python = ">=3.13"
+
+dependencies = [
+    "proms-fhir-transformer",
+    "defusedxml==0.7.1",
+    "fhir.resources==8.3.0",
+]
+
+[tool.uv.sources]
+proms-fhir-transformer = { path = "../../xml_fhir_proms_transformer" }

@@ -1,0 +1,20 @@
+[project]
+name = "integration-hub-tester"
+version = "0.1.0"
+description = "Local dev GUI for testing all Integration Hub services"
+requires-python = ">=3.13"
+
+dependencies = [
+    "hl7-phw-transformer",
+    "hl7-chemo-transformer",
+    "hl7-pims-transformer",
+    "proms-fhir-transformer",
+    "hl7-server",
+]
+
+[tool.uv.sources]
+hl7-phw-transformer  = { path = "../../hl7_phw_transformer" }
+hl7-chemo-transformer = { path = "../../hl7_chemo_transformer" }
+hl7-pims-transformer = { path = "../../hl7_pims_transformer" }
+proms-fhir-transformer = { path = "../../xml_fhir_proms_transformer" }
+hl7-server           = { path = "../../hl7_server" }
