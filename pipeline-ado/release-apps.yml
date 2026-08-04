@@ -191,7 +191,7 @@ stages:
         # LIMS SOAP Server
         - name: 'LIMS HL7 SOAP Server'
           appImageName: 'hl7soapserver'
-          appFunctionMidfix: ''
+          appFunctionMidfix: 'lims'
           buildPipeline: 'HL7 SOAP Server - Build'
 
         # Mock Receiver
