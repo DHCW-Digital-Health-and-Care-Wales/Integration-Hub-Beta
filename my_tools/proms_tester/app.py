@@ -242,9 +242,7 @@ class PromsTestApp(tk.Tk):
             command=self._transform,
         )
         self._transform_btn.pack(side=tk.LEFT)
-        # Keyboard shortcut
-        self.bind("<Return>", lambda _e: self._transform())
-        self.bind("<KP_Enter>", lambda _e: self._transform())
+        # Keyboard shortcut (avoid running on every newline in the input box)
         self.bind("<Control-Return>", lambda _e: self._transform())
 
         self._status_var = tk.StringVar(value="Ready — paste a WPAS XML message or load a sample.")
