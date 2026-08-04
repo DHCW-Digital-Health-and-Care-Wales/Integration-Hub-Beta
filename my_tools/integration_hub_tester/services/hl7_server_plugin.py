@@ -92,17 +92,20 @@ class Hl7ServerPlugin(ServicePlugin):
         # ── ACK preview ───────────────────────────────────────────────
         lines.append("")
         lines.append("=" * 60)
-        lines.append("ACK THAT WOULD BE RETURNED  (AA — Application Accept)")
-        lines.append("=" * 60)
+        if validation_ok:
+            lines.append("ACK THAT WOULD BE RETURNED  (AA — Application Accept)")
+            lines.append("=" * 60)
 
-        control_id = str(uuid.uuid4()).replace("-", "")[:20]
-        try:
-            ack = HL7AckBuilder().build_ack(control_id, msg)
-            ack_er7 = ack.to_er7().replace("\r", "\n")
-            lines.append(ack_er7)
-        except Exception as exc:  # noqa: BLE001
-            lines.append(f"  (could not build ACK: {exc})")
-
+            control_id = str(uuid.uuid4()).replace("-", "")[:20]
+            try:
+                ack = HL7AckBuilder().build_ack(control_id, msg)
+                ack_er7 = ack.to_er7().replace("\r", "\n")
+                lines.append(ack_er7)
+            except Exception as exc:  # noqa: BLE001
+                lines.append(f"  (could not build ACK: {exc})")
+        else:
+            lines.append("NO ACK WOULD BE RETURNED (validation failed)")
+            lines.append("=" * 60)
         output = "\n".join(lines)
         status = "✓  Valid — ACK preview generated" if validation_ok else "✗  Validation failed — see output"
         return output, status
