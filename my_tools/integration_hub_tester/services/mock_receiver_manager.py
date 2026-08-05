@@ -26,7 +26,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Absolute paths to each mock receiver's root directory.
-_REPO_ROOT = Path(__file__).resolve().parents[2]  # my_tools/integration_hub_tester → repo root
+_REPO_ROOT = Path(__file__).resolve().parents[3]  # services/ → integration_hub_tester/ → my_tools/ → repo root
 
 _RECEIVER_DIRS: dict[str, Path] = {
     "mllp": _REPO_ROOT / "hl7_mock_receiver",
