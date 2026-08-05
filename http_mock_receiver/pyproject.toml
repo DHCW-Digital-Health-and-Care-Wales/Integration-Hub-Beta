@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "http-mock-receiver"
+version = "0.1.0"
+description = "HTTP/SOAP mock receiver for Integration Hub local testing"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.136.3",
+    "uvicorn==0.37.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.9",
+    "bandit==1.9.2",
+    "mypy==1.18.2",
+    "httpx2>=0.28.0",
+    "pytest>=8.3.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["http_mock_receiver*"]
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "A", "PLC", "PLE", "PLW", "I"]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]
