@@ -116,13 +116,12 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.max_message_size_bytes, 104857600)
 
     @patch("hl7_server.app_config.os.getenv")
-    def test_read_env_config_missing_required_field_raises_error(self, mock_getenv: Mock) -> None:
+    def test_read_env_config_missing_required_field_raises_runtime_error(self, mock_getenv: Mock) -> None:
         def getenv_side_effect(name: str) -> Optional[str]:
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 "EGRESS_SESSION_ID": "test-session",
-                # MESSAGE_STORE_QUEUE_NAME intentionally omitted — required when MESSAGE_STORE_ENABLED is unset
-                "WORKFLOW_ID": "test-workflow",
+                # WORKFLOW_ID intentionally omitted — should raise RuntimeError
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
                 "PEER_SERVICE": "test-service",
@@ -134,7 +133,27 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             AppConfig.read_env_config()
 
-        self.assertIn("Missing required configuration", str(context.exception))
+        self.assertIn("WORKFLOW_ID", str(context.exception))
+
+    @patch("hl7_server.app_config.os.getenv")
+    def test_read_env_config_message_store_queue_name_optional_when_unset(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values: Dict[str, str] = {
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
+                # MESSAGE_STORE_QUEUE_NAME omitted — should be optional regardless of MESSAGE_STORE_ENABLED
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test-health-board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+
+        self.assertIsNone(config.message_store_queue_name)
 
     @patch("hl7_server.app_config.os.getenv")
     def test_read_env_config_message_store_queue_name_optional_when_disabled(self, mock_getenv: Mock) -> None:

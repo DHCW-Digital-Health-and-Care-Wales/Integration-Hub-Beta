@@ -77,16 +77,6 @@ def _read_and_validate_message_size() -> int:
 
 
 def _read_message_store_queue_name() -> str | None:
-    """Read MESSAGE_STORE_QUEUE_NAME, requiring it only when the message store is enabled.
-
-    The message store is enabled by default. It is disabled only when MESSAGE_STORE_ENABLED
-    is explicitly set to "false" (case-insensitive). When disabled, the queue name is not
-    required and may be absent or empty.
-    """
-    enabled_value = os.getenv("MESSAGE_STORE_ENABLED")
-    is_enabled = enabled_value is None or enabled_value.strip().lower() != "false"
-    if is_enabled:
-        return _read_required_env("MESSAGE_STORE_QUEUE_NAME")
     return _read_env("MESSAGE_STORE_QUEUE_NAME")
 
 
