@@ -57,7 +57,7 @@ Integration-Hub-Beta/
 
 ## Integration Flows
 
-There are five HL7 message flows. Each has a pre-transform queue, optional transformer
+There are seven HL7 message flows. Each has a pre-transform queue, optional transformer
 container, post-transform queue, sender, and destination.
 
 | Flow | Source Port | Pre-queue | Transformer | Post-queue | Destination |
@@ -66,6 +66,7 @@ container, post-transform queue, sender, and destination.
 | Paris → MPI | 2577 | `pre-paris-transform` | *(none)* | `post-paris-transform` | MPI |
 | ChemoCare → MPI | 2578 | `pre-chemo-transform` | `hl7_chemo_transformer` | `post-chemo-transform` | MPI |
 | PIMS → MPI | 2579 | `pre-pims-transform` | `hl7_pims_transformer` | `post-pims-transform` | MPI |
+| Mosaiq → MPI | 2583 | *(shared sender queue)* | *(none)* | *(shared sender queue)* | MPI |
 | MPI Outbound | — | `mpi-outbound` | *(none)* | *(none)* | Downstream systems |
 
 Queue names are overridable via environment variables (e.g. `QUEUE_PHW_PRE`).

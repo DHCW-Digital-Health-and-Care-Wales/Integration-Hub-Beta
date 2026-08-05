@@ -121,7 +121,7 @@ class ServiceBusClientFactory:
         return self.servicebus_client
 
     def create_message_store_client(
-        self, queue_name: str, microservice_id: str, peer_service: str
+        self, queue_name: Optional[str], microservice_id: str, peer_service: str
     ) -> MessageStoreClient:
         """Create a MessageStoreClient. If MESSAGE_STORE_ENABLED is explicitly set to "false" (case-insensitive),
          a disabled instance is returned and send_to_store calls on it will be no-ops that log a warning.
@@ -132,7 +132,7 @@ class ServiceBusClientFactory:
         is_enabled = _read_bool_env("MESSAGE_STORE_ENABLED", default=True)
         sender = None
 
-        if is_enabled:
+        if is_enabled and queue_name:
             sender = self.create_queue_sender_client(queue_name)
             self.logger.info("Message store is enabled — configured queue: %s", queue_name)
         else:

@@ -13,7 +13,7 @@ class AppConfig:
     egress_topic_name: str | None
     egress_session_id: str
     service_bus_namespace: str | None
-    message_store_queue_name: str
+    message_store_queue_name: str | None
     workflow_id: str
     microservice_id: str
     health_board: str
@@ -43,7 +43,7 @@ class AppConfig:
             egress_topic_name=egress_topic_name,
             egress_session_id=_read_required_env("EGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
-            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
+            message_store_queue_name=_read_message_store_queue_name(),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),
@@ -74,6 +74,10 @@ def _read_and_validate_message_size() -> int:
         )
 
     return configured_size
+
+
+def _read_message_store_queue_name() -> str | None:
+    return _read_env("MESSAGE_STORE_QUEUE_NAME")
 
 
 def _read_env(name: str) -> str | None:
