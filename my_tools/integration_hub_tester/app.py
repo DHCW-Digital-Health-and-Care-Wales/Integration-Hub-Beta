@@ -278,7 +278,7 @@ class IntegrationHubTesterApp(tk.Tk):
             bg=DHCW_NAVY, fg=DHCW_YELLOW, font=hf, anchor="w",
         ).pack(side=tk.LEFT, fill=tk.Y, pady=10)
         tk.Label(
-            header, text="Local developer tool — not tracked by git  ",
+            header, text="Local developer tool  ",
             bg=DHCW_NAVY, fg=DHCW_BLUE,
             font=font.Font(family="Segoe UI", size=9),
         ).pack(side=tk.RIGHT, fill=tk.Y, pady=10)
