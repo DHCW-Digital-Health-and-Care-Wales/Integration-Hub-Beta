@@ -17,7 +17,7 @@ behaviour.
 
 from __future__ import annotations
 
-from spyne import Application, AnyXml, ServiceBase, rpc
+from spyne import AnyXml, Application, ServiceBase, rpc
 from spyne.interface.wsdl.wsdl11 import Wsdl11
 from spyne.protocol.soap import Soap11
 
