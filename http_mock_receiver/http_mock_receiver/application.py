@@ -117,8 +117,8 @@ async def soap_endpoint(request: Request) -> Response:
     """
     raw_body = (await request.body()).decode("utf-8", errors="replace")
 
-    logger.info("")
-    logger.info("── SOAP REQUEST ─────────────────────────────────────")
+    print()
+    print("── SOAP REQUEST ─────────────────────────────────────")
     logger.info(
         "Received — %d bytes, Content-Type: %s",
         len(raw_body),
@@ -151,7 +151,8 @@ async def soap_endpoint(request: Request) -> Response:
             "Message rejected by mock receiver — 'fail' trigger detected.",
             soap_version=result.soap_version,
         )
-        logger.info("── END ──────────────────────────────────────────────\n")
+        print("── END (FAULT) ──────────────────────────────────────")
+        print()
         return Response(content=body, status_code=500, media_type=content_type)
 
     body, content_type = build_ack_response(
@@ -159,7 +160,8 @@ async def soap_endpoint(request: Request) -> Response:
         soap_version=result.soap_version,
     )
     logger.info("Response — SOAP ACK sent, control_id=%s", result.message_control_id)
-    logger.info("── END ──────────────────────────────────────────────\n")
+    print("── END (ACK) ────────────────────────────────────────")
+    print()
     return Response(content=body, status_code=200, media_type=content_type)
 
 
