@@ -1,8 +1,8 @@
-"""Builds well-formed SOAP response envelopes.
+"""Builds well-formed SOAP 1.1 response envelopes.
 
 Produces minimal but valid envelopes — sufficient for a mock receiver.
-Supports SOAP 1.1 and SOAP 1.2; the version is selected by the caller via
-``soap_version``.
+SOAP 1.2 support can be added later; the version is passed through from the
+caller so the builder can be extended without changing the public interface.
 """
 from __future__ import annotations
 
