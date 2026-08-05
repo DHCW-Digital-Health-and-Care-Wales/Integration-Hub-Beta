@@ -13,7 +13,7 @@ class AppConfig:
     egress_topic_name: str | None
     egress_session_id: str
     service_bus_namespace: str | None
-    message_store_queue_name: str
+    message_store_queue_name: str | None
     workflow_id: str
     microservice_id: str
     health_board: str
@@ -43,7 +43,7 @@ class AppConfig:
             egress_topic_name=egress_topic_name,
             egress_session_id=_read_required_env("EGRESS_SESSION_ID"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
-            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
+            message_store_queue_name=_read_message_store_queue_name(),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),
@@ -74,6 +74,20 @@ def _read_and_validate_message_size() -> int:
         )
 
     return configured_size
+
+
+def _read_message_store_queue_name() -> str | None:
+    """Read MESSAGE_STORE_QUEUE_NAME, requiring it only when the message store is enabled.
+
+    The message store is enabled by default. It is disabled only when MESSAGE_STORE_ENABLED
+    is explicitly set to "false" (case-insensitive). When disabled, the queue name is not
+    required and may be absent or empty.
+    """
+    enabled_value = os.getenv("MESSAGE_STORE_ENABLED")
+    is_enabled = enabled_value is None or enabled_value.strip().lower() != "false"
+    if is_enabled:
+        return _read_required_env("MESSAGE_STORE_QUEUE_NAME")
+    return _read_env("MESSAGE_STORE_QUEUE_NAME")
 
 
 def _read_env(name: str) -> str | None:

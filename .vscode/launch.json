@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Integration Hub Tester GUI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/my_tools/integration_hub_tester/app.py",
+            "python": "${workspaceFolder}/my_tools/integration_hub_tester/.venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/my_tools/integration_hub_tester",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/my_tools/integration_hub_tester/.venv/Lib/site-packages"
+            }
+        },
+        {
+            "name": "PROMS Tester GUI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/my_tools/proms_tester/app.py",
+            "python": "${workspaceFolder}/my_tools/proms_tester/.venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/my_tools/proms_tester",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/my_tools/proms_tester/.venv/Lib/site-packages"
+            }
+        }
+    ]
+}
