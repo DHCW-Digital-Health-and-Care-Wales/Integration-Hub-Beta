@@ -118,6 +118,7 @@ def _display_name(server_id: str) -> str:
     name = re.sub(r"\bmpi\b", "MPI", name, flags=re.IGNORECASE)
     name = re.sub(r"\bwds\b", "WDS", name, flags=re.IGNORECASE)
     name = re.sub(r"\bparis\b", "Paris", name, flags=re.IGNORECASE)
+    name = re.sub(r"\bmosaiq\b", "Mosaiq", name, flags=re.IGNORECASE)
     name = re.sub(r"\bchemo\b", "ChemoCare", name, flags=re.IGNORECASE)
     return name.title() if name == name.lower() else name
 

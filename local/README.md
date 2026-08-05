@@ -267,6 +267,7 @@ Profiles:
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
+- mosaiq-to-mpi
 - mpi-to-topic
 
 #### Profiles Reference
@@ -279,6 +280,7 @@ Each profile starts a complete integration flow with all required services:
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
+| **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                       | Mosaiq oncology system to MPI integration flow (no transformation)                                |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 
@@ -293,6 +295,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **phw-hl7-server.env**        | PHW HL7 Server              | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`                           |
 | **phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
 | **paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
+| **mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=mosaiq`                        |
 | **chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
 | **chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |

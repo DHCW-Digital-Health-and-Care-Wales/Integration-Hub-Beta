@@ -163,6 +163,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - mosaiq-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -187,6 +188,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - mosaiq-to-mpi
       - mpi-to-topic
     networks:
       integration-hub:
@@ -215,6 +217,29 @@ services:
       integration-hub:
         aliases:
           - "paris-hl7-server"
+
+  mosaiq-hl7-server:
+    container_name: mosaiq-hl7-server
+    build:
+      context: ../hl7_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./mosaiq-hl7-server.env
+    ports:
+      - "2583:2583"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - mosaiq-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "mosaiq-hl7-server"
 
   chemo-hl7-server:
     container_name: chemo-hl7-server
@@ -369,6 +394,7 @@ services:
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
+      - mosaiq-to-mpi
       - mpi-to-topic
     networks:
       integration-hub:

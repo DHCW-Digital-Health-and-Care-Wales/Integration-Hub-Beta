@@ -23,6 +23,7 @@ _FALLBACK_APP_FLOW_MAP: dict[str, str] = {
     "paris": "paris-to-mpi",
     "chemo": "chemocare-to-mpi",
     "pims": "pims-to-mpi",
+    "mosaiq": "mosaiq-to-mpi",
     "mpi": "mpi-outbound",
     "wds": "wds-to-mpi",
 }

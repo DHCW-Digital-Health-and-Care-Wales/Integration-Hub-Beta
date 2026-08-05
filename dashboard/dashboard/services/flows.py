@@ -59,6 +59,18 @@ _FLOW_DEFS: list[dict] = [
         "icon": "bi-activity",
     },
     {
+        "id": "mosaiq-to-mpi",
+        "label": "Mosaiq → MPI",
+        "source": "Mosaiq",
+        "source_port": 2583,
+        "pre_queue_suffix": None,
+        "post_queue_suffix": None,
+        "transformer": None,
+        "destination": "MPI",
+        "colour": "#ec4899",
+        "icon": "bi-radioactive",
+    },
+    {
         "id": "chemocare-to-mpi",
         "label": "ChemoCare → MPI",
         "source": "ChemoCare",
