@@ -3,8 +3,8 @@ payload, optionally forwards to Service Bus, and returns an ACK or fault.
 
 Uses ``defusedxml`` to parse XML safely and guard against XXE injection.
 The handler is intentionally forgiving: if the body is not well-formed XML we
-still return a SOAP fault rather than an unhandled 500 so the caller gets a
-meaningful response.
+log the parse error and still return an ACK/fault based on the mock "fail"
+trigger so callers always get a valid response.
 """
 from __future__ import annotations
 
