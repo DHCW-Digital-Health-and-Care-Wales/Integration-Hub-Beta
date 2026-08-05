@@ -124,9 +124,11 @@ class MockReceiverManager:
             logger.info("%s started — PID %s", _RECEIVER_LABELS[mode], self._process.pid)
             return True, f"Started {_RECEIVER_LABELS[mode]}  (PID {self._process.pid})"
 
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
+            missing = getattr(exc, "filename", None) or str(exc)
             return False, (
-                "Could not find 'uv'.  Ensure uv is installed and on your PATH."
+                f"Could not start {_RECEIVER_LABELS[mode]} — missing executable: {missing}.  "
+                "Ensure uv is installed and on your PATH (and a terminal emulator is available on Linux/macOS)."
             )
         except OSError as exc:
             return False, f"Failed to start {_RECEIVER_LABELS[mode]}: {exc}"
