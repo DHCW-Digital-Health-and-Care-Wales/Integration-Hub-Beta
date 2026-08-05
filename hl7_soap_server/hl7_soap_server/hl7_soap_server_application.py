@@ -18,6 +18,7 @@ from metric_sender_lib.metric_sender import MetricSender
 
 from .app_config import AppConfig
 from .soap_processor import SoapMessageProcessor, build_soap_fault_response
+from .wsdl_service import build_wsdl_document
 
 log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
 log_level = getattr(logging, log_level_str, logging.INFO)
@@ -92,6 +93,7 @@ class Hl7SoapServerApplication:
             processor=processor,
             endpoint_path=app_config.soap_endpoint_path,
             max_request_size_bytes=app_config.max_request_size_bytes,
+            tls_enabled=bool(app_config.tls_cert_file and app_config.tls_key_file),
         )
 
         try:
@@ -148,6 +150,7 @@ def create_soap_request_handler(
     processor: SoapMessageProcessor,
     endpoint_path: str,
     max_request_size_bytes: int,
+    tls_enabled: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     class SoapRequestHandler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:  # noqa: N802 (BaseHTTPRequestHandler API)
@@ -188,7 +191,36 @@ def create_soap_request_handler(
             self._write_response(status_code, response_xml)
 
         def do_GET(self) -> None:  # noqa: N802 (BaseHTTPRequestHandler API)
+            request_path, _, query_string = self.path.partition("?")
+            if request_path == endpoint_path and query_string.lower() == "wsdl":
+                self._write_wsdl_response()
+                return
             self._write_response(405, build_soap_fault_response("Client", "SOAP endpoint accepts POST only."))
+
+        def _write_wsdl_response(self) -> None:
+            scheme = self._determine_scheme()
+            host = self.headers.get("Host") or f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+            base_url = f"{scheme}://{host}{endpoint_path}"
+            try:
+                wsdl_bytes = build_wsdl_document(base_url)
+            except Exception:
+                logger.exception("Failed to auto-generate WSDL document")
+                self._write_response(
+                    500, build_soap_fault_response("Server", "Unable to generate WSDL document.")
+                )
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(wsdl_bytes)))
+            self.end_headers()
+            self.wfile.write(wsdl_bytes)
+
+        def _determine_scheme(self) -> str:
+            forwarded_proto = self.headers.get("X-Forwarded-Proto")
+            if forwarded_proto:
+                return forwarded_proto.split(",")[0].strip()
+            return "https" if tls_enabled else "http"
 
         def log_message(self, message_format: str, *args: object) -> None:
             logger.info("SOAP request: %s", message_format % args)

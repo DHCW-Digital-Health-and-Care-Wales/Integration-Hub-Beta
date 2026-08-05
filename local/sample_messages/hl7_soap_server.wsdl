@@ -88,7 +88,7 @@
 
   <service name="Hl7SoapServerService">
     <port name="Hl7SoapServerPort" binding="tns:Hl7SoapServerBinding">
-      <soap:address location="http://127.0.0.1:8082/soap"/>
+      <soap:address location="https://uks-dev-lims-hl7soapserver-ca.purpleocean-f275655e.uksouth.azurecontainerapps.io/soap"/>
     </port>
   </service>
 
