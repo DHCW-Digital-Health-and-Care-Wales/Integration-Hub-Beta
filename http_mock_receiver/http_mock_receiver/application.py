@@ -117,8 +117,10 @@ async def soap_endpoint(request: Request) -> Response:
     """
     raw_body = (await request.body()).decode("utf-8", errors="replace")
 
+    logger.info("")
+    logger.info("── SOAP REQUEST ─────────────────────────────────────")
     logger.info(
-        "SOAP request received — %d bytes, Content-Type: %s",
+        "Received — %d bytes, Content-Type: %s",
         len(raw_body),
         request.headers.get("content-type", "not set"),
     )
@@ -126,9 +128,8 @@ async def soap_endpoint(request: Request) -> Response:
 
     result = parse_soap_request(raw_body)
 
-    # Log a structured summary of the parsed message.
     logger.info(
-        "SOAP parsed — version=%s, control_id=%s, hl7_extracted=%s, fault_requested=%s",
+        "Parsed  — version=%s, control_id=%s, hl7_extracted=%s, fault_requested=%s",
         result.soap_version,
         result.message_control_id,
         result.hl7_payload is not None,
@@ -150,13 +151,15 @@ async def soap_endpoint(request: Request) -> Response:
             "Message rejected by mock receiver — 'fail' trigger detected.",
             soap_version=result.soap_version,
         )
+        logger.info("── END ──────────────────────────────────────────────\n")
         return Response(content=body, status_code=500, media_type=content_type)
 
     body, content_type = build_ack_response(
         result.message_control_id,
         soap_version=result.soap_version,
     )
-    logger.info("Returning SOAP ACK — control_id=%s", result.message_control_id)
+    logger.info("Response — SOAP ACK sent, control_id=%s", result.message_control_id)
+    logger.info("── END ──────────────────────────────────────────────\n")
     return Response(content=body, status_code=200, media_type=content_type)
 
 
