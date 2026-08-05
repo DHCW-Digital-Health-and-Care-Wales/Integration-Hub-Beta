@@ -121,7 +121,7 @@ class TestAppConfig(unittest.TestCase):
             values: Dict[str, str] = {
                 "EGRESS_QUEUE_NAME": "egress_queue",
                 "EGRESS_SESSION_ID": "test-session",
-                # MESSAGE_STORE_QUEUE_NAME intentionally omitted — should be optional regardless of MESSAGE_STORE_ENABLED
+                # MESSAGE_STORE_QUEUE_NAME omitted — should be optional regardless of MESSAGE_STORE_ENABLED
                 "WORKFLOW_ID": "test-workflow",
                 "MICROSERVICE_ID": "test-microservice",
                 "HEALTH_BOARD": "test-health-board",
