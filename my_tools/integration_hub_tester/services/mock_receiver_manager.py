@@ -170,9 +170,17 @@ def _build_command(module: str) -> list[str]:
 
 
 def _wrap_terminal(cmd: list[str]) -> list[str]:
-    """Wrap a command to open in a new terminal on Linux/macOS (best-effort)."""
-    joined = " ".join(cmd)
-    for terminal in ("gnome-terminal --", "xterm -e", "konsole -e"):
-        parts = terminal.split()
-        return parts + cmd
+    """Wrap a command to open in a new terminal on Linux/macOS (best-effort).
+
+    Probes each candidate terminal with ``shutil.which`` before using it so
+    we don't attempt to launch an emulator that isn't on PATH.  Falls back to
+    running in the current process if none are found.
+    """
+    import shutil
+
+    for terminal, args in (("gnome-terminal", ["--"]), ("xterm", ["-e"]), ("konsole", ["-e"])):
+        if shutil.which(terminal):
+            return [terminal, *args, *cmd]
+
+    # Fallback: run in the current process if no terminal emulator is available.
     return cmd
