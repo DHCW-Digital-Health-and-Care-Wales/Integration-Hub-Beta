@@ -10,6 +10,11 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi==0.136.3",
     "uvicorn==0.37.0",
+    "defusedxml>=0.7.1",
+    # message-bus-lib is required only when EGRESS_QUEUE_NAME is set (Service Bus forwarding).
+    # It is imported lazily at startup inside a try/except; if absent the service runs in
+    # log-only mode.  Declare it here so containers that need forwarding have it available.
+    "message-bus-lib",
 ]
 
 [dependency-groups]
@@ -20,6 +25,9 @@ dev = [
     "httpx2>=0.28.0",
     "pytest>=8.3.0",
 ]
+
+[tool.uv.sources]
+message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 
 [tool.setuptools.packages.find]
 where = ["."]
