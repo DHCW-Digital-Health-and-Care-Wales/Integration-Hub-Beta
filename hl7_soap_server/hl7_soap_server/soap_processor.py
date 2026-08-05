@@ -3,8 +3,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
-from xml.etree.ElementTree import Element as XmlElement  # nosec B405 - only used to build/serialize
-from xml.etree.ElementTree import tostring  # nosec B405 - trusted output XML, never parses untrusted input
+
+# Element/tostring are only used to build and serialize trusted output XML below;
+# untrusted SOAP input is always parsed via defusedxml.ElementTree.fromstring.
+from xml.etree.ElementTree import Element as XmlElement  # nosec B405
+from xml.etree.ElementTree import tostring  # nosec B405
 
 from defusedxml.ElementTree import fromstring
 from event_logger_lib.event_logger import EventLogger
