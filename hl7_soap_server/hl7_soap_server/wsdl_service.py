@@ -17,6 +17,8 @@ behaviour.
 
 from __future__ import annotations
 
+from typing import Any
+
 from spyne import AnyXml, Application, ServiceBase, rpc
 from spyne.interface.wsdl.wsdl11 import Wsdl11
 from spyne.protocol.soap import Soap11
@@ -40,7 +42,7 @@ class Hl7SoapService(ServiceBase):
         _in_message_name="SubmitADT_A05Request",
         _out_message_name="SubmitHL7MessageResponse",
     )
-    def SubmitADT_A05(ctx, payload):  # noqa: N802, N805 - SOAP operation name / spyne convention
+    def SubmitADT_A05(ctx: Any, payload: Any) -> None:  # noqa: N802, N805 - SOAP operation name / spyne convention
         raise NotImplementedError("hl7_soap_server handles requests via SoapMessageProcessor, not Spyne.")
 
     @rpc(
@@ -50,7 +52,7 @@ class Hl7SoapService(ServiceBase):
         _in_message_name="SubmitADT_A39Request",
         _out_message_name="SubmitHL7MessageResponse",
     )
-    def SubmitADT_A39(ctx, payload):  # noqa: N802, N805 - SOAP operation name / spyne convention
+    def SubmitADT_A39(ctx: Any, payload: Any) -> None:  # noqa: N802, N805 - SOAP operation name / spyne convention
         raise NotImplementedError("hl7_soap_server handles requests via SoapMessageProcessor, not Spyne.")
 
 

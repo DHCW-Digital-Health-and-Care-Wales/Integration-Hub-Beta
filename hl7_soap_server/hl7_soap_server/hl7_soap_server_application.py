@@ -6,7 +6,7 @@ import signal
 import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+from typing import Any, cast
 
 from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -199,7 +199,8 @@ def create_soap_request_handler(
 
         def _write_wsdl_response(self) -> None:
             scheme = self._determine_scheme()
-            host = self.headers.get("Host") or f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+            server_address = cast("tuple[str, int]", self.server.server_address)
+            host = self.headers.get("Host") or f"{server_address[0]}:{server_address[1]}"
             base_url = f"{scheme}://{host}{endpoint_path}"
             try:
                 wsdl_bytes = build_wsdl_document(base_url)
