@@ -132,9 +132,7 @@ class ServiceBusClientFactory:
         is_enabled = _read_bool_env("MESSAGE_STORE_ENABLED", default=True)
         sender = None
 
-        if is_enabled:
-            if queue_name is None:
-                raise RuntimeError("MESSAGE_STORE_QUEUE_NAME is required when MESSAGE_STORE_ENABLED is true")
+        if is_enabled and queue_name:
             sender = self.create_queue_sender_client(queue_name)
             self.logger.info("Message store is enabled — configured queue: %s", queue_name)
         else:
