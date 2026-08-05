@@ -155,7 +155,7 @@ def _process_message(
 
         event_logger.log_message_processed(
             message_body,
-            f"Message sent successfully, HTTP status: {status_code}",
+            f"SOAP send result: HTTP {status_code}, success={ack_success}",
             correlation_id=correlation_id_opt,
         )
         logger.info("Sent message: %s", message_id)
