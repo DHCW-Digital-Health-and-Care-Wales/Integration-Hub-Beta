@@ -125,8 +125,7 @@ async def soap_endpoint(request: Request) -> Response:
     )
 
     if result.hl7_payload:
-        logger.info("HL7 payload extracted — %d bytes", len(result.hl7_payload))
-        logger.debug("HL7 payload extracted:\n%s", result.hl7_payload.replace("\r", "\n"))
+        logger.info("HL7 payload extracted:\n%s", result.hl7_payload.replace("\r", "\n"))
 
     # Optionally forward to Service Bus.
     if _sb_sender and result.hl7_payload and not result.is_fault_requested:
@@ -150,21 +149,13 @@ async def soap_endpoint(request: Request) -> Response:
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> Response:
-    """Return a SOAP fault for /soap, otherwise a generic JSON error.
-
-    Exception details are intentionally omitted from the response body to
-    avoid leaking internal information to callers.
-    """
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:  # noqa: ARG001
+    """Return a JSON error for unexpected failures rather than a bare 500."""
     logger.exception("Unhandled exception in HTTP Mock Receiver")
-
-    if request.url.path == "/soap":
-        content_type_hdr = (request.headers.get("content-type") or "").lower()
-        soap_version = "1.2" if "application/soap+xml" in content_type_hdr else "1.1"
-        body, content_type = build_fault_response("Internal server error", soap_version=soap_version)
-        return Response(content=body, status_code=500, media_type=content_type)
-
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {type(exc).__name__}: {exc}"},
+    )
 
 
 def _forward_to_service_bus(hl7_payload: str, message_control_id: str) -> None:

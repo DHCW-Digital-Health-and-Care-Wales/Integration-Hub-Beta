@@ -26,7 +26,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Absolute paths to each mock receiver's root directory.
-_REPO_ROOT = Path(__file__).resolve().parents[3]  # services/ → integration_hub_tester/ → my_tools/ → repo root
+_REPO_ROOT = Path(__file__).resolve().parents[2]  # my_tools/integration_hub_tester → repo root
 
 _RECEIVER_DIRS: dict[str, Path] = {
     "mllp": _REPO_ROOT / "hl7_mock_receiver",
@@ -124,11 +124,9 @@ class MockReceiverManager:
             logger.info("%s started — PID %s", _RECEIVER_LABELS[mode], self._process.pid)
             return True, f"Started {_RECEIVER_LABELS[mode]}  (PID {self._process.pid})"
 
-        except FileNotFoundError as exc:
-            missing = getattr(exc, "filename", None) or str(exc)
+        except FileNotFoundError:
             return False, (
-                f"Could not start {_RECEIVER_LABELS[mode]} — missing executable: {missing}.  "
-                "Ensure uv is installed and on your PATH (and a terminal emulator is available on Linux/macOS)."
+                "Could not find 'uv'.  Ensure uv is installed and on your PATH."
             )
         except OSError as exc:
             return False, f"Failed to start {_RECEIVER_LABELS[mode]}: {exc}"
@@ -172,17 +170,9 @@ def _build_command(module: str) -> list[str]:
 
 
 def _wrap_terminal(cmd: list[str]) -> list[str]:
-    """Wrap a command to open in a new terminal on Linux/macOS (best-effort).
-
-    Probes each candidate terminal with ``shutil.which`` before using it so
-    we don't attempt to launch an emulator that isn't on PATH.  Falls back to
-    running in the current process if none are found.
-    """
-    import shutil
-
-    for terminal, args in (("gnome-terminal", ["--"]), ("xterm", ["-e"]), ("konsole", ["-e"])):
-        if shutil.which(terminal):
-            return [terminal, *args, *cmd]
-
-    # Fallback: run in the current process if no terminal emulator is available.
+    """Wrap a command to open in a new terminal on Linux/macOS (best-effort)."""
+    joined = " ".join(cmd)
+    for terminal in ("gnome-terminal --", "xterm -e", "konsole -e"):
+        parts = terminal.split()
+        return parts + cmd
     return cmd

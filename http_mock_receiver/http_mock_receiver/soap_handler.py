@@ -1,19 +1,16 @@
 """SOAP request handler — parses an incoming SOAP envelope, extracts the HL7
 payload, optionally forwards to Service Bus, and returns an ACK or fault.
 
-Uses ``defusedxml`` to parse XML safely and guard against XXE injection.
+Uses the stdlib ``xml.etree.ElementTree`` to avoid additional dependencies.
 The handler is intentionally forgiving: if the body is not well-formed XML we
-log the parse error and still return an ACK/fault based on the mock "fail"
-trigger so callers always get a valid response.
+still return a SOAP fault rather than an unhandled 500 so the caller gets a
+meaningful response.
 """
 from __future__ import annotations
 
 import logging
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-
-import defusedxml
-import defusedxml.ElementTree as SafeET
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +34,8 @@ class SoapParseResult:
 def parse_soap_request(raw_body: str) -> SoapParseResult:
     """Parse a SOAP request body and extract relevant fields.
 
-    The function never raises. If the body is not well-formed XML, the parse
-    error is logged and the result is returned with ``hl7_payload=None``.
-
-    The mock fault convention is separate: ``is_fault_requested`` is True only
-    when the word "fail" appears anywhere in the raw request body.
+    The function never raises — parse failures produce a result with
+    ``is_fault_requested=True`` so the caller can return a SOAP fault.
 
     Args:
         raw_body: Raw HTTP request body as a UTF-8 string.
@@ -55,8 +49,7 @@ def parse_soap_request(raw_body: str) -> SoapParseResult:
     message_control_id = "UNKNOWN"
 
     try:
-        # Use defusedxml to prevent XXE (XML external entity) injection attacks.
-        root = SafeET.fromstring(raw_body)
+        root = ET.fromstring(raw_body)
         body_element = _find_body(root, soap_version)
 
         if body_element is not None:
@@ -72,8 +65,7 @@ def parse_soap_request(raw_body: str) -> SoapParseResult:
             hl7_payload is not None,
         )
 
-    except (ET.ParseError, defusedxml.DTDForbidden, defusedxml.EntitiesForbidden,
-            defusedxml.ExternalReferenceForbidden, defusedxml.NotSupportedError) as exc:
+    except ET.ParseError as exc:
         logger.warning("SOAP envelope is not well-formed XML: %s", exc)
 
     # Respect the mock convention: "fail" anywhere in the body triggers a fault.
