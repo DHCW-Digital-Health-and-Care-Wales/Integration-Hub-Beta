@@ -28,7 +28,8 @@ class TestWsdlEndpoint(unittest.TestCase):
         self.server_thread.join()
 
     def test_get_wsdl_returns_wsdl_document_addressed_at_the_requesting_host(self) -> None:
-        with urllib.request.urlopen(f"{self.base_url}/soap?wsdl") as response:
+        # nosec B310 - fixed http:// URL against our own local test server, not user-controlled input
+        with urllib.request.urlopen(f"{self.base_url}/soap?wsdl") as response:  # nosec B310
             body = response.read().decode("utf-8")
             content_type = response.headers.get("Content-Type")
 
@@ -39,7 +40,7 @@ class TestWsdlEndpoint(unittest.TestCase):
 
     def test_get_without_wsdl_query_is_rejected(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as context:
-            urllib.request.urlopen(f"{self.base_url}/soap")
+            urllib.request.urlopen(f"{self.base_url}/soap")  # nosec B310 - our own local test server, fixed URL
 
         self.assertEqual(405, context.exception.code)
 

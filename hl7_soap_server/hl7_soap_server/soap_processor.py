@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
-from xml.etree.ElementTree import Element as XmlElement
-from xml.etree.ElementTree import tostring
+from xml.etree.ElementTree import Element as XmlElement  # nosec B405 - only used to build/serialize
+from xml.etree.ElementTree import tostring  # nosec B405 - trusted output XML, never parses untrusted input
 
 from defusedxml.ElementTree import fromstring
 from event_logger_lib.event_logger import EventLogger
