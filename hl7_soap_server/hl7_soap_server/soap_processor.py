@@ -241,13 +241,21 @@ def _extract_message_control_id(payload_element: XmlElement) -> str:
 
 
 def build_soap_success_response(message_control_id: str) -> str:
+    escaped_message_control_id = (
+        (message_control_id or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
     envelope = (
-        f'<soapenv:Envelope xmlns:soapenv="{SOAP_NS}">'
+        f'<soapenv:Envelope xmlns:soapenv="{SOAP_NS}" xmlns:tns="urn:inthub:hl7-soap-server">'
         "<soapenv:Body>"
-        "<AckResponse>"
+        "<tns:AckResponse>"
         "<Status>Success</Status>"
-        f"<MessageControlId>{message_control_id}</MessageControlId>"
-        "</AckResponse>"
+        f"<MessageControlId>{escaped_message_control_id}</MessageControlId>"
+        "</tns:AckResponse>"
         "</soapenv:Body>"
         "</soapenv:Envelope>"
     )
