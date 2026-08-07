@@ -26,14 +26,25 @@ from http_mock_receiver.soap_handler import parse_soap_request
 from http_mock_receiver.soap_response_builder import build_ack_response, build_fault_response
 
 # ── Logging setup ──────────────────────────────────────────────────────────
+# Attach a dedicated StreamHandler directly to this module's logger BEFORE uvicorn
+# starts.  Uvicorn calls logging.config.dictConfig() on startup which reconfigures
+# the root logger and would otherwise silence our request-time log() calls.
+# Setting propagate=False keeps our handler independent of whatever uvicorn does.
 log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+_log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(
-    level=getattr(logging, log_level_str, logging.INFO),
+    level=_log_level,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
 )
 azure_log_level = getattr(logging, os.getenv("AZURE_LOG_LEVEL", "WARN").upper(), logging.WARN)
 logging.getLogger("azure").setLevel(azure_log_level)
 logger = logging.getLogger(__name__)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s — %(message)s"))
+logger.addHandler(_handler)
+logger.setLevel(_log_level)
+logger.propagate = False  # Survives uvicorn's dictConfig reconfiguration
 
 # ── Config & optional Service Bus sender ──────────────────────────────────
 app_config = AppConfig.read_env_config()
@@ -106,8 +117,10 @@ async def soap_endpoint(request: Request) -> Response:
     """
     raw_body = (await request.body()).decode("utf-8", errors="replace")
 
+    print()
+    print("── SOAP REQUEST ─────────────────────────────────────")
     logger.info(
-        "SOAP request received — %d bytes, Content-Type: %s",
+        "Received — %d bytes, Content-Type: %s",
         len(raw_body),
         request.headers.get("content-type", "not set"),
     )
@@ -115,9 +128,8 @@ async def soap_endpoint(request: Request) -> Response:
 
     result = parse_soap_request(raw_body)
 
-    # Log a structured summary of the parsed message.
     logger.info(
-        "SOAP parsed — version=%s, control_id=%s, hl7_extracted=%s, fault_requested=%s",
+        "Parsed  — version=%s, control_id=%s, hl7_extracted=%s, fault_requested=%s",
         result.soap_version,
         result.message_control_id,
         result.hl7_payload is not None,
@@ -139,13 +151,17 @@ async def soap_endpoint(request: Request) -> Response:
             "Message rejected by mock receiver — 'fail' trigger detected.",
             soap_version=result.soap_version,
         )
+        print("── END (FAULT) ──────────────────────────────────────")
+        print()
         return Response(content=body, status_code=500, media_type=content_type)
 
     body, content_type = build_ack_response(
         result.message_control_id,
         soap_version=result.soap_version,
     )
-    logger.info("Returning SOAP ACK — control_id=%s", result.message_control_id)
+    logger.info("Response — SOAP ACK sent, control_id=%s", result.message_control_id)
+    print("── END (ACK) ────────────────────────────────────────")
+    print()
     return Response(content=body, status_code=200, media_type=content_type)
 
 

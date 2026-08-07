@@ -1,13 +1,10 @@
-"""SOAP Sender plugin — build a SOAP envelope and POST it to the mock receiver.
+"""SOAP Subscription Sender plugin — identical to SoapSenderPlugin in behaviour.
 
-Sends a real HTTP request to the http_mock_receiver (default: http://localhost:8080/soap)
-so developers can observe the full round-trip: envelope construction → HTTP POST →
-SOAP ACK/fault response — with live output visible in the mock receiver console.
+Confirms that the subscription-based sender produces the same SOAP envelope as
+the queue-based sender, and allows live round-trip testing against the mock receiver.
 
-Override the target URL by setting the SOAP_MOCK_URL environment variable.
-
-If the mock receiver is not running, the plugin falls back to offline preview mode
-and shows what would have been sent with a clear note at the top.
+The label and description differentiate it in the GUI tab.
+Override the target URL with the SOAP_MOCK_URL environment variable.
 """
 from __future__ import annotations
 
@@ -40,15 +37,15 @@ PID|||fail^^^^NH||TRIGGER^FAULT^^^Mr||19800115|M
 PV1||U"""
 
 
-class SoapSenderPlugin(ServicePlugin):
-    tab_label = "SOAP Sender"
+class SoapSubscriptionSenderPlugin(ServicePlugin):
+    tab_label = "SOAP Sub Sender"
     description = (
-        "Send HL7 wrapped in a SOAP envelope to the mock receiver — "
+        "Send HL7 wrapped in a SOAP envelope (subscription-based sender path) — "
         "start the SOAP Mock Receiver first, then click Send"
     )
-    input_label = "HL7v2 ER7  (as it would arrive from the Service Bus queue)"
+    input_label = "HL7v2 ER7  (as it would arrive from the Service Bus topic subscription)"
     output_label = "SOAP Envelope + HTTP Response"
-    button_label = "🧼  Send to SOAP Mock"
+    button_label = "🧼  Send to SOAP Mock (Sub)"
     samples = {
         "ADT A01 (Inpatient admit)": _SAMPLE_A01,
         "ADT A28 (New patient)": _SAMPLE_A28,
@@ -69,23 +66,20 @@ class SoapSenderPlugin(ServicePlugin):
 
         lines: list[str] = []
 
-        # ── Message summary ───────────────────────────────────────────
         lines.append("=" * 65)
-        lines.append("HL7 MESSAGE SUMMARY")
+        lines.append("HL7 MESSAGE SUMMARY  (subscription sender)")
         lines.append("=" * 65)
         lines.append(f"  Message type  : {message_type}")
         lines.append(f"  Control ID    : {message_control_id}")
         lines.append(f"  Version       : {msh_fields.get('version', 'UNKNOWN')}")
         lines.append(f"  Sending app   : {msh_fields.get('sending_app', 'UNKNOWN')}")
 
-        # ── Envelope sent ─────────────────────────────────────────────
         lines.append("")
         lines.append("=" * 65)
         lines.append(f"SOAP ENVELOPE SENT  →  {mock_url}")
         lines.append("=" * 65)
         lines.append(envelope)
 
-        # ── Live POST ─────────────────────────────────────────────────
         lines.append("")
         lines.append("=" * 65)
 
@@ -98,22 +92,19 @@ class SoapSenderPlugin(ServicePlugin):
             lines.append("")
             lines.append("  ► Start the SOAP Mock Receiver using the toolbar above,")
             lines.append("    then click Send again.")
-            output = "\n".join(lines)
-            return output, f"✗  Mock receiver not reachable — {error}"
+            return "\n".join(lines), f"✗  Mock receiver not reachable — {error}"
 
-        # Show actual response
         success = _evaluate_response(status_code, response_body)
         result_label = "✓  AA — Message accepted" if success else "✗  FAULT — Message rejected"
         lines.append(f"SOAP RESPONSE  (HTTP {status_code})  —  {result_label}")
         lines.append("=" * 65)
         lines.append(response_body)
 
-        output = "\n".join(lines)
         summary = f"{'✓' if success else '✗'}  HTTP {status_code} — {result_label}  |  control_id={message_control_id}"
-        return output, summary
+        return "\n".join(lines), summary
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Helpers (mirrored from soap_sender_plugin) ────────────────────────────────
 
 def _parse_msh(er7: str) -> dict[str, str]:
     result: dict[str, str] = {}
@@ -152,11 +143,6 @@ def _build_soap_envelope(er7: str) -> str:
 
 
 def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
-    """POST the envelope to the mock receiver using stdlib urllib.
-
-    Returns (status_code, response_body, error_message).
-    error_message is None on success.
-    """
     try:
         data = envelope.encode("utf-8")
         req = urllib.request.Request(
@@ -169,7 +155,6 @@ def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
             return resp.status, resp.read().decode("utf-8", errors="replace"), None
 
     except urllib.error.HTTPError as exc:
-        # HTTPError still has a body (e.g. SOAP fault with HTTP 500)
         try:
             body = exc.read().decode("utf-8", errors="replace")
         except Exception:
@@ -187,10 +172,8 @@ def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
 
 
 def _evaluate_response(status_code: int, body: str) -> bool:
-    """Mirror soap_ack_processor.get_ack_result for the tester plugin."""
     if status_code not in (200, 202):
         return False
     if "Fault" in body:
         return False
     return True
-
