@@ -186,7 +186,14 @@ def create_soap_request_handler(
                 )
                 return
 
-            request_body = self.rfile.read(content_length).decode("utf-8", errors="strict")
+            try:
+                request_body = self.rfile.read(content_length).decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                self._write_response(
+                    400,
+                    build_soap_fault_response("Client", "SOAP request body must be UTF-8 encoded."),
+                )
+                return
             status_code, response_xml = processor.process(request_body)
             self._write_response(status_code, response_xml)
 
