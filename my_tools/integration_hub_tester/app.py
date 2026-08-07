@@ -24,9 +24,11 @@ if TYPE_CHECKING:
 from services.chemo_plugin import ChemoPlugin
 from services.hl7_sender_plugin import Hl7SenderPlugin
 from services.hl7_server_plugin import Hl7ServerPlugin
+from services.mock_receiver_manager import MockReceiverManager
 from services.phw_plugin import PhwPlugin
 from services.pims_plugin import PimsPlugin
 from services.proms_plugin import PromsPlugin
+from services.soap_sender_plugin import SoapSenderPlugin
 
 PLUGINS: list[ServicePlugin] = [
     PhwPlugin(),
@@ -35,6 +37,7 @@ PLUGINS: list[ServicePlugin] = [
     PromsPlugin(),
     Hl7ServerPlugin(),
     Hl7SenderPlugin(),
+    SoapSenderPlugin(),
 ]
 
 # ── DHCW brand colours ──────────────────────────────────────────────────────
@@ -259,7 +262,10 @@ class IntegrationHubTesterApp(tk.Tk):
         self.configure(bg=DHCW_NAVY)
         self.geometry("1500x900")
         self.minsize(1000, 640)
+        self._mock_manager = MockReceiverManager()
         self._build()
+        # Ensure any running mock receiver is stopped when the window is closed.
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _build(self) -> None:
         hf = font.Font(family="Segoe UI", size=11, weight="bold")
@@ -276,6 +282,9 @@ class IntegrationHubTesterApp(tk.Tk):
             bg=DHCW_NAVY, fg=DHCW_BLUE,
             font=font.Font(family="Segoe UI", size=9),
         ).pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+
+        # ── Mock Receiver control bar ──────────────────────────────────
+        self._build_mock_receiver_bar()
 
         # ── Notebook ──────────────────────────────────────────────────
         style = ttk.Style()
@@ -305,6 +314,85 @@ class IntegrationHubTesterApp(tk.Tk):
             font=font.Font(family="Segoe UI", size=8),
             anchor="w",
         ).pack(side=tk.LEFT, padx=6, pady=2)
+
+    # ── Mock Receiver control bar ──────────────────────────────────────────
+
+    def _build_mock_receiver_bar(self) -> None:
+        """Build the persistent mock receiver launch/stop toolbar."""
+        bar = tk.Frame(self, bg="#0F1E38", pady=5)
+        bar.pack(fill=tk.X)
+
+        btn_font = font.Font(family="Segoe UI", size=8, weight="bold")
+        lbl_font = font.Font(family="Segoe UI", size=8)
+
+        tk.Label(
+            bar, text="  Mock Receiver:",
+            bg="#0F1E38", fg=DHCW_YELLOW,
+            font=btn_font,
+        ).pack(side=tk.LEFT, padx=(4, 2))
+
+        # Status indicator — updated by _poll_mock_receiver_status
+        self._mock_status_var = tk.StringVar(value="● Stopped")
+        self._mock_status_lbl = tk.Label(
+            bar, textvariable=self._mock_status_var,
+            bg="#0F1E38", fg="#E05050",
+            font=lbl_font, width=42, anchor="w",
+        )
+        self._mock_status_lbl.pack(side=tk.LEFT, padx=(0, 8))
+
+        # Start MLLP button
+        tk.Button(
+            bar, text="▶  Start MLLP Mock",
+            bg=NHS_BLUE, fg="white", activebackground=DHCW_YELLOW, activeforeground=DHCW_NAVY,
+            font=btn_font, relief=tk.FLAT, padx=9, pady=2, cursor="hand2",
+            command=lambda: self._start_mock("mllp"),
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Start SOAP button
+        tk.Button(
+            bar, text="▶  Start SOAP Mock",
+            bg=DHCW_BLUE, fg="white", activebackground=DHCW_YELLOW, activeforeground=DHCW_NAVY,
+            font=btn_font, relief=tk.FLAT, padx=9, pady=2, cursor="hand2",
+            command=lambda: self._start_mock("soap"),
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Stop button
+        tk.Button(
+            bar, text="■  Stop",
+            bg="#7B3030", fg="white", activebackground=DHCW_YELLOW, activeforeground=DHCW_NAVY,
+            font=btn_font, relief=tk.FLAT, padx=9, pady=2, cursor="hand2",
+            command=self._stop_mock,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Begin polling process status every 2 seconds.
+        self._poll_mock_receiver_status()
+
+    def _start_mock(self, mode: str) -> None:
+        success, message = self._mock_manager.start(mode)
+        self._update_mock_status()
+        if not success:
+            from tkinter import messagebox
+            messagebox.showwarning("Mock Receiver", message)
+
+    def _stop_mock(self) -> None:
+        self._mock_manager.stop()
+        self._update_mock_status()
+
+    def _update_mock_status(self) -> None:
+        label = self._mock_manager.label
+        self._mock_status_var.set(label)
+        running = self._mock_manager.is_running
+        self._mock_status_lbl.configure(fg="#2ECC71" if running else "#E05050")
+
+    def _poll_mock_receiver_status(self) -> None:
+        """Check if the mock receiver process is still alive every 2 seconds."""
+        self._update_mock_status()
+        self.after(2000, self._poll_mock_receiver_status)
+
+    def _on_close(self) -> None:
+        """Stop any running mock receiver before closing the window."""
+        self._mock_manager.stop()
+        self.destroy()
 
 
 if __name__ == "__main__":
