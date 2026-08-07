@@ -11,7 +11,8 @@ def main() -> None:
         [
             "MSH|^~\\&|328|328|100|100|20260729095037||ADT^A28^ADT_A05|6778031837018553261z82215|P|2.5|||AL|NE||UTF-8",
             "EVN|A28|20260729095037",
-            "PID|1||B0000010612^^^328^PI||Lims2val^2807261||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN",
+            "PID|1||B0000010612^^^328^PI||Lims2val^2807261||20010909|M|||"
+            "Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN",
             "PD1|||^^UNK|UNK",
             "PV1||N",
         ]
