@@ -2,7 +2,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
+from http.server import HTTPServer
 from unittest.mock import MagicMock
 
 from hl7_soap_server.hl7_soap_server_application import create_soap_request_handler
@@ -17,7 +17,7 @@ class TestWsdlEndpoint(unittest.TestCase):
             max_request_size_bytes=1_048_576,
             tls_enabled=False,
         )
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler_class)
+        self.server = HTTPServer(("127.0.0.1", 0), handler_class)
         self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.server_thread.start()
         self.base_url = f"http://127.0.0.1:{self.server.server_address[1]}"

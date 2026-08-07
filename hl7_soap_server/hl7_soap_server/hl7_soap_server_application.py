@@ -5,7 +5,7 @@ import os
 import signal
 import ssl
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, cast
 
 from event_logger_lib.event_logger import EventLogger
@@ -37,7 +37,7 @@ class Hl7SoapServerApplication:
         self.event_logger: EventLogger = None
         self.metric_sender: MetricSender = None
         self.health_check_server: TCPHealthCheckServer = None
-        self._server: ThreadingHTTPServer | None = None
+        self._server: HTTPServer | None = None
         self._server_thread: threading.Thread | None = None
 
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -97,7 +97,7 @@ class Hl7SoapServerApplication:
         )
 
         try:
-            self._server = ThreadingHTTPServer((app_config.host, app_config.port), handler_class)
+            self._server = HTTPServer((app_config.host, app_config.port), handler_class)
             if app_config.tls_cert_file and app_config.tls_key_file:
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                 context.load_cert_chain(certfile=app_config.tls_cert_file, keyfile=app_config.tls_key_file)
