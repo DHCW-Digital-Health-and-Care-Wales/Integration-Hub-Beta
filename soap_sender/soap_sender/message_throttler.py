@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 import time
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +10,7 @@ SECONDS_PER_MINUTE = 60
 
 class MessageThrottler:
 
-    def __init__(self, max_messages_per_minute: Optional[int]):
+    def __init__(self, max_messages_per_minute: int | None):
         if max_messages_per_minute is not None and max_messages_per_minute <= 0:
             raise ValueError("max_messages_per_minute must be a positive integer when set")
 
@@ -19,10 +20,10 @@ class MessageThrottler:
             if max_messages_per_minute
             else None
         )
-        self._last_message_time: Optional[float] = None
+        self._last_message_time: float | None = None
 
     @property
-    def interval_seconds(self) -> Optional[float]:
+    def interval_seconds(self) -> float | None:
         return self._interval
 
     def wait_if_needed(self) -> None:
