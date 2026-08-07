@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hand-authored WSDL for hl7_soap_server, for SoapUI import / discovery only.
+
+  This is NOT generated or enforced by the server at runtime — hl7_soap_server
+  has no GET/?wsdl endpoint and does not use a SOAP framework. It is a
+  descriptive contract document so SoapUI can build request templates and
+  validate against the real HL7 2.5 XSDs already used for validation
+  (see shared_libs/hl7_validation/hl7_validation/resources/phw/).
+
+  Default local target: http://127.0.0.1:8082/soap (lims-to-mpi profile,
+  hl7-soap-server container, port 8082). Update the soap:address location
+  below if you're targeting a different profile/port.
+
+  Default server config (see hl7_soap_server/README.md):
+    HL7_SCHEMA_GROUP=phw
+    ALLOWED_HL7_STRUCTURES=ADT_A05,ADT_A39
+    ALLOWED_ASSIGNING_AUTHORITIES=328
+-->
+<definitions name="Hl7SoapServer"
+             targetNamespace="urn:inthub:hl7-soap-server"
+             xmlns:tns="urn:inthub:hl7-soap-server"
+             xmlns:hl7="urn:hl7-org:v2xml"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns="http://schemas.xmlsoap.org/wsdl/">
+
+  <types>
+    <xsd:schema targetNamespace="urn:hl7-org:v2xml">
+      <!-- Real HL7 2.5 schemas used by hl7_soap_server for validation (phw group) -->
+      <xsd:include schemaLocation="../../shared_libs/hl7_validation/hl7_validation/resources/phw/ADT_A05.xsd"/>
+      <xsd:include schemaLocation="../../shared_libs/hl7_validation/hl7_validation/resources/phw/ADT_A39.xsd"/>
+    </xsd:schema>
+
+    <xsd:schema targetNamespace="urn:inthub:hl7-soap-server">
+      <xsd:element name="AckResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Status" type="xsd:string"/>
+            <xsd:element name="MessageControlId" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+
+  <message name="SubmitADT_A05Request">
+    <part name="payload" element="hl7:ADT_A05"/>
+  </message>
+  <message name="SubmitADT_A39Request">
+    <part name="payload" element="hl7:ADT_A39"/>
+  </message>
+  <message name="SubmitHL7MessageResponse">
+    <part name="ack" element="tns:AckResponse"/>
+  </message>
+  <message name="SubmitHL7MessageFault">
+    <part name="fault" type="xsd:string"/>
+  </message>
+
+  <portType name="Hl7SoapServerPortType">
+    <operation name="SubmitADT_A05">
+      <input message="tns:SubmitADT_A05Request"/>
+      <output message="tns:SubmitHL7MessageResponse"/>
+      <fault name="ProcessingFault" message="tns:SubmitHL7MessageFault"/>
+    </operation>
+    <operation name="SubmitADT_A39">
+      <input message="tns:SubmitADT_A39Request"/>
+      <output message="tns:SubmitHL7MessageResponse"/>
+      <fault name="ProcessingFault" message="tns:SubmitHL7MessageFault"/>
+    </operation>
+  </portType>
+
+  <binding name="Hl7SoapServerBinding" type="tns:Hl7SoapServerPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="SubmitADT_A05">
+      <soap:operation soapAction=""/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+      <fault name="ProcessingFault"><soap:fault name="ProcessingFault" use="literal"/></fault>
+    </operation>
+    <operation name="SubmitADT_A39">
+      <soap:operation soapAction=""/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+      <fault name="ProcessingFault"><soap:fault name="ProcessingFault" use="literal"/></fault>
+    </operation>
+  </binding>
+
+  <service name="Hl7SoapServerService">
+    <port name="Hl7SoapServerPort" binding="tns:Hl7SoapServerBinding">
+      <soap:address location="https://uks-dev-lims-hl7soapserver-ca.purpleocean-f275655e.uksouth.azurecontainerapps.io/soap"/>
+    </port>
+  </service>
+
+</definitions>

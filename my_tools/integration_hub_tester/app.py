@@ -29,6 +29,7 @@ from services.phw_plugin import PhwPlugin
 from services.pims_plugin import PimsPlugin
 from services.proms_plugin import PromsPlugin
 from services.soap_sender_plugin import SoapSenderPlugin
+from services.soap_subscription_sender_plugin import SoapSubscriptionSenderPlugin
 
 PLUGINS: list[ServicePlugin] = [
     PhwPlugin(),
@@ -38,6 +39,7 @@ PLUGINS: list[ServicePlugin] = [
     Hl7ServerPlugin(),
     Hl7SenderPlugin(),
     SoapSenderPlugin(),
+    SoapSubscriptionSenderPlugin(),
 ]
 
 # ── DHCW brand colours ──────────────────────────────────────────────────────

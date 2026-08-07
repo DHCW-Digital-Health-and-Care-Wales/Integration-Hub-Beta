@@ -125,6 +125,29 @@ services:
         aliases:
           - "phw-hl7-server"
 
+  hl7-soap-server:
+    container_name: hl7-soap-server
+    build:
+      context: ../hl7_soap_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./lims-soap-hl7-server.env
+    ports:
+      - "8082:8080"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - lims-to-mpi
+    networks:
+      integration-hub:
+        aliases:
+          - "hl7-soap-server"
+
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
@@ -160,6 +183,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
+      - lims-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
@@ -185,6 +209,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
+      - lims-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
@@ -391,6 +416,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
+      - lims-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
