@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import unittest
+import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock, patch
+
+import requests as req
 
 from soap_subscription_sender.soap_subscription_sender_client import (
     SOAPSubscriptionSenderClient,
@@ -36,7 +39,6 @@ class TestBuildSoapEnvelope(unittest.TestCase):
         self.assertIn("&gt;", env)
 
     def test_envelope_is_valid_xml_structure(self) -> None:
-        import xml.etree.ElementTree as ET
         env = _build_soap_envelope("MSH|^~\\&|APP|FAC|RCV|RCV|20250101||ADT^A28|CTRL|P|2.5")
         ET.fromstring(env)  # Should not raise
 
@@ -57,14 +59,12 @@ class TestSOAPSubscriptionSenderClientSendMessage(unittest.TestCase):
         self.assertEqual(body, "<ACK/>")
 
     def test_send_message_raises_timeout_error(self) -> None:
-        import requests as req
         client = self._make_client()
         with patch.object(client._session, "post", side_effect=req.exceptions.Timeout):
             with self.assertRaises(TimeoutError):
                 client.send_message("MSH|test", _retry_attempted=True)
 
     def test_send_message_raises_connection_error(self) -> None:
-        import requests as req
         client = self._make_client()
         with patch.object(client._session, "post", side_effect=req.exceptions.ConnectionError("refused")):
             with self.assertRaises(ConnectionError):
