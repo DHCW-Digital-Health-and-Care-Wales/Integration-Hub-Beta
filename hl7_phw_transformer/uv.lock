@@ -266,6 +266,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "pyjwt" },
     { name = "setuptools" },
     { name = "urllib3" },
@@ -276,6 +277,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -335,6 +337,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "cryptography" },
     { name = "event-logger-lib" },
     { name = "field-utils-lib" },
     { name = "health-check-lib" },
@@ -360,6 +363,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
     { name = "field-utils-lib", directory = "../shared_libs/field_utils_lib" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
@@ -448,6 +452,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "cryptography" },
     { name = "metric-sender-lib" },
     { name = "otel-lib" },
     { name = "pyjwt" },
@@ -460,6 +465,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
     { name = "otel-lib", directory = "../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
@@ -482,6 +488,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "idna" },
     { name = "pyjwt" },
     { name = "setuptools" },
@@ -493,6 +500,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
@@ -830,6 +838,7 @@ source = { directory = "../shared_libs/otel_lib" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "idna" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
@@ -842,6 +851,7 @@ dependencies = [
 requires-dist = [
     { name = "azure-identity", specifier = ">=1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
@@ -892,6 +902,7 @@ name = "processor-manager-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/processor_manager_lib" }
 dependencies = [
+    { name = "cryptography" },
     { name = "opentelemetry-api" },
     { name = "setuptools" },
     { name = "urllib3" },
@@ -899,6 +910,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -1067,6 +1079,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "cryptography" },
     { name = "event-logger-lib" },
     { name = "health-check-lib" },
     { name = "hl7apy" },
@@ -1082,6 +1095,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },

@@ -8,6 +8,7 @@ dependencies = [
   "azure-core>=1.38.0",
   "azure-servicebus==7.14.3",
   "pyodbc>=5.2.0",
+  "cryptography>=50.0.0",
   "otel-lib",
   "message-bus-lib",
   "health-check-lib",

@@ -20,6 +20,7 @@ parameters:
       - hl7pimstransformer
       - hl7phwtransformer
       - hl7chemotransformer
+      - hl7soapserver
       - messagestoreservice
       - messagereplayjob
       - dashboard
@@ -108,6 +109,17 @@ stages:
           parameters:
             appName: 'hl7_chemo_transformer'
             appDisplayName: 'Chemocare HL7 Transformer'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7soapserver') }}:
+    - stage: CodeQuality_hl7soapserver
+      displayName: 'Code Quality — HL7 SOAP Server'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_soap_server'
+            appDisplayName: 'HL7 SOAP Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -274,6 +286,25 @@ stages:
             appName: 'chemo-hl7transformer'
             dockerfilePath: 'hl7_chemo_transformer/Dockerfile'
             buildContext: 'hl7_chemo_transformer'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7soapserver') }}:
+    - stage: Build_hl7soapserver
+      displayName: 'Build — HL7 SOAP Server'
+      dependsOn: CodeQuality_hl7soapserver
+      condition: in(dependencies.CodeQuality_hl7soapserver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7SoapServer'
+            displayName: 'Build and Push HL7 SOAP Server'
+            appName: 'hl7soapserver'
+            dockerfilePath: 'hl7_soap_server/Dockerfile'
+            buildContext: 'hl7_soap_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
