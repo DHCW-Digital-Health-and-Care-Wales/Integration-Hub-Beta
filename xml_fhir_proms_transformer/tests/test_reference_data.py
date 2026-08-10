@@ -133,11 +133,11 @@ class TestStaticReferenceDataResolver(unittest.TestCase):
 
     def test_unmapped_gender_returns_none(self):
         # An incorrect gender is worse than a missing one.
-        with self.assertLogs("proms_fhir_transformer.reference_data", level="WARNING"):
+        with self.assertLogs("xml_fhir_proms_transformer.reference_data", level="WARNING"):
             self.assertIsNone(self.resolver.resolve_gender("ZZ"))
 
     def test_language_is_unresolvable_without_the_reference_data_service(self):
-        with self.assertLogs("proms_fhir_transformer.reference_data", level="INFO"):
+        with self.assertLogs("xml_fhir_proms_transformer.reference_data", level="INFO"):
             self.assertIsNone(self.resolver.resolve_language("CY"))
 
 
