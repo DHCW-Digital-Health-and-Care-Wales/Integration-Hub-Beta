@@ -192,6 +192,7 @@ def _deceased(message: PromsMessage) -> Optional[Union[bool, datetime]]:
     return True
 
 
+
 def map_patient(
     message: PromsMessage,
     patient_uuid: str,
