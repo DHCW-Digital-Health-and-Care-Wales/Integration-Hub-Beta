@@ -1,0 +1,57 @@
+[project]
+name = "proms-fhir-transformer"
+version = "0.1.0"
+description = "PROMS/WPAS XML to FHIR message Bundle transformer"
+requires-python = ">=3.13"
+
+dependencies = [
+  "azure-core>=1.38.0",
+  "azure-servicebus==7.14.3",
+  "azure-identity==1.23.0",
+  "pyjwt>=2.13.0",
+  "defusedxml==0.7.1",
+  "fhir.resources==8.3.0",
+  "urllib3>=2.6.3",
+  "transformer-base-lib",
+  "message-bus-lib",
+  "health-check-lib",
+  "processor-manager-lib",
+  "event-logger-lib",
+  "setuptools>=83.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff==0.14.9",
+  "bandit==1.9.2",
+  "mypy==1.18.2",
+]
+
+[tool.uv.sources]
+transformer-base-lib = { path = "../shared_libs/transformer_base_lib" }
+message-bus-lib = { path = "../shared_libs/message_bus_lib" }
+health-check-lib = { path = "../shared_libs/health_check_lib" }
+processor-manager-lib = { path = "../shared_libs/processor_manager_lib" }
+event-logger-lib = { path = "../shared_libs/event_logger_lib" }
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",  # Enforces style guide rules (Pycodestyle errors).
+  "F",  # Detects various errors in Python code (Pyflakes errors).
+  "W",  # Enforces style guide warnings (Pycodestyle warnings).
+  "A",  # Detects shadowing of Python built-in functions (Flake8-builtins).
+  "PLC",  # Enforces coding conventions (Pylint convention messages).
+  "PLE",  # Detects errors in Python code (Pylint error messages).
+  "PLW",  # Detects potential issues in Python code (Pylint warning messages).
+  "I"  # Sorts and organizes imports (Import-related rules).
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]  # Stops asserts in tests being flagged.
