@@ -94,7 +94,7 @@ def to_fhir_date(raw_date: str) -> Optional[date]:
         except ValueError:
             continue
 
-    logger.warning("Unparseable WPAS date value %r - leaving element unset", raw_date)
+    logger.warning("Unparseable WPAS date value - leaving element unset")
     return None
 
 
@@ -129,7 +129,7 @@ def to_fhir_datetime(raw_datetime: str, warn: bool = True) -> Optional[datetime]
             continue
 
     if warn:
-        logger.warning("Unparseable WPAS date/time value %r - leaving element unset", raw_datetime)
+        logger.warning("Unparseable WPAS date/time value - leaving element unset")
     return None
 
 

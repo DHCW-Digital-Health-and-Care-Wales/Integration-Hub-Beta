@@ -116,7 +116,7 @@ class StaticReferenceDataResolver:
 
         gender = _GENDER_CODES.get(code.strip().upper())
         if gender is None:
-            logger.warning("Unmapped WPAS SEX value %r - Patient.gender will be omitted", code)
+            logger.warning("Unmapped WPAS SEX value received - Patient.gender will be omitted")
         return gender
 
     def resolve_language(self, code: Optional[str], system_id: Optional[str] = None) -> Optional[str]:
