@@ -28,8 +28,8 @@ the two disagree the **wiki wins**, by decision of the specification owner.
 - Ingests a bespoke WPAS XML payload (**not** HL7v2-XML). None of the HL7 tooling
   used by the other transformers (`hl7_validation.xml_to_er7`, `hl7apy`,
   `field_utils_lib`) applies here.
-- Routes on the WPAS message type — `OPI`, `RFI` or `MPA` — taken from an explicit
-  `MESSAGE_TYPE` field or, failing that, the XML root element.
+- Routes on the WPAS `eventCode` field (REFERRAL, SURGERY, PREOP, INPATIENT, CANCELLED,
+  PREREAD), falling back to the XML root element only when `eventCode` is missing.
 - Builds a FHIR **R4B** `Bundle` with `type = "message"` and a `MessageHeader` at
   `entry[0]`. Entry order is **positional and normative** — the mapping tables
   address entries by index.
@@ -99,8 +99,8 @@ This is modelled as a `ReferenceDataResolver` Protocol so the seam is explicit a
 replaceable. The shipped `StaticReferenceDataResolver`:
 
 - maps `SEX` to a FHIR `administrative-gender` code locally, and
-- **always returns `None` for language**, so `Patient.communication` is omitted
-  rather than guessed.
+- always returns `None` for language codes; `Patient.communication` is only emitted when a display
+  value (e.g. `spoken_language`) is present in the payload.
 
 A real resolver can be injected without touching any mapper:
 

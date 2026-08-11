@@ -179,7 +179,7 @@ class TestMessageHeader(unittest.TestCase):
 
     def test_source_resolved_from_system_id(self):
         header = resource_at(build(REFERRAL_MESSAGE), 0)
-        # system_id=149 maps to Betsi Cadwaladr (or similar — check source_systems.py)
+        # system_id=149 should resolve to a known SourceSystem (see source_systems.py)
         self.assertIsNotNone(header.source.endpoint)
 
     def test_referral_focus_includes_service_request_and_practitioner_role(self):

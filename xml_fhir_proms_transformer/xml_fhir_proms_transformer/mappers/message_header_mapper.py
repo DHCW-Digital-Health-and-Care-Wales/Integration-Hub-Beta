@@ -30,7 +30,7 @@ from .mapping_utils import join_display, profile_meta, urn_uuid
 
 logger = logging.getLogger(__name__)
 
-UNKNOWN_SOURCE_ENDPOINT_PREFIX = "urn:nhs-wales:wpas:system-id:"
+UNKNOWN_SOURCE_ENDPOINT_PREFIX = "https://wpas-source.invalid/system-id/"
 
 
 def _map_source(message: PromsMessage) -> MessageHeaderSource:

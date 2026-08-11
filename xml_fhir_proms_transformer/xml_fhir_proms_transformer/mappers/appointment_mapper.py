@@ -59,6 +59,9 @@ def map_appointment(
         ]
 
     # start and end — from appointmentDate + appointmentTime
+    # SPEC GAP: WPAS supplies a single appointment time with no duration or end time.
+    # end is set equal to start as a placeholder until the spec owner confirms the
+    # intended appointment duration or a dedicated end time field is added.
     date_raw = message.get("appointmentDate", "appointment_date")
     time_raw = message.get("appointmentTime", "appointment_time")
     combined = f"{date_raw} {time_raw}".strip() if (date_raw or time_raw) else None
@@ -66,5 +69,6 @@ def map_appointment(
         parsed = to_fhir_datetime(combined)
         if parsed:
             appointment.start = parsed
+            appointment.end = parsed
 
     return appointment

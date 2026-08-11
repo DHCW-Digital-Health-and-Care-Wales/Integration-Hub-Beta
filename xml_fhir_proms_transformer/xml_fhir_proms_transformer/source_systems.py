@@ -99,7 +99,10 @@ def get_source_system(system_id: Optional[str]) -> Optional[SourceSystem]:
     key = system_id.strip()
     source_system = _SOURCE_SYSTEMS.get(key)
     if source_system is None:
-        logger.warning("Unknown WPAS system_id/hbCode %r - MessageHeader.source and PAS identifier will be omitted", key)
+        logger.warning(
+            "Unknown WPAS system_id/hbCode %r - MessageHeader.source and PAS identifier will be omitted",
+            key,
+        )
         return None
 
     # Deployments can supply the per-health-board endpoint the mapping omits.

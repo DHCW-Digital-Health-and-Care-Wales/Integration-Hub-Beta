@@ -10,12 +10,12 @@ Updated for the new WPAS PromsEventRequest payload format which supplies:
 
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Union
 
 from fhir.resources.R4B.address import Address
 from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
-from fhir.resources.R4B.contactpoint import ContactPoint
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.humanname import HumanName
 from fhir.resources.R4B.identifier import Identifier
@@ -165,7 +165,7 @@ def _communication(
     ]
 
 
-def _deceased(message: PromsMessage) -> Optional[object]:
+def _deceased(message: PromsMessage) -> Optional[Union[bool, datetime]]:
     """Build Patient.deceasedDateTime from DEATHDATE when present.
 
     The new mapping uses deceasedDateTime (actual date) rather than
@@ -185,8 +185,8 @@ def _deceased(message: PromsMessage) -> Optional[object]:
 
     parsed_d = to_fhir_date(raw)
     if parsed_d is not None:
-        # fhir.resources accepts date for deceasedDateTime
-        return parsed_d
+        # Convert date → datetime at midnight UTC so the type is always datetime
+        return datetime(parsed_d.year, parsed_d.month, parsed_d.day, tzinfo=timezone.utc)
 
     # Non-empty but unparseable: treat as deceased with unknown date.
     return True

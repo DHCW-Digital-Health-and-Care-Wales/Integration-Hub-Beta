@@ -32,7 +32,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 # Copy the rest of the project source code and install it
-COPY proms_fhir_transformer/ /app/proms_fhir_transformer
+COPY xml_fhir_proms_transformer/ /app/xml_fhir_proms_transformer
 RUN uv --native-tls sync --locked --no-dev
 
 # Place executables in the environment at the front of the path

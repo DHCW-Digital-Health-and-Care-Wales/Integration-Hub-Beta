@@ -148,10 +148,10 @@ def _build_standard_bundle(
 
     linked_practitioner_uuid = practitioner_uuid if practitioner is not None else None
     linked_org_uuid = org_uuid if organization is not None else None
-    linked_location_uuid = location_uuid if location is not None else None
 
     # Build the clinical resource (entry[2]) based on bundle type
     type_name = message_type.name
+    clinical_resource: Resource
     if type_name == "PROCEDURE_PERFORMED":
         clinical_resource = map_procedure(message, clinical_uuid, patient_uuid)
     elif type_name in ("APPOINTMENT_SCHEDULED", "APPOINTMENT_CANCELLED"):

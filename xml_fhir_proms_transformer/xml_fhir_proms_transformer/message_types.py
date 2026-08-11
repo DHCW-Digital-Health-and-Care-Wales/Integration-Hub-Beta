@@ -34,7 +34,6 @@ from .fhir_constants import (
     REFERRAL_EVENT_CODE,
     REFERRAL_EVENT_DISPLAY,
     WPAS_EVENT_DEFINITION_BASE,
-    WPAS_EVENT_SYSTEM,
 )
 
 # Resource type labels used in entry_order tuples (informational only).
