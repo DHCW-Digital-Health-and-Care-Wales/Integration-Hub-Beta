@@ -1,15 +1,16 @@
-"""PROMS Transformer plugin.
+"""WPAS XML fixtures for the PROMS transformer tests.
 
-transform_proms_xml_to_fhir_bundle() is a standalone function — no class init needed.
+All fixtures use the actual PromsEventRequest root element format confirmed
+from real WPAS SIT payload samples. The eventCode field inside the document
+is used for message routing (not the root element tag).
+
+Field names match the actual camelCase WPAS payload fields observed in SIT
+(e.g. nhsNumber, patientFirstname, patientSurname, hbCode, referrer_code).
 """
-from __future__ import annotations
 
-import json
-
-from .base import ServicePlugin
-
-_PROMS_REFERRAL = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# Full REFERRAL message — all currently-mapped fields populated.
+# Based on real SIT payload format (hbCode X98 is a SIT test code).
+REFERRAL_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -44,10 +45,11 @@ _PROMS_REFERRAL = """\
   <main_specialty_name>Trauma and Orthopaedics</main_specialty_name>
   <appointmentDate></appointmentDate>
   <appointmentTime></appointmentTime>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
-_PROMS_SURGERY = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# SURGERY (Procedure Performed) message
+SURGERY_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -69,10 +71,11 @@ _PROMS_SURGERY = """\
   <clinicianName>Morgan, James</clinicianName>
   <appointmentDate>2024-07-20</appointmentDate>
   <appointmentTime>09:30</appointmentTime>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
-_PROMS_PREOP = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# PREOP (Appointment Scheduled) message
+PREOP_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -94,10 +97,11 @@ _PROMS_PREOP = """\
   <main_specialty_name>Trauma and Orthopaedics</main_specialty_name>
   <appointmentDate>2024-08-15</appointmentDate>
   <appointmentTime>14:00</appointmentTime>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
-_PROMS_INPATIENT = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# INPATIENT (Inpatient Admission) message
+INPATIENT_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -116,10 +120,11 @@ _PROMS_INPATIENT = """\
   <dhaCode>7A2</dhaCode>
   <consultant_code>WILLR</consultant_code>
   <clinicianName>Williams, Rhys</clinicianName>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
-_PROMS_CANCELLED = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# CANCELLED (Appointment Cancelled) message
+CANCELLED_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -140,10 +145,11 @@ _PROMS_CANCELLED = """\
   <clinicianName>Jones, Hannah</clinicianName>
   <appointmentDate>2024-10-15</appointmentDate>
   <appointmentTime>11:00</appointmentTime>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
-_PROMS_PREREAD = """\
-<?xml version="1.0" encoding="UTF-8"?>
+# PREREAD (Pre-admission Notification) message
+PREREAD_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
   <hbCode>X98</hbCode>
@@ -162,37 +168,60 @@ _PROMS_PREREAD = """\
   <dhaCode>7A4</dhaCode>
   <consultant_code>DAVIP</consultant_code>
   <clinicianName>Price, David</clinicianName>
-</PromsEventRequest>"""
+</PromsEventRequest>
+"""
 
+# Minimal REFERRAL — only routing and patient identity present.
+MINIMAL_REFERRAL_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <eventCode>REFERRAL</eventCode>
+  <nhsNumber>9434765994</nhsNumber>
+  <patientSurname>Unknown</patientSurname>
+  <patientFirstname>Minimal</patientFirstname>
+</PromsEventRequest>
+"""
 
-class PromsPlugin(ServicePlugin):
-    tab_label = "PROMS Transformer"
-    description = (
-        "WPAS XML (PromsEventRequest) → Promptly FHIR R4B message Bundle\n"
-        "Supported eventCodes: REFERRAL · SURGERY · PREOP · INPATIENT · CANCELLED · PREREAD"
-    )
-    input_label = "WPAS PromsEventRequest XML"
-    output_label = "FHIR R4B JSON Bundle"
-    button_label = "▶  Transform"
-    samples = {
-        "REFERRAL (Referral)": _PROMS_REFERRAL,
-        "SURGERY (Procedure)": _PROMS_SURGERY,
-        "PREOP (Appointment)": _PROMS_PREOP,
-        "INPATIENT (Encounter)": _PROMS_INPATIENT,
-        "CANCELLED (Appointment Cancelled)": _PROMS_CANCELLED,
-        "PREREAD (Pre-admission)": _PROMS_PREREAD,
-    }
+# Explicit eventCode field in a generic root element (confirms eventCode routing).
+EXPLICIT_EVENT_CODE_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<WpasMessage>
+  <eventCode>SURGERY</eventCode>
+  <system_id>149</system_id>
+  <nhsNumber>9434766001</nhsNumber>
+  <patientSurname>Nested</patientSurname>
+  <patientFirstname>Field</patientFirstname>
+</WpasMessage>
+"""
 
-    def __init__(self) -> None:
-        pass
+# Unroutable message — eventCode not in the known set.
+UNROUTABLE_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <eventCode>UNKNOWN_TYPE</eventCode>
+  <nhsNumber>9434766010</nhsNumber>
+</PromsEventRequest>
+"""
 
-    def run(self, input_text: str) -> tuple[str, str]:
-        from xml_fhir_proms_transformer.proms_transformer import transform_proms_xml_to_fhir_bundle
+# Nested payload — proves the parser is depth-agnostic.
+NESTED_REFERRAL_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <Header>
+    <eventCode>REFERRAL</eventCode>
+    <system_id>149</system_id>
+  </Header>
+  <Patient>
+    <nhsNumber>9434766019</nhsNumber>
+    <patientSurname>Nested</patientSurname>
+    <patientFirstname>Field</patientFirstname>
+  </Patient>
+</PromsEventRequest>
+"""
 
-        bundle = transform_proms_xml_to_fhir_bundle(input_text.strip())
-        raw = bundle.model_dump_json()
-        pretty = json.dumps(json.loads(raw), indent=2, ensure_ascii=False)
-
-        entries = [e.resource.get_resource_type() for e in (bundle.entry or [])]
-        summary = f"✓  {len(entries)} entries: {', '.join(entries)}"
-        return pretty, summary
+# Legacy field names kept as a backwards-compatibility check for the parser.
+LEGACY_MESSAGE_TYPE_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <MESSAGE_TYPE>REFERRAL</MESSAGE_TYPE>
+  <system_id>149</system_id>
+  <nhsNumber>9434766028</nhsNumber>
+  <patientSurname>Legacy</patientSurname>
+  <patientFirstname>Type</patientFirstname>
+</PromsEventRequest>
+"""
