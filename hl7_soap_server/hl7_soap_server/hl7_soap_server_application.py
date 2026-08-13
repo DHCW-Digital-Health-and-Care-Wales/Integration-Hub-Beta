@@ -7,6 +7,7 @@ import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -198,8 +199,15 @@ def create_soap_request_handler(
             self._write_response(status_code, response_xml)
 
         def do_GET(self) -> None:  # noqa: N802 (BaseHTTPRequestHandler API)
-            request_path, _, query_string = self.path.partition("?")
-            if request_path == endpoint_path and query_string.lower() == "wsdl":
+            # Some reverse proxies (including Azure Container Apps ingress in
+            # certain configurations) forward requests using an absolute-form
+            # request-target (e.g. "https://host/soap?wsdl") rather than the
+            # relative-form ("/soap?wsdl"). urlsplit() correctly extracts just
+            # the path/query in either case, whereas a raw partition("?") on
+            # self.path would leave a scheme+host prefix on request_path and
+            # never match endpoint_path.
+            parsed_path = urlsplit(self.path)
+            if parsed_path.path == endpoint_path and parsed_path.query.lower() == "wsdl":
                 self._write_wsdl_response()
                 return
             self._write_response(405, build_soap_fault_response("Client", "SOAP endpoint accepts POST only."))
