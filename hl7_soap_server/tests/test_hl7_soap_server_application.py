@@ -54,7 +54,8 @@ class TestWsdlEndpoint(unittest.TestCase):
         conn.close()
 
         self.assertEqual(200, response.status)
-        self.assertIn("text/xml", content_type)
+        self.assertIsNotNone(content_type)
+        self.assertIn("text/xml", content_type or "")
         self.assertIn("/soap", body)
         self.processor.process.assert_not_called()
 
