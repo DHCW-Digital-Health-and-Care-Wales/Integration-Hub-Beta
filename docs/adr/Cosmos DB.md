@@ -194,7 +194,7 @@ The decision aligns with the organisation's cloud strategy and provides a centra
 
 - The introduction of a managed database service will increase operational costs. However the Cosmos DB instance will use serverless capacity, given the low volume of configuration and state data being stored, ongoing operational costs are expected to be minimal.
 - The solution introduces a dependency on an Azure platform service, meaning configuration management will rely on the availability and governance of Cosmos DB.
-- Carefull consideration must be taken with regards to backwards compatibility if the configuration is to be modified in the future.  JSON data structures are more difficult to migrate than SQL.
+- Careful consideration must be taken with regards to backwards compatibility if the configuration is to be modified in the future.  JSON data structures are more difficult to migrate than SQL.
 
 **Other:** 
 - No significant impact is expected for end users, stakeholders, or consuming systems, as the change is focused on the internal storage and management of configuration data for the monitoring dashboard.
