@@ -26,6 +26,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
+      - PMS HL7 SOAP Server
       - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
@@ -192,6 +193,12 @@ stages:
         - name: 'LIMS HL7 SOAP Server'
           appImageName: 'hl7soapserver'
           appFunctionMidfix: 'lims'
+          buildPipeline: 'HL7 SOAP Server - Build'
+
+        # PMS SOAP Server
+        - name: 'PMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'pms'
           buildPipeline: 'HL7 SOAP Server - Build'
 
         # Mock Receiver
