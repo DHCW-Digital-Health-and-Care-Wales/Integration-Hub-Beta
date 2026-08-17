@@ -1,7 +1,7 @@
 from hl7apy.core import Message
 
 from hl7_rest_server.custom_validation.mpi_outbound_validation import validate_mpi_outbound_specific_fields
-from hl7_rest_server.custom_validation.phw_validation import validate_pid7_date_of_birth
+from hl7_rest_server.custom_validation.risp_validation import validate_risp_message
 from hl7_rest_server.exceptions.validation_exception import ValidationException
 
 __all__ = ["HL7Validator", "ValidationException"]
@@ -24,7 +24,12 @@ class HL7Validator:
     def validate(self, message: Message) -> None:
         # Common validations for all flows
         self._validate_hl7_version(message)
-        self._validate_sending_app(message)
+
+        # The 'risp' flow accepts several message types, each with its own required sending
+        # facility (MSH.3) range (see validate_risp_message) — the single-value SENDING_APP check
+        # below doesn't fit that shape, so it is skipped in favour of the flow-specific rule.
+        if self.flow_name != "risp":
+            self._validate_sending_app(message)
 
         # Flow-specific validation if needed
         if self.flow_name:
@@ -46,7 +51,7 @@ class HL7Validator:
                 )
 
     def _validate_flow_specific(self, message: Message) -> None:
-        if self.flow_name == "phw":
-            validate_pid7_date_of_birth(message)
         if self.flow_name == "mpi":
             validate_mpi_outbound_specific_fields(message)
+        if self.flow_name == "risp":
+            validate_risp_message(message)

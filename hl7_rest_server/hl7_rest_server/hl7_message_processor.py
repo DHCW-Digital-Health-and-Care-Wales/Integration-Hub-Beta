@@ -18,6 +18,7 @@ from message_bus_lib.metadata_utils import (
     CORRELATION_ID_KEY,
     MESSAGE_RECEIVED_AT_KEY,
     SOURCE_SYSTEM_KEY,
+    WORKFLOW_ID_KEY,
     get_metadata_log_values,
 )
 from metric_sender_lib.metric_sender import MetricSender
@@ -26,6 +27,7 @@ from hl7_rest_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, bu
 from hl7_rest_server.errors import Hl7ParseError, Hl7ValidationError
 from hl7_rest_server.hl7_ack_builder import HL7AckBuilder
 from hl7_rest_server.hl7_validator import HL7Validator, ValidationException
+from hl7_rest_server.risp_routing import RispFlowRouter, RoutingTarget
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,9 @@ class Hl7MessageProcessor:
         egress_session_id: str,
         flow_name: str | None = None,
         standard_version: str | None = None,
+        risp_router: RispFlowRouter | None = None,
+        destination_senders: dict[str, MessageSenderClient] | None = None,
+        destination_workflow_ids: dict[str, str] | None = None,
     ) -> None:
         self.sender_client = sender_client
         self.event_logger = event_logger
@@ -62,6 +67,9 @@ class Hl7MessageProcessor:
         self.egress_session_id = egress_session_id
         self.flow_name = flow_name
         self.standard_version = standard_version
+        self.risp_router = risp_router
+        self.destination_senders = destination_senders or {}
+        self.destination_workflow_ids = destination_workflow_ids or {}
 
     def process(self, raw_message: str) -> str:
         """Validate, store and forward an ER7 message, returning the HL7 ACK.
@@ -86,7 +94,16 @@ class Hl7MessageProcessor:
         tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
         correlation_id = tracking_metadata_properties.get(CORRELATION_ID_KEY, "")
 
-        xml_payload = self._run_flow_schema_validation(raw_message, msg, tracking_metadata_properties, correlation_id)
+        routing_targets: list[RoutingTarget] | None = None
+        if self.risp_router is not None:
+            # RISP messages may fan out to more than one destination/format (see risp_routing.py);
+            # any XML target's payload doubles as the message-store XML copy.
+            routing_targets = self._resolve_risp_targets(raw_message, msg, correlation_id)
+            xml_payload = next((target.payload for target in routing_targets if target.is_xml), None)
+        else:
+            xml_payload = self._run_flow_schema_validation(
+                raw_message, msg, tracking_metadata_properties, correlation_id
+            )
 
         if xml_payload is None:
             xml_payload = self._generate_store_xml(raw_message, correlation_id)
@@ -98,12 +115,16 @@ class Hl7MessageProcessor:
         # Non-blocking: attempt to store first so there is a persisted copy before forwarding.
         self._send_to_message_store(raw_message, tracking_metadata_properties, xml_payload)
 
-        self._send_to_service_bus(raw_message, message_control_id, tracking_metadata_properties)
+        if routing_targets is not None:
+            self._send_to_destinations(message_control_id, tracking_metadata_properties, routing_targets)
+        else:
+            self._send_to_service_bus(raw_message, message_control_id, tracking_metadata_properties)
 
         ack_message = self.ack_builder.build_success_ack(msg)
         self.event_logger.log_message_processed(raw_message, "ACK generated successfully")
         logger.info("ACK generated successfully")
         return ack_message
+
 
     def _parse(self, raw_message: str) -> Message:
         try:
@@ -133,7 +154,8 @@ class Hl7MessageProcessor:
         correlation_id: str,
     ) -> str | None:
         # Flow validation also generates XML, used for the message store.
-        if not self.flow_name or self.flow_name == "mpi":
+        # 'mpi' has no XSD schema; 'risp' is routed/validated via RispFlowRouter instead (process()).
+        if not self.flow_name or self.flow_name in ("mpi", "risp"):
             return None
 
         try:
@@ -199,6 +221,13 @@ class Hl7MessageProcessor:
         nack = self.ack_builder.build_validation_nack(msg, reason)
         raise Hl7ValidationError(nack, reason)
 
+    def _resolve_risp_targets(self, raw_message: str, msg: Message, correlation_id: str) -> list[RoutingTarget]:
+        assert self.risp_router is not None  # nosec B101 - only called when risp_router is configured
+        try:
+            return self.risp_router.resolve_targets(msg, raw_message)
+        except ValidationException as e:
+            self._raise_validation_failure(raw_message, msg, str(e), correlation_id)
+
     def _send_to_message_store(
         self, raw_message: str, tracking_metadata_properties: dict[str, str], xml_payload: str | None
     ) -> None:
@@ -235,3 +264,37 @@ class Hl7MessageProcessor:
         except Exception as e:
             logger.error("Failed to send message %s to Service Bus: %s", message_control_id, str(e))
             raise
+
+    def _send_to_destinations(
+        self,
+        message_control_id: str,
+        tracking_metadata_properties: dict[str, str],
+        targets: list[RoutingTarget],
+    ) -> None:
+        """Send a RISP message to each of its resolved destinations, sequentially.
+
+        Each destination gets its own copy of the tracking properties with WORKFLOW_ID overridden
+        to that destination's configured workflow id. If a send fails partway through, the
+        exception propagates (mirroring ``_send_to_service_bus``) and no ACK is returned; any
+        destination(s) already sent successfully are not rolled back.
+        """
+        for target in targets:
+            sender = self.destination_senders.get(target.destination)
+            if sender is None:
+                raise RuntimeError(f"No sender client configured for destination '{target.destination}'")
+
+            properties = dict(tracking_metadata_properties)
+            workflow_id = self.destination_workflow_ids.get(target.destination)
+            if workflow_id:
+                properties[WORKFLOW_ID_KEY] = workflow_id
+
+            try:
+                sender.send_text_message(target.payload, properties, message_id=message_control_id)
+                logger.info(
+                    "Message %s sent to '%s' destination successfully", message_control_id, target.destination
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to send message %s to '%s' destination: %s", message_control_id, target.destination, e
+                )
+                raise

@@ -35,6 +35,10 @@ class AppConfig:
     hl7_validation_flow: str | None = None
     hl7_validation_standard: str | None = None
     max_message_size_bytes: int = DEFAULT_MAX_MESSAGE_SIZE_BYTES
+    wrrs_queue_name: str | None = None
+    wrrs_topic_name: str | None = None
+    wrrs_egress_session_id: str | None = None
+    wrrs_workflow_id: str | None = None
 
     @property
     def swagger_enabled(self) -> bool:
@@ -50,6 +54,11 @@ class AppConfig:
 
         if egress_queue_name and egress_topic_name:
             raise RuntimeError("Cannot specify both EGRESS_QUEUE_NAME and EGRESS_TOPIC_NAME.")
+
+        hl7_validation_flow = _read_env("HL7_VALIDATION_FLOW")
+        wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id = _read_and_validate_wrrs_config(
+            hl7_validation_flow
+        )
 
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
@@ -67,10 +76,43 @@ class AppConfig:
             environment=(_read_env("ENVIRONMENT") or DEFAULT_ENVIRONMENT).upper(),
             host=_read_env("HOST") or DEFAULT_HOST,
             port=_read_int_env("PORT") or DEFAULT_PORT,
-            hl7_validation_flow=_read_env("HL7_VALIDATION_FLOW"),
+            hl7_validation_flow=hl7_validation_flow,
             hl7_validation_standard=_read_env("HL7_VALIDATION_STANDARD"),
             max_message_size_bytes=_read_and_validate_message_size(),
+            wrrs_queue_name=wrrs_queue_name,
+            wrrs_topic_name=wrrs_topic_name,
+            wrrs_egress_session_id=wrrs_egress_session_id,
+            wrrs_workflow_id=wrrs_workflow_id,
         )
+
+
+def _read_and_validate_wrrs_config(
+    hl7_validation_flow: str | None,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Read the WRRS destination config, required only for the 'risp' flow (plan §3a).
+
+    RISP is the only flow that sends directly to WRRS (in addition to, or instead of, the
+    primary EGRESS_QUEUE_NAME/EGRESS_TOPIC_NAME destination), so WRRS_* variables are validated
+    as required only when HL7_VALIDATION_FLOW is 'risp'; other flows can leave them unset.
+    """
+    wrrs_queue_name = _read_env("WRRS_QUEUE_NAME")
+    wrrs_topic_name = _read_env("WRRS_TOPIC_NAME")
+    wrrs_egress_session_id = _read_env("WRRS_EGRESS_SESSION_ID")
+    wrrs_workflow_id = _read_env("WRRS_WORKFLOW_ID")
+
+    if hl7_validation_flow != "risp":
+        return wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id
+
+    if not wrrs_queue_name and not wrrs_topic_name:
+        raise RuntimeError("The 'risp' flow requires either WRRS_QUEUE_NAME or WRRS_TOPIC_NAME to be provided.")
+    if wrrs_queue_name and wrrs_topic_name:
+        raise RuntimeError("Cannot specify both WRRS_QUEUE_NAME and WRRS_TOPIC_NAME.")
+    if not wrrs_egress_session_id:
+        raise RuntimeError("The 'risp' flow requires WRRS_EGRESS_SESSION_ID to be provided.")
+    if not wrrs_workflow_id:
+        raise RuntimeError("The 'risp' flow requires WRRS_WORKFLOW_ID to be provided.")
+
+    return wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id
 
 
 def _read_and_validate_message_size() -> int:

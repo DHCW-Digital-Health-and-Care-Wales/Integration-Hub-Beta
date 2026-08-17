@@ -8,6 +8,7 @@ from hl7_rest_server.app_config import AppConfig
 from hl7_rest_server.hl7_ack_builder import HL7AckBuilder
 from hl7_rest_server.hl7_message_processor import Hl7MessageProcessor
 from hl7_rest_server.hl7_validator import HL7Validator
+from hl7_rest_server.risp_routing import MPI_TRANSFORMER_DESTINATION, WRRS_DESTINATION, RispFlowRouter
 from hl7_rest_server.runtime import RuntimeContext
 
 # A minimal, valid ER7 ADT^A28 message (segments separated by CR).
@@ -15,6 +16,24 @@ VALID_ER7_MESSAGE = (
     "MSH|^~\\&|252|252|MPI|MPI|20240101120000||ADT^A28^ADT_A05|MSGID12345|P|2.5\r"
     "EVN|A28|20240101120000\r"
     "PID|1||123456^^^NHS||SMITH^JOHN||19800101|M"
+)
+
+# RISP sample messages (MSH.3=349, version 2.5.1) — see plan §3a.
+RISP_A28_MESSAGE = (
+    "MSH|^~\\&|349|349|MPI|MPI|20240101120000||ADT^A28^ADT_A05|RISPMSG001|P|2.5.1\r"
+    "EVN|A28|20240101120000\r"
+    "PID|1||654321^^^NHS||DOE^JANE||19900101|F"
+)
+RISP_A40_MESSAGE = (
+    "MSH|^~\\&|349|349|MPI|MPI|20240101120000||ADT^A40^ADT_A39|RISPMSG002|P|2.5.1\r"
+    "EVN|A40|20240101120000\r"
+    "PID|1||654321^^^NHS||DOE^JANE||19900101|F"
+)
+RISP_ORU_R01_MESSAGE = (
+    "MSH|^~\\&|350|350|MPI|MPI|20240101120000||ORU^R01^ORU_R01|RISPMSG003|P|2.5.1\r"
+    "PID|1||654321^^^NHS||DOE^JANE||19900101|F\r"
+    "OBR|1||ORDER1||\r"
+    "OBX|1|ST|TEST||RESULT"
 )
 
 
@@ -26,7 +45,15 @@ def make_config(
     sending_app: str | None = None,
     hl7_validation_flow: str | None = None,
     hl7_validation_standard: str | None = None,
+    wrrs_queue_name: str | None = None,
+    wrrs_egress_session_id: str | None = None,
+    wrrs_workflow_id: str | None = None,
 ) -> AppConfig:
+    if hl7_validation_flow == "risp":
+        wrrs_queue_name = wrrs_queue_name or "wrrs-queue"
+        wrrs_egress_session_id = wrrs_egress_session_id or "risp-to-wrrs"
+        wrrs_workflow_id = wrrs_workflow_id or "risp-to-wrrs"
+
     return AppConfig(
         connection_string="Endpoint=sb://test;",
         egress_queue_name="egress-queue",
@@ -46,6 +73,9 @@ def make_config(
         hl7_validation_flow=hl7_validation_flow,
         hl7_validation_standard=hl7_validation_standard,
         max_message_size_bytes=max_message_size_bytes,
+        wrrs_queue_name=wrrs_queue_name,
+        wrrs_egress_session_id=wrrs_egress_session_id,
+        wrrs_workflow_id=wrrs_workflow_id,
     )
 
 
@@ -74,6 +104,23 @@ def build_test_context(
     validator = HL7Validator(hl7_version, sending_app, flow_name)
     ack_builder = HL7AckBuilder()
 
+    risp_router = None
+    destination_senders = None
+    destination_workflow_ids = None
+    wrrs_sender_client = None
+
+    if flow_name == "risp":
+        risp_router = RispFlowRouter()
+        wrrs_sender_client = MagicMock()
+        destination_senders = {
+            MPI_TRANSFORMER_DESTINATION: sender_client,
+            WRRS_DESTINATION: wrrs_sender_client,
+        }
+        destination_workflow_ids = {
+            MPI_TRANSFORMER_DESTINATION: config.workflow_id,
+            WRRS_DESTINATION: config.wrrs_workflow_id or "risp-to-wrrs",
+        }
+
     processor = Hl7MessageProcessor(
         sender_client=sender_client,
         event_logger=event_logger,
@@ -85,6 +132,9 @@ def build_test_context(
         egress_session_id=config.egress_session_id,
         flow_name=flow_name,
         standard_version=standard_version,
+        risp_router=risp_router,
+        destination_senders=destination_senders,
+        destination_workflow_ids=destination_workflow_ids,
     )
 
     context = RuntimeContext(
@@ -93,5 +143,6 @@ def build_test_context(
         ack_builder=ack_builder,
         sender_client=sender_client,
         message_store_client=store_client,
+        wrrs_sender_client=wrrs_sender_client,
     )
     return context, sender_client, store_client

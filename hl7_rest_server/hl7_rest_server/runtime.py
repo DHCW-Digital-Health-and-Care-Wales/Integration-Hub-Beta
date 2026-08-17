@@ -14,6 +14,7 @@ from hl7_rest_server.app_config import AppConfig
 from hl7_rest_server.hl7_ack_builder import HL7AckBuilder
 from hl7_rest_server.hl7_message_processor import Hl7MessageProcessor
 from hl7_rest_server.hl7_validator import HL7Validator
+from hl7_rest_server.risp_routing import MPI_TRANSFORMER_DESTINATION, WRRS_DESTINATION, RispFlowRouter
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class RuntimeContext:
     ack_builder: HL7AckBuilder
     sender_client: MessageSenderClient | None = None
     message_store_client: MessageStoreClient | None = None
+    wrrs_sender_client: MessageSenderClient | None = None
 
     def close(self) -> None:
         if self.sender_client:
@@ -41,6 +43,12 @@ class RuntimeContext:
                 logger.info("Message store client shut down.")
             except Exception as e:
                 logger.warning("Error closing message store client: %s", e)
+        if self.wrrs_sender_client:
+            try:
+                self.wrrs_sender_client.close()
+                logger.info("WRRS sender client shut down.")
+            except Exception as e:
+                logger.warning("Error closing WRRS sender client: %s", e)
 
 
 def build_runtime_context(config: AppConfig) -> RuntimeContext:
@@ -66,6 +74,33 @@ def build_runtime_context(config: AppConfig) -> RuntimeContext:
     validator = HL7Validator(config.hl7_version, config.sending_app, config.hl7_validation_flow)
     ack_builder = HL7AckBuilder()
 
+    risp_router = None
+    destination_senders = None
+    destination_workflow_ids = None
+    wrrs_sender_client = None
+
+    if config.hl7_validation_flow == "risp":
+        if config.wrrs_topic_name:
+            wrrs_sender_client = factory.create_topic_sender_client(
+                config.wrrs_topic_name, config.wrrs_egress_session_id
+            )
+            logger.info("Configured RISP WRRS destination -> topic: %s", config.wrrs_topic_name)
+        else:
+            wrrs_sender_client = factory.create_queue_sender_client(
+                config.wrrs_queue_name, config.wrrs_egress_session_id
+            )
+            logger.info("Configured RISP WRRS destination -> queue: %s", config.wrrs_queue_name)
+
+        risp_router = RispFlowRouter()
+        destination_senders = {
+            MPI_TRANSFORMER_DESTINATION: sender_client,
+            WRRS_DESTINATION: wrrs_sender_client,
+        }
+        destination_workflow_ids = {
+            MPI_TRANSFORMER_DESTINATION: config.workflow_id,
+            WRRS_DESTINATION: config.wrrs_workflow_id or config.workflow_id,
+        }
+
     processor = Hl7MessageProcessor(
         sender_client=sender_client,
         event_logger=event_logger,
@@ -77,6 +112,9 @@ def build_runtime_context(config: AppConfig) -> RuntimeContext:
         egress_session_id=config.egress_session_id,
         flow_name=config.hl7_validation_flow,
         standard_version=config.hl7_validation_standard,
+        risp_router=risp_router,
+        destination_senders=destination_senders,
+        destination_workflow_ids=destination_workflow_ids,
     )
 
     return RuntimeContext(
@@ -85,4 +123,5 @@ def build_runtime_context(config: AppConfig) -> RuntimeContext:
         ack_builder=ack_builder,
         sender_client=sender_client,
         message_store_client=message_store_client,
+        wrrs_sender_client=wrrs_sender_client,
     )

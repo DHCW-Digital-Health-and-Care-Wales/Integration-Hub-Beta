@@ -47,12 +47,32 @@ Configuration is read from environment variables (`hl7_rest_server/app_config.py
 | `PEER_SERVICE` | yes | Downstream peer service name |
 | `HL7_VERSION` | | Expected inbound HL7 version (validation) |
 | `SENDING_APP` | | Expected inbound sending application (validation) |
-| `HL7_VALIDATION_FLOW` | | Flow name for flow-schema validation (e.g. `phw`, `mpi`) |
+| `HL7_VALIDATION_FLOW` | | Flow name for flow-schema validation (e.g. `mpi`, `risp`) |
 | `HL7_VALIDATION_STANDARD` | | HL7 standard version for structural validation |
 | `MAX_MESSAGE_SIZE_BYTES` | | Max accepted message size (default 1MB, cap 100MB) |
 | `ENVIRONMENT` | | `DEV`/`SIT`/`TST`/... — gates Swagger UI |
 | `HOST` / `PORT` | | Bind host/port (default `0.0.0.0:8080`) |
 | `LOG_LEVEL` / `AZURE_LOG_LEVEL` | | Logging levels |
+
+### RISP flow (`HL7_VALIDATION_FLOW=risp`)
+
+RISP is a shared, multi-message-type source system that fans a single inbound message out to up
+to two destinations (see the plan's §3a):
+
+- `ADT^A28`/`ADT^A31`/`ADT^A40` (MSH.3 `349`) are forwarded as ER7 to `EGRESS_QUEUE_NAME`/`EGRESS_TOPIC_NAME`
+  (the `risp-hl7-transformer` service), which delivers them on to MPI.
+- `ADT^A40` is **additionally** converted to HL7 v2 XML and sent directly to WRRS.
+- `ORU_R01`/`OMG_O19` (MSH.3 `350`-`358`) are validated against their custom XSD schema, converted
+  to XML, and sent directly to WRRS only (not to the transformer/MPI).
+
+When `HL7_VALIDATION_FLOW=risp`, the generic `SENDING_APP` check is skipped in favour of these
+per-message-type MSH.3 rules, and the following additional variables are required:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WRRS_QUEUE_NAME` / `WRRS_TOPIC_NAME` | one of | WRRS destination queue **or** topic (mutually exclusive) |
+| `WRRS_EGRESS_SESSION_ID` | yes | Session id for messages sent to WRRS |
+| `WRRS_WORKFLOW_ID` | yes | Workflow identifier for messages sent to WRRS (e.g. `risp-to-wrrs`) |
 
 ## Local development
 
@@ -85,3 +105,4 @@ docker build \
 ```
 
 The container runs as non-root (UID 5678) and exposes port `8080`.
+

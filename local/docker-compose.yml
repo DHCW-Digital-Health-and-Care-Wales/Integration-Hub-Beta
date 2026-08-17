@@ -126,9 +126,9 @@ services:
           - "phw-hl7-server"
 
   # REST-based HL7 receiver (HTTP counterpart to phw-hl7-server).
-  # POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
-  hl7-rest-server:
-    container_name: hl7-rest-server
+  # Serves the RISP flow: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
+  risp-hl7-rest-server:
+    container_name: risp-hl7-rest-server
     build:
       context: ../hl7_rest_server
       dockerfile: ./Dockerfile
@@ -136,7 +136,7 @@ services:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./hl7-rest-server.env
+      - ./risp-hl7-rest-server.env
     ports:
       - "127.0.0.1:8081:8080"
     healthcheck:
@@ -150,11 +150,11 @@ services:
       - sb-emulator
     profiles:
       - hl7-rest
-      - phw-to-mpi
+      - risp-to-mpi
     networks:
       integration-hub:
         aliases:
-          - "hl7-rest-server"
+          - "risp-hl7-rest-server"
 
   hl7-soap-server:
     container_name: hl7-soap-server
