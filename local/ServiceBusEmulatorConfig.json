@@ -33,20 +33,6 @@
             }
           },
           {
-            "Name": "local-inthub-lims-transformer-ingress",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
-          },
-          {
             "Name": "local-inthub-chemo-transformer-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
@@ -137,6 +123,20 @@
             "Subscriptions": [
               {
                 "Name": "mpihl7input-test-subscription",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-lims-transformer-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-lims-transformer-ingress-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
