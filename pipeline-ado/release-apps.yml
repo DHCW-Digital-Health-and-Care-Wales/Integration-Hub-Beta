@@ -28,6 +28,7 @@ parameters:
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
       - PMS HL7 SOAP Server
+      - PMS HL7 Subscription Sender
       - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
@@ -206,6 +207,11 @@ stages:
           appImageName: 'hl7soapserver'
           appFunctionMidfix: 'pms'
           buildPipeline: 'HL7 SOAP Server - Build'
+
+        - name: 'PMS HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 Subscription Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
