@@ -19,8 +19,8 @@ class HL7AckBuilder:
     def build_success_ack(self, msg: Message) -> str:
         """Application Accept (AA) ACK echoing the inbound message's control ID."""
         return self._build_ack(
-            sending_application=get_hl7_field_value(msg.msh, "msh_3"),
-            sending_facility=get_hl7_field_value(msg.msh, "msh_4"),
+            sending_application=get_hl7_field_value(msg.msh, "msh_3.msh_3_1"),
+            sending_facility=get_hl7_field_value(msg.msh, "msh_4.msh_4_1"),
             message_control_id=get_hl7_field_value(msg.msh, "msh_10"),
             message_version=get_hl7_field_value(msg.msh, "msh_12") or ApiConstants.DEFAULT_HL7_VERSION,
             ack_code=ApiConstants.ACK_CODE_ACCEPT,
@@ -30,8 +30,8 @@ class HL7AckBuilder:
     def build_validation_nack(self, msg: Message, reason: str) -> str:
         """Application Error (AE) NACK echoing the parsed message's MSH fields."""
         return self._build_ack(
-            sending_application=get_hl7_field_value(msg.msh, "msh_3"),
-            sending_facility=get_hl7_field_value(msg.msh, "msh_4"),
+            sending_application=get_hl7_field_value(msg.msh, "msh_3.msh_3_1"),
+            sending_facility=get_hl7_field_value(msg.msh, "msh_4.msh_4_1"),
             message_control_id=get_hl7_field_value(msg.msh, "msh_10") or self.generate_message_control_id(),
             message_version=get_hl7_field_value(msg.msh, "msh_12") or ApiConstants.DEFAULT_HL7_VERSION,
             ack_code=ApiConstants.ACK_CODE_ERROR,

@@ -55,16 +55,16 @@ def validate_risp_message(message: Message) -> None:
     """
     version = get_hl7_field_value(message, "msh.msh_12")
     if version != RISP_HL7_VERSION:
-        raise ValidationException(f"Unsupported HL7 version '{version}' for RISP flow; expected '{RISP_HL7_VERSION}'")
+        raise ValidationException(f"Unsupported HL7 version '{version}'; expected '{RISP_HL7_VERSION}'")
 
-    sending_facility = get_hl7_field_value(message, "msh.msh_3")
+    sending_facility = get_hl7_field_value(message, "msh.msh_3.msh_3_1")
     trigger = resolve_trigger(message)
     structure = resolve_structure(message)
 
     if trigger in ADT_TRIGGERS_TO_MPI:
         if sending_facility != RISP_SENDING_FACILITY:
             raise ValidationException(
-                f"Message sending facility '{sending_facility}' is not valid for RISP ADT messages "
+                f"The sending facility '{sending_facility}' is not included in the list of permitted Assigning Authorities. "
                 f"(trigger '{trigger}'); expected '{RISP_SENDING_FACILITY}'"
             )
         return
@@ -72,12 +72,12 @@ def validate_risp_message(message: Message) -> None:
     if structure in ORU_OMG_STRUCTURES:
         if not _is_valid_oru_omg_facility(sending_facility):
             raise ValidationException(
-                f"Message sending facility '{sending_facility}' is not in the allowed RISP range "
+                f"Message sending facility '{sending_facility}' is not included in the list of permitted Assigning Authorities. "
                 f"({RISP_ORU_OMG_MSH3_MIN}-{RISP_ORU_OMG_MSH3_MAX}) for '{structure}' messages"
             )
         return
 
-    raise ValidationException(f"Unsupported message type/trigger '{structure or trigger}' for RISP flow")
+    raise ValidationException(f"Unsupported message type/trigger '{structure or trigger}'")
 
 
 def _is_valid_oru_omg_facility(sending_facility: str) -> bool:

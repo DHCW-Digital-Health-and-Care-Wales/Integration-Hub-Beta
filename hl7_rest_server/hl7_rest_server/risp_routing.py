@@ -10,7 +10,7 @@ more than one destination and format from a single inbound request:
 
 from dataclasses import dataclass
 
-from hl7_validation import convert_er7_to_xml, validate_and_convert_parsed_message_with_flow_schema
+from hl7_validation import convert_er7_to_xml, validate_and_convert_parsed_message_with_structure_schema
 from hl7apy.core import Message
 
 from hl7_rest_server.custom_validation.risp_validation import (
@@ -26,9 +26,11 @@ from hl7_rest_server.exceptions.validation_exception import ValidationException
 MPI_TRANSFORMER_DESTINATION = "mpi_transformer"
 WRRS_DESTINATION = "wrrs"
 
-# Maps a message structure (MSH.9.3) to the hl7_validation XSD "flow" name used to validate and
-# convert it, per shared_libs/hl7_validation/hl7_validation/resources/{ORU_R01_2_5_1,OMG_O19_2_5_1}.
-ORU_OMG_SCHEMA_FLOWS: dict[str, str] = {
+# Maps a message structure (MSH.9.3) to its XSD file stem, both looked up under the structure's
+# own directory in shared_libs/hl7_validation/hl7_validation/resources/ (e.g. "ORU_R01/ORU_R01_2_5_1.xsd")
+# — keyed by structure + HL7 version rather than by flow, so multiple flows sharing the same
+# message structure/version reuse a single schema instead of duplicating it per flow.
+ORU_OMG_SCHEMA_FILES: dict[str, str] = {
     "ORU_R01": "ORU_R01_2_5_1",
     "OMG_O19": "OMG_O19_2_5_1",
 }
@@ -74,8 +76,10 @@ class RispFlowRouter:
 
     @staticmethod
     def _validate_and_convert_for_wrrs(msg: Message, raw_message: str, structure: str) -> str:
-        schema_flow_name = ORU_OMG_SCHEMA_FLOWS[structure]
-        result = validate_and_convert_parsed_message_with_flow_schema(msg, raw_message, schema_flow_name)
+        schema_file_name = ORU_OMG_SCHEMA_FILES[structure]
+        result = validate_and_convert_parsed_message_with_structure_schema(
+            msg, raw_message, structure, schema_file_name
+        )
         if not result.is_valid:
             raise ValidationException(
                 f"XSD schema validation failed for '{structure}': "

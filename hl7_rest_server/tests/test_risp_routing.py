@@ -46,7 +46,7 @@ class RispFlowRouterTests(unittest.TestCase):
         msg = parse_message(RISP_ORU_R01_MESSAGE, find_groups=False)
         fake_xml = "<ORU_R01>...</ORU_R01>"
         with patch(
-            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_flow_schema",
+            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_structure_schema",
             return_value=ValidationResult(
                 xml_string=fake_xml,
                 structure_id="ORU_R01",
@@ -59,7 +59,7 @@ class RispFlowRouterTests(unittest.TestCase):
         ) as mock_validate:
             targets = self.router.resolve_targets(msg, RISP_ORU_R01_MESSAGE)
 
-        mock_validate.assert_called_once_with(msg, RISP_ORU_R01_MESSAGE, "ORU_R01_2_5_1")
+        mock_validate.assert_called_once_with(msg, RISP_ORU_R01_MESSAGE, "ORU_R01", "ORU_R01_2_5_1")
         self.assertEqual(len(targets), 1)
         self.assertEqual(targets[0].destination, WRRS_DESTINATION)
         self.assertTrue(targets[0].is_xml)
@@ -68,7 +68,7 @@ class RispFlowRouterTests(unittest.TestCase):
     def test_oru_r01_schema_validation_failure_raises(self) -> None:
         msg = parse_message(RISP_ORU_R01_MESSAGE, find_groups=False)
         with patch(
-            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_flow_schema",
+            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_structure_schema",
             return_value=ValidationResult(
                 xml_string="<ORU_R01/>",
                 structure_id="ORU_R01",

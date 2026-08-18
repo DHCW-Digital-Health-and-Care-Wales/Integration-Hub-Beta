@@ -19,6 +19,7 @@ from .utils.structure_detection import (
 )
 from .utils.xml_schema_maps import (
     _load_hl7_type_maps,
+    _load_inline_schema_maps,
     _load_segment_occurs_map,
     _load_segment_sequences,
 )
@@ -296,8 +297,12 @@ def _load_schema_maps(
 ]:
     if not structure_xsd_path:
         return ({}, {}, {}, {}, {})
-    base_dir = _resolve_base_dir(structure_xsd_path)
     base_prefix = _detect_base_prefix(structure_xsd_path)
+    if base_prefix is None:
+        # Self-contained schema (e.g. RISP's ORU_R01/OMG_O19): no '<prefix>_segments.xsd'
+        # include was found, so derive the maps directly from the structure XSD itself.
+        return _load_inline_schema_maps(structure_xsd_path)
+    base_dir = _resolve_base_dir(structure_xsd_path)
     element_to_type, type_children, type_base = _load_hl7_type_maps(base_dir, base_prefix)
     element_max_occurs = _load_segment_occurs_map(base_dir, base_prefix)
     segment_sequences = _load_segment_sequences(base_dir, base_prefix)

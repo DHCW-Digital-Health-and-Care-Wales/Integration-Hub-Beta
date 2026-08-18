@@ -98,7 +98,7 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         assert context.wrrs_sender_client is not None
         fake_xml = "<ORU_R01>...</ORU_R01>"
         with patch(
-            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_flow_schema",
+            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_structure_schema",
             return_value=ValidationResult(
                 xml_string=fake_xml,
                 structure_id="ORU_R01",
