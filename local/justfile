@@ -22,6 +22,7 @@
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
 # - mosaiq-to-mpi  : Mosaiq to MPI integration
+# - wds-to-mpi     : WDS to MPI integration
 # - mpi-to-topic   : MPI to Outbound Integration
 #
 # Tips:
