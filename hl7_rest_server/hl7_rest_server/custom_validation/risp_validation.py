@@ -55,7 +55,7 @@ def validate_risp_message(message: Message) -> None:
     """
     version = get_hl7_field_value(message, "msh.msh_12")
     if version != RISP_HL7_VERSION:
-        raise ValidationException(f"Unsupported HL7 version '{version}'; expected '{RISP_HL7_VERSION}'")
+        raise ValidationException(f"Currently this HL7 version '{version}' is unsupported by the HL7 Message Receiver API;")
 
     sending_facility = get_hl7_field_value(message, "msh.msh_3.msh_3_1")
     trigger = resolve_trigger(message)
@@ -65,7 +65,7 @@ def validate_risp_message(message: Message) -> None:
         if sending_facility != RISP_SENDING_FACILITY:
             raise ValidationException(
                 f"The sending facility '{sending_facility}' is not included in the list of permitted Assigning Authorities. "
-                f"(trigger '{trigger}'); expected '{RISP_SENDING_FACILITY}'"
+                f"(trigger '{trigger}');"
             )
         return
 
@@ -73,7 +73,6 @@ def validate_risp_message(message: Message) -> None:
         if not _is_valid_oru_omg_facility(sending_facility):
             raise ValidationException(
                 f"Message sending facility '{sending_facility}' is not included in the list of permitted Assigning Authorities. "
-                f"({RISP_ORU_OMG_MSH3_MIN}-{RISP_ORU_OMG_MSH3_MAX}) for '{structure}' messages"
             )
         return
 
