@@ -16,11 +16,13 @@
 
 ## Summary
 
-The current process relies on local configuration files to store dashboard settings, meaning data is not persisted beyond individual executions. As pipeline runs overwrite existing settings, historical and operational configuration data can be lost, creating challenges for consistency and alarm configuration. This ADR explores options for persisting configuration data outside of local files, with a particular focus on the introduction of a database-backed solution.
+The current process relies on local configuration files to store dashboard settings, meaning data is not persisted beyond individual executions. As pipeline runs overwrite existing settings, historical and operational configuration data can be lost, creating challenges for consistency and alarm configuration. This ADR documents the decision to select Cosmos DB as the database to persist configuration data.
 
 ## Drivers
 
-The current approach stores pipeline configuration in local files, which are overwritten during execution and do not provide persistent storage. This limits the ability to persist configuration, maintain historical data, and support future enhancements that require reliable state management. To overcome these constraints, Azure Cosmos DB has been selected as the persistent data store, providing a scalable and resilient solution for configuration management.
+- Current local json file storage not fit for production.
+- A scalable, resilient database option is required.
+- The solution needs to be developer friendly
 
 ## Options
 
@@ -94,6 +96,7 @@ https://www.json.org/json-en.html
 * More complex than required for simple configuration storage requirements.
 * Relational design can introduce additional overhead for relatively simple configuration datasets.
 * Potentially higher operational and licensing costs depending on the deployment model.
+* Reasonably large development overhead for the simple use case.
 
 **Other Considerations:**
 * Appropriate if future requirements expand into broader application data management or reporting capabilities.
@@ -109,11 +112,13 @@ https://www.json.org/json-en.html
 * Provides strong consistency and reliability for storing configuration data.
 * Available as a managed Azure service, reducing infrastructure management requirements.
 * Supports structured data models and robust querying capabilities.
+* Supports JSONB
 
 **Cons:**
 * May introduce unnecessary complexity where configuration data does not require a relational model.
 * Requires schema design and ongoing schema management.
 * Additional effort may be required when adapting configuration structures over time.
+* Reasonably large development overhead for the simple use case.
 
 **Other Considerations:**
 * Well suited if future requirements involve complex relationships between configuration entities.
@@ -124,6 +129,16 @@ https://www.json.org/json-en.html
 * Additional development and maintenance effort associated with schema management.
 * No licensing costs when using open-source PostgreSQL.
 
+### Azure App Configuration
+**Pros:**
+* Fully managed service that can be set up in minutes
+* Native integration with popular frameworks
+
+**Cons:**
+- Native to Azure
+- Not suitable when we expand functionality 
+
+
 ### Azure Cosmos DB Assessment
 **Pros:**
 * Provides a persistent and highly available store for configuration data, preventing configuration loss between pipeline executions.
@@ -132,6 +147,7 @@ https://www.json.org/json-en.html
 * Offers low-latency access and built-in resilience through Azure-managed replication and availability features.
 * Supports flexible data structures, allowing configuration models to evolve without significant schema changes.
 * Aligns with a cloud-first architecture and integrates well with the existing Azure ecosystem.
+* Developer friendly API
 
 **Cons:**
 * Introduces additional service costs compared to file-based configuration management.
@@ -176,7 +192,7 @@ https://www.json.org/json-en.html
 
 **Azure Cosmos DB** has been selected as the preferred solution because it directly addresses the key limitations of the current approach. The existing use of local configuration files does not provide reliable persistence, resulting in configuration data being overwritten during pipeline execution and preventing the retention of historical settings. This creates operational challenges and limits the ability to introduce future capabilities that depend on maintaining state over time.
 
-While PostgreSQL and SQL Server would both provide durable and reliable storage, their relational database models introduce additional design, administration, and maintenance overhead that is not currently required for this use case. In contrast, Cosmos DB offers a fully managed, scalable, and highly available platform that can be integrated with minimal operational burden while still supporting future growth.
+While PostgreSQL and SQL Server would both provide durable and reliable storage, their relational database models introduce additional design, administration, and maintenance overhead that is not currently required for this use case. In contrast, Cosmos DB offers a fully managed, scalable, and highly available platform that can be integrated with minimal operational burden while still supporting future growth.  Cosmos has a developer friendly API which greatly simplifies its use.
 
 The decision aligns with the organisation's cloud strategy and provides a centralised configuration repository that improves reliability, maintainability, and resilience. It also establishes a foundation for potential future requirements such as configuration versioning, auditing, environment-specific configuration management, and enhanced operational visibility. As a result, Cosmos DB provides the best balance of functionality, scalability, operational simplicity, and long-term strategic fit for the solution.
 
