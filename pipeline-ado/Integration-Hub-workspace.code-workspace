@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../Integration-Hub-tests"
+		},
+		{
+			"path": "../../Integration-Hub-Terraform"
+		}
+	],
+	"settings": {}
+}
