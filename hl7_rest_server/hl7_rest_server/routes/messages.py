@@ -38,7 +38,7 @@ def receive_hl7_message(payload: HL7Message, request: Request) -> PlainTextRespo
         er7_message = to_er7(normalised)
     except Exception as e:  # Malformed XML / unable to convert to ER7 → treated as unparsable.
         logger.error("Failed to convert inbound message to ER7: %s", e)
-        nack = context.ack_builder.build_generic_nack(f"Internal server error: {e}")
+        nack = context.ack_builder.build_generic_nack(f"{e}")
         return _error_envelope(500, nack)
 
     try:
@@ -48,9 +48,9 @@ def receive_hl7_message(payload: HL7Message, request: Request) -> PlainTextRespo
         logger.info("Message validation failed: %s", e.reason)
         return _error_envelope(422, e.nack_message)
     except Hl7ParseError as e:
-        nack = context.ack_builder.build_generic_nack(f"Internal server error: {e.reason}")
+        nack = context.ack_builder.build_generic_nack(f"{e.reason}")
         return _error_envelope(500, nack)
     except Exception as e:  # e.g. Service Bus send failure — no ACK is returned.
         logger.exception("Unexpected error while processing message: %s", e)
-        nack = context.ack_builder.build_generic_nack(f"Internal server error: {e}")
+        nack = context.ack_builder.build_generic_nack(f"{e}")
         return _error_envelope(500, nack)
