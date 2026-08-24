@@ -128,3 +128,79 @@ def _load_segment_sequences(
     return sequences
 
 
+def _parse_occurs_attr(max_occurs_attr: str | None) -> int | str:
+    if max_occurs_attr is None:
+        return 1
+    if max_occurs_attr == "unbounded":
+        return "unbounded"
+    try:
+        return int(max_occurs_attr)
+    except ValueError:
+        return 1
+
+
+@lru_cache(maxsize=8)
+def _load_inline_schema_maps(
+    structure_xsd_path: str,
+) -> Tuple[
+    Dict[str, str],
+    Dict[str, List[str]],
+    Dict[str, str],
+    Dict[str, int | str],
+    Dict[str, List[Tuple[str, int | str, int | str]]],
+]:
+    """
+    Build the same field-type/segment-sequence maps as ``_load_hl7_type_maps`` /
+    ``_load_segment_occurs_map`` / ``_load_segment_sequences``, but from a single
+    self-contained structure XSD.
+
+    Some structure schemas (e.g. RISP's ORU_R01/OMG_O19) declare every segment and
+    component type inline in one file using ``name``/``type`` attributes, rather
+    than referencing shared ``<prefix>_fields.xsd`` / ``<prefix>_segments.xsd`` /
+    ``<prefix>_types.xsd`` files via ``ref``. This walks every ``complexType`` in
+    the document once and derives the equivalent maps directly from it.
+    """
+    root = ET.parse(structure_xsd_path).getroot()
+
+    element_to_type: Dict[str, str] = {}
+    element_max_occurs: Dict[str, int | str] = {}
+    type_children: Dict[str, List[str]] = {}
+    segment_sequences: Dict[str, List[Tuple[str, int | str, int | str]]] = {}
+
+    for ctype in root.findall(f"{XS_NS}complexType"):
+        type_name = ctype.get("name")
+        seq = ctype.find(f"{XS_NS}sequence")
+        if not type_name or seq is None:
+            continue
+
+        children: List[str] = []
+        sequence_items: List[Tuple[str, int | str, int | str]] = []
+        for el in seq.findall(f"{XS_NS}element"):
+            name = el.get("name")
+            if not name:
+                continue
+            type_attr = el.get("type")
+            if type_attr:
+                element_to_type[name] = type_attr
+
+            min_occurs_attr = el.get("minOccurs")
+            min_occurs: int | str = int(min_occurs_attr) if min_occurs_attr else 1
+            max_occurs = _parse_occurs_attr(el.get("maxOccurs"))
+
+            element_max_occurs[name] = max_occurs
+            children.append(name)
+            sequence_items.append((name, min_occurs, max_occurs))
+
+        if children:
+            type_children[type_name] = children
+        # In this inline style, segment-level complex types are named after the bare
+        # segment tag (e.g. "PID", "MSH") rather than "<segment>.CONTENT".
+        # Component/group types always contain a '.' in their name, so this
+        # distinguishes segments without needing a separate naming convention.
+        if "." not in type_name and sequence_items:
+            segment_sequences[type_name] = sequence_items
+
+    type_base: Dict[str, str] = {}
+    return element_to_type, type_children, type_base, element_max_occurs, segment_sequences
+
+
