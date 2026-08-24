@@ -269,6 +269,7 @@ Profiles:
 - chemo-to-mpi
 - pims-to-mpi
 - mosaiq-to-mpi
+- wds-to-mpi
 - mpi-to-topic
 
 #### Profiles Reference
@@ -283,6 +284,7 @@ Each profile starts a complete integration flow with all required services:
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                       | Mosaiq oncology system to MPI integration flow (no transformation)                                |
+| **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | WDS to MPI integration flow (no transformation)                                                   |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 
@@ -303,6 +305,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
 | **pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
+| **wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
 | **message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
 | **message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
 | **mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
