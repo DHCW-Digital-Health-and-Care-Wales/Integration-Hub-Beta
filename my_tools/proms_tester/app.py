@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import tkinter as tk
+from functools import partial
 from tkinter import filedialog, font, messagebox, ttk
 
 from xml_fhir_proms_transformer.proms_transformer import transform_proms_xml_to_fhir_bundle
@@ -149,7 +150,7 @@ class PromsTestApp(tk.Tk):
                 bg=DHCW_BLUE, fg="white", activebackground=DHCW_YELLOW,
                 font=font.Font(family="Segoe UI", size=9), relief=tk.FLAT,
                 padx=8, pady=2,
-                command=lambda x=xml: self._load_sample(x),
+                command=partial(self._load_sample, xml),
             ).pack(side=tk.LEFT, padx=3)
 
         tk.Frame(toolbar, bg=NHS_BLUE).pack(side=tk.LEFT, expand=True)

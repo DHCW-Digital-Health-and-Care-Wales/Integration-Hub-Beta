@@ -23,7 +23,7 @@ from xml_fhir_proms_transformer.source_systems import (
 
 
 class TestNhsCertification(unittest.TestCase):
-    def test_all_documented_codes_map_to_their_display(self):
+    def test_all_documented_codes_map_to_their_display(self) -> None:
         expected = {
             "01": "Number present & traced",
             "02": "Number present but not traced",
@@ -39,17 +39,17 @@ class TestNhsCertification(unittest.TestCase):
             with self.subTest(code=code):
                 self.assertEqual(nhs_certification_display(code), display)
 
-    def test_unknown_code_is_returned_unchanged(self):
+    def test_unknown_code_is_returned_unchanged(self) -> None:
         # Matches the wiki function, which returns its input when unrecognised.
         self.assertEqual(nhs_certification_display("99"), "99")
 
-    def test_missing_code_returns_none(self):
+    def test_missing_code_returns_none(self) -> None:
         self.assertIsNone(nhs_certification_display(""))
         self.assertIsNone(nhs_certification_display(None))
 
 
 class TestDhaCode(unittest.TestCase):
-    def test_all_documented_codes_map_to_their_health_board(self):
+    def test_all_documented_codes_map_to_their_health_board(self) -> None:
         expected = {
             "7A1": "BETSI CADWALADR UNIVERSITY LHB",
             "7A2": "HYWEL DDA UNIVERSITY LHB",
@@ -63,18 +63,18 @@ class TestDhaCode(unittest.TestCase):
             with self.subTest(code=code):
                 self.assertEqual(dha_code_name(code), name)
 
-    def test_lookup_is_case_insensitive(self):
+    def test_lookup_is_case_insensitive(self) -> None:
         self.assertEqual(dha_code_name("7a3"), "SWANSEA BAY UNIVERSITY LOCAL HEALTH BOARD")
 
-    def test_unknown_code_is_returned_unchanged(self):
+    def test_unknown_code_is_returned_unchanged(self) -> None:
         self.assertEqual(dha_code_name("9Z9"), "9Z9")
 
-    def test_missing_code_returns_none(self):
+    def test_missing_code_returns_none(self) -> None:
         self.assertIsNone(dha_code_name(""))
 
 
 class TestSourceSystems(unittest.TestCase):
-    def test_all_routed_system_ids_have_a_pas_identifier_url(self):
+    def test_all_routed_system_ids_have_a_pas_identifier_url(self) -> None:
         # The eight SYSTEM_IDs in the wiki's ROUTING_RULES_WPAS table.
         expected = {
             "108": "https://fhir.sbuhb.nhs.wales/Id/pas-identifier",
@@ -90,53 +90,54 @@ class TestSourceSystems(unittest.TestCase):
             with self.subTest(system_id=system_id):
                 self.assertEqual(get_pas_identifier_system(system_id), url)
 
-    def test_swansea_bay_carries_the_documented_name_and_endpoint(self):
+    def test_swansea_bay_carries_the_documented_name_and_endpoint(self) -> None:
         source_system = get_source_system("108")
-        self.assertIsNotNone(source_system)
+        assert source_system is not None
         self.assertEqual(source_system.name, "Swansea Bay Health Board")
         self.assertEqual(source_system.endpoint, "https://nhspsom.swanseabayhealthboard.com")
 
-    def test_other_health_boards_have_no_documented_endpoint(self):
+    def test_other_health_boards_have_no_documented_endpoint(self) -> None:
         # The wiki only states the source name/endpoint for Swansea Bay, so the
         # rest are deliberately left unset rather than guessed.
         source_system = get_source_system("109")
-        self.assertIsNotNone(source_system)
+        assert source_system is not None
         self.assertIsNone(source_system.name)
         self.assertIsNone(source_system.endpoint)
 
-    def test_endpoint_can_be_overridden_by_environment(self):
+    def test_endpoint_can_be_overridden_by_environment(self) -> None:
         with mock.patch.dict(os.environ, {"WPAS_SOURCE_ENDPOINT_109": "https://psom.bcuhb.example"}):
             source_system = get_source_system("109")
+        assert source_system is not None
         self.assertEqual(source_system.endpoint, "https://psom.bcuhb.example")
 
-    def test_unknown_system_id_returns_none(self):
+    def test_unknown_system_id_returns_none(self) -> None:
         self.assertIsNone(get_source_system("999"))
         self.assertIsNone(get_pas_identifier_system("999"))
 
-    def test_missing_system_id_returns_none(self):
+    def test_missing_system_id_returns_none(self) -> None:
         self.assertIsNone(get_source_system(""))
         self.assertIsNone(get_source_system(None))
 
 
 class TestStaticReferenceDataResolver(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.resolver = StaticReferenceDataResolver()
 
-    def test_gender_codes_map_to_administrative_gender(self):
+    def test_gender_codes_map_to_administrative_gender(self) -> None:
         for code, expected in (("M", "male"), ("F", "female"), ("O", "other"), ("U", "unknown")):
             with self.subTest(code=code):
                 self.assertEqual(self.resolver.resolve_gender(code), expected)
 
-    def test_numeric_gender_codes_are_supported(self):
+    def test_numeric_gender_codes_are_supported(self) -> None:
         self.assertEqual(self.resolver.resolve_gender("1"), "male")
         self.assertEqual(self.resolver.resolve_gender("2"), "female")
 
-    def test_unmapped_gender_returns_none(self):
+    def test_unmapped_gender_returns_none(self) -> None:
         # An incorrect gender is worse than a missing one.
         with self.assertLogs("xml_fhir_proms_transformer.reference_data", level="WARNING"):
             self.assertIsNone(self.resolver.resolve_gender("ZZ"))
 
-    def test_language_is_unresolvable_without_the_reference_data_service(self):
+    def test_language_is_unresolvable_without_the_reference_data_service(self) -> None:
         with self.assertLogs("xml_fhir_proms_transformer.reference_data", level="INFO"):
             self.assertIsNone(self.resolver.resolve_language("CY"))
 

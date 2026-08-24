@@ -29,6 +29,7 @@ class TestMessageThrottler(unittest.TestCase):
 
     def test_interval_seconds_calculated_correctly(self) -> None:
         throttler = MessageThrottler(max_messages_per_minute=30)
+        assert throttler.interval_seconds is not None
         self.assertAlmostEqual(throttler.interval_seconds, 2.0)
 
     @patch("soap_subscription_sender.message_throttler.time")

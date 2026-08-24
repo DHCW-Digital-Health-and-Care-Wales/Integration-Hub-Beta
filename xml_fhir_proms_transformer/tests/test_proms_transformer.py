@@ -10,6 +10,9 @@ import json
 import unittest
 from unittest import mock
 
+from fhir.resources.R4B.bundle import Bundle
+from fhir.resources.R4B.resource import Resource
+
 from tests.wpas_messages import (
     CANCELLED_MESSAGE,
     EXPLICIT_EVENT_CODE_MESSAGE,
@@ -24,6 +27,7 @@ from tests.wpas_messages import (
     UNROUTABLE_MESSAGE,
 )
 from xml_fhir_proms_transformer import fhir_constants as fc
+from xml_fhir_proms_transformer.mappers.mapping_utils import UuidFactory
 from xml_fhir_proms_transformer.message_types import resolve_message_type
 from xml_fhir_proms_transformer.proms_parser import parse_proms_xml
 from xml_fhir_proms_transformer.proms_transformer import (
@@ -33,28 +37,30 @@ from xml_fhir_proms_transformer.proms_transformer import (
 )
 
 
-def sequential_uuid_factory():
+def sequential_uuid_factory() -> UuidFactory:
     """Produce predictable UUIDs so bundles can be asserted exactly."""
     counter = {"n": 0}
 
-    def factory():
+    def factory() -> str:
         counter["n"] += 1
         return f"00000000-0000-0000-0000-{counter['n']:012d}"
 
     return factory
 
 
-def build(message_xml):
+def build(message_xml: str) -> Bundle:
     """Build a bundle from raw XML with deterministic UUIDs."""
     return transform_proms_xml_to_fhir_bundle(message_xml, uuid_factory=sequential_uuid_factory())
 
 
-def resource_at(bundle, index):
-    return bundle.entry[index].resource
+def resource_at(bundle: Bundle, index: int) -> Resource:
+    resource = bundle.entry[index].resource
+    assert resource is not None
+    return resource
 
 
 class TestMessageTypeRouting(unittest.TestCase):
-    def test_routes_all_six_wpas_event_codes(self):
+    def test_routes_all_six_wpas_event_codes(self) -> None:
         for event_code, expected_name in (
             ("REFERRAL", "REFERRAL"),
             ("SURGERY", "PROCEDURE_PERFORMED"),
@@ -67,32 +73,32 @@ class TestMessageTypeRouting(unittest.TestCase):
                 mt = resolve_message_type(event_code, "PromsEventRequest")
                 self.assertEqual(mt.name, expected_name)
 
-    def test_explicit_event_code_field_overrides_root_tag(self):
+    def test_explicit_event_code_field_overrides_root_tag(self) -> None:
         # SURGERY routed even though root element is <WpasMessage>
         bundle = build(EXPLICIT_EVENT_CODE_MESSAGE)
         self.assertEqual(bundle.type, "message")
         header = resource_at(bundle, 0)
         self.assertEqual(header.eventCoding.code, "SURGERY")
 
-    def test_legacy_message_type_field_accepted_as_fallback(self):
+    def test_legacy_message_type_field_accepted_as_fallback(self) -> None:
         bundle = build(LEGACY_MESSAGE_TYPE_MESSAGE)
         header = resource_at(bundle, 0)
         self.assertEqual(header.eventCoding.code, "REFERRAL")
 
-    def test_routing_is_case_insensitive(self):
+    def test_routing_is_case_insensitive(self) -> None:
         mt = resolve_message_type("referral")
         self.assertEqual(mt.name, "REFERRAL")
 
-    def test_unroutable_message_raises_value_error(self):
+    def test_unroutable_message_raises_value_error(self) -> None:
         with self.assertRaises(ValueError):
             build(UNROUTABLE_MESSAGE)
 
 
 class TestBundleEnvelope(unittest.TestCase):
-    def test_bundle_type_is_message(self):
+    def test_bundle_type_is_message(self) -> None:
         self.assertEqual(build(REFERRAL_MESSAGE).type, "message")
 
-    def test_referral_entry_order_matches_spec(self):
+    def test_referral_entry_order_matches_spec(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         types = [e.resource.get_resource_type() for e in bundle.entry]
         self.assertEqual(
@@ -101,88 +107,88 @@ class TestBundleEnvelope(unittest.TestCase):
              "Practitioner", "Organization", "Location"],
         )
 
-    def test_surgery_entry_order_matches_spec(self):
+    def test_surgery_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(SURGERY_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Procedure", "Practitioner", "Organization", "Location"],
         )
 
-    def test_preop_entry_order_matches_spec(self):
+    def test_preop_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(PREOP_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Appointment", "Practitioner", "Organization", "Location"],
         )
 
-    def test_inpatient_entry_order_matches_spec(self):
+    def test_inpatient_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(INPATIENT_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Encounter", "Practitioner", "Organization", "Location"],
         )
 
-    def test_cancelled_entry_order_matches_spec(self):
+    def test_cancelled_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(CANCELLED_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Appointment", "Practitioner", "Organization", "Location"],
         )
 
-    def test_preread_entry_order_matches_spec(self):
+    def test_preread_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(PREREAD_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Encounter", "Practitioner", "Organization", "Location"],
         )
 
-    def test_every_entry_has_urn_uuid_full_url_matching_its_resource_id(self):
+    def test_every_entry_has_urn_uuid_full_url_matching_its_resource_id(self) -> None:
         for name, xml in (("REFERRAL", REFERRAL_MESSAGE), ("SURGERY", SURGERY_MESSAGE)):
             bundle = build(xml)
             for i, entry in enumerate(bundle.entry):
                 with self.subTest(message=name, index=i):
                     self.assertEqual(entry.fullUrl, f"urn:uuid:{entry.resource.id}")
 
-    def test_every_resource_carries_a_profile(self):
+    def test_every_resource_carries_a_profile(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         for i, entry in enumerate(bundle.entry):
             with self.subTest(index=i):
                 self.assertTrue(entry.resource.meta.profile)
 
-    def test_resource_ids_are_unique(self):
+    def test_resource_ids_are_unique(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         ids = [entry.resource.id for entry in bundle.entry]
         self.assertEqual(len(ids), len(set(ids)))
 
 
 class TestMessageHeader(unittest.TestCase):
-    def test_referral_event_coding(self):
+    def test_referral_event_coding(self) -> None:
         header = resource_at(build(REFERRAL_MESSAGE), 0)
         self.assertEqual(header.meta.profile, [fc.MESSAGE_HEADER_PROFILE])
         self.assertEqual(header.eventCoding.system, fc.WPAS_EVENT_SYSTEM)
         self.assertEqual(header.eventCoding.code, "REFERRAL")
 
-    def test_surgery_event_coding(self):
+    def test_surgery_event_coding(self) -> None:
         header = resource_at(build(SURGERY_MESSAGE), 0)
         self.assertEqual(header.eventCoding.code, "SURGERY")
 
-    def test_destination_is_promptly_collect(self):
+    def test_destination_is_promptly_collect(self) -> None:
         header = resource_at(build(REFERRAL_MESSAGE), 0)
         self.assertEqual(header.destination[0].name, fc.PROMPTLY_COLLECT_DESTINATION_NAME)
         self.assertEqual(header.destination[0].endpoint, fc.PROMPTLY_COLLECT_ENDPOINT)
 
-    def test_sender_references_organization_entry(self):
+    def test_sender_references_organization_entry(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         header = resource_at(bundle, 0)
         org = resource_at(bundle, 5)
         self.assertEqual(header.sender.reference, f"urn:uuid:{org.id}")
 
-    def test_source_resolved_from_system_id(self):
+    def test_source_resolved_from_system_id(self) -> None:
         header = resource_at(build(REFERRAL_MESSAGE), 0)
         # system_id=149 should resolve to a known SourceSystem (see source_systems.py)
         self.assertIsNotNone(header.source.endpoint)
 
-    def test_referral_focus_includes_service_request_and_practitioner_role(self):
+    def test_referral_focus_includes_service_request_and_practitioner_role(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         header = resource_at(bundle, 0)
         sr = resource_at(bundle, 2)
@@ -191,26 +197,26 @@ class TestMessageHeader(unittest.TestCase):
         self.assertIn(f"urn:uuid:{sr.id}", focus_refs)
         self.assertIn(f"urn:uuid:{pr.id}", focus_refs)
 
-    def test_surgery_focus_includes_procedure(self):
+    def test_surgery_focus_includes_procedure(self) -> None:
         bundle = build(SURGERY_MESSAGE)
         header = resource_at(bundle, 0)
         procedure = resource_at(bundle, 2)
         focus_refs = [f.reference for f in header.focus]
         self.assertIn(f"urn:uuid:{procedure.id}", focus_refs)
 
-    def test_minimal_message_still_builds_a_header(self):
+    def test_minimal_message_still_builds_a_header(self) -> None:
         header = resource_at(build(MINIMAL_REFERRAL_MESSAGE), 0)
         self.assertEqual(header.eventCoding.code, "REFERRAL")
 
 
 class TestPatient(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.patient = resource_at(build(REFERRAL_MESSAGE), 1)
 
-    def test_profile(self):
+    def test_profile(self) -> None:
         self.assertEqual(self.patient.meta.profile, [fc.PATIENT_PROFILE])
 
-    def test_name_includes_title_given_middle_and_family(self):
+    def test_name_includes_title_given_middle_and_family(self) -> None:
         name = self.patient.name[0]
         self.assertEqual(name.use, "official")
         self.assertEqual(name.family, "Bevan")
@@ -219,82 +225,82 @@ class TestPatient(unittest.TestCase):
         # Title/prefix
         self.assertIn("Mr", name.prefix)
 
-    def test_gender_male(self):
+    def test_gender_male(self) -> None:
         # resolver returns None by default (no external lookup)
         # gender field "M" resolved via reference_data
         self.assertIn(self.patient.gender, ("male", None))
 
-    def test_birth_date(self):
+    def test_birth_date(self) -> None:
         self.assertEqual(str(self.patient.birthDate), "1897-11-15")
 
-    def test_nhs_number_identifier(self):
+    def test_nhs_number_identifier(self) -> None:
         nhs = next(i for i in self.patient.identifier if i.system == fc.NHS_NUMBER_SYSTEM)
         self.assertEqual(nhs.value, "9434765919")
 
-    def test_address_uses_building_name_street_and_post_town(self):
+    def test_address_uses_building_name_street_and_post_town(self) -> None:
         addr = self.patient.address[0]
         line_str = " ".join(addr.line)
         self.assertIn("Tredegar House", line_str)
         self.assertIn("Park Street", line_str)
         self.assertEqual(addr.city, "Tredegar")
 
-    def test_postcode_present(self):
+    def test_postcode_present(self) -> None:
         self.assertEqual(self.patient.address[0].postalCode, "NP22 3AA")
 
-    def test_deceased_absent_for_non_patient_update_bundles(self):
+    def test_deceased_absent_for_non_patient_update_bundles(self) -> None:
         self.assertIsNone(self.patient.deceasedBoolean)
         self.assertIsNone(self.patient.deceasedDateTime)
 
 
 class TestServiceRequest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.bundle = build(REFERRAL_MESSAGE)
         self.sr = resource_at(self.bundle, 2)
 
-    def test_profile_status_and_intent(self):
+    def test_profile_status_and_intent(self) -> None:
         self.assertEqual(self.sr.meta.profile, [fc.SERVICE_REQUEST_PROFILE])
         self.assertEqual(self.sr.status, fc.SERVICE_REQUEST_STATUS)
         self.assertEqual(self.sr.intent, fc.SERVICE_REQUEST_INTENT)
 
-    def test_subject_references_patient(self):
+    def test_subject_references_patient(self) -> None:
         patient = resource_at(self.bundle, 1)
         self.assertEqual(self.sr.subject.reference, f"urn:uuid:{patient.id}")
         self.assertEqual(self.sr.subject.type, "Patient")
 
-    def test_requester_references_practitioner_role(self):
+    def test_requester_references_practitioner_role(self) -> None:
         pr = resource_at(self.bundle, 3)
         self.assertEqual(self.sr.requester.reference, f"urn:uuid:{pr.id}")
 
 
 class TestPractitionerRole(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.bundle = build(REFERRAL_MESSAGE)
         self.pr = resource_at(self.bundle, 3)
 
-    def test_profile(self):
+    def test_profile(self) -> None:
         self.assertEqual(self.pr.meta.profile, [fc.PRACTITIONER_ROLE_PROFILE])
 
-    def test_practitioner_reference(self):
+    def test_practitioner_reference(self) -> None:
         practitioner = resource_at(self.bundle, 4)
         self.assertEqual(self.pr.practitioner.reference, f"urn:uuid:{practitioner.id}")
 
-    def test_organization_reference(self):
+    def test_organization_reference(self) -> None:
         org = resource_at(self.bundle, 5)
         self.assertEqual(self.pr.organization.reference, f"urn:uuid:{org.id}")
 
-    def test_location_reference(self):
+    def test_location_reference(self) -> None:
         location = resource_at(self.bundle, 6)
         self.assertEqual(self.pr.location[0].reference, f"urn:uuid:{location.id}")
 
 
 class TestPractitioner(unittest.TestCase):
-    def test_referral_uses_referrer_code_and_name(self):
+    def test_referral_uses_referrer_code_and_name(self) -> None:
         practitioner = resource_at(build(REFERRAL_MESSAGE), 4)
         self.assertEqual(practitioner.identifier[0].value, "G7654321")
         # referrer_name: "ARDERN-JONES L" — family=ARDERN-JONES or similar
         self.assertIsNotNone(practitioner.name)
 
-    def test_surgery_uses_consultant_code_and_clinician_name(self):
+    def test_surgery_uses_consultant_code_and_clinician_name(self) -> None:
         practitioner = resource_at(build(SURGERY_MESSAGE), 3)
         self.assertEqual(practitioner.identifier[0].value, "JONMG")
         # clinicianName: "Morgan, James" -> family=Morgan, given=James
@@ -302,21 +308,21 @@ class TestPractitioner(unittest.TestCase):
         self.assertEqual(name.family, "Morgan")
         self.assertIn("James", name.given)
 
-    def test_minimal_message_omits_practitioner_entry_when_no_identifier(self):
+    def test_minimal_message_omits_practitioner_entry_when_no_identifier(self) -> None:
         bundle = build(MINIMAL_REFERRAL_MESSAGE)
         types = [e.resource.get_resource_type() for e in bundle.entry]
         self.assertNotIn("Practitioner", types)
 
 
 class TestOrganization(unittest.TestCase):
-    def test_carries_ods_code_from_dha_code(self):
+    def test_carries_ods_code_from_dha_code(self) -> None:
         org = resource_at(build(REFERRAL_MESSAGE), 5)
         self.assertEqual(org.meta.profile, [fc.ORGANIZATION_PROFILE])
         identifier = org.identifier[0]
         self.assertEqual(identifier.system, fc.ODS_ORGANISATION_CODE_SYSTEM)
         self.assertEqual(identifier.value, "7A1")
 
-    def test_name_uses_lookup_when_referrer_org_is_empty(self):
+    def test_name_uses_lookup_when_referrer_org_is_empty(self) -> None:
         # referrer_org is empty in REFERRAL_MESSAGE — should fall back to DHA lookup
         org = resource_at(build(REFERRAL_MESSAGE), 5)
         # If dha_code_name("7A1") returns something, it should be set
@@ -325,27 +331,27 @@ class TestOrganization(unittest.TestCase):
 
 
 class TestLocation(unittest.TestCase):
-    def test_location_carries_referrer_postcode(self):
+    def test_location_carries_referrer_postcode(self) -> None:
         location = resource_at(build(REFERRAL_MESSAGE), 6)
         self.assertEqual(location.meta.profile, [fc.LOCATION_PROFILE])
         self.assertEqual(location.address.postalCode, "LL57 2PW")
 
-    def test_location_name_uses_first_segment_of_referrer_location(self):
+    def test_location_name_uses_first_segment_of_referrer_location(self) -> None:
         location = resource_at(build(REFERRAL_MESSAGE), 6)
         self.assertEqual(location.name, "YSBYTY GWYNEDD")
 
-    def test_location_identifier_uses_referrer_location_as_value(self):
+    def test_location_identifier_uses_referrer_location_as_value(self) -> None:
         location = resource_at(build(REFERRAL_MESSAGE), 6)
         self.assertEqual(location.identifier[0].system, fc.LOCATION_IDENTIFIER_SYSTEM)
 
 
 class TestProcedure(unittest.TestCase):
-    def test_status_is_completed(self):
+    def test_status_is_completed(self) -> None:
         procedure = resource_at(build(SURGERY_MESSAGE), 2)
         self.assertEqual(procedure.meta.profile, [fc.PROCEDURE_PROFILE])
         self.assertEqual(procedure.status, "completed")
 
-    def test_subject_references_patient(self):
+    def test_subject_references_patient(self) -> None:
         bundle = build(SURGERY_MESSAGE)
         procedure = resource_at(bundle, 2)
         patient = resource_at(bundle, 1)
@@ -353,16 +359,16 @@ class TestProcedure(unittest.TestCase):
 
 
 class TestAppointment(unittest.TestCase):
-    def test_preop_status_is_booked(self):
+    def test_preop_status_is_booked(self) -> None:
         appointment = resource_at(build(PREOP_MESSAGE), 2)
         self.assertEqual(appointment.meta.profile, [fc.APPOINTMENT_PROFILE])
         self.assertEqual(appointment.status, "booked")
 
-    def test_cancelled_status_is_cancelled(self):
+    def test_cancelled_status_is_cancelled(self) -> None:
         appointment = resource_at(build(CANCELLED_MESSAGE), 2)
         self.assertEqual(appointment.status, "cancelled")
 
-    def test_patient_is_a_participant(self):
+    def test_patient_is_a_participant(self) -> None:
         bundle = build(PREOP_MESSAGE)
         appointment = resource_at(bundle, 2)
         patient = resource_at(bundle, 1)
@@ -371,16 +377,16 @@ class TestAppointment(unittest.TestCase):
 
 
 class TestEncounter(unittest.TestCase):
-    def test_inpatient_class_is_imp(self):
+    def test_inpatient_class_is_imp(self) -> None:
         encounter = resource_at(build(INPATIENT_MESSAGE), 2)
         self.assertEqual(encounter.meta.profile, [fc.ENCOUNTER_PROFILE])
         self.assertEqual(encounter.status, "in-progress")
 
-    def test_preread_class_is_prenc(self):
+    def test_preread_class_is_prenc(self) -> None:
         encounter = resource_at(build(PREREAD_MESSAGE), 2)
         self.assertEqual(encounter.status, "planned")
 
-    def test_subject_references_patient(self):
+    def test_subject_references_patient(self) -> None:
         bundle = build(INPATIENT_MESSAGE)
         encounter = resource_at(bundle, 2)
         patient = resource_at(bundle, 1)
@@ -388,46 +394,46 @@ class TestEncounter(unittest.TestCase):
 
 
 class TestParsingRobustness(unittest.TestCase):
-    def test_nesting_does_not_affect_field_lookup(self):
+    def test_nesting_does_not_affect_field_lookup(self) -> None:
         bundle = build(NESTED_REFERRAL_MESSAGE)
         patient = resource_at(bundle, 1)
         self.assertEqual(patient.name[0].family, "Nested")
 
-    def test_malformed_xml_raises_value_error(self):
+    def test_malformed_xml_raises_value_error(self) -> None:
         with self.assertRaises(ValueError):
             build("<PromsEventRequest><unclosed>")
 
-    def test_empty_payload_raises_value_error(self):
+    def test_empty_payload_raises_value_error(self) -> None:
         with self.assertRaises(ValueError):
             build("   ")
 
 
 class TestPromsFhirTransformer(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         patcher = mock.patch.object(PromsFhirTransformer, "__init__", lambda self: None)
         patcher.start()
         self.addCleanup(patcher.stop)
         self.transformer = PromsFhirTransformer()
-        self.transformer._resolver = None
+        self.transformer._resolver = None  # type: ignore[assignment]
         self.transformer.transformer_name = "WPAS_PROMS"
 
-    def test_parse_input_produces_a_parsed_message(self):
+    def test_parse_input_produces_a_parsed_message(self) -> None:
         message = self.transformer.parse_input(REFERRAL_MESSAGE)
         self.assertEqual(message.root_tag, "PromsEventRequest")
         self.assertEqual(message.get("nhsNumber"), "9434765919")
 
-    def test_serialise_output_produces_valid_fhir_json(self):
+    def test_serialise_output_produces_valid_fhir_json(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         payload = json.loads(self.transformer.serialise_output(bundle))
         self.assertEqual(payload["resourceType"], "Bundle")
         self.assertEqual(payload["type"], "message")
         self.assertEqual(payload["entry"][0]["resource"]["resourceType"], "MessageHeader")
 
-    def test_audit_text_reports_the_event_code(self):
+    def test_audit_text_reports_the_event_code(self) -> None:
         message = parse_proms_xml(REFERRAL_MESSAGE)
         self.assertIn("REFERRAL", self.transformer.get_processed_audit_text(message))
 
-    def test_queue_path_matches_standalone_entry_point(self):
+    def test_queue_path_matches_standalone_entry_point(self) -> None:
         message = parse_proms_xml(REFERRAL_MESSAGE)
         queue_bundle = build_fhir_bundle(message, uuid_factory=sequential_uuid_factory())
         standalone_bundle = build(REFERRAL_MESSAGE)

@@ -31,15 +31,21 @@ class TestReplayRecord(unittest.TestCase):
             record.replay_id = 999  # type: ignore[misc]
 
     def test_replay_record_equality(self) -> None:
-        kwargs = dict(replay_id=1, message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi")
-        record_a = ReplayRecord(**kwargs)
-        record_b = ReplayRecord(**kwargs)
+        record_a = ReplayRecord(
+            replay_id=1, message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi"
+        )
+        record_b = ReplayRecord(
+            replay_id=1, message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi"
+        )
         self.assertEqual(record_a, record_b)
 
     def test_replay_record_inequality(self) -> None:
-        shared = dict(message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi")
-        record_a = ReplayRecord(replay_id=1, **shared)
-        record_b = ReplayRecord(replay_id=2, **shared)
+        record_a = ReplayRecord(
+            replay_id=1, message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi"
+        )
+        record_b = ReplayRecord(
+            replay_id=2, message_id=100, raw_payload="payload", correlation_id="corr", session_id="mpi"
+        )
         self.assertNotEqual(record_a, record_b)
 
 
