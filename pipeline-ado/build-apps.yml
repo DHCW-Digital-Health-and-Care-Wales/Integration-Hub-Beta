@@ -194,8 +194,7 @@ stages:
     - stage: Build_hl7restserver
       displayName: 'Build — HL7 REST Server'
       dependsOn: CodeQuality_hl7restserver
-      condition: eq(dependencies.CodeQuality_hl7restserver.result, 'Succeeded', 'SucceededWithIssues')
-      jobs:
+      condition: in(dependencies.CodeQuality_hl7restserver.result, 'Succeeded', 'SucceededWithIssues')
         - template: templates/docker-build-push-template.yml
           parameters:
             jobName: 'BuildPushHL7RestServer'
