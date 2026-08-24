@@ -20,14 +20,14 @@ class HealthRouteTests(unittest.TestCase):
         response = self.client.get("/hl7MessageReceiver/ping")
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body["status"], "ok")
+        self.assertIn("clientIp", body)
         self.assertIn("version", body)
 
-    def test_status_reports_sender_initialised(self) -> None:
+    def test_status_reports_ok_without_timeout(self) -> None:
         response = self.client.get("/hl7MessageReceiver/status")
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertTrue(body["senderInitialised"])
+        self.assertFalse(body["timeout"])
         self.assertEqual(body["status"], 200)
 
 

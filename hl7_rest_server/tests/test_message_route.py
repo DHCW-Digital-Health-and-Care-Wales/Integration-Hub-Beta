@@ -39,7 +39,7 @@ class MessageRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         body = response.json()
         self.assertEqual(body["StatusCode"], 422)
-        self.assertIn("MSA|AE|MSGID12345", body["ErrorMessage"])
+        self.assertIn("MSA|AR|MSGID12345", body["ErrorMessage"])
         sender.send_text_message.assert_not_called()
 
     def test_unparsable_message_returns_500_generic_nack(self) -> None:

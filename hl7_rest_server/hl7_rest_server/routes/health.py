@@ -1,9 +1,9 @@
+import time
+from datetime import datetime
+
 from fastapi import APIRouter, Request
 
 from hl7_rest_server.api_constant import ApiConstants
-import time
-
-from datetime import datetime
 
 router = APIRouter()
 
@@ -56,7 +56,9 @@ def status(request: Request) -> dict[str, object]:
             else "Never"
         )
 
-    description = (f"Version {ApiConstants.VERSION}.{ApiConstants.REVISION} API is working, response time {response_time} ms")
+    description = (
+        f"Version {ApiConstants.VERSION}.{ApiConstants.REVISION} API is working, response time {response_time} ms"
+    )
     return {
         "application": ApiConstants.APPLICATION_NAME,
         "description": description,

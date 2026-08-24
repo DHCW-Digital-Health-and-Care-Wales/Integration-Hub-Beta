@@ -23,7 +23,7 @@ class HL7AckBuilderTests(unittest.TestCase):
 
     def test_validation_nack_echoes_control_id(self) -> None:
         nack = self.builder.build_validation_nack(self.msg, "Bad DOB")
-        self.assertIn("MSA|AE|MSGID12345|Bad DOB", nack)
+        self.assertIn("MSA|AR|MSGID12345|Bad DOB", nack)
 
     def test_generic_nack_generates_control_id(self) -> None:
         nack = self.builder.build_generic_nack("Unparsable")

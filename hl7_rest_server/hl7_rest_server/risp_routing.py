@@ -31,8 +31,8 @@ WRRS_DESTINATION = "wrrs"
 # — keyed by structure + HL7 version rather than by flow, so multiple flows sharing the same
 # message structure/version reuse a single schema instead of duplicating it per flow.
 ORU_OMG_SCHEMA_FILES: dict[str, str] = {
-    "2_5_1": "ORU_R01_2_5_1",
-    "2_5_1": "OMG_O19_2_5_1",
+    "ORU_R01": "ORU_R01_2_5_1",
+    "OMG_O19": "OMG_O19_2_5_1",
 }
 
 

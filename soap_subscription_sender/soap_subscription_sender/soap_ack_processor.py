@@ -5,7 +5,9 @@ Duplicated for service independence.
 from __future__ import annotations
 
 import logging
-import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,9 @@ def get_ack_result(status_code: int, response_body: str) -> bool:
                 return False
     except ET.ParseError:
         logger.warning("Could not parse SOAP response as XML — body:\n%s", response_body[:200])
+    except DefusedXmlException:
+        logger.error("Rejected SOAP response containing a malicious XML construct.")
+        return False
 
     logger.info("HTTP %s received with no fault or status element — treating as success.", status_code)
     return True

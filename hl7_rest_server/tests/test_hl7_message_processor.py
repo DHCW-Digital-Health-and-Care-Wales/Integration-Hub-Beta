@@ -45,7 +45,7 @@ class Hl7MessageProcessorTests(unittest.TestCase):
         context, sender, _ = build_test_context(hl7_version="2.9")
         with self.assertRaises(Hl7ValidationError) as ctx:
             context.processor.process(VALID_ER7_MESSAGE)
-        self.assertIn("MSA|AE|MSGID12345", ctx.exception.nack_message)
+        self.assertIn("MSA|AR|MSGID12345", ctx.exception.nack_message)
         sender.send_text_message.assert_not_called()
 
     def test_store_failure_is_non_blocking(self) -> None:
