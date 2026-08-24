@@ -7,7 +7,7 @@ import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, cast
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 from event_logger_lib.event_logger import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
@@ -207,10 +207,25 @@ def create_soap_request_handler(
             # self.path would leave a scheme+host prefix on request_path and
             # never match endpoint_path.
             parsed_path = urlsplit(self.path)
-            if parsed_path.path == endpoint_path and parsed_path.query.lower() == "wsdl":
+            if parsed_path.path == endpoint_path and self._is_wsdl_query(parsed_path.query):
                 self._write_wsdl_response()
                 return
             self._write_response(405, build_soap_fault_response("Client", "SOAP endpoint accepts POST only."))
+
+        @staticmethod
+        def _is_wsdl_query(query: str) -> bool:
+            # Different SOAP client tooling requests the WSDL in slightly
+            # different forms - e.g. a bare "?wsdl" (SoapUI, most manual
+            # requests), "?wsdl=" or "?wsdl=true" (clients/proxies that always
+            # serialise query parameters as key=value pairs), or "?WSDL" with
+            # different casing. Matching only the exact string "wsdl" (as a
+            # previous version of this check did) rejects all of those valid
+            # variants and causes the client to receive the 405 SOAP-fault
+            # response instead of the WSDL document, which then fails to
+            # parse as WSDL. Checking for a "wsdl" key (case-insensitive,
+            # value ignored) covers all of these forms.
+            query_keys = {key.lower() for key, _ in parse_qsl(query, keep_blank_values=True)}
+            return "wsdl" in query_keys
 
         def _write_wsdl_response(self) -> None:
             scheme = self._determine_scheme()
@@ -229,6 +244,13 @@ def create_soap_request_handler(
             self.send_response(200)
             self.send_header("Content-Type", "text/xml; charset=utf-8")
             self.send_header("Content-Length", str(len(wsdl_bytes)))
+            # Some browsers/proxies heuristically cache GET responses (including
+            # error responses such as 405) when no explicit caching headers are
+            # present. Without this, a client that hit this exact URL once
+            # before the WSDL feature existed (or during a bad deployment)
+            # could keep re-serving that stale cached response indefinitely,
+            # never re-contacting the now-fixed server.
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(wsdl_bytes)
 
@@ -246,6 +268,11 @@ def create_soap_request_handler(
             self.send_response(status_code)
             self.send_header("Content-Type", "text/xml; charset=utf-8")
             self.send_header("Content-Length", str(len(encoded)))
+            # 405 (and other error statuses) are heuristically cacheable per
+            # RFC 7231 SS6.1 when no explicit caching headers are sent, so a
+            # client could otherwise keep re-serving a stale cached fault
+            # response even after the server-side issue is fixed.
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(encoded)
 

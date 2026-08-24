@@ -173,6 +173,34 @@
                 }
               }
             ]
+          },
+          {
+            "Name": "local-inthub-lims-transformer-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-lims-transformer-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-pms-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-pms-sender-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
           }
         ]
       }
