@@ -54,9 +54,25 @@ class TestWsdlEndpoint(unittest.TestCase):
         conn.close()
 
         self.assertEqual(200, response.status)
-        self.assertIn("text/xml", content_type)
+        self.assertIsNotNone(content_type)
+        self.assertIn("text/xml", content_type or "")
         self.assertIn("/soap", body)
         self.processor.process.assert_not_called()
+
+    def test_get_wsdl_with_query_value_variants_returns_wsdl_document(self) -> None:
+        # Some SOAP client tooling always serialises query parameters as
+        # key=value pairs (e.g. "?wsdl=" or "?WSDL=true") rather than the bare
+        # "?wsdl" form. All of these must return the WSDL document.
+        for query_suffix in ("?wsdl=", "?WSDL=true", "?WSDL"):
+            with self.subTest(query_suffix=query_suffix):
+                # Fixed http:// URL against our own local test server, not user-controlled input.
+                with urllib.request.urlopen(f"{self.base_url}/soap{query_suffix}") as response:  # nosec B310
+                    body = response.read().decode("utf-8")
+                    content_type = response.headers.get("Content-Type")
+
+                self.assertEqual(200, response.status)
+                self.assertIn("text/xml", content_type)
+                self.assertIn(f"{self.base_url}/soap", body)
 
     def test_get_without_wsdl_query_is_rejected(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as context:

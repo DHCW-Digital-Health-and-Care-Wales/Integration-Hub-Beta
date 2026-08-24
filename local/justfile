@@ -18,6 +18,7 @@
 # ------------------
 # - phw-to-mpi     : Public Health Wales to MPI integration
 # - lims-to-mpi    : LIMS SOAP ingress to MPI integration
+# - pms-soap-to-mpi: PMS SOAP ingress to MPI integration
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
 # - pims-to-mpi    : PIMS to MPI integration
@@ -53,7 +54,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile mpi-to-topic --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile mpi-to-topic --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -82,6 +83,7 @@ python := "python3"
     echo ""
     echo "  - phw-to-mpi     : Public Health Wales to MPI integration"
     echo "  - lims-to-mpi    : LIMS SOAP ingress to MPI integration"
+    echo "  - pms-soap-to-mpi: PMS SOAP ingress to MPI integration"
     echo "  - paris-to-mpi   : PARIS to MPI integration"
     echo "  - chemo-to-mpi   : Chemo to MPI integration"
     echo "  - pims-to-mpi    : PIMS to MPI integration"

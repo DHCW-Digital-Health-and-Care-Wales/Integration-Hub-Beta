@@ -18,6 +18,7 @@ pr:
       - hl7_mock_receiver/**
       - hl7_chemo_transformer/**
       - hl7_pims_transformer/**
+      - hl7_soap_server/**
       - buswatch/**
       - message_store_service/**
       - shared_libs/**
@@ -94,6 +95,7 @@ stages:
                 "hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "hl7_pims_transformer|PIMS HL7 Transformer||unittest"
+                "hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_store_service|Message Store Service||unittest"
                 "buswatch|BusWatch||unittest"
                 "shared_libs/message_bus_lib|Message Bus Library|message_bus_lib|unittest"
