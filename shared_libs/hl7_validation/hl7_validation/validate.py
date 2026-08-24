@@ -7,7 +7,7 @@ from hl7apy.core import Message
 
 from .constants import PARSE_ERROR_MSG
 from .convert import er7_to_hl7v2xml
-from .schemas import get_schema_xsd_path_for
+from .schemas import get_schema_xsd_path_for, get_schema_xsd_path_for_structure
 from .utils.message_utils import (
     extract_message_structure,
     extract_message_trigger,
@@ -59,15 +59,10 @@ def _format_schema_validation_error(
 
 
 def validate_xml(xml_string: str, xsd_path: str) -> None:
-    _error_message: Optional[str] = None
-    try:
-        schema = _get_compiled_schema(xsd_path)
-        schema.validate(xml_string)
-    except xmlschema.validators.exceptions.XMLSchemaValidationError as e:  # type: ignore[attr-defined]
-        _error_message = _format_schema_validation_error(e)
-
-    if _error_message is not None:
-        raise XmlValidationError(_error_message)
+    schema = _get_compiled_schema(xsd_path)
+    errors = list(schema.iter_errors(xml_string))
+    if errors:
+        raise XmlValidationError("\n".join(_format_schema_validation_error(e) for e in errors))
 
 
 def validate_er7_with_flow_schema(
@@ -283,3 +278,62 @@ def convert_er7_to_xml_with_flow_schema(
     return er7_to_hl7v2xml(
         er7_string, structure_xsd_path=xsd_path, override_structure_id=override_structure, parsed_message=msg
     )
+
+
+def validate_and_convert_parsed_message_with_structure_schema(
+    msg: Message,
+    er7_string: str,
+    schema_dir_name: str,
+    schema_file_name: str,
+) -> ValidationResult:
+    """
+    Validate a pre-parsed HL7 message against a schema selected by message structure and HL7
+    version alone, instead of by "flow".
+
+    Some message structures (e.g. RISP's ``ORU_R01``/``OMG_O19``) are shared across multiple
+    source systems/flows at a single HL7 version. Rather than duplicating the same XSD under a
+    separate directory per flow (see ``validate_and_convert_parsed_message_with_flow_schema``),
+    callers that only need to validate/convert by structure + version look the schema up directly
+    under ``hl7_validation/resources/{schema_dir_name}/{schema_file_name}.xsd`` — e.g.
+    ``schema_dir_name="ORU_R01"``, ``schema_file_name="ORU_R01_2_5_1"``.
+
+    Args:
+        msg: Already parsed HL7 message object
+        er7_string: Original ER7 string (needed for XML conversion)
+        schema_dir_name: Directory under ``hl7_validation/resources`` containing the schema
+            (typically the bare message structure, e.g. ``"ORU_R01"``)
+        schema_file_name: XSD file stem (without ``.xsd``) to validate against, e.g.
+            ``"ORU_R01_2_5_1"``
+
+    Returns:
+        ValidationResult containing the generated XML and validation status
+    """
+    structure_id, override_structure, msg_type, trigger = _resolve_structure_info(msg)
+    message_control_id = _extract_message_control_id(msg)
+
+    xsd_path = get_schema_xsd_path_for_structure(schema_dir_name, schema_file_name)
+    xml_string = er7_to_hl7v2xml(
+        er7_string, structure_xsd_path=xsd_path, override_structure_id=override_structure, parsed_message=msg
+    )
+
+    try:
+        validate_xml(xml_string, xsd_path)
+        return ValidationResult(
+            xml_string=xml_string,
+            structure_id=structure_id,
+            message_type=msg_type,
+            trigger_event=trigger,
+            message_control_id=message_control_id,
+            is_valid=True,
+            error_message=None,
+        )
+    except XmlValidationError as e:
+        return ValidationResult(
+            xml_string=xml_string,
+            structure_id=structure_id,
+            message_type=msg_type,
+            trigger_event=trigger,
+            message_control_id=message_control_id,
+            is_valid=False,
+            error_message=str(e),
+        )
