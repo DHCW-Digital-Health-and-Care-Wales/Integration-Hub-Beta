@@ -54,8 +54,8 @@ class TestSoapHandler(unittest.TestCase):
 
     def test_parse_extracts_hl7_payload(self) -> None:
         result = parse_soap_request(_SOAP_11_ACK)
-        self.assertIsNotNone(result.hl7_payload)
-        self.assertIn("MSH", result.hl7_payload)  # type: ignore[operator]
+        assert result.hl7_payload is not None
+        self.assertIn("MSH", result.hl7_payload)
 
     def test_parse_extracts_message_control_id(self) -> None:
         result = parse_soap_request(_SOAP_11_ACK)

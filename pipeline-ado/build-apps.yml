@@ -14,6 +14,7 @@ parameters:
     type: object
     default:
       - hl7server
+      - hl7restserver
       - hl7sender
       - hl7mockreceiver
       - hl7subscriptionsender
@@ -43,6 +44,17 @@ stages:
           parameters:
             appName: 'hl7_server'
             appDisplayName: 'HL7 Server'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7restserver') }}:
+    - stage: CodeQuality_hl7restserver
+      displayName: 'Code Quality — HL7 REST Server'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'hl7_rest_server'
+            appDisplayName: 'HL7 REST Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -172,6 +184,24 @@ stages:
             appName: 'hl7server'
             dockerfilePath: 'hl7_server/Dockerfile'
             buildContext: 'hl7_server'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7restserver') }}:
+    - stage: Build_hl7restserver
+      displayName: 'Build — HL7 REST Server'
+      dependsOn: CodeQuality_hl7restserver
+      condition: in(dependencies.CodeQuality_hl7restserver.result, 'Succeeded', 'SucceededWithIssues')
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7RestServer'
+            displayName: 'Build and Push HL7 REST Server'
+            appName: 'hl7restserver'
+            dockerfilePath: 'hl7_rest_server/Dockerfile'
+            buildContext: 'hl7_rest_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)

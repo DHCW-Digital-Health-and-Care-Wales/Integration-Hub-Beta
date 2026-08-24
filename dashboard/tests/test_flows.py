@@ -129,7 +129,15 @@ class TestFlowHealth:
         assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
     def test_all_flows_defined(self) -> None:
-        expected = {"phw-to-mpi", "paris-to-mpi", "mosaiq-to-mpi", "chemocare-to-mpi", "pims-to-mpi", "wds-to-mpi", "mpi-outbound"}
+        expected = {
+            "phw-to-mpi",
+            "paris-to-mpi",
+            "mosaiq-to-mpi",
+            "chemocare-to-mpi",
+            "pims-to-mpi",
+            "wds-to-mpi",
+            "mpi-outbound",
+        }
         assert {d["id"] for d in _FLOW_DEFS} == expected
 
 

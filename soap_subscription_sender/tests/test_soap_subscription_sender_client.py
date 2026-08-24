@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import unittest
-import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock, patch
 
 import requests as req
+from defusedxml import ElementTree as ET
 
 from soap_subscription_sender.soap_subscription_sender_client import (
     SOAPSubscriptionSenderClient,

@@ -15,6 +15,7 @@ dependencies = [
     "hl7apy==1.3.5",
     "urllib3>=2.6.3",
     "requests>=2.32.0",
+    "defusedxml==0.7.1",
     "otel-lib",
     "message-bus-lib",
     "health-check-lib",

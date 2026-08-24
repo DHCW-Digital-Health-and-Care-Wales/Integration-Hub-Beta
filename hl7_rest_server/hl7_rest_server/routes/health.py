@@ -1,9 +1,9 @@
+import time
+from datetime import datetime
+
 from fastapi import APIRouter, Request
 
 from hl7_rest_server.api_constant import ApiConstants
-import time
-
-from datetime import datetime
 
 router = APIRouter()
 
@@ -32,11 +32,8 @@ def status(request: Request) -> dict[str, object]:
     ping(request)
 
     # Previous request time
-    last_requested = (
-        getattr(request.app.state, "_last_requested", None).isoformat()
-        if getattr(request.app.state, "_last_requested", None) is not None
-        else "Never"
-    )
+    previous_requested_at = getattr(request.app.state, "_last_requested", None)
+    last_requested = previous_requested_at.isoformat() if previous_requested_at is not None else "Never"
 
     # Update request timestamp
     request.app.state._last_requested = datetime.now()
@@ -47,16 +44,16 @@ def status(request: Request) -> dict[str, object]:
 
     timeout_occurred = response_time > timeout_threshold
 
+    previous_healthy_at = getattr(request.app.state, "_last_healthy", None)
+    last_healthy = previous_healthy_at.isoformat() if previous_healthy_at is not None else "Never"
+
     if not timeout_occurred:
         request.app.state._last_healthy = datetime.now()
+        last_healthy = request.app.state._last_healthy.isoformat()
 
-        last_healthy = (
-            getattr(request.app.state, "_last_healthy", None).isoformat()
-            if getattr(request.app.state, "_last_healthy", None) is not None
-            else "Never"
-        )
-
-    description = (f"Version {ApiConstants.VERSION}.{ApiConstants.REVISION} API is working, response time {response_time} ms")
+    description = (
+        f"Version {ApiConstants.VERSION}.{ApiConstants.REVISION} API is working, response time {response_time} ms"
+    )
     return {
         "application": ApiConstants.APPLICATION_NAME,
         "description": description,

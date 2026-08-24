@@ -24,7 +24,7 @@ class AppConfig:
     @staticmethod
     def read_env_config() -> AppConfig:
         return AppConfig(
-            host=os.getenv("HOST", "0.0.0.0"),
+            host=os.getenv("HOST", "0.0.0.0"),  # nosec B104 - bind all interfaces inside the container
             port=int(os.getenv("PORT", "8080")),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             service_bus_connection_string=os.getenv("SERVICE_BUS_CONNECTION_STRING"),

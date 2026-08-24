@@ -13,6 +13,7 @@ Run with:
 from __future__ import annotations
 
 import tkinter as tk
+from functools import partial
 from tkinter import filedialog, font, ttk
 from typing import TYPE_CHECKING
 
@@ -98,7 +99,7 @@ class ServicePage(tk.Frame):
                     bg=DHCW_BLUE, fg="white", activebackground=DHCW_YELLOW,
                     font=font.Font(family="Segoe UI", size=8), relief=tk.FLAT,
                     padx=7, pady=2,
-                    command=lambda c=content: self._load_sample(c),
+                    command=partial(self._load_sample, content),
                 ).pack(side=tk.LEFT, padx=2)
 
         tk.Frame(toolbar, bg=BG).pack(side=tk.LEFT, expand=True)
@@ -120,7 +121,7 @@ class ServicePage(tk.Frame):
         paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 4))
 
-        def _pane(parent: tk.Widget, label_text: str, editable: bool) -> tk.Text:
+        def _pane(parent: ttk.PanedWindow, label_text: str, editable: bool) -> tk.Text:
             frame = tk.Frame(parent, bg=BG)
             parent.add(frame, weight=1)
             tk.Label(frame, text=label_text, bg=BG, fg=DHCW_NAVY,

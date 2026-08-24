@@ -312,6 +312,15 @@ wheels = [
 ]
 
 [[package]]
+name = "defusedxml"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520, upload-time = "2021-03-08T10:59:26.269Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604, upload-time = "2021-03-08T10:59:24.45Z" },
+]
+
+[[package]]
 name = "event-logger-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/event_logger_lib" }
@@ -319,6 +328,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "pyjwt" },
     { name = "setuptools" },
     { name = "urllib3" },
@@ -329,6 +339,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -417,6 +428,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "cryptography" },
     { name = "metric-sender-lib" },
     { name = "otel-lib" },
     { name = "pyjwt" },
@@ -429,6 +441,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
     { name = "otel-lib", directory = "../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
@@ -451,6 +464,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "idna" },
     { name = "pyjwt" },
     { name = "setuptools" },
@@ -462,6 +476,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
@@ -799,6 +814,7 @@ source = { directory = "../shared_libs/otel_lib" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
+    { name = "cryptography" },
     { name = "idna" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
@@ -811,6 +827,7 @@ dependencies = [
 requires-dist = [
     { name = "azure-identity", specifier = ">=1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
@@ -858,6 +875,7 @@ name = "processor-manager-lib"
 version = "0.1.0"
 source = { directory = "../shared_libs/processor_manager_lib" }
 dependencies = [
+    { name = "cryptography" },
     { name = "opentelemetry-api" },
     { name = "setuptools" },
     { name = "urllib3" },
@@ -865,6 +883,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -1069,6 +1088,7 @@ dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
     { name = "azure-servicebus" },
+    { name = "defusedxml" },
     { name = "event-logger-lib" },
     { name = "health-check-lib" },
     { name = "message-bus-lib" },
@@ -1093,6 +1113,7 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "defusedxml", specifier = "==0.7.1" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
     { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },

@@ -15,7 +15,9 @@ Failure (returns False):
 from __future__ import annotations
 
 import logging
-import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,9 @@ def get_ack_result(status_code: int, response_body: str) -> bool:
                 return False
     except ET.ParseError:
         logger.warning("Could not parse SOAP response as XML — response body:\n%s", response_body[:200])
+    except DefusedXmlException:
+        logger.error("Rejected SOAP response containing a malicious XML construct.")
+        return False
 
     # HTTP 200/202 with no Fault and no Status element — treat as success.
     # Some endpoints return a minimal 200 OK with an empty or non-standard body.
