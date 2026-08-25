@@ -1,7 +1,8 @@
-"""Wires environment configuration to Service Bus/health-check resources and the FastAPI app.
+"""Reads env config and dispatches to the ``generic`` or ``hl7`` pipeline's FastAPI app.
 
-The ASGI app itself (routes, OpenAPI docs, request-size guarding) lives in ``asgi_app.py`` and is
-built independently of this wiring so it can be unit tested with a mocked processor.
+The ASGI apps themselves (routes, OpenAPI docs, request-size guarding) live in ``asgi_app.py``
+(generic) and ``hl7/app.py`` (hl7) and are built independently of this wiring so they can be unit
+tested with mocked processors. Resource wiring shared by both pipelines lives in ``infra.py``.
 """
 from __future__ import annotations
 
@@ -10,20 +11,17 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from event_logger_lib.event_logger import EventLogger
 from fastapi import FastAPI
-from health_check_lib.health_check_server import TCPHealthCheckServer
-from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.message_store_client import MessageStoreClient
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
-from metric_sender_lib.metric_sender import MetricSender
 
 from .app_config import AppConfig
 from .asgi_app import build_fastapi_app
 from .content_adapters.base import ContentAdapter
 from .content_adapters.soap_adapter import SoapContentAdapter
 from .content_adapters.xml_raw_adapter import XmlRawContentAdapter
+from .hl7.app import create_hl7_app
+from .hl7.runtime import build_hl7_runtime
+from .infra import SharedResources, build_shared_resources
 from .message_processor import RestMessageProcessor
 from .validators.base import Validator
 from .validators.hl7_xsd_validator import Hl7XsdValidator
@@ -72,58 +70,43 @@ class RestServerApplication:
     """
 
     def __init__(self) -> None:
-        self.sender_client: MessageSenderClient | None = None
-        self.message_store_client: MessageStoreClient | None = None
-        self.event_logger: EventLogger | None = None
-        self.metric_sender: MetricSender | None = None
-        self.health_check_server: TCPHealthCheckServer | None = None
+        self.resources: SharedResources | None = None
+        self.extra_sender_client: MessageSenderClient | None = None
 
     def build_app(self) -> FastAPI:
         app_config = AppConfig.read_env_config()
+        if app_config.pipeline == "hl7":
+            return self._build_hl7_app(app_config)
+        return self._build_generic_app(app_config)
 
-        client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
-        factory = ServiceBusClientFactory(client_config)
-
-        if app_config.egress_topic_name:
-            self.sender_client = factory.create_topic_sender_client(
-                app_config.egress_topic_name, app_config.egress_session_id
-            )
-            logger.info("Configured to send messages to topic: %s", app_config.egress_topic_name)
-        elif app_config.egress_queue_name:
-            self.sender_client = factory.create_queue_sender_client(
-                app_config.egress_queue_name, app_config.egress_session_id
-            )
-            logger.info("Configured to send messages to queue: %s", app_config.egress_queue_name)
-
-        self.message_store_client = factory.create_message_store_client(
-            app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
-        )
-
-        self.event_logger = EventLogger(app_config.workflow_id, app_config.microservice_id)
-        self.metric_sender = MetricSender(
-            app_config.workflow_id,
-            app_config.microservice_id,
-            app_config.health_board,
-            app_config.peer_service,
-        )
-        self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
+    def _build_generic_app(self, app_config: AppConfig) -> FastAPI:
+        self.resources = self._build_shared_resources(app_config)
 
         processor = RestMessageProcessor(
             content_adapter=build_content_adapter(app_config),
             validator=build_validator(app_config),
-            sender_client=self.sender_client,
-            event_logger=self.event_logger,
-            metric_sender=self.metric_sender,
-            message_store_client=self.message_store_client,
+            sender_client=self.resources.sender_client,
+            event_logger=self.resources.event_logger,
+            metric_sender=self.resources.metric_sender,
+            message_store_client=self.resources.message_store_client,
             workflow_id=app_config.workflow_id,
             egress_session_id=app_config.egress_session_id,
             allowed_source_identifiers=app_config.allowed_source_identifiers,
-            output_format=app_config.output_format,
+            output_format=app_config.output_format or "",
         )
 
         @asynccontextmanager
         async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-            self._start_resources(app_config)
+            self._start_resources()
+            logger.info(
+                "REST server ready on endpoint %s (adapter=%s, validator=%s, output=%s, "
+                "max request size: %s bytes)",
+                app_config.endpoint_path,
+                app_config.content_adapter,
+                app_config.validator_type,
+                app_config.output_format,
+                app_config.max_request_size_bytes,
+            )
             yield
             self._stop_resources()
 
@@ -131,39 +114,58 @@ class RestServerApplication:
             processor=processor,
             endpoint_path=app_config.endpoint_path,
             max_request_size_bytes=app_config.max_request_size_bytes,
-            content_adapter_name=app_config.content_adapter,
-            validator_type=app_config.validator_type,
-            output_format=app_config.output_format,
+            content_adapter_name=app_config.content_adapter or "",
+            validator_type=app_config.validator_type or "",
+            output_format=app_config.output_format or "",
             lifespan=lifespan,
         )
 
-    def _start_resources(self, app_config: AppConfig) -> None:
-        if self.health_check_server:
-            self.health_check_server.start()
-        logger.info(
-            "REST server ready on endpoint %s (adapter=%s, validator=%s, output=%s, "
-            "max request size: %s bytes)",
-            app_config.endpoint_path,
-            app_config.content_adapter,
-            app_config.validator_type,
-            app_config.output_format,
-            app_config.max_request_size_bytes,
+    def _build_hl7_app(self, app_config: AppConfig) -> FastAPI:
+        self.resources = self._build_shared_resources(app_config)
+        context, self.extra_sender_client = build_hl7_runtime(app_config, self.resources)
+
+        @asynccontextmanager
+        async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+            self._start_resources()
+            logger.info(
+                "HL7 REST pipeline ready (flow=%s, max request size: %s bytes)",
+                app_config.hl7_validation_flow or "none",
+                app_config.max_request_size_bytes,
+            )
+            yield
+            self._stop_resources()
+
+        return create_hl7_app(context, lifespan=lifespan)
+
+    def _build_shared_resources(self, app_config: AppConfig) -> SharedResources:
+        return build_shared_resources(
+            connection_string=app_config.connection_string,
+            service_bus_namespace=app_config.service_bus_namespace,
+            egress_queue_name=app_config.egress_queue_name,
+            egress_topic_name=app_config.egress_topic_name,
+            egress_session_id=app_config.egress_session_id,
+            message_store_queue_name=app_config.message_store_queue_name,
+            microservice_id=app_config.microservice_id,
+            peer_service=app_config.peer_service,
+            workflow_id=app_config.workflow_id,
+            health_board=app_config.health_board,
+            health_check_hostname=app_config.health_check_hostname,
+            health_check_port=app_config.health_check_port,
         )
+
+    def _start_resources(self) -> None:
+        assert self.resources is not None  # nosec B101 - always set by build_app before lifespan runs
+        self.resources.start()
 
     def _stop_resources(self) -> None:
         logger.info("Shutting down REST server resources...")
-
-        if self.sender_client:
-            self.sender_client.close()
-            logger.info("Service Bus sender client shut down.")
-
-        if self.message_store_client:
-            self.message_store_client.close()
-            logger.info("Message store client shut down.")
-
-        if self.health_check_server:
-            self.health_check_server.stop()
-            logger.info("Health check server shut down.")
-
+        if self.resources:
+            self.resources.stop()
+        if self.extra_sender_client:
+            try:
+                self.extra_sender_client.close()
+                logger.info("Extra sender client shut down.")
+            except Exception as exc:
+                logger.warning("Error closing extra sender client: %s", exc)
         logger.info("REST server shutdown complete.")
 

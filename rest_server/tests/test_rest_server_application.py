@@ -35,6 +35,16 @@ def _config(**overrides: object) -> AppConfig:
         source_identifier_locator=None,
         message_control_id_locator=None,
         output_format="raw",
+        pipeline="generic",
+        environment="DEV",
+        hl7_version=None,
+        sending_app=None,
+        hl7_validation_flow=None,
+        hl7_validation_standard=None,
+        wrrs_queue_name=None,
+        wrrs_topic_name=None,
+        wrrs_egress_session_id=None,
+        wrrs_workflow_id=None,
     )
     defaults.update(overrides)
     return AppConfig(**defaults)  # type: ignore[arg-type]

@@ -480,6 +480,28 @@ wheels = [
 ]
 
 [[package]]
+name = "field-utils-lib"
+version = "0.1.0"
+source = { directory = "../shared_libs/field_utils_lib" }
+dependencies = [
+    { name = "hl7apy" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hl7apy", specifier = "==1.3.5" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.9.1" },
+    { name = "mypy", specifier = ">=1.18.2" },
+    { name = "ruff", specifier = ">=0.14.8" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1338,6 +1360,7 @@ dependencies = [
     { name = "defusedxml" },
     { name = "event-logger-lib" },
     { name = "fastapi" },
+    { name = "field-utils-lib" },
     { name = "health-check-lib" },
     { name = "hishel" },
     { name = "hl7-validation-lib" },
@@ -1372,6 +1395,7 @@ requires-dist = [
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
     { name = "fastapi", specifier = "==0.136.3" },
+    { name = "field-utils-lib", directory = "../shared_libs/field_utils_lib" },
     { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
     { name = "hishel", specifier = "==1.1.8" },
     { name = "hl7-validation-lib", directory = "../shared_libs/hl7_validation" },

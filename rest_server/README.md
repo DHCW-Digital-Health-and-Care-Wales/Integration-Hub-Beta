@@ -1,22 +1,60 @@
 # REST server
 
-A configurable HTTP/REST ingestion server. Accepts a POST payload, unwraps it with a configurable
-**content adapter**, validates it with a configurable **validator**, and forwards the validated
-payload downstream over Azure Service Bus - reusing the same shared-library ingestion pipeline as
-[`hl7_server`](../hl7_server/README.md) and [`hl7_soap_server`](../hl7_soap_server/README.md)
-(Service Bus publish, message store, event logging, metrics, health check).
+A configurable HTTP/REST ingestion server with two selectable pipelines (`PIPELINE` env var):
+
+- `generic` (default) - unwraps a POST payload with a configurable **content adapter**, validates
+  it with a configurable **validator**, and forwards the validated payload downstream over Azure
+  Service Bus.
+- `hl7` - accepts HL7 v2 messages as JSON (`{"messageContent": "..."}`, ER7 or HL7 v2 XML),
+  validates them (version/sending-app/flow-specific rules, including RISP's multi-destination
+  fan-out), and returns a raw HL7 ACK/NACK - ported from the retired `hl7_rest_server` service.
+
+Both pipelines reuse the same shared-library ingestion pipeline as
+[`hl7_server`](../hl7_server/README.md) (Service Bus publish, message store, event logging,
+metrics, health check).
 
 This service is intentionally generic: the same image can be deployed multiple times, each
 instance configured (via environment variables only) for a different sending system, payload
 shape and destination queue. See
-[`docs/REST_INGESTION_SERVER_PROPOSAL.md`](../docs/REST_INGESTION_SERVER_PROPOSAL.md) for the
-background design proposal.
+[`docs/REST_INGESTION_SERVER_PROPOSAL.md`](../docs/REST_INGESTION_SERVER_PROPOSAL.md) and
+[`docs/rest_merge.md`](../docs/rest_merge.md) for the background design proposals.
 
-`hl7_soap_server` is unchanged and remains the dedicated SOAP+HL7-v2.xml service (it also serves a
-WSDL contract). `rest_server` is the new, generalised sibling for sources that don't fit that exact
-shape, or where a plain REST contract (no WSDL) is preferred.
+`hl7_soap_server` remains the dedicated SOAP+HL7-v2.xml service for now (it also serves a WSDL
+contract) - see [`docs/rest_merge.md`](../docs/rest_merge.md) §9 for its planned consolidation into
+the `generic` pipeline (`CONTENT_ADAPTER=soap`, `VALIDATOR_TYPE=hl7-xsd`), which already reproduces
+its behaviour.
 
-## What it does
+## Choosing a configuration
+
+Every running instance is one image configured for exactly one job via environment variables.
+Start from `PIPELINE`, then pick the content adapter/validator (`generic`) or flow
+(`hl7`) that matches your source system:
+
+```mermaid
+flowchart TD
+    Req["HTTP POST request"] --> Pipeline{"PIPELINE"}
+
+    Pipeline -- "generic (default)" --> Adapter{"CONTENT_ADAPTER"}
+    Adapter -- soap --> Val1{"VALIDATOR_TYPE"}
+    Adapter -- xml-raw --> Val1
+    Val1 -- hl7-xsd --> Fmt["OUTPUT_FORMAT: er7 | raw"]
+    Val1 -- xsd --> Fmt
+    Val1 -- none --> Fmt
+    Fmt --> SB1[("Service Bus queue/topic")]
+
+    Pipeline -- hl7 --> Flow{"HL7_VALIDATION_FLOW"}
+    Flow -- "unset" --> SB2[("Service Bus queue/topic")]
+    Flow -- mpi --> SB2
+    Flow -- risp --> Fan["fan out by message type"]
+    Fan --> SB2
+    Fan --> SB3[("WRRS queue/topic")]
+```
+
+See [Configuration recipes](#configuration-recipes) (`generic`) and
+[Configuration recipes](#configuration-recipes-1) (`hl7`) below for copy-paste environment
+variable blocks for each case.
+
+## What the `generic` pipeline does
 
 - Accepts an HTTP POST on a configurable endpoint path (`ENDPOINT_PATH`).
 - Unwraps the request body using the configured **content adapter** (`CONTENT_ADAPTER`):
@@ -35,6 +73,135 @@ shape, or where a plain REST contract (no WSDL) is preferred.
 - Publishes to the configured Service Bus queue/topic and persists to the message store.
 - Returns a response built by the same content adapter (SOAP success/fault envelope for `soap`,
   simple XML ack/error for `xml-raw`).
+
+```mermaid
+flowchart LR
+    Req["POST ENDPOINT_PATH"] --> CA["Content Adapter<br/>unwrap envelope"]
+    CA --> Val["Validator<br/>schema + business rules"]
+    Val --> AL{"source identifier in<br/>ALLOWED_SOURCE_IDENTIFIERS?"}
+    AL -- "no (list configured)" --> Err["403 Forbidden"]
+    AL -- "yes / list empty" --> Fmt["Output Format<br/>er7 | raw"]
+    Fmt --> SB[("Service Bus queue/topic")]
+    Fmt --> MS[("Message store")]
+    SB --> Resp["Content Adapter builds<br/>success response"]
+```
+
+### Configuration recipes
+
+**SOAP + HL7 v2.xml, same rules as `hl7_soap_server`** (e.g. LIMS → MPI):
+
+```bash
+PIPELINE=generic
+ENDPOINT_PATH=/soap
+CONTENT_ADAPTER=soap
+VALIDATOR_TYPE=hl7-xsd
+VALIDATION_SCHEMA=phw
+ALLOWED_HL7_STRUCTURES=ADT_A05,ADT_A39
+ALLOWED_SOURCE_IDENTIFIERS=328
+OUTPUT_FORMAT=er7
+```
+
+**Plain XML (no envelope) validated against a partner-specific XSD:**
+
+```bash
+PIPELINE=generic
+ENDPOINT_PATH=/ingest
+CONTENT_ADAPTER=xml-raw
+VALIDATOR_TYPE=xsd
+VALIDATION_SCHEMA=/schemas/partner.xsd
+SOURCE_IDENTIFIER_LOCATOR=Header/SourceSystem
+MESSAGE_CONTROL_ID_LOCATOR=Header/MessageId
+OUTPUT_FORMAT=raw
+```
+
+**Plain XML, no schema validation** (only use this with an explicit, documented justification -
+see [Security](#security)):
+
+```bash
+PIPELINE=generic
+ENDPOINT_PATH=/ingest
+CONTENT_ADAPTER=xml-raw
+VALIDATOR_TYPE=none
+OUTPUT_FORMAT=raw
+```
+
+## What the `hl7` pipeline does
+
+- Accepts a JSON POST body (`{"messageContent": "..."}`) on `POST /hl7MessageReceiver`, where
+  `messageContent` is either a raw ER7 (pipe-and-hat) HL7 message or an HL7 v2 XML document.
+- Validates HL7 version (`HL7_VERSION`) and sending application (`SENDING_APP`), plus optional
+  flow-specific rules (`HL7_VALIDATION_FLOW=mpi|risp`) and standard-schema validation
+  (`HL7_VALIDATION_STANDARD`).
+- For the `risp` flow, fans a single inbound message out to up to two destinations: the configured
+  `EGRESS_QUEUE_NAME`/`EGRESS_TOPIC_NAME` (as ER7) and/or `WRRS_QUEUE_NAME`/`WRRS_TOPIC_NAME` (as
+  HL7 v2 XML), depending on message type.
+- Publishes to Service Bus and persists to the message store, then returns a raw HL7 ACK (`201`,
+  `MSA|AA|...`) or NACK (`422` validation failure, `400` oversize/malformed, `500` unparsable/
+  internal error).
+- Also exposes `GET /hl7MessageReceiver/ping` (liveness) and `GET /hl7MessageReceiver/status`
+  (readiness), and gates Swagger/OpenAPI (`/docs`, `/redoc`, `/openapi.json`) to `DEV`/`SIT`
+  (`ENVIRONMENT` env var) - unlike the `generic` pipeline, which keeps docs always-on.
+
+The `risp` flow is the one case complex enough to warrant its own diagram: a single inbound
+message can fan out to up to two destinations, in different formats, depending on message type:
+
+```mermaid
+flowchart TD
+    Req["POST /hl7MessageReceiver<br/>messageContent (ER7 or HL7 XML)"] --> Adapt["Normalise to ER7"]
+    Adapt --> Parse["Parse HL7 message"]
+    Parse --> CV["Common validation<br/>HL7_VERSION, SENDING_APP"]
+    CV --> Flow{"HL7_VALIDATION_FLOW"}
+
+    Flow -- "unset" --> Store1["Message store"] --> SB1[("EGRESS queue/topic")]
+    Flow -- mpi --> MpiVal["MPI field validation"] --> Store2["Message store"] --> SB2[("EGRESS queue/topic")]
+
+    Flow -- risp --> RispVal["RISP validation<br/>MSH.3 facility + version"]
+    RispVal --> Trigger{"trigger / structure"}
+    Trigger -- "A28 / A31 / A40" --> ToMpi[("EGRESS queue/topic")]
+    Trigger -- "A40 only" --> ToWrrsA[("WRRS queue/topic")]
+    Trigger -- "ORU_R01 / OMG_O19" --> XsdVal["Custom XSD validation"] --> ToWrrsB[("WRRS queue/topic")]
+
+    SB1 --> Ack["201 ACK"]
+    SB2 --> Ack
+    ToMpi --> Ack
+    ToWrrsA --> Ack
+    ToWrrsB --> Ack
+```
+
+Any validation failure (common, MPI-specific or RISP-specific) short-circuits before any send and
+returns a `422` NACK instead - no partial/undone sends need to be rolled back.
+
+### Configuration recipes
+
+**Plain HL7 receiver, no flow-specific rules:**
+
+```bash
+PIPELINE=hl7
+ENVIRONMENT=DEV
+HL7_VERSION=2.5
+SENDING_APP=252
+```
+
+**MPI outbound flow** (validates MSH.9.2/PID.2 fields, single destination):
+
+```bash
+PIPELINE=hl7
+ENVIRONMENT=DEV
+HL7_VALIDATION_FLOW=mpi
+```
+
+**RISP flow** (multi-destination fan-out - see diagram above):
+
+```bash
+PIPELINE=hl7
+ENVIRONMENT=DEV
+HL7_VALIDATION_FLOW=risp
+EGRESS_QUEUE_NAME=pre-risp-transform
+EGRESS_SESSION_ID=risp-to-mpi
+WRRS_QUEUE_NAME=risp-to-wrrs
+WRRS_EGRESS_SESSION_ID=risp-to-wrrs
+WRRS_WORKFLOW_ID=risp-to-wrrs
+```
 
 ## API contract
 
@@ -92,14 +259,16 @@ uv run python -m rest_server
 Shared with `hl7_soap_server` (unchanged names/behaviour):
 
 - `HOST` (default `0.0.0.0`), `PORT` (default `8080`)
-- `MAX_REQUEST_SIZE_BYTES` (default `1048576`)
+- `PIPELINE` - `generic` (default) | `hl7`
+- `MAX_REQUEST_SIZE_BYTES` (default `1048576`; `-1` enforces the Azure Service Bus 100MB ceiling
+  instead of the default - not truly unbounded)
 - `TLS_CERT_FILE` and `TLS_KEY_FILE` (optional; enable in-process HTTPS when both set)
 - `SERVICE_BUS_CONNECTION_STRING` or `SERVICE_BUS_NAMESPACE`
 - `EGRESS_QUEUE_NAME` or `EGRESS_TOPIC_NAME` (exactly one required)
 - `EGRESS_SESSION_ID`, `MESSAGE_STORE_QUEUE_NAME`, `WORKFLOW_ID`, `MICROSERVICE_ID`
 - `HEALTH_BOARD`, `PEER_SERVICE`, `HEALTH_CHECK_HOST`, `HEALTH_CHECK_PORT`
 
-New, generalised configuration (all required unless a default is shown):
+### `generic` pipeline configuration (all required unless a default is shown)
 
 - `ENDPOINT_PATH` - request path this instance listens on (default `/ingest`)
 - `CONTENT_ADAPTER` - `soap` | `xml-raw`
@@ -115,6 +284,19 @@ New, generalised configuration (all required unless a default is shown):
   a message/control identifier used for Service Bus message ID and the response body
 - `OUTPUT_FORMAT` - `er7` (convert HL7 XML payload to ER7 before publishing) | `raw` (publish the
   validated payload unchanged)
+
+These five are only valid when `PIPELINE=generic` - setting any of `CONTENT_ADAPTER`,
+`VALIDATOR_TYPE` or `OUTPUT_FORMAT` while `PIPELINE=hl7` is a startup error, not a silent no-op.
+
+### `hl7` pipeline configuration
+
+- `ENVIRONMENT` - `DEV`/`SIT`/... - gates Swagger UI (`/docs`, `/redoc`, `/openapi.json`)
+- `HL7_VERSION` - expected inbound HL7 version (optional)
+- `SENDING_APP` - expected inbound sending application, comma-separated allow-list (optional)
+- `HL7_VALIDATION_FLOW` - `mpi` | `risp` | unset
+- `HL7_VALIDATION_STANDARD` - HL7 standard version for structural validation (optional)
+- `WRRS_QUEUE_NAME` / `WRRS_TOPIC_NAME`, `WRRS_EGRESS_SESSION_ID`, `WRRS_WORKFLOW_ID` - required
+  only when `HL7_VALIDATION_FLOW=risp`
 
 ### Run locally
 

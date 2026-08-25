@@ -93,6 +93,79 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             AppConfig.read_env_config()
 
+    @patch.dict(os.environ, {**BASE_ENV, "MAX_REQUEST_SIZE_BYTES": "-1"}, clear=True)
+    def test_request_size_of_minus_one_uses_service_bus_ceiling(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.max_request_size_bytes, 104857600)
+
+    @patch.dict(os.environ, {**BASE_ENV, "MAX_REQUEST_SIZE_BYTES": "-2"}, clear=True)
+    def test_request_size_below_minus_one_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            AppConfig.read_env_config()
+
+
+HL7_BASE_ENV = {
+    "EGRESS_QUEUE_NAME": "egress-queue",
+    "EGRESS_SESSION_ID": "hl7-session",
+    "SERVICE_BUS_CONNECTION_STRING": "Endpoint=sb://localhost",
+    "MESSAGE_STORE_QUEUE_NAME": "message-store",
+    "WORKFLOW_ID": "workflow-hl7",
+    "MICROSERVICE_ID": "rest-server",
+    "HEALTH_BOARD": "test-board",
+    "PEER_SERVICE": "hl7-sender",
+    "PIPELINE": "hl7",
+}
+
+
+class TestPipelineConfig(unittest.TestCase):
+    @patch.dict(os.environ, HL7_BASE_ENV, clear=True)
+    def test_hl7_pipeline_does_not_require_generic_pipeline_settings(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.pipeline, "hl7")
+        self.assertIsNone(config.content_adapter)
+        self.assertIsNone(config.validator_type)
+        self.assertIsNone(config.output_format)
+
+    @patch.dict(os.environ, {**HL7_BASE_ENV, "CONTENT_ADAPTER": "soap"}, clear=True)
+    def test_hl7_pipeline_fails_fast_on_content_adapter(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
+    @patch.dict(os.environ, {**HL7_BASE_ENV, "VALIDATOR_TYPE": "none"}, clear=True)
+    def test_hl7_pipeline_fails_fast_on_validator_type(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
+    @patch.dict(os.environ, {**HL7_BASE_ENV, "OUTPUT_FORMAT": "raw"}, clear=True)
+    def test_hl7_pipeline_fails_fast_on_output_format(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
+    @patch.dict(os.environ, {**HL7_BASE_ENV, "HL7_VALIDATION_FLOW": "risp"}, clear=True)
+    def test_risp_flow_requires_wrrs_config(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
+    @patch.dict(
+        os.environ,
+        {
+            **HL7_BASE_ENV,
+            "HL7_VALIDATION_FLOW": "risp",
+            "WRRS_QUEUE_NAME": "wrrs-queue",
+            "WRRS_EGRESS_SESSION_ID": "risp-to-wrrs",
+            "WRRS_WORKFLOW_ID": "risp-to-wrrs",
+        },
+        clear=True,
+    )
+    def test_risp_flow_with_wrrs_config_succeeds(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.wrrs_queue_name, "wrrs-queue")
+
+    @patch.dict(os.environ, {**HL7_BASE_ENV, "PIPELINE": "carrier-pigeon"}, clear=True)
+    def test_invalid_pipeline_raises(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
 
 class TestDotenvLoading(unittest.TestCase):
     """Verifies the .env loading semantics app_config.py relies on at import time.
