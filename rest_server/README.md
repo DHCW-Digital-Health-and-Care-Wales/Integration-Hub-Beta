@@ -22,7 +22,9 @@ shape and destination queue. See
 `hl7_soap_server` remains the dedicated SOAP+HL7-v2.xml service for now (it also serves a WSDL
 contract) - see [`docs/rest_merge.md`](../docs/rest_merge.md) §9 for its planned consolidation into
 the `generic` pipeline (`CONTENT_ADAPTER=soap`, `VALIDATOR_TYPE=hl7-xsd`), which already reproduces
-its behaviour.
+its behaviour. [`tests/test_hl7_soap_server_parity.py`](tests/test_hl7_soap_server_parity.py)
+characterises that parity against `hl7_soap_server`'s own sample payloads, and documents two known
+behavioural gaps that must be fixed before that cutover (see `docs/rest_merge.md` §9).
 
 ## Choosing a configuration
 
