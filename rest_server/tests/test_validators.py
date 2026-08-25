@@ -4,7 +4,7 @@ from pathlib import Path
 
 from hl7_validation import convert_er7_to_xml_with_flow_schema
 
-from rest_server.errors import ValidationError
+from rest_server.errors import RequestError, ValidationError
 from rest_server.validators.hl7_xsd_validator import Hl7XsdValidator
 from rest_server.validators.no_op_validator import NoOpValidator
 from rest_server.validators.xsd_validator import XsdValidator
@@ -59,6 +59,15 @@ class TestHl7XsdValidator(unittest.TestCase):
         validator = Hl7XsdValidator(schema_group="phw", allowed_structures={"ADT_A05"})
         with self.assertRaises(ValidationError):
             validator.validate(broken_xml, "ADT_A05")
+
+    def test_unmapped_schema_structure_raises_server_configuration_error(self) -> None:
+        # Structure is allowed, but "phw" has no XSD mapping for it - a deployment
+        # misconfiguration, distinct from (and reported differently to) a payload failure.
+        validator = Hl7XsdValidator(schema_group="phw", allowed_structures={"NOT_A_REAL_STRUCTURE"})
+        with self.assertRaises(RequestError) as ctx:
+            validator.validate("<NOT_A_REAL_STRUCTURE/>", "NOT_A_REAL_STRUCTURE")
+        self.assertEqual(ctx.exception.http_status, 500)
+        self.assertEqual(ctx.exception.code, "Server.Configuration")
 
 
 class TestXsdValidator(unittest.TestCase):

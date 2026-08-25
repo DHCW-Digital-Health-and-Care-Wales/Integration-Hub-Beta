@@ -6,5 +6,6 @@ from typing import Protocol
 
 class Validator(Protocol):
     def validate(self, payload_xml: str, structure_id: str | None) -> None:
-        """Raise ``rest_server.errors.ValidationError`` when the payload is invalid."""
+        """Raise ``rest_server.errors.ValidationError`` when the payload is invalid, or
+        ``rest_server.errors.RequestError`` for a distinct request-level/config failure."""
         ...

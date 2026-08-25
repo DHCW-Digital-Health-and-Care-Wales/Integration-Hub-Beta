@@ -23,8 +23,8 @@ shape and destination queue. See
 contract) - see [`docs/rest_merge.md`](../docs/rest_merge.md) §9 for its planned consolidation into
 the `generic` pipeline (`CONTENT_ADAPTER=soap`, `VALIDATOR_TYPE=hl7-xsd`), which already reproduces
 its behaviour. [`tests/test_hl7_soap_server_parity.py`](tests/test_hl7_soap_server_parity.py)
-characterises that parity against `hl7_soap_server`'s own sample payloads, and documents two known
-behavioural gaps that must be fixed before that cutover (see `docs/rest_merge.md` §9).
+characterises that parity against `hl7_soap_server`'s own sample payloads; two behavioural gaps
+found this way have since been fixed (see `docs/rest_merge.md` §9).
 
 ## Choosing a configuration
 
@@ -90,7 +90,8 @@ flowchart LR
 
 ### Configuration recipes
 
-**SOAP + HL7 v2.xml, same rules as `hl7_soap_server`** (e.g. LIMS → MPI):
+**SOAP + HL7 v2.xml, same rules as `hl7_soap_server`** (e.g. LIMS → MPI) - see
+[`examples/soap.env.example`](examples/soap.env.example):
 
 ```bash
 PIPELINE=generic
@@ -103,7 +104,8 @@ ALLOWED_SOURCE_IDENTIFIERS=328
 OUTPUT_FORMAT=er7
 ```
 
-**Plain XML (no envelope) validated against a partner-specific XSD:**
+**Plain XML (no envelope) validated against a partner-specific XSD** - see
+[`examples/xml-raw-xsd.env.example`](examples/xml-raw-xsd.env.example):
 
 ```bash
 PIPELINE=generic
@@ -117,7 +119,7 @@ OUTPUT_FORMAT=raw
 ```
 
 **Plain XML, no schema validation** (only use this with an explicit, documented justification -
-see [Security](#security)):
+see [Security](#security)) - see [`examples/xml-raw-none.env.example`](examples/xml-raw-none.env.example):
 
 ```bash
 PIPELINE=generic
@@ -175,7 +177,7 @@ returns a `422` NACK instead - no partial/undone sends need to be rolled back.
 
 ### Configuration recipes
 
-**Plain HL7 receiver, no flow-specific rules:**
+**Plain HL7 receiver, no flow-specific rules:** - see [`examples/hl7-plain.env.example`](examples/hl7-plain.env.example):
 
 ```bash
 PIPELINE=hl7
@@ -184,7 +186,8 @@ HL7_VERSION=2.5
 SENDING_APP=252
 ```
 
-**MPI outbound flow** (validates MSH.9.2/PID.2 fields, single destination):
+**MPI outbound flow** (validates MSH.9.2/PID.2 fields, single destination) - see
+[`examples/hl7-mpi.env.example`](examples/hl7-mpi.env.example):
 
 ```bash
 PIPELINE=hl7
@@ -192,7 +195,8 @@ ENVIRONMENT=DEV
 HL7_VALIDATION_FLOW=mpi
 ```
 
-**RISP flow** (multi-destination fan-out - see diagram above):
+**RISP flow** (multi-destination fan-out - see diagram above) - see
+[`examples/hl7-risp.env.example`](examples/hl7-risp.env.example):
 
 ```bash
 PIPELINE=hl7
@@ -251,6 +255,24 @@ values a shell/pipeline has already exported.
 ```bash
 cp .env.example .env
 # edit .env, then:
+uv run python -m rest_server
+```
+
+[`examples/`](examples/) has a ready-to-copy `.env` file for each configuration recipe below -
+copy the one matching your mode straight to `.env` instead of editing `.env.example` by hand:
+
+| Mode | Example file |
+|---|---|
+| `generic`: SOAP + HL7-XSD (LIMS → MPI style) | [`examples/soap.env.example`](examples/soap.env.example) |
+| `generic`: plain XML + custom XSD | [`examples/xml-raw-xsd.env.example`](examples/xml-raw-xsd.env.example) |
+| `generic`: plain XML, no schema validation | [`examples/xml-raw-none.env.example`](examples/xml-raw-none.env.example) |
+| `hl7`: no flow | [`examples/hl7-plain.env.example`](examples/hl7-plain.env.example) |
+| `hl7`: `mpi` flow | [`examples/hl7-mpi.env.example`](examples/hl7-mpi.env.example) |
+| `hl7`: `risp` flow (multi-destination) | [`examples/hl7-risp.env.example`](examples/hl7-risp.env.example) |
+
+```bash
+cp examples/soap.env.example .env
+# edit .env with real local values, then:
 uv run python -m rest_server
 ```
 

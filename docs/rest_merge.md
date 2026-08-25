@@ -208,30 +208,28 @@ change requiring caller sign-off, not a cosmetic one.
 
 ### Characterization test findings
 
-Step 1 (below) is done — [`rest_server/tests/test_hl7_soap_server_parity.py`](../rest_server/tests/test_hl7_soap_server_parity.py)
+Steps 1 and the fix noted in step 2 (below) are done —
+[`rest_server/tests/test_hl7_soap_server_parity.py`](../rest_server/tests/test_hl7_soap_server_parity.py)
 exercises `rest_server`'s `generic` pipeline (configured as in the table above) with the same
 sample LIMS payloads as `hl7_soap_server/tests/test_soap_processor.py`. The core cases (valid,
 malformed SOAP, schema-invalid, unauthorised assigning authority) match `hl7_soap_server`'s status
-codes and fault text. Two genuine behavioural gaps were found and must be fixed before cutover:
+codes and fault text. Two genuine behavioural gaps were found and have since been fixed:
 
-| Gap | `hl7_soap_server` | `rest_server` (`generic`) today |
+| Gap | `hl7_soap_server` | `rest_server` (`generic`) — now fixed |
 |---|---|---|
-| Payload with no extractable assigning authority (no HD.1 in MSH.3/MSH.4/PID.3) | `400 Client.Validation`, "Unable to determine assigning authority from payload." — raised eagerly during extraction | `SoapContentAdapter.extract()` returns `source_identifier=None`, which the allow-list check then rejects as `403 Client.Authorization` ("not authorised") — a malformed payload is misreported as an authorisation failure |
-| Structure allowed (`ALLOWED_HL7_STRUCTURES`) but missing from the configured schema group's XSD mapping (deployment misconfiguration) | `500 Server.Configuration`, "SOAP schema mapping is not configured." | `Hl7XsdValidator` raises the same `ValidationError` as a real payload failure, which `RestMessageProcessor` always maps to `400 Client.Validation` — a server-side config bug is misreported as a client error |
+| Payload with no extractable assigning authority (no HD.1 in MSH.3/MSH.4/PID.3) | `400 Client.Validation`, "Unable to determine assigning authority from payload." — raised eagerly during extraction | `SoapContentAdapter.extract()` now raises the same `400 Client.Validation` fault immediately, instead of returning `source_identifier=None` and letting the allow-list check misreport it as `403` |
+| Structure allowed (`ALLOWED_HL7_STRUCTURES`) but missing from the configured schema group's XSD mapping (deployment misconfiguration) | `500 Server.Configuration`, "SOAP schema mapping is not configured." | `Hl7XsdValidator` now raises a distinct `500 Server.Configuration` `RequestError` instead of the generic `400 Client.Validation` `ValidationError` used for real payload failures |
 
-Both gaps are narrow edge cases (not the common-path scenarios), but should be closed — e.g. by
-having `SoapContentAdapter.extract()` raise `RequestError("Client.Validation", ..., 400)` when no
-source identifier is found instead of returning `None`, and by giving `Hl7XsdValidator` a distinct
-exception/status for schema-mapping lookup failures — before relying on `rest_server` for the
-LIMS→MPI flow.
+Both fixes are covered by regression tests in `test_hl7_soap_server_parity.py`,
+`tests/test_content_adapters.py` and `tests/test_validators.py`.
 
 Steps:
 
 1. ✅ Characterization tests comparing `hl7_soap_server` and `rest_server` (`generic`, configured
    as above) responses for the same set of sample LIMS payloads (valid, schema-invalid,
    unauthorised assigning authority, malformed SOAP) — see findings above.
-2. Fix the two gaps found above, then update the LIMS→MPI Terraform flow module to deploy
-   `rest_server` with the explicit config above instead of `hl7_soap_server`, staged
+2. ✅ Fix the two gaps found above. Remaining: update the LIMS→MPI Terraform flow module to
+   deploy `rest_server` with the explicit config above instead of `hl7_soap_server`, staged
    DEV → TST → UAT as usual.
 3. Remove `hl7_soap_server/`, its `Dockerfile`, and pipeline references once the flow has run
    without incident through at least one full environment cycle.

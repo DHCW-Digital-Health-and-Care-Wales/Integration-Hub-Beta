@@ -6,7 +6,7 @@ from typing import Set
 from hl7_validation import XmlValidationError, validate_xml
 from hl7_validation.schemas import get_schema_xsd_path_for
 
-from rest_server.errors import ValidationError
+from rest_server.errors import RequestError, ValidationError
 
 
 class Hl7XsdValidator:
@@ -27,7 +27,13 @@ class Hl7XsdValidator:
         try:
             xsd_path = get_schema_xsd_path_for(self.schema_group, structure_id)
         except ValueError as exc:
-            raise ValidationError(f"Schema mapping error for group '{self.schema_group}': {exc}") from exc
+            # A deployment misconfiguration (structure allowed but not mapped in the schema
+            # group), not a payload failure - reported distinctly from ValidationError below.
+            raise RequestError(
+                "Server.Configuration",
+                f"Schema mapping is not configured for group '{self.schema_group}' and structure '{structure_id}'.",
+                500,
+            ) from exc
 
         try:
             validate_xml(payload_xml, xsd_path)

@@ -53,6 +53,13 @@ class TestSoapContentAdapter(unittest.TestCase):
             self.adapter.extract(two_children)
         self.assertEqual(ctx.exception.http_status, 400)
 
+    def test_missing_assigning_authority_raises_request_error(self) -> None:
+        no_authority_xml = _wrap_in_soap("<ADT_A05><MSH><MSH.10>MSG1</MSH.10></MSH></ADT_A05>")
+        with self.assertRaises(RequestError) as ctx:
+            self.adapter.extract(no_authority_xml)
+        self.assertEqual(ctx.exception.http_status, 400)
+        self.assertEqual(ctx.exception.code, "Client.Validation")
+
     def test_build_success_response_contains_message_control_id(self) -> None:
         response = self.adapter.build_success_response("abc123")
         self.assertIn("<Status>Success</Status>", response)

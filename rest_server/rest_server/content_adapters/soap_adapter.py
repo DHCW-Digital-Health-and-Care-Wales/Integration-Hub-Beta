@@ -42,11 +42,11 @@ class SoapContentAdapter:
         return ExtractedPayload(
             payload_xml=payload_xml,
             structure_id=local_name(payload_element.tag),
-            source_identifier=self._extract_assigning_authority(payload_element),
+            source_identifier=self._require_assigning_authority(payload_element),
             message_control_id=find_first_text(payload_element, ["MSH", "MSH.10"]),
         )
 
-    def _extract_assigning_authority(self, payload_element: XmlElement) -> str | None:
+    def _require_assigning_authority(self, payload_element: XmlElement) -> str:
         candidate_paths = (
             ["MSH", "MSH.3", "HD.1"],
             ["MSH", "MSH.4", "HD.1"],
@@ -56,7 +56,7 @@ class SoapContentAdapter:
             value = find_first_text(payload_element, path)
             if value:
                 return value
-        return None
+        raise RequestError("Client.Validation", "Unable to determine assigning authority from payload.", 400)
 
     def build_success_response(self, message_control_id: str) -> str:
         escaped_message_control_id = _escape(message_control_id or "")

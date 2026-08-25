@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 from hl7_validation import convert_er7_to_xml_with_flow_schema
 
 from rest_server.content_adapters.soap_adapter import SoapContentAdapter
-from rest_server.errors import ValidationError
+from rest_server.errors import RequestError
 from rest_server.message_processor import RestMessageProcessor
 from rest_server.validators.hl7_xsd_validator import Hl7XsdValidator
 
@@ -111,37 +111,36 @@ class RestServerSoapParityTests(unittest.TestCase):
         self.mock_sender.send_text_message.assert_not_called()
 
 
-class SoapParityKnownGapsTests(unittest.TestCase):
-    """Behavioural gaps vs hl7_soap_server found while writing the parity tests above.
-
-    These assert *current* rest_server behaviour (not hl7_soap_server's) so a future fix shows up
-    as a failing assertion instead of a silent regression. See docs/rest_merge.md §9.
+class SoapParityGapFixesTests(unittest.TestCase):
+    """Regression tests for two gaps vs hl7_soap_server found while writing the parity tests
+    above, and since fixed. See docs/rest_merge.md §9.
     """
 
-    def test_missing_assigning_authority_extracts_as_none_not_a_400_fault(self) -> None:
-        # GAP: hl7_soap_server's _extract_assigning_authority raises a 400 "Unable to determine
+    def test_missing_assigning_authority_raises_400_matching_hl7_soap_server(self) -> None:
+        # hl7_soap_server's _extract_assigning_authority raises a 400 "Unable to determine
         # assigning authority from payload." immediately when MSH.3/MSH.4/PID.3 carry no HD.1.
-        # SoapContentAdapter.extract() instead returns source_identifier=None and defers to the
-        # allow-list check in RestMessageProcessor, which rejects None as an *unauthorised*
-        # source (403) rather than a *malformed payload* (400) once schema validation passes.
+        # SoapContentAdapter.extract() now raises the same fault instead of returning
+        # source_identifier=None and letting the allow-list check misreport it as a 403.
         no_authority_xml = _wrap_payload_in_soap(
             "<ADT_A05><MSH><MSH.10>MSG1</MSH.10></MSH></ADT_A05>"
         )
 
-        extracted = SoapContentAdapter().extract(no_authority_xml)
+        with self.assertRaises(RequestError) as ctx:
+            SoapContentAdapter().extract(no_authority_xml)
+        self.assertEqual(ctx.exception.http_status, 400)
+        self.assertIn("Unable to determine assigning authority", ctx.exception.message)
 
-        self.assertIsNone(extracted.source_identifier)
-
-    def test_unmapped_schema_structure_raises_a_400_not_hl7_soap_servers_500(self) -> None:
-        # GAP: hl7_soap_server treats a schema-mapping lookup failure (structure allowed but has
-        # no XSD entry for the configured schema group - a deployment misconfiguration) as a 500
-        # "Server.Configuration" fault, distinct from a real payload failure. Hl7XsdValidator
-        # raises the same ValidationError for both cases, which RestMessageProcessor always maps
-        # to 400 "Client.Validation" - masking a server-side config bug as a client error.
+    def test_unmapped_schema_structure_raises_500_matching_hl7_soap_server(self) -> None:
+        # hl7_soap_server treats a schema-mapping lookup failure (structure allowed but has no
+        # XSD entry for the configured schema group - a deployment misconfiguration) as a 500
+        # "Server.Configuration" fault, distinct from a real payload failure. Hl7XsdValidator now
+        # raises the same distinct RequestError instead of a generic 400 ValidationError.
         validator = Hl7XsdValidator(schema_group="phw", allowed_structures={"NOT_A_REAL_STRUCTURE"})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(RequestError) as ctx:
             validator.validate("<NOT_A_REAL_STRUCTURE/>", "NOT_A_REAL_STRUCTURE")
+        self.assertEqual(ctx.exception.http_status, 500)
+        self.assertEqual(ctx.exception.code, "Server.Configuration")
 
 
 if __name__ == "__main__":
