@@ -32,10 +32,9 @@ def receive_hl7_message(payload: HL7Message, request: Request) -> PlainTextRespo
         logger.warning("Rejected oversize message (limit: %s bytes)", config.max_request_size_bytes)
         return _error_envelope(400, "Message exceeds the maximum allowed size.")
 
-    # Line-ending normalisation then XML→ER7 adaptation.
-    normalised = content.replace("\r\n", "\r").replace("\n", "\r")
+    # XML→ER7 adaptation (ER7 line-ending normalisation is handled by to_er7()).
     try:
-        er7_message = to_er7(normalised)
+        er7_message = to_er7(content)
     except Exception as e:  # Malformed XML / unable to convert to ER7 → treated as unparsable.
         logger.error("Failed to convert inbound message to ER7: %s", e)
         nack = context.ack_builder.build_generic_nack(f"{e}")
