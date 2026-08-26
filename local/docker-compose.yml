@@ -127,10 +127,11 @@ services:
 
   # REST-based HL7 receiver (HTTP counterpart to phw-hl7-server).
   # Serves the RISP flow: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
+  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see rest_server/README.md.
   risp-hl7-rest-server:
     container_name: risp-hl7-rest-server
     build:
-      context: ../hl7_rest_server
+      context: ../rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -156,10 +157,11 @@ services:
         aliases:
           - "risp-hl7-rest-server"
 
+  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
-      context: ../hl7_soap_server
+      context: ../rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -179,10 +181,11 @@ services:
         aliases:
           - "hl7-soap-server"
 
+  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   pms-hl7-soap-server:
     container_name: pms-hl7-soap-server
     build:
-      context: ../hl7_soap_server
+      context: ../rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
