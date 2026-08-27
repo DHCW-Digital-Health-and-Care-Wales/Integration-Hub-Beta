@@ -96,10 +96,11 @@ def main() -> None:
     )
 
     logger.info(
-        "SOAP Sender starting — endpoint: %s, queue: %s, ws_security: %s",
+        "SOAP Sender starting — endpoint: %s, queue: %s, ws_security: %s, envelope_format: %s",
         app_config.soap_endpoint_url,
         app_config.ingress_queue_name,
         app_config.ws_security_enabled,
+        app_config.soap_envelope_format,
     )
 
     with (
@@ -111,6 +112,7 @@ def main() -> None:
             app_config.soap_timeout_seconds,
             app_config.soap_api_key,
             app_config.soap_client_cert_path,
+            app_config.soap_envelope_format,
         ) as soap_sender_client,
         TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
         message_store_client,
