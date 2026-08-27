@@ -36,7 +36,7 @@
 # ============================================
 
 # Use PowerShell as the recipe shell on Windows hosts.
-set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -107,7 +107,7 @@ python := "python3"
     echo "📋 Profile selected: {{profile}}"
     echo "🔨 This may take a few minutes on first build..."
     echo ""
-    docker compose --profile {{profile}} build
+    podman compose --profile {{profile}} build
     echo ""
     echo "✅ Build complete for profile: {{profile}}"
     echo "💡 Next step: Run 'just start {{profile}}' to start the services"
@@ -119,7 +119,7 @@ python := "python3"
     echo "📋 Profile: {{profile}}"
     echo "🚀 Launching containers in detached mode..."
     echo ""
-    docker compose --profile {{profile}} up -d
+    podman compose --profile {{profile}} up -d
     echo ""
     echo "✅ Services started successfully!"
     echo "📍 Running containers for profile: {{profile}}"
@@ -134,7 +134,7 @@ python := "python3"
 @stop:
     echo "⏹️  Stopping all Docker Compose services..."
     echo ""
-    docker compose --profile "*" down
+    podman compose --profile "*" down
     echo ""
     echo "✅ All services stopped"
     echo "💡 To restart: just start <profile>"
@@ -169,7 +169,7 @@ python := "python3"
     {{ if services == "" { "echo '📋 Showing logs for all services'" } else { "echo '📋 Filtering logs for: " + services + "'" } }}
     echo "💡 Press Ctrl+C to stop following logs"
     echo ""
-    docker compose logs -f {{services}}
+    podman compose logs -f {{services}}
 
 # ============================================
 # Convenience Recipes
