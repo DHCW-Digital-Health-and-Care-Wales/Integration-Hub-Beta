@@ -1,0 +1,24 @@
+"""Sample WDS HL7 ER7 messages for use in tests."""
+
+WDS_A28 = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A28^ADT_A05|6778031837018553261|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A28|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI|||Testpatient^Test^^^||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN\r"
+    "PD1|||^UNK|UNK\r"
+    "PV1||N"
+)
+
+WDS_A31 = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A31^ADT_A05|6778031837018553262|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A31|20260729095037\r"
+    "PID|1||B0000010613^^^328^PI|||Testpatient^Test^^^||19900101|F|||1 Test Street^Test Town^CARDIFF^^CF1 1AA\r"
+    "PD1|||^UNK|UNK\r"
+    "PV1||N"
+)
+
+WDS_A08_DISALLOWED = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A08^ADT_A01|6778031837018553263|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A08|20260729095037\r"
+    "PID|1||B0000010614^^^328^PI|||Testpatient^Test^^^||19800601|M\r"
+    "PV1||N"
+)

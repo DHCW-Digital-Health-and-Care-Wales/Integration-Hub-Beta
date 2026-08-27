@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import requests as req
 from defusedxml import ElementTree as ET
 
-from soap_sender.soap_sender_client import SOAPSenderClient, _build_soap_envelope
+from soap_sender.soap_sender_client import SOAPSenderClient, _build_soap_envelope, _build_wis_soap_envelope
 
 
 class TestBuildSoapEnvelope(unittest.TestCase):
@@ -81,6 +81,62 @@ class TestSOAPSenderClientSendMessage(unittest.TestCase):
         with SOAPSenderClient("http://localhost/soap") as client:
             self.assertIsNotNone(client._session)
         # After exit, session should be closed (no error raised)
+
+
+_WDS_A28_ER7 = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A28^ADT_A05|6778031837018553261|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A28|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI|||Testpatient^Test^^^||20010909|M\r"
+    "PD1|||^UNK|UNK\r"
+    "PV1||N"
+)
+
+
+class TestBuildWisSoapEnvelope(unittest.TestCase):
+
+    def test_wis_envelope_uses_capture_from_fiorano_namespace(self) -> None:
+        env = _build_wis_soap_envelope(_WDS_A28_ER7)
+        self.assertIn("http://Cypris.Nhs.Wales.Uk/CaptureFromFiorona/Input", env)
+
+    def test_wis_envelope_contains_capture_from_fiorano_element(self) -> None:
+        env = _build_wis_soap_envelope(_WDS_A28_ER7)
+        self.assertIn("CaptureFromFiorona", env)
+        self.assertIn("inputString", env)
+
+    def test_wis_envelope_contains_hl7_v2_xml_namespace_escaped(self) -> None:
+        env = _build_wis_soap_envelope(_WDS_A28_ER7)
+        # HL7 v2 XML namespace should appear escaped inside inputString
+        self.assertIn("urn:hl7-org:v2xml", env)
+
+    def test_wis_envelope_contains_message_type(self) -> None:
+        env = _build_wis_soap_envelope(_WDS_A28_ER7)
+        self.assertIn("ADT_A05", env)
+
+    def test_wis_envelope_is_valid_xml(self) -> None:
+        env = _build_wis_soap_envelope(_WDS_A28_ER7)
+        ET.fromstring(env)
+
+    def test_wis_client_uses_wis_envelope(self) -> None:
+        client = SOAPSenderClient("http://localhost/soap", envelope_format="wis")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<ACK/>"
+        with patch.object(client._session, "post", return_value=mock_response) as mock_post:
+            client.send_message(_WDS_A28_ER7)
+        posted_data = mock_post.call_args.kwargs["data"].decode("utf-8")
+        self.assertIn("CaptureFromFiorona", posted_data)
+        self.assertNotIn("SendHL7Message", posted_data)
+
+    def test_default_client_uses_legacy_envelope(self) -> None:
+        client = SOAPSenderClient("http://localhost/soap")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<ACK/>"
+        with patch.object(client._session, "post", return_value=mock_response) as mock_post:
+            client.send_message("MSH|test")
+        posted_data = mock_post.call_args.kwargs["data"].decode("utf-8")
+        self.assertIn("SendHL7Message", posted_data)
+        self.assertNotIn("CaptureFromFiorona", posted_data)
 
 
 if __name__ == "__main__":
