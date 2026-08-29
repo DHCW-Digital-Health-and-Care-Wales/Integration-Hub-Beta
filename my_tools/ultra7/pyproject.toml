@@ -1,0 +1,27 @@
+[project]
+name = "ultra7"
+version = "0.1.0"
+description = "GUI tool for testing MLLP, REST and SOAP HL7 endpoints"
+requires-python = ">=3.13"
+dependencies = [
+    "hl7apy",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.9",
+    "mypy==1.18.2",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "A", "PLC", "PLE", "PLW", "I"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ultra7*"]
