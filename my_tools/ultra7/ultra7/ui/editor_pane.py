@@ -157,16 +157,27 @@ class EditorPane(ttk.Frame):
         self._on_change()
 
     def _load_from_disk(self) -> None:
-        path = filedialog.askopenfilename(title="Load message")
-        if not path:
+        paths = filedialog.askopenfilenames(title="Load message(s)")
+        if not paths:
             return
-        with open(path, encoding="utf-8", errors="replace") as f:
-            content = f.read()
-        name = path.rsplit("/", 1)[-1]
-        message = Message(name=name, format=detect_format(content), content=content)
-        self._messages.append(message)
-        self._refresh_listbox(select=len(self._messages) - 1)
-        self._on_change()
+        errors: list[str] = []
+        loaded_count = 0
+        for path in paths:
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except OSError as exc:
+                errors.append(f"{path}: {exc}")
+                continue
+            name = path.rsplit("/", 1)[-1]
+            self._messages.append(Message(name=name, format=detect_format(content), content=content))
+            loaded_count += 1
+
+        if errors:
+            messagebox.showerror("Ultra7", "Some files failed to load:\n" + "\n".join(errors))
+        if loaded_count > 0:
+            self._refresh_listbox(select=len(self._messages) - 1)
+            self._on_change()
 
     # -- selection / editor sync --------------------------------------------
 
