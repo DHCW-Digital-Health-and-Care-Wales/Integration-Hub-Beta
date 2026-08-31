@@ -121,6 +121,52 @@ class TestEditorPaneMultiSelect(unittest.TestCase):
         self.pane._update_toggle_enabled_button_for_selection()
         self.assertEqual(self.pane._toggle_enabled_btn.cget("text"), "Enable")
 
+    def test_move_single_message_up(self) -> None:
+        self.pane.listbox.selection_set(1)
+        self.pane._move(-1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A02", "A01", "A03"])
+
+    def test_move_single_message_down(self) -> None:
+        self.pane.listbox.selection_set(1)
+        self.pane._move(1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A03", "A02"])
+
+    def test_move_multiple_selected_messages_up(self) -> None:
+        # A02 and A03 selected; moving up slides the block one position earlier.
+        self.pane.listbox.selection_set(1)
+        self.pane.listbox.selection_set(2)
+        self.pane._move(-1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A02", "A03", "A01"])
+
+    def test_move_multiple_selected_messages_down(self) -> None:
+        # A01 and A02 selected; moving down slides the block one position later.
+        self.pane.listbox.selection_set(0)
+        self.pane.listbox.selection_set(1)
+        self.pane._move(1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A03", "A01", "A02"])
+
+    def test_move_preserves_relative_order_of_selected_messages(self) -> None:
+        self.pane.listbox.selection_set(0)
+        self.pane.listbox.selection_set(1)
+        self.pane.listbox.selection_set(2)
+        self.pane._move(1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A02", "A03"])
+
+    def test_move_ignores_when_nothing_selected(self) -> None:
+        self.pane.listbox.selection_clear(0, tk.END)
+        self.pane._move(-1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A02", "A03"])
+
+    def test_move_does_not_wrap_around(self) -> None:
+        self.pane.listbox.selection_set(0)
+        self.pane._move(-1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A02", "A03"])
+
+    def test_move_does_not_wrap_around_at_end(self) -> None:
+        self.pane.listbox.selection_set(2)
+        self.pane._move(1)
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A02", "A03"])
+
 
 @unittest.skipUnless(_tk_available(), "requires a Tk display")
 class TestEditorPaneLoadFromDisk(unittest.TestCase):

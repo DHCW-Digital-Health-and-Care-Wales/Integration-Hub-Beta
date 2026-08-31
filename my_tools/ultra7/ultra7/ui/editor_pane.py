@@ -144,16 +144,32 @@ class EditorPane(ttk.Frame):
         self._on_change()
 
     def _move(self, offset: int) -> None:
-        if self._selected_index is None:
+        indices = self.listbox.curselection()
+        if not indices:
             return
-        new_index = self._selected_index + offset
-        if not (0 <= new_index < len(self._messages)):
+        new_indices = [i + offset for i in indices]
+        if not all(0 <= ni < len(self._messages) for ni in new_indices):
             return
-        self._messages[self._selected_index], self._messages[new_index] = (
-            self._messages[new_index],
-            self._messages[self._selected_index],
-        )
-        self._refresh_listbox(select=new_index)
+        selected = [self._messages[i] for i in indices]
+        # Build the new list by sliding the selected block as a unit.
+        result: list[Message] = []
+        selected_set = set(indices)
+        # For each position in the new list, decide whether it's a target
+        # slot for a selected message or the next non-selected message.
+        non_selected = (m for idx, m in enumerate(self._messages) if idx not in selected_set)
+        ns = next(non_selected, None)
+        for ni in range(len(self._messages)):
+            if ni in new_indices:
+                # Find the selected message whose target is ni.
+                for idx, msg in enumerate(selected):
+                    if new_indices[idx] == ni:
+                        result.append(msg)
+                        break
+            else:
+                result.append(ns)
+                ns = next(non_selected, None)
+        self._messages[:] = result
+        self._refresh_listbox(select=new_indices[-1])
         self._on_change()
 
     def _load_from_disk(self) -> None:
