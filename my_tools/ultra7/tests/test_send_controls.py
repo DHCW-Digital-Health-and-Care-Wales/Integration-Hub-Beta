@@ -4,7 +4,7 @@ import tkinter as tk
 import unittest
 from unittest.mock import patch
 
-from ultra7.models import Endpoint, Message
+from ultra7.models import Endpoint, IterationSpec, Message
 from ultra7.senders.base import SendResult
 from ultra7.ui.send_controls import SendControls
 
@@ -212,6 +212,56 @@ class TestSendWorkerLabels(unittest.TestCase):
         self.controls._start_send()
         self.assertEqual(self.controls._status_var.get(), "No enabled messages to send")
         self.assertIsNone(self.controls._worker)
+
+    def test_each_message_applies_its_own_iteration_spec_per_repeat(self) -> None:
+        """Two messages, each with a different iteration mode, batch-sent over 3 repeats:
+        every send must use that message's own spec and the shared repeat index, without
+        the two messages' iteration state leaking into each other or accumulating."""
+        sent_contents: list[str] = []
+
+        def _record_send(_self: object, _endpoint: Endpoint, message: Message) -> SendResult:
+            sent_contents.append(message.content)
+            return SendResult(ok=True, latency_ms=1.0, response_summary="ack")
+
+        fake_sender = type("FakeSender", (), {"send": _record_send})()
+
+        content_a = "MSH|...|000001|P|2.5"
+        start_a = content_a.index("000001")
+        message_a = Message(
+            name="A01",
+            format="hl7",
+            content=content_a,
+            iteration=IterationSpec(start=start_a, end=start_a + 6, mode="increment", step=1),
+        )
+        content_b = "PID|1||PATIENT_A"
+        start_b = content_b.index("PATIENT_A")
+        message_b = Message(
+            name="A02",
+            format="hl7",
+            content=content_b,
+            iteration=IterationSpec(
+                start=start_b, end=start_b + len("PATIENT_A"), mode="list", values=["PATIENT_A", "PATIENT_B"]
+            ),
+        )
+        endpoint = Endpoint(kind="mllp", host="127.0.0.1", port=1)
+
+        with patch("ultra7.ui.send_controls.get_sender", return_value=fake_sender):
+            self.controls._send_worker(endpoint, [message_a, message_b], repeat_count=3, delay_ms=0)
+
+        self.assertEqual(
+            sent_contents,
+            [
+                "MSH|...|000001|P|2.5",
+                "PID|1||PATIENT_A",
+                "MSH|...|000002|P|2.5",
+                "PID|1||PATIENT_B",
+                "MSH|...|000003|P|2.5",
+                "PID|1||PATIENT_A",  # wraps around
+            ],
+        )
+        # Originals must stay untouched — each send recomputes from the source, not the last output.
+        self.assertEqual(message_a.content, content_a)
+        self.assertEqual(message_b.content, content_b)
 
 
 if __name__ == "__main__":

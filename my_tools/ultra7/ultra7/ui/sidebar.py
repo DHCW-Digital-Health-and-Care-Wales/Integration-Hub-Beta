@@ -5,8 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
-DHCW_NAVY = "#1B294A"
-PANE_BG = "#FFFFFF"
+from ultra7.ui.themes import Theme, get_border_color
 
 
 class Sidebar(ttk.Frame):
@@ -24,23 +23,58 @@ class Sidebar(ttk.Frame):
         self._on_new = on_new
         self._on_remove = on_remove
 
-        ttk.Label(self, text="Projects").pack(fill=tk.X, padx=4, pady=(4, 0))
+        # Brand header — coloured top bar with app name.
+        self._header = tk.Frame(self, height=44)
+        self._header.pack(fill=tk.X)
+        self._header.pack_propagate(False)
+        self._header_label = tk.Label(
+            self._header,
+            text="☰  Ultra7",
+            font=("Rubik", 13, "bold"),
+            anchor="w",
+            padx=10,
+        )
+        self._header_label.pack(fill=tk.BOTH, expand=True)
+
+        # Subtle separator below the header.
+        self._separator = tk.Frame(self, height=1)
+        self._separator.pack(fill=tk.X)
+
+        ttk.Label(self, text="Projects", font=("Rubik", 9)).pack(
+            fill=tk.X, padx=10, pady=(8, 2), anchor="w"
+        )
 
         listbox_frame = ttk.Frame(self)
-        listbox_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
-        self.listbox = tk.Listbox(listbox_frame, exportselection=False, bg=PANE_BG, fg=DHCW_NAVY)
+        listbox_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP, padx=4)
+        self.listbox = tk.Listbox(
+            listbox_frame,
+            exportselection=False,
+            font=("Rubik", 10),
+            activestyle="none",
+            bd=0,
+            highlightthickness=1,
+            highlightbackground="#ccc",
+        )
         listbox_scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=listbox_scrollbar.set)
         self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         listbox_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.listbox.bind("<<ListboxSelect>>", self._handle_select)
 
+        # Bottom button row with separator above.
+        ttk.Separator(self, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=4, pady=(4, 0))
         button_row = ttk.Frame(self)
-        button_row.pack(fill=tk.X)
-        ttk.Button(button_row, text="New", command=self._on_new).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        button_row.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Button(button_row, text="New", command=self._on_new).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 2))
         ttk.Button(button_row, text="Remove", command=self._handle_remove).pack(
-            side=tk.LEFT, expand=True, fill=tk.X
+            side=tk.LEFT, expand=True, fill=tk.X, padx=(2, 0)
         )
+
+    def apply_theme(self, theme: Theme) -> None:
+        """Recolour the branded header and separators for the active theme."""
+        self._header.configure(bg=theme.accent)
+        self._header_label.configure(bg=theme.accent, fg=theme.select_fg)
+        self._separator.configure(bg=get_border_color(theme))
 
     def _handle_select(self, _event: tk.Event) -> None:
         selection = self.listbox.curselection()

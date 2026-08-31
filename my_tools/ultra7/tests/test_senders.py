@@ -177,8 +177,8 @@ class TestSoapSender(unittest.TestCase):
             message = Message(name="m", format="xml", content="<Payload/>")
             result = SoapSender().send(endpoint, message)
             self.assertTrue(result.ok)
-            self.assertIn(b"Envelope", received["body"])  # type: ignore[operator]
-            self.assertIn(b"<Payload/>", received["body"])  # type: ignore[operator]
+            self.assertIn(b"Envelope", received["body"])  # type: ignore[arg-type]
+            self.assertIn(b"<Payload/>", received["body"])  # type: ignore[arg-type]
             self.assertEqual(received["soap_action"], "urn:submit")
         finally:
             server.shutdown()

@@ -52,23 +52,46 @@ class SendControls(ttk.Frame):
         self._cancel_event = threading.Event()
         self._worker: threading.Thread | None = None
 
-        ttk.Label(self, text="Repeat count").pack(side=tk.LEFT, padx=(4, 2))
+        # Visual grouping frame with subtle border.
+        container = ttk.Frame(self)
+        container.pack(fill=tk.X, padx=4, pady=4)
+
+        ttk.Label(container, text="Send Controls", font=("Rubik", 9)).pack(anchor="w", padx=4, pady=(0, 4))
+
+        controls_row = ttk.Frame(container)
+        controls_row.pack(fill=tk.X, padx=4)
+
+        ttk.Label(controls_row, text="Repeat", font=("Rubik", 9)).pack(side=tk.LEFT, padx=(0, 4))
         self._repeat_var = tk.StringVar(value="1")
-        ttk.Entry(self, textvariable=self._repeat_var, width=6).pack(side=tk.LEFT, padx=(0, 8))
+        self._repeat_entry = ttk.Entry(controls_row, textvariable=self._repeat_var, width=6)
+        self._repeat_entry.pack(side=tk.LEFT, padx=(0, 12))
 
-        ttk.Label(self, text="Delay (ms)").pack(side=tk.LEFT, padx=(4, 2))
+        ttk.Label(controls_row, text="Delay (ms)", font=("Rubik", 9)).pack(side=tk.LEFT, padx=(0, 4))
         self._delay_var = tk.StringVar(value="0")
-        ttk.Entry(self, textvariable=self._delay_var, width=8).pack(side=tk.LEFT, padx=(0, 8))
+        self._delay_entry = ttk.Entry(controls_row, textvariable=self._delay_var, width=8)
+        self._delay_entry.pack(side=tk.LEFT, padx=(0, 16))
 
-        self._send_btn = ttk.Button(self, text="Send", command=self._start_send)
+        self._send_btn = ttk.Button(controls_row, text="▶ Send", command=self._start_send)
         self._send_btn.pack(side=tk.LEFT, padx=4)
-        self._send_once_btn = ttk.Button(self, text="Send Selected Once", command=self._start_send_once)
+        self._send_once_btn = ttk.Button(controls_row, text="Send Selected Once", command=self._start_send_once)
         self._send_once_btn.pack(side=tk.LEFT, padx=4)
-        self._cancel_btn = ttk.Button(self, text="Cancel", command=self._cancel, state="disabled")
+        self._cancel_btn = ttk.Button(controls_row, text="■ Cancel", command=self._cancel, state="disabled")
         self._cancel_btn.pack(side=tk.LEFT, padx=4)
 
         self._status_var = tk.StringVar(value="")
-        ttk.Label(self, textvariable=self._status_var).pack(side=tk.LEFT, padx=8)
+        ttk.Label(controls_row, textvariable=self._status_var, font=("Rubik", 9)).pack(side=tk.LEFT, padx=12)
+
+    def set_enabled(self, enabled: bool) -> None:
+        """Enable or disable all interactive controls (buttons, entries)."""
+        state = "normal" if enabled else "disabled"
+        for widget in (
+            self._repeat_entry,
+            self._delay_entry,
+            self._send_btn,
+            self._send_once_btn,
+            self._cancel_btn,
+        ):
+            widget.configure(state=state)
 
     def get_repeat_count(self) -> int:
         try:

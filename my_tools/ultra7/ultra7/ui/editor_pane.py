@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 
@@ -29,11 +30,25 @@ class EditorPane(ttk.Frame):
         self._suspend_events = False
 
         left = ttk.Frame(self)
-        left.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 4))
+        left.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 0))
+
+        # Section header for the message list.
+        left_header = ttk.Frame(left)
+        left_header.pack(fill=tk.X, padx=8, pady=(4, 2))
+        ttk.Label(left_header, text="Messages", font=("Rubik", 9)).pack(anchor="w")
 
         listbox_frame = ttk.Frame(left)
-        listbox_frame.pack(fill=tk.BOTH, expand=True)
-        self.listbox = tk.Listbox(listbox_frame, exportselection=False, width=28, selectmode=tk.EXTENDED)
+        listbox_frame.pack(fill=tk.BOTH, expand=True, padx=4)
+        self.listbox = tk.Listbox(
+            listbox_frame,
+            exportselection=False,
+            width=28,
+            selectmode=tk.EXTENDED,
+            font=("Rubik", 10),
+            activestyle="none",
+            bd=0,
+            highlightthickness=1,
+        )
         listbox_scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=listbox_scrollbar.set)
         self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -41,51 +56,64 @@ class EditorPane(ttk.Frame):
         self.listbox.bind("<<ListboxSelect>>", self._handle_select)
 
         list_buttons = ttk.Frame(left)
-        list_buttons.pack(fill=tk.X)
-        ttk.Button(list_buttons, text="New", command=self._new_message).grid(row=0, column=0, sticky="ew")
-        ttk.Button(list_buttons, text="Delete", command=self._delete_message).grid(row=0, column=1, sticky="ew")
-        ttk.Button(list_buttons, text="▲", width=3, command=lambda: self._move(-1)).grid(row=1, column=0, sticky="ew")
-        ttk.Button(list_buttons, text="▼", width=3, command=lambda: self._move(1)).grid(row=1, column=1, sticky="ew")
+        list_buttons.pack(fill=tk.X, padx=4, pady=(4, 0))
+        ttk.Button(list_buttons, text="New", command=self._new_message).grid(
+            row=0, column=0, sticky="ew", padx=(0, 2)
+        )
+        ttk.Button(
+            list_buttons, text="Delete", command=self._delete_message
+        ).grid(row=0, column=1, sticky="ew", padx=(2, 0))
+        ttk.Button(
+            list_buttons, text="▲", width=3, command=lambda: self._move(-1)
+        ).grid(row=1, column=0, sticky="ew", padx=(0, 2), pady=(2, 0))
+        ttk.Button(
+            list_buttons, text="▼", width=3, command=lambda: self._move(1)
+        ).grid(row=1, column=1, sticky="ew", padx=(2, 0), pady=(2, 0))
         self._toggle_enabled_btn = ttk.Button(
             list_buttons, text="Disable", command=self._toggle_message_enabled, state="disabled"
         )
-        self._toggle_enabled_btn.grid(row=2, column=0, columnspan=2, sticky="ew")
-        ttk.Button(left, text="Load from disk…", command=self._load_from_disk).pack(fill=tk.X, pady=(4, 0))
+        self._toggle_enabled_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(2, 0))
+        ttk.Button(left, text="Load from disk…", command=self._load_from_disk).pack(fill=tk.X, padx=4, pady=(6, 4))
+
+        # Separator between message list and editor.
+        ttk.Separator(self, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=2, pady=4)
 
         right = ttk.Frame(self)
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         toolbar = ttk.Frame(right)
-        toolbar.pack(fill=tk.X)
-        ttk.Label(toolbar, text="Name").pack(side=tk.LEFT)
+        toolbar.pack(fill=tk.X, padx=8, pady=(4, 2))
+        ttk.Label(toolbar, text="Name", font=("Rubik", 9)).pack(side=tk.LEFT)
         self._name_var = tk.StringVar()
         name_entry = ttk.Entry(toolbar, textvariable=self._name_var, width=20)
-        name_entry.pack(side=tk.LEFT, padx=(2, 8))
+        name_entry.pack(side=tk.LEFT, padx=(4, 12))
         name_entry.bind("<KeyRelease>", self._handle_name_change)
 
-        ttk.Label(toolbar, text="Format").pack(side=tk.LEFT)
+        ttk.Label(toolbar, text="Format", font=("Rubik", 9)).pack(side=tk.LEFT)
         self._format_var = tk.StringVar(value="hl7")
         format_menu = ttk.OptionMenu(
             toolbar, self._format_var, "hl7", *_FORMATS, command=self._handle_format_change  # type: ignore[arg-type]
         )
-        format_menu.pack(side=tk.LEFT, padx=(2, 8))
+        format_menu.pack(side=tk.LEFT, padx=(4, 12))
 
-        ttk.Button(toolbar, text="Format", command=self._format_message).pack(side=tk.LEFT, padx=(2, 8))
+        ttk.Button(toolbar, text="Format", command=self._format_message).pack(side=tk.LEFT, padx=(0, 4))
+
+        ttk.Separator(right, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=8, pady=(2, 2))
 
         iter_row = ttk.Frame(right)
-        iter_row.pack(fill=tk.X, pady=(2, 0))
+        iter_row.pack(fill=tk.X, padx=8, pady=(2, 2))
         ttk.Button(iter_row, text="Mark Iterate Field", command=self._mark_iteration_field).pack(side=tk.LEFT)
         self._edit_iter_btn = ttk.Button(
             iter_row, text="Edit Iterate Field…", command=self._edit_iteration_field, state="disabled"
         )
-        self._edit_iter_btn.pack(side=tk.LEFT, padx=(4, 0))
+        self._edit_iter_btn.pack(side=tk.LEFT, padx=(6, 0))
         self._iteration_status_var = tk.StringVar(value="No iteration field set")
-        ttk.Label(iter_row, textvariable=self._iteration_status_var).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(iter_row, textvariable=self._iteration_status_var, font=("Rubik", 9)).pack(side=tk.LEFT, padx=(12, 0))
 
-        self.text = tk.Text(right, wrap="none", undo=True)
+        self.text = tk.Text(right, wrap="none", undo=True, font=("Menlo", 11), bd=0, padx=8, pady=8)
         configure_tags(self.text, get_theme(DEFAULT_THEME_NAME))
         self.text.tag_configure(_ITERATE_TAG, background=_ITERATE_BG)
-        self.text.pack(fill=tk.BOTH, expand=True, pady=(4, 0))
+        self.text.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
         self.text.bind("<<Modified>>", self._handle_text_modified)
 
         self._set_editor_enabled(False)
@@ -157,7 +185,7 @@ class EditorPane(ttk.Frame):
         # For each position in the new list, decide whether it's a target
         # slot for a selected message or the next non-selected message.
         non_selected = (m for idx, m in enumerate(self._messages) if idx not in selected_set)
-        ns = next(non_selected, None)
+        ns: Message | None = next(non_selected, None)
         for ni in range(len(self._messages)):
             if ni in new_indices:
                 # Find the selected message whose target is ni.
@@ -166,7 +194,8 @@ class EditorPane(ttk.Frame):
                         result.append(msg)
                         break
             else:
-                result.append(ns)
+                if ns is not None:
+                    result.append(ns)
                 ns = next(non_selected, None)
         self._messages[:] = result
         self._refresh_listbox(select=new_indices[-1])
@@ -185,7 +214,7 @@ class EditorPane(ttk.Frame):
             except OSError as exc:
                 errors.append(f"{path}: {exc}")
                 continue
-            name = path.rsplit("/", 1)[-1]
+            name = Path(path).name
             self._messages.append(Message(name=name, format=detect_format(content), content=content))
             loaded_count += 1
 

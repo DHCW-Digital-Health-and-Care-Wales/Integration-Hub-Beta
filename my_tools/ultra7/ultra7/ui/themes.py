@@ -31,39 +31,51 @@ class Theme:
     """Syntax highlight colour for string/text values."""
     syntax_accent: str
     """Syntax highlight colour for numbers/literals/brackets."""
+    border: str = ""
+    """Colour for borders and separator lines between panels. Defaults to a subtle accent of bg if empty."""
 
 
 THEMES: tuple[Theme, ...] = (
     Theme("DHCW Light", bg="#F5F7FA", fg="#1B294A", pane_bg="#FFFFFF", pane_fg="#1B294A",
           accent="#325083", select_bg="#12A3C9", select_fg="#FFFFFF",
-          syntax_keyword="#1B294A", syntax_punct="#12A3C9", syntax_string="#325083", syntax_accent="#B8860B"),
+          syntax_keyword="#1B294A", syntax_punct="#12A3C9", syntax_string="#325083", syntax_accent="#B8860B",
+          border="#D5DCE6"),
     Theme("Dark", bg="#1E1E1E", fg="#D4D4D4", pane_bg="#252526", pane_fg="#D4D4D4",
           accent="#569CD6", select_bg="#264F78", select_fg="#FFFFFF",
-          syntax_keyword="#569CD6", syntax_punct="#D4D4D4", syntax_string="#CE9178", syntax_accent="#DCDCAA"),
+          syntax_keyword="#569CD6", syntax_punct="#D4D4D4", syntax_string="#CE9178", syntax_accent="#DCDCAA",
+          border="#3C3C3C"),
     Theme("Solarized Light", bg="#FDF6E3", fg="#657B83", pane_bg="#EEE8D5", pane_fg="#586E75",
           accent="#268BD2", select_bg="#268BD2", select_fg="#FDF6E3",
-          syntax_keyword="#268BD2", syntax_punct="#586E75", syntax_string="#2AA198", syntax_accent="#B58900"),
+          syntax_keyword="#268BD2", syntax_punct="#586E75", syntax_string="#2AA198", syntax_accent="#B58900",
+          border="#EEE8D5"),
     Theme("Solarized Dark", bg="#002B36", fg="#839496", pane_bg="#073642", pane_fg="#93A1A1",
           accent="#268BD2", select_bg="#268BD2", select_fg="#002B36",
-          syntax_keyword="#268BD2", syntax_punct="#93A1A1", syntax_string="#2AA198", syntax_accent="#B58900"),
+          syntax_keyword="#268BD2", syntax_punct="#93A1A1", syntax_string="#2AA198", syntax_accent="#B58900",
+          border="#094E5C"),
     Theme("Dracula", bg="#282A36", fg="#F8F8F2", pane_bg="#21222C", pane_fg="#F8F8F2",
           accent="#BD93F9", select_bg="#44475A", select_fg="#F8F8F2",
-          syntax_keyword="#FF79C6", syntax_punct="#F8F8F2", syntax_string="#F1FA8C", syntax_accent="#8BE9FD"),
+          syntax_keyword="#FF79C6", syntax_punct="#F8F8F2", syntax_string="#F1FA8C", syntax_accent="#8BE9FD",
+          border="#44475A"),
     Theme("Monokai", bg="#272822", fg="#F8F8F2", pane_bg="#1E1F1C", pane_fg="#F8F8F2",
           accent="#A6E22E", select_bg="#49483E", select_fg="#F8F8F2",
-          syntax_keyword="#F92672", syntax_punct="#F8F8F2", syntax_string="#E6DB74", syntax_accent="#66D9EF"),
+          syntax_keyword="#F92672", syntax_punct="#F8F8F2", syntax_string="#E6DB74", syntax_accent="#66D9EF",
+          border="#3E3D32"),
     Theme("Nord", bg="#2E3440", fg="#D8DEE9", pane_bg="#3B4252", pane_fg="#E5E9F0",
           accent="#88C0D0", select_bg="#4C566A", select_fg="#ECEFF4",
-          syntax_keyword="#81A1C1", syntax_punct="#D8DEE9", syntax_string="#A3BE8C", syntax_accent="#EBCB8B"),
+          syntax_keyword="#81A1C1", syntax_punct="#D8DEE9", syntax_string="#A3BE8C", syntax_accent="#EBCB8B",
+          border="#434C5E"),
     Theme("Gruvbox Dark", bg="#282828", fg="#EBDBB2", pane_bg="#32302F", pane_fg="#EBDBB2",
           accent="#FE8019", select_bg="#504945", select_fg="#FBF1C7",
-          syntax_keyword="#83A598", syntax_punct="#EBDBB2", syntax_string="#B8BB26", syntax_accent="#FABD2F"),
+          syntax_keyword="#83A598", syntax_punct="#EBDBB2", syntax_string="#B8BB26", syntax_accent="#FABD2F",
+          border="#3C3836"),
     Theme("One Dark", bg="#282C34", fg="#ABB2BF", pane_bg="#21252B", pane_fg="#ABB2BF",
           accent="#61AFEF", select_bg="#3E4451", select_fg="#FFFFFF",
-          syntax_keyword="#C678DD", syntax_punct="#ABB2BF", syntax_string="#98C379", syntax_accent="#E5C07B"),
+          syntax_keyword="#C678DD", syntax_punct="#ABB2BF", syntax_string="#98C379", syntax_accent="#E5C07B",
+          border="#3E4451"),
     Theme("High Contrast", bg="#000000", fg="#FFFFFF", pane_bg="#000000", pane_fg="#FFFFFF",
           accent="#FFFF00", select_bg="#FFFF00", select_fg="#000000",
-          syntax_keyword="#00FFFF", syntax_punct="#FFFFFF", syntax_string="#00FF00", syntax_accent="#FFFF00"),
+          syntax_keyword="#00FFFF", syntax_punct="#FFFFFF", syntax_string="#00FF00", syntax_accent="#FFFF00",
+          border="#666666"),
 )
 
 THEMES_BY_NAME: dict[str, Theme] = {theme.name: theme for theme in THEMES}
@@ -72,3 +84,14 @@ DEFAULT_THEME_NAME = THEMES[0].name
 
 def get_theme(name: str) -> Theme:
     return THEMES_BY_NAME.get(name, THEMES_BY_NAME[DEFAULT_THEME_NAME])
+
+
+def get_border_color(theme: Theme) -> str:
+    """Return the theme's border colour, falling back to a subtle divider derived from bg."""
+    if theme.border:
+        return theme.border
+    # Derive a subtle border from the background.
+    r, g, b = int(theme.bg[1:3], 16), int(theme.bg[3:5], 16), int(theme.bg[5:7], 16)
+    factor = 0.82
+    dr, dg, db = int(r * factor), int(g * factor), int(b * factor)
+    return f"#{dr:02x}{dg:02x}{db:02x}"

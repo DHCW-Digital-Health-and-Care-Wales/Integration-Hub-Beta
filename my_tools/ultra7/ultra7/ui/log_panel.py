@@ -13,13 +13,24 @@ class LogPanel(ttk.Frame):
 
     def __init__(self, parent: tk.Misc) -> None:
         super().__init__(parent)
-        toolbar = ttk.Frame(self)
-        toolbar.pack(fill=tk.X)
-        ttk.Label(toolbar, text="Log").pack(side=tk.LEFT, padx=4)
-        ttk.Button(toolbar, text="Clear", command=self.clear).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(toolbar, text="Save to disk…", command=self.save_to_disk).pack(side=tk.RIGHT, padx=4)
 
-        self.text = tk.Text(self, height=8, state="disabled", wrap="word")
+        toolbar = ttk.Frame(self)
+        toolbar.pack(fill=tk.X, padx=8, pady=(4, 2))
+        ttk.Label(toolbar, text="Log", font=("Rubik", 9)).pack(side=tk.LEFT)
+        ttk.Button(toolbar, text="Clear", command=self.clear).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(toolbar, text="Save to disk…", command=self.save_to_disk).pack(side=tk.RIGHT, padx=2)
+
+        self.text = tk.Text(
+            self,
+            height=8,
+            state="disabled",
+            wrap="word",
+            font=("Menlo", 10),
+            bd=0,
+            padx=8,
+            pady=8,
+            highlightthickness=1,
+        )
         self.text.tag_configure("ok", foreground="#1A7A3F")
         self.text.tag_configure("error", foreground="#C0392B")
         self.text.tag_configure("info", foreground="#6B7280")
