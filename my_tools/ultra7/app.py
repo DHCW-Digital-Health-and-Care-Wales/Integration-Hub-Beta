@@ -20,7 +20,7 @@ from ultra7.ui.endpoint_dialog import EndpointDialog
 from ultra7.ui.log_panel import LogPanel
 from ultra7.ui.send_controls import SendControls
 from ultra7.ui.sidebar import Sidebar
-from ultra7.ui.themes import THEMES, get_theme
+from ultra7.ui.themes import THEMES, get_border_color, get_theme
 
 # DHCW brand colours.
 DHCW_NAVY = "#1B294A"
@@ -85,14 +85,6 @@ class Ultra7App(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_exit)
 
     def _build_layout(self) -> None:
-        # Persistent top toolbar — like VS Code's activity bar, this button stays
-        # in the same place at the top of the window regardless of sidebar state.
-        toolbar = ttk.Frame(self)
-        toolbar.pack(fill=tk.X, side=tk.TOP)
-        ttk.Button(toolbar, text="☰", width=3, command=self._toggle_sidebar).pack(
-            side=tk.LEFT, padx=4, pady=4
-        )
-
         main = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         main.pack(fill=tk.BOTH, expand=True)
         self._main_pane = main
@@ -111,11 +103,14 @@ class Ultra7App(tk.Tk):
         main.add(right, weight=1)
 
         header = ttk.Frame(right)
-        header.pack(fill=tk.X, padx=4, pady=4)
+        header.pack(fill=tk.X, padx=8, pady=(8, 4))
+        ttk.Button(header, text="☰", width=3, command=self._toggle_sidebar).pack(side=tk.LEFT, padx=(0, 8))
         self._project_label_var = tk.StringVar(value="No project selected")
-        ttk.Label(header, textvariable=self._project_label_var, font=("Rubik", 12, "bold")).pack(side=tk.LEFT)
+        ttk.Label(header, textvariable=self._project_label_var, font=("Rubik", 14, "bold")).pack(side=tk.LEFT)
         ttk.Button(header, text="Configure Endpoint…", command=self._configure_endpoint).pack(side=tk.RIGHT, padx=4)
         ttk.Button(header, text="Save", command=self._save_current_project).pack(side=tk.RIGHT, padx=4)
+
+        ttk.Separator(right, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=8, pady=(0, 4))
 
         body = ttk.PanedWindow(right, orient=tk.VERTICAL)
         body.pack(fill=tk.BOTH, expand=True)
@@ -159,18 +154,20 @@ class Ultra7App(tk.Tk):
         theme = get_theme(name)
         self._theme_var.set(theme.name)
         self.configure(bg=theme.bg)
+        border_color = get_border_color(theme)
 
         style = ttk.Style(self)
         style.theme_use("clam")
         style.configure(".", background=theme.bg, foreground=theme.fg)
         style.configure("TFrame", background=theme.bg)
         style.configure("TLabel", background=theme.bg, foreground=theme.fg)
-        style.configure("TButton", background=theme.pane_bg, foreground=theme.fg)
-        style.map("TButton", background=[("active", theme.accent)])
-        style.configure("TEntry", fieldbackground=theme.pane_bg, foreground=theme.fg)
-        style.configure("TMenubutton", background=theme.pane_bg, foreground=theme.fg)
-        style.configure("TPanedwindow", background=theme.bg)
-        style.configure("TScrollbar", background=theme.pane_bg)
+        style.configure("TButton", background=theme.pane_bg, foreground=theme.fg, padding=(8, 4))
+        style.map("TButton", background=[("active", theme.accent), ("!active", theme.pane_bg)])
+        style.configure("TEntry", fieldbackground=theme.pane_bg, foreground=theme.fg, insertcolor=theme.fg)
+        style.configure("TMenubutton", background=theme.pane_bg, foreground=theme.fg, padding=(6, 3))
+        style.configure("TPanedwindow", background=border_color)
+        style.configure("TScrollbar", background=theme.pane_bg, troughcolor=theme.bg)
+        style.configure("Horizontal.TSeparator", background=border_color)
 
         for text_widget in (self.editor_pane.text, self.log_panel.text):
             text_widget.configure(
@@ -189,6 +186,7 @@ class Ultra7App(tk.Tk):
             )
 
         self.editor_pane.apply_theme(theme)
+        self.sidebar.apply_theme(theme)
         save_theme_name(theme.name)
 
     # -- project lifecycle -------------------------------------------------------
@@ -326,9 +324,7 @@ class Ultra7App(tk.Tk):
             self._save_current_project()
 
     def _set_project_controls_enabled(self, enabled: bool) -> None:
-        state = "normal" if enabled else "disabled"
-        for child in self.send_controls.winfo_children():
-            child.configure(state=state)  # type: ignore[call-arg]
+        self.send_controls.set_enabled(enabled)
 
     # -- logging / exit -------------------------------------------------------
 

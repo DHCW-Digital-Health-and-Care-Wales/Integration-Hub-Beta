@@ -25,53 +25,66 @@ class EndpointDialog(tk.Toplevel):
         self._timeout = tk.StringVar(value=str(endpoint.timeout_seconds))
         self._headers_text = "\n".join(f"{k}: {v}" for k, v in endpoint.headers.items())
 
-        row = 0
-        ttk.Label(self, text="Kind").grid(row=row, column=0, sticky="w", padx=8, pady=4)
+        # Title area.
+        ttk.Label(self, text="Configure Endpoint", font=("Rubik", 12, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 8)
+        )
+
+        row = 1
+        ttk.Label(self, text="Kind").grid(row=row, column=0, sticky="w", padx=12, pady=4)
         kind_menu = ttk.OptionMenu(
             self, self._kind, endpoint.kind, "mllp", "rest", "soap", command=self._on_kind_change  # type: ignore[arg-type]
         )
-        kind_menu.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        kind_menu.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
         self._host_label = ttk.Label(self, text="Host")
-        self._host_label.grid(row=row, column=0, sticky="w", padx=8, pady=4)
+        self._host_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
         self._host_entry = ttk.Entry(self, textvariable=self._host)
-        self._host_entry.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        self._host_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
         self._port_label = ttk.Label(self, text="Port")
-        self._port_label.grid(row=row, column=0, sticky="w", padx=8, pady=4)
+        self._port_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
         self._port_entry = ttk.Entry(self, textvariable=self._port)
-        self._port_entry.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        self._port_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
         self._url_label = ttk.Label(self, text="URL")
-        self._url_label.grid(row=row, column=0, sticky="w", padx=8, pady=4)
+        self._url_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
         self._url_entry = ttk.Entry(self, textvariable=self._url, width=40)
-        self._url_entry.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        self._url_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
         self._soap_label = ttk.Label(self, text="SOAPAction")
-        self._soap_label.grid(row=row, column=0, sticky="w", padx=8, pady=4)
+        self._soap_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
         self._soap_entry = ttk.Entry(self, textvariable=self._soap_action)
-        self._soap_entry.grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        self._soap_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
-        ttk.Label(self, text="Timeout (s)").grid(row=row, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(self, textvariable=self._timeout).grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+        ttk.Label(self, text="Timeout (s)").grid(row=row, column=0, sticky="w", padx=12, pady=4)
+        ttk.Entry(self, textvariable=self._timeout).grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
-        ttk.Label(self, text="Headers (one 'Name: Value' per line)").grid(
-            row=row, column=0, columnspan=2, sticky="w", padx=8, pady=(8, 0)
+        ttk.Separator(self, orient=tk.HORIZONTAL).grid(
+            row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 4)
         )
         row += 1
-        self._headers_box = tk.Text(self, width=40, height=4)
+        ttk.Label(self, text="Headers (one 'Name: Value' per line)").grid(
+            row=row, column=0, columnspan=2, sticky="w", padx=12, pady=(4, 0)
+        )
+        row += 1
+        self._headers_box = tk.Text(self, width=40, height=4, font=("Menlo", 10), bd=1, relief="solid")
         self._headers_box.insert("1.0", self._headers_text)
-        self._headers_box.grid(row=row, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
+        self._headers_box.grid(row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=4)
         row += 1
 
+        ttk.Separator(self, orient=tk.HORIZONTAL).grid(
+            row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=(4, 0)
+        )
+        row += 1
         button_row = ttk.Frame(self)
-        button_row.grid(row=row, column=0, columnspan=2, pady=8)
+        button_row.grid(row=row, column=0, columnspan=2, pady=12)
         ttk.Button(button_row, text="Cancel", command=self._cancel).pack(side=tk.LEFT, padx=4)
         ttk.Button(button_row, text="Save", command=self._save).pack(side=tk.LEFT, padx=4)
 
