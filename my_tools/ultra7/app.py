@@ -338,8 +338,7 @@ class Ultra7App(tk.Tk):
         if self.log_panel.winfo_ismapped():
             self.log_panel.pack_forget()
         else:
-            self.log_panel.pack(fill=tk.BOTH, expand=False, padx=4, pady=(0, 4))
-
+            self.log_panel.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
     def _on_exit(self) -> None:
         self._save_if_dirty()
         self.destroy()

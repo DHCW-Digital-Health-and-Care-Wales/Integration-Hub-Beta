@@ -159,7 +159,7 @@
             }
           },
           {
-            "Name": "local-inthub-proms-transformer-ingress",
+            "Name": "local-inthub-wpas-transformer-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",
