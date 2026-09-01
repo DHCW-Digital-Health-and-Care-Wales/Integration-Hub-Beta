@@ -101,8 +101,8 @@ resources:
     - pipeline: 'Dashboard - Build'
       source: 'Dashboard - Build'
       trigger: none
-    - pipeline: 'WDS HL7 Transformer - Build'
-      source: 'WDS HL7 Transformer - Build'
+    - pipeline: 'HL7 WDS Transformer - Build'
+      source: 'HL7 WDS Transformer - Build'
       trigger: none
     - pipeline: 'SOAP Sender - Build'
       source: 'SOAP Sender - Build'
