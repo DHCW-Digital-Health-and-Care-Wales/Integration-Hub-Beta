@@ -177,6 +177,11 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
 
+        - name: 'HL7 WIS Transformer'
+          appImageName: 'wds-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'WDS HL7 Transformer - Build'
+
         # HL7 Sender Variants
         - name: 'HL7 Sender'
           appImageName: 'hl7sender'
@@ -231,11 +236,6 @@ stages:
           buildPipeline: 'HL7 Subscription Sender - Build'
 
         # WDS to WIS Flow
-        - name: 'HL7 WIS Transformer'
-          appImageName: 'wds-hl7transformer'
-          appFunctionMidfix: ''
-          buildPipeline: 'WDS HL7 Transformer - Build'
-
         - name: 'WIS SOAP Sender'
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
