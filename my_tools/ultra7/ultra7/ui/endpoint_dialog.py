@@ -110,10 +110,14 @@ class EndpointDialog(tk.Toplevel):
             headers[name.strip()] = value.strip()
         return headers
 
-    def _save(self) -> None:
         kind = self._kind.get()
         port_text = self._port.get().strip()
-        port = int(port_text) if kind == "mllp" and port_text else None
+        port: int | None = None
+        if kind == "mllp" and port_text:
+            try:
+                port = int(port_text)
+            except ValueError:
+                port = None
         try:
             timeout_seconds = float(self._timeout.get())
         except ValueError:
