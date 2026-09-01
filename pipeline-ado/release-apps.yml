@@ -29,7 +29,7 @@ parameters:
       - LIMS HL7 SOAP Server
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
-      - WDS HL7 WIS Transformer
+      - HL7 WIS Transformer
       - WIS SOAP Sender
       - Message Store Service
       - HL7 Mock Receiver
@@ -231,9 +231,9 @@ stages:
           buildPipeline: 'HL7 Subscription Sender - Build'
 
         # WDS to WIS Flow
-        - name: 'WDS HL7 WIS Transformer'
+        - name: 'HL7 WIS Transformer'
           appImageName: 'wds-hl7transformer'
-          appFunctionMidfix: 'wds'
+          appFunctionMidfix: ''
           buildPipeline: 'WDS HL7 Transformer - Build'
 
         - name: 'WIS SOAP Sender'
