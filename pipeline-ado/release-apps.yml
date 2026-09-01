@@ -29,6 +29,8 @@ parameters:
       - LIMS HL7 SOAP Server
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
+      - WDS HL7 WIS Transformer
+      - WIS SOAP Sender
       - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
@@ -98,6 +100,12 @@ resources:
       trigger: none
     - pipeline: 'Dashboard - Build'
       source: 'Dashboard - Build'
+      trigger: none
+    - pipeline: 'WDS HL7 Transformer - Build'
+      source: 'WDS HL7 Transformer - Build'
+      trigger: none
+    - pipeline: 'SOAP Sender - Build'
+      source: 'SOAP Sender - Build'
       trigger: none
 
 stages:
@@ -221,6 +229,17 @@ stages:
           appImageName: 'hl7subsndr'
           appFunctionMidfix: 'pms'
           buildPipeline: 'HL7 Subscription Sender - Build'
+
+        # WDS to WIS Flow
+        - name: 'WDS HL7 WIS Transformer'
+          appImageName: 'wds-hl7transformer'
+          appFunctionMidfix: 'wds'
+          buildPipeline: 'WDS HL7 Transformer - Build'
+
+        - name: 'WIS SOAP Sender'
+          appImageName: 'soapsender'
+          appFunctionMidfix: 'wis'
+          buildPipeline: 'SOAP Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
