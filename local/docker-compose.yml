@@ -205,6 +205,30 @@ services:
         aliases:
           - "pms-hl7-soap-server"
 
+  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
+  wpas-rest-server:
+    container_name: wpas-rest-server
+    build:
+      context: ../rest_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./wpas-rest-server.env
+    ports:
+      - "127.0.0.1:8084:8080"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - wpas-to-proms
+    networks:
+      integration-hub:
+        aliases:
+          - "wpas-rest-server"
+
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
@@ -247,6 +271,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - wpas-to-proms
     networks:
       integration-hub:
         aliases:
@@ -275,6 +300,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - wpas-to-proms
       - mpi-to-topic
     networks:
       integration-hub:
@@ -507,6 +533,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - wpas-to-proms
       - mpi-to-topic
     networks:
       integration-hub:

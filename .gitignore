@@ -182,7 +182,4 @@ scripts/
 dashboard/alarm*_state.json
 dashboard/alarm*_config.json
 
-# Local-only Podman container definitions (not committed to source control)
-Dockerfile.podman
-local/justfile.docker
 .dockerignore
