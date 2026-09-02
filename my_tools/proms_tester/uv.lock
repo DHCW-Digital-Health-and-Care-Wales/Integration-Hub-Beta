@@ -830,7 +830,7 @@ dev = [{ name = "otel-lib", directory = "../../shared_libs/otel_lib" }]
 [[package]]
 name = "proms-fhir-transformer"
 version = "0.1.0"
-source = { directory = "../../xml_fhir_proms_transformer" }
+source = { directory = "../../transformers/xml_fhir_proms_transformer" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -885,7 +885,7 @@ dependencies = [
 requires-dist = [
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "fhir-resources", specifier = "==8.3.0" },
-    { name = "proms-fhir-transformer", directory = "../../xml_fhir_proms_transformer" },
+    { name = "proms-fhir-transformer", directory = "../../transformers/xml_fhir_proms_transformer" },
 ]
 
 [[package]]

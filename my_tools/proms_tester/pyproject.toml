@@ -11,4 +11,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-proms-fhir-transformer = { path = "../../xml_fhir_proms_transformer" }
+proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer" }

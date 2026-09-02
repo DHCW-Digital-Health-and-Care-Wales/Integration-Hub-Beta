@@ -15,7 +15,7 @@ Azure Service Bus, with shared libraries in `shared_libs/` providing common capa
 
 1. Prioritize correctness and clear error handling (validate inputs, handle edge cases, and raise explicit errors).
 2. Prefer reuse of utilities from `shared_libs/` over duplicating functionality.
-3. For HL7 mappers and transformers, mirror the structure and style of existing components (e.g. in `hl7_pims_transformer`, `hl7_chemo_transformer`, `hl7_phw_transformer`)
+3. For HL7 mappers and transformers, mirror the structure and style of existing components (e.g. in `transformers/hl7_pims_transformer`, `transformers/hl7_chemo_transformer`, `transformers/hl7_phw_transformer`)
 4. Keep module-level behavior import-safe (avoid side effects at import time unless required).
 5. Ensure functions have descriptive names and include type hints.
 6. Use the `typing` module for type annotations (e.g., `List[str]`, `Dict[str, int]`).

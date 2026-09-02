@@ -109,7 +109,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_pims_transformer'
+            appName: 'transformers/hl7_pims_transformer'
             appDisplayName: 'Pims HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -120,7 +120,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_phw_transformer'
+            appName: 'transformers/hl7_phw_transformer'
             appDisplayName: 'Phw HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -131,7 +131,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_chemo_transformer'
+            appName: 'transformers/hl7_chemo_transformer'
             appDisplayName: 'Chemocare HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -307,8 +307,8 @@ stages:
             jobName: 'BuildPushPimsHL7Transformer'
             displayName: 'Build and Push Pims HL7 Transformer'
             appName: 'pims-hl7transformer'
-            dockerfilePath: 'hl7_pims_transformer/Dockerfile'
-            buildContext: 'hl7_pims_transformer'
+            dockerfilePath: 'transformers/hl7_pims_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_pims_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -326,8 +326,8 @@ stages:
             jobName: 'BuildPushPhwHL7Transformer'
             displayName: 'Build and Push Phw HL7 Transformer'
             appName: 'phw-hl7transformer'
-            dockerfilePath: 'hl7_phw_transformer/Dockerfile'
-            buildContext: 'hl7_phw_transformer'
+            dockerfilePath: 'transformers/hl7_phw_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_phw_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -345,8 +345,8 @@ stages:
             jobName: 'BuildPushChemoHL7Transformer'
             displayName: 'Build and Push Chemocare HL7 Transformer'
             appName: 'chemo-hl7transformer'
-            dockerfilePath: 'hl7_chemo_transformer/Dockerfile'
-            buildContext: 'hl7_chemo_transformer'
+            dockerfilePath: 'transformers/hl7_chemo_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_chemo_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)

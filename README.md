@@ -61,9 +61,9 @@ flowchart LR
   HL7_PIMS --> SB
 
   subgraph Transformers
-    T_PHW["hl7_phw_transformer (PHW)"]
-    T_CHEMO["hl7_chemo_transformer"]
-    T_PIMS["hl7_pims_transformer"]
+    T_PHW["transformers/hl7_phw_transformer (PHW)"]
+    T_CHEMO["transformers/hl7_chemo_transformer"]
+    T_PIMS["transformers/hl7_pims_transformer"]
   end
 
   SB --> T_PHW
@@ -118,17 +118,17 @@ The platform handles HL7 message processing through specialized microservices:
 
 - Generic HL7 message receiving server via TCP/MLLP. Also provides acknowledgment responses back to source systems. Other server variants for different business flows (PHW, Paris, Chemocare, PIMS, etc.) reuse or extend this service to implement flow-specific logic while keeping common behaviour centralized.
 
-**`hl7_phw_transformer/`**
+**`transformers/hl7_phw_transformer/`**
 
 - PHW (Public Health Wales) message transformation service.
 - Subscribes to PHW-specific messages from the service bus and transforms relevant datetime fields to an MPI format.
 
-**`hl7_chemo_transformer/`**
+**`transformers/hl7_chemo_transformer/`**
 
 - Chemocare system message transformation service.
 - Subscribes to Chemocare-specific messages from the service bus and transforms them to the HL7v2.5 format by applying Chemocare-specific business rules and data mappings, including mappings from the WRDS (Welsh Reference Data Service.)
 
-**`hl7_pims_transformer/`**
+**`transformers/hl7_pims_transformer/`**
 
 - PIMS (Patient Information Management System) message transformation service.
 - Subscribes to PIMS-specific messages from the service bus and transforms them to the HL7v2.5 format by applying PIMS-specific business rules and data mappings, including mappings from the WRDS.
@@ -245,7 +245,7 @@ The `pipeline-ado/` directory contains build pipelines for the [services listed]
 Each service can be configured through environment files in the `local/` directory, such as:
 
 - `phw-hl7-server.env`
-- `phw-hl7-transformer.env`
+- `env/transformers/phw-hl7-transformer.env`
 - `mpi-hl7-sender.env`
 - `mpi-hl7-mock-receiver.env`
 - And profile-specific configurations...

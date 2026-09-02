@@ -14,12 +14,12 @@ pr:
       - hl7_server/**
       - hl7_rest_server/**
       - rest_server/**
-      - hl7_phw_transformer/**
+      - transformers/hl7_phw_transformer/**
       - hl7_sender/**
       - hl7_subscription_sender/**
       - hl7_mock_receiver/**
-      - hl7_chemo_transformer/**
-      - hl7_pims_transformer/**
+      - transformers/hl7_chemo_transformer/**
+      - transformers/hl7_pims_transformer/**
       - hl7_soap_server/**
       - buswatch/**
       - message_store_service/**
@@ -93,12 +93,12 @@ stages:
                 "hl7_server|HL7 Server||unittest"
                 "hl7_rest_server|HL7 REST Server||unittest"
                 "rest_server|REST Server||unittest"
-                "hl7_phw_transformer|PHW HL7 Transformer||unittest"
+                "transformers/hl7_phw_transformer|PHW HL7 Transformer||unittest"
                 "hl7_sender|HL7 Sender||unittest"
                 "hl7_subscription_sender|HL7 Subscription Sender||unittest"
                 "hl7_mock_receiver|HL7 Mock Receiver||unittest"
-                "hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
-                "hl7_pims_transformer|PIMS HL7 Transformer||unittest"
+                "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
+                "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_store_service|Message Store Service||unittest"
                 "buswatch|BusWatch||unittest"

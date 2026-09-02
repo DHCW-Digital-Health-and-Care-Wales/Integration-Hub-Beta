@@ -122,7 +122,7 @@ default to the standard HL7-in/HL7-out behaviour. This service overrides both:
 
 Everything else — Service Bus connectivity, health checks, audit logging,
 batching — is inherited unchanged from `BaseTransformer.run()`. The hooks are
-additive and default to the previous behaviour, so `hl7_phw_transformer`,
+additive and default to the previous behaviour, so `transformers/hl7_phw_transformer`,
 `hl7_chemo_transformer` and `hl7_pims_transformer` are unaffected.
 
 A standalone convenience entry point is also available for ad-hoc use and testing:

@@ -261,7 +261,7 @@ wheels = [
 [[package]]
 name = "event-logger-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/event_logger_lib" }
+source = { directory = "../../shared_libs/event_logger_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -286,7 +286,7 @@ requires-dist = [
 [[package]]
 name = "field-utils-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/field_utils_lib" }
+source = { directory = "../../shared_libs/field_utils_lib" }
 dependencies = [
     { name = "hl7apy" },
     { name = "urllib3" },
@@ -317,7 +317,7 @@ wheels = [
 [[package]]
 name = "health-check-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/health_check_lib" }
+source = { directory = "../../shared_libs/health_check_lib" }
 dependencies = [
     { name = "setuptools" },
     { name = "urllib3" },
@@ -364,16 +364,16 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
-    { name = "field-utils-lib", directory = "../shared_libs/field_utils_lib" },
-    { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
+    { name = "event-logger-lib", directory = "../../shared_libs/event_logger_lib" },
+    { name = "field-utils-lib", directory = "../../shared_libs/field_utils_lib" },
+    { name = "health-check-lib", directory = "../../shared_libs/health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },
-    { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
-    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
-    { name = "processor-manager-lib", directory = "../shared_libs/processor_manager_lib" },
+    { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+    { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
-    { name = "transformer-base-lib", directory = "../shared_libs/transformer_base_lib" },
+    { name = "transformer-base-lib", directory = "../../shared_libs/transformer_base_lib" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
@@ -447,7 +447,7 @@ wheels = [
 [[package]]
 name = "message-bus-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/message_bus_lib" }
+source = { directory = "../../shared_libs/message_bus_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -466,8 +466,8 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
-    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
+    { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -483,7 +483,7 @@ dev = [
 [[package]]
 name = "metric-sender-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/metric_sender_lib" }
+source = { directory = "../../shared_libs/metric_sender_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -834,7 +834,7 @@ wheels = [
 [[package]]
 name = "otel-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/otel_lib" }
+source = { directory = "../../shared_libs/otel_lib" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
@@ -900,7 +900,7 @@ wheels = [
 [[package]]
 name = "processor-manager-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/processor_manager_lib" }
+source = { directory = "../../shared_libs/processor_manager_lib" }
 dependencies = [
     { name = "cryptography" },
     { name = "opentelemetry-api" },
@@ -917,7 +917,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "otel-lib", directory = "../shared_libs/otel_lib" }]
+dev = [{ name = "otel-lib", directory = "../../shared_libs/otel_lib" }]
 
 [[package]]
 name = "psutil"
@@ -1074,7 +1074,7 @@ wheels = [
 [[package]]
 name = "transformer-base-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/transformer_base_lib" }
+source = { directory = "../../shared_libs/transformer_base_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -1096,12 +1096,12 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
-    { name = "health-check-lib", directory = "../shared_libs/health_check_lib" },
+    { name = "event-logger-lib", directory = "../../shared_libs/event_logger_lib" },
+    { name = "health-check-lib", directory = "../../shared_libs/health_check_lib" },
     { name = "hl7apy", specifier = "==1.3.5" },
-    { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
-    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
-    { name = "processor-manager-lib", directory = "../shared_libs/processor_manager_lib" },
+    { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+    { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
