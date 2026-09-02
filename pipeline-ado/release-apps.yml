@@ -180,7 +180,7 @@ stages:
         - name: 'HL7 WIS Transformer'
           appImageName: 'wds-hl7transformer'
           appFunctionMidfix: ''
-          buildPipeline: 'WDS HL7 Transformer - Build'
+          buildPipeline: 'HL7 WDS Transformer - Build'
 
         # HL7 Sender Variants
         - name: 'HL7 Sender'
