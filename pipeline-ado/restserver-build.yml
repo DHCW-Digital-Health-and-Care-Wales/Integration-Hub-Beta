@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - rest_server/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - rest_server/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
