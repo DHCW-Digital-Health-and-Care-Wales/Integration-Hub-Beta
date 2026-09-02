@@ -15,6 +15,7 @@ parameters:
     default:
       - hl7server
       - hl7restserver
+      - restserver
       - hl7sender
       - hl7mockreceiver
       - hl7subscriptionsender
@@ -55,6 +56,17 @@ stages:
           parameters:
             appName: 'hl7_rest_server'
             appDisplayName: 'HL7 REST Server'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'restserver') }}:
+    - stage: CodeQuality_restserver
+      displayName: 'Code Quality — REST Server'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'rest_server'
+            appDisplayName: 'REST Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -202,6 +214,25 @@ stages:
             appName: 'hl7restserver'
             dockerfilePath: 'hl7_rest_server/Dockerfile'
             buildContext: 'hl7_rest_server'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'restserver') }}:
+    - stage: Build_restserver
+      displayName: 'Build — REST Server'
+      dependsOn: CodeQuality_restserver
+      condition: in(dependencies.CodeQuality_restserver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushRestServer'
+            displayName: 'Build and Push REST Server'
+            appName: 'restserver'
+            dockerfilePath: 'rest_server/Dockerfile'
+            buildContext: 'rest_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)

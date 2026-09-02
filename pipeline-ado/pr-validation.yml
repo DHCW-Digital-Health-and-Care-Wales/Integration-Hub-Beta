@@ -13,6 +13,7 @@ pr:
     include:
       - hl7_server/**
       - hl7_rest_server/**
+      - rest_server/**
       - hl7_phw_transformer/**
       - hl7_sender/**
       - hl7_subscription_sender/**
@@ -91,6 +92,7 @@ stages:
               APPS=(
                 "hl7_server|HL7 Server||unittest"
                 "hl7_rest_server|HL7 REST Server||unittest"
+                "rest_server|REST Server||unittest"
                 "hl7_phw_transformer|PHW HL7 Transformer||unittest"
                 "hl7_sender|HL7 Sender||unittest"
                 "hl7_subscription_sender|HL7 Subscription Sender||unittest"

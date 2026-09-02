@@ -17,6 +17,7 @@ parameters:
       - WDS HL7Server
       - Mosaiq HL7Server
       - HL7 REST Server
+      - REST Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
@@ -71,6 +72,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 REST Server - Build'
       source: 'HL7 REST Server - Build'
+      trigger: none
+    - pipeline: 'REST Server - Build'
+      source: 'REST Server - Build'
       trigger: none
     - pipeline: 'HL7 Phw Transformer - Build'
       source: 'HL7 Phw Transformer - Build'
@@ -152,6 +156,12 @@ stages:
           appImageName: 'hl7restserver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 REST Server - Build'
+
+        # REST Server (generic configurable REST/HTTP ingestion server)
+        - name: 'REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: ''
+          buildPipeline: 'REST Server - Build'
 
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
