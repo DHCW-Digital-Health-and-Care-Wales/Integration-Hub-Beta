@@ -210,7 +210,7 @@ For more technical details, see [Message Replay Job README](../message_replay_jo
 
 ## Step 3b: Redirect the Consuming Service to the Priority Queue
 
-The priority queue is session-enabled. Before running the job, update **only** `INGRESS_QUEUE_NAME` in the relevant sender env file (e.g. `local/mpi-hl7-sender.env`) to point at the priority queue:
+The priority queue is session-enabled. Before running the job, update **only** `INGRESS_QUEUE_NAME` in the relevant sender env file (e.g. `local/env/senders/mpi-hl7-sender.env`) to point at the priority queue:
 
 ```dotenv
 INGRESS_QUEUE_NAME="local-inthub-priority-messagequeue"

@@ -24,8 +24,8 @@ The system uses a shared library architecture where common functionality is abst
 - `transformers/hl7_phw_transformer/` - Transforms PHW (Public Health Wales) messages to HL7v2.5
 - `transformers/hl7_chemo_transformer/` - Transforms Chemocare system messages to HL7v2.5  
 - `transformers/hl7_pims_transformer/` - Transforms PIMS (Patient Information Management System) messages to HL7v2.5
-- `hl7_sender/` - Delivers transformed messages to target systems (MPI)
-- `hl7_subscription_sender/` - Subscription-based delivery service
+- `senders/hl7_sender/` - Delivers transformed messages to target systems (MPI)
+- `senders/hl7_subscription_sender/` - Subscription-based delivery service
 - `hl7_mock_receiver/` - Mock receiver for testing and development
 
 ### Shared Libraries
@@ -169,6 +169,10 @@ integration-hub-beta/
 │   ├── hl7_chemo_transformer/
 │   ├── hl7_pims_transformer/
 │   └── xml_fhir_proms_transformer/
-├── hl7_sender/ 
+├── senders/
+│   ├── hl7_sender/
+│   ├── hl7_subscription_sender/
+│   ├── soap_sender/
+│   └── soap_subscription_sender/
 └── message_replay_job/          # Message replay job service
 ```
