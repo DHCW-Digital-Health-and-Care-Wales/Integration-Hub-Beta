@@ -17,7 +17,7 @@ COPY --from=shared_libs . /app/shared_libs
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY senders/soap_sender/ /app/senders/soap_sender/
+COPY soap_sender/ /app/senders/soap_sender/soap_sender/
 RUN uv --native-tls sync --locked --no-dev
 
 ENV PATH="/app/senders/soap_sender/.venv/bin:$PATH"
