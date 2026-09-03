@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - transformers/hl7_pims_transformer/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - transformers/hl7_pims_transformer/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 

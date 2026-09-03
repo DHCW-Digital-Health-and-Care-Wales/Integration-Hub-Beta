@@ -47,8 +47,11 @@ Integration-Hub-Beta/
 │   ├── hl7_chemo_transformer/   # ChemoCare → MPI transformer
 │   ├── hl7_pims_transformer/    # PIMS → MPI transformer
 │   └── xml_fhir_proms_transformer/ # PROMS/WPAS XML → FHIR bundle transformer
-├── hl7_sender/                  # HL7 message delivery to MPI
-├── hl7_subscription_sender/     # Subscription-based outbound sender
+├── senders/                     # Outbound sender services
+│   ├── hl7_sender/               # HL7 message delivery to MPI
+│   ├── hl7_subscription_sender/  # Subscription-based outbound sender
+│   ├── soap_sender/              # SOAP/HTTP outbound sender
+│   └── soap_subscription_sender/ # SOAP/HTTP subscription-based outbound sender
 ├── hl7_mock_receiver/           # Mock MPI target for local testing
 ├── message_store_service/       # Persists messages to Azure SQL
 ├── message_replay_job/          # Replays stored messages from SQL

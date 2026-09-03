@@ -133,13 +133,13 @@ The platform handles HL7 message processing through specialized microservices:
 - PIMS (Patient Information Management System) message transformation service.
 - Subscribes to PIMS-specific messages from the service bus and transforms them to the HL7v2.5 format by applying PIMS-specific business rules and data mappings, including mappings from the WRDS.
 
-**`hl7_sender/`**
+**`senders/hl7_sender/`**
 
 - Message delivery service to target systems (primarily MPI - Master Patient Index).
 - Handles connection management and retry logic for reliable delivery.
 - Provides delivery confirmation and error handling.
 
-**`hl7_subscription_sender/`**
+**`senders/hl7_subscription_sender/`**
 
 - Subscription based message delivery service to outbound systems.
 - Handles connection management and retry logic for reliable delivery.

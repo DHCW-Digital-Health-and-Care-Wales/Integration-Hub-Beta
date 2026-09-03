@@ -15,8 +15,8 @@ pr:
       - hl7_rest_server/**
       - rest_server/**
       - transformers/hl7_phw_transformer/**
-      - hl7_sender/**
-      - hl7_subscription_sender/**
+      - senders/hl7_sender/**
+      - senders/hl7_subscription_sender/**
       - hl7_mock_receiver/**
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
@@ -95,8 +95,8 @@ stages:
                 "hl7_rest_server|HL7 REST Server||unittest"
                 "rest_server|REST Server||unittest"
                 "transformers/hl7_phw_transformer|PHW HL7 Transformer||unittest"
-                "hl7_sender|HL7 Sender||unittest"
-                "hl7_subscription_sender|HL7 Subscription Sender||unittest"
+                "senders/hl7_sender|HL7 Sender||unittest"
+                "senders/hl7_subscription_sender|HL7 Subscription Sender||unittest"
                 "hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"

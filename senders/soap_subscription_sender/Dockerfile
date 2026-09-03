@@ -6,15 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-WORKDIR /app
+WORKDIR /app/senders/soap_subscription_sender
 
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY soap_subscription_sender/ /app/soap_subscription_sender/
+COPY senders/soap_subscription_sender/ /app/senders/soap_subscription_sender/
 RUN uv --native-tls sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/senders/soap_subscription_sender/.venv/bin:$PATH"
 
 RUN adduser -u 5678 --disabled-password --gecos "" appuser \
     && chown -R appuser /app

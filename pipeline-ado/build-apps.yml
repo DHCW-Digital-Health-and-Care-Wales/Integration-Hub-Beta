@@ -77,7 +77,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_sender'
+            appName: 'senders/hl7_sender'
             appDisplayName: 'HL7 Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -99,7 +99,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_subscription_sender'
+            appName: 'senders/hl7_subscription_sender'
             appDisplayName: 'HL7 Subscription Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -263,8 +263,8 @@ stages:
             jobName: 'BuildPushHL7Sender'
             displayName: 'Build and Push HL7 Sender'
             appName: 'hl7sender'
-            dockerfilePath: 'hl7_sender/Dockerfile'
-            buildContext: 'hl7_sender'
+            dockerfilePath: 'senders/hl7_sender/Dockerfile'
+            buildContext: 'senders/hl7_sender'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -301,8 +301,8 @@ stages:
             jobName: 'BuildPushHL7SubscriptionSender'
             displayName: 'Build and Push HL7 Subscription Sender'
             appName: 'hl7subsndr'
-            dockerfilePath: 'hl7_subscription_sender/Dockerfile'
-            buildContext: 'hl7_subscription_sender'
+            dockerfilePath: 'senders/hl7_subscription_sender/Dockerfile'
+            buildContext: 'senders/hl7_subscription_sender'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
