@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - senders/hl7_subscription_sender/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - senders/hl7_subscription_sender/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
