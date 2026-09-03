@@ -157,20 +157,6 @@
               "RequiresDuplicateDetection": false,
               "RequiresSession": true
             }
-          },
-          {
-            "Name": "local-inthub-wpas-transformer-ingress",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
           }
         ],
         "Topics": [
@@ -207,6 +193,20 @@
             "Subscriptions": [
               {
                 "Name": "local-inthub-pms-sender-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-wpas-transformer-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-wpas-transformer-ingress-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
