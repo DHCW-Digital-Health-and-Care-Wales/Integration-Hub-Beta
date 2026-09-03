@@ -201,6 +201,20 @@
                 }
               }
             ]
+          },
+          {
+            "Name": "local-inthub-wpas-transformer-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-wpas-transformer-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
           }
         ]
       }

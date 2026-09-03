@@ -24,6 +24,7 @@
 # - pims-to-mpi    : PIMS to MPI integration
 # - mosaiq-to-mpi  : Mosaiq to MPI integration
 # - wds-to-mpi     : WDS to MPI integration
+# - rest-to-mpi    : REST HTTP ingress to MPI integration
 # - mpi-to-topic   : MPI to Outbound Integration
 #
 # Tips:
@@ -54,7 +55,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile mpi-to-topic --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile rest-to-mpi --profile mpi-to-topic --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
