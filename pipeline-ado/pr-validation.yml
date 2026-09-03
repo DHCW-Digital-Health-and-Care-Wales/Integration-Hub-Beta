@@ -21,6 +21,7 @@ pr:
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
       - hl7_soap_server/**
+      - rest_server/**
       - buswatch/**
       - message_store_service/**
       - shared_libs/**
@@ -100,6 +101,7 @@ stages:
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "hl7_soap_server|HL7 SOAP Server||unittest"
+                "rest_server|REST Server||unittest"
                 "message_store_service|Message Store Service||unittest"
                 "buswatch|BusWatch||unittest"
                 "shared_libs/message_bus_lib|Message Bus Library|message_bus_lib|unittest"

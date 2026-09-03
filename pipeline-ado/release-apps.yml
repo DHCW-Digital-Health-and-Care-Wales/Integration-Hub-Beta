@@ -94,6 +94,9 @@ resources:
     - pipeline: 'HL7 SOAP Server - Build'
       source: 'HL7 SOAP Server - Build'
       trigger: none
+    - pipeline: 'REST Server - Build'
+      source: 'REST Server - Build'
+      trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
       trigger: none
@@ -157,7 +160,7 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 REST Server - Build'
 
-        # REST Server (generic configurable REST/HTTP ingestion server)
+        # REST Server (generic rest_server image; replaces hl7_soap_server/hl7_rest_server per docs/rest_merge.md)
         - name: 'REST Server'
           appImageName: 'restserver'
           appFunctionMidfix: ''
