@@ -63,10 +63,10 @@ so the debugger steps into all service source code, not just `app.py`.
 
 | Tab | Useful breakpoint locations |
 |---|---|
-| **PHW Transformer** | `hl7_phw_transformer/phw_transformer.py` → `transform_message()` · `mappers/msh_mapper.py` · `mappers/pid_mapper.py` |
-| **Chemo Transformer** | `hl7_chemo_transformer/chemocare_transformer.py` → `transform_chemocare_message()` · any mapper in `mappers/` |
-| **PIMS Transformer** | `hl7_pims_transformer/pims_transformer.py` → `transform_pims_message()` · `mappers/mrg_mapper.py` (for A40 merges) |
-| **PROMS Transformer** | `xml_fhir_proms_transformer/proms_transformer.py` → `build_fhir_bundle()` · any mapper in `mappers/` · `proms_parser.py` |
+| **PHW Transformer** | `transformers/hl7_phw_transformer/phw_transformer.py` → `transform_message()` · `mappers/msh_mapper.py` · `mappers/pid_mapper.py` |
+| **Chemo Transformer** | `transformers/hl7_chemo_transformer/chemocare_transformer.py` → `transform_chemocare_message()` · any mapper in `mappers/` |
+| **PIMS Transformer** | `transformers/hl7_pims_transformer/pims_transformer.py` → `transform_pims_message()` · `mappers/mrg_mapper.py` (for A40 merges) |
+| **PROMS Transformer** | `transformers/xml_fhir_proms_transformer/proms_transformer.py` → `build_fhir_bundle()` · any mapper in `mappers/` · `proms_parser.py` |
 | **HL7 Server** | `hl7_server/hl7_validator.py` → `validate()` · `hl7_server/hl7_ack_builder.py` → `build_ack()` |
 | **HL7 Sender** | `services/hl7_sender_plugin.py` → `run()` to inspect the MLLP byte frame before it is displayed |
 
@@ -83,7 +83,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | HL7v2 ER7 — ADT A28 (new patient) or A31 (patient update) from Public Health Wales |
 | **Output** | Transformed HL7v2 v2.5 ER7 — remapped MSH, EVN, PID, PD1 segments |
-| **Underlying code** | `hl7_phw_transformer/hl7_phw_transformer/phw_transformer.py` · `PhwTransformer.transform_message()` |
+| **Underlying code** | `transformers/hl7_phw_transformer/hl7_phw_transformer/phw_transformer.py` · `PhwTransformer.transform_message()` |
 | **Samples** | A28 (PHW fixture), A31 (Southwest) |
 
 ### Chemo Transformer
@@ -92,7 +92,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | HL7v2 ER7 — ADT A28 / A31 from ChemoCare |
 | **Output** | Transformed HL7v2 v2.5 ER7 — remapped MSH, EVN, PID, PD1, NK1 segments |
-| **Underlying code** | `hl7_chemo_transformer/hl7_chemo_transformer/chemocare_transformer.py` · `transform_chemocare_message()` |
+| **Underlying code** | `transformers/hl7_chemo_transformer/hl7_chemo_transformer/chemocare_transformer.py` · `transform_chemocare_message()` |
 | **Samples** | A31 Southwest, A28 Southwest, A28 Velindre |
 
 ### PIMS Transformer
@@ -101,7 +101,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | HL7v2 ER7 — ADT A04 (new patient), A08 (patient update), A40 (patient merge) from PIMS |
 | **Output** | Transformed HL7v2 v2.5 ER7 — remapped MSH, EVN, PID, PD1, PV1, MRG segments |
-| **Underlying code** | `hl7_pims_transformer/hl7_pims_transformer/pims_transformer.py` · `transform_pims_message()` |
+| **Underlying code** | `transformers/hl7_pims_transformer/hl7_pims_transformer/pims_transformer.py` · `transform_pims_message()` |
 | **Notes** | A40 messages in the ADT_A39 grouped structure are automatically re-parsed as flat before mapping |
 | **Samples** | A04 (New patient), A08 (Patient update), A40 (Merge) |
 
@@ -111,7 +111,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | WPAS XML — OPI (Outpatient), RFI (Referral), or MPA (Patient Update) |
 | **Output** | FHIR R4B JSON message Bundle (PSOM — Patient Standard Outcome Measures) |
-| **Underlying code** | `xml_fhir_proms_transformer/xml_fhir_proms_transformer/proms_transformer.py` · `transform_proms_xml_to_fhir_bundle()` |
+| **Underlying code** | `transformers/xml_fhir_proms_transformer/xml_fhir_proms_transformer/proms_transformer.py` · `transform_proms_xml_to_fhir_bundle()` |
 | **Samples** | OPI (Outpatient), RFI (Referral), MPA (Patient Update) |
 
 ### HL7 Server
@@ -174,10 +174,10 @@ my_tools/integration_hub_tester/
                 │
                 │  each plugin imports from a live path dep:
                 ▼
-hl7_phw_transformer/               installed as path dep in .venv
-hl7_chemo_transformer/             installed as path dep in .venv
-hl7_pims_transformer/              installed as path dep in .venv
-xml_fhir_proms_transformer/        installed as path dep in .venv
+transformers/hl7_phw_transformer/   installed as path dep in .venv
+transformers/hl7_chemo_transformer/    installed as path dep in .venv
+transformers/hl7_pims_transformer/     installed as path dep in .venv
+transformers/xml_fhir_proms_transformer/ installed as path dep in .venv
 hl7_server/                        installed as path dep in .venv
 ```
 
@@ -238,10 +238,10 @@ The tool has its **own isolated `.venv`**, declared in `pyproject.toml`:
 
 ```toml
 [tool.uv.sources]
-hl7-phw-transformer   = { path = "../../hl7_phw_transformer" }
-hl7-chemo-transformer = { path = "../../hl7_chemo_transformer" }
-hl7-pims-transformer  = { path = "../../hl7_pims_transformer" }
-proms-fhir-transformer = { path = "../../xml_fhir_proms_transformer" }
+hl7-phw-transformer   = { path = "../../transformers/hl7_phw_transformer" }
+hl7-chemo-transformer = { path = "../../transformers/hl7_chemo_transformer" }
+hl7-pims-transformer  = { path = "../../transformers/hl7_pims_transformer" }
+proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer" }
 hl7-server            = { path = "../../hl7_server" }
 ```
 

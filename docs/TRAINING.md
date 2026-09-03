@@ -33,9 +33,9 @@ Table of Contents
   - [HL7 Server Components - The Reception Desks](#hl7-server-components---the-reception-desks)
   - [Azure Service Bus](#azure-service-bus)
   - [Transformers](#transformers)
-    - [hl7_phw_transformer/ (PHW Transformer)](#hl7_phw_transformer-phw-transformer)
-    - [hl7_chemo_transformer/ (Chemocare Transformer)](#hl7_chemo_transformer-chemocare-transformer)
-    - [hl7_pims_transformer/ (PIMS Transformer)](#hl7_pims_transformer-pims-transformer)
+    - [transformers/hl7_phw_transformer/ (PHW Transformer)](#transformershl7_phw_transformer-phw-transformer)
+    - [transformers/hl7_chemo_transformer/ (Chemocare Transformer)](#transformershl7_chemo_transformer-chemocare-transformer)
+    - [transformers/hl7_pims_transformer/ (PIMS Transformer)](#transformershl7_pims_transformer-pims-transformer)
   - [Senders](#senders)
   - [Aside – Retry backoff strategy](#aside--retry-backoff-strategy)
   - [Shared Libraries](#shared-libraries)
@@ -378,7 +378,7 @@ All transformers are built upon a **Shared Base Library** (`transformer_base_lib
 
 Each specific transformer inherits from this base and implements its own `transform_message` logic using specialized mappers.
 
-### hl7_phw_transformer/ (PHW Transformer):
+### transformers/hl7_phw_transformer/ (PHW Transformer):
 
 converts Public Health Wales messages to the HL7v2.5 standard.
 
@@ -390,7 +390,7 @@ converts Public Health Wales messages to the HL7v2.5 standard.
 - **Scenario**:
   - PHW sends a patient's birth date as "19850315" but MPI needs "1985-03-15T00:00:00Z"
 
-### hl7_chemo_transformer/ (Chemocare Transformer):
+### transformers/hl7_chemo_transformer/ (Chemocare Transformer):
 
 converts cancert treatment system data to the HL7v2.5 standard
 
@@ -419,7 +419,7 @@ converts cancert treatment system data to the HL7v2.5 standard
 |              | Constant: NH                                                                                                                                                                                            | PID.3[1]/CX.5      |
 | PID.2/CX.1   | Conditional prefix + PID.2.1:<br>If from VEL ('224') → `VCC` + PID.2.1<br>If from BCU ('212') → `BCUCC` + PID.2.1<br>If from SWW ('192') → `SWWCC` + PID.2.1<br>If from SEW ('245') → `SEWCC` + PID.2.1 | PID.3[2]/CX.1      |
 
-### hl7_pims_transformer/ (PIMS Transformer):
+### transformers/hl7_pims_transformer/ (PIMS Transformer):
 
 converts Patient Information Management System data to the HL7v2.5 standard
 

@@ -232,12 +232,12 @@ services:
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
-      context: ../hl7_phw_transformer
+      context: ../transformers/hl7_phw_transformer
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./phw-hl7-transformer.env
+      - ./env/transformers/phw-hl7-transformer.env
     <<: *default-healthcheck
     depends_on:
       - sb-emulator
@@ -402,12 +402,12 @@ services:
   chemo-hl7-transformer:
     container_name: chemo-hl7-transformer
     build:
-      context: ../hl7_chemo_transformer
+      context: ../transformers/hl7_chemo_transformer
       additional_contexts:
       - ca-certs=../ca-certs
       - shared_libs=../shared_libs
     env_file:
-      - ./chemo-hl7-transformer.env
+      - ./env/transformers/chemo-hl7-transformer.env
     <<: *default-healthcheck
     depends_on:
       - sb-emulator
@@ -445,12 +445,12 @@ services:
   pims-hl7-transformer:
     container_name: pims-hl7-transformer
     build:
-      context: ../hl7_pims_transformer
+      context: ../transformers/hl7_pims_transformer
       additional_contexts:
       - ca-certs=../ca-certs
       - shared_libs=../shared_libs
     env_file:
-      - ./pims-hl7-transformer.env
+      - ./env/transformers/pims-hl7-transformer.env
     <<: *default-healthcheck
     depends_on:
       - sb-emulator

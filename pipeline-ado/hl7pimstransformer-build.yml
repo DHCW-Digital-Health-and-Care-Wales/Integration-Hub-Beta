@@ -6,7 +6,7 @@ trigger:
       - release-*
   paths:
     include:
-      - hl7_pims_transformer/*
+      - transformers/hl7_pims_transformer/*
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_pims_transformer'
+          appName: 'transformers/hl7_pims_transformer'
           appDisplayName: 'Pims HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushHL7PimsTransformer'
           displayName: 'Build and Push HL7 Transformer'
           appName: 'pims-hl7transformer'
-          dockerfilePath: 'hl7_pims_transformer/Dockerfile'
-          buildContext: 'hl7_pims_transformer'
+          dockerfilePath: 'transformers/hl7_pims_transformer/Dockerfile'
+          buildContext: 'transformers/hl7_pims_transformer'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

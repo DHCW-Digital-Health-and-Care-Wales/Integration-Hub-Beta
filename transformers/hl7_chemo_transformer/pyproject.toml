@@ -1,7 +1,7 @@
 [project]
-name = "hl7-pims-transformer"
+name = "hl7-chemo-transformer"
 version = "0.1.0"
-description = "HL7v2 PIMS to MPI transformer"
+description = "HL7v2 Chemocare to MPI transformer"
 requires-python = ">=3.13"
 
 dependencies = [
@@ -29,12 +29,12 @@ dev = [
 ]
 
 [tool.uv.sources]
-field-utils-lib = { path = "../shared_libs/field_utils_lib" }
-transformer-base-lib = { path = "../shared_libs/transformer_base_lib" }
-message-bus-lib = { path = "../shared_libs/message_bus_lib" }
-health-check-lib = { path = "../shared_libs/health_check_lib" }
-processor-manager-lib = { path = "../shared_libs/processor_manager_lib" }
-event-logger-lib = { path = "../shared_libs/event_logger_lib" }
+field-utils-lib = { path = "../../shared_libs/field_utils_lib" }
+transformer-base-lib = { path = "../../shared_libs/transformer_base_lib" }
+message-bus-lib = { path = "../../shared_libs/message_bus_lib" }
+health-check-lib = { path = "../../shared_libs/health_check_lib" }
+processor-manager-lib = { path = "../../shared_libs/processor_manager_lib" }
+event-logger-lib = { path = "../../shared_libs/event_logger_lib" }
 
 [tool.mypy]
 python_version = "3.13"
