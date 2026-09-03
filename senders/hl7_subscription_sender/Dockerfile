@@ -32,7 +32,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 # Copy the rest of the project source code and install it
-COPY senders/hl7_subscription_sender/ /app/senders/hl7_subscription_sender
+COPY hl7_subscription_sender/ /app/senders/hl7_subscription_sender/hl7_subscription_sender
 RUN uv --native-tls sync --locked --no-dev
 
 # Place executables in the environment at the front of the path

@@ -11,7 +11,7 @@ WORKDIR /app/senders/soap_subscription_sender
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY senders/soap_subscription_sender/ /app/senders/soap_subscription_sender/
+COPY soap_subscription_sender/ /app/senders/soap_subscription_sender/soap_subscription_sender/
 RUN uv --native-tls sync --locked --no-dev
 
 ENV PATH="/app/senders/soap_subscription_sender/.venv/bin:$PATH"
