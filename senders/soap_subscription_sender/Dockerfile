@@ -8,6 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app/senders/soap_subscription_sender
 
+# Copy shared libraries
+COPY --from=shared_libs . /app/shared_libs
+
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
