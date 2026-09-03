@@ -416,7 +416,7 @@ wheels = [
 [[package]]
 name = "hl7-chemo-transformer"
 version = "0.1.0"
-source = { directory = "../../hl7_chemo_transformer" }
+source = { directory = "../../transformers/hl7_chemo_transformer" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -462,7 +462,7 @@ dev = [
 [[package]]
 name = "hl7-phw-transformer"
 version = "0.1.0"
-source = { directory = "../../hl7_phw_transformer" }
+source = { directory = "../../transformers/hl7_phw_transformer" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -510,7 +510,7 @@ dev = [
 [[package]]
 name = "hl7-pims-transformer"
 version = "0.1.0"
-source = { directory = "../../hl7_pims_transformer" }
+source = { directory = "../../transformers/hl7_pims_transformer" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -679,11 +679,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hl7-chemo-transformer", directory = "../../hl7_chemo_transformer" },
-    { name = "hl7-phw-transformer", directory = "../../hl7_phw_transformer" },
-    { name = "hl7-pims-transformer", directory = "../../hl7_pims_transformer" },
+    { name = "hl7-chemo-transformer", directory = "../../transformers/hl7_chemo_transformer" },
+    { name = "hl7-phw-transformer", directory = "../../transformers/hl7_phw_transformer" },
+    { name = "hl7-pims-transformer", directory = "../../transformers/hl7_pims_transformer" },
     { name = "hl7-server", directory = "../../hl7_server" },
-    { name = "proms-fhir-transformer", directory = "../../xml_fhir_proms_transformer" },
+    { name = "proms-fhir-transformer", directory = "../../transformers/xml_fhir_proms_transformer" },
 ]
 
 [[package]]
@@ -1158,7 +1158,7 @@ dev = [{ name = "otel-lib", directory = "../../shared_libs/otel_lib" }]
 [[package]]
 name = "proms-fhir-transformer"
 version = "0.1.0"
-source = { directory = "../../xml_fhir_proms_transformer" }
+source = { directory = "../../transformers/xml_fhir_proms_transformer" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },

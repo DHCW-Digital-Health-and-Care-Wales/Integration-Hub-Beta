@@ -25,7 +25,7 @@ without running a Service Bus queue, container, or any Azure infrastructure.
 
 - Python 3.13+
 - [`uv`](https://docs.astral.sh/uv/) installed (`pip install uv` or via `winget install astral-sh.uv`)
-- The repo cloned locally with `xml_fhir_proms_transformer/` present
+- The repo cloned locally with `transformers/xml_fhir_proms_transformer/` present
 
 ### Install & run
 
@@ -103,7 +103,7 @@ my_tools/proms_tester/app.py   (GUI layer — tkinter)
         │
         │  calls
         ▼
-xml_fhir_proms_transformer/    (transformer package — installed as a local uv path dep)
+transformers/xml_fhir_proms_transformer/    (transformer package — installed as a local uv path dep)
   ├── proms_parser.py           parse WPAS XML → PromsMessage
   ├── message_types.py          route OPI / RFI / MPA → MessageType
   ├── proms_transformer.py      assemble FHIR R4B Bundle
@@ -154,11 +154,11 @@ The tool has its **own isolated `.venv`**, declared in `pyproject.toml`:
 
 ```toml
 [tool.uv.sources]
-proms-fhir-transformer = { path = "../../xml_fhir_proms_transformer" }
+proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer" }
 ```
 
 `uv` installs the transformer as an **editable path dependency** — changes you make
-to any file in `xml_fhir_proms_transformer/` take effect immediately the next time
+to any file in `transformers/xml_fhir_proms_transformer/` take effect immediately the next time
 you click **Transform**, with no reinstall step needed. This is what makes
 breakpoint debugging in the transformer source work.
 
@@ -269,7 +269,7 @@ main thread (which is why breakpoints work — there is no threading):
 **If you change transformer source files** (mappers, parser, constants, etc.),
 no reinstall is needed — the path dep is live. Just click Transform again.
 
-**If you add new Python dependencies** to `xml_fhir_proms_transformer/pyproject.toml`,
+**If you add new Python dependencies** to `transformers/xml_fhir_proms_transformer/pyproject.toml`,
 re-run from this folder:
 
 ```powershell

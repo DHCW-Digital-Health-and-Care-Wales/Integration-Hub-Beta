@@ -168,9 +168,9 @@ The CI pipeline runs `uv audit --locked` and explicitly ignores one advisory (`G
 |---------|-----------|-------|---------|
 | `hl7_server` | 12 | ~1500 | Good — 17 tests on `GenericHandler` alone |
 | `hl7_sender` | 8 | ~900 | Good |
-| `hl7_phw_transformer` | 10 | ~1200 | Best — dedicated per-mapper + edge-case tests |
-| `hl7_chemo_transformer` | 10 | ~900 | Adequate |
-| `hl7_pims_transformer` | 12 | ~1100 | Adequate |
+| `transformers/hl7_phw_transformer` | 10 | ~1200 | Best — dedicated per-mapper + edge-case tests |
+| `transformers/hl7_chemo_transformer` | 10 | ~900 | Adequate |
+| `transformers/hl7_pims_transformer` | 12 | ~1100 | Adequate |
 | `message_store_service` | 7 | ~800 | Good for a CRUD service |
 | `dashboard` | 11 | ~2500 | Very good — extensive route/edge-case coverage |
 | `message_bus_lib` | 7 | ~900 | Very good — retry logic, stale connections |
