@@ -17,4 +17,4 @@ hl7-phw-transformer  = { path = "../../transformers/hl7_phw_transformer" }
 hl7-chemo-transformer = { path = "../../transformers/hl7_chemo_transformer" }
 hl7-pims-transformer = { path = "../../transformers/hl7_pims_transformer" }
 proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer" }
-hl7-server           = { path = "../../hl7_server" }
+hl7-server           = { path = "../../servers/hl7_server" }

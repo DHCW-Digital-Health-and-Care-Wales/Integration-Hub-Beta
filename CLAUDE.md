@@ -20,7 +20,7 @@ The system uses a shared library architecture where common functionality is abst
 ## Core Components
 
 ### HL7 Services
-- `hl7_server/` - Generic HL7 message receiving server with MLLP support. Other servers (PHW, Paris, Chemo, PIMS) extend this service.
+- `servers/hl7_server/` - Generic HL7 message receiving server with MLLP support. Other servers (PHW, Paris, Chemo, PIMS) extend this service.
 - `transformers/hl7_phw_transformer/` - Transforms PHW (Public Health Wales) messages to HL7v2.5
 - `transformers/hl7_chemo_transformer/` - Transforms Chemocare system messages to HL7v2.5  
 - `transformers/hl7_pims_transformer/` - Transforms PIMS (Patient Information Management System) messages to HL7v2.5
@@ -163,7 +163,8 @@ integration-hub-beta/
 │   ├── metric_sender_lib/
 │   ├── processor_manager_lib/ 
 │   └── transformer_base_lib/
-├── hl7_server/                  # HL7 server services
+├── servers/                      # Server-type services
+│   └── hl7_server/                # HL7 server services
 ├── transformers/
 │   ├── hl7_phw_transformer/
 │   ├── hl7_chemo_transformer/

@@ -11,17 +11,17 @@ RUN update-ca-certificates
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-WORKDIR /app
+WORKDIR /app/servers/hl7_soap_server
 
-COPY --from=shared_libs . /shared_libs
+COPY --from=shared_libs . /app/shared_libs
 
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY hl7_soap_server/ /app/hl7_soap_server/
+COPY hl7_soap_server/ /app/servers/hl7_soap_server/hl7_soap_server
 RUN uv --native-tls sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/servers/hl7_soap_server/.venv/bin:$PATH"
 
 RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser

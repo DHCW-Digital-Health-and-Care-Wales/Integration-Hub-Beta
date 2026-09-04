@@ -11,17 +11,16 @@ pr:
       - release-*
   paths:
     include:
-      - hl7_server/**
-      - hl7_rest_server/**
-      - rest_server/**
+      - servers/hl7_server/**
+      - servers/hl7_rest_server/**
+      - servers/rest_server/**
       - transformers/hl7_phw_transformer/**
       - senders/hl7_sender/**
       - senders/hl7_subscription_sender/**
       - hl7_mock_receiver/**
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
-      - hl7_soap_server/**
-      - rest_server/**
+      - servers/hl7_soap_server/**
       - buswatch/**
       - message_store_service/**
       - shared_libs/**
@@ -91,17 +90,16 @@ stages:
               # banditDir empty = use basename of appDir
               # testRunner: unittest (default) or pytest
               APPS=(
-                "hl7_server|HL7 Server||unittest"
-                "hl7_rest_server|HL7 REST Server||unittest"
-                "rest_server|REST Server||unittest"
+                "servers/hl7_server|HL7 Server||unittest"
+                "servers/hl7_rest_server|HL7 REST Server||unittest"
+                "servers/rest_server|REST Server||unittest"
                 "transformers/hl7_phw_transformer|PHW HL7 Transformer||unittest"
                 "senders/hl7_sender|HL7 Sender||unittest"
                 "senders/hl7_subscription_sender|HL7 Subscription Sender||unittest"
                 "hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
-                "hl7_soap_server|HL7 SOAP Server||unittest"
-                "rest_server|REST Server||unittest"
+                "servers/hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_store_service|Message Store Service||unittest"
                 "buswatch|BusWatch||unittest"
                 "shared_libs/message_bus_lib|Message Bus Library|message_bus_lib|unittest"

@@ -3,12 +3,15 @@ requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hl7-soap-server"
+name = "rest-server"
 version = "0.1.0"
-description = "SOAP endpoint for HL7v2 XML ingestion"
+description = "Configurable REST/HTTP ingestion server - pluggable content adapters and validators over a shared HL7-server-style publish pipeline"
 requires-python = ">=3.13"
 
 dependencies = [
+    "fastapi==0.136.3",
+    "uvicorn==0.37.0",
+    "python-dotenv>=1.2.2",
     "azure-core>=1.38.0",
     "azure-servicebus==7.14.3",
     "azure-identity==1.23.0",
@@ -27,6 +30,7 @@ dependencies = [
     "hl7_validation_lib",
     "event-logger-lib",
     "metric-sender-lib",
+    "field-utils-lib",
     "setuptools>=83.0.0",
 ]
 
@@ -35,15 +39,17 @@ dev = [
     "ruff==0.14.9",
     "bandit==1.9.2",
     "mypy==1.18.2",
+    "httpx2>=0.28.0",
 ]
 
 [tool.uv.sources]
-message-bus-lib = { path = "../shared_libs/message_bus_lib" }
-otel-lib = { path = "../shared_libs/otel_lib" }
-health-check-lib = { path = "../shared_libs/health_check_lib" }
-hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
-event-logger-lib = { path = "../shared_libs/event_logger_lib" }
-metric-sender-lib = { path = "../shared_libs/metric_sender_lib" }
+message-bus-lib = { path = "../../shared_libs/message_bus_lib" }
+otel-lib = { path = "../../shared_libs/otel_lib" }
+health-check-lib = { path = "../../shared_libs/health_check_lib" }
+hl7_validation_lib = { path = "../../shared_libs/hl7_validation" }
+event-logger-lib = { path = "../../shared_libs/event_logger_lib" }
+metric-sender-lib = { path = "../../shared_libs/metric_sender_lib" }
+field-utils-lib = { path = "../../shared_libs/field_utils_lib" }
 
 [tool.mypy]
 python_version = "3.13"

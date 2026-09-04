@@ -105,7 +105,7 @@ services:
   phw-hl7-server:
     container_name: phw-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -127,11 +127,11 @@ services:
 
   # REST-based HL7 receiver (HTTP counterpart to phw-hl7-server).
   # Serves the RISP flow: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
-  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see rest_server/README.md.
+  # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see servers/rest_server/README.md.
   risp-hl7-rest-server:
     container_name: risp-hl7-rest-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -157,11 +157,11 @@ services:
         aliases:
           - "risp-hl7-rest-server"
 
-  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -181,11 +181,11 @@ services:
         aliases:
           - "hl7-soap-server"
 
-  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   pms-hl7-soap-server:
     container_name: pms-hl7-soap-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -205,11 +205,11 @@ services:
         aliases:
           - "pms-hl7-soap-server"
 
-  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
+  # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
   wpas-rest-server:
     container_name: wpas-rest-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -311,7 +311,7 @@ services:
   paris-hl7-server:
     container_name: paris-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -334,7 +334,7 @@ services:
   wds-hl7-server:
     container_name: wds-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -357,7 +357,7 @@ services:
   mosaiq-hl7-server:
     container_name: mosaiq-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -380,7 +380,7 @@ services:
   chemo-hl7-server:
     container_name: chemo-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -423,7 +423,7 @@ services:
   pims-hl7-server:
     container_name: pims-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
@@ -466,7 +466,7 @@ services:
   mpi-hl7-server:
     container_name: mpi-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
