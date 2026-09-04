@@ -33,6 +33,9 @@ dependencies = [
     # field-utils-lib: Utilities for copying and manipulating HL7 fields
     # Provides get_hl7_field_value, copy_segment_fields_in_range
     "field-utils-lib",
+
+    # Azure Identity - for authentication (used with Service Bus)
+    "azure-identity>=1.23.0",
 ]
 
 # Tell uv where to find the shared_libs

@@ -117,7 +117,7 @@ class TrainingHl7ServerApplication:
         # If Service Bus is configured, create a sender client to publish
         # validated messages to the egress queue. The transformer component
         # will read from this queue.
-        if self.config.connection_string and self.config.egress_queue_name:
+        if (self.config.connection_string or self.config.service_bus_namespace) and self.config.egress_queue_name:
             print("-" * 60)
             print("SERVICE BUS INTEGRATION ENABLED (Week 2)")
             print(f"Egress Queue: {self.config.egress_queue_name}")
@@ -126,8 +126,8 @@ class TrainingHl7ServerApplication:
             # Create connection configuration for Service Bus
             # Uses connection string for local emulator, namespace for Azure
             client_config = ConnectionConfig(
-                connection_string=self.config.connection_string,
-                service_bus_namespace=None,  # Not used when connection_string is set
+                connection_string=None,
+                service_bus_namespace=self.config.service_bus_namespace,  # Not used when connection_string is set
             )
 
             # Create the factory that builds Service Bus clients

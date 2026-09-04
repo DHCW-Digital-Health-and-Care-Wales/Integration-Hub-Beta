@@ -16,6 +16,9 @@ parameters:
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
+      - Training HL7 Server
+      - Training HL7 Transformer
+      - Training HL7 Sender
       - HL7 Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
@@ -76,6 +79,15 @@ resources:
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Server - Build'
+      source: 'Training HL7 Server - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Transformer - Build'
+      source: 'Training HL7 Transformer - Build'
+      trigger: none
+    - pipeline: 'Training HL7 Sender - Build'
+      source: 'Training HL7 Sender - Build'
       trigger: none
 
 stages:
@@ -146,6 +158,21 @@ stages:
           appImageName: 'hl7sender'
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'Training HL7 Server'
+          appImageName: 'trn-hl7server'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Server - Build'
+        
+        - name: 'Training HL7 Transformer'
+          appImageName: 'trn-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Transformer - Build'
+        
+        - name: 'Training HL7 Sender'
+          appImageName: 'trn-hl7sender'
+          appFunctionMidfix: ''
+          buildPipeline: 'Training HL7 Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'

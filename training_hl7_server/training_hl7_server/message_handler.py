@@ -1,8 +1,11 @@
 """Message handler for processing incoming HL7 messages."""
 
+from typing import Optional
+
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
 
+from shared_libs.message_bus_lib.message_bus_lib.message_sender_client import MessageSenderClient
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import HL7Constants
 
@@ -30,9 +33,9 @@ class MessageHandler(AbstractHandler):
     def __init__(
         self,
         incoming_message: str,
-        expected_version: str = "2.3.1",
-        allowed_senders: list[str] = ["TRAINING_APP"],
-        sender_client: str = None
+        expected_version: Optional[str] = None,
+        allowed_senders: Optional[str] = None,
+        sender_client: Optional[MessageSenderClient] = None,
     ) -> None:
         """
         Initialize the message handler.
@@ -45,7 +48,7 @@ class MessageHandler(AbstractHandler):
         super().__init__(incoming_message)
 
         # Store the expected HL7 version for validation
-        self.expected_version = expected_version
+        self.expected_version : Optional[str] = expected_version
 
         self.allowed_senders = allowed_senders
 
@@ -146,7 +149,7 @@ class MessageHandler(AbstractHandler):
             print(f"✓ Sending ACK (AA) for message {message_control_id}")
 
             # Convert the ACK Message object to ER7 format (pipe-delimited string)
-            return ack.to_er7()
+            return ack.to_mllp()
 
         except ValidationError as e:
             # ===================================================================
@@ -166,7 +169,7 @@ class MessageHandler(AbstractHandler):
                     ack_code=HL7Constants.ACK_CODE_ERROR,
                     error_message=str(e),
                 )
-                return ack.to_er7()
+                return ack.to_mllp()
             except Exception:
                 # If we can't even parse the message, re-raise the original error
                 raise
@@ -207,7 +210,11 @@ class MessageHandler(AbstractHandler):
 
         Raises:
             ValidationError: If the version doesn't match expected.
+            
         """
+        if self.allowed_senders is None:
+            print ("No allowed_senders configured; skipping sender validation.")
+            return
         if sender not in self.allowed_senders:
             raise ValidationError(f"Invalid Sender: expected '{self.allowed_senders}', got '{sender}'")
         print(f"✓ Sender validated: {sender}")
