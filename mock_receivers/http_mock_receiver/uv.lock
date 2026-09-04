@@ -411,7 +411,7 @@ dev = [
 requires-dist = [
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "fastapi", specifier = "==0.136.3" },
-    { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
+    { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
     { name = "uvicorn", specifier = "==0.37.0" },
 ]
 
@@ -515,7 +515,7 @@ wheels = [
 [[package]]
 name = "message-bus-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/message_bus_lib" }
+source = { directory = "../../shared_libs/message_bus_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -534,8 +534,8 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
-    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
+    { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -551,7 +551,7 @@ dev = [
 [[package]]
 name = "metric-sender-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/metric_sender_lib" }
+source = { directory = "../../shared_libs/metric_sender_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -902,7 +902,7 @@ wheels = [
 [[package]]
 name = "otel-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/otel_lib" }
+source = { directory = "../../shared_libs/otel_lib" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
