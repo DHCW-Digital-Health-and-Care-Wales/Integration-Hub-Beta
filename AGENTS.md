@@ -5,9 +5,10 @@ It provides the context needed to work effectively in this repository.
 
 ## Team
 
-- **Gareth** — Hub-Team lead
-- **Matt** — developer
-- **Alex** — developer
+- **Gareth** — Hub Team lead
+- **Matt** — dev
+- **Alex** — dev
+- **Yoana** — dev
 - **Alphy** — DevOps lead
 
 ---
@@ -40,7 +41,6 @@ Integration-Hub-Beta/
 ├── local/                       # Docker Compose local dev environment
 ├── pipeline-ado/                # Azure DevOps CI/CD pipelines
 ├── dashboard/                   # NOC monitoring dashboard (Flask) ← NEW
-├── buswatch/                    # Service Bus queue inspector (FastAPI)
 ├── servers/                     # Server-type services (MLLP, SOAP, REST)
 │   └── hl7_server/               # Generic MLLP HL7 receiver
 ├── transformers/                # Transformer services
@@ -59,6 +59,11 @@ Integration-Hub-Beta/
 ├── message_processing/
 │   ├── message_store_service/    # Persists messages to Azure SQL
 │   └── message_replay_job/       # Replays stored messages from SQL
+├── dev_tools/                   # Internal dev tooling (not deployed)
+│   ├── buswatch/                 # Service Bus queue inspector (FastAPI)
+│   ├── integration_hub_tester/   # Local dev GUI for testing services
+│   ├── ultra7/                   # GUI tool for testing MLLP/REST/SOAP endpoints
+│   └── scripts/                  # Repo-wide helper scripts (run-all-*.sh, uv_sync_all.sh, upgrade-package.ps1)
 └── network_test_app/            # Network/firewall connectivity tester
 ```
 

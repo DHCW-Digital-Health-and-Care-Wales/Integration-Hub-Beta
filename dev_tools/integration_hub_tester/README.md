@@ -4,8 +4,9 @@ A local developer GUI for testing and debugging **all Integration Hub services**
 from a single tabbed window, without running any Azure infrastructure, Service Bus
 connections, or MLLP ports.
 
-> **Not tracked by git.** This tool lives in `my_tools/` which is listed in the
-> repo-root `.gitignore`. It will never appear in a commit or pull request.
+> **Not tracked by build/deploy pipelines.** This tool lives in `dev_tools/` alongside
+> other internal developer utilities — it is not part of any container image or
+> ADO pipeline; it's a local-only dev aid.
 
 ---
 
@@ -34,7 +35,7 @@ connections, or MLLP ports.
 ### Install & run
 
 ```powershell
-cd my_tools\integration_hub_tester
+cd dev_tools\integration_hub_tester
 uv sync          # creates .venv and installs all 5 services as live path deps (first time only)
 uv run python app.py
 ```
@@ -158,7 +159,7 @@ inspect intermediate values at any point in the pipeline.
 ### Overview
 
 ```
-my_tools/integration_hub_tester/
+dev_tools/integration_hub_tester/
 │
 ├── app.py                         GUI layer — tk.Tk + ttk.Notebook
 │     └── ServicePage              reusable tab widget (one per plugin)
@@ -271,7 +272,7 @@ infrastructure dependencies, so both are instantiated normally.
 ## 6. Folder Structure
 
 ```
-my_tools/
+dev_tools/
 └── integration_hub_tester/
     ├── app.py              Main window — run this
     ├── pyproject.toml      Lists all 5 services as live path deps
@@ -290,7 +291,7 @@ my_tools/
 
 The `.vscode/launch.json` at the **repo root** provides the VS Code debug
 configuration. Its `"python"` key points at
-`my_tools/integration_hub_tester/.venv/Scripts/python.exe`.
+`dev_tools/integration_hub_tester/.venv/Scripts/python.exe`.
 
 ---
 
