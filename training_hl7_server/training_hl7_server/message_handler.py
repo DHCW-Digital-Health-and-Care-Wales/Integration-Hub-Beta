@@ -4,8 +4,8 @@ from typing import Optional
 
 from hl7apy.mllp import AbstractHandler
 from hl7apy.parser import parse_message
-
 from shared_libs.message_bus_lib.message_bus_lib.message_sender_client import MessageSenderClient
+
 from training_hl7_server.ack_builder import AckBuilder
 from training_hl7_server.constants import HL7Constants
 
@@ -210,7 +210,7 @@ class MessageHandler(AbstractHandler):
 
         Raises:
             ValidationError: If the version doesn't match expected.
-            
+
         """
         if self.allowed_senders is None:
             print ("No allowed_senders configured; skipping sender validation.")

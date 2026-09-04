@@ -26,7 +26,8 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_creates_valid_ack_message(self) -> None:
         """Test that build_ack creates a valid ACK message."""
-        ack = self.ack_builder.build_ack("MSG001", ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
+        ack = self.ack_builder.build_ack("MSG001",
+                                         ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
 
         # Verify message type is ACK
         self.assertEqual(str(ack.msh.msh_9.msh_9_1.value), "ACK")
@@ -59,7 +60,8 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_swaps_sender_and_receiver(self) -> None:
         """Test that build_ack correctly swaps sending and receiving applications."""
-        ack = self.ack_builder.build_ack("MSG001", ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
+        ack = self.ack_builder.build_ack("MSG001",
+                                         ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
 
         # Original: Sending App = 169, Sending Facility = 169
         #           Receiving App = 100, Receiving Facility = 100
@@ -71,7 +73,8 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_includes_timestamp(self) -> None:
         """Test that build_ack includes a timestamp in MSH-7."""
-        ack = self.ack_builder.build_ack("MSG001", ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
+        ack = self.ack_builder.build_ack("MSG001",
+                                         ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
 
         # Verify timestamp field is not empty
         timestamp = str(ack.msh.msh_7)
@@ -80,7 +83,8 @@ class TestAckBuilder(unittest.TestCase):
 
     def test_build_ack_includes_processing_id(self) -> None:
         """Test that build_ack includes processing ID from original message."""
-        ack = self.ack_builder.build_ack("MSG001", ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
+        ack = self.ack_builder.build_ack("MSG001",
+                                         ack_code=HL7Constants.ACK_CODE_ACCEPT, original_msg=self.original_msg)
 
         # Verify processing ID matches original (P for Production)
         self.assertEqual(str(ack.msh.msh_11.value), "P")

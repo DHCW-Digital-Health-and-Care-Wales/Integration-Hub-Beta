@@ -1,21 +1,20 @@
 """Main server application for the Training HL7 Server."""
 
-import os
 import signal
 import sys
 import threading
 
 from hl7apy.mllp import MLLPServer
 
+# Week 2 Service Bus
+from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.message_sender_client import MessageSenderClient
+from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
+
 from training_hl7_server.app_config import AppConfig
 from training_hl7_server.error_handler import ErrorHandler
 from training_hl7_server.message_handler import MessageHandler
 
-# Week 2 Service Bus
-
-from message_bus_lib.connection_config import ConnectionConfig
-from message_bus_lib.message_sender_client import MessageSenderClient
-from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 
 class TrainingHl7ServerApplication:
     """
