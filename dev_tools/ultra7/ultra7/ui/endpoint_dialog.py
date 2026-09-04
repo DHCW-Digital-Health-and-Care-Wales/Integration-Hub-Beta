@@ -110,6 +110,7 @@ class EndpointDialog(tk.Toplevel):
             headers[name.strip()] = value.strip()
         return headers
 
+    def _save(self) -> None:
         kind = self._kind.get()
         port_text = self._port.get().strip()
         port: int | None = None
