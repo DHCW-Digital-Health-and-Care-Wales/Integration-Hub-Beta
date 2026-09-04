@@ -2,6 +2,7 @@ from hl7apy.core import Message
 
 from hl7_server.custom_validation.mpi_outbound_validation import _validate_mpi_outbound_specific_fields
 from hl7_server.custom_validation.phw_validation import _validate_pid7_date_of_birth
+from hl7_server.custom_validation.wds_validation import _validate_wds_specific_fields
 from hl7_server.exceptions.validation_exception import ValidationException
 
 
@@ -42,6 +43,8 @@ class HL7Validator:
             self._validate_phw_specific_fields(message)
         if self.flow_name == "mpi":
             _validate_mpi_outbound_specific_fields(message)
+        if self.flow_name == "wds":
+            _validate_wds_specific_fields(message)
 
     def _validate_phw_specific_fields(self, message: Message) -> None:
         _validate_pid7_date_of_birth(message)

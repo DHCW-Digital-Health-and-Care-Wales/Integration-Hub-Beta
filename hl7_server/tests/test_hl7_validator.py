@@ -23,6 +23,14 @@ VALID_PHW_A28_MESSAGE = (
     "PV1||\r"
 )
 
+VALID_WDS_A28_MESSAGE = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A28^ADT_A05|6778031837018553261|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A28|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI|||Testpatient^Test^^^||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN\r"
+    "PD1|||^UNK|UNK\r"
+    "PV1||N"
+)
+
 
 class TestHL7Validator(unittest.TestCase):
     def test_no_flow_name_skips_flow_specific_validation(self) -> None:
@@ -42,6 +50,13 @@ class TestHL7Validator(unittest.TestCase):
         msg = parse_message(VALID_A31_MESSAGE)
 
         validator = HL7Validator(hl7_version="2.4", sending_app="TestApp, 192, 255", flow_name="chemo")
+
+        validator.validate(msg)
+
+    def test_wds_flow_accepts_supported_a28_message_without_pid2_update_source(self) -> None:
+        msg = parse_message(VALID_WDS_A28_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="328", flow_name="wds")
 
         validator.validate(msg)
 

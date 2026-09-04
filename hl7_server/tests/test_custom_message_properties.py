@@ -6,7 +6,12 @@ from unittest.mock import MagicMock, patch
 
 from hl7apy.core import Message
 
-from hl7_server.custom_message_properties import build_common_properties, build_mpi_properties
+from hl7_server.custom_message_properties import (
+    FLOW_PROPERTY_BUILDERS,
+    build_common_properties,
+    build_mpi_properties,
+    build_wds_properties,
+)
 
 
 def _rep_with_hd1(code: str) -> SimpleNamespace:
@@ -194,6 +199,32 @@ class TestCustomMessageProperties(unittest.TestCase):
             props = build_mpi_properties(mock_msg)
 
             self.assertEqual(props["AssigningAuthorities"], "|NHS|")
+
+    def test_wds_flow_uses_same_custom_property_shape_as_mpi(self) -> None:
+        mock_msg = MagicMock(spec=Message)
+        mock_msg.pid = SimpleNamespace(
+            pid_2=[_rep_with_hd1("108")],
+            pid_3=[_rep_with_hd1("NHS")],
+        )
+
+        with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
+            mock_get_field.side_effect = lambda msg, path: {
+                "msh.msh_9.msh_9_2": "A31",
+                "pid.pid_29.ts_1": "2023-01-15",
+                "pid.pid_30": "",
+            }.get(path, "")
+
+            props = build_wds_properties(mock_msg)
+
+            self.assertEqual(props["MessageType"], "A31")
+            self.assertEqual(props["UpdateSources"], "|108|")
+            self.assertEqual(props["AssigningAuthorities"], "|NHS|")
+            self.assertEqual(props["DateDeath"], "2023-01-15")
+            self.assertEqual(props["ReasonDeath"], "")
+
+    def test_wds_flow_is_registered_in_property_builders(self) -> None:
+        self.assertIn("wds", FLOW_PROPERTY_BUILDERS)
+        self.assertIs(FLOW_PROPERTY_BUILDERS["wds"], build_wds_properties)
 
 if __name__ == "__main__":
     unittest.main()
