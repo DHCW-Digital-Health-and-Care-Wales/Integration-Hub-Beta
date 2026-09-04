@@ -67,7 +67,7 @@ so the debugger steps into all service source code, not just `app.py`.
 | **Chemo Transformer** | `transformers/hl7_chemo_transformer/chemocare_transformer.py` → `transform_chemocare_message()` · any mapper in `mappers/` |
 | **PIMS Transformer** | `transformers/hl7_pims_transformer/pims_transformer.py` → `transform_pims_message()` · `mappers/mrg_mapper.py` (for A40 merges) |
 | **PROMS Transformer** | `transformers/xml_fhir_proms_transformer/proms_transformer.py` → `build_fhir_bundle()` · any mapper in `mappers/` · `proms_parser.py` |
-| **HL7 Server** | `hl7_server/hl7_validator.py` → `validate()` · `hl7_server/hl7_ack_builder.py` → `build_ack()` |
+| **HL7 Server** | `servers/hl7_server/hl7_validator.py` → `validate()` · `servers/hl7_server/hl7_ack_builder.py` → `build_ack()` |
 | **HL7 Sender** | `services/hl7_sender_plugin.py` → `run()` to inspect the MLLP byte frame before it is displayed |
 
 Use **F10** to step over, **F11** to step into, and the Watch / Variables panels to
@@ -120,7 +120,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | HL7v2 ER7 — any ADT message as it would arrive at the MLLP port |
 | **Output** | Parsed message summary + validation result + ACK ER7 preview |
-| **Underlying code** | `hl7_server/hl7_server/hl7_validator.py` · `HL7Validator.validate()` and `hl7_server/hl7_server/hl7_ack_builder.py` · `HL7AckBuilder.build_ack()` |
+| **Underlying code** | `servers/hl7_server/hl7_server/hl7_validator.py` · `HL7Validator.validate()` and `servers/hl7_server/hl7_server/hl7_ack_builder.py` · `HL7AckBuilder.build_ack()` |
 | **Notes** | No MLLP port is opened. Uses the same validator and ACK builder the real server uses. Validation runs without flow-specific rules (generic check). |
 | **Samples** | Valid A28 (v2.5), Valid A31 (v2.5), Wrong version (A31 v2.3) |
 
@@ -178,7 +178,7 @@ transformers/hl7_phw_transformer/   installed as path dep in .venv
 transformers/hl7_chemo_transformer/    installed as path dep in .venv
 transformers/hl7_pims_transformer/     installed as path dep in .venv
 transformers/xml_fhir_proms_transformer/ installed as path dep in .venv
-hl7_server/                        installed as path dep in .venv
+servers/hl7_server/                installed as path dep in .venv
 ```
 
 ### The `ServicePlugin` contract
@@ -242,7 +242,7 @@ hl7-phw-transformer   = { path = "../../transformers/hl7_phw_transformer" }
 hl7-chemo-transformer = { path = "../../transformers/hl7_chemo_transformer" }
 hl7-pims-transformer  = { path = "../../transformers/hl7_pims_transformer" }
 proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer" }
-hl7-server            = { path = "../../hl7_server" }
+hl7-server            = { path = "../../servers/hl7_server" }
 ```
 
 All five are installed as **live path dependencies** — changes you make to any

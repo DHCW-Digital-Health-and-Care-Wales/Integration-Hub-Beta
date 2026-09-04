@@ -105,13 +105,13 @@ services:
   phw-hl7-server:
     container_name: phw-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./phw-hl7-server.env
+      - ./env/servers/phw-hl7-server.env
     ports:
       - "2575:2575"
     <<: *default-healthcheck
@@ -127,17 +127,17 @@ services:
 
   # REST-based HL7 receiver (HTTP counterpart to phw-hl7-server).
   # Serves the RISP flow: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
-  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see rest_server/README.md.
+  # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see servers/rest_server/README.md.
   risp-hl7-rest-server:
     container_name: risp-hl7-rest-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./risp-hl7-rest-server.env
+      - ./env/servers/risp-hl7-rest-server.env
     ports:
       - "127.0.0.1:8081:8080"
     healthcheck:
@@ -157,17 +157,17 @@ services:
         aliases:
           - "risp-hl7-rest-server"
 
-  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./lims-soap-hl7-server.env
+      - ./env/servers/lims-soap-hl7-server.env
     ports:
       - "8082:8080"
     <<: *default-healthcheck
@@ -181,17 +181,17 @@ services:
         aliases:
           - "hl7-soap-server"
 
-  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
   pms-hl7-soap-server:
     container_name: pms-hl7-soap-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./pms-soap-hl7-server.env
+      - ./env/servers/pms-soap-hl7-server.env
     ports:
       - "8083:8081"
     <<: *default-healthcheck
@@ -205,17 +205,17 @@ services:
         aliases:
           - "pms-hl7-soap-server"
 
-  # Built from rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
+  # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
   wpas-rest-server:
     container_name: wpas-rest-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./wpas-rest-server.env
+      - ./env/servers/wpas-rest-server.env
     ports:
       - "127.0.0.1:8084:8080"
     <<: *default-healthcheck
@@ -311,13 +311,13 @@ services:
   paris-hl7-server:
     container_name: paris-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./paris-hl7-server.env
+      - ./env/servers/paris-hl7-server.env
     ports:
       - "2577:2577"
     <<: *default-healthcheck
@@ -334,13 +334,13 @@ services:
   wds-hl7-server:
     container_name: wds-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./wds-hl7-server.env
+      - ./env/servers/wds-hl7-server.env
     ports:
       - "2582:2582"
     <<: *default-healthcheck
@@ -357,13 +357,13 @@ services:
   mosaiq-hl7-server:
     container_name: mosaiq-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./mosaiq-hl7-server.env
+      - ./env/servers/mosaiq-hl7-server.env
     ports:
       - "2583:2583"
     <<: *default-healthcheck
@@ -380,13 +380,13 @@ services:
   chemo-hl7-server:
     container_name: chemo-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./chemo-hl7-server.env
+      - ./env/servers/chemo-hl7-server.env
     ports:
       - "2578:2578"
     <<: *default-healthcheck
@@ -423,13 +423,13 @@ services:
   pims-hl7-server:
     container_name: pims-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./pims-hl7-server.env
+      - ./env/servers/pims-hl7-server.env
     ports:
       - "2579:2579"
     <<: *default-healthcheck
@@ -466,13 +466,13 @@ services:
   mpi-hl7-server:
     container_name: mpi-hl7-server
     build:
-      context: ../hl7_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./mpi-hl7-server.env
+      - ./env/servers/mpi-hl7-server.env
     ports:
       - "2580:2580"
     <<: *default-healthcheck

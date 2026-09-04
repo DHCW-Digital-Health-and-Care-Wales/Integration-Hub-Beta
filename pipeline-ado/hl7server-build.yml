@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - hl7_server/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - servers/hl7_server/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_server'
+          appName: 'servers/hl7_server'
           appDisplayName: 'HL7 Server'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushHL7Server'
           displayName: 'Build and Push HL7 Server'
           appName: 'hl7server'
-          dockerfilePath: 'hl7_server/Dockerfile'
-          buildContext: 'hl7_server'
+          dockerfilePath: 'servers/hl7_server/Dockerfile'
+          buildContext: 'servers/hl7_server'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

@@ -556,7 +556,7 @@ dev = [
 [[package]]
 name = "hl7-server"
 version = "0.1.0"
-source = { directory = "../../hl7_server" }
+source = { directory = "../../servers/hl7_server" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -682,7 +682,7 @@ requires-dist = [
     { name = "hl7-chemo-transformer", directory = "../../transformers/hl7_chemo_transformer" },
     { name = "hl7-phw-transformer", directory = "../../transformers/hl7_phw_transformer" },
     { name = "hl7-pims-transformer", directory = "../../transformers/hl7_pims_transformer" },
-    { name = "hl7-server", directory = "../../hl7_server" },
+    { name = "hl7-server", directory = "../../servers/hl7_server" },
     { name = "proms-fhir-transformer", directory = "../../transformers/xml_fhir_proms_transformer" },
 ]
 

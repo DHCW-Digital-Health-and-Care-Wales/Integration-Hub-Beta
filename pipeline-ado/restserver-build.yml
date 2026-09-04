@@ -6,7 +6,7 @@ trigger:
       - release-*
   paths:
     include:
-      - rest_server/**
+      - servers/rest_server/**
       - shared_libs/**
       - pipeline-ado/templates/**
       - ca-certs/**
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'rest_server'
+          appName: 'servers/rest_server'
           appDisplayName: 'REST Server'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushRestServer'
           displayName: 'Build and Push REST Server'
           appName: 'restserver'
-          dockerfilePath: 'rest_server/Dockerfile'
-          buildContext: 'rest_server'
+          dockerfilePath: 'servers/rest_server/Dockerfile'
+          buildContext: 'servers/rest_server'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

@@ -41,7 +41,8 @@ Integration-Hub-Beta/
 ├── pipeline-ado/                # Azure DevOps CI/CD pipelines
 ├── dashboard/                   # NOC monitoring dashboard (Flask) ← NEW
 ├── buswatch/                    # Service Bus queue inspector (FastAPI)
-├── hl7_server/                  # Generic MLLP HL7 receiver
+├── servers/                     # Server-type services (MLLP, SOAP, REST)
+│   └── hl7_server/               # Generic MLLP HL7 receiver
 ├── transformers/                # Transformer services
 │   ├── hl7_phw_transformer/     # PHW → MPI transformer
 │   ├── hl7_chemo_transformer/   # ChemoCare → MPI transformer

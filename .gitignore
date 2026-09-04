@@ -182,4 +182,7 @@ scripts/
 dashboard/alarm*_state.json
 dashboard/alarm*_config.json
 
+# Test-generated debug artifacts (regenerated on every test run, not golden fixtures)
+**/tests/_artifacts/
+
 .dockerignore
