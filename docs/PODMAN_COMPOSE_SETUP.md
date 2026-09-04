@@ -36,8 +36,8 @@ podman-compose -f ./docker-compose.yml --profile phw-to-mpi up -d
 **Problem**: Multiple service builds failed with:
 ```
 ERROR: building at STEP "COPY --from=ca-certs ./*.crt /usr/local/share/ca-certificates/":
-checking on sources under "/Users/gareth/Developer/DHCW/Integration-Hub-Beta/ca-certs":
-Rel: can't make relative to /Users/gareth/Developer/DHCW/Integration-Hub-Beta/ca-certs;
+checking on sources under "<repo-root>/ca-certs":
+Rel: can't make relative to <repo-root>/ca-certs;
 copier: stat: globs [/*.crt] matched nothing
 ```
 
@@ -48,8 +48,8 @@ copier: stat: globs [/*.crt] matched nothing
 
 **Resolution**:
 ```bash
-cp /Users/gareth/Developer/DHCW/Integration-Hub-Beta/ca-certs/corperate-ca.pem.cer \
-   /Users/gareth/Developer/DHCW/Integration-Hub-Beta/ca-certs/corperate-ca.crt
+cp <repo-root>/ca-certs/corperate-ca.pem.cer \
+   <repo-root>/ca-certs/corperate-ca.crt
 ```
 
 This converts the existing PEM certificate to a `.crt` file that the Docker builds can find.

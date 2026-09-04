@@ -519,7 +519,7 @@ services:
     volumes:
       - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
     env_file:
-      - ./buswatch.env
+      - ./env/dev_tools/buswatch.env
     ports:
       - "127.0.0.1:8080:8080"
     restart: on-failure
