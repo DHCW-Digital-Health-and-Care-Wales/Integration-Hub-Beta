@@ -208,7 +208,7 @@ module "noc_dashboard_cosmos" {
 }
 ```
 
-- Grant **Cosmos DB Built-in Data **Reader**** (not Contributor) to each transformer's
+- Grant **Cosmos DB Built-in Data Reader** (not Contributor) to each transformer's
   managed identity — least privilege, since transformers only ever read reference data.
 - Reuse the *same account* (no new account/module needed) — only a new container and
   new `data_reader_principal_ids` entries per environment `.tfvars`
