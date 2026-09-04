@@ -21,7 +21,7 @@ pr:
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
       - servers/hl7_soap_server/**
-      - buswatch/**
+      - dev_tools/buswatch/**
       - message_processing/message_store_service/**
       - shared_libs/**
       - pipeline-ado/**
@@ -101,7 +101,7 @@ stages:
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "servers/hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_processing/message_store_service|Message Store Service||unittest"
-                "buswatch|BusWatch||unittest"
+                "dev_tools/buswatch|BusWatch||unittest"
                 "shared_libs/message_bus_lib|Message Bus Library|message_bus_lib|unittest"
                 "shared_libs/event_logger_lib|Event Logger Library|event_logger_lib|unittest"
                 "shared_libs/health_check_lib|Health Check Library|health_check_lib|unittest"

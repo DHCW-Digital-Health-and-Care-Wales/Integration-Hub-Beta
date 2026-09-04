@@ -7,7 +7,7 @@ in the services/ package — adding a new service means adding one file there
 and registering it in PLUGINS below.
 
 Run with:
-    cd my_tools/integration_hub_tester
+    cd dev_tools/integration_hub_tester
     uv run python app.py
 """
 from __future__ import annotations

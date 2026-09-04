@@ -514,7 +514,7 @@ services:
   bus-watch:
     container_name: bus-watch-server
     build:
-      context: ../buswatch
+      context: ../dev_tools/buswatch
       dockerfile: ./Dockerfile
     volumes:
       - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
