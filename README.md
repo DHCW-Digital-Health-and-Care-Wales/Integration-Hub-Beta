@@ -145,7 +145,7 @@ The platform handles HL7 message processing through specialized microservices:
 - Handles connection management and retry logic for reliable delivery.
 - Provides delivery confirmation and error handling.
 
-**`hl7_mock_receiver/`**
+**`mock_receivers/hl7_mock_receiver/`**
 
 - Mock receiver for testing and development.
 - Simulates target system endpoints (e.g. MPI).
@@ -247,7 +247,7 @@ Each service can be configured through environment files in the `local/` directo
 - `phw-hl7-server.env`
 - `env/transformers/phw-hl7-transformer.env`
 - `mpi-hl7-sender.env`
-- `mpi-hl7-mock-receiver.env`
+- `mpi-hl7-mock-receiver.env` (`local/env/mock_receivers/`)
 - And profile-specific configurations...
 
 ## Security & Compliance

@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # services/ → integration_hub_tester/ → my_tools/ → repo root
 
 _RECEIVER_DIRS: dict[str, Path] = {
-    "mllp": _REPO_ROOT / "hl7_mock_receiver",
-    "soap": _REPO_ROOT / "http_mock_receiver",
+    "mllp": _REPO_ROOT / "mock_receivers" / "hl7_mock_receiver",
+    "soap": _REPO_ROOT / "mock_receivers" / "http_mock_receiver",
 }
 
 # The module entry point for each receiver type.

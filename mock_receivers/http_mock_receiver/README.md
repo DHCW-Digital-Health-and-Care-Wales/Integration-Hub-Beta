@@ -27,7 +27,7 @@ convention.
 ## Running locally
 
 ```bash
-cd http_mock_receiver
+cd mock_receivers/http_mock_receiver
 uv sync
 uv run python -m http_mock_receiver
 # Server starts on http://0.0.0.0:8080

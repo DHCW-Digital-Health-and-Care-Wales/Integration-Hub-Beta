@@ -25,8 +25,8 @@ dev = [
 ]
 
 [tool.uv.sources]
-message-bus-lib = { path = "../shared_libs/message_bus_lib" }
-health-check-lib = { path = "../shared_libs/health_check_lib" }
+message-bus-lib = { path = "../../shared_libs/message_bus_lib" }
+health-check-lib = { path = "../../shared_libs/health_check_lib" }
 
 [tool.mypy]
 python_version = "3.13"

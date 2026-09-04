@@ -7,15 +7,18 @@ ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-WORKDIR /app
+WORKDIR /app/mock_receivers/http_mock_receiver
+
+# Copy shared libraries
+COPY --from=shared_libs . /app/shared_libs
 
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY http_mock_receiver/ /app/http_mock_receiver/
+COPY http_mock_receiver/ /app/mock_receivers/http_mock_receiver/http_mock_receiver
 RUN uv --native-tls sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/mock_receivers/http_mock_receiver/.venv/bin:$PATH"
 
 RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser

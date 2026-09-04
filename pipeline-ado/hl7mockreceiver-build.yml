@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - hl7_mock_receiver/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - mock_receivers/hl7_mock_receiver/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_mock_receiver'
+          appName: 'mock_receivers/hl7_mock_receiver'
           appDisplayName: 'HL7 Mock Receiver'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushHL7MockReceiver'
           displayName: 'Build and Push HL7 Mock Receiver'
           appName: 'hl7mockreceiver'
-          dockerfilePath: 'hl7_mock_receiver/Dockerfile'
-          buildContext: 'hl7_mock_receiver'
+          dockerfilePath: 'mock_receivers/hl7_mock_receiver/Dockerfile'
+          buildContext: 'mock_receivers/hl7_mock_receiver'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
