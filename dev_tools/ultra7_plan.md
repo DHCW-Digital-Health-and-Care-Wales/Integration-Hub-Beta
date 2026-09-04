@@ -4,14 +4,14 @@ Based on [ultra7_spec.md](ultra7_spec.md).
 
 ## 1. Overview
 
-Ultra7 is a standalone desktop GUI tool (lives under `my_tools/ultra7/`, alongside
-`integration_hub_tester/` and `proms_tester/`) for sending HL7 v2.x / XML / JSON test
+Ultra7 is a standalone desktop GUI tool (lives under `dev_tools/ultra7/`, alongside
+`integration_hub_tester/`) for sending HL7 v2.x / XML / JSON test
 messages to MLLP, REST, and SOAP endpoints, with project persistence, message replay,
 repeat/delay control, and a minimum-delay probing function.
 
 It is a developer tool, not a deployed service — no Dockerfile, no shared_libs
 dependency, no Azure Service Bus involvement. It follows the same conventions as the
-other tools in `my_tools/`.
+other tools in `dev_tools/`.
 
 ## 2. Tech Stack
 
@@ -33,7 +33,7 @@ other tools in `my_tools/`.
 ## 3. Project Structure
 
 ```
-my_tools/ultra7/
+dev_tools/ultra7/
 ├── README.md
 ├── pyproject.toml
 ├── uv.lock

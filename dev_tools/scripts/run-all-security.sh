@@ -4,7 +4,8 @@
 # Written for bash 3.2 (macOS default) — no mapfile/readarray.
 set -o pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Two levels up: dev_tools/scripts/ -> dev_tools/ -> repo root.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 # Discover every component with a pyproject.toml, skipping virtual envs

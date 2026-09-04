@@ -20,7 +20,7 @@ and SOAP endpoints. See [../ultra7_spec.md](../ultra7_spec.md) and
 ## Run
 
 ```bash
-cd my_tools/ultra7
+cd dev_tools/ultra7
 uv sync
 uv run python app.py
 ```

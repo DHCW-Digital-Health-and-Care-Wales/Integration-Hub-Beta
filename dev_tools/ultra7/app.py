@@ -1,7 +1,7 @@
 """Ultra7 entry point — window chrome, layout, and wiring between UI panels.
 
 Run with:
-    cd my_tools/ultra7
+    cd dev_tools/ultra7
     uv run python app.py
 """
 from __future__ import annotations
