@@ -20,7 +20,7 @@ The priority queue (`PRIORITY_QUEUE_NAME`) is session-enabled. The downstream co
 
 ### Steps
 
-1. **Create a replay batch** in the database (see [local/MESSAGE_REPLAY.md](../local/MESSAGE_REPLAY.md)).
+1. **Create a replay batch** in the database (see [docs/MESSAGE_REPLAY.md](../../docs/MESSAGE_REPLAY.md)).
 2. **Update the consuming service** (e.g. `hl7_sender`):
    - Set `INGRESS_QUEUE_NAME` → the priority queue name (e.g. `inthub-priority-messagequeue`).
    - `INGRESS_SESSION_ID` stays unchanged — the replay job stamps the same session value that was stored when the message was originally processed.

@@ -265,12 +265,17 @@ Profiles:
 
 - phw-to-mpi
 - lims-to-mpi
+- pms-soap-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
 - mosaiq-to-mpi
 - wds-to-mpi
+- hl7-rest (risp-to-mpi)
+- wpas-to-proms
 - mpi-to-topic
+- replay
+- dashboard
 
 #### Profiles Reference
 
@@ -280,15 +285,19 @@ Each profile starts a complete integration flow with all required services:
 | ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                                                 |
 | **lims-to-mpi**  | hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no transformer yet)  |
+| **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                   | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                       | Mosaiq oncology system to MPI integration flow (no transformation)                                |
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | WDS to MPI integration flow (no transformation)                                                   |
+| **hl7-rest** (also tagged **risp-to-mpi**) | risp-hl7-rest-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (also fans out to WRRS, no transformation) |
+| **wpas-to-proms** | wpas-rest-server, sb-emulator                                                              | WPAS XML ingress flow to PROMS (destination transformer still in development)                     |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
+| **dashboard**    | cosmos-emulator                                                                              | Azure Cosmos DB emulator backing the NOC dashboard, which is run on the host via `uv run flask`   |
 
-Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile.
+Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**/**risp-to-mpi**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
 
 #### Environment Files Reference
 
@@ -401,7 +410,7 @@ See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for 
 
 The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
 
-For detailed setup and execution instructions, see [MESSAGE_REPLAY.md](./MESSAGE_REPLAY.md).
+For detailed setup and execution instructions, see [MESSAGE_REPLAY.md](../docs/MESSAGE_REPLAY.md).
 
 ### Stopping the stack
 
