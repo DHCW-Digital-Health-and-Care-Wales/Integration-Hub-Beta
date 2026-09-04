@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - message_store_service/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - message_processing/message_store_service/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'message_store_service'
+          appName: 'message_processing/message_store_service'
           appDisplayName: 'Message Store Service'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushMessageStoreService'
           displayName: 'Build and Push Message Store Service'
           appName: 'message-store-service'
-          dockerfilePath: 'message_store_service/Dockerfile'
-          buildContext: 'message_store_service'
+          dockerfilePath: 'message_processing/message_store_service/Dockerfile'
+          buildContext: 'message_processing/message_store_service'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

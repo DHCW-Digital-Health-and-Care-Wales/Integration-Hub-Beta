@@ -11,7 +11,7 @@ The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**
 
 1. **Initialise database**: `just start phw-to-mpi` (starts SQL Server and seeds test messages)
 2. **Create replay batch**: Run `create-replay-batch.sql` in VS Code to get a `ReplayBatchId`
-3. **Configure job**: Set `REPLAY_BATCH_ID` in `message-replay-job.env`
+3. **Configure job**: Set `REPLAY_BATCH_ID` in `env/message_processing/message-replay-job.env`
 4. **Redirect sender**: Update `INGRESS_QUEUE_NAME` in the relevant sender `.env` file to `local-inthub-priority-messagequeue`
 5. **Run job**: `just run replay` (builds and executes the replay job)
 6. **Verify**: Check logs with `just logs message-replay-job`
@@ -22,7 +22,7 @@ The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**
 | What You Need | Location | Notes |
 |---|---|---|
 | Customize which messages to replay | [sql-scripts/create-replay-batch.sql](sql-scripts/create-replay-batch.sql) | Modify the `WHERE` clause |
-| Tell the job which batch to process | local/message-replay-job.env | Set `REPLAY_BATCH_ID` (required) and `REPLAY_BATCH_SIZE` (optional) |
+| Tell the job which batch to process | local/env/message_processing/message-replay-job.env | Set `REPLAY_BATCH_ID` (required) and `REPLAY_BATCH_SIZE` (optional) |
 | Verify replay succeeded | [sql-scripts/fetch-query.sql](sql-scripts/fetch-query.sql) | Empty result = success |
 | View job logs while running | Terminal after `just run replay` | Or use Docker Desktop Logs tab on the message replay job container |
 | View job logs after completion | `just logs message-replay-job` | Shows entire execution history |
@@ -35,7 +35,7 @@ The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**
 - An SQL client installed (can use the VS Code extension below as well)
 - VS Code with the **SQL Server (mssql)** extension installed and configured
 - The `MessageStoreDB` connection configured in VS Code (see [Connecting to SQL Server from Your Machine](README.md#connecting-to-sql-server-from-your-machine))
-- The `local/message-replay-job.env` file exists (should be in the repo)
+- The `local/env/message_processing/message-replay-job.env` file exists (should be in the repo)
 - Docker Desktop is running (required for `just run replay`)
 
 ## Step 1: Initialise the Database with Test Data
@@ -162,7 +162,7 @@ The script moved matching messages from the `monitoring.Message` table into the 
 
 ## Step 3: Configure the Replay Job
 
-The replay job needs to know which batch to process. Open `local/message-replay-job.env` and set the configuration.
+The replay job needs to know which batch to process. Open `local/env/message_processing/message-replay-job.env` and set the configuration.
 
 ### Required Settings
 
@@ -206,7 +206,7 @@ If a *single* message is larger than the maximum size allowed by Service Bus, `s
 REPLAY_BATCH_SIZE=100
 ```
 
-For more technical details, see [Message Replay Job README](../message_replay_job/README.md#replay_batch_size-explained).
+For more technical details, see [Message Replay Job README](../message_processing/message_replay_job/README.md#replay_batch_size-explained).
 
 ## Step 3b: Redirect the Consuming Service to the Priority Queue
 
@@ -233,7 +233,7 @@ just run replay
 
 This command:
 1. Builds a Docker container for the replay job
-2. Runs it with the configuration from `message-replay-job.env`
+2. Runs it with the configuration from `env/message_processing/message-replay-job.env`
 3. Connects to the database
 4. Fetches messages from your replay batch in chunks (according to `REPLAY_BATCH_SIZE`)
 5. Sends each chunk to the Service Bus high-priority message queue
@@ -326,7 +326,7 @@ If you see this output, all messages have been successfully replayed.
 **Cause:** The environment variable isn't being read correctly
 
 **Solution:**
-1. Verify the file is `local/message-replay-job.env` (not `.env.local` or another variant)
+1. Verify the file is `local/env/message_processing/message-replay-job.env` (not `.env.local` or another variant)
 2. Make sure there are no spaces around the `=` sign:
    ```bash
    # Wrong:
@@ -385,8 +385,8 @@ Messages in `MessageReplayQueue` move through statuses:
 
 - **[sql-scripts/create-replay-batch.sql](sql-scripts/create-replay-batch.sql)** — SQL script you customize to define which messages to replay
 - **[sql-scripts/fetch-query.sql](sql-scripts/fetch-query.sql)** — SQL script you run to verify results
-- **[message-replay-job/](../message_replay_job/)** — The actual Python application for the container app job that does the replay (for reference/debugging)
-- **local/message-replay-job.env** — Configuration file for the replay job (only two settings you would typically modify)
+- **[message-replay-job/](../message_processing/message_replay_job/)** — The actual Python application for the container app job that does the replay (for reference/debugging)
+- **local/env/message_processing/message-replay-job.env** — Configuration file for the replay job (only two settings you would typically modify)
 
 ## Step 6 (Optional): Verify Unprocessed Messages
 

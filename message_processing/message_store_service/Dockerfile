@@ -34,10 +34,10 @@ ENV UV_COMPILE_BYTECODE=1
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
 
-WORKDIR /app
+WORKDIR /app/message_processing/message_store_service
 
 # Copy shared libraries
-COPY --from=shared_libs . /shared_libs
+COPY --from=shared_libs . /app/shared_libs
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
@@ -46,11 +46,11 @@ COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 # Copy the rest of the project source code and install it
-COPY message_store_service/ /app/message_store_service
+COPY message_store_service/ /app/message_processing/message_store_service/message_store_service
 RUN uv --native-tls sync --locked --no-dev
 
 # Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/message_processing/message_store_service/.venv/bin:$PATH"
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers

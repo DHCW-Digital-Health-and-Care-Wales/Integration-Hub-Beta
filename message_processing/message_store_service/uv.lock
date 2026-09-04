@@ -13,15 +13,15 @@ wheels = [
 
 [[package]]
 name = "azure-core"
-version = "1.38.2"
+version = "1.38.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/fe/5c7710bc611a4070d06ba801de9a935cc87c3d4b689c644958047bdf2cba/azure_core-1.38.2.tar.gz", hash = "sha256:67562857cb979217e48dc60980243b61ea115b77326fa93d83b729e7ff0482e7", size = 363734, upload-time = "2026-02-18T19:33:05.6Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/9b/23893febea484ad8183112c9419b5eb904773adb871492b5fa8ff7b21e09/azure_core-1.38.1.tar.gz", hash = "sha256:9317db1d838e39877eb94a2240ce92fa607db68adf821817b723f0d679facbf6", size = 363323, upload-time = "2026-02-11T02:03:06.051Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/23/6371a551800d3812d6019cd813acd985f9fac0fedc1290129211a73da4ae/azure_core-1.38.2-py3-none-any.whl", hash = "sha256:074806c75cf239ea284a33a66827695ef7aeddac0b4e19dda266a93e4665ead9", size = 217957, upload-time = "2026-02-18T19:33:07.696Z" },
+    { url = "https://files.pythonhosted.org/packages/db/88/aaea2ad269ce70b446660371286272c1f6ba66541a7f6f635baf8b0db726/azure_core-1.38.1-py3-none-any.whl", hash = "sha256:69f08ee3d55136071b7100de5b198994fc1c5f89d2b91f2f43156d20fcf200a4", size = 217930, upload-time = "2026-02-11T02:03:07.548Z" },
 ]
 
 [[package]]
@@ -124,11 +124,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.2.25"
+version = "2026.1.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/af/2d/7bf41579a8986e348fa033a31cdd0e4121114f6bce2457e8876010b092dd/certifi-2026.2.25.tar.gz", hash = "sha256:e887ab5cee78ea814d3472169153c2d12cd43b14bd03329a39a9c6e2e80bfba7", size = 155029, upload-time = "2026-02-25T02:54:17.342Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/2d/a891ca51311197f6ad14a7ef42e2399f36cf2f9bd44752b3dc4eab60fdc5/certifi-2026.1.4.tar.gz", hash = "sha256:ac726dd470482006e014ad384921ed6438c457018f4b3d204aea4281258b2120", size = 154268, upload-time = "2026-01-04T02:42:41.825Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/3c/c17fb3ca2d9c3acff52e30b309f538586f9f5b9c9cf454f3845fc9af4881/certifi-2026.2.25-py3-none-any.whl", hash = "sha256:027692e4402ad994f1c42e52a4997a9763c646b73e4096e4d5d6db8af1d6f0fa", size = 153684, upload-time = "2026-02-25T02:54:15.766Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/ad/3cc14f097111b4de0040c83a525973216457bbeeb63739ef1ed275c1c021/certifi-2026.1.4-py3-none-any.whl", hash = "sha256:9943707519e4add1115f44c2bc244f782c0249876bf51b6599fee1ffbedd685c", size = 152900, upload-time = "2026-01-04T02:42:40.15Z" },
 ]
 
 [[package]]
@@ -279,7 +279,7 @@ wheels = [
 [[package]]
 name = "event-logger-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/event_logger_lib" }
+source = { directory = "../../shared_libs/event_logger_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -302,12 +302,27 @@ requires-dist = [
 ]
 
 [[package]]
+name = "health-check-lib"
+version = "0.1.0"
+source = { directory = "../../shared_libs/health_check_lib" }
+dependencies = [
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[[package]]
 name = "idna"
-version = "3.18"
+version = "3.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cd/63/9496c57188a2ee585e0f1db071d75089a11e98aa86eb99d9d7618fc1edce/idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848", size = 196711, upload-time = "2026-06-02T14:34:07.794Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/88/bcf9709822fe69d02c2a6a77956c98ce6ea8ca8767a9aadcedc7eb6a2390/idna-3.16.tar.gz", hash = "sha256:d7a6da03db833450fca25d2358ac9ff06cd624577a4aea3a596d5c0f77b8e03d", size = 203770, upload-time = "2026-05-22T00:16:18.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2", size = 65455, upload-time = "2026-06-02T14:34:06.319Z" },
+    { url = "https://files.pythonhosted.org/packages/94/16/70255075a9859a0e3adb789b68ceb0e210dec03934245fd98d248226572f/idna-3.16-py3-none-any.whl", hash = "sha256:cc246e3a3f89580c3a951b5ad298ca4638078b2cdd4f115654332b5c26daded5", size = 74165, upload-time = "2026-05-22T00:16:16.698Z" },
 ]
 
 [[package]]
@@ -402,7 +417,7 @@ wheels = [
 [[package]]
 name = "message-bus-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/message_bus_lib" }
+source = { directory = "../../shared_libs/message_bus_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -421,8 +436,8 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "metric-sender-lib", directory = "../shared_libs/metric_sender_lib" },
-    { name = "otel-lib", directory = "../shared_libs/otel_lib" },
+    { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -436,7 +451,7 @@ dev = [
 ]
 
 [[package]]
-name = "message-replay-job"
+name = "message-store-service"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
@@ -444,8 +459,10 @@ dependencies = [
     { name = "azure-servicebus" },
     { name = "cryptography" },
     { name = "event-logger-lib" },
+    { name = "health-check-lib" },
     { name = "message-bus-lib" },
-    { name = "pyjwt" },
+    { name = "otel-lib" },
+    { name = "processor-manager-lib" },
     { name = "pyodbc" },
     { name = "setuptools" },
 ]
@@ -462,9 +479,11 @@ requires-dist = [
     { name = "azure-core", specifier = ">=1.38.0" },
     { name = "azure-servicebus", specifier = "==7.14.3" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "event-logger-lib", directory = "../shared_libs/event_logger_lib" },
-    { name = "message-bus-lib", directory = "../shared_libs/message_bus_lib" },
-    { name = "pyjwt", specifier = ">=2.13.0" },
+    { name = "event-logger-lib", directory = "../../shared_libs/event_logger_lib" },
+    { name = "health-check-lib", directory = "../../shared_libs/health_check_lib" },
+    { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+    { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
     { name = "pyodbc", specifier = ">=5.2.0" },
     { name = "setuptools", specifier = ">=83.0.0" },
 ]
@@ -479,7 +498,7 @@ dev = [
 [[package]]
 name = "metric-sender-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/metric_sender_lib" }
+source = { directory = "../../shared_libs/metric_sender_lib" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -831,7 +850,7 @@ wheels = [
 [[package]]
 name = "otel-lib"
 version = "0.1.0"
-source = { directory = "../shared_libs/otel_lib" }
+source = { directory = "../../shared_libs/otel_lib" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry" },
@@ -881,6 +900,28 @@ sdist = { url = "https://files.pythonhosted.org/packages/fa/36/e27608899f9b8d4df
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ef/3c/2c197d226f9ea224a9ab8d197933f9da0ae0aac5b6e0f884e2b8d9c8e9f7/pathspec-1.0.4-py3-none-any.whl", hash = "sha256:fb6ae2fd4e7c921a165808a552060e722767cfa526f99ca5156ed2ce45a5c723", size = 55206, upload-time = "2026-01-27T03:59:45.137Z" },
 ]
+
+[[package]]
+name = "processor-manager-lib"
+version = "0.1.0"
+source = { directory = "../../shared_libs/processor_manager_lib" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "opentelemetry-api" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.0" },
+    { name = "opentelemetry-api", specifier = ">=1.29.0" },
+    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "otel-lib", directory = "../../shared_libs/otel_lib" }]
 
 [[package]]
 name = "psutil"
@@ -1043,15 +1084,15 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "14.3.3"
+version = "14.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/c6/f3b320c27991c46f43ee9d856302c70dc2d0fb2dba4842ff739d5f46b393/rich-14.3.3.tar.gz", hash = "sha256:b8daa0b9e4eef54dd8cf7c86c03713f53241884e814f4e2f5fb342fe520f639b", size = 230582, upload-time = "2026-02-19T17:23:12.474Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/99/a4cab2acbb884f80e558b0771e97e21e939c5dfb460f488d19df485e8298/rich-14.3.2.tar.gz", hash = "sha256:e712f11c1a562a11843306f5ed999475f09ac31ffb64281f73ab29ffdda8b3b8", size = 230143, upload-time = "2026-02-01T16:20:47.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/25/b208c5683343959b670dc001595f2f3737e051da617f66c31f7c4fa93abc/rich-14.3.3-py3-none-any.whl", hash = "sha256:793431c1f8619afa7d3b52b2cdec859562b950ea0d4b6b505397612db8d5362d", size = 310458, upload-time = "2026-02-19T17:23:13.732Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/45/615f5babd880b4bd7d405cc0dc348234c5ffb6ed1ea33e152ede08b2072d/rich-14.3.2-py3-none-any.whl", hash = "sha256:08e67c3e90884651da3239ea668222d19bea7b589149d8014a21c633420dbb69", size = 309963, upload-time = "2026-02-01T16:20:46.078Z" },
 ]
 
 [[package]]
@@ -1090,11 +1131,11 @@ wheels = [
 
 [[package]]
 name = "stevedore"
-version = "5.7.0"
+version = "5.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a2/6d/90764092216fa560f6587f83bb70113a8ba510ba436c6476a2b47359057c/stevedore-5.7.0.tar.gz", hash = "sha256:31dd6fe6b3cbe921e21dcefabc9a5f1cf848cf538a1f27543721b8ca09948aa3", size = 516200, upload-time = "2026-02-20T13:27:06.765Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/5b/496f8abebd10c3301129abba7ddafd46c71d799a70c44ab080323987c4c9/stevedore-5.6.0.tar.gz", hash = "sha256:f22d15c6ead40c5bbfa9ca54aa7e7b4a07d59b36ae03ed12ced1a54cf0b51945", size = 516074, upload-time = "2025-11-20T10:06:07.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/06/36d260a695f383345ab5bbc3fd447249594ae2fa8dfd19c533d5ae23f46b/stevedore-5.7.0-py3-none-any.whl", hash = "sha256:fd25efbb32f1abb4c9e502f385f0018632baac11f9ee5d1b70f88cc5e22ad4ed", size = 54483, upload-time = "2026-02-20T13:27:05.561Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/40/8561ce06dc46fd17242c7724ab25b257a2ac1b35f4ebf551b40ce6105cfa/stevedore-5.6.0-py3-none-any.whl", hash = "sha256:4a36dccefd7aeea0c70135526cecb7766c4c84c473b1af68db23d541b6dc1820", size = 54428, upload-time = "2025-11-20T10:06:05.946Z" },
 ]
 
 [[package]]

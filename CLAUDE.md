@@ -178,5 +178,7 @@ integration-hub-beta/
 ├── mock_receivers/
 │   ├── hl7_mock_receiver/
 │   └── http_mock_receiver/
-└── message_replay_job/          # Message replay job service
+└── message_processing/
+    ├── message_store_service/    # Message store service
+    └── message_replay_job/       # Message replay job service
 ```

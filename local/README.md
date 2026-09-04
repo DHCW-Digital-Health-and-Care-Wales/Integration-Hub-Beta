@@ -142,7 +142,7 @@ To modify the database schema or add seed data, edit the SQL script at `sql-scri
 
 **Message Store Service SQL configuration:**
 
-The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
+The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `env/message_processing/message-store-service.env`:
 
 | Variable                       | Value               | Description                                                                                                                                      |
 | ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -157,7 +157,7 @@ The `message-store-service` connects to the local SQL Server using the following
 
 > **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
 
-> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`)
+> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `env/message_processing/message-store-service.env`)
 
 **Starting SQL Server:**
 
@@ -306,8 +306,8 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
 | **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
 | **env/servers/wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
-| **message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
-| **message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
+| **env/message_processing/message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
+| **env/message_processing/message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
 | **env/senders/mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
 | **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |

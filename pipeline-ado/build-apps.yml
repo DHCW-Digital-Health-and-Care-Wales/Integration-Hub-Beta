@@ -153,7 +153,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'message_store_service'
+            appName: 'message_processing/message_store_service'
             appDisplayName: 'Message Store Service'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -164,7 +164,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'message_replay_job'
+            appName: 'message_processing/message_replay_job'
             appDisplayName: 'Message Replay Job'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -384,8 +384,8 @@ stages:
             jobName: 'BuildPushMessageStoreService'
             displayName: 'Build and Push Message Store Service'
             appName: 'message-store-service'
-            dockerfilePath: 'message_store_service/Dockerfile'
-            buildContext: 'message_store_service'
+            dockerfilePath: 'message_processing/message_store_service/Dockerfile'
+            buildContext: 'message_processing/message_store_service'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -403,8 +403,8 @@ stages:
             jobName: 'BuildPushMessageReplayJob'
             displayName: 'Build and Push Message Replay Job'
             appName: 'message-replay-job'
-            dockerfilePath: 'message_replay_job/Dockerfile'
-            buildContext: 'message_replay_job'
+            dockerfilePath: 'message_processing/message_replay_job/Dockerfile'
+            buildContext: 'message_processing/message_replay_job'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
