@@ -56,8 +56,9 @@ Integration-Hub-Beta/
 ├── mock_receivers/              # Mock receiver services for local testing
 │   ├── hl7_mock_receiver/        # Mock MLLP/HL7 MPI target
 │   └── http_mock_receiver/       # Mock HTTP/SOAP target
-├── message_store_service/       # Persists messages to Azure SQL
-├── message_replay_job/          # Replays stored messages from SQL
+├── message_processing/
+│   ├── message_store_service/    # Persists messages to Azure SQL
+│   └── message_replay_job/       # Replays stored messages from SQL
 └── network_test_app/            # Network/firewall connectivity tester
 ```
 
