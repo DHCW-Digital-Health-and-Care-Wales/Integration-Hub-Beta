@@ -35,7 +35,7 @@
 # - Pass multiple profiles by repeating commands or use "*" for all profiles
 # - This justfile uses podman-compose instead of docker compose
 #
-# For more information, see local/README.md and local/PODMAN_COMPOSE_SETUP.md
+# For more information, see local/README.md and docs/PODMAN_COMPOSE_SETUP.md
 
 # ============================================
 # Configuration Variables
