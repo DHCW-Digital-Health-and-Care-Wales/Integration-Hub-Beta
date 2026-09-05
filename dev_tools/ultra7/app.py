@@ -6,12 +6,18 @@ Run with:
 """
 from __future__ import annotations
 
+import queue
+import threading
+import time
 import tkinter as tk
+from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from ultra7.export import extension_for, sanitize_filename, unique_filename
+from ultra7.iteration import apply_iteration
 from ultra7.models import Endpoint, Message, Project
+from ultra7.senders import get_sender
 from ultra7.senders.base import SendResult
 from ultra7.settings import load_theme_name, save_theme_name
 from ultra7.storage import ProjectStore
@@ -96,6 +102,7 @@ class Ultra7App(tk.Tk):
             on_select=self._select_project,
             on_new=self._new_project,
             on_remove=self._remove_project,
+            on_run_selected=self._run_selected_projects,
         )
         main.add(self.sidebar, weight=0)
 
@@ -177,13 +184,12 @@ class Ultra7App(tk.Tk):
                 selectbackground=theme.select_bg,
                 selectforeground=theme.select_fg,
             )
-        for listbox in (self.sidebar.listbox, self.editor_pane.listbox):
-            listbox.configure(
-                bg=theme.pane_bg,
-                fg=theme.pane_fg,
-                selectbackground=theme.select_bg,
-                selectforeground=theme.select_fg,
-            )
+        self.editor_pane.listbox.configure(
+            bg=theme.pane_bg,
+            fg=theme.pane_fg,
+            selectbackground=theme.select_bg,
+            selectforeground=theme.select_fg,
+        )
 
         self.editor_pane.apply_theme(theme)
         self.sidebar.apply_theme(theme)
@@ -323,6 +329,108 @@ class Ultra7App(tk.Tk):
             self._mark_dirty()
             self._save_current_project()
 
+    def _run_selected_projects(self, selected_names: list[str]) -> None:
+        """Run all selected projects in batch mode."""
+        if not selected_names:
+            messagebox.showinfo("Ultra7", "No projects selected. Check projects to run them.")
+            return
+
+        # Load selected projects
+        projects: list[Project] = []
+        errors: list[str] = []
+        for name in selected_names:
+            try:
+                project = self.store.load(name)
+                projects.append(project)
+            except (OSError, ValueError, KeyError) as exc:
+                errors.append(f"{name}: {exc}")
+
+        if errors:
+            messagebox.showerror("Ultra7", "Some projects failed to load:\n" + "\n".join(errors))
+
+        if not projects:
+            return
+
+        # Run in background thread
+        self._batch_cancel_event = threading.Event()
+        self._batch_queue: queue.Queue[tuple[str | None, SendResult | None]] = queue.Queue()
+
+        self._batch_worker = threading.Thread(
+            target=self._batch_send_worker, args=(projects,), daemon=True
+        )
+        self._batch_worker.start()
+        self.after(100, self._poll_batch_queue)
+
+    def _batch_send_worker(self, projects: list[Project]) -> None:
+        """Background worker that sends messages for all projects."""
+        try:
+            for project in projects:
+                if self._batch_cancel_event.is_set():
+                    return
+
+                self._batch_queue.put((f"\n=== Running: {project.name} ===", None))
+
+                # Filter enabled messages
+                messages = [m for m in project.messages if m.enabled]
+                if not messages:
+                    self._batch_queue.put(("No enabled messages", None))
+                    continue
+
+                # Get appropriate sender
+                try:
+                    sender = get_sender(project.endpoint.kind)
+                except ValueError:
+                    self._batch_queue.put(("Invalid endpoint type", None))
+                    continue
+
+                # Send messages with repeat/delay
+                for repeat_index in range(project.repeat_count):
+                    if self._batch_cancel_event.is_set():
+                        return
+
+                    for message in messages:
+                        if self._batch_cancel_event.is_set():
+                            return
+
+                        # Apply iteration if configured
+                        outgoing = message
+                        if message.iteration is not None:
+                            content = apply_iteration(message.content, message.iteration, repeat_index)
+                            outgoing = replace(message, content=content)
+
+                        label = f"  {message.name} [{repeat_index + 1}/{project.repeat_count}]"
+                        self._batch_queue.put((label, None))
+
+                        try:
+                            result = sender.send(project.endpoint, outgoing)
+                        except Exception as exc:
+                            result = SendResult(ok=False, latency_ms=0.0, response_summary="", error=str(exc))
+
+                        self._batch_queue.put((label, result))
+
+                if project.delay_ms and project.repeat_count > 1:
+                    time.sleep(project.delay_ms / 1000)
+
+        finally:
+            self._batch_queue.put((None, None))
+
+    def _poll_batch_queue(self) -> None:
+        """Poll results from batch send worker."""
+        try:
+            while True:
+                name, result = self._batch_queue.get_nowait()
+                if name is None:
+                    self._batch_worker = None  # type: ignore
+                    return
+                if result is None:
+                    self._log_info(name)
+                else:
+                    self._log_result(name, result)
+        except queue.Empty:
+            pass
+        if self._batch_worker is not None:
+            self.after(100, self._poll_batch_queue)
+
     def _set_project_controls_enabled(self, enabled: bool) -> None:
         self.send_controls.set_enabled(enabled)
 
@@ -339,6 +447,7 @@ class Ultra7App(tk.Tk):
             self.log_panel.pack_forget()
         else:
             self.log_panel.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
+
     def _on_exit(self) -> None:
         self._save_if_dirty()
         self.destroy()
