@@ -21,6 +21,9 @@ class AppConfig:
     # SOAP endpoint
     soap_endpoint_url: str
     soap_timeout_seconds: int
+    # Envelope format — "wis" wraps payload in CaptureFromFiorona structure with HL7 v2 XML;
+    # any other value (default) wraps ER7 in the legacy <SendHL7Message> structure.
+    soap_envelope_format: str
     # Auth stubs — all nullable; no-op when absent
     soap_api_key: str | None           # Added to Authorization: ApiKey <key> header
     soap_client_cert_path: str | None  # Path to PEM client cert for mTLS
@@ -46,6 +49,7 @@ class AppConfig:
             message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
             soap_endpoint_url=_read_required_env("SOAP_ENDPOINT_URL"),
             soap_timeout_seconds=_read_int_env("SOAP_TIMEOUT_SECONDS") or 30,
+            soap_envelope_format=os.getenv("SOAP_ENVELOPE_FORMAT", "default").lower().strip(),
             soap_api_key=_read_env("SOAP_API_KEY"),
             soap_client_cert_path=_read_env("SOAP_CLIENT_CERT_PATH"),
             ws_security_enabled=os.getenv("WS_SECURITY_ENABLED", "false").lower() == "true",
