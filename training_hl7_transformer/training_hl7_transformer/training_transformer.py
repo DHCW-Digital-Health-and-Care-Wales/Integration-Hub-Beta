@@ -142,7 +142,7 @@ class TrainingTransformer:
         # The EVN (Event Type) segment contains event information.
         # We use a try/except block because EVN might not exist in all messages.
         try:
-            _ = map_evn(hl7_msg, new_message)
+            map_evn(hl7_msg, new_message)
         except AttributeError:
             print("EVN segment not present in original message (skipping)")
 
