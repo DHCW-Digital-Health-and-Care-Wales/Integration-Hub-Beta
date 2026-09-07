@@ -134,7 +134,7 @@ associated trace, or vice versa.
 
 ---
 
-### `hl7_phw_transformer/` — pilot instrumentation
+### `transformers/hl7_phw_transformer/` — pilot instrumentation
 
 The PHW transformer is the first (and currently only) service with OTel enabled.
 `configure_otel("phw-hl7-transformer")` is called at startup.

@@ -142,7 +142,7 @@ To modify the database schema or add seed data, edit the SQL script at `sql-scri
 
 **Message Store Service SQL configuration:**
 
-The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `message-store-service.env`:
+The `message-store-service` connects to the local SQL Server using the following environment variables, which are set in `env/message_processing/message-store-service.env`:
 
 | Variable                       | Value               | Description                                                                                                                                      |
 | ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -157,7 +157,7 @@ The `message-store-service` connects to the local SQL Server using the following
 
 > **Note**: `SQL_ENCRYPT` and `SQL_TRUST_SERVER_CERTIFICATE` are **optional**. The service defaults to `Encrypt=Yes;TrustServerCertificate=No` — the correct secure settings for Azure SQL in production. The sample local env sets `SQL_ENCRYPT=No`, so TLS is disabled and `SQL_TRUST_SERVER_CERTIFICATE` has no effect, but it is provided so that if you enable encryption locally (`SQL_ENCRYPT=Yes`), the client will trust the self-signed certificate from the local SQL Server container.
 
-> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `message-store-service.env`)
+> **Note**: `MSSQL_SA_PASSWORD` is injected via the `.secrets` file (not `env/message_processing/message-store-service.env`)
 
 **Starting SQL Server:**
 
@@ -265,12 +265,17 @@ Profiles:
 
 - phw-to-mpi
 - lims-to-mpi
+- pms-soap-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
 - mosaiq-to-mpi
 - wds-to-mpi
+- hl7-rest (risp-to-mpi)
+- wpas-to-proms
 - mpi-to-topic
+- replay
+- dashboard
 
 #### Profiles Reference
 
@@ -280,15 +285,19 @@ Each profile starts a complete integration flow with all required services:
 | ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                                                 |
 | **lims-to-mpi**  | hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no transformer yet)  |
+| **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                   | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                       | Mosaiq oncology system to MPI integration flow (no transformation)                                |
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | WDS to MPI integration flow (no transformation)                                                   |
+| **hl7-rest** (also tagged **risp-to-mpi**) | risp-hl7-rest-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (also fans out to WRRS, no transformation) |
+| **wpas-to-proms** | wpas-rest-server, sb-emulator                                                              | WPAS XML ingress flow to PROMS (destination transformer still in development)                     |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
+| **dashboard**    | cosmos-emulator                                                                              | Azure Cosmos DB emulator backing the NOC dashboard, which is run on the host via `uv run flask`   |
 
-Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile.
+Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**/**risp-to-mpi**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
 
 #### Environment Files Reference
 
@@ -296,21 +305,21 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 
 | File                          | Configures                  | Key Variables                                                                         |
 | ----------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
-| **phw-hl7-server.env**        | PHW HL7 Server              | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`                           |
-| **lims-soap-hl7-server.env**  | HL7 SOAP Server             | `PORT=8080`, `SOAP_ENDPOINT_PATH=/soap`, `ALLOWED_ASSIGNING_AUTHORITIES=328`           |
-| **phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
-| **paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
-| **mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=mosaiq`                        |
-| **chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
-| **chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
-| **pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
-| **pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
-| **wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
-| **message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
-| **message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
-| **mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
-| **mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
-| **mpi-hl7-chem-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
+| **env/servers/phw-hl7-server.env**        | PHW HL7 Server              | `PORT=2575`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=phw`                           |
+| **env/servers/lims-soap-hl7-server.env**  | HL7 SOAP Server             | `PORT=8080`, `SOAP_ENDPOINT_PATH=/soap`, `ALLOWED_ASSIGNING_AUTHORITIES=328`           |
+| **env/transformers/phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
+| **env/servers/paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
+| **env/servers/mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=mosaiq`                        |
+| **env/servers/chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
+| **env/transformers/chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
+| **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
+| **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
+| **env/servers/wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
+| **env/message_processing/message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
+| **env/message_processing/message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
+| **env/senders/mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
+| **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
+| **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 
@@ -401,7 +410,7 @@ See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for 
 
 The message replay job allows you to re-send messages from the Message Store to the Service Bus priority queue. This is useful for operational support when messages need to be reprocessed.
 
-For detailed setup and execution instructions, see [MESSAGE_REPLAY.md](./MESSAGE_REPLAY.md).
+For detailed setup and execution instructions, see [MESSAGE_REPLAY.md](../docs/MESSAGE_REPLAY.md).
 
 ### Stopping the stack
 

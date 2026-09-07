@@ -15,6 +15,7 @@ parameters:
     default:
       - hl7server
       - hl7restserver
+      - restserver
       - hl7sender
       - hl7mockreceiver
       - hl7subscriptionsender
@@ -42,7 +43,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_server'
+            appName: 'servers/hl7_server'
             appDisplayName: 'HL7 Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -53,8 +54,19 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_rest_server'
+            appName: 'servers/hl7_rest_server'
             appDisplayName: 'HL7 REST Server'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'restserver') }}:
+    - stage: CodeQuality_restserver
+      displayName: 'Code Quality — REST Server'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'servers/rest_server'
+            appDisplayName: 'REST Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -64,7 +76,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_sender'
+            appName: 'senders/hl7_sender'
             appDisplayName: 'HL7 Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -75,7 +87,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_mock_receiver'
+            appName: 'mock_receivers/hl7_mock_receiver'
             appDisplayName: 'HL7 Mock Receiver'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -86,7 +98,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_subscription_sender'
+            appName: 'senders/hl7_subscription_sender'
             appDisplayName: 'HL7 Subscription Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -97,7 +109,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_pims_transformer'
+            appName: 'transformers/hl7_pims_transformer'
             appDisplayName: 'Pims HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -108,7 +120,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_phw_transformer'
+            appName: 'transformers/hl7_phw_transformer'
             appDisplayName: 'Phw HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -119,7 +131,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_chemo_transformer'
+            appName: 'transformers/hl7_chemo_transformer'
             appDisplayName: 'Chemocare HL7 Transformer'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -130,7 +142,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'hl7_soap_server'
+            appName: 'servers/hl7_soap_server'
             appDisplayName: 'HL7 SOAP Server'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -141,7 +153,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'message_store_service'
+            appName: 'message_processing/message_store_service'
             appDisplayName: 'Message Store Service'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -152,7 +164,7 @@ stages:
       jobs:
         - template: templates/code-quality-template.yml
           parameters:
-            appName: 'message_replay_job'
+            appName: 'message_processing/message_replay_job'
             appDisplayName: 'Message Replay Job'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
@@ -182,8 +194,8 @@ stages:
             jobName: 'BuildPushHL7Server'
             displayName: 'Build and Push HL7 Server'
             appName: 'hl7server'
-            dockerfilePath: 'hl7_server/Dockerfile'
-            buildContext: 'hl7_server'
+            dockerfilePath: 'servers/hl7_server/Dockerfile'
+            buildContext: 'servers/hl7_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -201,8 +213,27 @@ stages:
             jobName: 'BuildPushHL7RestServer'
             displayName: 'Build and Push HL7 REST Server'
             appName: 'hl7restserver'
-            dockerfilePath: 'hl7_rest_server/Dockerfile'
-            buildContext: 'hl7_rest_server'
+            dockerfilePath: 'servers/hl7_rest_server/Dockerfile'
+            buildContext: 'servers/hl7_rest_server'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'restserver') }}:
+    - stage: Build_restserver
+      displayName: 'Build — REST Server'
+      dependsOn: CodeQuality_restserver
+      condition: in(dependencies.CodeQuality_restserver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushRestServer'
+            displayName: 'Build and Push REST Server'
+            appName: 'restserver'
+            dockerfilePath: 'servers/rest_server/Dockerfile'
+            buildContext: 'servers/rest_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -220,8 +251,8 @@ stages:
             jobName: 'BuildPushHL7Sender'
             displayName: 'Build and Push HL7 Sender'
             appName: 'hl7sender'
-            dockerfilePath: 'hl7_sender/Dockerfile'
-            buildContext: 'hl7_sender'
+            dockerfilePath: 'senders/hl7_sender/Dockerfile'
+            buildContext: 'senders/hl7_sender'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -239,8 +270,8 @@ stages:
             jobName: 'BuildPushHL7MockReceiver'
             displayName: 'Build and Push HL7 Mock Receiver'
             appName: 'hl7mockreceiver'
-            dockerfilePath: 'hl7_mock_receiver/Dockerfile'
-            buildContext: 'hl7_mock_receiver'
+            dockerfilePath: 'mock_receivers/hl7_mock_receiver/Dockerfile'
+            buildContext: 'mock_receivers/hl7_mock_receiver'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -258,8 +289,8 @@ stages:
             jobName: 'BuildPushHL7SubscriptionSender'
             displayName: 'Build and Push HL7 Subscription Sender'
             appName: 'hl7subsndr'
-            dockerfilePath: 'hl7_subscription_sender/Dockerfile'
-            buildContext: 'hl7_subscription_sender'
+            dockerfilePath: 'senders/hl7_subscription_sender/Dockerfile'
+            buildContext: 'senders/hl7_subscription_sender'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -277,8 +308,8 @@ stages:
             jobName: 'BuildPushPimsHL7Transformer'
             displayName: 'Build and Push Pims HL7 Transformer'
             appName: 'pims-hl7transformer'
-            dockerfilePath: 'hl7_pims_transformer/Dockerfile'
-            buildContext: 'hl7_pims_transformer'
+            dockerfilePath: 'transformers/hl7_pims_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_pims_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -296,8 +327,8 @@ stages:
             jobName: 'BuildPushPhwHL7Transformer'
             displayName: 'Build and Push Phw HL7 Transformer'
             appName: 'phw-hl7transformer'
-            dockerfilePath: 'hl7_phw_transformer/Dockerfile'
-            buildContext: 'hl7_phw_transformer'
+            dockerfilePath: 'transformers/hl7_phw_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_phw_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -315,8 +346,8 @@ stages:
             jobName: 'BuildPushChemoHL7Transformer'
             displayName: 'Build and Push Chemocare HL7 Transformer'
             appName: 'chemo-hl7transformer'
-            dockerfilePath: 'hl7_chemo_transformer/Dockerfile'
-            buildContext: 'hl7_chemo_transformer'
+            dockerfilePath: 'transformers/hl7_chemo_transformer/Dockerfile'
+            buildContext: 'transformers/hl7_chemo_transformer'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -334,8 +365,8 @@ stages:
             jobName: 'BuildPushHL7SoapServer'
             displayName: 'Build and Push HL7 SOAP Server'
             appName: 'hl7soapserver'
-            dockerfilePath: 'hl7_soap_server/Dockerfile'
-            buildContext: 'hl7_soap_server'
+            dockerfilePath: 'servers/hl7_soap_server/Dockerfile'
+            buildContext: 'servers/hl7_soap_server'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -353,8 +384,8 @@ stages:
             jobName: 'BuildPushMessageStoreService'
             displayName: 'Build and Push Message Store Service'
             appName: 'message-store-service'
-            dockerfilePath: 'message_store_service/Dockerfile'
-            buildContext: 'message_store_service'
+            dockerfilePath: 'message_processing/message_store_service/Dockerfile'
+            buildContext: 'message_processing/message_store_service'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
@@ -372,8 +403,8 @@ stages:
             jobName: 'BuildPushMessageReplayJob'
             displayName: 'Build and Push Message Replay Job'
             appName: 'message-replay-job'
-            dockerfilePath: 'message_replay_job/Dockerfile'
-            buildContext: 'message_replay_job'
+            dockerfilePath: 'message_processing/message_replay_job/Dockerfile'
+            buildContext: 'message_processing/message_replay_job'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)

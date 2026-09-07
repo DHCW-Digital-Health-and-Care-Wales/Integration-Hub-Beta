@@ -6,10 +6,10 @@ trigger:
       - release-*
   paths:
     include:
-      - message_replay_job/*
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - message_processing/message_replay_job/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'message_replay_job'
+          appName: 'message_processing/message_replay_job'
           appDisplayName: 'Message Replay Job'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushMessageReplayJob'
           displayName: 'Build and Push Message Replay Job'
           appName: 'message-replay-job'
-          dockerfilePath: 'message_replay_job/Dockerfile'
-          buildContext: 'message_replay_job'
+          dockerfilePath: 'message_processing/message_replay_job/Dockerfile'
+          buildContext: 'message_processing/message_replay_job'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)

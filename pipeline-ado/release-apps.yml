@@ -17,6 +17,8 @@ parameters:
       - WDS HL7Server
       - Mosaiq HL7Server
       - HL7 REST Server
+      - REST Server
+      - WPAS REST Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
@@ -72,6 +74,9 @@ resources:
     - pipeline: 'HL7 REST Server - Build'
       source: 'HL7 REST Server - Build'
       trigger: none
+    - pipeline: 'REST Server - Build'
+      source: 'REST Server - Build'
+      trigger: none
     - pipeline: 'HL7 Phw Transformer - Build'
       source: 'HL7 Phw Transformer - Build'
       trigger: none
@@ -89,6 +94,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 SOAP Server - Build'
       source: 'HL7 SOAP Server - Build'
+      trigger: none
+    - pipeline: 'REST Server - Build'
+      source: 'REST Server - Build'
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
@@ -153,6 +161,18 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 REST Server - Build'
 
+        # REST Server (generic rest_server image; replaces hl7_soap_server/hl7_rest_server per docs/rest_merge.md)
+        - name: 'REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: ''
+          buildPipeline: 'REST Server - Build'
+
+        # WPAS REST Server (rest_server image, WPAS flow instance; container app uks-<env>-wpas-restserver-ca)
+        - name: 'WPAS REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'wpas'
+          buildPipeline: 'REST Server - Build'
+
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           appImageName: 'phw-hl7transformer'
@@ -216,11 +236,6 @@ stages:
           appImageName: 'hl7soapserver'
           appFunctionMidfix: 'pms'
           buildPipeline: 'HL7 SOAP Server - Build'
-
-        - name: 'PMS HL7 Subscription Sender'
-          appImageName: 'hl7subsndr'
-          appFunctionMidfix: 'pms'
-          buildPipeline: 'HL7 Subscription Sender - Build'
 
         # Mock Receiver
         - name: 'HL7 Mock Receiver'

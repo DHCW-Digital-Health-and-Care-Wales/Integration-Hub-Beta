@@ -181,12 +181,12 @@ tmp
 .DS_Store
 
 # Local developer stuff (not committed to source control)
-scripts/
 .vscode/settings.json
 dashboard/alarm*_state.json
 dashboard/alarm*_config.json
+exec_output.txt
 
-# Local-only Podman container definitions (not committed to source control)
-Dockerfile.podman
-local/justfile.docker
+# Test-generated debug artifacts (regenerated on every test run, not golden fixtures)
+**/tests/_artifacts/
+
 .dockerignore

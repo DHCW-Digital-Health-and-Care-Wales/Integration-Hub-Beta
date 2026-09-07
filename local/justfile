@@ -24,6 +24,7 @@
 # - pims-to-mpi    : PIMS to MPI integration
 # - mosaiq-to-mpi  : Mosaiq to MPI integration
 # - wds-to-mpi     : WDS to MPI integration
+# - wpas-to-proms  : PROMS REST ingress to MPI integration
 # - mpi-to-topic   : MPI to Outbound Integration
 #
 # Tips:
@@ -34,7 +35,7 @@
 # - Pass multiple profiles by repeating commands or use "*" for all profiles
 # - This justfile uses podman-compose instead of docker compose
 #
-# For more information, see local/README.md and local/PODMAN_COMPOSE_SETUP.md
+# For more information, see local/README.md and docs/PODMAN_COMPOSE_SETUP.md
 
 # ============================================
 # Configuration Variables
@@ -54,7 +55,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile mpi-to-topic --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile mpi-to-topic --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -89,6 +90,7 @@ python := "python3"
     echo "  - pims-to-mpi    : PIMS to MPI integration"
     echo "  - mosaiq-to-mpi  : Mosaiq to MPI integration"
     echo "  - wds-to-mpi     : WDS to MPI integration"
+    echo "  - wpas-to-proms  : PROMS REST ingress to MPI integration"
     echo "  - mpi-to-topic   : MPI Outbound integration"
     echo "  - replay         : Message Replay Job"
     echo ""
@@ -185,6 +187,7 @@ python := "python3"
     echo "   - 2578 (Chemo)"
     echo "   - 2579 (PIMS)"
     echo "   - 2580 (MPI Outbound)"
+    echo "   - 8084 (PROMS REST)"
 
 # Send a SOAP-wrapped HL7 XML message to the hl7-soap-server (default: lims-to-mpi sample, port 8082)
 @send-soap file="./sample_messages/lims-to-mpi.sample.xml" port="8082":
@@ -197,6 +200,18 @@ python := "python3"
     echo ""
     echo "✅ Message sent!"
     echo "💡 Check logs with: just logs hl7-soap-server"
+
+# Send an HTTP/REST HL7 message to a REST server (default: proms sample, port 8084)
+@send-rest file="./sample_messages/wpas-to-proms.sample.hl7" port="8084":
+    echo "🧪 Sending REST HL7 message..."
+    echo ""
+    echo "📄 File: {{file}}"
+    echo "🎯 Target: http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    echo ""
+    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'text/plain; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    echo ""
+    echo "✅ Message sent!"
+    echo "💡 Check logs with: just logs <service-name>"
 
 # Follow logs from Podman containers (optionally filter by service name, e.g. `just logs hl7-soap-server`)
 @logs *services:

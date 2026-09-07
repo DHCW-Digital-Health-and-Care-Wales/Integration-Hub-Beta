@@ -20,13 +20,13 @@ The system uses a shared library architecture where common functionality is abst
 ## Core Components
 
 ### HL7 Services
-- `hl7_server/` - Generic HL7 message receiving server with MLLP support. Other servers (PHW, Paris, Chemo, PIMS) extend this service.
-- `hl7_phw_transformer/` - Transforms PHW (Public Health Wales) messages to HL7v2.5
-- `hl7_chemo_transformer/` - Transforms Chemocare system messages to HL7v2.5  
-- `hl7_pims_transformer/` - Transforms PIMS (Patient Information Management System) messages to HL7v2.5
-- `hl7_sender/` - Delivers transformed messages to target systems (MPI)
-- `hl7_subscription_sender/` - Subscription-based delivery service
-- `hl7_mock_receiver/` - Mock receiver for testing and development
+- `servers/hl7_server/` - Generic HL7 message receiving server with MLLP support. Other servers (PHW, Paris, Chemo, PIMS) extend this service.
+- `transformers/hl7_phw_transformer/` - Transforms PHW (Public Health Wales) messages to HL7v2.5
+- `transformers/hl7_chemo_transformer/` - Transforms Chemocare system messages to HL7v2.5  
+- `transformers/hl7_pims_transformer/` - Transforms PIMS (Patient Information Management System) messages to HL7v2.5
+- `senders/hl7_sender/` - Delivers transformed messages to target systems (MPI)
+- `senders/hl7_subscription_sender/` - Subscription-based delivery service
+- `mock_receivers/hl7_mock_receiver/` - Mock receiver for testing and development
 
 ### Shared Libraries
 These are common libraries used across services:
@@ -163,10 +163,22 @@ integration-hub-beta/
 │   ├── metric_sender_lib/
 │   ├── processor_manager_lib/ 
 │   └── transformer_base_lib/
-├── hl7_server/                  # HL7 server services
-├── hl7_phw_transformer/
-├── hl7_chemo_transformer/
-├── hl7_pims_transformer/  
-├── hl7_sender/ 
-└── message_replay_job/          # Message replay job service
+├── servers/                      # Server-type services
+│   └── hl7_server/                # HL7 server services
+├── transformers/
+│   ├── hl7_phw_transformer/
+│   ├── hl7_chemo_transformer/
+│   ├── hl7_pims_transformer/
+│   └── xml_fhir_proms_transformer/
+├── senders/
+│   ├── hl7_sender/
+│   ├── hl7_subscription_sender/
+│   ├── soap_sender/
+│   └── soap_subscription_sender/
+├── mock_receivers/
+│   ├── hl7_mock_receiver/
+│   └── http_mock_receiver/
+└── message_processing/
+    ├── message_store_service/    # Message store service
+    └── message_replay_job/       # Message replay job service
 ```

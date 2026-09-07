@@ -5,9 +5,10 @@ It provides the context needed to work effectively in this repository.
 
 ## Team
 
-- **Gareth** — Hub-Team lead
-- **Matt** — developer
-- **Alex** — developer
+- **Gareth** — Hub Team lead
+- **Matt** — dev
+- **Alex** — dev
+- **Yoana** — dev
 - **Alphy** — DevOps lead
 
 ---
@@ -40,16 +41,29 @@ Integration-Hub-Beta/
 ├── local/                       # Docker Compose local dev environment
 ├── pipeline-ado/                # Azure DevOps CI/CD pipelines
 ├── dashboard/                   # NOC monitoring dashboard (Flask) ← NEW
-├── buswatch/                    # Service Bus queue inspector (FastAPI)
-├── hl7_server/                  # Generic MLLP HL7 receiver
-├── hl7_phw_transformer/         # PHW → MPI transformer
-├── hl7_chemo_transformer/       # ChemoCare → MPI transformer
-├── hl7_pims_transformer/        # PIMS → MPI transformer
-├── hl7_sender/                  # HL7 message delivery to MPI
-├── hl7_subscription_sender/     # Subscription-based outbound sender
-├── hl7_mock_receiver/           # Mock MPI target for local testing
-├── message_store_service/       # Persists messages to Azure SQL
-├── message_replay_job/          # Replays stored messages from SQL
+├── servers/                     # Server-type services (MLLP, SOAP, REST)
+│   └── hl7_server/               # Generic MLLP HL7 receiver
+├── transformers/                # Transformer services
+│   ├── hl7_phw_transformer/     # PHW → MPI transformer
+│   ├── hl7_chemo_transformer/   # ChemoCare → MPI transformer
+│   ├── hl7_pims_transformer/    # PIMS → MPI transformer
+│   └── xml_fhir_proms_transformer/ # PROMS/WPAS XML → FHIR bundle transformer
+├── senders/                     # Outbound sender services
+│   ├── hl7_sender/               # HL7 message delivery to MPI
+│   ├── hl7_subscription_sender/  # Subscription-based outbound sender
+│   ├── soap_sender/              # SOAP/HTTP outbound sender
+│   └── soap_subscription_sender/ # SOAP/HTTP subscription-based outbound sender
+├── mock_receivers/              # Mock receiver services for local testing
+│   ├── hl7_mock_receiver/        # Mock MLLP/HL7 MPI target
+│   └── http_mock_receiver/       # Mock HTTP/SOAP target
+├── message_processing/
+│   ├── message_store_service/    # Persists messages to Azure SQL
+│   └── message_replay_job/       # Replays stored messages from SQL
+├── dev_tools/                   # Internal dev tooling (not deployed)
+│   ├── buswatch/                 # Service Bus queue inspector (FastAPI)
+│   ├── integration_hub_tester/   # Local dev GUI for testing services
+│   ├── ultra7/                   # GUI tool for testing MLLP/REST/SOAP endpoints
+│   └── scripts/                  # Repo-wide helper scripts (run-all-*.sh, uv_sync_all.sh, upgrade-package.ps1)
 └── network_test_app/            # Network/firewall connectivity tester
 ```
 
@@ -62,10 +76,10 @@ container, post-transform queue, sender, and destination.
 
 | Flow | Source Port | Pre-queue | Transformer | Post-queue | Destination |
 |------|-------------|-----------|-------------|------------|-------------|
-| PHW → MPI | 2575 | `pre-phw-transform` | `hl7_phw_transformer` | `post-phw-transform` | MPI |
+| PHW → MPI | 2575 | `pre-phw-transform` | `transformers/hl7_phw_transformer` | `post-phw-transform` | MPI |
 | Paris → MPI | 2577 | `pre-paris-transform` | *(none)* | `post-paris-transform` | MPI |
-| ChemoCare → MPI | 2578 | `pre-chemo-transform` | `hl7_chemo_transformer` | `post-chemo-transform` | MPI |
-| PIMS → MPI | 2579 | `pre-pims-transform` | `hl7_pims_transformer` | `post-pims-transform` | MPI |
+| ChemoCare → MPI | 2578 | `pre-chemo-transform` | `transformers/hl7_chemo_transformer` | `post-chemo-transform` | MPI |
+| PIMS → MPI | 2579 | `pre-pims-transform` | `transformers/hl7_pims_transformer` | `post-pims-transform` | MPI |
 | Mosaiq → MPI | 2583 | *(shared sender queue)* | *(none)* | *(shared sender queue)* | MPI |
 | MPI Outbound | — | `mpi-outbound` | *(none)* | *(none)* | Downstream systems |
 
@@ -253,4 +267,4 @@ Docker Compose profiles in `local/` map to flows:
 Start a profile: `docker compose --profile phw-to-mpi up`
 
 The Service Bus emulator config is in `local/ServiceBusEmulatorConfig.json`.
-Each service has a corresponding `.env` file in `local/` (e.g. `phw-hl7-transformer.env`).
+Each service has a corresponding `.env` file in `local/` (e.g. `local/env/transformers/phw-hl7-transformer.env`).

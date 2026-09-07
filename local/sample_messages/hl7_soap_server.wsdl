@@ -12,7 +12,7 @@
   hl7-soap-server container, port 8082). Update the soap:address location
   below if you're targeting a different profile/port.
 
-  Default server config (see hl7_soap_server/README.md):
+  Default server config (see servers/hl7_soap_server/README.md):
     HL7_SCHEMA_GROUP=phw
     ALLOWED_HL7_STRUCTURES=ADT_A05,ADT_A39
     ALLOWED_ASSIGNING_AUTHORITIES=328
