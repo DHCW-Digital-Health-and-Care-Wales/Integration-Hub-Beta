@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="ORR_O02.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORR_O02.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORR_O02" type="ORR_O02.CONTENT"/>
+    <xsd:complexType name="ORR_O02.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORR_O02.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORR_O02.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORR_O02.RESPONSE" type="ORR_O02.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORR_O02.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORR_O02.PATIENT" type="ORR_O02.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORR_O02.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element ref="RQD"/>
+            <xsd:element ref="RQ1"/>
+            <xsd:element ref="RXO"/>
+            <xsd:element ref="ODS"/>
+            <xsd:element ref="ODT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORR_O02.ORDER" type="ORR_O02.ORDER.CONTENT"/>
+</xsd:schema>

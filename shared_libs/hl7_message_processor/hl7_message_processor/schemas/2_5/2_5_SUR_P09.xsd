@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="SUR_P09.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element maxOccurs="unbounded" ref="SUR_P09.FACILITY"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SUR_P09" type="SUR_P09.CONTENT"/>
+    <xsd:complexType name="SUR_P09.FACILITY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="FAC"/>
+            <xsd:element maxOccurs="unbounded" ref="SUR_P09.PRODUCT"/>
+            <xsd:element ref="PSH"/>
+            <xsd:element maxOccurs="unbounded" ref="SUR_P09.FACILITY_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SUR_P09.FACILITY" type="SUR_P09.FACILITY.CONTENT"/>
+    <xsd:complexType name="SUR_P09.PRODUCT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSH"/>
+            <xsd:element ref="PDC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SUR_P09.PRODUCT" type="SUR_P09.PRODUCT.CONTENT"/>
+    <xsd:complexType name="SUR_P09.FACILITY_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="FAC"/>
+            <xsd:element ref="PDC"/>
+            <xsd:element ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SUR_P09.FACILITY_DETAIL" type="SUR_P09.FACILITY_DETAIL.CONTENT"/>
+</xsd:schema>

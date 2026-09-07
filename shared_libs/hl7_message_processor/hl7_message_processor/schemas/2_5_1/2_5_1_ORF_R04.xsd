@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="ORF_R04.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element maxOccurs="unbounded" ref="ORF_R04.QUERY_RESPONSE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" ref="QAK"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04" type="ORF_R04.CONTENT"/>
+    <xsd:complexType name="ORF_R04.QUERY_RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORF_R04.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORF_R04.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04.QUERY_RESPONSE" type="ORF_R04.QUERY_RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORF_R04.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04.PATIENT" type="ORF_R04.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORF_R04.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORF_R04.TIMING_QTY"/>
+            <xsd:element minOccurs="0" ref="CTD"/>
+            <xsd:element maxOccurs="unbounded" ref="ORF_R04.OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04.ORDER" type="ORF_R04.ORDER.CONTENT"/>
+    <xsd:complexType name="ORF_R04.TIMING_QTY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04.TIMING_QTY" type="ORF_R04.TIMING_QTY.CONTENT"/>
+    <xsd:complexType name="ORF_R04.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORF_R04.OBSERVATION" type="ORF_R04.OBSERVATION.CONTENT"/>
+</xsd:schema>

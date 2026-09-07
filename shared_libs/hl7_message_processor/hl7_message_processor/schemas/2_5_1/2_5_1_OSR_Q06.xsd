@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="OSR_Q06.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="OSR_Q06.RESPONSE"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OSR_Q06" type="OSR_Q06.CONTENT"/>
+    <xsd:complexType name="OSR_Q06.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="OSR_Q06.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="OSR_Q06.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OSR_Q06.RESPONSE" type="OSR_Q06.RESPONSE.CONTENT"/>
+    <xsd:complexType name="OSR_Q06.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OSR_Q06.PATIENT" type="OSR_Q06.PATIENT.CONTENT"/>
+    <xsd:complexType name="OSR_Q06.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OSR_Q06.TIMING"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element ref="RQD"/>
+            <xsd:element ref="RQ1"/>
+            <xsd:element ref="RXO"/>
+            <xsd:element ref="ODS"/>
+            <xsd:element ref="ODT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OSR_Q06.ORDER" type="OSR_Q06.ORDER.CONTENT"/>
+    <xsd:complexType name="OSR_Q06.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OSR_Q06.TIMING" type="OSR_Q06.TIMING.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="RSP_E22.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="UAC"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element ref="QAK"/>
+            <xsd:element ref="QPD"/>
+            <xsd:element minOccurs="0" ref="RSP_E22.AUTHORIZATION_INFO"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RSP_E22" type="RSP_E22.CONTENT"/>
+    <xsd:complexType name="RSP_E22.AUTHORIZATION_INFO.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IVC"/>
+            <xsd:element ref="PSG"/>
+            <xsd:element maxOccurs="unbounded" ref="RSP_E22.PSL_ITEM_INFO"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RSP_E22.AUTHORIZATION_INFO" type="RSP_E22.AUTHORIZATION_INFO.CONTENT"/>
+    <xsd:complexType name="RSP_E22.PSL_ITEM_INFO.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RSP_E22.PSL_ITEM_INFO" type="RSP_E22.PSL_ITEM_INFO.CONTENT"/>
+</xsd:schema>

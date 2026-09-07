@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="EAR_U08.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="EQU"/>
+            <xsd:element maxOccurs="unbounded" ref="EAR_U08.COMMAND_RESPONSE"/>
+            <xsd:element minOccurs="0" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EAR_U08" type="EAR_U08.CONTENT"/>
+    <xsd:complexType name="EAR_U08.COMMAND_RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ECD"/>
+            <xsd:element minOccurs="0" ref="SAC"/>
+            <xsd:element ref="ECR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EAR_U08.COMMAND_RESPONSE" type="EAR_U08.COMMAND_RESPONSE.CONTENT"/>
+</xsd:schema>

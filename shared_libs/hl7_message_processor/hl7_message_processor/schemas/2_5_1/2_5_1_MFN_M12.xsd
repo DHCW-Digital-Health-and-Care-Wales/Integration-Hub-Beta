@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="MFN_M12.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_M12.MF_OBS_ATTRIBUTES"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M12" type="MFN_M12.CONTENT"/>
+    <xsd:complexType name="MFN_M12.MF_OBS_ATTRIBUTES.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="OM1"/>
+            <xsd:element minOccurs="0" ref="OM7"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M12.MF_OBS_ATTRIBUTES" type="MFN_M12.MF_OBS_ATTRIBUTES.CONTENT"/>
+</xsd:schema>

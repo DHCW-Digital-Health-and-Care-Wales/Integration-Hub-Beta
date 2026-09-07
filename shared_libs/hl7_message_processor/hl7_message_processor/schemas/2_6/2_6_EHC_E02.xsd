@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="EHC_E02.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="UAC"/>
+            <xsd:element ref="IVC"/>
+            <xsd:element ref="PYE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E02.PRODUCT_SERVICE_SECTION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E02" type="EHC_E02.CONTENT"/>
+    <xsd:complexType name="EHC_E02.PRODUCT_SERVICE_SECTION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PSG"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E02.PRODUCT_SERVICE_SECTION" type="EHC_E02.PRODUCT_SERVICE_SECTION.CONTENT"/>
+    <xsd:complexType name="PSG.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PSL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PSG" type="PSG.CONTENT"/>
+</xsd:schema>

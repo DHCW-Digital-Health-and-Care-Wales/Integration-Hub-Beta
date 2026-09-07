@@ -158,6 +158,26 @@ services:
           - "risp-hl7-rest-server"
 
   # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  core-reference-hl7-transformer:
+    container_name: core-reference-hl7-transformer
+    build:
+      context: ../hl7_core_reference_transformer
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./core-reference-hl7-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - risp-to-mpi
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "core-reference-hl7-transformer"
+
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
@@ -247,6 +267,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -275,6 +296,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
       - mpi-to-topic
     networks:
       integration-hub:
@@ -507,6 +529,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
       - mpi-to-topic
     networks:
       integration-hub:

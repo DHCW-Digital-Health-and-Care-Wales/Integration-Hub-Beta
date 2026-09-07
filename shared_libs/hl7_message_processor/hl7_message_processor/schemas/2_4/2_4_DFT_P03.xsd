@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="DFT_P03.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DB1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.COMMON_ORDER"/>
+            <xsd:element maxOccurs="unbounded" ref="DFT_P03.FINANCIAL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03" type="DFT_P03.CONTENT"/>
+    <xsd:complexType name="DFT_P03.COMMON_ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element minOccurs="0" ref="DFT_P03.ORDER"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.COMMON_ORDER" type="DFT_P03.COMMON_ORDER.CONTENT"/>
+    <xsd:complexType name="DFT_P03.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.ORDER" type="DFT_P03.ORDER.CONTENT"/>
+    <xsd:complexType name="DFT_P03.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.OBSERVATION" type="DFT_P03.OBSERVATION.CONTENT"/>
+    <xsd:complexType name="DFT_P03.FINANCIAL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="FT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.FINANCIAL_PROCEDURE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.FINANCIAL_COMMON_ORDER"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.INSURANCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.FINANCIAL" type="DFT_P03.FINANCIAL.CONTENT"/>
+    <xsd:complexType name="DFT_P03.FINANCIAL_PROCEDURE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PR1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.FINANCIAL_PROCEDURE" type="DFT_P03.FINANCIAL_PROCEDURE.CONTENT"/>
+    <xsd:complexType name="DFT_P03.FINANCIAL_COMMON_ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element minOccurs="0" ref="DFT_P03.FINANCIAL_ORDER"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DFT_P03.FINANCIAL_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.FINANCIAL_COMMON_ORDER" type="DFT_P03.FINANCIAL_COMMON_ORDER.CONTENT"/>
+    <xsd:complexType name="DFT_P03.FINANCIAL_ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.FINANCIAL_ORDER" type="DFT_P03.FINANCIAL_ORDER.CONTENT"/>
+    <xsd:complexType name="DFT_P03.FINANCIAL_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.FINANCIAL_OBSERVATION" type="DFT_P03.FINANCIAL_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="DFT_P03.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="IN3"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DFT_P03.INSURANCE" type="DFT_P03.INSURANCE.CONTENT"/>
+</xsd:schema>

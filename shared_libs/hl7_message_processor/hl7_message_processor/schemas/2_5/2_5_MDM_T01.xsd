@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="MDM_T01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="PID"/>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MDM_T01.COMMON_ORDER"/>
+            <xsd:element ref="TXA"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MDM_T01" type="MDM_T01.CONTENT"/>
+    <xsd:complexType name="MDM_T01.COMMON_ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MDM_T01.TIMING"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MDM_T01.COMMON_ORDER" type="MDM_T01.COMMON_ORDER.CONTENT"/>
+    <xsd:complexType name="MDM_T01.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MDM_T01.TIMING" type="MDM_T01.TIMING.CONTENT"/>
+</xsd:schema>

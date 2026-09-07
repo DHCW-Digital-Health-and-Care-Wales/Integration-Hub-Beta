@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="PPR_PC1.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PPR_PC1.PATIENT_VISIT"/>
+            <xsd:element maxOccurs="unbounded" ref="PPR_PC1.PROBLEM"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1" type="PPR_PC1.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.PATIENT_VISIT" type="PPR_PC1.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.PROBLEM.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRB"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.PROBLEM_ROLE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.PATHWAY"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.PROBLEM_OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GOA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.PROBLEM" type="PPR_PC1.PROBLEM.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.PROBLEM_ROLE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.PROBLEM_ROLE" type="PPR_PC1.PROBLEM_ROLE.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.PATHWAY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PTH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.PATHWAY" type="PPR_PC1.PATHWAY.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.PROBLEM_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.PROBLEM_OBSERVATION" type="PPR_PC1.PROBLEM_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="GOA.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="GOL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.GOAL_ROLE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.GOAL_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="GOA" type="GOA.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.GOAL_ROLE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.GOAL_ROLE" type="PPR_PC1.GOAL_ROLE.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.GOAL_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.GOAL_OBSERVATION" type="PPR_PC1.GOAL_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="PPR_PC1.ORDER_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.ORDER" type="PPR_PC1.ORDER.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element ref="RXO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPR_PC1.ORDER_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.ORDER_DETAIL" type="PPR_PC1.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="PPR_PC1.ORDER_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPR_PC1.ORDER_OBSERVATION" type="PPR_PC1.ORDER_OBSERVATION.CONTENT"/>
+</xsd:schema>

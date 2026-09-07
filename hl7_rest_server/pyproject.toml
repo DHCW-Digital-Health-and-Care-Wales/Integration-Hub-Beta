@@ -19,6 +19,7 @@ dependencies = [
     "otel-lib",
     "message-bus-lib",
     "hl7_validation_lib",
+    "hl7_message_processor_lib",
     "event-logger-lib",
     "metric-sender-lib",
     "field-utils-lib",
@@ -37,6 +38,7 @@ dev = [
 message-bus-lib = { path = "../shared_libs/message_bus_lib" }
 otel-lib = { path = "../shared_libs/otel_lib" }
 hl7_validation_lib = { path = "../shared_libs/hl7_validation" }
+hl7_message_processor_lib = { path = "../shared_libs/hl7_message_processor" }
 event-logger-lib = { path = "../shared_libs/event_logger_lib" }
 metric-sender-lib = { path = "../shared_libs/metric_sender_lib" }
 field-utils-lib = { path = "../shared_libs/field_utils_lib" }

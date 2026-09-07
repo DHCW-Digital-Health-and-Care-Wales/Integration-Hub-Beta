@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="MFN_M08.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_M08.MF_TEST_NUMERIC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M08" type="MFN_M08.CONTENT"/>
+    <xsd:complexType name="MFN_M08.MF_TEST_NUMERIC.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="OM1"/>
+            <xsd:element minOccurs="0" ref="OM2"/>
+            <xsd:element minOccurs="0" ref="OM3"/>
+            <xsd:element minOccurs="0" ref="OM4"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M08.MF_TEST_NUMERIC" type="MFN_M08.MF_TEST_NUMERIC.CONTENT"/>
+</xsd:schema>

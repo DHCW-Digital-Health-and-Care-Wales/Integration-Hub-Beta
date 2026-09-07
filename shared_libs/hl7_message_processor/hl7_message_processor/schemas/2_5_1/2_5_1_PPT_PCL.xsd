@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="PPT_PCL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" ref="QAK"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element maxOccurs="unbounded" ref="PPT_PCL.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL" type="PPT_PCL.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PPT_PCL.PATIENT_VISIT"/>
+            <xsd:element maxOccurs="unbounded" ref="PPT_PCL.PATHWAY"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PATIENT" type="PPT_PCL.PATIENT.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PATIENT_VISIT" type="PPT_PCL.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PATHWAY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PTH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.PATHWAY_ROLE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GOA"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PATHWAY" type="PPT_PCL.PATHWAY.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PATHWAY_ROLE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PATHWAY_ROLE" type="PPT_PCL.PATHWAY_ROLE.CONTENT"/>
+    <xsd:complexType name="GOA.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="GOL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.GOAL_ROLE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.GOAL_OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.PROBLEM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="GOA" type="GOA.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.GOAL_ROLE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.GOAL_ROLE" type="PPT_PCL.GOAL_ROLE.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.GOAL_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.GOAL_OBSERVATION" type="PPT_PCL.GOAL_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PROBLEM.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRB"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.PROBLEM_ROLE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.PROBLEM_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PROBLEM" type="PPT_PCL.PROBLEM.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PROBLEM_ROLE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PROBLEM_ROLE" type="PPT_PCL.PROBLEM_ROLE.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.PROBLEM_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.PROBLEM_OBSERVATION" type="PPT_PCL.PROBLEM_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="PPT_PCL.ORDER_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.ORDER" type="PPT_PCL.ORDER.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element ref="Hxx"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PPT_PCL.ORDER_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.ORDER_DETAIL" type="PPT_PCL.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="PPT_PCL.ORDER_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VAR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PPT_PCL.ORDER_OBSERVATION" type="PPT_PCL.ORDER_OBSERVATION.CONTENT"/>
+</xsd:schema>

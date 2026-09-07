@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="RDE_O11.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="RDE_O11.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RDE_O11.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11" type="RDE_O11.CONTENT"/>
+    <xsd:complexType name="RDE_O11.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="RDE_O11.PATIENT_VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RDE_O11.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.PATIENT" type="RDE_O11.PATIENT.CONTENT"/>
+    <xsd:complexType name="RDE_O11.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.PATIENT_VISIT" type="RDE_O11.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="RDE_O11.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.INSURANCE" type="RDE_O11.INSURANCE.CONTENT"/>
+    <xsd:complexType name="RDE_O11.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RDE_O11.TIMING"/>
+            <xsd:element minOccurs="0" ref="RDE_O11.ORDER_DETAIL"/>
+            <xsd:element ref="RXE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="RDE_O11.TIMING_ENCODED"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RDE_O11.OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="FT1"/>
+            <xsd:element minOccurs="0" ref="BLG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.ORDER" type="RDE_O11.ORDER.CONTENT"/>
+    <xsd:complexType name="RDE_O11.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.TIMING" type="RDE_O11.TIMING.CONTENT"/>
+    <xsd:complexType name="RDE_O11.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RDE_O11.COMPONENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.ORDER_DETAIL" type="RDE_O11.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="RDE_O11.COMPONENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.COMPONENT" type="RDE_O11.COMPONENT.CONTENT"/>
+    <xsd:complexType name="RDE_O11.TIMING_ENCODED.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.TIMING_ENCODED" type="RDE_O11.TIMING_ENCODED.CONTENT"/>
+    <xsd:complexType name="RDE_O11.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDE_O11.OBSERVATION" type="RDE_O11.OBSERVATION.CONTENT"/>
+</xsd:schema>

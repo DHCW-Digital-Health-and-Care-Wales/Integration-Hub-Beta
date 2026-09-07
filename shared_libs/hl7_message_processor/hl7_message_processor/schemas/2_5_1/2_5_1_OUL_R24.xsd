@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="OUL_R24.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OUL_R24.PATIENT"/>
+            <xsd:element minOccurs="0" ref="OUL_R24.VISIT"/>
+            <xsd:element maxOccurs="unbounded" ref="OUL_R24.ORDER"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24" type="OUL_R24.CONTENT"/>
+    <xsd:complexType name="OUL_R24.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.PATIENT" type="OUL_R24.PATIENT.CONTENT"/>
+    <xsd:complexType name="OUL_R24.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.VISIT" type="OUL_R24.VISIT.CONTENT"/>
+    <xsd:complexType name="OUL_R24.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OUL_R24.TIMING_QTY"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OUL_R24.SPECIMEN"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OUL_R24.RESULT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.ORDER" type="OUL_R24.ORDER.CONTENT"/>
+    <xsd:complexType name="OUL_R24.TIMING_QTY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.TIMING_QTY" type="OUL_R24.TIMING_QTY.CONTENT"/>
+    <xsd:complexType name="OUL_R24.SPECIMEN.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SPM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OUL_R24.CONTAINER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.SPECIMEN" type="OUL_R24.SPECIMEN.CONTENT"/>
+    <xsd:complexType name="OUL_R24.CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" ref="INV"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.CONTAINER" type="OUL_R24.CONTAINER.CONTENT"/>
+    <xsd:complexType name="OUL_R24.RESULT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" ref="TCD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R24.RESULT" type="OUL_R24.RESULT.CONTENT"/>
+</xsd:schema>

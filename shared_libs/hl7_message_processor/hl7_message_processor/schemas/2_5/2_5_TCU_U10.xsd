@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="TCU_U10.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="EQU"/>
+            <xsd:element maxOccurs="unbounded" ref="TCU_U10.TEST_CONFIGURATION"/>
+            <xsd:element minOccurs="0" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="TCU_U10" type="TCU_U10.CONTENT"/>
+    <xsd:complexType name="TCU_U10.TEST_CONFIGURATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="SPM"/>
+            <xsd:element maxOccurs="unbounded" ref="TCC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="TCU_U10.TEST_CONFIGURATION" type="TCU_U10.TEST_CONFIGURATION.CONTENT"/>
+</xsd:schema>

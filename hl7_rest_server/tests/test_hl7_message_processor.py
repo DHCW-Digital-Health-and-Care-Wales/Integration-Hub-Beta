@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from hl7_validation import ValidationResult
+from hl7_message_processor import ProcessedMessage
 
 from hl7_rest_server.errors import Hl7ParseError, Hl7ValidationError
 from tests.helpers import (
@@ -97,17 +98,12 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         context, sender, _ = build_test_context(flow_name="risp")
         assert context.wrrs_sender_client is not None
         fake_xml = "<ORU_R01>...</ORU_R01>"
-        with patch(
-            "hl7_rest_server.risp_routing.validate_and_convert_parsed_message_with_structure_schema",
-            return_value=ValidationResult(
-                xml_string=fake_xml,
-                structure_id="ORU_R01",
-                message_type="ORU",
-                trigger_event="R01",
-                message_control_id="RISPMSG003",
-                is_valid=True,
-                error_message=None,
-            ),
+        fake_result = ProcessedMessage(
+            xml=fake_xml, structure_id="ORU_R01", version="2.5.1", xsd_path=Path("/schemas/ORU_R01.xsd")
+        )
+        with (
+            patch("hl7_rest_server.risp_routing.process_er7", return_value=fake_result),
+            patch("hl7_rest_server.risp_routing.validate_xml"),
         ):
             ack = context.processor.process(RISP_ORU_R01_MESSAGE)
 

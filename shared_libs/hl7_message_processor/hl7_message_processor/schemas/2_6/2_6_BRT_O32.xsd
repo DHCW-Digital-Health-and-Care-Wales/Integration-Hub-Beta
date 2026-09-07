@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="BRT_O32.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="BRT_O32.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRT_O32" type="BRT_O32.CONTENT"/>
+    <xsd:complexType name="BRT_O32.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BRT_O32.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRT_O32.RESPONSE" type="BRT_O32.RESPONSE.CONTENT"/>
+    <xsd:complexType name="BRT_O32.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BRT_O32.TIMING"/>
+            <xsd:element minOccurs="0" ref="BPO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BTX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRT_O32.ORDER" type="BRT_O32.ORDER.CONTENT"/>
+    <xsd:complexType name="BRT_O32.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRT_O32.TIMING" type="BRT_O32.TIMING.CONTENT"/>
+</xsd:schema>

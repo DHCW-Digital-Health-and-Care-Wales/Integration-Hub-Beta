@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RQI_I01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element maxOccurs="unbounded" ref="RQI_I01.PROVIDER"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" ref="RQI_I01.GUARANTOR_INSURANCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RQI_I01" type="RQI_I01.CONTENT"/>
+    <xsd:complexType name="RQI_I01.PROVIDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RQI_I01.PROVIDER" type="RQI_I01.PROVIDER.CONTENT"/>
+    <xsd:complexType name="RQI_I01.GUARANTOR_INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element maxOccurs="unbounded" ref="RQI_I01.INSURANCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RQI_I01.GUARANTOR_INSURANCE" type="RQI_I01.GUARANTOR_INSURANCE.CONTENT"/>
+    <xsd:complexType name="RQI_I01.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RQI_I01.INSURANCE" type="RQI_I01.INSURANCE.CONTENT"/>
+</xsd:schema>

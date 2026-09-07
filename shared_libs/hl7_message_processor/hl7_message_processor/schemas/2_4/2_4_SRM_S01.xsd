@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="SRM_S01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="ARQ"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SRM_S01.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="SRM_S01.RESOURCES"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01" type="SRM_S01.CONTENT"/>
+    <xsd:complexType name="SRM_S01.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.PATIENT" type="SRM_S01.PATIENT.CONTENT"/>
+    <xsd:complexType name="SRM_S01.RESOURCES.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RGS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SRM_S01.SERVICE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SRM_S01.GENERAL_RESOURCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SRM_S01.LOCATION_RESOURCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SRM_S01.PERSONNEL_RESOURCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.RESOURCES" type="SRM_S01.RESOURCES.CONTENT"/>
+    <xsd:complexType name="SRM_S01.SERVICE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIS"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.SERVICE" type="SRM_S01.SERVICE.CONTENT"/>
+    <xsd:complexType name="SRM_S01.GENERAL_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIG"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.GENERAL_RESOURCE" type="SRM_S01.GENERAL_RESOURCE.CONTENT"/>
+    <xsd:complexType name="SRM_S01.LOCATION_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIL"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.LOCATION_RESOURCE" type="SRM_S01.LOCATION_RESOURCE.CONTENT"/>
+    <xsd:complexType name="SRM_S01.PERSONNEL_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIP"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SRM_S01.PERSONNEL_RESOURCE" type="SRM_S01.PERSONNEL_RESOURCE.CONTENT"/>
+</xsd:schema>
