@@ -1,9 +1,7 @@
-"""WDS transformer — filters to A28/A31 and converts ER7 to HL7 v2 XML.
+"""WDS transformer — filters inbound HL7 messages to A28/A31 and passes them through unchanged.
 
-The transformer_base_lib message_processor sends the result of transform_message()
-via to_er7(), which is not suitable here because the downstream soap_sender needs
-HL7 v2 XML rather than ER7.  We therefore subclass BaseTransformer and override
-run() to use a custom message processor that serialises to XML instead.
+This transformer deliberately keeps output as ER7. The downstream soap_sender (envelope_format="wis")
+converts ER7 → HL7 v2 XML and wraps it in the WIS SOAP envelope before sending to WIS.
 """
 from __future__ import annotations
 
