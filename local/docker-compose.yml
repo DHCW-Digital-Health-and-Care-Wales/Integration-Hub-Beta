@@ -171,7 +171,7 @@ services:
     env_file:
       - ./rest-hl7-server.env
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:8083:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health', timeout=2).status == 200 else sys.exit(1)"]
       interval: 10s
