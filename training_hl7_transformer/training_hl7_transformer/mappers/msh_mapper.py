@@ -31,11 +31,10 @@ for a production example that also transforms the datetime format.
 
 from datetime import datetime
 
-from hl7apy.core import Message
-
 # Import field utilities from shared_libs
 # These provide helper functions for working with HL7 fields
 from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
+from hl7apy.core import Message
 
 
 def map_msh(original_msg: Message, new_msg: Message) -> dict[str, str]:

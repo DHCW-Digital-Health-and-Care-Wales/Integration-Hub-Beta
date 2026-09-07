@@ -63,7 +63,7 @@ class TestMSHMapper(unittest.TestCase):
         )
         original_message = parse_message(repeating_msh_header)
         new_message = Message(version="2.5")
-        
+
 
         result = map_msh(original_message, new_message)
         self.assertEqual(

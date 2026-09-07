@@ -7,13 +7,11 @@ The EVN segment contains metadata about the event described in the HL7 message.
 
 """
 
-from datetime import datetime
-
-from hl7apy.core import Message
 
 # Import field utilities from shared_libs
 # These provide helper functions for working with HL7 fields
-from field_utils_lib import copy_segment_fields_in_range, get_hl7_field_value
+from field_utils_lib import copy_segment_fields_in_range
+from hl7apy.core import Message
 
 
 def map_evn(original_msg: Message, new_msg: Message) -> None:
