@@ -7,7 +7,13 @@ from .constants import HL7Constants
 
 
 class AckBuilder:
-    def build_ack(self, message_control_id: str, original_msg: Message, ack_code: str, error_message: str | None = None) -> Message:
+    def build_ack(
+        self,
+        message_control_id: str,
+        original_msg: Message,
+        ack_code: str,
+        error_message: str | None = None,
+    ) -> Message:
         ack = Message("ACK", validation_level=VALIDATION_LEVEL.STRICT)
 
         # Build MSH segment
