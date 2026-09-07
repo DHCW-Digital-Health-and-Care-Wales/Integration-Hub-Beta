@@ -6,7 +6,7 @@ trigger:
       - release-*
   paths:
     include:
-      - soap_sender/*
+      - senders/soap_sender/**
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
