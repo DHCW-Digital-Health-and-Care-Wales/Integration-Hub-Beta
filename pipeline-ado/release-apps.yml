@@ -18,6 +18,7 @@ parameters:
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
+      - WPAS REST Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
@@ -164,6 +165,12 @@ stages:
         - name: 'REST Server'
           appImageName: 'restserver'
           appFunctionMidfix: ''
+          buildPipeline: 'REST Server - Build'
+
+        # WPAS REST Server (rest_server image, WPAS flow instance; container app uks-<env>-wpas-restserver-ca)
+        - name: 'WPAS REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'wpas'
           buildPipeline: 'REST Server - Build'
 
         # HL7 Transformer Variants
