@@ -157,13 +157,13 @@ services:
         aliases:
           - "risp-hl7-rest-server"
 
-  # REST-based HL7 receiver (generic flow for testing).
-  # Serves: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
-  # Built from hl7_rest_server - see hl7_rest_server/README.md.
+  # REST ingestion server instance (rest_server) for local testing.
+  # Endpoint path is configured by ENDPOINT_PATH in ./rest-hl7-server.env.
+  # Built from servers/rest_server - see servers/rest_server/README.md.
   rest-hl7-server:
     container_name: rest-hl7-server
     build:
-      context: ../rest_server
+      context: ../servers/rest_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
