@@ -137,7 +137,7 @@ env.bak/
 venv.bak/
 
 # Local-only WRDS response fixture used for local testing without a real WRDS connection
-# (see hl7_core_reference_transformer/README.md) — never commit real/production-like data.
+# (see transformers/hl7_core_reference_transformer/README.md) — never commit real/production-like data.
 wrds_local_fixture.xml
 
 # Spyder project settings
