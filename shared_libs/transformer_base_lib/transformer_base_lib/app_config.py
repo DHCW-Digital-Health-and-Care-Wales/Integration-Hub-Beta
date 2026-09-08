@@ -25,13 +25,6 @@ class AppConfig:
     health_check_hostname: str | None
     health_check_port: int | None
 
-    def __post_init__(self) -> None:
-        _validate_ingress_config(
-            self.ingress_queue_name,
-            self.ingress_topic_name,
-            self.ingress_subscription_name,
-        )
-
     @staticmethod
     def read_env_config() -> AppConfig:
         return AppConfig(
@@ -90,12 +83,17 @@ class TransformerConfig(AppConfig):
         return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
 
 
-def _validate_ingress_config(
+def validate_ingress_config(
     ingress_queue_name: str | None,
     ingress_topic_name: str | None,
     ingress_subscription_name: str | None,
 ) -> None:
-    """Ensure ingress is configured as exactly one of: a queue, or a topic+subscription pair."""
+    """Ensure ingress is configured as exactly one of: a queue, or a topic+subscription pair.
+
+    Called at application startup (run_transformer_app), not at AppConfig construction time,
+    since many test fixtures construct AppConfig with partial/placeholder ingress fields that
+    are irrelevant to what they're testing.
+    """
     has_queue = bool(ingress_queue_name)
     has_topic = bool(ingress_topic_name) or bool(ingress_subscription_name)
 

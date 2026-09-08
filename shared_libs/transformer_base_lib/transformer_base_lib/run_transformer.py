@@ -11,7 +11,7 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
 
-from .app_config import TransformerConfig
+from .app_config import TransformerConfig, validate_ingress_config
 from .message_processor import process_message
 
 if TYPE_CHECKING:
@@ -31,6 +31,14 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
     config = TransformerConfig.from_env_and_config_file(transformer.config_path)
 
+    # Validated at startup (not at AppConfig construction time) so that test fixtures
+    # constructing partial/placeholder AppConfig instances are unaffected.
+    validate_ingress_config(
+        config.ingress_queue_name,
+        config.ingress_topic_name,
+        config.ingress_subscription_name,
+    )
+
     client_config = ConnectionConfig(
         config.connection_string, config.service_bus_namespace
     )
@@ -38,7 +46,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
     event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
     # Ingress is configured as either a queue, or a topic+subscription pair
-    # (mutually exclusive, validated in AppConfig.__post_init__).
+    # (mutually exclusive, validated above by validate_ingress_config).
     if config.ingress_queue_name:
         ingress_name: str = config.ingress_queue_name
         receiver_client_cm = factory.create_message_receiver_client(
