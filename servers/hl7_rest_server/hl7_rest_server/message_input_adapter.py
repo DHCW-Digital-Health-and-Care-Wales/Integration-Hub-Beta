@@ -12,7 +12,7 @@ from hl7_validation import xml_to_er7
 
 def _normalise_line_endings(content: str) -> str:
     # Windows (\r\n) first, then any remaining Unix (\n) newlines → HL7 segment terminator.
-    return content.replace("\r\n ", "\r").replace("\r\n", "\r").replace("\n", "\r")
+    return content.replace("\r\n", "\r").replace("\n", "\r")
 
 
 def to_er7(message_content: str) -> str:
