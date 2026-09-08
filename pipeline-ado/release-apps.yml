@@ -15,6 +15,7 @@ parameters:
       - Chemocare HL7Server
       - MPI HL7Server
       - WDS HL7Server
+      - MPI HL7 Subscription Sender
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -32,6 +33,8 @@ parameters:
       - LIMS HL7 SOAP Server
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
+      - HL7 WDS Transformer
+      - WIS SOAP Sender
       - Message Store Service
       - HL7 Mock Receiver
       - Network Test App
@@ -111,6 +114,12 @@ resources:
     - pipeline: 'Dashboard - Build'
       source: 'Dashboard - Build'
       trigger: none
+    - pipeline: 'HL7 WDS Transformer - Build'
+      source: 'HL7 WDS Transformer - Build'
+      trigger: none
+    - pipeline: 'SOAP Sender - Build'
+      source: 'SOAP Sender - Build'
+      trigger: none
 
 stages:
   # Define applications metadata inline
@@ -153,6 +162,11 @@ stages:
           appImageName: 'hl7server'
           appFunctionMidfix: 'wds'
           buildPipeline: 'HL7 Server - Build'
+
+        - name: 'MPI HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'wds'
+          buildPipeline: 'HL7 Subscription Sender - Build'
 
         - name: 'Mosaiq HL7Server'
           appImageName: 'hl7server'
@@ -197,6 +211,11 @@ stages:
           appImageName: 'core-reference-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Core Reference Transformer - Build'
+
+        - name: 'HL7 WDS Transformer'
+          appImageName: 'wds-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 WDS Transformer - Build'
 
         # HL7 Sender Variants
         - name: 'HL7 Sender'
@@ -246,6 +265,11 @@ stages:
           appFunctionMidfix: 'pms'
           buildPipeline: 'HL7 SOAP Server - Build'
 
+        # WDS to WIS Flow
+        - name: 'WIS SOAP Sender'
+          appImageName: 'soapsender'
+          appFunctionMidfix: 'wis'
+          buildPipeline: 'SOAP Sender - Build'
         # Mock Receiver
         - name: 'HL7 Mock Receiver'
           appImageName: 'hl7mockreceiver'
