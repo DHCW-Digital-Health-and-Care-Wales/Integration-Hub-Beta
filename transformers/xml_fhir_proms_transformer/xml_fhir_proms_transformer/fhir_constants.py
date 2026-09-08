@@ -60,6 +60,12 @@ SERVICE_REQUEST_IDENTIFIER_SYSTEM = (
 PRACTITIONER_ROLE_IDENTIFIER_SYSTEM = (
     "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-practitionerrole"
 )
+ENCOUNTER_IDENTIFIER_SYSTEM = (
+    "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-encounter"
+)
+APPOINTMENT_IDENTIFIER_SYSTEM = (
+    "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-appointment"
+)
 
 # --- NHS Number verification -------------------------------------------------
 NHS_NUMBER_VERIFICATION_EXTENSION = (
@@ -67,6 +73,16 @@ NHS_NUMBER_VERIFICATION_EXTENSION = (
 )
 NHS_NUMBER_VERIFICATION_SYSTEM = (
     "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales"
+)
+
+# --- Patient contact preference (spoken language) ----------------------------
+# Local WPAS extension — the v2 mapping spreadsheet splits language into two
+# elements: extension:contactPreference (spoken) and communication.language
+# (written). No official UK Core extension exists for this, so a WPAS-specific
+# one is used, following the same naming convention as the other WPAS
+# identifier systems.
+CONTACT_PREFERENCE_EXTENSION = (
+    "https://wpas-integration-ig.tools.labs.promptly.health/StructureDefinition/wpas-contact-preference"
 )
 
 # --- Patient language -------------------------------------------------------

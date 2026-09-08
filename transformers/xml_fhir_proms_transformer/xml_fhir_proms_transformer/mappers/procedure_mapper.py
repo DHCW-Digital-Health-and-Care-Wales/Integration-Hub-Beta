@@ -19,14 +19,14 @@ def map_procedure(
 ) -> Procedure:
     """Build the Procedure resource for a Surgery bundle.
 
-    SPEC GAP: Procedure.status — the mapping spreadsheet has "Yes" (invalid FHIR).
-    "completed" is used as the only semantically valid code for a recorded surgery.
-    Confirm with spec owner.
+    Procedure.status defaults to "unknown" - confirmed in the v2 WelshPAS
+    mapping spreadsheet ("Defaulted in IH" -> "Default to unknown in
+    translation"). WPAS itself never supplies a status value for procedures.
     """
     procedure = Procedure(
         id=procedure_uuid,
         meta=profile_meta(PROCEDURE_PROFILE),
-        status="completed",  # SPEC GAP: spreadsheet says "Yes" — not a valid code
+        status="unknown",
         subject=Reference(reference=f"urn:uuid:{patient_uuid}", type="Patient"),
     )
 

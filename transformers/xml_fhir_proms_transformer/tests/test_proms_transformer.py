@@ -247,6 +247,27 @@ class TestPatient(unittest.TestCase):
     def test_postcode_present(self) -> None:
         self.assertEqual(self.patient.address[0].postalCode, "NP22 3AA")
 
+    def test_district_uses_postal_county(self) -> None:
+        self.assertEqual(self.patient.address[0].district, "Gwent")
+
+    def test_contact_preference_extension_uses_spoken_language(self) -> None:
+        # REFERRAL_MESSAGE carries preferred_spoken_language_code=CY / spoken_language=Welsh
+        extensions = self.patient.extension or []
+        contact_pref = next(e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION)
+        self.assertEqual(contact_pref.valueCodeableConcept.coding[0].display, "Welsh")
+
+    def test_communication_omitted_when_no_written_language(self) -> None:
+        # REFERRAL_MESSAGE has no written-language fields, only spoken
+        self.assertIsNone(self.patient.communication)
+
+    def test_communication_uses_written_language_when_present(self) -> None:
+        message = REFERRAL_MESSAGE.replace(
+            "</PromsEventRequest>",
+            "<written_language>English</written_language></PromsEventRequest>",
+        )
+        patient = resource_at(build(message), 1)
+        self.assertEqual(patient.communication[0].language.coding[0].display, "English")
+
     def test_deceased_absent_for_non_patient_update_bundles(self) -> None:
         self.assertIsNone(self.patient.deceasedBoolean)
         self.assertIsNone(self.patient.deceasedDateTime)
@@ -279,6 +300,10 @@ class TestPractitionerRole(unittest.TestCase):
 
     def test_profile(self) -> None:
         self.assertEqual(self.pr.meta.profile, [fc.PRACTITIONER_ROLE_PROFILE])
+
+    def test_identifier_from_specialty_name(self) -> None:
+        self.assertEqual(self.pr.identifier[0].system, fc.PRACTITIONER_ROLE_IDENTIFIER_SYSTEM)
+        self.assertEqual(self.pr.identifier[0].value, "Trauma and Orthopaedics")
 
     def test_practitioner_reference(self) -> None:
         practitioner = resource_at(self.bundle, 4)
@@ -346,10 +371,10 @@ class TestLocation(unittest.TestCase):
 
 
 class TestProcedure(unittest.TestCase):
-    def test_status_is_completed(self) -> None:
+    def test_status_is_unknown(self) -> None:
         procedure = resource_at(build(SURGERY_MESSAGE), 2)
         self.assertEqual(procedure.meta.profile, [fc.PROCEDURE_PROFILE])
-        self.assertEqual(procedure.status, "completed")
+        self.assertEqual(procedure.status, "unknown")
 
     def test_subject_references_patient(self) -> None:
         bundle = build(SURGERY_MESSAGE)
@@ -364,6 +389,11 @@ class TestAppointment(unittest.TestCase):
         self.assertEqual(appointment.meta.profile, [fc.APPOINTMENT_PROFILE])
         self.assertEqual(appointment.status, "booked")
 
+    def test_identifier_from_activity_note_key(self) -> None:
+        appointment = resource_at(build(PREOP_MESSAGE), 2)
+        self.assertEqual(appointment.identifier[0].system, fc.APPOINTMENT_IDENTIFIER_SYSTEM)
+        self.assertEqual(appointment.identifier[0].value, "ANK-7A22867972")
+
     def test_cancelled_status_is_cancelled(self) -> None:
         appointment = resource_at(build(CANCELLED_MESSAGE), 2)
         self.assertEqual(appointment.status, "cancelled")
@@ -375,12 +405,35 @@ class TestAppointment(unittest.TestCase):
         refs = [p.actor.reference for p in appointment.participant]
         self.assertIn(f"urn:uuid:{patient.id}", refs)
 
+    def test_participant_status_accepted_when_confirm_appt_y(self) -> None:
+        message = PREOP_MESSAGE.replace(
+            "</PromsEventRequest>", "<CONFIRM_APPT>Y</CONFIRM_APPT></PromsEventRequest>"
+        )
+        appointment = resource_at(build(message), 2)
+        self.assertEqual(appointment.participant[0].status, "accepted")
+
+    def test_participant_status_declined_when_confirm_appt_n(self) -> None:
+        message = PREOP_MESSAGE.replace(
+            "</PromsEventRequest>", "<CONFIRM_APPT>N</CONFIRM_APPT></PromsEventRequest>"
+        )
+        appointment = resource_at(build(message), 2)
+        self.assertEqual(appointment.participant[0].status, "declined")
+
+    def test_participant_status_tentative_when_confirm_appt_absent(self) -> None:
+        appointment = resource_at(build(PREOP_MESSAGE), 2)
+        self.assertEqual(appointment.participant[0].status, "tentative")
+
 
 class TestEncounter(unittest.TestCase):
     def test_inpatient_class_is_imp(self) -> None:
         encounter = resource_at(build(INPATIENT_MESSAGE), 2)
         self.assertEqual(encounter.meta.profile, [fc.ENCOUNTER_PROFILE])
         self.assertEqual(encounter.status, "in-progress")
+
+    def test_identifier_from_activity_note_key(self) -> None:
+        encounter = resource_at(build(INPATIENT_MESSAGE), 2)
+        self.assertEqual(encounter.identifier[0].system, fc.ENCOUNTER_IDENTIFIER_SYSTEM)
+        self.assertEqual(encounter.identifier[0].value, "ANK-7A22867973")
 
     def test_preread_class_is_prenc(self) -> None:
         encounter = resource_at(build(PREREAD_MESSAGE), 2)

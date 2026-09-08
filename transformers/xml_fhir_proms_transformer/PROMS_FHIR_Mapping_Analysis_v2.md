@@ -166,14 +166,17 @@ actually be GMC numbers. Worth flagging back to the spec owner — is `Practitio
 
 ## 12. Summary — Prioritised Work Items
 
-### 🟢 Ready to implement now (concrete answers, no external dependencies)
-1. `Appointment.participant.status` — implement the `CONFIRM_APPT` Y/N/null rule
-2. `Procedure.status` — change hardcoded default from `"completed"` to `"unknown"`
-3. `Encounter.identifier` / `Appointment.identifier` — map from `activityNotekey`
-4. `PractitionerRole.identifier.value` — map from `specialty_name`
-5. `Patient.address.district` — map from `postalCounty`
-6. Split `Patient` language handling — spoken language → `contactPreference` extension, written language → `communication.language`
-7. Confirm and fix `ServiceRequest.status`/`.intent` casing against FHIR valuesets (not `"Active"`/`"Planned"`)
+### 🟢 Ready to implement now (concrete answers, no external dependencies) — ✅ ALL DONE
+1. ✅ `Appointment.participant.status` — implemented the `CONFIRM_APPT` Y/N/null rule
+2. ✅ `Procedure.status` — changed hardcoded default from `"completed"` to `"unknown"`
+3. ✅ `Encounter.identifier` / `Appointment.identifier` — mapped from `activityNotekey`
+4. ✅ `PractitionerRole.identifier.value` — mapped from `specialty_name`
+5. ✅ `Patient.address.district` — mapped from `postalCounty`
+6. ✅ Split `Patient` language handling — spoken language → new `contactPreference` extension, written language → `communication.language` (source field name for written language is a best guess pending confirmation — see item 9 below)
+7. ✅ `ServiceRequest.status`/`.intent` — **confirmed already correct** (`"active"`/`"plan"`), no code change needed; the original assumption in this doc that these were hardcoded as `"Active"`/`"Planned"` was wrong
+
+All 7 items implemented, tested (100/100 passing) and quality-gated (ruff/mypy/bandit clean) on
+`feat/inthub/fhir-transformer-continuation`.
 
 ### 🟡 Needs a decision/confirmation before implementing
 8. `MessageHeader.eventCoding` + new `reason` field — likely requires reworking `message_types.py` routing; need to confirm the `reason` qualifier model with spec owner
@@ -181,6 +184,7 @@ actually be GMC numbers. Worth flagging back to the spec owner — is `Practitio
 10. `Appointment.status` valueset — flag likely copy/paste error back to spec owner
 11. `PractitionerRole.organization` default (HB ODS code) vs current `referrer_org`-first logic — confirm precedence
 12. `Practitioner.identifier` — confirm whether GMC-number mapping is still in scope
+12a. `Patient.communication.language` source field — the exact WPAS field name for *written* language is not confirmed anywhere in the spreadsheet (only the label "preferred written language" is given); `preferred_written_language_code`/`written_language` are best-guess field names used in the current implementation pending confirmation
 
 ### 🔴 Needs new infrastructure (external lookups / reference data, bigger effort)
 13. `Organization.name`/`.telecom`/`.partOf` and `Location.name`/`.partOf` — all depend on a new `PADLOC` reference table (not in the WPAS payload)

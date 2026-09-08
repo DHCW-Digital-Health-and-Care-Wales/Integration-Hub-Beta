@@ -30,12 +30,11 @@ def map_practitioner_role(
 ) -> PractitionerRole:
     """Build the PractitionerRole resource.
 
-    SPEC GAP: identifier.value — no WPAS source field specified in the mapping
-    spreadsheet. Using activityNotekey as the best available activity-level
-    identifier. Confirm with spec owner.
+    identifier.value maps to specialty_name — confirmed in the v2 WelshPAS
+    mapping spreadsheet (previously a SPEC GAP; activityNotekey is now known
+    to belong to Encounter/Appointment identifiers instead).
     """
-    # SPEC GAP: which WPAS field provides the PractitionerRole identifier?
-    identifier_value = message.get("activityNotekey", "activity_notekey")
+    identifier_value = message.get("specialty_name", "specialtyName", "main_specialty_name")
 
     practitioner_role = PractitionerRole(
         id=practitioner_role_uuid,
