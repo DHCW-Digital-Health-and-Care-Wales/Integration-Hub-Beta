@@ -207,7 +207,9 @@ stages:
         timeoutInMinutes: 20
 
         steps:
-          - checkout: none
+          - checkout: self
+            displayName: 'Checkout Repository (for source mapping)'
+            fetchDepth: 1
 
           - download: current
             artifact: coverage-raw
