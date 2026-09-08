@@ -37,7 +37,15 @@ dev = [
     "mypy>=1.18.2",
     "ruff>=0.14.8",
     "bandit>=1.9.1",
+    "coverage>=7.6.0",
 ]
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
 
 [tool.uv.sources]
 message-bus-lib = { path = "../message_bus_lib" }
