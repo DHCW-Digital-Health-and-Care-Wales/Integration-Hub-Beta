@@ -22,7 +22,7 @@ def build_common_properties(workflow_id: str, msg_sending_app: str | None) -> di
         SOURCE_SYSTEM_KEY: msg_sending_app if msg_sending_app else "",
     }
 
-def build_mpi_properties(msg: Message) -> dict[str, str]:
+def _build_mpi_like_properties(msg: Message) -> dict[str, str]:
     pid2_codes = get_cx_4_hd_1_segment_codes_from_pid_field(msg, "pid_2")
     update_sources = _pipe_wrap(pid2_codes)
 
@@ -37,8 +37,18 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
         "ReasonDeath": get_hl7_field_value(msg, "pid.pid_30"),
     }
 
+
+def build_mpi_properties(msg: Message) -> dict[str, str]:
+    return _build_mpi_like_properties(msg)
+
+
+def build_wds_properties(msg: Message) -> dict[str, str]:
+    return _build_mpi_like_properties(msg)
+
+
 FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {
     "mpi": build_mpi_properties,
+    "wds": build_wds_properties,
 }
 
 def _pipe_wrap(values: list[str]) -> str:
