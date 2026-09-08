@@ -10,15 +10,15 @@ code is merged into `main`. The dashboard must show both:
 
 ## Current State
 
-- No coverage tooling is installed anywhere in the repo today — `pr-validation.yml` and the per-service
+- Before this rollout, no coverage tooling was installed anywhere in the repo — `pr-validation.yml` and the per-service
   `*-build.yml` pipelines run `ruff`, `bandit`, `uv audit`, `mypy` and unit tests (`unittest discover` or
-  `pytest`), but none of them measure or publish coverage.
+  `pytest`), but none of them measured or published coverage.
 - Unit tests exist per-service under each `<service>/tests/` directory (see `code-quality-template.yml`
   and `pr-validation.yml` for the full list of ~20 services + shared libs).
 - Each service is an isolated Python package with its own `pyproject.toml`/`uv.lock`/venv — there is no
   single combined test run today. This means overall coverage must be **aggregated** from N independent
   per-service coverage reports, not measured in one process.
-- No coverage-related ADO pipeline tasks (`PublishCodeCoverageResults`, ReportGenerator, etc.) exist yet.
+- Before this rollout, no coverage-related ADO pipeline tasks (`PublishCodeCoverageResults`, ReportGenerator, etc.) existed yet.
 
 ## Constraints / Decisions
 
