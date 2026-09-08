@@ -39,13 +39,18 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
     # Ingress is configured as either a queue, or a topic+subscription pair
     # (mutually exclusive, validated in AppConfig.__post_init__).
-    ingress_name = config.ingress_queue_name or config.ingress_topic_name
-
     if config.ingress_queue_name:
+        ingress_name: str = config.ingress_queue_name
         receiver_client_cm = factory.create_message_receiver_client(
             config.ingress_queue_name, config.ingress_session_id
         )
     else:
+        if not (config.ingress_topic_name and config.ingress_subscription_name):
+            raise RuntimeError(
+                "Invalid ingress configuration: topic ingress requires both "
+                "INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME to be set."
+            )
+        ingress_name = f"{config.ingress_topic_name}/{config.ingress_subscription_name}"
         receiver_client_cm = factory.create_subscription_receiver_client(
             config.ingress_topic_name,
             config.ingress_subscription_name,

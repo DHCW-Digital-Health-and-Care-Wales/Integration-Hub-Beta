@@ -36,11 +36,14 @@ class AppConfig:
             connection_string=_read_env(
                 "SERVICE_BUS_CONNECTION_STRING", required=False
             ),
-            ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=False),
-            ingress_topic_name=_read_env("INGRESS_TOPIC_NAME", required=False),
-            ingress_subscription_name=_read_env(
-                "INGRESS_SUBSCRIPTION_NAME", required=False
-            ),
+            ingress_queue_name=(_read_env("INGRESS_QUEUE_NAME", required=False) or "").strip()
+            or None,
+            ingress_topic_name=(_read_env("INGRESS_TOPIC_NAME", required=False) or "").strip()
+            or None,
+            ingress_subscription_name=(
+                _read_env("INGRESS_SUBSCRIPTION_NAME", required=False) or ""
+            ).strip()
+            or None,
             ingress_session_id=_read_env("INGRESS_SESSION_ID", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
