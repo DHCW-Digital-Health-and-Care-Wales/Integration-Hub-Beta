@@ -1,1 +1,0 @@
-/bin/bash: run-all-tests.sh: No such file or directory
