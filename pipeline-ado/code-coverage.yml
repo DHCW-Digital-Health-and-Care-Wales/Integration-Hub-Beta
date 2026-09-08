@@ -143,6 +143,10 @@ stages:
                     uv sync --active --locked --no-dev || APP_FAILED=1
                     uv pip install --active "coverage>=7.6.0" || APP_FAILED=1
                   fi
+
+                  if [ $APP_FAILED -ne 0 ]; then
+                    deactivate >/dev/null 2>&1 || true
+                  fi
                 fi
                 echo "##[endgroup]"
 
