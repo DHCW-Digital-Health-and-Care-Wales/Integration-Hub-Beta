@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="OMD_O03.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMD_O03.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="OMD_O03.ORDER_DIET"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMD_O03.ORDER_TRAY"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03" type="OMD_O03.CONTENT"/>
+    <xsd:complexType name="OMD_O03.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMD_O03.PATIENT_VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMD_O03.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.PATIENT" type="OMD_O03.PATIENT.CONTENT"/>
+    <xsd:complexType name="OMD_O03.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.PATIENT_VISIT" type="OMD_O03.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="OMD_O03.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.INSURANCE" type="OMD_O03.INSURANCE.CONTENT"/>
+    <xsd:complexType name="OMD_O03.ORDER_DIET.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMD_O03.TIMING_DIET"/>
+            <xsd:element minOccurs="0" ref="DIE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.ORDER_DIET" type="OMD_O03.ORDER_DIET.CONTENT"/>
+    <xsd:complexType name="OMD_O03.TIMING_DIET.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.TIMING_DIET" type="OMD_O03.TIMING_DIET.CONTENT"/>
+    <xsd:complexType name="DIE.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="ODS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMD_O03.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="DIE" type="DIE.CONTENT"/>
+    <xsd:complexType name="OMD_O03.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.OBSERVATION" type="OMD_O03.OBSERVATION.CONTENT"/>
+    <xsd:complexType name="OMD_O03.ORDER_TRAY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMD_O03.TIMING_TRAY"/>
+            <xsd:element maxOccurs="unbounded" ref="ODT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.ORDER_TRAY" type="OMD_O03.ORDER_TRAY.CONTENT"/>
+    <xsd:complexType name="OMD_O03.TIMING_TRAY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMD_O03.TIMING_TRAY" type="OMD_O03.TIMING_TRAY.CONTENT"/>
+</xsd:schema>

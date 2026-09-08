@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="RAS_O17.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="RAS_O17.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RAS_O17.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17" type="RAS_O17.CONTENT"/>
+    <xsd:complexType name="RAS_O17.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" ref="RAS_O17.PATIENT_VISIT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.PATIENT" type="RAS_O17.PATIENT.CONTENT"/>
+    <xsd:complexType name="RAS_O17.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.PATIENT_VISIT" type="RAS_O17.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="RAS_O17.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RAS_O17.TIMING"/>
+            <xsd:element minOccurs="0" ref="RAS_O17.ORDER_DETAIL"/>
+            <xsd:element minOccurs="0" ref="RAS_O17.ENCODING"/>
+            <xsd:element maxOccurs="unbounded" ref="RAS_O17.ADMINISTRATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.ORDER" type="RAS_O17.ORDER.CONTENT"/>
+    <xsd:complexType name="RAS_O17.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.TIMING" type="RAS_O17.TIMING.CONTENT"/>
+    <xsd:complexType name="RAS_O17.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXO"/>
+            <xsd:element minOccurs="0" ref="RAS_O17.ORDER_DETAIL_SUPPLEMENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.ORDER_DETAIL" type="RAS_O17.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="RAS_O17.ORDER_DETAIL_SUPPLEMENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RAS_O17.COMPONENTS"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.ORDER_DETAIL_SUPPLEMENT" type="RAS_O17.ORDER_DETAIL_SUPPLEMENT.CONTENT"/>
+    <xsd:complexType name="RAS_O17.COMPONENTS.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.COMPONENTS" type="RAS_O17.COMPONENTS.CONTENT"/>
+    <xsd:complexType name="RAS_O17.ENCODING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXE"/>
+            <xsd:element maxOccurs="unbounded" ref="RAS_O17.TIMING_ENCODED"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.ENCODING" type="RAS_O17.ENCODING.CONTENT"/>
+    <xsd:complexType name="RAS_O17.TIMING_ENCODED.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.TIMING_ENCODED" type="RAS_O17.TIMING_ENCODED.CONTENT"/>
+    <xsd:complexType name="RAS_O17.ADMINISTRATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="RXA"/>
+            <xsd:element ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RAS_O17.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.ADMINISTRATION" type="RAS_O17.ADMINISTRATION.CONTENT"/>
+    <xsd:complexType name="RAS_O17.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAS_O17.OBSERVATION" type="RAS_O17.OBSERVATION.CONTENT"/>
+</xsd:schema>

@@ -23,6 +23,7 @@ parameters:
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
+      - HL7 Core Reference Transformer
       - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
@@ -88,6 +89,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Pims Transformer - Build'
       source: 'HL7 Pims Transformer - Build'
+      trigger: none
+    - pipeline: 'HL7 Core Reference Transformer - Build'
+      source: 'HL7 Core Reference Transformer - Build'
       trigger: none
     - pipeline: 'HL7 Sender - Build'
       source: 'HL7 Sender - Build'
@@ -202,6 +206,11 @@ stages:
           appImageName: 'pims-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
+
+        - name: 'HL7 Core Reference Transformer'
+          appImageName: 'core-reference-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Core Reference Transformer - Build'
 
         - name: 'HL7 WDS Transformer'
           appImageName: 'wds-hl7transformer'

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="OPR_O38.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPR_O38.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPR_O38" type="OPR_O38.CONTENT"/>
+    <xsd:complexType name="OPR_O38.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPR_O38.SPECIMEN"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPR_O38.RESPONSE" type="OPR_O38.RESPONSE.CONTENT"/>
+    <xsd:complexType name="OPR_O38.SPECIMEN.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SPM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPR_O38.OBSERVATION_REQUEST"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPR_O38.TIMING"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPR_O38.SPECIMEN" type="OPR_O38.SPECIMEN.CONTENT"/>
+    <xsd:complexType name="OPR_O38.OBSERVATION_REQUEST.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPR_O38.OBSERVATION_REQUEST" type="OPR_O38.OBSERVATION_REQUEST.CONTENT"/>
+    <xsd:complexType name="OPR_O38.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPR_O38.TIMING" type="OPR_O38.TIMING.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="BPS_O29.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="BPS_O29.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="BPS_O29.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29" type="BPS_O29.CONTENT"/>
+    <xsd:complexType name="BPS_O29.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="BPS_O29.PATIENT_VISIT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29.PATIENT" type="BPS_O29.PATIENT.CONTENT"/>
+    <xsd:complexType name="BPS_O29.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29.PATIENT_VISIT" type="BPS_O29.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="BPS_O29.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BPS_O29.TIMING"/>
+            <xsd:element ref="BPO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BPS_O29.PRODUCT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29.ORDER" type="BPS_O29.ORDER.CONTENT"/>
+    <xsd:complexType name="BPS_O29.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29.TIMING" type="BPS_O29.TIMING.CONTENT"/>
+    <xsd:complexType name="BPS_O29.PRODUCT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="BPX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BPS_O29.PRODUCT" type="BPS_O29.PRODUCT.CONTENT"/>
+</xsd:schema>

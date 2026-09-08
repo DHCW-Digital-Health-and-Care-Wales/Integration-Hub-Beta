@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="ADT_A16.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ARV"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ARV"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DB1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADT_A16.PROCEDURE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADT_A16.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="ACC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A16" type="ADT_A16.CONTENT"/>
+    <xsd:complexType name="ADT_A16.PROCEDURE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PR1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A16.PROCEDURE" type="ADT_A16.PROCEDURE.CONTENT"/>
+    <xsd:complexType name="ADT_A16.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="IN3"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A16.INSURANCE" type="ADT_A16.INSURANCE.CONTENT"/>
+</xsd:schema>

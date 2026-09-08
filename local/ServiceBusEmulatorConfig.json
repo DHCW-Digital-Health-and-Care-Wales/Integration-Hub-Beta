@@ -33,7 +33,7 @@
             }
           },
           {
-            "Name": "local-inthub-risp-transformer-ingress",
+            "Name": "local-inthub-core-reference-transformer-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
               "DefaultMessageTimeToLive": "PT1H",

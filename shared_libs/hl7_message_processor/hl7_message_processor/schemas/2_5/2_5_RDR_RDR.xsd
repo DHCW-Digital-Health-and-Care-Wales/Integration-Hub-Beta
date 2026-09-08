@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="RDR_RDR.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element maxOccurs="unbounded" ref="RDR_RDR.DEFINITION"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR" type="RDR_RDR.CONTENT"/>
+    <xsd:complexType name="RDR_RDR.DEFINITION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="RDR_RDR.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RDR_RDR.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR.DEFINITION" type="RDR_RDR.DEFINITION.CONTENT"/>
+    <xsd:complexType name="RDR_RDR.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR.PATIENT" type="RDR_RDR.PATIENT.CONTENT"/>
+    <xsd:complexType name="RDR_RDR.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="RDR_RDR.ENCODING"/>
+            <xsd:element maxOccurs="unbounded" ref="RDR_RDR.DISPENSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR.ORDER" type="RDR_RDR.ORDER.CONTENT"/>
+    <xsd:complexType name="RDR_RDR.ENCODING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR.ENCODING" type="RDR_RDR.ENCODING.CONTENT"/>
+    <xsd:complexType name="RDR_RDR.DISPENSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXD"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RDR_RDR.DISPENSE" type="RDR_RDR.DISPENSE.CONTENT"/>
+</xsd:schema>

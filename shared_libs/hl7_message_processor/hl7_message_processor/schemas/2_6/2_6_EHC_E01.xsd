@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="EHC_E01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="UAC"/>
+            <xsd:element ref="IVC"/>
+            <xsd:element minOccurs="0" ref="PYE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+            <xsd:element minOccurs="0" ref="AUT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="LOC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E01.PRODUCT_SERVICE_SECTION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01" type="EHC_E01.CONTENT"/>
+    <xsd:complexType name="EHC_E01.PRODUCT_SERVICE_SECTION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSS"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E01.PRODUCT_SERVICE_GROUP"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.PRODUCT_SERVICE_SECTION" type="EHC_E01.PRODUCT_SERVICE_SECTION.CONTENT"/>
+    <xsd:complexType name="EHC_E01.PRODUCT_SERVICE_GROUP.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="LOC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E01.PATIENT_INFO"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E01.PRODUCT_SERVICE_LINE_ITEM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E01.PROCEDURE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E01.INVOICE_PROCESSING"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.PRODUCT_SERVICE_GROUP" type="EHC_E01.PRODUCT_SERVICE_GROUP.CONTENT"/>
+    <xsd:complexType name="EHC_E01.PATIENT_INFO.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ACC"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E01.INSURANCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E01.DIAGNOSIS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.PATIENT_INFO" type="EHC_E01.PATIENT_INFO.CONTENT"/>
+    <xsd:complexType name="EHC_E01.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.INSURANCE" type="EHC_E01.INSURANCE.CONTENT"/>
+    <xsd:complexType name="EHC_E01.DIAGNOSIS.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.DIAGNOSIS" type="EHC_E01.DIAGNOSIS.CONTENT"/>
+    <xsd:complexType name="EHC_E01.PRODUCT_SERVICE_LINE_ITEM.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADJ"/>
+            <xsd:element minOccurs="0" ref="AUT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="LOC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.PRODUCT_SERVICE_LINE_ITEM" type="EHC_E01.PRODUCT_SERVICE_LINE_ITEM.CONTENT"/>
+    <xsd:complexType name="EHC_E01.PROCEDURE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PR1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.PROCEDURE" type="EHC_E01.PROCEDURE.CONTENT"/>
+    <xsd:complexType name="EHC_E01.INVOICE_PROCESSING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IPR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E01.INVOICE_PROCESSING" type="EHC_E01.INVOICE_PROCESSING.CONTENT"/>
+</xsd:schema>

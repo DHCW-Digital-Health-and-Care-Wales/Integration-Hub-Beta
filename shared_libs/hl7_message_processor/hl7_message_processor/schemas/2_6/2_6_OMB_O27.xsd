@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="OMB_O27.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMB_O27.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="OMB_O27.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27" type="OMB_O27.CONTENT"/>
+    <xsd:complexType name="OMB_O27.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMB_O27.PATIENT_VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMB_O27.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.PATIENT" type="OMB_O27.PATIENT.CONTENT"/>
+    <xsd:complexType name="OMB_O27.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.PATIENT_VISIT" type="OMB_O27.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="OMB_O27.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.INSURANCE" type="OMB_O27.INSURANCE.CONTENT"/>
+    <xsd:complexType name="OMB_O27.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMB_O27.TIMING"/>
+            <xsd:element ref="BPO"/>
+            <xsd:element minOccurs="0" ref="SPM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMB_O27.OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="FT1"/>
+            <xsd:element minOccurs="0" ref="BLG"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.ORDER" type="OMB_O27.ORDER.CONTENT"/>
+    <xsd:complexType name="OMB_O27.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.TIMING" type="OMB_O27.TIMING.CONTENT"/>
+    <xsd:complexType name="OMB_O27.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMB_O27.OBSERVATION" type="OMB_O27.OBSERVATION.CONTENT"/>
+</xsd:schema>

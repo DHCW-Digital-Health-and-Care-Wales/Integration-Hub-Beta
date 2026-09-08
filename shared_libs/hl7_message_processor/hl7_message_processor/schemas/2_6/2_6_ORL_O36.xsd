@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="ORL_O36.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORL_O36.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36" type="ORL_O36.CONTENT"/>
+    <xsd:complexType name="ORL_O36.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element maxOccurs="unbounded" ref="ORL_O36.SPECIMEN"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.RESPONSE" type="ORL_O36.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORL_O36.SPECIMEN.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SPM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="ORL_O36.SPECIMEN_CONTAINER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.SPECIMEN" type="ORL_O36.SPECIMEN.CONTENT"/>
+    <xsd:complexType name="ORL_O36.SPECIMEN_CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORL_O36.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.SPECIMEN_CONTAINER" type="ORL_O36.SPECIMEN_CONTAINER.CONTENT"/>
+    <xsd:complexType name="ORL_O36.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORL_O36.TIMING"/>
+            <xsd:element minOccurs="0" ref="ORL_O36.OBSERVATION_REQUEST"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.ORDER" type="ORL_O36.ORDER.CONTENT"/>
+    <xsd:complexType name="ORL_O36.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.TIMING" type="ORL_O36.TIMING.CONTENT"/>
+    <xsd:complexType name="ORL_O36.OBSERVATION_REQUEST.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O36.OBSERVATION_REQUEST" type="ORL_O36.OBSERVATION_REQUEST.CONTENT"/>
+</xsd:schema>

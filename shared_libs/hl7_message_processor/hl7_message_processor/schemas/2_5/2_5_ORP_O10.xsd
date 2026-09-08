@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="ORP_O10.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORP_O10.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10" type="ORP_O10.CONTENT"/>
+    <xsd:complexType name="ORP_O10.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORP_O10.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORP_O10.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.RESPONSE" type="ORP_O10.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORP_O10.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.PATIENT" type="ORP_O10.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORP_O10.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORP_O10.TIMING"/>
+            <xsd:element minOccurs="0" ref="ORP_O10.ORDER_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.ORDER" type="ORP_O10.ORDER.CONTENT"/>
+    <xsd:complexType name="ORP_O10.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.TIMING" type="ORP_O10.TIMING.CONTENT"/>
+    <xsd:complexType name="ORP_O10.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORP_O10.COMPONENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.ORDER_DETAIL" type="ORP_O10.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="ORP_O10.COMPONENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORP_O10.COMPONENT" type="ORP_O10.COMPONENT.CONTENT"/>
+</xsd:schema>

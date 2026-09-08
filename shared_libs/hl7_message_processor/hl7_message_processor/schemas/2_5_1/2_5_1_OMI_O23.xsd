@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="OMI_O23.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMI_O23.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="OMI_O23.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23" type="OMI_O23.CONTENT"/>
+    <xsd:complexType name="OMI_O23.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OMI_O23.PATIENT_VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMI_O23.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.PATIENT" type="OMI_O23.PATIENT.CONTENT"/>
+    <xsd:complexType name="OMI_O23.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.PATIENT_VISIT" type="OMI_O23.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="OMI_O23.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.INSURANCE" type="OMI_O23.INSURANCE.CONTENT"/>
+    <xsd:complexType name="OMI_O23.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMI_O23.TIMING"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="CTD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OMI_O23.OBSERVATION"/>
+            <xsd:element maxOccurs="unbounded" ref="IPC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.ORDER" type="OMI_O23.ORDER.CONTENT"/>
+    <xsd:complexType name="OMI_O23.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.TIMING" type="OMI_O23.TIMING.CONTENT"/>
+    <xsd:complexType name="OMI_O23.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OMI_O23.OBSERVATION" type="OMI_O23.OBSERVATION.CONTENT"/>
+</xsd:schema>

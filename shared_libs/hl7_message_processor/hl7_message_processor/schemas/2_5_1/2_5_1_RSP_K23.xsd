@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="RSP_K23.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element ref="QAK"/>
+            <xsd:element ref="QPD"/>
+            <xsd:element minOccurs="0" ref="RSP_K23.QUERY_RESPONSE"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RSP_K23" type="RSP_K23.CONTENT"/>
+    <xsd:complexType name="RSP_K23.QUERY_RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RSP_K23.QUERY_RESPONSE" type="RSP_K23.QUERY_RESPONSE.CONTENT"/>
+</xsd:schema>

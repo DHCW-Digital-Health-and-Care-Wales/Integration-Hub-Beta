@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="ADT_A05.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DB1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADT_A05.PROCEDURE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADT_A05.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="ACC"/>
+            <xsd:element minOccurs="0" ref="UB1"/>
+            <xsd:element minOccurs="0" ref="UB2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A05" type="ADT_A05.CONTENT"/>
+    <xsd:complexType name="ADT_A05.PROCEDURE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PR1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A05.PROCEDURE" type="ADT_A05.PROCEDURE.CONTENT"/>
+    <xsd:complexType name="ADT_A05.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="IN3"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A05.INSURANCE" type="ADT_A05.INSURANCE.CONTENT"/>
+</xsd:schema>

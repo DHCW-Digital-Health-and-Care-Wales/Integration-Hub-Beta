@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="NMR_N01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" ref="QRD"/>
+            <xsd:element maxOccurs="unbounded" ref="NMR_N01.CLOCK_AND_STATS_WITH_NOTES_ALT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="NMR_N01" type="NMR_N01.CONTENT"/>
+    <xsd:complexType name="NMR_N01.CLOCK_AND_STATS_WITH_NOTES_ALT.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="NCK"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="NST"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="NSC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="NMR_N01.CLOCK_AND_STATS_WITH_NOTES_ALT" type="NMR_N01.CLOCK_AND_STATS_WITH_NOTES_ALT.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="MFN_M10.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_M10.MF_TEST_BATTERIES"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M10" type="MFN_M10.CONTENT"/>
+    <xsd:complexType name="MFN_M10.MF_TEST_BATTERIES.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="OM1"/>
+            <xsd:element minOccurs="0" ref="MFN_M10.MF_TEST_BATT_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M10.MF_TEST_BATTERIES" type="MFN_M10.MF_TEST_BATTERIES.CONTENT"/>
+    <xsd:complexType name="MFN_M10.MF_TEST_BATT_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OM5"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OM4"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M10.MF_TEST_BATT_DETAIL" type="MFN_M10.MF_TEST_BATT_DETAIL.CONTENT"/>
+</xsd:schema>

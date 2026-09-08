@@ -6,11 +6,17 @@ more than one destination and format from a single inbound request:
 - ``A28``/``A31``/``A40`` -> ``risp-hl7-transformer`` -> MPI, as ER7.
 - ``A40`` -> additionally WRRS, as HL7 v2 XML (no transformer involved).
 - ``ORU_R01``/``OMG_O19`` -> WRRS only, as HL7 v2 XML, after custom XSD schema validation.
+
+Both the A40->WRRS conversion and the ORU_R01/OMG_O19 validation use ``hl7_message_processor``
+(``shared_libs/hl7_message_processor``) rather than ``hl7_validation``: it resolves the structure
+XSD itself from the message's own MSH-12.1/MSH-9 (no per-structure schema-file mapping needed here)
+and fixes the arbitrary-depth group-nesting defects documented in
+``notes/hl7-message-processor-design-report.md``.
 """
 
 from dataclasses import dataclass
 
-from hl7_validation import convert_er7_to_xml, validate_and_convert_parsed_message_with_structure_schema
+from hl7_message_processor import MessageNotProcessableError, XmlValidationError, process_er7, validate_xml
 from hl7apy.core import Message
 
 from rest_server.hl7.custom_validation.risp_validation import (
@@ -25,15 +31,6 @@ from rest_server.hl7.exceptions.validation_exception import ValidationException
 
 MPI_TRANSFORMER_DESTINATION = "mpi_transformer"
 WRRS_DESTINATION = "wrrs"
-
-# Maps a message structure (MSH.9.3) to its XSD file stem, both looked up under the structure's
-# own directory in shared_libs/hl7_validation/hl7_validation/resources/ (e.g. "ORU_R01/ORU_R01_2_5_1.xsd")
-# — keyed by structure + HL7 version rather than by flow, so multiple flows sharing the same
-# message structure/version reuse a single schema instead of duplicating it per flow.
-ORU_OMG_SCHEMA_FILES: dict[str, str] = {
-    "ORU_R01": "ORU_R01_2_5_1",
-    "OMG_O19": "OMG_O19_2_5_1",
-}
 
 
 @dataclass(frozen=True)
@@ -67,22 +64,40 @@ class RispFlowRouter:
             targets.append(RoutingTarget(MPI_TRANSFORMER_DESTINATION, raw_message, is_xml=False))
 
         if trigger in WRRS_DIRECT_ADT_TRIGGERS:
-            targets.append(RoutingTarget(WRRS_DESTINATION, convert_er7_to_xml(raw_message), is_xml=True))
+            xml_payload = self._convert_for_wrrs(raw_message, trigger)
+            targets.append(RoutingTarget(WRRS_DESTINATION, xml_payload, is_xml=True))
         elif structure in ORU_OMG_STRUCTURES:
-            xml_payload = self._validate_and_convert_for_wrrs(msg, raw_message, structure)
+            xml_payload = self._validate_and_convert_for_wrrs(raw_message, structure)
             targets.append(RoutingTarget(WRRS_DESTINATION, xml_payload, is_xml=True))
 
         return targets
 
     @staticmethod
-    def _validate_and_convert_for_wrrs(msg: Message, raw_message: str, structure: str) -> str:
-        schema_file_name = ORU_OMG_SCHEMA_FILES[structure]
-        result = validate_and_convert_parsed_message_with_structure_schema(
-            msg, raw_message, structure, schema_file_name
-        )
-        if not result.is_valid:
+    def _convert_for_wrrs(raw_message: str, trigger: str) -> str:
+        """Convert a pipe-and-hat ``trigger`` message (e.g. ``A40``) to HL7 v2 XML for WRRS.
+
+        Uses ``hl7_message_processor.process_er7``, which resolves the structure XSD from the
+        message's own MSH-12.1/MSH-9 before converting — this correctly nests the message's group(s)
+        (e.g. ``ADT_A39.PATIENT``), unlike a schema-less conversion.
+        """
+        try:
+            return process_er7(raw_message).xml
+        except MessageNotProcessableError as error:
             raise ValidationException(
-                f"XSD schema validation failed for '{structure}': "
-                f"{result.error_message or 'Unknown XML validation error'}"
-            )
-        return result.xml_string
+                f"Failed to convert '{trigger}' message to HL7 v2 XML for WRRS: {error}"
+            ) from error
+
+    @staticmethod
+    def _validate_and_convert_for_wrrs(raw_message: str, structure: str) -> str:
+        """Convert and validate an ``ORU_R01``/``OMG_O19`` message against its structure XSD.
+
+        Uses ``hl7_message_processor.process_er7`` + ``validate_xml`` instead of a hard-coded
+        per-structure schema-file mapping — the schema is resolved automatically from the
+        message's own MSH-12.1/MSH-9.
+        """
+        try:
+            result = process_er7(raw_message)
+            validate_xml(result.xml, str(result.xsd_path))
+        except (MessageNotProcessableError, XmlValidationError) as error:
+            raise ValidationException(f"XSD schema validation failed for '{structure}': {error}") from error
+        return result.xml

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RPI_I04.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element maxOccurs="unbounded" ref="RPI_I04.PROVIDER"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" ref="RPI_I04.GUARANTOR_INSURANCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPI_I04" type="RPI_I04.CONTENT"/>
+    <xsd:complexType name="RPI_I04.PROVIDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPI_I04.PROVIDER" type="RPI_I04.PROVIDER.CONTENT"/>
+    <xsd:complexType name="RPI_I04.GUARANTOR_INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element maxOccurs="unbounded" ref="RPI_I04.INSURANCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPI_I04.GUARANTOR_INSURANCE" type="RPI_I04.GUARANTOR_INSURANCE.CONTENT"/>
+    <xsd:complexType name="RPI_I04.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPI_I04.INSURANCE" type="RPI_I04.INSURANCE.CONTENT"/>
+</xsd:schema>

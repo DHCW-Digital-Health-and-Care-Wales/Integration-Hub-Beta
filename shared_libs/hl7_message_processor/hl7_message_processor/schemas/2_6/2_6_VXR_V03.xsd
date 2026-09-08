@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="VXR_V03.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" ref="VXR_V03.PATIENT_VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VXR_V03.INSURANCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VXR_V03.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03" type="VXR_V03.CONTENT"/>
+    <xsd:complexType name="VXR_V03.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03.PATIENT_VISIT" type="VXR_V03.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="VXR_V03.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03.INSURANCE" type="VXR_V03.INSURANCE.CONTENT"/>
+    <xsd:complexType name="VXR_V03.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VXR_V03.TIMING"/>
+            <xsd:element ref="RXA"/>
+            <xsd:element minOccurs="0" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="VXR_V03.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03.ORDER" type="VXR_V03.ORDER.CONTENT"/>
+    <xsd:complexType name="VXR_V03.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03.TIMING" type="VXR_V03.TIMING.CONTENT"/>
+    <xsd:complexType name="VXR_V03.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXR_V03.OBSERVATION" type="VXR_V03.OBSERVATION.CONTENT"/>
+</xsd:schema>

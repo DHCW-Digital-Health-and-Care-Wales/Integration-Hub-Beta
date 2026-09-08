@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="CRM_C01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element maxOccurs="unbounded" ref="CRM_C01.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CRM_C01" type="CRM_C01.CONTENT"/>
+    <xsd:complexType name="CRM_C01.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PV1"/>
+            <xsd:element ref="CSR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CSP"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CRM_C01.PATIENT" type="CRM_C01.PATIENT.CONTENT"/>
+</xsd:schema>

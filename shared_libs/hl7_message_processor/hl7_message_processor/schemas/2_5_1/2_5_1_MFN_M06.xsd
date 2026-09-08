@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="MFN_M06.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_M06.MF_CLIN_STUDY"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M06" type="MFN_M06.CONTENT"/>
+    <xsd:complexType name="MFN_M06.MF_CLIN_STUDY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="CM0"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MFN_M06.MF_PHASE_SCHED_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M06.MF_CLIN_STUDY" type="MFN_M06.MF_CLIN_STUDY.CONTENT"/>
+    <xsd:complexType name="MFN_M06.MF_PHASE_SCHED_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="CM1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CM2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M06.MF_PHASE_SCHED_DETAIL" type="MFN_M06.MF_PHASE_SCHED_DETAIL.CONTENT"/>
+</xsd:schema>
