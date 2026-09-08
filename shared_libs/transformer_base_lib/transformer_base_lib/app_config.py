@@ -3,7 +3,7 @@ from __future__ import annotations
 import configparser
 import logging
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 class AppConfig:
     connection_string: str | None
     ingress_queue_name: str | None
-    ingress_topic_name: str | None
-    ingress_subscription_name: str | None
+    # kw_only + default so these can be added without shifting the positional
+    # argument order of any existing (non-topic) caller across the codebase.
+    ingress_topic_name: str | None = field(default=None, kw_only=True)
+    ingress_subscription_name: str | None = field(default=None, kw_only=True)
     ingress_session_id: str | None
     egress_queue_name: str | None
     egress_session_id: str | None
