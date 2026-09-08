@@ -37,13 +37,26 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
+    # Ingress is configured as either a queue, or a topic+subscription pair
+    # (mutually exclusive, validated in AppConfig.__post_init__).
+    ingress_name = config.ingress_queue_name or config.ingress_topic_name
+
+    if config.ingress_queue_name:
+        receiver_client_cm = factory.create_message_receiver_client(
+            config.ingress_queue_name, config.ingress_session_id
+        )
+    else:
+        receiver_client_cm = factory.create_subscription_receiver_client(
+            config.ingress_topic_name,
+            config.ingress_subscription_name,
+            config.ingress_session_id,
+        )
+
     with (
         factory.create_queue_sender_client(
             config.egress_queue_name, config.egress_session_id
         ) as sender_client,
-        factory.create_message_receiver_client(
-            config.ingress_queue_name, config.ingress_session_id
-        ) as receiver_client,
+        receiver_client_cm as receiver_client,
         TCPHealthCheckServer(
             config.health_check_hostname, config.health_check_port
         ) as health_check_server,
@@ -76,7 +89,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
             )
 
         wrapped_processor = processor_manager.wrap_handler(
-            message_processor, transformer.transformer_name, config.ingress_queue_name
+            message_processor, transformer.transformer_name, ingress_name
         )
         while processor_manager.is_running:
             receiver_client.receive_messages(

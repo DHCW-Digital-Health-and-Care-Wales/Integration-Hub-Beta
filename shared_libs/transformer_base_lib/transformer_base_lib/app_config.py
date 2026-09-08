@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 class AppConfig:
     connection_string: str | None
     ingress_queue_name: str | None
+    ingress_topic_name: str | None
+    ingress_subscription_name: str | None
     ingress_session_id: str | None
     egress_queue_name: str | None
     egress_session_id: str | None
@@ -21,13 +23,24 @@ class AppConfig:
     health_check_hostname: str | None
     health_check_port: int | None
 
+    def __post_init__(self) -> None:
+        _validate_ingress_config(
+            self.ingress_queue_name,
+            self.ingress_topic_name,
+            self.ingress_subscription_name,
+        )
+
     @staticmethod
     def read_env_config() -> AppConfig:
         return AppConfig(
             connection_string=_read_env(
                 "SERVICE_BUS_CONNECTION_STRING", required=False
             ),
-            ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=True),
+            ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=False),
+            ingress_topic_name=_read_env("INGRESS_TOPIC_NAME", required=False),
+            ingress_subscription_name=_read_env(
+                "INGRESS_SUBSCRIPTION_NAME", required=False
+            ),
             ingress_session_id=_read_env("INGRESS_SESSION_ID", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
@@ -70,6 +83,34 @@ class TransformerConfig(AppConfig):
             )
 
         return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
+
+
+def _validate_ingress_config(
+    ingress_queue_name: str | None,
+    ingress_topic_name: str | None,
+    ingress_subscription_name: str | None,
+) -> None:
+    """Ensure ingress is configured as exactly one of: a queue, or a topic+subscription pair."""
+    has_queue = bool(ingress_queue_name)
+    has_topic = bool(ingress_topic_name) or bool(ingress_subscription_name)
+
+    if has_queue and has_topic:
+        raise RuntimeError(
+            "Invalid ingress configuration: INGRESS_QUEUE_NAME cannot be set together with "
+            "INGRESS_TOPIC_NAME/INGRESS_SUBSCRIPTION_NAME. Configure only one ingress transport."
+        )
+
+    if not has_queue and not has_topic:
+        raise RuntimeError(
+            "Missing required configuration: set either INGRESS_QUEUE_NAME, or both "
+            "INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME."
+        )
+
+    if has_topic and (not ingress_topic_name or not ingress_subscription_name):
+        raise RuntimeError(
+            "Missing required configuration: INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME "
+            "must both be set when using topic-based ingress."
+        )
 
 
 def _read_env(name: str, required: bool = False) -> str | None:
