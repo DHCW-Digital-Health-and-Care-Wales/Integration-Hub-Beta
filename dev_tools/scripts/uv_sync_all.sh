@@ -5,7 +5,10 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-SEARCH_DIR="${1:-.}"
+# Two levels up: dev_tools/scripts/ -> dev_tools/ -> repo root.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+SEARCH_DIR="${1:-$ROOT_DIR}"
 
 # Check if uv is available
 if ! command -v uv &> /dev/null; then

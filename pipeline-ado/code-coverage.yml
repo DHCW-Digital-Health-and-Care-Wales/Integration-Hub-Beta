@@ -1,0 +1,263 @@
+# Code Coverage Pipeline — runs on every merge to main
+# Collects per-service coverage.py results, aggregates them with ReportGenerator into a single
+# Cobertura report (published to the ADO build's Coverage tab) plus an HTML drill-down report
+# and a persisted trend history, for use by the "Code Coverage" ADO Dashboard widget.
+# See docs/code_coverage.md for the full plan.
+trigger:
+  branches:
+    include:
+      - main
+pr: none
+
+variables:
+  pythonVersion: '3.13'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  # ── Stage 1: run each service's own tests under coverage.py ────────────────────────────
+  - stage: CollectCoverage
+    displayName: 'Collect Per-Service Coverage'
+    jobs:
+      - job: CoverageAll
+        displayName: 'Run Tests With Coverage — All Apps'
+        pool:
+          name: ${{ variables.POOL_NAME }}
+        timeoutInMinutes: 45
+
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository'
+            fetchDepth: 1
+
+          - task: UsePythonVersion@0
+            displayName: 'Use Python $(pythonVersion)'
+            inputs:
+              versionSpec: '$(pythonVersion)'
+
+          - task: Cache@2
+            displayName: 'Cache UV tools and packages'
+            continueOnError: true
+            inputs:
+              key: 'uv-cache | "python-$(pythonVersion)" | "$(Agent.OS)" | "code-coverage"'
+              restoreKeys: |
+                uv-cache | "python-$(pythonVersion)" | "$(Agent.OS)"
+              path: $(Pipeline.Workspace)/.uv-cache
+
+          - script: |
+              set -euo pipefail
+              export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
+              python -m pip install uv
+              uv --version
+            displayName: 'Install UV'
+            env:
+              UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
+
+          - script: |
+              set -euo pipefail
+              export UV_CACHE_DIR="$(Pipeline.Workspace)/.uv-cache"
+
+              has_dev_dependency_group() {
+                local python_script
+                python_script=$'import pathlib\nimport sys\nimport tomllib\n\npyproject_path = pathlib.Path("pyproject.toml")\nif not pyproject_path.is_file():\n    print("##[error]pyproject.toml is missing", file=sys.stderr)\n    raise SystemExit(2)\n\ntry:\n    data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))\nexcept tomllib.TOMLDecodeError as exc:\n    print(f"##[error]Failed to parse pyproject.toml: {exc}", file=sys.stderr)\n    raise SystemExit(2)\n\nraise SystemExit(0 if data.get("dependency-groups", {}).get("dev") else 1)\n'
+                python -c "$python_script"
+              }
+
+              # "appDir|displayName|testRunner" — keep in sync with pipeline-ado/pr-validation.yml's APPS list.
+              # See docs/code_coverage.md for how this list was derived.
+              APPS=(
+                "servers/hl7_server|HL7 Server|unittest"
+                "servers/hl7_rest_server|HL7 REST Server|unittest"
+                "servers/rest_server|REST Server|unittest"
+                "servers/hl7_soap_server|HL7 SOAP Server|unittest"
+                "transformers/hl7_phw_transformer|PHW HL7 Transformer|unittest"
+                "transformers/hl7_pims_transformer|PIMS HL7 Transformer|unittest"
+                "transformers/hl7_chemo_transformer|Chemo HL7 Transformer|unittest"
+                "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer|unittest"
+                "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer|unittest"
+                "hl7_wds_transformer|WDS HL7 Transformer|pytest"
+                "senders/hl7_sender|HL7 Sender|unittest"
+                "senders/hl7_subscription_sender|HL7 Subscription Sender|unittest"
+                "senders/soap_sender|SOAP Sender|pytest"
+                "senders/soap_subscription_sender|SOAP Subscription Sender|pytest"
+                "mock_receivers/hl7_mock_receiver|HL7 Mock Receiver|unittest"
+                "mock_receivers/http_mock_receiver|HTTP Mock Receiver|pytest"
+                "message_processing/message_store_service|Message Store Service|unittest"
+                "message_processing/message_replay_job|Message Replay Job|unittest"
+                "dev_tools/buswatch|BusWatch|unittest"
+                "dev_tools/ultra7|Ultra7|unittest"
+                "dashboard|Dashboard|pytest"
+                "shared_libs/message_bus_lib|Message Bus Library|unittest"
+                "shared_libs/event_logger_lib|Event Logger Library|unittest"
+                "shared_libs/health_check_lib|Health Check Library|unittest"
+                "shared_libs/hl7_validation|HL7 Validation Library|unittest"
+                "shared_libs/metric_sender_lib|Metric Sender Library|unittest"
+                "shared_libs/otel_lib|OTel Library|unittest"
+                "shared_libs/processor_manager_lib|Processor Manager Library|unittest"
+                "shared_libs/transformer_base_lib|Transformer Base Library|unittest"
+                "shared_libs/field_utils_lib|Field Utils Library|unittest"
+                "shared_libs/hl7_message_processor|HL7 Message Processor Library|unittest"
+                "shared_libs/wrds_service|WRDS Service Library|unittest"
+              )
+
+              RAW_DIR="$(Build.ArtifactStagingDirectory)/coverage-raw"
+              VENV_ROOT="$(Pipeline.Workspace)/.coverage-envs"
+              mkdir -p "$RAW_DIR"
+              rm -rf "$VENV_ROOT"
+              mkdir -p "$VENV_ROOT"
+
+              OVERALL_RESULT=0
+              FAILED_APPS=""
+
+              for entry in "${APPS[@]}"; do
+                IFS='|' read -r APP_DIR DISPLAY_NAME TEST_RUNNER <<< "$entry"
+
+                echo ""
+                echo "╔══════════════════════════════════════════════════════════════╗"
+                echo "║  $DISPLAY_NAME"
+                echo "╚══════════════════════════════════════════════════════════════╝"
+
+                if [ ! -d "$(Build.SourcesDirectory)/$APP_DIR/tests" ]; then
+                  echo "No tests directory found for $DISPLAY_NAME, skipping"
+                  continue
+                fi
+
+                APP_FAILED=0
+                SAFE_NAME=$(echo "$APP_DIR" | tr '/.' '__')
+                APP_ENV="$VENV_ROOT/$SAFE_NAME"
+
+                echo "##[group]📦 Install $DISPLAY_NAME dependencies"
+                cd "$(Build.SourcesDirectory)/$APP_DIR"
+                rm -rf "$APP_ENV"
+                if ! uv venv "$APP_ENV" || ! source "$APP_ENV/bin/activate"; then
+                  echo "##[error]Failed to create/activate isolated environment for $DISPLAY_NAME"
+                  APP_FAILED=1
+                else
+                  set +e
+                  has_dev_dependency_group
+                  DEV_GROUP_STATUS=$?
+                  set -e
+                  if [ $DEV_GROUP_STATUS -eq 0 ]; then
+                    uv sync --active --locked --group dev || APP_FAILED=1
+                  else
+                    uv sync --active --locked --no-dev || APP_FAILED=1
+                    uv pip install --active "coverage>=7.6.0" || APP_FAILED=1
+                  fi
+
+                  if [ $APP_FAILED -ne 0 ]; then
+                    deactivate >/dev/null 2>&1 || true
+                  fi
+                fi
+                echo "##[endgroup]"
+
+                if [ $APP_FAILED -eq 0 ]; then
+                  echo "##[group]🧪 Coverage — $DISPLAY_NAME"
+                  if [ "$TEST_RUNNER" = "pytest" ]; then
+                    coverage run --source=. -m pytest tests -v || APP_FAILED=1
+                  else
+                    coverage run --source=. -m unittest discover tests -v || APP_FAILED=1
+                  fi
+
+                  mkdir -p "$RAW_DIR/$SAFE_NAME"
+                  # Publish whatever coverage was captured even if a test failed, so a single
+                  # flaky/broken suite doesn't blank out the whole dashboard.
+                  coverage xml -o "$RAW_DIR/$SAFE_NAME/coverage.xml" || echo "##[warning]No coverage data for $DISPLAY_NAME"
+                  coverage report || true
+                  echo "##[endgroup]"
+                  deactivate >/dev/null 2>&1 || true
+                fi
+
+                if [ $APP_FAILED -eq 1 ]; then
+                  OVERALL_RESULT=1
+                  FAILED_APPS="$FAILED_APPS  ❌ $DISPLAY_NAME\n"
+                  echo "##[error]❌ $DISPLAY_NAME — FAILED"
+                else
+                  echo "✅ $DISPLAY_NAME — PASSED"
+                fi
+                cd "$(Build.SourcesDirectory)"
+              done
+
+              echo ""
+              echo "════════════════════════════════════════════════════════════════"
+              if [ $OVERALL_RESULT -eq 0 ]; then
+                echo "✅ Coverage collected for all apps"
+              else
+                # Don't fail the whole pipeline on test failures here — pr-validation.yml already
+                # gates merges to main. This pipeline's job is to keep the dashboard up to date.
+                echo "##[warning]Some apps had failing tests, coverage may be incomplete:"
+                echo -e "$FAILED_APPS"
+              fi
+            displayName: 'Run Tests With Coverage — All Apps'
+            env:
+              UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache
+
+          - publish: $(Build.ArtifactStagingDirectory)/coverage-raw
+            artifact: coverage-raw
+            displayName: 'Publish Raw Per-Service Coverage'
+
+  # ── Stage 2: merge all per-service Cobertura files into one report ─────────────────────
+  - stage: AggregateCoverage
+    displayName: 'Aggregate Coverage'
+    dependsOn: CollectCoverage
+    jobs:
+      - job: Aggregate
+        displayName: 'Merge Coverage Reports'
+        pool:
+          name: ${{ variables.POOL_NAME }}
+        timeoutInMinutes: 20
+
+        steps:
+          - checkout: self
+            displayName: 'Checkout Repository (for source mapping)'
+            fetchDepth: 1
+
+          - download: current
+            artifact: coverage-raw
+            displayName: 'Download Per-Service Coverage'
+
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Previous Coverage History (if any)'
+            continueOnError: true
+            inputs:
+              source: 'specific'
+              project: '$(System.TeamProject)'
+              pipeline: '$(System.DefinitionId)'
+              runVersion: 'latestFromBranch'
+              runBranch: 'refs/heads/main'
+              artifact: 'coverage-history'
+              targetPath: '$(Pipeline.Workspace)/coverage-history'
+
+          - task: UseDotNet@2
+            displayName: 'Use .NET SDK (for ReportGenerator)'
+            inputs:
+              packageType: 'sdk'
+              version: '8.x'
+
+          - script: |
+              set -euo pipefail
+              dotnet tool install --global dotnet-reportgenerator-globaltool
+              export PATH="$PATH:$HOME/.dotnet/tools"
+
+              mkdir -p "$(Pipeline.Workspace)/coverage-history"
+              mkdir -p "$(Build.ArtifactStagingDirectory)/coverage-report"
+
+              reportgenerator \
+                -reports:"$(Pipeline.Workspace)/coverage-raw/**/coverage.xml" \
+                -targetdir:"$(Build.ArtifactStagingDirectory)/coverage-report" \
+                -reporttypes:"HtmlInline_AzurePipelines;Cobertura;Badges;TextSummary" \
+                -historydir:"$(Pipeline.Workspace)/coverage-history"
+
+              cat "$(Build.ArtifactStagingDirectory)/coverage-report/Summary.txt"
+            displayName: 'Merge Coverage With ReportGenerator'
+
+          - task: PublishCodeCoverageResults@2
+            displayName: 'Publish Merged Coverage to Build Summary'
+            inputs:
+              summaryFileLocation: '$(Build.ArtifactStagingDirectory)/coverage-report/Cobertura.xml'
+
+          - publish: $(Build.ArtifactStagingDirectory)/coverage-report
+            artifact: coverage-report
+            displayName: 'Publish Detailed HTML Coverage Report'
+
+          - publish: $(Pipeline.Workspace)/coverage-history
+            artifact: coverage-history
+            displayName: 'Publish Coverage History (for next run''s trend)'
