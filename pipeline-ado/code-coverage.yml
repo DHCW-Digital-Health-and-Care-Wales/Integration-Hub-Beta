@@ -62,9 +62,8 @@ stages:
                 python -c "$python_script"
               }
 
-              # "appDir|displayName|testRunner" — must stay in sync with pr-validation.yml's
-              # APPS list plus the newer services it currently omits (see repo memory:
-              # code-coverage-rollout.md for how this list was derived).
+              # "appDir|displayName|testRunner" — keep in sync with pipeline-ado/pr-validation.yml's APPS list.
+              # See docs/code_coverage.md for how this list was derived.
               APPS=(
                 "servers/hl7_server|HL7 Server|unittest"
                 "servers/hl7_rest_server|HL7 REST Server|unittest"
