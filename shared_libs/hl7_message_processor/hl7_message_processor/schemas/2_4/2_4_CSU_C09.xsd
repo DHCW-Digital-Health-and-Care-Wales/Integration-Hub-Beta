@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="CSU_C09.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09" type="CSU_C09.CONTENT"/>
+    <xsd:complexType name="CSU_C09.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="CSU_C09.VISIT"/>
+            <xsd:element ref="CSR"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.STUDY_PHASE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.PATIENT" type="CSU_C09.PATIENT.CONTENT"/>
+    <xsd:complexType name="CSU_C09.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.VISIT" type="CSU_C09.VISIT.CONTENT"/>
+    <xsd:complexType name="CSU_C09.STUDY_PHASE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CSP"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.STUDY_SCHEDULE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.STUDY_PHASE" type="CSU_C09.STUDY_PHASE.CONTENT"/>
+    <xsd:complexType name="CSU_C09.STUDY_SCHEDULE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="CSS"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.STUDY_OBSERVATION"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.STUDY_PHARM"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.STUDY_SCHEDULE" type="CSU_C09.STUDY_SCHEDULE.CONTENT"/>
+    <xsd:complexType name="CSU_C09.STUDY_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element maxOccurs="unbounded" ref="OBX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.STUDY_OBSERVATION" type="CSU_C09.STUDY_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="CSU_C09.STUDY_PHARM.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element maxOccurs="unbounded" ref="CSU_C09.RX_ADMIN"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.STUDY_PHARM" type="CSU_C09.STUDY_PHARM.CONTENT"/>
+    <xsd:complexType name="CSU_C09.RX_ADMIN.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXA"/>
+            <xsd:element ref="RXR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="CSU_C09.RX_ADMIN" type="CSU_C09.RX_ADMIN.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="SSU_U03.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="EQU"/>
+            <xsd:element maxOccurs="unbounded" ref="SSU_U03.SPECIMEN_CONTAINER"/>
+            <xsd:element minOccurs="0" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SSU_U03" type="SSU_U03.CONTENT"/>
+    <xsd:complexType name="SSU_U03.SPECIMEN_CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" ref="OBX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SSU_U03.SPECIMEN_CONTAINER" type="SSU_U03.SPECIMEN_CONTAINER.CONTENT"/>
+</xsd:schema>

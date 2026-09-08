@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="BRP_O30.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="BRP_O30.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRP_O30" type="BRP_O30.CONTENT"/>
+    <xsd:complexType name="BRP_O30.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="BRP_O30.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRP_O30.RESPONSE" type="BRP_O30.RESPONSE.CONTENT"/>
+    <xsd:complexType name="BRP_O30.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BRP_O30.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRP_O30.PATIENT" type="BRP_O30.PATIENT.CONTENT"/>
+    <xsd:complexType name="BRP_O30.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BRP_O30.TIMING"/>
+            <xsd:element minOccurs="0" ref="BPO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="BPX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRP_O30.ORDER" type="BRP_O30.ORDER.CONTENT"/>
+    <xsd:complexType name="BRP_O30.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="BRP_O30.TIMING" type="BRP_O30.TIMING.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="EHC_E15.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="UAC"/>
+            <xsd:element ref="PMT"/>
+            <xsd:element ref="PYE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E15.PAYMENT_REMITTANCE_DETAIL_INFO"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="EHC_E15.ADJUSTMENT_PAYEE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15" type="EHC_E15.CONTENT"/>
+    <xsd:complexType name="EHC_E15.PAYMENT_REMITTANCE_DETAIL_INFO.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IPR"/>
+            <xsd:element ref="IVC"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E15.PRODUCT_SERVICE_SECTION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15.PAYMENT_REMITTANCE_DETAIL_INFO" type="EHC_E15.PAYMENT_REMITTANCE_DETAIL_INFO.CONTENT"/>
+    <xsd:complexType name="EHC_E15.PRODUCT_SERVICE_SECTION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSS"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E15.PRODUCT_SERVICE_GROUP"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15.PRODUCT_SERVICE_SECTION" type="EHC_E15.PRODUCT_SERVICE_SECTION.CONTENT"/>
+    <xsd:complexType name="EHC_E15.PRODUCT_SERVICE_GROUP.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSG"/>
+            <xsd:element maxOccurs="unbounded" ref="EHC_E15.PSL_ITEM_INFO"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15.PRODUCT_SERVICE_GROUP" type="EHC_E15.PRODUCT_SERVICE_GROUP.CONTENT"/>
+    <xsd:complexType name="EHC_E15.PSL_ITEM_INFO.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PSL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ADJ"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15.PSL_ITEM_INFO" type="EHC_E15.PSL_ITEM_INFO.CONTENT"/>
+    <xsd:complexType name="EHC_E15.ADJUSTMENT_PAYEE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ADJ"/>
+            <xsd:element minOccurs="0" ref="ROL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="EHC_E15.ADJUSTMENT_PAYEE" type="EHC_E15.ADJUSTMENT_PAYEE.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="MFN_M16.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_M16.MATERIAL_ITEM_RECORD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16" type="MFN_M16.CONTENT"/>
+    <xsd:complexType name="MFN_M16.MATERIAL_ITEM_RECORD.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="ITM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MFN_M16.STERILIZATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MFN_M16.PURCHASING_VENDOR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MFN_M16.MATERIAL_LOCATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16.MATERIAL_ITEM_RECORD" type="MFN_M16.MATERIAL_ITEM_RECORD.CONTENT"/>
+    <xsd:complexType name="MFN_M16.STERILIZATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="STZ"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16.STERILIZATION" type="MFN_M16.STERILIZATION.CONTENT"/>
+    <xsd:complexType name="MFN_M16.PURCHASING_VENDOR.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="VND"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="MFN_M16.PACKAGING"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16.PURCHASING_VENDOR" type="MFN_M16.PURCHASING_VENDOR.CONTENT"/>
+    <xsd:complexType name="MFN_M16.PACKAGING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PKG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16.PACKAGING" type="MFN_M16.PACKAGING.CONTENT"/>
+    <xsd:complexType name="MFN_M16.MATERIAL_LOCATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IVT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ILT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_M16.MATERIAL_LOCATION" type="MFN_M16.MATERIAL_LOCATION.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="MFR_M01.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element minOccurs="0" ref="QAK"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFR_M01.MF_QUERY"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFR_M01" type="MFR_M01.CONTENT"/>
+    <xsd:complexType name="MFR_M01.MF_QUERY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element minOccurs="0" ref="Zxx"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFR_M01.MF_QUERY" type="MFR_M01.MF_QUERY.CONTENT"/>
+</xsd:schema>

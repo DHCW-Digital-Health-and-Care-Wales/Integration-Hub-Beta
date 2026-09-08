@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="RCI_I05.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element maxOccurs="unbounded" ref="RCI_I05.PROVIDER"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RCI_I05.OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCI_I05" type="RCI_I05.CONTENT"/>
+    <xsd:complexType name="RCI_I05.PROVIDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCI_I05.PROVIDER" type="RCI_I05.PROVIDER.CONTENT"/>
+    <xsd:complexType name="RCI_I05.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RCI_I05.RESULTS"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCI_I05.OBSERVATION" type="RCI_I05.OBSERVATION.CONTENT"/>
+    <xsd:complexType name="RCI_I05.RESULTS.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCI_I05.RESULTS" type="RCI_I05.RESULTS.CONTENT"/>
+</xsd:schema>

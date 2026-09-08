@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="ORU_R30.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" ref="ORU_R30.VISIT"/>
+            <xsd:element ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORU_R30.TIMING_QTY"/>
+            <xsd:element maxOccurs="unbounded" ref="ORU_R30.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORU_R30" type="ORU_R30.CONTENT"/>
+    <xsd:complexType name="ORU_R30.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORU_R30.VISIT" type="ORU_R30.VISIT.CONTENT"/>
+    <xsd:complexType name="ORU_R30.TIMING_QTY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORU_R30.TIMING_QTY" type="ORU_R30.TIMING_QTY.CONTENT"/>
+    <xsd:complexType name="ORU_R30.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORU_R30.OBSERVATION" type="ORU_R30.OBSERVATION.CONTENT"/>
+</xsd:schema>

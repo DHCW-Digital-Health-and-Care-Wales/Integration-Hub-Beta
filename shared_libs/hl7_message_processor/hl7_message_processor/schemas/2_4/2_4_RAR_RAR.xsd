@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RAR_RAR.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element maxOccurs="unbounded" ref="RAR_RAR.DEFINITION"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAR_RAR" type="RAR_RAR.CONTENT"/>
+    <xsd:complexType name="RAR_RAR.DEFINITION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="RAR_RAR.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RAR_RAR.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAR_RAR.DEFINITION" type="RAR_RAR.DEFINITION.CONTENT"/>
+    <xsd:complexType name="RAR_RAR.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAR_RAR.PATIENT" type="RAR_RAR.PATIENT.CONTENT"/>
+    <xsd:complexType name="RAR_RAR.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="RAR_RAR.ENCODING"/>
+            <xsd:element maxOccurs="unbounded" ref="RXA"/>
+            <xsd:element ref="RXR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAR_RAR.ORDER" type="RAR_RAR.ORDER.CONTENT"/>
+    <xsd:complexType name="RAR_RAR.ENCODING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RAR_RAR.ENCODING" type="RAR_RAR.ENCODING.CONTENT"/>
+</xsd:schema>

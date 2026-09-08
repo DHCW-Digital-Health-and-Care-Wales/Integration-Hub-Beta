@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RGV_O15.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RGV_O15.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15" type="RGV_O15.CONTENT"/>
+    <xsd:complexType name="RGV_O15.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.PATIENT_VISIT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.PATIENT" type="RGV_O15.PATIENT.CONTENT"/>
+    <xsd:complexType name="RGV_O15.PATIENT_VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.PATIENT_VISIT" type="RGV_O15.PATIENT_VISIT.CONTENT"/>
+    <xsd:complexType name="RGV_O15.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.ORDER_DETAIL"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.ENCODING"/>
+            <xsd:element maxOccurs="unbounded" ref="GIV"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.ORDER" type="RGV_O15.ORDER.CONTENT"/>
+    <xsd:complexType name="RGV_O15.ORDER_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXO"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.ORDER_DETAIL_SUPPLEMENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.ORDER_DETAIL" type="RGV_O15.ORDER_DETAIL.CONTENT"/>
+    <xsd:complexType name="RGV_O15.ORDER_DETAIL_SUPPLEMENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" ref="RGV_O15.COMPONENTS"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.ORDER_DETAIL_SUPPLEMENT" type="RGV_O15.ORDER_DETAIL_SUPPLEMENT.CONTENT"/>
+    <xsd:complexType name="RGV_O15.COMPONENTS.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="RXC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.COMPONENTS" type="RGV_O15.COMPONENTS.CONTENT"/>
+    <xsd:complexType name="RGV_O15.ENCODING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.ENCODING" type="RGV_O15.ENCODING.CONTENT"/>
+    <xsd:complexType name="GIV.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXG"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+            <xsd:element maxOccurs="unbounded" ref="RGV_O15.OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="GIV" type="GIV.CONTENT"/>
+    <xsd:complexType name="RGV_O15.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGV_O15.OBSERVATION" type="RGV_O15.OBSERVATION.CONTENT"/>
+</xsd:schema>

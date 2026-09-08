@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="VXX_V02.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element maxOccurs="unbounded" ref="VXX_V02.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXX_V02" type="VXX_V02.CONTENT"/>
+    <xsd:complexType name="VXX_V02.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="VXX_V02.PATIENT" type="VXX_V02.PATIENT.CONTENT"/>
+</xsd:schema>

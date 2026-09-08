@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="OPU_R25.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element minOccurs="0" ref="NTE"/>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element maxOccurs="unbounded" ref="OPU_R25.ACCESSION_DETAIL"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25" type="OPU_R25.CONTENT"/>
+    <xsd:complexType name="OPU_R25.ACCESSION_DETAIL.CONTENT">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" ref="OPU_R25.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="OPU_R25.SPECIMEN"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.ACCESSION_DETAIL" type="OPU_R25.ACCESSION_DETAIL.CONTENT"/>
+    <xsd:complexType name="OPU_R25.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPU_R25.PATIENT_OBSERVATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.PATIENT" type="OPU_R25.PATIENT.CONTENT"/>
+    <xsd:complexType name="OPU_R25.PATIENT_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.PATIENT_OBSERVATION" type="OPU_R25.PATIENT_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="OPU_R25.SPECIMEN.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SPM"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPU_R25.SPECIMEN_OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPU_R25.CONTAINER"/>
+            <xsd:element maxOccurs="unbounded" ref="OPU_R25.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.SPECIMEN" type="OPU_R25.SPECIMEN.CONTENT"/>
+    <xsd:complexType name="OPU_R25.SPECIMEN_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.SPECIMEN_OBSERVATION" type="OPU_R25.SPECIMEN_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="OPU_R25.CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" ref="INV"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.CONTAINER" type="OPU_R25.CONTAINER.CONTENT"/>
+    <xsd:complexType name="OPU_R25.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ROL"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OPU_R25.TIMING_QTY"/>
+            <xsd:element maxOccurs="unbounded" ref="OPU_R25.RESULT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.ORDER" type="OPU_R25.ORDER.CONTENT"/>
+    <xsd:complexType name="OPU_R25.TIMING_QTY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.TIMING_QTY" type="OPU_R25.TIMING_QTY.CONTENT"/>
+    <xsd:complexType name="OPU_R25.RESULT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OPU_R25.RESULT" type="OPU_R25.RESULT.CONTENT"/>
+</xsd:schema>

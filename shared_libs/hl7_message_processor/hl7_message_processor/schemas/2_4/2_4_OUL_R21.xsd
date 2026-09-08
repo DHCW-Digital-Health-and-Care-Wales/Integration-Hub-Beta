@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="OUL_R21.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="OUL_R21.PATIENT"/>
+            <xsd:element minOccurs="0" ref="OUL_R21.VISIT"/>
+            <xsd:element maxOccurs="unbounded" ref="OUL_R21.ORDER_OBSERVATION"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21" type="OUL_R21.CONTENT"/>
+    <xsd:complexType name="OUL_R21.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21.PATIENT" type="OUL_R21.PATIENT.CONTENT"/>
+    <xsd:complexType name="OUL_R21.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21.VISIT" type="OUL_R21.VISIT.CONTENT"/>
+    <xsd:complexType name="OUL_R21.ORDER_OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="OUL_R21.CONTAINER"/>
+            <xsd:element minOccurs="0" ref="ORC"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="OUL_R21.OBSERVATION"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21.ORDER_OBSERVATION" type="OUL_R21.ORDER_OBSERVATION.CONTENT"/>
+    <xsd:complexType name="OUL_R21.CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" ref="SID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21.CONTAINER" type="OUL_R21.CONTAINER.CONTENT"/>
+    <xsd:complexType name="OUL_R21.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="OBX"/>
+            <xsd:element minOccurs="0" ref="TCD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="OUL_R21.OBSERVATION" type="OUL_R21.OBSERVATION.CONTENT"/>
+</xsd:schema>

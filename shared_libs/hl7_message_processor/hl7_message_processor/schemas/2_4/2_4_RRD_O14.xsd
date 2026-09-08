@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RRD_O14.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="RRD_O14.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RRD_O14" type="RRD_O14.CONTENT"/>
+    <xsd:complexType name="RRD_O14.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="RRD_O14.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RRD_O14.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RRD_O14.RESPONSE" type="RRD_O14.RESPONSE.CONTENT"/>
+    <xsd:complexType name="RRD_O14.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RRD_O14.PATIENT" type="RRD_O14.PATIENT.CONTENT"/>
+    <xsd:complexType name="RRD_O14.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="RRD_O14.DISPENSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RRD_O14.ORDER" type="RRD_O14.ORDER.CONTENT"/>
+    <xsd:complexType name="RRD_O14.DISPENSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXD"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RRD_O14.DISPENSE" type="RRD_O14.DISPENSE.CONTENT"/>
+</xsd:schema>
