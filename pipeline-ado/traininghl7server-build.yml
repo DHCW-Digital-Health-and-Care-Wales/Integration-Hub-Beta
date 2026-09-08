@@ -44,7 +44,7 @@ stages:
           displayName: 'Build and Push Training HL7 Server'
           appName: 'trn-hl7server'
           dockerfilePath: 'training_hl7_server/Dockerfile'
-          buildContext: training_hl7_server'
+          buildContext: 'training_hl7_server'
           additionalContexts: "shared_libs=shared_libs,ca-certs=ca-certs"
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
