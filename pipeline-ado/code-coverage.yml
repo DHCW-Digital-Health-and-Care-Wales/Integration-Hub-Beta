@@ -4,9 +4,18 @@
 # and a persisted trend history, for use by the "Code Coverage" ADO Dashboard widget.
 # See docs/code_coverage.md for the full plan.
 trigger:
+  # batch collapses several rapid merges to main into a single queued run instead of
+  # one run per push (which is what caused the burst of ~60 runs when this pipeline was added).
+  batch: true
   branches:
     include:
       - main
+  # Skip runs for changes that can't affect coverage (docs, other pipeline definitions).
+  paths:
+    exclude:
+      - docs/**
+      - '**/*.md'
+      - pipeline-ado/**
 pr: none
 
 variables:
