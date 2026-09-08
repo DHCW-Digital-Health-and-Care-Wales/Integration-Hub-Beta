@@ -55,7 +55,7 @@ def is_socket_closed(sock: socket.socket) -> bool:
         if readable:
             # Peek at data without removing from buffer (MSG_PEEK)
             # If we get 0 bytes back, the connection is closed
-            data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+            data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK) # type: ignore[attr-defined]
             return len(data) == 0
         return False  # No data, but socket is fine
     except BlockingIOError:

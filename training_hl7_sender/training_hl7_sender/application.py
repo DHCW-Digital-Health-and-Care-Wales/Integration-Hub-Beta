@@ -174,7 +174,8 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
         try:
             # Send the message via MLLP
             print(
-                f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}:{hl7_sender_client.receiver_mllp_port}..."
+                f"Sending via MLLP to {hl7_sender_client.receiver_mllp_hostname}"
+                f":{hl7_sender_client.receiver_mllp_port}..."
             )
             ack_response = hl7_sender_client.send_message(message_body)
 
@@ -217,6 +218,7 @@ def _process_message(message: ServiceBusMessage, hl7_sender_client: HL7SenderCli
             else:
                 logger.error("Max retries reached, abandoning message")
                 return False
+    return False
 
 
 if __name__ == "__main__":
