@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="SQM_S25.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="SQM_S25.REQUEST"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25" type="SQM_S25.CONTENT"/>
+    <xsd:complexType name="SQM_S25.REQUEST.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ARQ"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+            <xsd:element minOccurs="0" ref="PID"/>
+            <xsd:element maxOccurs="unbounded" ref="SQM_S25.RESOURCES"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.REQUEST" type="SQM_S25.REQUEST.CONTENT"/>
+    <xsd:complexType name="SQM_S25.RESOURCES.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RGS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SQM_S25.SERVICE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SQM_S25.GENERAL_RESOURCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SQM_S25.PERSONNEL_RESOURCE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SQM_S25.LOCATION_RESOURCE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.RESOURCES" type="SQM_S25.RESOURCES.CONTENT"/>
+    <xsd:complexType name="SQM_S25.SERVICE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIS"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.SERVICE" type="SQM_S25.SERVICE.CONTENT"/>
+    <xsd:complexType name="SQM_S25.GENERAL_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIG"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.GENERAL_RESOURCE" type="SQM_S25.GENERAL_RESOURCE.CONTENT"/>
+    <xsd:complexType name="SQM_S25.PERSONNEL_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIP"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.PERSONNEL_RESOURCE" type="SQM_S25.PERSONNEL_RESOURCE.CONTENT"/>
+    <xsd:complexType name="SQM_S25.LOCATION_RESOURCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AIL"/>
+            <xsd:element minOccurs="0" ref="APR"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="SQM_S25.LOCATION_RESOURCE" type="SQM_S25.LOCATION_RESOURCE.CONTENT"/>
+</xsd:schema>

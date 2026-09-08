@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="PMU_B04.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="STF"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PRA"/>
+            <xsd:element minOccurs="0" ref="ORG"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="PMU_B04" type="PMU_B04.CONTENT"/>
+</xsd:schema>

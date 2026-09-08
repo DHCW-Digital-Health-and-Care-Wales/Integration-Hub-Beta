@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="QRY_Q02.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="QRY_Q02" type="QRY_Q02.CONTENT"/>
+</xsd:schema>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="ROR_ROR.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element maxOccurs="unbounded" ref="ROR_ROR.DEFINITION"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ROR_ROR" type="ROR_ROR.CONTENT"/>
+    <xsd:complexType name="ROR_ROR.DEFINITION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="ROR_ROR.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ROR_ROR.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ROR_ROR.DEFINITION" type="ROR_ROR.DEFINITION.CONTENT"/>
+    <xsd:complexType name="ROR_ROR.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ROR_ROR.PATIENT" type="ROR_ROR.PATIENT.CONTENT"/>
+    <xsd:complexType name="ROR_ROR.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element ref="RXO"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ROR_ROR.ORDER" type="ROR_ROR.ORDER.CONTENT"/>
+</xsd:schema>

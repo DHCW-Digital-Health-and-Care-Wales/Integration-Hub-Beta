@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="ADT_A50.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="EVN"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" ref="PD1"/>
+            <xsd:element ref="MRG"/>
+            <xsd:element ref="PV1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ADT_A50" type="ADT_A50.CONTENT"/>
+</xsd:schema>

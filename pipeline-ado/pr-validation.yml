@@ -20,6 +20,8 @@ pr:
       - mock_receivers/hl7_mock_receiver/**
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
+      - transformers/hl7_core_reference_transformer/**
+      - transformers/xml_fhir_proms_transformer/**
       - servers/hl7_soap_server/**
       - dev_tools/buswatch/**
       - message_processing/message_store_service/**
@@ -99,6 +101,8 @@ stages:
                 "mock_receivers/hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
+                "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer||unittest"
+                "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer||unittest"
                 "servers/hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_processing/message_store_service|Message Store Service||unittest"
                 "dev_tools/buswatch|BusWatch||unittest"

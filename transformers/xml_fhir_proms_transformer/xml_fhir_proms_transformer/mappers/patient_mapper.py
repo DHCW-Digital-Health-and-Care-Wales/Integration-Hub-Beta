@@ -142,12 +142,16 @@ def _language_coding(
     """Build a HumanLanguage Coding, resolving the code where possible.
 
     Falls back to a display-only coding when the resolver cannot map the code,
-    so language is not silently lost.
+    so language is not silently lost. Returns None (rather than an empty
+    Coding) when neither a resolved code nor a display string is available.
     """
     if not lang_code and not lang_display:
         return None
 
     resolved = resolver.resolve_language(lang_code, system_id)
+    if not resolved and not lang_display:
+        return None
+
     coding = Coding(system=HUMAN_LANGUAGE_SYSTEM)
     if resolved:
         coding.code = resolved
@@ -166,7 +170,12 @@ def _contact_preference_extension(
     dedicated contactPreference extension, separate from communication.language
     (which carries written language only).
     """
-    lang_code = message.get("preferred_spoken_language_code", "preferredSpokenLanguageCode")
+    lang_code = message.get(
+        "preferred_spoken_language_code",
+        "preferredSpokenLanguageCode",
+        "PREFERRED_LANGUAGE",
+        "preferredLanguage",
+    )
     lang_display = message.get("spoken_language", "spokenLanguage")
     system_id = message.get("system_id", "SYSTEM_ID", "systemId")
 

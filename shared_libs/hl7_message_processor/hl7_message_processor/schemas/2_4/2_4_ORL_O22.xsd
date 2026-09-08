@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="ORL_O22.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORL_O22.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22" type="ORL_O22.CONTENT"/>
+    <xsd:complexType name="ORL_O22.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORL_O22.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.RESPONSE" type="ORL_O22.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORL_O22.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element maxOccurs="unbounded" ref="ORL_O22.GENERAL_ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.PATIENT" type="ORL_O22.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORL_O22.GENERAL_ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORL_O22.CONTAINER"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORL_O22.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.GENERAL_ORDER" type="ORL_O22.GENERAL_ORDER.CONTENT"/>
+    <xsd:complexType name="ORL_O22.CONTAINER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="SAC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="OBX"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.CONTAINER" type="ORL_O22.CONTAINER.CONTENT"/>
+    <xsd:complexType name="ORL_O22.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="ORL_O22.OBSERVATION_REQUEST"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.ORDER" type="ORL_O22.ORDER.CONTENT"/>
+    <xsd:complexType name="ORL_O22.OBSERVATION_REQUEST.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SAC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORL_O22.OBSERVATION_REQUEST" type="ORL_O22.OBSERVATION_REQUEST.CONTENT"/>
+</xsd:schema>

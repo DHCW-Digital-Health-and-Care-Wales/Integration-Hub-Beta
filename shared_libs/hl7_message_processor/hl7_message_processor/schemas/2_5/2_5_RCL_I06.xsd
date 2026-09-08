@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="RCL_I06.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element maxOccurs="unbounded" ref="RCL_I06.PROVIDER"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DSP"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCL_I06" type="RCL_I06.CONTENT"/>
+    <xsd:complexType name="RCL_I06.PROVIDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RCL_I06.PROVIDER" type="RCL_I06.PROVIDER.CONTENT"/>
+</xsd:schema>

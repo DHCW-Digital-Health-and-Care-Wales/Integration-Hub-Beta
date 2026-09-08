@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_1_segments.xsd"/>
+    <xsd:complexType name="ORB_O28.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORB_O28.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORB_O28" type="ORB_O28.CONTENT"/>
+    <xsd:complexType name="ORB_O28.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORB_O28.PATIENT"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORB_O28.RESPONSE" type="ORB_O28.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORB_O28.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORB_O28.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORB_O28.PATIENT" type="ORB_O28.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORB_O28.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORB_O28.TIMING"/>
+            <xsd:element minOccurs="0" ref="BPO"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORB_O28.ORDER" type="ORB_O28.ORDER.CONTENT"/>
+    <xsd:complexType name="ORB_O28.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORB_O28.TIMING" type="ORB_O28.TIMING.CONTENT"/>
+</xsd:schema>

@@ -34,10 +34,12 @@ for d in "${APP_DIRS[@]}"; do
     [ -d "$target_dir" ] || target_dir="."
     # Pin the tool env to Python 3.13 (the repo's target version) so mypy doesn't
     # misreport modern syntax (e.g. PEP 604 unions) as errors under an older default.
+    # --native-tls uses the OS certificate store (rather than uv's bundled webpki
+    # roots) so downloads succeed behind a corporate TLS-inspecting proxy.
     if [ -d "tests" ]; then
-      uv tool run --python 3.13 mypy "$target_dir" tests --ignore-missing-imports
+      uv tool run --native-tls --python 3.13 mypy "$target_dir" tests --ignore-missing-imports
     else
-      uv tool run --python 3.13 mypy "$target_dir" --ignore-missing-imports
+      uv tool run --native-tls --python 3.13 mypy "$target_dir" --ignore-missing-imports
     fi
   )
   if [ $? -ne 0 ]; then

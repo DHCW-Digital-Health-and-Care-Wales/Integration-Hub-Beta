@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="RGR_RGR.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element maxOccurs="unbounded" ref="RGR_RGR.DEFINTION"/>
+            <xsd:element minOccurs="0" ref="DSC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGR_RGR" type="RGR_RGR.CONTENT"/>
+    <xsd:complexType name="RGR_RGR.DEFINTION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="QRD"/>
+            <xsd:element minOccurs="0" ref="QRF"/>
+            <xsd:element minOccurs="0" ref="RGR_RGR.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="RGR_RGR.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGR_RGR.DEFINTION" type="RGR_RGR.DEFINTION.CONTENT"/>
+    <xsd:complexType name="RGR_RGR.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGR_RGR.PATIENT" type="RGR_RGR.PATIENT.CONTENT"/>
+    <xsd:complexType name="RGR_RGR.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="RGR_RGR.ENCODING"/>
+            <xsd:element maxOccurs="unbounded" ref="RXG"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGR_RGR.ORDER" type="RGR_RGR.ORDER.CONTENT"/>
+    <xsd:complexType name="RGR_RGR.ENCODING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="RXE"/>
+            <xsd:element maxOccurs="unbounded" ref="RXR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RXC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RGR_RGR.ENCODING" type="RGR_RGR.ENCODING.CONTENT"/>
+</xsd:schema>

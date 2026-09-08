@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="RPA_I08.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="RF1"/>
+            <xsd:element minOccurs="0" ref="RPA_I08.AUTHORIZATION"/>
+            <xsd:element maxOccurs="unbounded" ref="RPA_I08.PROVIDER"/>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NK1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GT1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RPA_I08.INSURANCE"/>
+            <xsd:element minOccurs="0" ref="ACC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DG1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="DRG"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="AL1"/>
+            <xsd:element maxOccurs="unbounded" ref="RPA_I08.PROCEDURE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RPA_I08.OBSERVATION"/>
+            <xsd:element minOccurs="0" ref="RPA_I08.VISIT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08" type="RPA_I08.CONTENT"/>
+    <xsd:complexType name="RPA_I08.AUTHORIZATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="AUT"/>
+            <xsd:element minOccurs="0" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.AUTHORIZATION" type="RPA_I08.AUTHORIZATION.CONTENT"/>
+    <xsd:complexType name="RPA_I08.PROVIDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PRD"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTD"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.PROVIDER" type="RPA_I08.PROVIDER.CONTENT"/>
+    <xsd:complexType name="RPA_I08.INSURANCE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="IN1"/>
+            <xsd:element minOccurs="0" ref="IN2"/>
+            <xsd:element minOccurs="0" ref="IN3"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.INSURANCE" type="RPA_I08.INSURANCE.CONTENT"/>
+    <xsd:complexType name="RPA_I08.PROCEDURE.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PR1"/>
+            <xsd:element minOccurs="0" ref="RPA_I08.AUTHORIZATION"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.PROCEDURE" type="RPA_I08.PROCEDURE.CONTENT"/>
+    <xsd:complexType name="RPA_I08.OBSERVATION.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="RPA_I08.RESULTS"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.OBSERVATION" type="RPA_I08.OBSERVATION.CONTENT"/>
+    <xsd:complexType name="RPA_I08.RESULTS.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="OBX"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.RESULTS" type="RPA_I08.RESULTS.CONTENT"/>
+    <xsd:complexType name="RPA_I08.VISIT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PV1"/>
+            <xsd:element minOccurs="0" ref="PV2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="RPA_I08.VISIT" type="RPA_I08.VISIT.CONTENT"/>
+</xsd:schema>

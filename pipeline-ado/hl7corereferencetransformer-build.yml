@@ -1,0 +1,53 @@
+# HL7 Core Reference Transformer Build Pipeline
+trigger:
+  branches:
+    include:
+      - main
+      - release-*
+  paths:
+    include:
+      - transformers/hl7_core_reference_transformer/**
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: CodeQuality
+    displayName: 'Code Quality & Tests'
+    jobs:
+      - template: templates/code-quality-template.yml
+        parameters:
+          appName: 'transformers/hl7_core_reference_transformer'
+          appDisplayName: 'Core Reference HL7 Transformer'
+          pythonVersion: '3.13'
+          poolName: ${{ variables.POOL_NAME }}
+
+  - stage: BuildAndPushHL7CoreReferenceTransformer
+    displayName: 'Build and Push HL7 Core Reference Transformer'
+    dependsOn: CodeQuality
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushHL7CoreReferenceTransformer'
+          displayName: 'Build and Push HL7 Core Reference Transformer'
+          appName: 'core-reference-hl7transformer'
+          dockerfilePath: 'transformers/hl7_core_reference_transformer/Dockerfile'
+          buildContext: 'transformers/hl7_core_reference_transformer'
+          additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}

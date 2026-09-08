@@ -1,0 +1,3 @@
+# Ensure shell scripts always use LF line endings, even when checked out on
+# Windows with core.autocrlf=true — CRLF breaks the bash shebang/interpreter.
+*.sh text eol=lf

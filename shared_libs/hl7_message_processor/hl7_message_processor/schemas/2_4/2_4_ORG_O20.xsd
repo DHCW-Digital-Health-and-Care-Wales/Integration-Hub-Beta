@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="ORG_O20.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORG_O20.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORG_O20" type="ORG_O20.CONTENT"/>
+    <xsd:complexType name="ORG_O20.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORG_O20.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORG_O20.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORG_O20.RESPONSE" type="ORG_O20.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORG_O20.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORG_O20.PATIENT" type="ORG_O20.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORG_O20.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="CTI"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORG_O20.ORDER" type="ORG_O20.ORDER.CONTENT"/>
+</xsd:schema>

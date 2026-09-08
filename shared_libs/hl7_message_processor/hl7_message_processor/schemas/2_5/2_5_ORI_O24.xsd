@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_5_segments.xsd"/>
+    <xsd:complexType name="ORI_O24.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORI_O24.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORI_O24" type="ORI_O24.CONTENT"/>
+    <xsd:complexType name="ORI_O24.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORI_O24.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORI_O24.ORDER"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORI_O24.RESPONSE" type="ORI_O24.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORI_O24.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORI_O24.PATIENT" type="ORI_O24.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORI_O24.ORDER.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORI_O24.TIMING"/>
+            <xsd:element ref="OBR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element maxOccurs="unbounded" ref="IPC"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORI_O24.ORDER" type="ORI_O24.ORDER.CONTENT"/>
+    <xsd:complexType name="ORI_O24.TIMING.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="TQ1"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="TQ2"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORI_O24.TIMING" type="ORI_O24.TIMING.CONTENT"/>
+</xsd:schema>

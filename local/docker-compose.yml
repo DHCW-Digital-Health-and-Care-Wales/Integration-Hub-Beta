@@ -304,6 +304,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
       - wpas-to-proms
       - rest-to-mpi
     networks:
@@ -334,6 +335,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
       - wpas-to-proms
       - mpi-to-topic
     networks:
@@ -567,6 +569,7 @@ services:
       - pims-to-mpi
       - mosaiq-to-mpi
       - wds-to-mpi
+      - risp-to-mpi
       - wpas-to-proms
       - mpi-to-topic
     networks:

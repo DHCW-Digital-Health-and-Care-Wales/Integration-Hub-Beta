@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_6_segments.xsd"/>
+    <xsd:complexType name="MFN_Znn.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="SFT"/>
+            <xsd:element minOccurs="0" ref="UAC"/>
+            <xsd:element ref="MFI"/>
+            <xsd:element maxOccurs="unbounded" ref="MFN_Znn.MF_SITE_DEFINED"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_Znn" type="MFN_Znn.CONTENT"/>
+    <xsd:complexType name="MFN_Znn.MF_SITE_DEFINED.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MFE"/>
+            <xsd:element ref="Hxx"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="MFN_Znn.MF_SITE_DEFINED" type="MFN_Znn.MF_SITE_DEFINED.CONTENT"/>
+</xsd:schema>

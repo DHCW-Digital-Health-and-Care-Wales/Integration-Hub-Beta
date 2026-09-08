@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="urn:hl7-org:v2xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:hl7-org:v2xml">
+    <xsd:include schemaLocation="2_4_segments.xsd"/>
+    <xsd:complexType name="ORD_O04.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="MSH"/>
+            <xsd:element ref="MSA"/>
+            <xsd:element minOccurs="0" ref="ERR"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+            <xsd:element minOccurs="0" ref="ORD_O04.RESPONSE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORD_O04" type="ORD_O04.CONTENT"/>
+    <xsd:complexType name="ORD_O04.RESPONSE.CONTENT">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" ref="ORD_O04.PATIENT"/>
+            <xsd:element maxOccurs="unbounded" ref="ORD_O04.ORDER_DIET"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ORD_O04.ORDER_TRAY"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORD_O04.RESPONSE" type="ORD_O04.RESPONSE.CONTENT"/>
+    <xsd:complexType name="ORD_O04.PATIENT.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="PID"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORD_O04.PATIENT" type="ORD_O04.PATIENT.CONTENT"/>
+    <xsd:complexType name="ORD_O04.ORDER_DIET.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ODS"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORD_O04.ORDER_DIET" type="ORD_O04.ORDER_DIET.CONTENT"/>
+    <xsd:complexType name="ORD_O04.ORDER_TRAY.CONTENT">
+        <xsd:sequence>
+            <xsd:element ref="ORC"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="ODT"/>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NTE"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="ORD_O04.ORDER_TRAY" type="ORD_O04.ORDER_TRAY.CONTENT"/>
+</xsd:schema>

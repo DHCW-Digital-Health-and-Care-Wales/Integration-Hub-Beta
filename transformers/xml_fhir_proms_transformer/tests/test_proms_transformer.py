@@ -256,6 +256,32 @@ class TestPatient(unittest.TestCase):
         contact_pref = next(e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION)
         self.assertEqual(contact_pref.valueCodeableConcept.coding[0].display, "Welsh")
 
+    def test_contact_preference_extension_uses_legacy_preferred_language_alias(self) -> None:
+        # Legacy WPAS dialects use PREFERRED_LANGUAGE instead of preferred_spoken_language_code
+        message = REFERRAL_MESSAGE.replace(
+            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>", ""
+        ).replace(
+            "</PromsEventRequest>",
+            "<PREFERRED_LANGUAGE>CY</PREFERRED_LANGUAGE></PromsEventRequest>",
+        )
+        patient = resource_at(build(message), 1)
+        extensions = patient.extension or []
+        contact_pref = next(e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION)
+        self.assertEqual(contact_pref.valueCodeableConcept.coding[0].display, "Welsh")
+
+    def test_contact_preference_extension_omitted_when_code_unresolvable_and_no_display(self) -> None:
+        # Code-only, no display text, and the static resolver cannot resolve any code -
+        # must not produce an extension with an empty (code-less, display-less) Coding.
+        message = REFERRAL_MESSAGE.replace(
+            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>\n"
+            "  <spoken_language>Welsh</spoken_language>",
+            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>",
+        )
+        patient = resource_at(build(message), 1)
+        extensions = patient.extension or []
+        contact_prefs = [e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION]
+        self.assertEqual(contact_prefs, [])
+
     def test_communication_omitted_when_no_written_language(self) -> None:
         # REFERRAL_MESSAGE has no written-language fields, only spoken
         self.assertIsNone(self.patient.communication)
