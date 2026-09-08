@@ -153,9 +153,9 @@ stages:
                 if [ $APP_FAILED -eq 0 ]; then
                   echo "##[group]🧪 Coverage — $DISPLAY_NAME"
                   if [ "$TEST_RUNNER" = "pytest" ]; then
-                    coverage run -m pytest tests -v || APP_FAILED=1
+                    coverage run --source=. -m pytest tests -v || APP_FAILED=1
                   else
-                    coverage run -m unittest discover tests -v || APP_FAILED=1
+                    coverage run --source=. -m unittest discover tests -v || APP_FAILED=1
                   fi
 
                   mkdir -p "$RAW_DIR/$SAFE_NAME"
