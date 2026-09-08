@@ -1,8 +1,8 @@
 """CoreReferenceTransformer — translates coded PID reference-data fields via WRDS for RISP -> MPI."""
 from __future__ import annotations
 
+import logging
 import os
-from asyncio.log import logger
 
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
@@ -11,6 +11,8 @@ from wrds_service import WRDSService
 
 from .app_config import WRDSConfig
 from .mappers.pid_reference_mapper import apply_core_reference_mapping
+
+logger = logging.getLogger(__name__)
 
 # Only these ADT trigger events are in scope — any other message type passes through unchanged.
 # This is a defence-in-depth check: the upstream ingress queue is expected to only carry these

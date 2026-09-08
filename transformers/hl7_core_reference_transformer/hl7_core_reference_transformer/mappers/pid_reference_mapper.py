@@ -19,12 +19,13 @@ level into any `Group`) so PID is found reliably regardless of whether hl7apy gr
 """
 from __future__ import annotations
 
-from asyncio.log import logger
+import logging
 
 from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Group, Message, Segment
 from wrds_service import WRDSService
 
+logger = logging.getLogger(__name__)
 # field_path (on the PID segment) -> confirmed WRDS "type" attribute value
 FIELD_TYPE_MAP: dict[str, str] = {
     "pid_8": "Sex",
