@@ -31,6 +31,7 @@ REFERRAL_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
   <streetRoadName>Park Street</streetRoadName>
   <postTown>Tredegar</postTown>
   <postCode>NP22 3AA</postCode>
+  <postalCounty>Gwent</postalCounty>
   <preferred_spoken_language_code>CY</preferred_spoken_language_code>
   <spoken_language>Welsh</spoken_language>
   <referrer_code>G7654321</referrer_code>
@@ -82,6 +83,7 @@ PREOP_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
   <eventCode>PREOP</eventCode>
   <eventDate>2024-08-05</eventDate>
   <pathway>7A22867972</pathway>
+  <activityNotekey>ANK-7A22867972</activityNotekey>
   <nhsNumber>9434765935</nhsNumber>
   <crn>SB0011223</crn>
   <patientFirstname>Gareth</patientFirstname>
@@ -108,6 +110,7 @@ INPATIENT_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
   <eventCode>INPATIENT</eventCode>
   <eventDate>2024-09-10</eventDate>
   <pathway>7A22867973</pathway>
+  <activityNotekey>ANK-7A22867973</activityNotekey>
   <nhsNumber>9434765943</nhsNumber>
   <crn>SB0055667</crn>
   <patientFirstname>Eleri</patientFirstname>

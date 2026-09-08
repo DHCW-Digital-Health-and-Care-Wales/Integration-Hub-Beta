@@ -22,6 +22,7 @@ from fhir.resources.R4B.identifier import Identifier
 from fhir.resources.R4B.patient import Patient, PatientCommunication
 
 from ..fhir_constants import (
+    CONTACT_PREFERENCE_EXTENSION,
     HUMAN_LANGUAGE_SYSTEM,
     NHS_NUMBER_SYSTEM,
     NHS_NUMBER_VERIFICATION_EXTENSION,
@@ -110,8 +111,9 @@ def _build_address(message: PromsMessage) -> Optional[Address]:
     building = message.get("buildingName", "ADDRESS_1")
     street = message.get("streetRoadName", "streetroadname")
     city = message.get("postTown", "ADDRESS_2")
+    district = message.get("postalCounty", "postal_county")
 
-    if not any([postal_code, building, street, city]):
+    if not any([postal_code, building, street, city, district]):
         return None
 
     address = Address()
@@ -123,39 +125,90 @@ def _build_address(message: PromsMessage) -> Optional[Address]:
 
     if city:
         address.city = city
+    if district:
+        address.district = district
     if postal_code:
         address.postalCode = postal_code
 
     return address
 
 
-def _communication(
-    message: PromsMessage,
+def _language_coding(
     resolver: ReferenceDataResolver,
-) -> Optional[list[PatientCommunication]]:
-    """Build Patient.communication from WPAS language fields.
+    lang_code: str,
+    lang_display: str,
+    system_id: str,
+) -> Optional[Coding]:
+    """Build a HumanLanguage Coding, resolving the code where possible.
 
-    The actual payload carries both a code (preferred_spoken_language_code) and
-    a display text (spoken_language). If the resolver cannot map the code, the
-    display text is used directly as a fallback so language is not silently lost.
-
-    SPEC GAP: pending Core Reference Data service integration.
+    Falls back to a display-only coding when the resolver cannot map the code,
+    so language is not silently lost. Returns None (rather than an empty
+    Coding) when neither a resolved code nor a display string is available.
     """
-    lang_code = message.get("preferred_spoken_language_code", "PREFERRED_LANGUAGE", "preferredLanguage")
-    lang_display = message.get("spoken_language", "spokenLanguage")
+    if not lang_code and not lang_display:
+        return None
 
-    system_id = message.get("system_id", "SYSTEM_ID", "systemId")
     resolved = resolver.resolve_language(lang_code, system_id)
-
     if not resolved and not lang_display:
         return None
 
-    # Build with the resolved code when available, falling back to display-only.
     coding = Coding(system=HUMAN_LANGUAGE_SYSTEM)
     if resolved:
         coding.code = resolved
     if lang_display:
         coding.display = lang_display
+    return coding
+
+
+def _contact_preference_extension(
+    message: PromsMessage,
+    resolver: ReferenceDataResolver,
+) -> Optional[Extension]:
+    """Build Patient.extension:contactPreference from the WPAS spoken-language fields.
+
+    Confirmed in the v2 WelshPAS mapping spreadsheet: spoken language maps to a
+    dedicated contactPreference extension, separate from communication.language
+    (which carries written language only).
+    """
+    lang_code = message.get(
+        "preferred_spoken_language_code",
+        "preferredSpokenLanguageCode",
+        "PREFERRED_LANGUAGE",
+        "preferredLanguage",
+    )
+    lang_display = message.get("spoken_language", "spokenLanguage")
+    system_id = message.get("system_id", "SYSTEM_ID", "systemId")
+
+    coding = _language_coding(resolver, lang_code, lang_display, system_id)
+    if coding is None:
+        return None
+
+    return Extension(
+        url=CONTACT_PREFERENCE_EXTENSION,
+        valueCodeableConcept=CodeableConcept(coding=[coding]),
+    )
+
+
+def _communication(
+    message: PromsMessage,
+    resolver: ReferenceDataResolver,
+) -> Optional[list[PatientCommunication]]:
+    """Build Patient.communication from the WPAS written-language fields.
+
+    SPEC GAP: the exact WPAS field names for written language are not yet
+    confirmed in real payloads (the spreadsheet lists only the descriptive
+    label "preferred written language"). preferred_written_language_code /
+    written_language are used as the best-guess field names pending
+    confirmation with the spec owner - and pending Core Reference Data
+    service integration for code resolution.
+    """
+    lang_code = message.get("preferred_written_language_code", "preferredWrittenLanguageCode")
+    lang_display = message.get("written_language", "writtenLanguage")
+    system_id = message.get("system_id", "SYSTEM_ID", "systemId")
+
+    coding = _language_coding(resolver, lang_code, lang_display, system_id)
+    if coding is None:
+        return None
 
     return [
         PatientCommunication(
@@ -234,6 +287,10 @@ def map_patient(
     address = _build_address(message)
     if address:
         patient.address = [address]
+
+    contact_preference = _contact_preference_extension(message, resolver)
+    if contact_preference:
+        patient.extension = [contact_preference]
 
     communication = _communication(message, resolver)
     if communication:

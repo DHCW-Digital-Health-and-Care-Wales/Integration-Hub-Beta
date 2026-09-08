@@ -120,12 +120,15 @@ class StaticReferenceDataResolver:
         return gender
 
     def resolve_language(self, code: Optional[str], system_id: Optional[str] = None) -> Optional[str]:
-        """Always None - see the class docstring."""
+        """Always None - see the class docstring.
+
+        The code value itself is not logged (patient-identifiable data), matching
+        the convention used elsewhere for gender/date fields.
+        """
         if code:
             logger.info(
-                "PREFERRED_LANGUAGE %r cannot be resolved without the Core Reference Data service - "
-                "Patient.communication will be omitted",
-                code,
+                "WPAS language code cannot be resolved without the Core Reference Data "
+                "service - falling back to display text only, or omitting if absent"
             )
         return None
 

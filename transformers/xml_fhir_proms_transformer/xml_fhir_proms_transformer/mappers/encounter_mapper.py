@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fhir.resources.R4B.coding import Coding
 from fhir.resources.R4B.encounter import Encounter
+from fhir.resources.R4B.identifier import Identifier
 from fhir.resources.R4B.reference import Reference
 
 from ..fhir_constants import (
     ENCOUNTER_CLASS_SYSTEM,
+    ENCOUNTER_IDENTIFIER_SYSTEM,
     ENCOUNTER_PROFILE,
 )
 from ..message_types import MessageType
@@ -35,13 +39,20 @@ def map_encounter(
     # `class` is a reserved Python keyword so we pass it by alias via **{}.
     # class_fhir is required at construction time — pydantic validates on __init__.
     class_coding = Coding(system=ENCOUNTER_CLASS_SYSTEM, code=class_code, display=class_display)
-    encounter = Encounter(
-        **{
-            "id": encounter_uuid,
-            "meta": profile_meta(ENCOUNTER_PROFILE),
-            "status": status,
-            "class": class_coding,
-            "subject": Reference(reference=f"urn:uuid:{patient_uuid}", type="Patient"),
-        }
-    )
+    encounter_kwargs: dict[str, Any] = {
+        "id": encounter_uuid,
+        "meta": profile_meta(ENCOUNTER_PROFILE),
+        "status": status,
+        "class": class_coding,
+        "subject": Reference(reference=f"urn:uuid:{patient_uuid}", type="Patient"),
+    }
+    encounter = Encounter(**encounter_kwargs)
+
+    # identifier — from activityNotekey (confirmed in the v2 WelshPAS mapping spreadsheet)
+    activity_note_key = message.get("activityNotekey", "activity_note_key")
+    if activity_note_key:
+        encounter.identifier = [
+            Identifier(system=ENCOUNTER_IDENTIFIER_SYSTEM, value=activity_note_key)
+        ]
+
     return encounter
