@@ -34,7 +34,15 @@ dev = [
     "bandit>=1.9.1",
     "mypy>=1.18.2",
     "ruff>=0.14.8",
+    "coverage>=7.6.0",
 ]
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
 
 [tool.ruff]
 line-length = 120
