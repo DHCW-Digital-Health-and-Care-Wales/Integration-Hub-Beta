@@ -29,6 +29,7 @@ _PROMS_REFERRAL = """\
   <buildingName>Tredegar House</buildingName>
   <streetRoadName>Park Street</streetRoadName>
   <postTown>Tredegar</postTown>
+  <postalCounty>Gwent</postalCounty>
   <postCode>NP22 3AA</postCode>
   <preferred_spoken_language_code>CY</preferred_spoken_language_code>
   <spoken_language>Welsh</spoken_language>
@@ -79,6 +80,7 @@ _PROMS_PREOP = """\
   <eventCode>PREOP</eventCode>
   <eventDate>2024-08-05</eventDate>
   <pathway>7A22867972</pathway>
+  <activityNotekey>ANK-7A22867972</activityNotekey>
   <nhsNumber>9434765935</nhsNumber>
   <crn>SB0011223</crn>
   <patientFirstname>Gareth</patientFirstname>
@@ -94,6 +96,7 @@ _PROMS_PREOP = """\
   <main_specialty_name>Trauma and Orthopaedics</main_specialty_name>
   <appointmentDate>2024-08-15</appointmentDate>
   <appointmentTime>14:00</appointmentTime>
+  <CONFIRM_APPT>Y</CONFIRM_APPT>
 </PromsEventRequest>"""
 
 _PROMS_INPATIENT = """\
@@ -104,6 +107,7 @@ _PROMS_INPATIENT = """\
   <eventCode>INPATIENT</eventCode>
   <eventDate>2024-09-10</eventDate>
   <pathway>7A22867973</pathway>
+  <activityNotekey>ANK-7A22867973</activityNotekey>
   <nhsNumber>9434765943</nhsNumber>
   <crn>SB0055667</crn>
   <patientFirstname>Eleri</patientFirstname>
@@ -140,6 +144,7 @@ _PROMS_CANCELLED = """\
   <clinicianName>Jones, Hannah</clinicianName>
   <appointmentDate>2024-10-15</appointmentDate>
   <appointmentTime>11:00</appointmentTime>
+  <CONFIRM_APPT>N</CONFIRM_APPT>
 </PromsEventRequest>"""
 
 _PROMS_PREREAD = """\
