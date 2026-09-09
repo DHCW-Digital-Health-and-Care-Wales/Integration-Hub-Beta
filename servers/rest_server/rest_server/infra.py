@@ -59,7 +59,7 @@ def build_shared_resources(
     egress_queue_name: str | None,
     egress_topic_name: str | None,
     egress_session_id: str,
-    message_store_queue_name: str,
+    message_store_queue_name: str | None,
     microservice_id: str,
     peer_service: str,
     workflow_id: str,
