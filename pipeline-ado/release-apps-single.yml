@@ -1,0 +1,417 @@
+# SPIKE: Conditional/selectable Release Apps pipeline.
+#
+# Identical to release-apps.yml, EXCEPT the `resources.pipelines` block below only
+# declares the build-pipeline resource(s) needed for the currently selected `selectedApp`
+# (grouped by which apps share a buildPipeline), instead of declaring every build pipeline
+# in the system unconditionally.
+#
+# Why: ADO resolves a "latest successful version" for every resource declared under
+# `resources.pipelines` at validation time, regardless of whether it's actually used by
+# the selected app. If any one of those build pipelines has never had a successful run
+# (or is currently broken), the WHOLE release pipeline fails to validate - even when
+# releasing a completely unrelated, healthy app. Scoping the declared resources to only
+# what `selectedApp` actually needs avoids that failure mode.
+#
+# Trade-off: the app -> buildPipeline mapping already exists once in `appConfig` below
+# (passed to the shared stage template) - it is necessarily duplicated a second time here,
+# grouped by buildPipeline, purely so the resources block can be scoped per app. If a new
+# app is added to `appConfig`, remember to also add it to the matching resources group below.
+#
+# selectedApp: 'all' still requires every resource to be declared/resolvable, since
+# releasing "all" genuinely needs every build to have succeeded at least once - same
+# limitation as release-apps.yml in that case.
+trigger: none
+pr: none
+
+parameters:
+  - name: selectedApp
+    displayName: 'Select Application'
+    type: string
+    default: 'all'
+    values:
+      - all
+      - Dashboard
+      - PHW HL7Server
+      - PIMS HL7Server
+      - Paris HL7Server
+      - Chemocare HL7Server
+      - MPI HL7Server
+      - WDS HL7Server
+      - MPI HL7 Subscription Sender
+      - Mosaiq HL7Server
+      - HL7 REST Server
+      - REST Server
+      - WPAS REST Server
+      - HL7 Phw Transformer
+      - HL7 Chemo Transformer
+      - HL7 Pims Transformer
+      - HL7 Core Reference Transformer
+      - PROMS FHIR Transformer
+      - HL7 Sender
+      - SWW Chemo HL7 Subscription Sender
+      - PHW HL7 Subscription Sender
+      - BCU Chemo HL7 Subscription Sender
+      - PIMS HL7 Sender
+      - Chemocare HL7 Sender
+      - LIMS HL7 SOAP Server
+      - PMS HL7 SOAP Server
+      - PMS HL7 Subscription Sender
+      - HL7 WDS Transformer
+      - WIS SOAP Sender
+      - Message Store Service
+      - HL7 Mock Receiver
+      - Network Test App
+
+  - name: selectedEnvironment
+    displayName: 'Select Environment'
+    type: string
+    default: 'dev'
+    values:
+      - all
+      - dev
+      - dte
+      - tst
+      - uat
+      - ppd
+      - load
+      - prd
+
+variables:
+  # Shared Configuration
+  - name: acrName
+    value: 'uksdhcwihsharedcr'
+  - name: azureServiceConnectionNonProd
+    value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  - name: azureServiceConnectionProd
+    value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
+  - name: azureLocation
+    value: 'uks'
+
+  # Pool Configuration
+  - name: POOL_NAME_NON_PROD
+    value: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+  - name: POOL_NAME_PROD
+    value: 'UKS-DHCW-IH-PPD-ADOManagedPool'
+
+resources:
+  pipelines:
+    - ${{ if in(parameters.selectedApp, 'all', 'PHW HL7Server', 'PIMS HL7Server', 'Paris HL7Server', 'Chemocare HL7Server', 'MPI HL7Server', 'WDS HL7Server', 'Mosaiq HL7Server') }}:
+      - pipeline: 'HL7 Server - Build'
+        source: 'HL7 Server - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'MPI HL7 Subscription Sender', 'SWW Chemo HL7 Subscription Sender', 'BCU Chemo HL7 Subscription Sender', 'PHW HL7 Subscription Sender', 'PMS HL7 Subscription Sender') }}:
+      - pipeline: 'HL7 Subscription Sender - Build'
+        source: 'HL7 Subscription Sender - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 REST Server') }}:
+      - pipeline: 'HL7 REST Server - Build'
+        source: 'HL7 REST Server - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'REST Server', 'WPAS REST Server') }}:
+      - pipeline: 'REST Server - Build'
+        source: 'REST Server - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Phw Transformer') }}:
+      - pipeline: 'HL7 Phw Transformer - Build'
+        source: 'HL7 Phw Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Chemo Transformer') }}:
+      - pipeline: 'HL7 Chemo Transformer - Build'
+        source: 'HL7 Chemo Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Pims Transformer') }}:
+      - pipeline: 'HL7 Pims Transformer - Build'
+        source: 'HL7 Pims Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Core Reference Transformer') }}:
+      - pipeline: 'HL7 Core Reference Transformer - Build'
+        source: 'HL7 Core Reference Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'PROMS FHIR Transformer') }}:
+      - pipeline: 'PROMS FHIR Transformer - Build'
+        source: 'PROMS FHIR Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 WDS Transformer') }}:
+      - pipeline: 'HL7 WDS Transformer - Build'
+        source: 'HL7 WDS Transformer - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Sender', 'PIMS HL7 Sender', 'Chemocare HL7 Sender') }}:
+      - pipeline: 'HL7 Sender - Build'
+        source: 'HL7 Sender - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'LIMS HL7 SOAP Server', 'PMS HL7 SOAP Server') }}:
+      - pipeline: 'HL7 SOAP Server - Build'
+        source: 'HL7 SOAP Server - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'WIS SOAP Sender') }}:
+      - pipeline: 'SOAP Sender - Build'
+        source: 'SOAP Sender - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'HL7 Mock Receiver') }}:
+      - pipeline: 'HL7 Mock Receiver - Build'
+        source: 'HL7 Mock Receiver - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'Network Test App') }}:
+      - pipeline: 'Network Test App - Build'
+        source: 'Network Test App - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'Dashboard') }}:
+      - pipeline: 'Dashboard - Build'
+        source: 'Dashboard - Build'
+        trigger: none
+
+    - ${{ if in(parameters.selectedApp, 'all', 'Message Store Service') }}:
+      - pipeline: 'Message Store Service - Build'
+        source: 'Message Store Service - Build'
+        trigger: none
+
+stages:
+  # Define applications metadata inline
+  - template: templates/release-apps-dynamic-stages-template.yml
+    parameters:
+      selectedApp: ${{ parameters.selectedApp }}
+      selectedEnvironment: ${{ parameters.selectedEnvironment }}
+      azureLocation: $(azureLocation)
+      acrName: $(acrName)
+
+      # Application configurations
+      appConfig:
+        # HL7 Server Variants
+        - name: 'PHW HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'phw'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'PIMS HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'pims'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'Paris HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'paris'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'Chemocare HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'chemo'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'MPI HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'mpi'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'WDS HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'wds'
+          buildPipeline: 'HL7 Server - Build'
+
+        - name: 'MPI HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'wds'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'Mosaiq HL7Server'
+          appImageName: 'hl7server'
+          appFunctionMidfix: 'mosaiq'
+          buildPipeline: 'HL7 Server - Build'
+
+        # HL7 REST Server
+        - name: 'HL7 REST Server'
+          appImageName: 'hl7restserver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 REST Server - Build'
+
+        # REST Server (generic rest_server image; replaces hl7_soap_server/hl7_rest_server per docs/rest_merge.md)
+        - name: 'REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: ''
+          buildPipeline: 'REST Server - Build'
+
+        # WPAS REST Server (rest_server image, WPAS flow instance; container app uks-<env>-wpas-restserver-ca)
+        - name: 'WPAS REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'wpas'
+          buildPipeline: 'REST Server - Build'
+
+        # HL7 Transformer Variants
+        - name: 'HL7 Phw Transformer'
+          appImageName: 'phw-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Phw Transformer - Build'
+
+        - name: 'HL7 Chemo Transformer'
+          appImageName: 'chemo-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Chemo Transformer - Build'
+
+        - name: 'HL7 Pims Transformer'
+          appImageName: 'pims-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Pims Transformer - Build'
+
+        - name: 'HL7 Core Reference Transformer'
+          appImageName: 'core-reference-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Core Reference Transformer - Build'
+
+        - name: 'PROMS FHIR Transformer'
+          appImageName: 'proms-fhirtransformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'PROMS FHIR Transformer - Build'
+
+        - name: 'HL7 WDS Transformer'
+          appImageName: 'wds-hl7transformer'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 WDS Transformer - Build'
+
+        # HL7 Sender Variants
+        - name: 'HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'SWW Chemo HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'sww-chemo'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'BCU Chemo HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'bcu-chemo'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'PHW HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'mpi-phw'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'PMS HL7 Subscription Sender'
+          appImageName: 'hl7subsndr'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 Subscription Sender - Build'
+
+        - name: 'PIMS HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'pims'
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'Chemocare HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'chemo'
+          buildPipeline: 'HL7 Sender - Build'
+
+        # LIMS SOAP Server
+        - name: 'LIMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'HL7 SOAP Server - Build'
+
+        # PMS SOAP Server
+        - name: 'PMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 SOAP Server - Build'
+
+        # WDS to WIS Flow
+        - name: 'WIS SOAP Sender'
+          appImageName: 'soapsender'
+          appFunctionMidfix: 'wis'
+          buildPipeline: 'SOAP Sender - Build'
+        # Mock Receiver
+        - name: 'HL7 Mock Receiver'
+          appImageName: 'hl7mockreceiver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Mock Receiver - Build'
+
+        # Network Test App
+        - name: 'Network Test App'
+          appImageName: 'networktestapp'
+          appFunctionMidfix: ''
+          buildPipeline: 'Network Test App - Build'
+
+        # NOC Dashboard
+        - name: 'Dashboard'
+          appImageName: 'dashboard'
+          appFunctionMidfix: ''
+          buildPipeline: 'Dashboard - Build'
+
+        # Message Store Service
+        - name: 'Message Store Service'
+          appImageName: 'messagestoreservice'
+          appFunctionMidfix: ''
+          buildPipeline: 'Message Store Service - Build'
+
+      # Environment configurations
+      environments:
+        - name: 'dev'
+          environmentName: 'Integration-Hub-Release-Container-Apps-dev'
+          displayName: 'Development'
+          resourceGroup: 'UK-South-DHCW-IntHub-DEV-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: false
+
+        - name: 'load'
+          environmentName: 'Integration-Hub-Release-Container-Apps-load'
+          displayName: 'Load Testing'
+          resourceGroup: 'UK-South-DHCW-IntHub-LOAD-App-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: false
+
+        - name: 'dte'
+          environmentName: 'Integration-Hub-Release-Container-Apps-dte'
+          displayName: 'DTE'
+          resourceGroup: 'UK-South-DHCW-IntHub-DTE-App-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: true
+
+        - name: 'tst'
+          environmentName: 'Integration-Hub-Release-Container-Apps-tst'
+          displayName: 'Test'
+          resourceGroup: 'UK-South-DHCW-IntHub-TST-App-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: true
+
+        - name: 'uat'
+          environmentName: 'Integration-Hub-Release-Container-Apps-uat'
+          displayName: 'UAT'
+          resourceGroup: 'UK-South-DHCW-IntHub-UAT-App-RG'
+          poolName: $(POOL_NAME_NON_PROD)
+          azureServiceConnection: $(azureServiceConnectionNonProd)
+          dependsOnPrevious: true
+
+        - name: 'ppd'
+          environmentName: 'Integration-Hub-Release-Container-Apps-ppd'
+          displayName: 'Pre-Production'
+          resourceGroup: 'UK-South-DHCW-IntHub-PPD-App-RG'
+          poolName: $(POOL_NAME_PROD)
+          azureServiceConnection: $(azureServiceConnectionProd)
+          dependsOnPrevious: true
+
+        - name: 'prd'
+          environmentName: 'Integration-Hub-Release-Container-Apps-prd'
+          displayName: 'Production'
+          resourceGroup: 'UK-South-DHCW-IntHub-PRD-App-RG'
+          poolName: $(POOL_NAME_PROD)
+          azureServiceConnection: $(azureServiceConnectionProd)
+          dependsOnPrevious: true
