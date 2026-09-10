@@ -20,10 +20,12 @@ parameters:
       - HL7 REST Server
       - REST Server
       - WPAS REST Server
+      - RISP REST Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
       - HL7 Core Reference Transformer
+      - RISP Core Reference Transformer
       - PROMS FHIR Transformer
       - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
@@ -195,6 +197,12 @@ stages:
           appFunctionMidfix: 'wpas'
           buildPipeline: 'REST Server - Build'
 
+        # RISP REST Server (rest_server image, RISP flow instance; container app uks-<env>-risp-restserver-ca)
+        - name: 'RISP REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'risp'
+          buildPipeline: 'REST Server - Build'
+
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           appImageName: 'phw-hl7transformer'
@@ -214,6 +222,11 @@ stages:
         - name: 'HL7 Core Reference Transformer'
           appImageName: 'core-reference-hl7transformer'
           appFunctionMidfix: ''
+          buildPipeline: 'HL7 Core Reference Transformer - Build'
+
+        - name: 'RISP Core Reference Transformer'
+          appImageName: 'core-reference-hl7transformer'
+          appFunctionMidfix: 'risp'
           buildPipeline: 'HL7 Core Reference Transformer - Build'
 
         - name: 'PROMS FHIR Transformer'
