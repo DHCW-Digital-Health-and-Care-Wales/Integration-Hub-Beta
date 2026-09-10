@@ -128,6 +128,17 @@ class TestIsSocketClosed(unittest.TestCase):
 class TestHL7SenderClient(unittest.TestCase):
 
     @patch('hl7_sender.hl7_sender_client.MLLPClient')
+    def test_construction_does_not_open_connection(self, mock_mllp_cls: Mock) -> None:
+        # Arrange & Act
+        # Constructing the client must NOT open a socket, so the service can start
+        # and report healthy even when the downstream MLLP receiver is unreachable.
+        client = HL7SenderClient('unreachable-host', 1234, 30)
+
+        # Assert
+        mock_mllp_cls.assert_not_called()
+        self.assertIsNone(client.mllp_client)
+
+    @patch('hl7_sender.hl7_sender_client.MLLPClient')
     def test_send_message_socket_open(self, mock_mllp_cls: Mock) -> None:
         # Arrange
         mock_mllp = Mock()
@@ -151,14 +162,20 @@ class TestHL7SenderClient(unittest.TestCase):
         # Arrange
         mock_mllp1 = Mock()
         mock_mllp1.socket = Mock()
+        mock_mllp1.send_message.return_value = b'ACK'
         mock_mllp2 = Mock()
+        mock_mllp2.socket = Mock()
         mock_mllp2.send_message.return_value = b'ACK'
         # Simulate the first call creates mock_mllp1, second creates mock_mllp2
         mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
 
         # Act
+        client = HL7SenderClient('localhost', 1234, 40)
+        # First send establishes the initial (lazy) connection -> mock_mllp1
+        with patch('hl7_sender.hl7_sender_client.is_socket_closed', return_value=False):
+            client.send_message('MSH|first')
+        # Next send detects a closed socket and reconnects -> mock_mllp2
         with patch('hl7_sender.hl7_sender_client.is_socket_closed', return_value=True):
-            client = HL7SenderClient('localhost', 1234, 40)
             response = client.send_message('MSH|...')
 
             # Assert
@@ -245,10 +262,12 @@ class TestHL7SenderClient(unittest.TestCase):
         # Arrange
         mock_mllp1 = Mock()
         mock_mllp2 = Mock()
-        mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
+        mock_mllp2.socket = Mock()
+        mock_mllp_cls.return_value = mock_mllp2
 
         # Act
         client = HL7SenderClient('localhost', 1234, 30)
+        client.mllp_client = mock_mllp1  # simulate an already-established connection
         client.mllp_client = client._close_and_create_new_mllp_client()
 
         # Assert
@@ -261,11 +280,13 @@ class TestHL7SenderClient(unittest.TestCase):
         mock_mllp1 = Mock()
         mock_mllp1.close.side_effect = OSError("Failed to close socket")
         mock_mllp2 = Mock()
-        mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
+        mock_mllp2.socket = Mock()
+        mock_mllp_cls.return_value = mock_mllp2
 
         # Act & Assert
         with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as log:
             client = HL7SenderClient('localhost', 1234, 30)
+            client.mllp_client = mock_mllp1  # simulate an already-established connection
             client.mllp_client = client._close_and_create_new_mllp_client()
 
             self.assertEqual(len(log.output), 1)
@@ -283,7 +304,9 @@ class TestHL7SenderClient(unittest.TestCase):
         mock_mllp_cls.return_value = mock_mllp
 
         # Act
-        with HL7SenderClient('localhost', 1234, 30):
+        client = HL7SenderClient('localhost', 1234, 30)
+        client.mllp_client = mock_mllp  # simulate an already-established connection
+        with client:
             pass
 
         # Assert

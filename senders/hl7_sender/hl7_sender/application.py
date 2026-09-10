@@ -84,35 +84,41 @@ def main() -> None:
         app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
     )
 
-    with (
-        factory.create_message_receiver_client(
-            app_config.ingress_queue_name, app_config.ingress_session_id
-        ) as receiver_client,
-        HL7SenderClient(
-            app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
-        ) as hl7_sender_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
-        message_store_client,
-    ):
-        logger.info("Processor started.")
+    # Bind the startup/health probe first, before constructing the Service Bus and
+    # MLLP clients, so the container reports healthy even when the downstream MLLP
+    # endpoint or Service Bus is briefly unavailable at (re)start.
+    with TCPHealthCheckServer(
+        app_config.health_check_hostname, app_config.health_check_port
+    ) as health_check_server:
         health_check_server.start()
 
-        batch_size = _calculate_batch_size(throttler)
+        with (
+            factory.create_message_receiver_client(
+                app_config.ingress_queue_name, app_config.ingress_session_id
+            ) as receiver_client,
+            HL7SenderClient(
+                app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
+            ) as hl7_sender_client,
+            message_store_client,
+        ):
+            logger.info("Processor started.")
 
-        def message_processor(message: ServiceBusMessage) -> bool:
-            return _process_message(
-                message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
-                app_config.ingress_session_id,
-            )
+            batch_size = _calculate_batch_size(throttler)
 
-        wrapped_processor = processor_manager.wrap_handler(
-            message_processor, "hl7-sender", app_config.ingress_queue_name
-        )
-        while processor_manager.is_running:
-            receiver_client.receive_messages(
-                batch_size,
-                wrapped_processor,
+            def message_processor(message: ServiceBusMessage) -> bool:
+                return _process_message(
+                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
+                    app_config.ingress_session_id,
+                )
+
+            wrapped_processor = processor_manager.wrap_handler(
+                message_processor, "hl7-sender", app_config.ingress_queue_name
             )
+            while processor_manager.is_running:
+                receiver_client.receive_messages(
+                    batch_size,
+                    wrapped_processor,
+                )
 
 
 def _process_message(

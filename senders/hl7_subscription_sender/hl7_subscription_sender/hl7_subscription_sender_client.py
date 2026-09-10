@@ -36,9 +36,16 @@ class HL7SubscriptionSenderClient:
         self.receiver_mllp_hostname = receiver_mllp_hostname
         self.receiver_mllp_port = receiver_mllp_port
         self.ack_timeout_seconds = ack_timeout_seconds
-        self.mllp_client: MLLPClient = self._create_mllp_client()
+        # The MLLP connection is established lazily on the first send rather than at
+        # construction time. This decouples the service's own liveness from the
+        # availability of the downstream MLLP receiver: the container can start and
+        # report healthy even when the destination is unreachable, and undelivered
+        # messages are simply NACK'd and redelivered by Service Bus until it recovers.
+        self.mllp_client: Optional[MLLPClient] = None
 
     def _close_mllp_client(self) -> None:
+        if self.mllp_client is None:
+            return
         try:
             self.mllp_client.close()
         except Exception as e:
@@ -54,7 +61,7 @@ class HL7SubscriptionSenderClient:
         return self._create_mllp_client()
 
     def send_message(self, message: str, _retry_attempted: bool = False) -> str:
-        if is_socket_closed(self.mllp_client.socket):
+        if self.mllp_client is None or is_socket_closed(self.mllp_client.socket):
             logger.info("creating new MLLP client connection")
             self.mllp_client = self._close_and_create_new_mllp_client()
 
@@ -82,4 +89,4 @@ class HL7SubscriptionSenderClient:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        self.mllp_client.close()
+        self._close_mllp_client()

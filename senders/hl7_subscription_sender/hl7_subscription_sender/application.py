@@ -74,35 +74,41 @@ def main() -> None:
         f"{app_config.ingress_topic_name}/{app_config.ingress_subscription_name}, "
         f"MLLP Receiver: {app_config.receiver_mllp_hostname}:{app_config.receiver_mllp_port}"
     )
-    with (
-        factory.create_subscription_receiver_client(
-            app_config.ingress_topic_name,
-            app_config.ingress_subscription_name,
-            app_config.ingress_session_id,
-        ) as subscription_receiver_client,
-        HL7SubscriptionSenderClient(
-            app_config.receiver_mllp_hostname,
-            app_config.receiver_mllp_port,
-            app_config.ack_timeout_seconds,
-        ) as hl7_subscription_sender_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
-    ):
-        logger.info("Subscription processor started.")
+    # Bind the startup/health probe first, before constructing the Service Bus and
+    # MLLP clients, so the container reports healthy even when the downstream MLLP
+    # endpoint or Service Bus is briefly unavailable at (re)start.
+    with TCPHealthCheckServer(
+        app_config.health_check_hostname, app_config.health_check_port
+    ) as health_check_server:
         health_check_server.start()
 
-        batch_size = _calculate_batch_size(throttler)
+        with (
+            factory.create_subscription_receiver_client(
+                app_config.ingress_topic_name,
+                app_config.ingress_subscription_name,
+                app_config.ingress_session_id,
+            ) as subscription_receiver_client,
+            HL7SubscriptionSenderClient(
+                app_config.receiver_mllp_hostname,
+                app_config.receiver_mllp_port,
+                app_config.ack_timeout_seconds,
+            ) as hl7_subscription_sender_client,
+        ):
+            logger.info("Subscription processor started.")
 
-        while processor_manager.is_running:
-            subscription_receiver_client.receive_messages(
-                batch_size,
-                lambda message: _process_message(
-                    message,
-                    hl7_subscription_sender_client,
-                    event_logger,
-                    metric_sender,
-                    throttler,
-                ),
-            )
+            batch_size = _calculate_batch_size(throttler)
+
+            while processor_manager.is_running:
+                subscription_receiver_client.receive_messages(
+                    batch_size,
+                    lambda message: _process_message(
+                        message,
+                        hl7_subscription_sender_client,
+                        event_logger,
+                        metric_sender,
+                        throttler,
+                    ),
+                )
 
 
 def _process_message(
