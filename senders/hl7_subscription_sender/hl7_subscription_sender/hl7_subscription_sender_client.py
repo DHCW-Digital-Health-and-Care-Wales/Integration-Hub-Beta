@@ -18,7 +18,8 @@ def is_socket_closed(sock: socket.socket) -> bool:
         readable, _, _ = select.select([sock], [], [], 0)
         if readable:
             # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else socket.MSG_DONTWAIT | socket.MSG_PEEK
+            # MSG_DONTWAIT does not exist on Windows; getattr keeps this import-safe and mypy-clean there.
+            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK
             data = sock.recv(16, flags)
             return len(data) == 0
         return False  # no data, but socket is fine

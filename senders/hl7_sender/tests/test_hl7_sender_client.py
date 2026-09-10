@@ -44,7 +44,7 @@ class TestIsSocketClosed(unittest.TestCase):
         if os.name == WINDOWS_OS:
             mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
         else:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+            mock_socket.recv.assert_called_once_with(16, getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK)
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_readable_with_empty_data_socket_closed(self, mock_select: Mock) -> None:
@@ -64,7 +64,7 @@ class TestIsSocketClosed(unittest.TestCase):
         if os.name == WINDOWS_OS:
             mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
         else:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+            mock_socket.recv.assert_called_once_with(16, getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK)
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_recv_raises_blocking_io_error(self, mock_select: Mock) -> None:

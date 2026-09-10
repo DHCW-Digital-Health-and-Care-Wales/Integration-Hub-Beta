@@ -149,8 +149,8 @@ class TestIsSocketClosed(unittest.TestCase):
         result = is_socket_closed(mock_socket)
 
         self.assertFalse(result)
-        # Verify non-Windows uses MSG_PEEK | MSG_DONTWAIT
-        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+        # Verify non-Windows uses MSG_PEEK | MSG_DONTWAIT (getattr keeps the assertion runnable on Windows)
+        mock_socket.recv.assert_called_once_with(16, getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK)
 
 
 class TestHL7SenderClient(unittest.TestCase):
