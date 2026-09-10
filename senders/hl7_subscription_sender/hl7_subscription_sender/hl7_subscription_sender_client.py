@@ -45,10 +45,11 @@ class HL7SubscriptionSenderClient:
         self.mllp_client: Optional[MLLPClient] = None
 
     def _close_mllp_client(self) -> None:
-        if self.mllp_client is None:
+        mllp_client = self.mllp_client
+        if mllp_client is None:
             return
         try:
-            self.mllp_client.close()
+            mllp_client.close()
         except Exception as e:
             logger.error(f"Error closing socket: {e}")
 
@@ -66,8 +67,12 @@ class HL7SubscriptionSenderClient:
             logger.info("creating new MLLP client connection")
             self.mllp_client = self._close_and_create_new_mllp_client()
 
+        mllp_client = self.mllp_client
+        if mllp_client is None:
+            raise ConnectionError("MLLP client connection is not available")
+
         try:
-            ack_response = self.mllp_client.send_message(message).decode("utf-8")
+            ack_response = mllp_client.send_message(message).decode("utf-8")
             stripped_response = ack_response.strip(ENCODING_CHARS)
             return stripped_response
         except socket.timeout:
