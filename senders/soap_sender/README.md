@@ -46,7 +46,7 @@ uv run python -m soap_sender.application
 | `WS_SECURITY_ENABLED` | `false` | No | Reserved — WS-Security not yet implemented |
 | `INGRESS_QUEUE_NAME` | — | **Yes** | Service Bus queue to consume from |
 | `INGRESS_SESSION_ID` | — | **Yes** | Session ID for the ingress queue |
-| `MESSAGE_STORE_QUEUE_NAME` | — | **Yes** | Message store queue name |
+| `MESSAGE_STORE_QUEUE_NAME` | — | No | Message store queue name (message store persistence is skipped when unset) |
 | `SERVICE_BUS_CONNECTION_STRING` | — | No | SB connection string (local/dev) |
 | `SERVICE_BUS_NAMESPACE` | — | No | SB namespace (Managed Identity) |
 | `WORKFLOW_ID` | — | **Yes** | Observability workflow identifier |

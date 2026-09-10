@@ -103,6 +103,11 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             AppConfig.read_env_config()
 
+    @patch.dict(os.environ, {k: v for k, v in BASE_ENV.items() if k != "MESSAGE_STORE_QUEUE_NAME"}, clear=True)
+    def test_message_store_queue_name_optional_when_unset(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertIsNone(config.message_store_queue_name)
+
 
 HL7_BASE_ENV = {
     "EGRESS_QUEUE_NAME": "egress-queue",

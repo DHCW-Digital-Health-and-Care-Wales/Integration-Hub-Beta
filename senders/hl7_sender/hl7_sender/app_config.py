@@ -14,7 +14,7 @@ class AppConfig:
     receiver_mllp_port: int
     health_check_hostname: str | None
     health_check_port: int | None
-    message_store_queue_name: str
+    message_store_queue_name: str | None
     workflow_id: str
     microservice_id: str
     health_board: str
@@ -33,7 +33,7 @@ class AppConfig:
             receiver_mllp_port=_read_required_int_env("RECEIVER_MLLP_PORT"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
-            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
+            message_store_queue_name=_read_env("MESSAGE_STORE_QUEUE_NAME"),
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),

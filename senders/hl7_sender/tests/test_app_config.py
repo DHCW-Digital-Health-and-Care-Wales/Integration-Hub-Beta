@@ -38,6 +38,28 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.microservice_id, "test-microservice")
         self.assertEqual(config.health_board, "test health board")
         self.assertEqual(config.peer_service, "test-service")
+
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_message_store_queue_name_optional_when_unset(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_QUEUE_NAME": "ingress_queue",
+                "INGRESS_SESSION_ID": "ingress_session",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                # MESSAGE_STORE_QUEUE_NAME omitted — should be optional regardless of MESSAGE_STORE_ENABLED
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+
+        self.assertIsNone(config.message_store_queue_name)
         self.assertEqual(config.ack_timeout_seconds, 30)
 
     @patch("hl7_sender.app_config.os.getenv")

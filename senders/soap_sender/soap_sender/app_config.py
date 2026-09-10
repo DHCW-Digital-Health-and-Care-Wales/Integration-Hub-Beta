@@ -17,7 +17,7 @@ class AppConfig:
     service_bus_namespace: str | None
     ingress_queue_name: str
     ingress_session_id: str
-    message_store_queue_name: str
+    message_store_queue_name: str | None
     # SOAP endpoint
     soap_endpoint_url: str
     soap_timeout_seconds: int
@@ -46,7 +46,7 @@ class AppConfig:
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             ingress_queue_name=_read_required_env("INGRESS_QUEUE_NAME"),
             ingress_session_id=_read_required_env("INGRESS_SESSION_ID"),
-            message_store_queue_name=_read_required_env("MESSAGE_STORE_QUEUE_NAME"),
+            message_store_queue_name=_read_env("MESSAGE_STORE_QUEUE_NAME"),
             soap_endpoint_url=_read_required_env("SOAP_ENDPOINT_URL"),
             soap_timeout_seconds=_read_int_env("SOAP_TIMEOUT_SECONDS") or 30,
             soap_envelope_format=os.getenv("SOAP_ENVELOPE_FORMAT", "default").lower().strip(),

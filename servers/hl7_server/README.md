@@ -50,7 +50,7 @@ To define host and port the server should bind to use environment variables conf
 - **EGRESS_TOPIC_NAME** - service bus topic name to store received messages
 - **EGRESS_SESSION_ID** - service bus queue FIFO session name (required for message replay — stored alongside each persisted message so the replay job can route it back to the correct downstream component)
 - **MESSAGE_STORE_QUEUE_NAME** - Message store service bus queue
-- **MESSAGE_STORE_ENABLED** - Set to `false` to disable message store persistence (optional, default `true` — enabled)
+- **MESSAGE_STORE_ENABLED** - Set to `true` (or any value other than `false`) to enable message store persistence (optional, default `false` — disabled)
 - **WORKFLOW_ID** - workflow id (used for audit)
 - **MICROSERVICE_ID** - service id (used for audit)
 - **HL7_VERSION** - hl7v2 version, if provided will be used to validate MSH-12.1 field

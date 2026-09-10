@@ -16,7 +16,8 @@ class MessageStoreClient:
     When sender_client is None the instance is in disabled mode: send_to_store
     becomes a no-op that logs a warning per call, and close() is a no-op. Disabled
     instances are created by ServiceBusClientFactory.create_message_store_client
-    when MESSAGE_STORE_ENABLED=false.
+    by default, unless MESSAGE_STORE_ENABLED is explicitly set to a value other
+    than "false".
     """
 
     def __init__(self, sender_client: MessageSenderClient | None, microservice_id: str, peer_service: str):

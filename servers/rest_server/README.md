@@ -289,7 +289,8 @@ Shared with `hl7_soap_server` (unchanged names/behaviour):
 - `TLS_CERT_FILE` and `TLS_KEY_FILE` (optional; enable in-process HTTPS when both set)
 - `SERVICE_BUS_CONNECTION_STRING` or `SERVICE_BUS_NAMESPACE`
 - `EGRESS_QUEUE_NAME` or `EGRESS_TOPIC_NAME` (exactly one required)
-- `EGRESS_SESSION_ID`, `MESSAGE_STORE_QUEUE_NAME`, `WORKFLOW_ID`, `MICROSERVICE_ID`
+- `EGRESS_SESSION_ID`, `WORKFLOW_ID`, `MICROSERVICE_ID`
+- `MESSAGE_STORE_QUEUE_NAME` (optional — message store persistence is skipped when unset)
 - `HEALTH_BOARD`, `PEER_SERVICE`, `HEALTH_CHECK_HOST`, `HEALTH_CHECK_PORT`
 
 ### `generic` pipeline configuration (all required unless a default is shown)

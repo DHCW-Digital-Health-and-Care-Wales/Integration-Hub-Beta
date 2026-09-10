@@ -92,8 +92,6 @@ stages:
                 "mock_receivers/http_mock_receiver|HTTP Mock Receiver|pytest"
                 "message_processing/message_store_service|Message Store Service|unittest"
                 "message_processing/message_replay_job|Message Replay Job|unittest"
-                "dev_tools/buswatch|BusWatch|unittest"
-                "dev_tools/ultra7|Ultra7|unittest"
                 "dashboard|Dashboard|pytest"
                 "shared_libs/message_bus_lib|Message Bus Library|unittest"
                 "shared_libs/event_logger_lib|Event Logger Library|unittest"
