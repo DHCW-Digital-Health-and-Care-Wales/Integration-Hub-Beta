@@ -24,7 +24,7 @@ parameters:
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
-      - Core Reference Transformer
+      - HL7 Core Reference Transformer
       - RISP Core Reference Transformer
       - PROMS FHIR Transformer
       - HL7 Sender
@@ -219,7 +219,7 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
 
-        - name: 'Core Reference Transformer'
+        - name: 'HL7 Core Reference Transformer'
           appImageName: 'core-reference-hl7transformer'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Core Reference Transformer - Build'
