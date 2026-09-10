@@ -11,7 +11,7 @@ from message_bus_lib.connection_config import ConnectionConfig
 from message_bus_lib.servicebus_client_factory import ServiceBusClientFactory
 from processor_manager_lib import ProcessorManager
 
-from .app_config import TransformerConfig
+from .app_config import TransformerConfig, validate_ingress_config
 from .message_processor import process_message
 
 if TYPE_CHECKING:
@@ -31,19 +31,45 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
 
     config = TransformerConfig.from_env_and_config_file(transformer.config_path)
 
+    # Validated at startup (not at AppConfig construction time) so that test fixtures
+    # constructing partial/placeholder AppConfig instances are unaffected.
+    validate_ingress_config(
+        config.ingress_queue_name,
+        config.ingress_topic_name,
+        config.ingress_subscription_name,
+    )
+
     client_config = ConnectionConfig(
         config.connection_string, config.service_bus_namespace
     )
     factory = ServiceBusClientFactory(client_config)
     event_logger = EventLogger(config.workflow_id, config.microservice_id)
 
+    # Ingress is configured as either a queue, or a topic+subscription pair
+    # (mutually exclusive, validated above by validate_ingress_config).
+    if config.ingress_queue_name:
+        ingress_name: str = config.ingress_queue_name
+        receiver_client_cm = factory.create_message_receiver_client(
+            config.ingress_queue_name, config.ingress_session_id
+        )
+    else:
+        if not (config.ingress_topic_name and config.ingress_subscription_name):
+            raise RuntimeError(
+                "Invalid ingress configuration: topic ingress requires both "
+                "INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME to be set."
+            )
+        ingress_name = f"{config.ingress_topic_name}/{config.ingress_subscription_name}"
+        receiver_client_cm = factory.create_subscription_receiver_client(
+            config.ingress_topic_name,
+            config.ingress_subscription_name,
+            config.ingress_session_id,
+        )
+
     with (
         factory.create_queue_sender_client(
             config.egress_queue_name, config.egress_session_id
         ) as sender_client,
-        factory.create_message_receiver_client(
-            config.ingress_queue_name, config.ingress_session_id
-        ) as receiver_client,
+        receiver_client_cm as receiver_client,
         TCPHealthCheckServer(
             config.health_check_hostname, config.health_check_port
         ) as health_check_server,
@@ -76,7 +102,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
             )
 
         wrapped_processor = processor_manager.wrap_handler(
-            message_processor, transformer.transformer_name, config.ingress_queue_name
+            message_processor, transformer.transformer_name, ingress_name
         )
         while processor_manager.is_running:
             receiver_client.receive_messages(

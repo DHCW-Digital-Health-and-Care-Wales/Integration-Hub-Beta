@@ -3,7 +3,7 @@ from __future__ import annotations
 import configparser
 import logging
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 class AppConfig:
     connection_string: str | None
     ingress_queue_name: str | None
+    # kw_only + default so these can be added without shifting the positional
+    # argument order of any existing (non-topic) caller across the codebase.
+    ingress_topic_name: str | None = field(default=None, kw_only=True)
+    ingress_subscription_name: str | None = field(default=None, kw_only=True)
     ingress_session_id: str | None
     egress_queue_name: str | None
     egress_session_id: str | None
@@ -27,7 +31,14 @@ class AppConfig:
             connection_string=_read_env(
                 "SERVICE_BUS_CONNECTION_STRING", required=False
             ),
-            ingress_queue_name=_read_env("INGRESS_QUEUE_NAME", required=True),
+            ingress_queue_name=(_read_env("INGRESS_QUEUE_NAME", required=False) or "").strip()
+            or None,
+            ingress_topic_name=(_read_env("INGRESS_TOPIC_NAME", required=False) or "").strip()
+            or None,
+            ingress_subscription_name=(
+                _read_env("INGRESS_SUBSCRIPTION_NAME", required=False) or ""
+            ).strip()
+            or None,
             ingress_session_id=_read_env("INGRESS_SESSION_ID", required=False),
             egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
@@ -70,6 +81,39 @@ class TransformerConfig(AppConfig):
             )
 
         return cls(**asdict(app_config), MAX_BATCH_SIZE=MAX_BATCH_SIZE)
+
+
+def validate_ingress_config(
+    ingress_queue_name: str | None,
+    ingress_topic_name: str | None,
+    ingress_subscription_name: str | None,
+) -> None:
+    """Ensure ingress is configured as exactly one of: a queue, or a topic+subscription pair.
+
+    Called at application startup (run_transformer_app), not at AppConfig construction time,
+    since many test fixtures construct AppConfig with partial/placeholder ingress fields that
+    are irrelevant to what they're testing.
+    """
+    has_queue = bool(ingress_queue_name)
+    has_topic = bool(ingress_topic_name) or bool(ingress_subscription_name)
+
+    if has_queue and has_topic:
+        raise RuntimeError(
+            "Invalid ingress configuration: INGRESS_QUEUE_NAME cannot be set together with "
+            "INGRESS_TOPIC_NAME/INGRESS_SUBSCRIPTION_NAME. Configure only one ingress transport."
+        )
+
+    if not has_queue and not has_topic:
+        raise RuntimeError(
+            "Missing required configuration: set either INGRESS_QUEUE_NAME, or both "
+            "INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME."
+        )
+
+    if has_topic and (not ingress_topic_name or not ingress_subscription_name):
+        raise RuntimeError(
+            "Missing required configuration: INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME "
+            "must both be set when using topic-based ingress."
+        )
 
 
 def _read_env(name: str, required: bool = False) -> str | None:
