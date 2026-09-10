@@ -111,14 +111,14 @@ class TestCreateMessageStoreClient(unittest.TestCase):
         self.assertIsNone(client.sender_client)
         self.mock_sb_client.get_queue_sender.assert_not_called()
 
-    def test_create_message_store_client_enabled_by_default(self) -> None:
-        """When MESSAGE_STORE_ENABLED is absent the message store is enabled by default."""
+    def test_create_message_store_client_disabled_by_default(self) -> None:
+        """When MESSAGE_STORE_ENABLED is absent the message store is disabled by default."""
         env = {k: v for k, v in os.environ.items() if k != "MESSAGE_STORE_ENABLED"}
         with patch.dict(os.environ, env, clear=True):
             client = self.factory.create_message_store_client("store-queue", "svc-id", "peer-svc")
 
-        self.assertIsNotNone(client.sender_client)
-        self.mock_sb_client.get_queue_sender.assert_called_once_with(queue_name="store-queue")
+        self.assertIsNone(client.sender_client)
+        self.mock_sb_client.get_queue_sender.assert_not_called()
 
     @patch.dict(os.environ, {"MESSAGE_STORE_ENABLED": "true"})
     def test_create_message_store_client_propagates_identifiers(self) -> None:

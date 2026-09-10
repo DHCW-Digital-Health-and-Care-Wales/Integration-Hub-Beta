@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+
 <PromsEventRequest>
 	<system_id>149</system_id>
 	<unique_code>6141008682</unique_code>
@@ -10,7 +11,7 @@
 	<patientSurname>SIMPSON</patientSurname>
 	<dob>1961-10-23</dob>
 	<gender>F</gender>
-	<buildingName>Office Accomodation 1</buildingName>
+	<buildingName>Office Accommodation 1</buildingName>
 	<streetRoadName>Ocean Buildings</streetRoadName>
 	<postTown>Cardiff</postTown>
 	<postalCounty></postalCounty>

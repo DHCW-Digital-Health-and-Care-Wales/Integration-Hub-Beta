@@ -123,13 +123,11 @@ class ServiceBusClientFactory:
     def create_message_store_client(
         self, queue_name: Optional[str], microservice_id: str, peer_service: str
     ) -> MessageStoreClient:
-        """Create a MessageStoreClient. If MESSAGE_STORE_ENABLED is explicitly set to "false" (case-insensitive),
-         a disabled instance is returned and send_to_store calls on it will be no-ops that log a warning.
-
-        In all other cases (variable absent or any other value) the message store is enabled
-        and a live Azure Service Bus sender is created for the given queue.
+        """Create a MessageStoreClient. The message store is disabled by default — a disabled instance
+        is returned and send_to_store calls on it will be no-ops that log a warning, unless
+        MESSAGE_STORE_ENABLED is explicitly set to a value other than "false" (case-insensitive).
         """
-        is_enabled = _read_bool_env("MESSAGE_STORE_ENABLED", default=True)
+        is_enabled = _read_bool_env("MESSAGE_STORE_ENABLED", default=False)
         sender = None
 
         if is_enabled and queue_name:
