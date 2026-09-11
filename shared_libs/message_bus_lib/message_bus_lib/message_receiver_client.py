@@ -18,6 +18,8 @@ from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedEr
 from metric_sender_lib.metric_sender import MetricSender
 from otel_lib import extract_trace_context
 
+from message_bus_lib.dead_letter import DeadLetterMessage
+
 logger = logging.getLogger(__name__)
 
 
@@ -99,6 +101,16 @@ class MessageReceiverClient:
             for i, msg in enumerate(messages):
                 try:
                     is_success = self._invoke_with_trace_context(message_processor, msg)
+                except DeadLetterMessage as dlm:
+                    logger.error(
+                        "Dead-lettering non-recoverable message %s (reason=%s): %s",
+                        msg.message_id,
+                        dlm.reason,
+                        dlm.description,
+                    )
+                    receiver.dead_letter_message(msg, reason=dlm.reason, error_description=dlm.description)
+                    self._abort_message_processing(receiver, messages[i + 1:])
+                    return False
                 except Exception:
                     logger.exception("Unexpected error processing message: %s", msg.message_id)
                     self._abort_message_processing(receiver, messages[i:])
