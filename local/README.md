@@ -42,11 +42,13 @@ Common tasks for local development:
 | ------------------------------------- | -------------------------------------------------------------- |
 | Generate secrets                      | `just secrets`                                                 |
 | Start PHW integration flow            | `just start phw-to-mpi`                                        |
+| Start MPI outbound subscription flow  | `just start mpi-to-topic`                                      |
 | Start all profiles                    | `docker compose --profile "*" up -d`                           |
 | View live logs (all services)         | `just logs`                                                    |
 | View logs for specific service        | `just logs mpi-hl7-mock-receiver`                              |
 | Send test HL7 message                 | `just send ./sample_messages/phw-to-mpi.sample.hl7`            |
 | Send test HL7 message to a given port | `just send ./sample_messages/chemocare-to-mpi.sample.hl7 2578` |
+| Send MPI outbound sample message      | `just send ./sample_messages/mpi-outbound-pharmacy.sample.hl7 2580` |
 | Run the message replay job            | `just run replay`                                              |
 | Stop all containers                   | `just stop`                                                    |
 
@@ -371,6 +373,12 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 
 - [python-hl7](https://pypi.org/project/hl7/) installed locally
 - Docker containers need to be running with the profile of the service(s) desired - see [Build and start containers](#build-and-start-containers)
+- If you are testing changes on your current branch, rebuild or restart the affected profile first so the local container uses your branch's code:
+
+  ```bash
+  just build <profile>
+  just restart <profile>
+  ```
 
 **Steps**
 
@@ -380,6 +388,21 @@ You can connect to Azure Service Bus emulator from the local machine using follo
 - Check the Docker logs to show whether the request succeeded.
 
 See [mllp_send](https://python-hl7.readthedocs.io/en/latest/mllp_send.html) for more info.
+
+#### Testing sender changes on this branch
+
+Use the profile that includes the sender variant you changed, then send a message to that flow's ingress port and watch the sender plus mock receiver logs.
+
+| Sender under test | Start profile | Send command | What to check |
+| ----------------- | ------------- | ------------ | ------------- |
+| `hl7_sender` | `just start phw-to-mpi` (or another `*-to-mpi` profile that uses `mpi-hl7-sender`) | `just send ./sample_messages/phw-to-mpi.sample.hl7 2575` | `just logs mpi-hl7-sender` and `just logs mpi-hl7-mock-receiver` |
+| `hl7_subscription_sender` | `just start mpi-to-topic` | `just send ./sample_messages/mpi-outbound-pharmacy.sample.hl7 2580` | `just logs mpi-hl7-chemo-sender` and `just logs mpi-hl7-mock-receiver` |
+
+Notes:
+
+- For `hl7_sender`, you can swap in another profile and sample file if that better matches your change (`paris-to-mpi` on `2577`, `chemo-to-mpi` on `2578`, `pims-to-mpi` on `2579`, etc.).
+- The `mpi-to-topic` profile exercises the subscription sender path specifically: `mpi-hl7-server` accepts the inbound MLLP message on port `2580`, publishes it to topic `mpihl7input`, and `mpi-hl7-chemo-sender` reads it from subscription `mpihl7input-test-subscription` before forwarding it to the mock receiver.
+- If you want to inspect messages before or after delivery, start BusWatch with the profile and open `http://localhost:8080`.
 
 ### Using the HAPI test panel to connect to the Service Bus Emulator (macOS)
 
