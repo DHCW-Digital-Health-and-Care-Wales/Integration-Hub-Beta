@@ -5,7 +5,6 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Dict, List
 
-
 _FLOW_ALIASES: Dict[str, str] = {
     "mpi": "wds",
 }
