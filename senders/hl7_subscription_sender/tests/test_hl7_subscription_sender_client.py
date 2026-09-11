@@ -149,11 +149,20 @@ class TestIsSocketClosed(unittest.TestCase):
         result = is_socket_closed(mock_socket)
 
         self.assertFalse(result)
-        # Verify non-Windows uses MSG_PEEK | MSG_DONTWAIT
-        mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+        # Verify non-Windows uses MSG_PEEK | MSG_DONTWAIT (getattr keeps the assertion runnable on Windows)
+        mock_socket.recv.assert_called_once_with(16, getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK)
 
 
 class TestHL7SenderClient(unittest.TestCase):
+    @patch("hl7_subscription_sender.hl7_subscription_sender_client.MLLPClient")
+    def test_construction_does_not_open_connection(self, mock_mllp_cls: Mock) -> None:
+        # Constructing the client must NOT open a socket, so the service can start
+        # and report healthy even when the downstream MLLP receiver is unreachable.
+        client = HL7SubscriptionSenderClient("unreachable-host", 1234, 30)
+
+        mock_mllp_cls.assert_not_called()
+        self.assertIsNone(client.mllp_client)
+
     @patch("hl7_subscription_sender.hl7_subscription_sender_client.MLLPClient")
     def test_send_message_socket_open(self, mock_mllp_cls: Mock) -> None:
 
@@ -178,16 +187,20 @@ class TestHL7SenderClient(unittest.TestCase):
 
         mock_mllp1 = Mock()
         mock_mllp1.socket = Mock()
+        mock_mllp1.send_message.return_value = b"ACK"
         mock_mllp2 = Mock()
+        mock_mllp2.socket = Mock()
         mock_mllp2.send_message.return_value = b"ACK"
         # Simulate the first call creates mock_mllp1, second creates mock_mllp2
         mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
 
-
+        client = HL7SubscriptionSenderClient("localhost", 1234, 40)
+        # First send establishes the initial (lazy) connection -> mock_mllp1
+        with patch("hl7_subscription_sender.hl7_subscription_sender_client.is_socket_closed", return_value=False):
+            client.send_message("MSH|first")
+        # Next send detects a closed socket and reconnects -> mock_mllp2
         with patch("hl7_subscription_sender.hl7_subscription_sender_client.is_socket_closed", return_value=True):
-            client = HL7SubscriptionSenderClient("localhost", 1234, 40)
             response = client.send_message("MSH|...")
-
 
             self.assertEqual(response, "ACK")
             mock_mllp1.close.assert_called_once()
@@ -272,12 +285,12 @@ class TestHL7SenderClient(unittest.TestCase):
 
         mock_mllp1 = Mock()
         mock_mllp2 = Mock()
-        mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
-
+        mock_mllp2.socket = Mock()
+        mock_mllp_cls.return_value = mock_mllp2
 
         client = HL7SubscriptionSenderClient("localhost", 1234, 30)
+        client.mllp_client = mock_mllp1  # simulate an already-established connection
         client.mllp_client = client._close_and_create_new_mllp_client()
-
 
         mock_mllp1.close.assert_called_once()
         self.assertEqual(client.mllp_client, mock_mllp2)
@@ -288,11 +301,12 @@ class TestHL7SenderClient(unittest.TestCase):
         mock_mllp1 = Mock()
         mock_mllp1.close.side_effect = OSError("Failed to close socket")
         mock_mllp2 = Mock()
-        mock_mllp_cls.side_effect = [mock_mllp1, mock_mllp2]
-
+        mock_mllp2.socket = Mock()
+        mock_mllp_cls.return_value = mock_mllp2
 
         with self.assertLogs("hl7_subscription_sender.hl7_subscription_sender_client", level="ERROR") as log:
             client = HL7SubscriptionSenderClient("localhost", 1234, 30)
+            client.mllp_client = mock_mllp1  # simulate an already-established connection
             client.mllp_client = client._close_and_create_new_mllp_client()
 
             self.assertEqual(len(log.output), 1)
@@ -309,10 +323,10 @@ class TestHL7SenderClient(unittest.TestCase):
         mock_mllp.socket = Mock()
         mock_mllp_cls.return_value = mock_mllp
 
-
-        with HL7SubscriptionSenderClient("localhost", 1234, 30):
+        client = HL7SubscriptionSenderClient("localhost", 1234, 30)
+        client.mllp_client = mock_mllp  # simulate an already-established connection
+        with client:
             pass
-
 
         mock_mllp.close.assert_called_once()
 

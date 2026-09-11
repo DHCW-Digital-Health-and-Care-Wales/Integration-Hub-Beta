@@ -5,6 +5,14 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Dict, List
 
+_FLOW_ALIASES: Dict[str, str] = {
+    "mpi": "wds",
+}
+
+
+def _resolve_flow_name(flow_name: str) -> str:
+    return _FLOW_ALIASES.get(flow_name, flow_name)
+
 
 @lru_cache(maxsize=1)
 def list_schema_groups() -> List[str]:
@@ -22,12 +30,13 @@ def list_schema_groups() -> List[str]:
 @lru_cache(maxsize=64)
 def list_schemas_for_group(flow_name: str) -> Dict[str, str]:
     mapping: Dict[str, str] = {}
-    flow_dir = files("hl7_validation.resources") / flow_name
+    resolved_flow_name = _resolve_flow_name(flow_name)
+    flow_dir = files("hl7_validation.resources") / resolved_flow_name
     try:
         for item in flow_dir.iterdir():
             if item.name.lower().endswith(".xsd"):
                 trigger = Path(item.name).stem
-                mapping.setdefault(trigger, f"{flow_name}/{item.name}")
+                mapping.setdefault(trigger, f"{resolved_flow_name}/{item.name}")
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
         return {}
     return mapping

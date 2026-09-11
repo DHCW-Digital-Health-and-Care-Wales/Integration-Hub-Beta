@@ -18,7 +18,8 @@ def is_socket_closed(sock: socket.socket) -> bool:
         readable, _, _ = select.select([sock], [], [], 0)
         if readable:
             # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else socket.MSG_DONTWAIT | socket.MSG_PEEK
+            # MSG_DONTWAIT does not exist on Windows; getattr keeps this import-safe and mypy-clean there.
+            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else getattr(socket, "MSG_DONTWAIT", 0) | socket.MSG_PEEK
             data = sock.recv(16, flags)
             return len(data) == 0
         return False  # no data, but socket is fine
@@ -36,11 +37,19 @@ class HL7SubscriptionSenderClient:
         self.receiver_mllp_hostname = receiver_mllp_hostname
         self.receiver_mllp_port = receiver_mllp_port
         self.ack_timeout_seconds = ack_timeout_seconds
-        self.mllp_client: MLLPClient = self._create_mllp_client()
+        # The MLLP connection is established lazily on the first send rather than at
+        # construction time. This decouples the service's own liveness from the
+        # availability of the downstream MLLP receiver: the container can start and
+        # report healthy even when the destination is unreachable, and undelivered
+        # messages are simply NACK'd and redelivered by Service Bus until it recovers.
+        self.mllp_client: Optional[MLLPClient] = None
 
     def _close_mllp_client(self) -> None:
+        mllp_client = self.mllp_client
+        if mllp_client is None:
+            return
         try:
-            self.mllp_client.close()
+            mllp_client.close()
         except Exception as e:
             logger.error(f"Error closing socket: {e}")
 
@@ -54,12 +63,16 @@ class HL7SubscriptionSenderClient:
         return self._create_mllp_client()
 
     def send_message(self, message: str, _retry_attempted: bool = False) -> str:
-        if is_socket_closed(self.mllp_client.socket):
+        if self.mllp_client is None or is_socket_closed(self.mllp_client.socket):
             logger.info("creating new MLLP client connection")
             self.mllp_client = self._close_and_create_new_mllp_client()
 
+        mllp_client = self.mllp_client
+        if mllp_client is None:
+            raise ConnectionError("MLLP client connection is not available")
+
         try:
-            ack_response = self.mllp_client.send_message(message).decode("utf-8")
+            ack_response = mllp_client.send_message(message).decode("utf-8")
             stripped_response = ack_response.strip(ENCODING_CHARS)
             return stripped_response
         except socket.timeout:
@@ -82,4 +95,4 @@ class HL7SubscriptionSenderClient:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        self.mllp_client.close()
+        self._close_mllp_client()

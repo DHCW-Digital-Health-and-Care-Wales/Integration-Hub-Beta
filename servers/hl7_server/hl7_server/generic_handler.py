@@ -78,8 +78,9 @@ class GenericHandler(AbstractHandler):
 
             xml_payload: str | None = None
 
-            # Flow validation also generates XML, used for the message store
-            if self.flow_name and self.flow_name != "mpi":
+            # Flow validation also generates XML, used for the message store.
+            # MPI now uses the same schema-backed conversion path as other HL7 flows.
+            if self.flow_name:
                 try:
                     validation_result = validate_and_convert_parsed_message_with_flow_schema(
                         msg, self.incoming_message, self.flow_name
