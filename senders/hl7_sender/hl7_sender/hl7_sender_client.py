@@ -1,5 +1,4 @@
 import logging
-import os
 import select
 import socket
 from typing import Any, Optional, Type
@@ -9,7 +8,6 @@ from hl7apy.consts import MLLP_ENCODING_CHARS
 
 logger = logging.getLogger(__name__)
 ENCODING_CHARS = MLLP_ENCODING_CHARS.SB + MLLP_ENCODING_CHARS.EB + MLLP_ENCODING_CHARS.CR
-WINDOWS_OS = "nt"
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
@@ -17,8 +15,10 @@ def is_socket_closed(sock: socket.socket) -> bool:
         # Check if the socket is readable (may indicate data or EOF)
         readable, _, _ = select.select([sock], [], [], 0)
         if readable:
-            # this will try to read bytes without blocking and also without removing them from buffer (peek only)
-            flags = socket.MSG_PEEK if os.name == WINDOWS_OS else socket.MSG_DONTWAIT | socket.MSG_PEEK
+            # this will try to read bytes without blocking and also without removing them from buffer (peek only).
+            # MSG_DONTWAIT is POSIX-only and absent from the socket module on Windows, so it is looked up
+            # dynamically and simply omitted (MSG_PEEK alone) on platforms that don't define it.
+            flags = socket.MSG_PEEK | getattr(socket, "MSG_DONTWAIT", 0)
             data = sock.recv(16, flags)
             return len(data) == 0
         return False  # no data, but socket is fine
