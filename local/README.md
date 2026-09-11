@@ -271,7 +271,8 @@ Profiles:
 - pims-to-mpi
 - mosaiq-to-mpi
 - wds-to-mpi
-- hl7-rest (risp-to-mpi)
+- hl7-rest
+- risp-to-mpi
 - wpas-to-proms
 - mpi-to-topic
 - replay
@@ -291,13 +292,14 @@ Each profile starts a complete integration flow with all required services:
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator   | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                       | Mosaiq oncology system to MPI integration flow (no transformation)                                |
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | WDS to MPI integration flow (no transformation)                                                   |
-| **hl7-rest** (also tagged **risp-to-mpi**) | risp-hl7-rest-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (also fans out to WRRS, no transformation) |
+| **hl7-rest**     | risp-hl7-rest-server, rest-hl7-server, sb-emulator                                          | Starts the standalone REST-based HL7 servers on their own (no transformer/sender/receiver) for ad-hoc REST ingress testing; **not** a complete integration flow |
+| **risp-to-mpi**  | risp-hl7-rest-server, core-reference-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (WRDS-based PID field translation via core-reference-hl7-transformer, also fans out to WRRS) |
 | **wpas-to-proms** | wpas-rest-server, sb-emulator                                                              | WPAS XML ingress flow to PROMS (destination transformer still in development)                     |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 | **dashboard**    | cosmos-emulator                                                                              | Azure Cosmos DB emulator backing the NOC dashboard, which is run on the host via `uv run flask`   |
 
-Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**/**risp-to-mpi**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
+Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**, **risp-to-mpi**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
 
 #### Environment Files Reference
 
