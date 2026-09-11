@@ -117,6 +117,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_hl7_sender_client.receiver_mllp_hostname = "mpi.example.org"
         mock_hl7_sender_client.receiver_mllp_port = 2575
+        service_bus_message.application_properties = {"CorrelationId": "upstream-correlation-id-123"}
         mock_ack_processor.return_value = AckResult(AckOutcome.AE, "AE", "MSGID1234", hl7_ack_message)
 
         result = _process_message(
@@ -139,7 +140,7 @@ class TestProcessMessage(unittest.TestCase):
         # (message_id from MSH-10, correlation_id from Service Bus metadata, ack_code, endpoint).
         expected_attributes = {
             "ack_code": "AE",
-            "correlation_id": "N/A",
+            "correlation_id": "upstream-correlation-id-123",
             "message_id": "MSGID1234",
             "endpoint": "mpi.example.org:2575",
         }
@@ -174,6 +175,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
         mock_hl7_sender_client.receiver_mllp_hostname = "mpi.example.org"
         mock_hl7_sender_client.receiver_mllp_port = 2575
+        service_bus_message.application_properties = {"CorrelationId": "upstream-correlation-id-123"}
         mock_ack_processor.return_value = AckResult(AckOutcome.AR, "AR", "MSGID1234", hl7_ack_message)
 
         with self.assertRaises(DeadLetterMessage) as ctx:
@@ -191,12 +193,12 @@ class TestProcessMessage(unittest.TestCase):
         # Correlation: the dead-letter description and the AR metric both carry the
         # original message's correlation_id/message_id so operators can trace the NACK back to it.
         self.assertIn("message_id=MSGID1234", ctx.exception.description)
-        self.assertIn("correlation_id=N/A", ctx.exception.description)
+        self.assertIn("correlation_id=upstream-correlation-id-123", ctx.exception.description)
         mock_event_logger.log_message_failed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_not_called()
         expected_attributes = {
             "ack_code": "AR",
-            "correlation_id": "N/A",
+            "correlation_id": "upstream-correlation-id-123",
             "message_id": "MSGID1234",
             "endpoint": "mpi.example.org:2575",
         }
