@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from azure.servicebus import ServiceBusMessage
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
 
+from message_bus_lib.dead_letter import DeadLetterMessage
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 
 
@@ -105,6 +106,28 @@ class TestMessageReceiverClient(unittest.TestCase):
         self.service_bus_receiver_client.abandon_message.assert_any_call(message2)
         self.service_bus_receiver_client.abandon_message.assert_any_call(message3)
         self.assertIsNotNone(self.message_receiver_client.next_retry_time)
+
+    @patch("time.sleep", return_value=None)
+    def test_receive_messages_dead_letters_message_on_dead_letter_signal(self, sleep_mock: MagicMock) -> None:
+        # Arrange
+        message1 = create_message("123")
+        message2 = create_message("456")
+        self.service_bus_receiver_client.receive_messages.side_effect = [[message1, message2], []]
+
+        def processor(msg: Any) -> bool:
+            if msg.message_id == "123":
+                raise DeadLetterMessage(reason="AR", description="Application Reject ACK")
+            return True
+
+        # Act
+        self.message_receiver_client.receive_messages(2, processor)
+
+        # Assert
+        self.service_bus_receiver_client.dead_letter_message.assert_called_once_with(
+            message1, reason="AR", error_description="Application Reject ACK"
+        )
+        self.service_bus_receiver_client.abandon_message.assert_called_once_with(message2)
+        self.service_bus_receiver_client.complete_message.assert_not_called()
 
     @patch("time.sleep", return_value=None)
     def test_receiveMessages_backoff_doubles_delay_on_each_retry(self, sleep_mock: MagicMock) -> None:

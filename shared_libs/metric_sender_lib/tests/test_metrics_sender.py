@@ -434,6 +434,48 @@ class TestMetricSender(unittest.TestCase):
                         key="messages_sent", value=1, attributes=test_case["attributes"]
                     )
 
+    @patch("metric_sender_lib.metric_sender.logger")
+    def test_send_message_nack_ae_metric(self, mock_logger: MagicMock) -> None:
+        metric_sender = MetricSender(
+            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
+        )
+        attributes = {"ack_code": "AE"}
+
+        with patch.object(metric_sender, "send_metric") as mock_send_metric:
+            metric_sender.send_message_nack_ae_metric(attributes)
+
+            mock_send_metric.assert_called_once_with(
+                key="messages_nack_ae", value=1, attributes=attributes
+            )
+
+    @patch("metric_sender_lib.metric_sender.logger")
+    def test_send_message_nack_ar_metric(self, mock_logger: MagicMock) -> None:
+        metric_sender = MetricSender(
+            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
+        )
+        attributes = {"ack_code": "AR"}
+
+        with patch.object(metric_sender, "send_metric") as mock_send_metric:
+            metric_sender.send_message_nack_ar_metric(attributes)
+
+            mock_send_metric.assert_called_once_with(
+                key="messages_nack_ar", value=1, attributes=attributes
+            )
+
+    @patch("metric_sender_lib.metric_sender.logger")
+    def test_send_message_retry_attempt_metric(self, mock_logger: MagicMock) -> None:
+        metric_sender = MetricSender(
+            self.workflow_id, self.microservice_id, self.health_board, self.peer_service
+        )
+        attributes = {"ack_code": "AE"}
+
+        with patch.object(metric_sender, "send_metric") as mock_send_metric:
+            metric_sender.send_message_retry_attempt_metric(attributes)
+
+            mock_send_metric.assert_called_once_with(
+                key="messages_retry_attempt", value=1, attributes=attributes
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

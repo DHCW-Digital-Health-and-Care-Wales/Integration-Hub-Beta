@@ -192,6 +192,23 @@ class MetricSender:
     ) -> None:
         self.send_metric(key="messages_sent", value=1, attributes=attributes)
 
+    def send_message_nack_ae_metric(
+        self, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Recoverable negative ACK (MSA-1 = AE) - message will be retried."""
+        self.send_metric(key="messages_nack_ae", value=1, attributes=attributes)
+
+    def send_message_nack_ar_metric(
+        self, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Non-recoverable negative ACK (MSA-1 = AR) - message is dead-lettered/escalated."""
+        self.send_metric(key="messages_nack_ar", value=1, attributes=attributes)
+
+    def send_message_retry_attempt_metric(
+        self, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        self.send_metric(key="messages_retry_attempt", value=1, attributes=attributes)
+
     def _get_or_create_histogram(self, key: str) -> Histogram:
         if key not in self._histograms:
             assert self._meter is not None
