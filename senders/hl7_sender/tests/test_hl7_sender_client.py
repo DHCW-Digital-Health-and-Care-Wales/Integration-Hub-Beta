@@ -1,12 +1,10 @@
-import os
 import socket
 import unittest
 from typing import Any, Callable, Dict
 from unittest.mock import Mock, patch
 
+from hl7_sender import hl7_sender_client as client_module
 from hl7_sender.hl7_sender_client import HL7SenderClient, is_socket_closed
-
-WINDOWS_OS = "nt"
 
 
 class TestIsSocketClosed(unittest.TestCase):
@@ -41,10 +39,8 @@ class TestIsSocketClosed(unittest.TestCase):
         # Assert
         self.assertFalse(result)
         mock_select.assert_called_once_with([mock_socket], [], [], 0)
-        if os.name == WINDOWS_OS:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
-        else:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+        expected_flags = socket.MSG_PEEK | getattr(socket, "MSG_DONTWAIT", 0)
+        mock_socket.recv.assert_called_once_with(16, expected_flags)
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_readable_with_empty_data_socket_closed(self, mock_select: Mock) -> None:
@@ -61,10 +57,41 @@ class TestIsSocketClosed(unittest.TestCase):
         # Assert
         self.assertTrue(result)
         mock_select.assert_called_once_with([mock_socket], [], [], 0)
-        if os.name == WINDOWS_OS:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
-        else:
-            mock_socket.recv.assert_called_once_with(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)  # type: ignore
+        expected_flags = socket.MSG_PEEK | getattr(socket, "MSG_DONTWAIT", 0)
+        mock_socket.recv.assert_called_once_with(16, expected_flags)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_readable_uses_msg_peek_only_when_dontwait_unavailable(self, mock_select: Mock) -> None:
+        """Simulates platforms (e.g. native Windows) where socket.MSG_DONTWAIT isn't defined at all."""
+        mock_socket = Mock(spec=socket.socket)
+        mock_select.return_value = ([mock_socket], [], [])
+        mock_socket.recv.return_value = b"data"
+
+        had_attr = hasattr(client_module.socket, "MSG_DONTWAIT")
+        original = getattr(client_module.socket, "MSG_DONTWAIT", None)
+        if had_attr:
+            delattr(client_module.socket, "MSG_DONTWAIT")
+        try:
+            result = is_socket_closed(mock_socket)
+        finally:
+            if had_attr:
+                client_module.socket.MSG_DONTWAIT = original
+
+        self.assertFalse(result)
+        mock_socket.recv.assert_called_once_with(16, socket.MSG_PEEK)
+
+    @patch('hl7_sender.hl7_sender_client.select.select')
+    def test_socket_readable_includes_msg_dontwait_when_available(self, mock_select: Mock) -> None:
+        """Simulates POSIX platforms where socket.MSG_DONTWAIT is defined."""
+        mock_socket = Mock(spec=socket.socket)
+        mock_select.return_value = ([mock_socket], [], [])
+        mock_socket.recv.return_value = b"data"
+
+        with patch.object(client_module.socket, "MSG_DONTWAIT", 0x40, create=True):
+            result = is_socket_closed(mock_socket)
+
+        self.assertFalse(result)
+        mock_socket.recv.assert_called_once_with(16, 0x40 | socket.MSG_PEEK)
 
     @patch('hl7_sender.hl7_sender_client.select.select')
     def test_socket_recv_raises_blocking_io_error(self, mock_select: Mock) -> None:
