@@ -194,6 +194,38 @@ class TestProcessMessage(unittest.TestCase):
         self.assertIn("mpi.example.org:2575", failed_log_message)
 
     @patch("hl7_subscription_sender.application.parse_message")
+    @patch("hl7_subscription_sender.application.get_ack_result")
+    def test_process_message_ar_still_dead_letters_when_metric_send_fails(
+        self, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        """A telemetry failure must not change the non-recoverable (AR) delivery decision."""
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_subscription_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+        ) = _setup()
+        mock_parse_message.return_value = hl7_message
+        hl7_ack_message = "HL7 ack message"
+        mock_hl7_subscription_sender_client.send_message.return_value = hl7_ack_message
+        mock_ack_processor.return_value = AckResult(AckOutcome.AR, "AR", "MSGID1234", hl7_ack_message)
+        mock_metric_sender.send_message_nack_ar_metric.side_effect = RuntimeError("Azure Monitor unavailable")
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            _process_message(
+                service_bus_message,
+                mock_hl7_subscription_sender_client,
+                mock_event_logger,
+                mock_metric_sender,
+                mock_throttler,
+            )
+
+        self.assertEqual(ctx.exception.reason, "AR")
+
+    @patch("hl7_subscription_sender.application.parse_message")
     def test_process_message_send_errors(self, mock_parse_message: Mock) -> None:
         error_cases = [
             {"description": "timeout_error", "error": TimeoutError("No ACK received within 30 seconds")},

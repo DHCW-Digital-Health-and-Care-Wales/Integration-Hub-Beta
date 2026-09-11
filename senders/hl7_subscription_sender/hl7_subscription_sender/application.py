@@ -1,6 +1,7 @@
 import configparser
 import logging
 import os
+from typing import Callable
 
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
@@ -31,6 +32,18 @@ config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 LOCK_RENEWAL_BUFFER_SECONDS = 30
+
+
+def _send_metric_best_effort(send_fn: Callable[[], None], metric_name: str) -> None:
+    """Send a telemetry metric without letting a telemetry failure affect the delivery decision.
+
+    Metrics are observability-only: if emitting one fails (e.g. Azure Monitor exporter issue),
+    that must not change whether a message is treated as retryable, dead-lettered, or successful.
+    """
+    try:
+        send_fn()
+    except Exception:
+        logger.exception(f"Failed to send metric '{metric_name}' - continuing without blocking message processing")
 
 
 def _calculate_batch_size(throttler: MessageThrottler) -> int:
@@ -174,7 +187,10 @@ def _process_message(
                 "Non-recoverable NACK (AR) - message routed to dead-letter/escalation path",
                 correlation_id=correlation_id_opt,
             )
-            metric_sender.send_message_nack_ar_metric(attributes=nack_attributes)
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_nack_ar_metric(attributes=nack_attributes),
+                "messages_nack_ar",
+            )
 
             raise DeadLetterMessage(
                 reason="AR",
@@ -199,8 +215,14 @@ def _process_message(
             correlation_id=correlation_id_opt,
         )
         if ack_result.outcome == AckOutcome.AE:
-            metric_sender.send_message_nack_ae_metric(attributes=nack_attributes)
-            metric_sender.send_message_retry_attempt_metric(attributes=nack_attributes)
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_nack_ae_metric(attributes=nack_attributes),
+                "messages_nack_ae",
+            )
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_retry_attempt_metric(attributes=nack_attributes),
+                "messages_retry_attempt",
+            )
 
         return False
 
