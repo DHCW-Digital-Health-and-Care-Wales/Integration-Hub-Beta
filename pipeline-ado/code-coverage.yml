@@ -230,6 +230,14 @@ stages:
               pipeline: '$(System.DefinitionId)'
               runVersion: 'latestFromBranch'
               runBranch: 'refs/heads/main'
+              # This step's own continueOnError means a run with no prior history (e.g. the
+              # first run, or one where this download failed) completes as "partially succeeded"
+              # rather than "succeeded". Without these two flags, latestFromBranch only considers
+              # fully "succeeded" builds, so once one run is marked partially succeeded, every
+              # later run fails to find it and is marked partially succeeded too — a self
+              # -perpetuating loop where history is never found again.
+              allowPartiallySucceededBuilds: true
+              allowFailedBuilds: true
               artifact: 'coverage-history'
               targetPath: '$(Pipeline.Workspace)/coverage-history'
 
