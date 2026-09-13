@@ -227,9 +227,11 @@ class EditorPane(ttk.Frame):
     # -- selection / editor sync --------------------------------------------
 
     def _handle_select(self, _event: tk.Event) -> None:
-        if not self.listbox.curselection():
+        selection = self.listbox.curselection()
+        if not selection:
             return
-        active_index = self.listbox.index(tk.ACTIVE)
+        # Use the last selected index (most recent click for EXTENDED mode)
+        active_index = selection[-1]
         if 0 <= active_index < len(self._messages):
             self._commit_current_edits()
             self._load_into_editor(active_index)
