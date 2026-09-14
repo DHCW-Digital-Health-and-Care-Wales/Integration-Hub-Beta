@@ -35,3 +35,7 @@ def build_ack(message_control_id: str, original_msg: Message, ack_code: str = Hl
 def build_nack(message_control_id: str, original_msg: Message) -> Message:
     return build_ack(message_control_id, original_msg, Hl7Constants.ERROR_ACK_CODE)
 
+
+def build_reject_ack(message_control_id: str, original_msg: Message) -> Message:
+    return build_ack(message_control_id, original_msg, Hl7Constants.REJECT_ACK_CODE)
+
