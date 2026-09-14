@@ -336,6 +336,9 @@ class Ultra7App(tk.Tk):
             return
 
         # Load selected projects
+        if self.current_project is not None and self.current_project.name in selected_names:
+            self._save_current_project()
+
         projects: list[Project] = []
         errors: list[str] = []
         for name in selected_names:
