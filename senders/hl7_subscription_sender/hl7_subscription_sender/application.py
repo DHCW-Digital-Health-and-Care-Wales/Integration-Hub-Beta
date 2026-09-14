@@ -164,7 +164,7 @@ def _process_message(
         }
 
         if ack_result.outcome == AckOutcome.SUCCESS:
-            metric_sender.send_message_sent_metric()
+            _send_metric_best_effort(metric_sender.send_message_sent_metric, "messages_sent")
 
             event_logger.log_message_processed(
                 message_body,
