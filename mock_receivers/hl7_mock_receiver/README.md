@@ -10,9 +10,11 @@ Accepted message types:
 
 A negative ack can be produced by having a keyword inside the message body:
 
-- `fail` - produces an `AE` (Application Error) ack, treated as recoverable/retryable by senders.
-- `reject` - produces an `AR` (Application Reject) ack, treated as non-recoverable by senders
-  (routed to dead-letter/escalation).
+- `fail` - produces an `AE` (Application Error) ack.
+- `reject` - produces an `AR` (Application Reject) ack.
+
+Note: interpretation of the `AE`/`AR` ack codes (e.g. retry vs. dead-letter) is up to the
+receiving sender - this mock receiver only controls which ack code is returned.
 
 ## Development
 
