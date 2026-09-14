@@ -216,5 +216,68 @@ class TestEditorPaneLoadFromDisk(unittest.TestCase):
             self.assertEqual([m.name for m in self.pane.get_messages()], ["good.json"])
 
 
+@unittest.skipUnless(_tk_available(), "requires a Tk display")
+class TestEditorPaneNewMessage(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.pane = EditorPane(self.root, on_change=lambda: None)
+        self.pane.set_messages([
+            Message(name="Message 1", format="hl7", content="Content 1"),
+            Message(name="Message 2", format="hl7", content="Content 2"),
+        ])
+        self.pane._refresh_listbox()
+
+    def tearDown(self) -> None:
+        self.root.destroy()
+        gc.collect()
+
+    def test_new_message_is_appended_with_correct_name(self) -> None:
+        self.pane._new_message()
+        messages = self.pane.get_messages()
+        self.assertEqual(len(messages), 3)
+        self.assertEqual(messages[2].name, "Message 3")
+        self.assertEqual(messages[2].format, "hl7")
+        self.assertEqual(messages[2].content, "")
+
+    def test_new_message_is_selected_after_creation(self) -> None:
+        self.pane._new_message()
+        self.assertEqual(self.pane.listbox.curselection(), (2,))
+        self.assertEqual(self.pane._selected_index, 2)
+
+    def test_new_message_content_is_loaded_into_editor(self) -> None:
+        self.pane._new_message()
+        editor_content = self.pane.text.get("1.0", tk.END).rstrip()
+        self.assertEqual(editor_content, "")
+
+    def test_typing_in_new_message_does_not_overwrite_others(self) -> None:
+        self.pane._new_message()
+        # Simulate typing in the new message
+        self.pane._suspend_events = False
+        self.pane.text.configure(state="normal")
+        self.pane.text.delete("1.0", tk.END)
+        self.pane.text.insert("1.0", "New content")
+        self.pane.text.edit_modified(True)
+        self.pane._commit_current_edits()
+        # Verify the new message has the content
+        messages = self.pane.get_messages()
+        self.assertEqual(messages[2].content, "New content")
+        
+        # Verify existing messages are unchanged
+        self.assertEqual(messages[0].content, "Content 1")
+        self.assertEqual(messages[1].content, "Content 2")
+
+    def test_multiple_new_messages_are_added_correctly(self) -> None:
+        self.pane._new_message()
+        self.pane._new_message()
+        self.pane._new_message()
+        
+        messages = self.pane.get_messages()
+        self.assertEqual(len(messages), 5)
+        self.assertEqual([m.name for m in messages], [
+            "Message 1", "Message 2", "Message 3", "Message 4", "Message 5"
+        ])
+
+
 if __name__ == "__main__":
     unittest.main()
