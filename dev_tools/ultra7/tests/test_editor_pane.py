@@ -259,7 +259,6 @@ class TestEditorPaneNewMessage(unittest.TestCase):
         self.pane.text.insert("1.0", "New content")
         self.pane.text.edit_modified(True)
         self.pane._commit_current_edits()
-        
         # Verify the new message has the content
         messages = self.pane.get_messages()
         self.assertEqual(messages[2].content, "New content")
