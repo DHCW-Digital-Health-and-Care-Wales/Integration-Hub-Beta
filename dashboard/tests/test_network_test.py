@@ -1,0 +1,237 @@
+"""Unit tests for dashboard.services.network_test.
+
+Socket calls are mocked throughout — no real network access is required.
+"""
+
+from __future__ import annotations
+
+import socket
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from dashboard.services import network_test
+
+# ---------------------------------------------------------------------------
+# validate_host / validate_port
+# ---------------------------------------------------------------------------
+
+
+class TestValidateHost:
+    def test_accepts_ip_address(self) -> None:
+        assert network_test.validate_host("10.0.0.1") == "10.0.0.1"
+
+    def test_accepts_hostname(self) -> None:
+        assert network_test.validate_host("msg.mpi.sit.cymru.nhs.uk") == "msg.mpi.sit.cymru.nhs.uk"
+
+    def test_strips_whitespace(self) -> None:
+        assert network_test.validate_host("  example.com  ") == "example.com"
+
+    def test_rejects_empty(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_host("")
+
+    def test_rejects_too_long(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_host("a" * 254)
+
+    def test_rejects_invalid_characters(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_host("example.com; rm -rf /")
+
+
+class TestValidatePort:
+    def test_accepts_valid_port(self) -> None:
+        assert network_test.validate_port(2575) == 2575
+
+    def test_accepts_numeric_string(self) -> None:
+        assert network_test.validate_port("443") == 443
+
+    def test_rejects_non_numeric(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_port("not-a-port")
+
+    def test_rejects_out_of_range(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_port(70000)
+
+    def test_rejects_zero(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.validate_port(0)
+
+
+# ---------------------------------------------------------------------------
+# resolve_host
+# ---------------------------------------------------------------------------
+
+
+class TestResolveHost:
+    def test_returns_addresses_on_success(self) -> None:
+        with patch.object(
+            network_test.socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]
+        ):
+            result = network_test.resolve_host("example.com")
+
+        assert result["resolved"] is True
+        assert result["addresses"] == ["10.0.0.5"]
+
+    def test_reports_failure_on_gaierror(self) -> None:
+        with patch.object(network_test.socket, "getaddrinfo", side_effect=socket.gaierror("no such host")):
+            result = network_test.resolve_host("does-not-exist.invalid")
+
+        assert result["resolved"] is False
+        assert result["addresses"] == []
+        assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# run_latency_test
+# ---------------------------------------------------------------------------
+
+
+class TestRunLatencyTest:
+    def test_raises_for_invalid_host(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.run_latency_test("", 443)
+
+    def test_raises_for_invalid_port(self) -> None:
+        with pytest.raises(network_test.InvalidTargetError):
+            network_test.run_latency_test("example.com", 99999)
+
+    def test_summarises_successful_attempts(self) -> None:
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.__exit__.return_value = False
+
+        with (
+            patch.object(network_test.socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]),
+            patch.object(network_test.socket, "create_connection", return_value=connection),
+        ):
+            result = network_test.run_latency_test("example.com", 443, attempts=3)
+
+        assert result["success"] is True
+        assert result["success_count"] == 3
+        assert result["failure_count"] == 0
+        assert result["loss_percent"] == 0.0
+        assert result["avg_latency_ms"] is not None
+
+    def test_summarises_failed_attempts(self) -> None:
+        with (
+            patch.object(network_test.socket, "getaddrinfo", side_effect=socket.gaierror("no such host")),
+            patch.object(network_test.socket, "create_connection", side_effect=TimeoutError()),
+        ):
+            result = network_test.run_latency_test("example.com", 443, attempts=2)
+
+        assert result["success"] is False
+        assert result["success_count"] == 0
+        assert result["failure_count"] == 2
+        assert result["loss_percent"] == 100.0
+        assert result["avg_latency_ms"] is None
+
+    def test_reports_connection_refused(self) -> None:
+        with (
+            patch.object(network_test.socket, "getaddrinfo", return_value=[]),
+            patch.object(
+                network_test.socket, "create_connection", side_effect=ConnectionRefusedError("refused")
+            ),
+        ):
+            result = network_test.run_latency_test("example.com", 443, attempts=1)
+
+        assert result["attempts"][0]["success"] is False
+        assert "refused" in result["attempts"][0]["error"].lower()
+
+
+# ---------------------------------------------------------------------------
+# history persistence (Cosmos-backed)
+# ---------------------------------------------------------------------------
+
+
+class TestHistoryPersistence:
+    def test_save_appends_and_get_returns_samples(self) -> None:
+        store: dict[str, Any] = {}
+
+        def fake_get(pk: str, doc_id: str) -> dict | None:
+            return store.get(doc_id)
+
+        def fake_upsert(pk: str, doc_id: str, data: dict) -> None:
+            store[doc_id] = data
+
+        sample_result = {"timestamp": 1.0, "success": True, "avg_latency_ms": 12.3, "loss_percent": 0.0}
+
+        with (
+            patch.object(network_test.cosmos_store, "get_document", side_effect=fake_get),
+            patch.object(network_test.cosmos_store, "upsert_document", side_effect=fake_upsert),
+        ):
+            network_test.save_history_sample("example.com", 443, sample_result)
+            history = network_test.get_history("example.com", 443)
+
+        assert history == [{"timestamp": 1.0, "success": True, "avg_latency_ms": 12.3, "loss_percent": 0.0}]
+
+    def test_get_history_returns_empty_when_no_document(self) -> None:
+        with patch.object(network_test.cosmos_store, "get_document", return_value=None):
+            assert network_test.get_history("example.com", 443) == []
+
+    def test_history_capped_at_max_samples(self) -> None:
+        existing_samples = [
+            {"timestamp": float(i), "success": True, "avg_latency_ms": 1.0, "loss_percent": 0.0}
+            for i in range(network_test._MAX_HISTORY_SAMPLES)
+        ]
+        stored: dict[str, Any] = {}
+
+        def fake_get(pk: str, doc_id: str) -> dict | None:
+            return {"samples": existing_samples} if doc_id not in stored else stored[doc_id]
+
+        def fake_upsert(pk: str, doc_id: str, data: dict) -> None:
+            stored[doc_id] = data
+
+        with (
+            patch.object(network_test.cosmos_store, "get_document", side_effect=fake_get),
+            patch.object(network_test.cosmos_store, "upsert_document", side_effect=fake_upsert),
+        ):
+            network_test.save_history_sample(
+                "example.com", 443, {"timestamp": 999.0, "success": True, "avg_latency_ms": 5.0, "loss_percent": 0.0}
+            )
+
+        saved_samples = stored["history:example.com:443"]["samples"]
+        assert len(saved_samples) == network_test._MAX_HISTORY_SAMPLES
+        assert saved_samples[-1]["timestamp"] == 999.0
+
+
+# ---------------------------------------------------------------------------
+# build_endpoint_options
+# ---------------------------------------------------------------------------
+
+
+class TestBuildEndpointOptions:
+    def test_builds_option_per_unique_host_port(self) -> None:
+        flows = {
+            "phw-to-mpi": {"source": "PHW", "source_host": "phw.internal", "source_port": 2575},
+            "paris-to-mpi": {"source": "Paris", "source_host": "paris.internal", "source_port": 2577},
+        }
+        options = network_test.build_endpoint_options(
+            flows, host_key="source_host", port_key="source_port", name_key="source"
+        )
+        assert len(options) == 2
+        assert {o["host"] for o in options} == {"phw.internal", "paris.internal"}
+
+    def test_merges_flows_sharing_the_same_destination(self) -> None:
+        flows = {
+            "phw-to-mpi": {"destination": "MPI", "destination_host": "mpi.internal", "destination_port": 16005},
+            "paris-to-mpi": {"destination": "MPI", "destination_host": "mpi.internal", "destination_port": 16005},
+        }
+        options = network_test.build_endpoint_options(
+            flows, host_key="destination_host", port_key="destination_port", name_key="destination"
+        )
+        assert len(options) == 1
+        assert options[0]["host"] == "mpi.internal"
+
+    def test_skips_flows_missing_host_or_port(self) -> None:
+        flows = {
+            "phw-to-mpi": {"source": "PHW", "source_host": None, "source_port": 2575},
+            "paris-to-mpi": {"source": "Paris", "source_host": "paris.internal", "source_port": None},
+        }
+        options = network_test.build_endpoint_options(
+            flows, host_key="source_host", port_key="source_port", name_key="source"
+        )
+        assert options == []

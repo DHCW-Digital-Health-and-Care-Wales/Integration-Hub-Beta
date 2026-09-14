@@ -163,6 +163,13 @@
         </li>
 
         <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'network_test_page' %}active{% endif %}"
+             href="{{ url_for('network_test_page') }}">
+            <i class="bi bi-ethernet"></i> {{ _("Network Test") }}
+          </a>
+        </li>
+
+        <li class="nav-item">
           <a class="nav-link {% if request.endpoint in ['alarms_overview_page', 'alarm_page', 'alarm_config_page', 'alarm2_page', 'alarm2_config_page', 'alarm3_page', 'alarm3_config_page'] %}active{% endif %}"
              href="{{ url_for('alarms_overview_page') }}" role="link">
             <i class="bi bi-bell-fill"></i> {{ _("Alarms") }}

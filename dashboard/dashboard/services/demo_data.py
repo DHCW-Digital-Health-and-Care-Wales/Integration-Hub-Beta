@@ -216,6 +216,15 @@ DEMO_FLOWS: dict[str, dict] = {
     },
 }
 
+# Synthesise reachable-looking source/destination host:port pairs for every demo
+# flow so the network connectivity test page has data to show without needing
+# real Container App discovery.
+for _flow_id, _flow in DEMO_FLOWS.items():
+    _flow.setdefault("source_host", f"demo-{_flow_id}.internal.example.com" if _flow.get("source_port") else None)
+    _flow.setdefault("destination_host", "demo-mpi.internal.example.com" if _flow.get("destination") else None)
+    _flow.setdefault("destination_port", 16005 if _flow.get("destination") else None)
+del _flow_id, _flow
+
 
 # ---------------------------------------------------------------------------
 # Queues  (same shape as service_bus.get_queues())

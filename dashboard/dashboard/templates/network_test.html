@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Network Test") }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-ethernet" style="color:var(--accent-cyan)"></i>
+        {{ _("Network Test") }}
+      </h1>
+      <p class="page-subtitle">
+        {{ _("Check TCP connectivity and latency to flow servers, flow destinations, or any host:port.") }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Target picker -->
+  <div class="dash-card mb-3 p-3">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="cfg-label" for="source-endpoint-input">
+          <i class="bi bi-hdd-network me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow Source Server") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="source-endpoint-input" list="source-endpoint-list"
+               placeholder="{{ _('Search source servers…') }}" autocomplete="off">
+        <datalist id="source-endpoint-list">
+          {% for ep in source_endpoints %}
+          <option value="{{ ep.label }}" data-host="{{ ep.host }}" data-port="{{ ep.port }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if not source_endpoints %}
+        <div class="cfg-hint">{{ _("No flow source servers discovered yet.") }}</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="cfg-label" for="destination-endpoint-input">
+          <i class="bi bi-send me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow Destination") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="destination-endpoint-input" list="destination-endpoint-list"
+               placeholder="{{ _('Search flow destinations…') }}" autocomplete="off">
+        <datalist id="destination-endpoint-list">
+          {% for ep in destination_endpoints %}
+          <option value="{{ ep.label }}" data-host="{{ ep.host }}" data-port="{{ ep.port }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if not destination_endpoints %}
+        <div class="cfg-hint">{{ _("No flow destinations discovered yet.") }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <hr style="border-color:var(--border-color); margin:1rem 0;">
+
+    <div class="row g-3 align-items-end">
+      <div class="col-8 col-md-5">
+        <label class="cfg-label" for="target-host">
+          <i class="bi bi-globe2 me-1"></i>{{ _("Host / IP") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="target-host"
+               placeholder="{{ _('e.g. msg.mpi.sit.cymru.nhs.uk') }}" maxlength="253">
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="cfg-label" for="target-port">{{ _("Port") }}</label>
+        <input type="number" class="dash-input w-100" id="target-port" min="1" max="65535" placeholder="443">
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="button" class="btn-dash btn-dash--primary w-100" id="run-test-btn">
+          <i class="bi bi-play-fill"></i> {{ _("Run Test") }}
+        </button>
+      </div>
+    </div>
+    <div id="network-test-error" class="mt-2" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
+  </div>
+
+  <!-- Result summary -->
+  <div class="dash-card mb-3" id="network-test-result" style="display:none;">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color);">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-activity me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Result") }} — <span id="result-target" class="font-mono"></span>
+      </h6>
+    </div>
+    <div class="kpi-strip stagger-children" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); padding:1rem 1.25rem;">
+      <div class="kpi-card">
+        <div class="kpi-icon" id="result-status-icon"><i class="bi bi-question-circle"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-number" id="result-status">—</div>
+          <div class="kpi-label">{{ _("Status") }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="bi bi-stopwatch"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-number" id="result-avg-latency">—</div>
+          <div class="kpi-label">{{ _("Avg Latency") }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="bi bi-arrows-collapse"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-number" id="result-minmax-latency">—</div>
+          <div class="kpi-label">{{ _("Min / Max") }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" id="result-loss-icon"><i class="bi bi-graph-down"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-number" id="result-loss">—</div>
+          <div class="kpi-label">{{ _("Loss") }}</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="bi bi-search"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-number" id="result-dns" style="font-size:0.85rem;">—</div>
+          <div class="kpi-label">{{ _("DNS Resolution") }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="px-3 pb-3" id="result-attempts" style="font-size:0.72rem; color:var(--text-muted);"></div>
+  </div>
+
+  <!-- Latency history graph -->
+  <div class="dash-card" id="network-test-history" style="display:none;">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-graph-up me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Latency History") }}
+      </h6>
+      <span style="font-size:0.7rem; color:var(--text-muted);">{{ _("Recorded from tests run on this page") }}</span>
+    </div>
+    <div style="position:relative; width:100%; height:240px;">
+      <canvas id="network-test-chart" style="width:100%; height:100%;"></canvas>
+      <div id="network-test-chart-empty" class="no-data" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center;">
+        <span style="color:var(--text-muted); font-size:0.8rem;">{{ _("No history yet for this endpoint — run the test a few times.") }}</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/network-test-chart.js') }}"></script>
+<script>
+(function () {
+  'use strict';
+
+  function optionFor(datalistId, value) {
+    var list = document.getElementById(datalistId);
+    if (!list) return null;
+    var options = list.getElementsByTagName('option');
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].value === value) return options[i];
+    }
+    return null;
+  }
+
+  function wireEndpointPicker(inputId, datalistId) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('input', function () {
+      var opt = optionFor(datalistId, input.value);
+      if (opt) {
+        document.getElementById('target-host').value = opt.getAttribute('data-host') || '';
+        document.getElementById('target-port').value = opt.getAttribute('data-port') || '';
+      }
+    });
+  }
+
+  wireEndpointPicker('source-endpoint-input', 'source-endpoint-list');
+  wireEndpointPicker('destination-endpoint-input', 'destination-endpoint-list');
+
+  function showError(message) {
+    var el = document.getElementById('network-test-error');
+    el.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function fmtLatency(ms) {
+    return (ms === null || ms === undefined) ? '—' : Math.round(ms) + ' ms';
+  }
+
+  function renderResult(result) {
+    document.getElementById('network-test-result').style.display = 'block';
+    document.getElementById('result-target').textContent = result.host + ':' + result.port;
+
+    var statusEl = document.getElementById('result-status');
+    var statusIcon = document.getElementById('result-status-icon');
+    if (result.success) {
+      statusEl.textContent = '{{ _("Reachable") }}';
+      statusIcon.className = 'kpi-icon green';
+      statusIcon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+    } else {
+      statusEl.textContent = '{{ _("Unreachable") }}';
+      statusIcon.className = 'kpi-icon red';
+      statusIcon.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+    }
+
+    document.getElementById('result-avg-latency').textContent = fmtLatency(result.avg_latency_ms);
+    document.getElementById('result-minmax-latency').textContent =
+      fmtLatency(result.min_latency_ms) + ' / ' + fmtLatency(result.max_latency_ms);
+
+    var lossEl = document.getElementById('result-loss');
+    var lossIcon = document.getElementById('result-loss-icon');
+    lossEl.textContent = result.loss_percent + '%';
+    lossIcon.className = 'kpi-icon ' + (result.loss_percent > 0 ? 'amber' : 'green');
+
+    var dnsEl = document.getElementById('result-dns');
+    if (result.dns && result.dns.resolved) {
+      dnsEl.textContent = result.dns.addresses.join(', ') + ' (' + Math.round(result.dns.resolve_time_ms) + ' ms)';
+    } else {
+      dnsEl.textContent = '{{ _("Failed") }}' + (result.dns && result.dns.error ? ': ' + result.dns.error : '');
+    }
+
+    var attemptsEl = document.getElementById('result-attempts');
+    attemptsEl.innerHTML = result.attempts.map(function (a, idx) {
+      var glyph = a.success ? '<i class="bi bi-check-circle-fill" style="color:var(--accent-green);"></i>'
+                             : '<i class="bi bi-x-circle-fill" style="color:var(--accent-red);"></i>';
+      var detail = a.success ? fmtLatency(a.latency_ms) : (a.error || '{{ _("failed") }}');
+      return '<span style="margin-right:1rem;">' + glyph + ' #' + (idx + 1) + ' ' + detail + '</span>';
+    }).join('');
+  }
+
+  function loadHistory(host, port) {
+    var url = '/api/network-test/history?host=' + encodeURIComponent(host) + '&port=' + encodeURIComponent(port);
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        document.getElementById('network-test-history').style.display = 'block';
+        window.NetworkTestChart.render(data.samples || []);
+      })
+      .catch(function () { /* history is a nice-to-have — ignore fetch failures */ });
+  }
+
+  document.getElementById('run-test-btn').addEventListener('click', function () {
+    var host = document.getElementById('target-host').value.trim();
+    var port = document.getElementById('target-port').value.trim();
+    showError('');
+
+    if (!host || !port) {
+      showError('{{ _("Enter a host and port, or pick one from the dropdowns above.") }}');
+      return;
+    }
+
+    var btn = document.getElementById('run-test-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> {{ _("Testing…") }}';
+
+    fetch('/api/network-test/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: host, port: port })
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Test failed.") }}');
+          return;
+        }
+        renderResult(res.data);
+        loadHistory(res.data.host, res.data.port);
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> {{ _("Run Test") }}';
+      });
+  });
+})();
+</script>
+{% endblock %}
