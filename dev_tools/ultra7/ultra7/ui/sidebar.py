@@ -152,6 +152,8 @@ class Sidebar(ttk.Frame):
         self._header.configure(bg=theme.accent)
         self._header_label.configure(bg=theme.accent, fg=theme.select_fg)
         self._separator.configure(bg=get_border_color(theme))
+        self._list_canvas.configure(bg=theme.pane_bg)
+        self._list_inner_frame.configure(bg=theme.pane_bg)
         # Update parent background colors for all items
         for item in self._project_items:
             item._parent_bg = theme.bg
