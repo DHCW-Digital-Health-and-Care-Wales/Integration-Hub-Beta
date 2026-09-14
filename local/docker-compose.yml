@@ -545,11 +545,12 @@ services:
   # First start pulls a ~1GB image and takes ~1 minute to become healthy.
   cosmos-emulator:
     container_name: cosmos-emulator
-    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
     pull_policy: always
     ports:
       - "8081:8081"
       - "10250-10255:10250-10255"
+      - "1234:1234"
     environment:
       # Fewer partitions = faster startup and lower memory for local dev.
       AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "3"
