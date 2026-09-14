@@ -351,7 +351,10 @@ class Ultra7App(tk.Tk):
         if not projects:
             return
 
-        # Run in background thread
+        if getattr(self, "_batch_worker", None) is not None:
+            messagebox.showinfo("Ultra7", "A batch run is already in progress.")
+            return
+
         self._batch_cancel_event = threading.Event()
         self._batch_queue: queue.Queue[tuple[str | None, SendResult | None]] = queue.Queue()
 
