@@ -413,9 +413,8 @@ class Ultra7App(tk.Tk):
                             result = SendResult(ok=False, latency_ms=0.0, response_summary="", error=str(exc))
 
                         self._batch_queue.put((label, result))
-
-                if project.delay_ms and project.repeat_count > 1:
-                    time.sleep(project.delay_ms / 1000)
+                        if project.delay_ms:
+                            time.sleep(project.delay_ms / 1000)
 
         finally:
             self._batch_queue.put((None, None))
