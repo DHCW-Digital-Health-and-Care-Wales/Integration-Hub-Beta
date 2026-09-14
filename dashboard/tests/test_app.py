@@ -406,6 +406,44 @@ class TestApiRoutes:
         mock_fn.assert_called_once_with(hours=24, health_board="PHW", service="phw-to-mpi")
 
 
+class TestNetworkTestRoutes:
+    def test_page_renders(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.pages.get_flows", return_value={}):
+            response = client.get("/network-test")
+        assert response.status_code == 200
+
+    def test_api_list_returns_json(self, client: FlaskClient) -> None:
+        endpoints = [{"host": "a.example.com", "port": 443, "latest": {"success": True}}]
+        with patch("dashboard.routes.api.network_test.list_tested_endpoints", return_value=endpoints):
+            response = client.get("/api/network-test/list")
+        assert response.status_code == 200
+        assert response.get_json() == {"endpoints": endpoints}
+
+    def test_api_run_rejects_invalid_host(self, client: FlaskClient) -> None:
+        response = client.post("/api/network-test/run", json={"host": "", "port": 443})
+        assert response.status_code == 400
+        assert "error" in response.get_json()
+
+    def test_api_history_get_returns_samples(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.api.network_test.get_history", return_value=[{"timestamp": 1.0}]):
+            response = client.get("/api/network-test/history?host=example.com&port=443")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["samples"] == [{"timestamp": 1.0}]
+
+    def test_api_history_delete_removes_stored_data(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.api.network_test.delete_history") as delete_history:
+            response = client.delete("/api/network-test/history?host=example.com&port=443")
+        assert response.status_code == 200
+        assert response.get_json() == {"deleted": True, "host": "example.com", "port": 443}
+        delete_history.assert_called_once_with("example.com", 443)
+
+    def test_api_history_delete_rejects_invalid_port(self, client: FlaskClient) -> None:
+        response = client.delete("/api/network-test/history?host=example.com&port=not-a-port")
+        assert response.status_code == 400
+        assert "error" in response.get_json()
+
+
 class TestEnvLoading:
     def test_load_dotenv_sets_missing_values_only(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         env_file = tmp_path / ".env"

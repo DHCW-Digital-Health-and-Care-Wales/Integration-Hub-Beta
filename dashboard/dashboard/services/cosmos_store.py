@@ -149,6 +149,30 @@ def get_document(pk: str, doc_id: str) -> dict | None:
     return {k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")}
 
 
+def query_documents(pk: str) -> list[dict]:
+    """Return every document in a partition, with system/routing fields stripped.
+
+    Used where callers need to list all documents of a kind (e.g. every tested
+    network endpoint) rather than read one by known id. Returns an empty list
+    when Cosmos is not configured, the partition is empty, or a query error
+    occurs — matching :func:`get_document`'s graceful degradation behaviour.
+    """
+    container = _get_container()
+    if container is None:
+        return []
+
+    try:
+        items = container.query_items(
+            query="SELECT * FROM c WHERE c.pk = @pk",
+            parameters=[{"name": "@pk", "value": pk}],
+            partition_key=pk,
+        )
+        return [{k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")} for item in items]
+    except CosmosHttpResponseError as exc:
+        log.warning("Failed to query Cosmos documents for partition %s: %s", pk, exc)
+        return []
+
+
 def upsert_document(pk: str, doc_id: str, data: dict) -> None:
     """Create or replace a document identified by ``pk``/``doc_id``.
 
@@ -170,6 +194,24 @@ def upsert_document(pk: str, doc_id: str, data: dict) -> None:
         container.upsert_item(body=document)
     except CosmosHttpResponseError as exc:
         log.error("Failed to persist Cosmos document %s/%s: %s", pk, doc_id, exc)
+
+
+def delete_document(pk: str, doc_id: str) -> None:
+    """Delete a single document identified by ``pk``/``doc_id``.
+
+    A no-op (not an error) when the document is already missing or Cosmos isn't
+    configured — matching the other helpers' graceful degradation behaviour.
+    """
+    container = _get_container()
+    if container is None:
+        return
+
+    try:
+        container.delete_item(item=doc_id, partition_key=pk)
+    except CosmosResourceNotFoundError:
+        pass
+    except CosmosHttpResponseError as exc:
+        log.error("Failed to delete Cosmos document %s/%s: %s", pk, doc_id, exc)
 
 
 def _reset_client_for_tests() -> None:

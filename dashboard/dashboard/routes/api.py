@@ -189,14 +189,29 @@ def api_network_test_run() -> tuple[Response, int] | Response:
 
 
 def api_network_test_history() -> tuple[Response, int] | Response:
-    """JSON endpoint returning recent latency history for a host:port pair (for the trend graph)."""
+    """JSON endpoint returning recent latency history for a host:port pair (for the trend graph).
+
+    ``DELETE`` permanently removes all stored history for that host:port instead.
+    """
     try:
         host = network_test.validate_host(request.args.get("host", ""))
         port = network_test.validate_port(request.args.get("port", ""))
     except network_test.InvalidTargetError as exc:
         return jsonify({"error": str(exc)}), 400
 
+    if request.method == "DELETE":
+        network_test.delete_history(host, port)
+        return jsonify({"deleted": True, "host": host, "port": port})
+
     return jsonify({"host": host, "port": port, "samples": network_test.get_history(host, port)})
+
+
+def api_network_test_list() -> Response:
+    """JSON endpoint returning every tested host:port with its most recent result.
+
+    Powers the endpoint list on the network test page.
+    """
+    return jsonify({"endpoints": network_test.list_tested_endpoints()})
 
 
 def register(app: Flask) -> None:
@@ -218,5 +233,9 @@ def register(app: Flask) -> None:
         "/api/network-test/run", endpoint="api_network_test_run", view_func=api_network_test_run, methods=["POST"]
     )
     app.add_url_rule(
-        "/api/network-test/history", endpoint="api_network_test_history", view_func=api_network_test_history
+        "/api/network-test/history",
+        endpoint="api_network_test_history",
+        view_func=api_network_test_history,
+        methods=["GET", "DELETE"],
     )
+    app.add_url_rule("/api/network-test/list", endpoint="api_network_test_list", view_func=api_network_test_list)

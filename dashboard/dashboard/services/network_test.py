@@ -160,6 +160,8 @@ def save_history_sample(host: str, port: int, result: dict[str, Any]) -> None:
             "timestamp": result["timestamp"],
             "success": result["success"],
             "avg_latency_ms": result["avg_latency_ms"],
+            "min_latency_ms": result["min_latency_ms"],
+            "max_latency_ms": result["max_latency_ms"],
             "loss_percent": result["loss_percent"],
         }
     )
@@ -171,6 +173,33 @@ def get_history(host: str, port: int) -> list[dict[str, Any]]:
     """Return the rolling history of past test results for an endpoint."""
     doc = cosmos_store.get_document(_HISTORY_PK, _history_doc_id(host, port))
     return (doc or {}).get("samples", [])
+
+
+def delete_history(host: str, port: int) -> None:
+    """Permanently remove all stored test history for an endpoint.
+
+    Used when a support user clears an endpoint from the "Tested Endpoints" list —
+    the endpoint disappears entirely until it's tested again.
+    """
+    cosmos_store.delete_document(_HISTORY_PK, _history_doc_id(host, port))
+
+
+def list_tested_endpoints() -> list[dict[str, Any]]:
+    """Return every host:port that has been tested, with its most recent result.
+
+    Powers the endpoint list on the network test page — most-recently-tested
+    endpoint first. Endpoints with no samples (shouldn't normally happen) are
+    skipped rather than shown with an empty "latest" result.
+    """
+    endpoints = []
+    for doc in cosmos_store.query_documents(_HISTORY_PK):
+        samples = doc.get("samples") or []
+        if not samples:
+            continue
+        endpoints.append({"host": doc.get("host"), "port": doc.get("port"), "latest": samples[-1]})
+
+    endpoints.sort(key=lambda endpoint: endpoint["latest"].get("timestamp", 0), reverse=True)
+    return endpoints
 
 
 def build_endpoint_options(

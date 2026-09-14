@@ -147,6 +147,19 @@ class TestRunLatencyTest:
 # ---------------------------------------------------------------------------
 
 
+def _fake_result(**overrides: Any) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "timestamp": 1.0,
+        "success": True,
+        "avg_latency_ms": 12.3,
+        "min_latency_ms": 10.0,
+        "max_latency_ms": 15.0,
+        "loss_percent": 0.0,
+    }
+    result.update(overrides)
+    return result
+
+
 class TestHistoryPersistence:
     def test_save_appends_and_get_returns_samples(self) -> None:
         store: dict[str, Any] = {}
@@ -157,16 +170,23 @@ class TestHistoryPersistence:
         def fake_upsert(pk: str, doc_id: str, data: dict) -> None:
             store[doc_id] = data
 
-        sample_result = {"timestamp": 1.0, "success": True, "avg_latency_ms": 12.3, "loss_percent": 0.0}
-
         with (
             patch.object(network_test.cosmos_store, "get_document", side_effect=fake_get),
             patch.object(network_test.cosmos_store, "upsert_document", side_effect=fake_upsert),
         ):
-            network_test.save_history_sample("example.com", 443, sample_result)
+            network_test.save_history_sample("example.com", 443, _fake_result())
             history = network_test.get_history("example.com", 443)
 
-        assert history == [{"timestamp": 1.0, "success": True, "avg_latency_ms": 12.3, "loss_percent": 0.0}]
+        assert history == [
+            {
+                "timestamp": 1.0,
+                "success": True,
+                "avg_latency_ms": 12.3,
+                "min_latency_ms": 10.0,
+                "max_latency_ms": 15.0,
+                "loss_percent": 0.0,
+            }
+        ]
 
     def test_get_history_returns_empty_when_no_document(self) -> None:
         with patch.object(network_test.cosmos_store, "get_document", return_value=None):
@@ -174,8 +194,7 @@ class TestHistoryPersistence:
 
     def test_history_capped_at_max_samples(self) -> None:
         existing_samples = [
-            {"timestamp": float(i), "success": True, "avg_latency_ms": 1.0, "loss_percent": 0.0}
-            for i in range(network_test._MAX_HISTORY_SAMPLES)
+            _fake_result(timestamp=float(i)) for i in range(network_test._MAX_HISTORY_SAMPLES)
         ]
         stored: dict[str, Any] = {}
 
@@ -189,13 +208,43 @@ class TestHistoryPersistence:
             patch.object(network_test.cosmos_store, "get_document", side_effect=fake_get),
             patch.object(network_test.cosmos_store, "upsert_document", side_effect=fake_upsert),
         ):
-            network_test.save_history_sample(
-                "example.com", 443, {"timestamp": 999.0, "success": True, "avg_latency_ms": 5.0, "loss_percent": 0.0}
-            )
+            network_test.save_history_sample("example.com", 443, _fake_result(timestamp=999.0))
 
         saved_samples = stored["history:example.com:443"]["samples"]
         assert len(saved_samples) == network_test._MAX_HISTORY_SAMPLES
         assert saved_samples[-1]["timestamp"] == 999.0
+
+    def test_delete_history_removes_the_document(self) -> None:
+        with patch.object(network_test.cosmos_store, "delete_document") as delete_document:
+            network_test.delete_history("example.com", 443)
+
+        delete_document.assert_called_once_with("network-test", "history:example.com:443")
+
+
+class TestListTestedEndpoints:
+    def test_returns_latest_sample_per_endpoint(self) -> None:
+        documents = [
+            {
+                "host": "a.example.com",
+                "port": 443,
+                "samples": [_fake_result(timestamp=1.0), _fake_result(timestamp=2.0)],
+            },
+            {"host": "b.example.com", "port": 22, "samples": [_fake_result(timestamp=5.0)]},
+        ]
+        with patch.object(network_test.cosmos_store, "query_documents", return_value=documents):
+            endpoints = network_test.list_tested_endpoints()
+
+        assert [e["host"] for e in endpoints] == ["b.example.com", "a.example.com"]
+        assert endpoints[1]["latest"]["timestamp"] == 2.0
+
+    def test_skips_documents_with_no_samples(self) -> None:
+        documents = [{"host": "a.example.com", "port": 443, "samples": []}]
+        with patch.object(network_test.cosmos_store, "query_documents", return_value=documents):
+            assert network_test.list_tested_endpoints() == []
+
+    def test_returns_empty_when_no_documents(self) -> None:
+        with patch.object(network_test.cosmos_store, "query_documents", return_value=[]):
+            assert network_test.list_tested_endpoints() == []
 
 
 # ---------------------------------------------------------------------------

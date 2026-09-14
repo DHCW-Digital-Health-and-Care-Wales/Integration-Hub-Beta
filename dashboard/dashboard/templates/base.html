@@ -282,10 +282,14 @@
       const link = e.target.closest('a[href]');
       if (!link) return;
       const href = link.getAttribute('href') || '';
-      // Only trigger for internal page navigations, not anchors / external / JS links
+      // Only trigger for internal page navigations, not anchors / external / JS links.
+      // Also skip download links (e.g. blob: URLs from client-side CSV export) — clicking
+      // them doesn't navigate away, so the bar would otherwise spin forever.
       if (!href || href.startsWith('#') || href.startsWith('javascript') ||
           href.startsWith('http://') || href.startsWith('https://') ||
-          link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+          href.startsWith('blob:') || href.startsWith('data:') ||
+          link.hasAttribute('download') || link.target === '_blank' ||
+          e.ctrlKey || e.metaKey || e.shiftKey) return;
       bar.classList.add('loading');
     });
   })();
