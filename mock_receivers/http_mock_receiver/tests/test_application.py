@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -41,6 +42,28 @@ _SOAP_REJECT_BODY = """\
     </SendHL7Message>
   </soapenv:Body>
 </soapenv:Envelope>"""
+
+_WIS_ENVELOPE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<ns1:Envelope xmlns:ns1="http://Cypris.Nhs.Wales.Uk/CaptureFromFiorona/Input">
+  <ns1:Body>
+    <ns3:CaptureFromFiorona xmlns:ns3="http://Cypris.Nhs.Wales.Uk/">
+      <ns3:inputString>&lt;HL7v2xml&gt;&lt;MSH.1&gt;|&lt;/MSH.1&gt;&lt;/HL7v2xml&gt;</ns3:inputString>
+    </ns3:CaptureFromFiorona>
+  </ns1:Body>
+</ns1:Envelope>"""
+
+_WIS_ENVELOPE_NO_PAYLOAD = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<ns1:Envelope xmlns:ns1="http://Cypris.Nhs.Wales.Uk/CaptureFromFiorona/Input">
+  <ns1:Body>
+    <ns3:CaptureFromFiorona xmlns:ns3="http://Cypris.Nhs.Wales.Uk/">
+      <ns3:inputString></ns3:inputString>
+    </ns3:CaptureFromFiorona>
+  </ns1:Body>
+</ns1:Envelope>"""
+
+_MALFORMED_XML = "this is not xml at all"
 
 
 class TestHealthEndpoint(unittest.TestCase):
@@ -106,6 +129,66 @@ class TestSoapEndpoint(unittest.TestCase):
         )
         # Empty body is not "fail" — should return an ACK (200) not a server crash (500)
         self.assertNotEqual(response.status_code, 500)
+
+
+class TestServiceBusForwarding(unittest.TestCase):
+    """Verifies Service Bus forwarding decisions for HL7 and WIS SOAP requests."""
+
+    def test_hl7_soap_forwards_hl7_payload(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            _client.post(
+                "/soap",
+                content=_SOAP_11_BODY,
+                headers={"Content-Type": "text/xml; charset=utf-8"},
+            )
+        fake_sender.send_text_message.assert_called_once()
+        forwarded = fake_sender.send_text_message.call_args[0][0]
+        self.assertIn("MSH", forwarded)
+
+    def test_valid_wis_request_forwards_extracted_payload(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            response = _client.post(
+                "/soap",
+                content=_WIS_ENVELOPE,
+                headers={"Content-Type": "text/xml; charset=utf-8"},
+            )
+        self.assertEqual(response.status_code, 200)
+        fake_sender.send_text_message.assert_called_once()
+        forwarded = fake_sender.send_text_message.call_args[0][0]
+        self.assertIn("HL7v2xml", forwarded)
+
+    def test_wis_request_with_no_payload_forwards_raw_envelope(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            response = _client.post(
+                "/soap",
+                content=_WIS_ENVELOPE_NO_PAYLOAD,
+                headers={"Content-Type": "text/xml; charset=utf-8"},
+            )
+        self.assertEqual(response.status_code, 200)
+        fake_sender.send_text_message.assert_called_once_with(_WIS_ENVELOPE_NO_PAYLOAD)
+
+    def test_malformed_xml_does_not_forward(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            _client.post(
+                "/soap",
+                content=_MALFORMED_XML,
+                headers={"Content-Type": "text/xml; charset=utf-8"},
+            )
+        fake_sender.send_text_message.assert_not_called()
+
+    def test_fail_trigger_does_not_forward(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            _client.post(
+                "/soap",
+                content=_SOAP_FAIL_BODY,
+                headers={"Content-Type": "text/xml; charset=utf-8"},
+            )
+        fake_sender.send_text_message.assert_not_called()
 
 
 if __name__ == "__main__":

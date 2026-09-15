@@ -140,9 +140,22 @@ async def soap_endpoint(request: Request) -> Response:
         logger.info("HL7 payload extracted — %d bytes", len(result.hl7_payload))
         logger.debug("HL7 payload extracted:\n%s", result.hl7_payload.replace("\r", "\n"))
 
-    # Optionally forward to Service Bus.
-    if _sb_sender and result.hl7_payload and not result.is_fault_requested:
-        _forward_to_service_bus(result.hl7_payload, result.message_control_id)
+    # Optionally forward to Service Bus. Standard HL7 SOAP requests forward the
+    # extracted ER7 payload. WIS SOAP requests (e.g. CaptureFromFiorona) have no
+    # ER7 payload, so forward the extracted WIS business payload, falling back to
+    # the raw SOAP envelope when it cannot be safely extracted. Malformed XML is
+    # never forwarded.
+    if _sb_sender and not result.is_fault_requested:
+        if result.hl7_payload:
+            _forward_to_service_bus(result.hl7_payload, result.message_control_id)
+        elif result.is_well_formed_xml:
+            wis_forward_payload = result.wis_payload or result.raw_body
+            logger.info(
+                "WIS payload forwarded — %d bytes (%s)",
+                len(wis_forward_payload),
+                "extracted" if result.wis_payload else "raw envelope fallback",
+            )
+            _forward_to_service_bus(wis_forward_payload, result.message_control_id)
 
     # Build and return the appropriate SOAP response, mirroring the canonical
     # HL7 mock receiver semantics: reject > fail > accept.
@@ -182,14 +195,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> Respo
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-def _forward_to_service_bus(hl7_payload: str, message_control_id: str) -> None:
-    """Forward the HL7 payload to the configured Service Bus queue.
+def _forward_to_service_bus(payload: str, message_control_id: str) -> None:
+    """Forward a payload (HL7 ER7 or WIS business payload) to the configured Service Bus queue.
 
     Failures are logged but never propagated — the SOAP response is always
     determined by the message content, not by Service Bus availability.
     """
     try:
-        _sb_sender.send_text_message(hl7_payload)  # type: ignore[union-attr]
+        _sb_sender.send_text_message(payload)  # type: ignore[union-attr]
         logger.info("Message %s forwarded to Service Bus.", message_control_id)
     except Exception as exc:
         logger.error("Failed to forward message %s to Service Bus: %s", message_control_id, exc)
