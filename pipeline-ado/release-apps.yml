@@ -24,7 +24,6 @@ parameters:
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
-      - HL7 Core Reference Transformer
       - RISP Core Reference Transformer
       - PROMS FHIR Transformer
       - HL7 Sender
@@ -219,14 +218,14 @@ stages:
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Pims Transformer - Build'
 
-        - name: 'HL7 Core Reference Transformer'
-          appImageName: 'core-reference-hl7transformer'
-          appFunctionMidfix: ''
-          buildPipeline: 'HL7 Core Reference Transformer - Build'
-
+        # No standalone (non-flow) container app exists for this image - only flow-tagged
+        # instances are deployed (currently RISP below). See flow_risp_to_mpi.tf.
         - name: 'RISP Core Reference Transformer'
           appImageName: 'core-reference-hl7transformer'
           appFunctionMidfix: 'risp'
+          # Terraform names this container app 'risp-coreref-tfmr-ca' (abbreviated to stay under
+          # Azure's 32-char Container App name limit) rather than 'risp-core-reference-hl7transformer-ca'.
+          containerAppShortName: 'coreref-tfmr'
           buildPipeline: 'HL7 Core Reference Transformer - Build'
 
         - name: 'PROMS FHIR Transformer'
