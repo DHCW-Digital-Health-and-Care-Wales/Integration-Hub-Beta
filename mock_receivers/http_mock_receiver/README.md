@@ -24,6 +24,20 @@ convention.
 - **SOAP 1.1** — `Content-Type: text/xml` (default)
 - **SOAP 1.2** — `Content-Type: application/soap+xml` (detected automatically from namespace)
 
+## Service Bus forwarding
+
+Accepted (non-fault) requests are forwarded to `EGRESS_QUEUE_NAME` when Service Bus is
+configured:
+
+- **HL7 SOAP requests** (e.g. `<SendHL7Message><hl7Message>…`) — the extracted ER7 HL7
+  payload is forwarded.
+- **WIS SOAP requests** (the `CaptureFromFiorona` envelope used by the WIS SOAP sender,
+  `SOAP_ENVELOPE_FORMAT=wis`) — the extracted `inputString` business payload is forwarded.
+  If no `inputString` payload can be extracted, the complete raw SOAP envelope is
+  forwarded instead.
+
+Malformed (non-well-formed) XML is never forwarded to Service Bus.
+
 ## Running locally
 
 ```bash
