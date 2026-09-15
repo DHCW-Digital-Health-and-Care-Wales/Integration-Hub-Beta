@@ -32,6 +32,16 @@ _SOAP_FAIL_BODY = """\
   </soapenv:Body>
 </soapenv:Envelope>"""
 
+_SOAP_REJECT_BODY = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Body>
+    <SendHL7Message>
+      <hl7Message>MSH|reject|test</hl7Message>
+    </SendHL7Message>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
 
 class TestHealthEndpoint(unittest.TestCase):
 
@@ -70,21 +80,23 @@ class TestSoapEndpoint(unittest.TestCase):
         )
         self.assertIn("AA", response.text)
 
-    def test_fail_trigger_returns_500(self) -> None:
+    def test_fail_trigger_returns_500_and_ae_status(self) -> None:
         response = _client.post(
             "/soap",
             content=_SOAP_FAIL_BODY,
             headers={"Content-Type": "text/xml; charset=utf-8"},
         )
         self.assertEqual(response.status_code, 500)
+        self.assertIn("<Status>AE</Status>", response.text)
 
-    def test_fail_trigger_returns_soap_fault(self) -> None:
+    def test_reject_trigger_returns_500_and_ar_status(self) -> None:
         response = _client.post(
             "/soap",
-            content=_SOAP_FAIL_BODY,
+            content=_SOAP_REJECT_BODY,
             headers={"Content-Type": "text/xml; charset=utf-8"},
         )
-        self.assertIn("Fault", response.text)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("<Status>AR</Status>", response.text)
 
     def test_empty_body_does_not_crash(self) -> None:
         response = _client.post(
