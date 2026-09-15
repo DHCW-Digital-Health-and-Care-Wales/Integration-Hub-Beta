@@ -8,7 +8,13 @@ Accepted message types:
 - "ADT^A28^ADT_A05"
 - "ADT^A40^ADT_A39"
 
-A negative ack (NACK) can be produced by having the word `fail` inside the message body.
+A negative ack can be produced by having a keyword inside the message body:
+
+- `fail` - produces an `AE` (Application Error) ack.
+- `reject` - produces an `AR` (Application Reject) ack.
+
+Note: interpretation of the `AE`/`AR` ack codes (e.g. retry vs. dead-letter) is up to the
+receiving sender - this mock receiver only controls which ack code is returned.
 
 ## Development
 
