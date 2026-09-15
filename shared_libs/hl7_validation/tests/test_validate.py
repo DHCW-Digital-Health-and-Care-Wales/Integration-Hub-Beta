@@ -52,6 +52,15 @@ class TestSchemaPathResolutionAndTriggerParsing(unittest.TestCase):
         path = get_schema_xsd_path_for("phw", "ADT_A39")
         self.assertTrue(os.path.exists(path))
 
+    def test_mpi_flow_uses_wds_schema_alias(self) -> None:
+        mapping = list_schemas_for_group("mpi")
+        self.assertIn("ADT_A05", mapping)
+        self.assertIn("ADT_A39", mapping)
+
+        path = get_schema_xsd_path_for("mpi", "ADT_A39")
+        self.assertTrue(os.path.exists(path))
+        self.assertIn(os.path.join("wds", "ADT_A39.xsd"), path)
+
     def test_pid_3_repetitions_emit_multiple_nodes(self) -> None:
         er7 = "\r".join(
             [
