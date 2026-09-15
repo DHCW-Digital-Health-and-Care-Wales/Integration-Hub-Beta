@@ -166,7 +166,9 @@ async def soap_endpoint(request: Request) -> Response:
     )
 
     if result.is_fault_requested:
-        logger.warning("Returning SOAP negative ACK — ack_code=%s, control_id=%s", result.ack_code, result.message_control_id)
+        logger.warning(
+            "Returning SOAP negative ACK — ack_code=%s, control_id=%s", result.ack_code, result.message_control_id
+        )
         print("── END (NEGATIVE ACK) ───────────────────────────────")
         print()
         return Response(content=body, status_code=500, media_type=content_type)
