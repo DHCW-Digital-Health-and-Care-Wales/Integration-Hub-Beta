@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from hl7_subscription_sender.ack_processor import get_ack_result
+from hl7_subscription_sender.ack_processor import AckOutcome, get_ack_result
 
 
 def generate_ack_msg(ack_code: str) -> str:
@@ -16,29 +16,42 @@ class TestGetAckResult(unittest.TestCase):
     def test_valid_ack_aa(self, mock_logger: MagicMock) -> None:
         result = get_ack_result(generate_ack_msg("AA"))
 
-        self.assertTrue(result)
+        self.assertTrue(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.SUCCESS)
         mock_logger.info.assert_called_once_with("Valid ACK received.")
 
     @patch("hl7_subscription_sender.ack_processor.logger")
     def test_valid_ack_ca(self, mock_logger: MagicMock) -> None:
         result = get_ack_result(generate_ack_msg("CA"))
 
-        self.assertTrue(result)
+        self.assertTrue(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.SUCCESS)
         mock_logger.info.assert_called_once_with("Valid ACK received.")
 
     @patch("hl7_subscription_sender.ack_processor.logger")
     def test_negative_ack_ae(self, mock_logger: MagicMock) -> None:
         result = get_ack_result(generate_ack_msg("AE"))
 
-        self.assertFalse(result)
+        self.assertFalse(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.AE)
+        self.assertEqual(result.control_id, "123456")
         mock_logger.error.assert_called_once_with("Negative ACK received: AE for: 123456")
 
     @patch("hl7_subscription_sender.ack_processor.logger")
     def test_negative_ack_ar(self, mock_logger: MagicMock) -> None:
         result = get_ack_result(generate_ack_msg("AR"))
 
-        self.assertFalse(result)
+        self.assertFalse(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.AR)
+        self.assertEqual(result.control_id, "123456")
         mock_logger.error.assert_called_once_with("Negative ACK received: AR for: 123456")
+
+    @patch("hl7_subscription_sender.ack_processor.logger")
+    def test_unrecognised_negative_ack_treated_as_recoverable(self, mock_logger: MagicMock) -> None:
+        result = get_ack_result(generate_ack_msg("CE"))
+
+        self.assertFalse(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.AE)
 
     @patch("hl7_subscription_sender.ack_processor.logger")
     def test_non_ack_message(self, mock_logger: MagicMock) -> None:
@@ -49,14 +62,16 @@ class TestGetAckResult(unittest.TestCase):
 
         result = get_ack_result(non_ack_message)
 
-        self.assertFalse(result)
+        self.assertFalse(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.INVALID)
         mock_logger.error.assert_called_once_with("Received a non-ACK message")
 
     @patch("hl7_subscription_sender.ack_processor.logger")
     def test_malformed_message(self, mock_logger: MagicMock) -> None:
         result = get_ack_result("This is not a valid HL7 message")
 
-        self.assertFalse(result)
+        self.assertFalse(result.is_success)
+        self.assertEqual(result.outcome, AckOutcome.INVALID)
         mock_logger.exception.assert_called_once_with("Exception while parsing ACK message")
 
 
