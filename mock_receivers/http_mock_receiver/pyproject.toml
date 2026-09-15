@@ -22,7 +22,7 @@ dev = [
     "ruff==0.14.9",
     "bandit==1.9.2",
     "mypy==1.18.2",
-    "httpx2>=0.28.0",
+    "httpx>=0.28.0",
     "pytest>=8.3.0",
     "coverage>=7.6.0",
 ]

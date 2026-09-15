@@ -15,26 +15,38 @@ _SOAP_NS_12 = "http://www.w3.org/2003/05/soap-envelope"
 _CONTENT_TYPE_SOAP12 = "application/soap+xml; charset=utf-8"
 
 
-def build_ack_response(message_control_id: str, soap_version: str = "1.1") -> tuple[str, str]:
-    """Return a (body, content_type) tuple for a successful SOAP acknowledgement.
+def build_ack_response(
+    message_control_id: str,
+    soap_version: str = "1.1",
+    ack_code: str = "AA",
+) -> tuple[str, str]:
+    """Return a (body, content_type) tuple for a SOAP acknowledgement.
 
-    Args:
-        message_control_id: The MSH-10 control ID extracted from the HL7 message.
-        soap_version: "1.1" (default) or "1.2".
-
-    Returns:
-        Tuple of (XML string, Content-Type header value).
+    ack_code values mirror the HL7 mock receiver semantics:
+      - AA = accepted
+      - AE = application error / recoverable failure
+      - AR = application reject / non-recoverable rejection
     """
+    if ack_code not in {"AA", "AE", "AR"}:
+        ack_code = "AA"
+
     ns, content_type = _resolve_version(soap_version)
+    if ack_code == "AA":
+        detail = "Message accepted by HTTP mock receiver"
+    elif ack_code == "AE":
+        detail = "Message failed validation by HTTP mock receiver"
+    else:
+        detail = "Message rejected by HTTP mock receiver"
+
     body = (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<soapenv:Envelope xmlns:soapenv="{ns}">\n'
         f"  <soapenv:Header/>\n"
         f"  <soapenv:Body>\n"
         f"    <AcknowledgementResponse>\n"
-        f"      <Status>AA</Status>\n"
+        f"      <Status>{ack_code}</Status>\n"
         f"      <MessageControlID>{_escape(message_control_id)}</MessageControlID>\n"
-        f"      <Detail>Message accepted by HTTP mock receiver</Detail>\n"
+        f"      <Detail>{_escape(detail)}</Detail>\n"
         f"    </AcknowledgementResponse>\n"
         f"  </soapenv:Body>\n"
         f"</soapenv:Envelope>"
