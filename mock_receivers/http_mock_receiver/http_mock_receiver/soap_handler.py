@@ -31,7 +31,8 @@ class SoapParseResult:
     raw_body: str              # Full request body as received
     hl7_payload: str | None    # Extracted HL7 ER7 text (if found)
     message_control_id: str    # MSH-10 value or fallback placeholder
-    is_fault_requested: bool   # True when body contains the word "fail" (mock convention)
+    ack_code: str              # "AA", "AE", or "AR"
+    is_fault_requested: bool   # True when ack_code is AE or AR
 
 
 def parse_soap_request(raw_body: str) -> SoapParseResult:
@@ -76,14 +77,23 @@ def parse_soap_request(raw_body: str) -> SoapParseResult:
             defusedxml.ExternalReferenceForbidden, defusedxml.NotSupportedError) as exc:
         logger.warning("SOAP envelope is not well-formed XML: %s", exc)
 
-    # Respect the mock convention: "fail" anywhere in the body triggers a fault.
-    is_fault_requested = "fail" in raw_body.lower()
+    # Mirror the HL7 mock receiver semantics: reject beats fail, fail beats accept.
+    lower_message = raw_body.lower()
+    if "reject" in lower_message:
+        ack_code = "AR"
+    elif "fail" in lower_message:
+        ack_code = "AE"
+    else:
+        ack_code = "AA"
+
+    is_fault_requested = ack_code != "AA"
 
     return SoapParseResult(
         soap_version=soap_version,
         raw_body=raw_body,
         hl7_payload=hl7_payload,
         message_control_id=message_control_id,
+        ack_code=ack_code,
         is_fault_requested=is_fault_requested,
     )
 

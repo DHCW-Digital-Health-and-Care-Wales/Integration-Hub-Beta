@@ -144,22 +144,21 @@ async def soap_endpoint(request: Request) -> Response:
     if _sb_sender and result.hl7_payload and not result.is_fault_requested:
         _forward_to_service_bus(result.hl7_payload, result.message_control_id)
 
-    # Build and return the appropriate SOAP response.
-    if result.is_fault_requested:
-        logger.warning("Returning SOAP fault — 'fail' detected in request body.")
-        body, content_type = build_fault_response(
-            "Message rejected by mock receiver — 'fail' trigger detected.",
-            soap_version=result.soap_version,
-        )
-        print("── END (FAULT) ──────────────────────────────────────")
-        print()
-        return Response(content=body, status_code=500, media_type=content_type)
-
+    # Build and return the appropriate SOAP response, mirroring the canonical
+    # HL7 mock receiver semantics: reject > fail > accept.
     body, content_type = build_ack_response(
         result.message_control_id,
         soap_version=result.soap_version,
+        ack_code=result.ack_code,
     )
-    logger.info("Response — SOAP ACK sent, control_id=%s", result.message_control_id)
+
+    if result.is_fault_requested:
+        logger.warning("Returning SOAP negative ACK — ack_code=%s, control_id=%s", result.ack_code, result.message_control_id)
+        print("── END (NEGATIVE ACK) ───────────────────────────────")
+        print()
+        return Response(content=body, status_code=500, media_type=content_type)
+
+    logger.info("Response — SOAP ACK sent, control_id=%s, ack_code=%s", result.message_control_id, result.ack_code)
     print("── END (ACK) ────────────────────────────────────────")
     print()
     return Response(content=body, status_code=200, media_type=content_type)

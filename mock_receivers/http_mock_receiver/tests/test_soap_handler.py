@@ -39,6 +39,16 @@ _SOAP_FAIL_BODY = """\
   </soapenv:Body>
 </soapenv:Envelope>"""
 
+_SOAP_REJECT_BODY = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Body>
+    <SendHL7Message>
+      <hl7Message>MSH|reject|test</hl7Message>
+    </SendHL7Message>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
 _MALFORMED_XML = "this is not xml at all"
 
 
@@ -64,10 +74,17 @@ class TestSoapHandler(unittest.TestCase):
     def test_parse_fail_trigger_sets_fault_flag(self) -> None:
         result = parse_soap_request(_SOAP_FAIL_BODY)
         self.assertTrue(result.is_fault_requested)
+        self.assertEqual(result.ack_code, "AE")
+
+    def test_parse_reject_trigger_sets_reject_flag(self) -> None:
+        result = parse_soap_request(_SOAP_REJECT_BODY)
+        self.assertEqual(result.ack_code, "AR")
+        self.assertTrue(result.is_fault_requested)
 
     def test_parse_normal_message_no_fault_flag(self) -> None:
         result = parse_soap_request(_SOAP_11_ACK)
         self.assertFalse(result.is_fault_requested)
+        self.assertEqual(result.ack_code, "AA")
 
     def test_parse_malformed_xml_returns_result_without_raising(self) -> None:
         # Should not raise — returns a result with is_fault_requested=False
