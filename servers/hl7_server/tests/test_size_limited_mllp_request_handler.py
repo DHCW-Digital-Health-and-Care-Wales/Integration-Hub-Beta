@@ -133,9 +133,9 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         handler.request.close.assert_called_once()
 
         mock_logger.info.assert_called()
-        info_call_args = mock_logger.info.call_args[0][0]
-        self.assertIn("Received message of size", info_call_args)
-        self.assertIn("within limit", info_call_args)
+        info_call_messages = [call.args[0] for call in mock_logger.info.call_args_list]
+        self.assertTrue(any("Received message of size" in msg and "within limit" in msg for msg in info_call_messages))
+        self.assertTrue(any("Response of 15 chars written to client" in msg for msg in info_call_messages))
 
         self.mock_event_logger.log_message_failed.assert_not_called()
 

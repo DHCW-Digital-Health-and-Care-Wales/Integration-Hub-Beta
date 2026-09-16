@@ -86,6 +86,9 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
                 response = self._route_message(message_content)
                 self.wfile.write(response.encode(self.encoding))
+                # Positive confirmation the response (ACK or NACK) was written to the socket -
+                # without this, "no error logged" could otherwise be misread as proof of delivery.
+                logger.info(f"Response of {len(response)} chars written to client")
 
         except Exception as e:
             # This is a last resort: the registered ERR handler (see error_handler.ErrorHandler)
@@ -102,7 +105,9 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         try:
             builder = ack_builder or HL7AckBuilder()
             nack = builder.build_generic_nack(reason)
-            self.wfile.write(nack.to_mllp().encode(self.encoding))
+            framed_nack = nack.to_mllp()
+            self.wfile.write(framed_nack.encode(self.encoding))
+            logger.info(f"Fallback AE NACK ({len(framed_nack)} chars) written to client")
         except Exception as e:
             logger.error(f"Failed to send fallback NACK: {e}")
 

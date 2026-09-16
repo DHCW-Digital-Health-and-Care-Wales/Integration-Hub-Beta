@@ -171,21 +171,19 @@ class GenericHandler(AbstractHandler):
             logger.error(error_msg)
 
             self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
-            self.event_logger.log_message_failed(self.incoming_message, error_msg)
-
+            # No log_message_failed() call here: the "ERR" handler (error_handler.ErrorHandler) always
+            # fires for this re-raised exception and logs the failure exactly once as part of NACK
+            # generation - logging it here too would create duplicate telemetry entries.
             raise
         except ValidationException as e:
             error_msg = f"HL7 validation error: {e}"
             logger.error(error_msg)
 
             self.event_logger.log_validation_result(self.incoming_message, error_msg, is_success=False)
-            self.event_logger.log_message_failed(self.incoming_message, error_msg)
             raise e
         except Exception as e:
             error_msg = f"Unexpected error while processing message: {e}"
             logger.exception(error_msg)
-
-            self.event_logger.log_message_failed(self.incoming_message, error_msg)
             raise
 
     def create_ack(self, message_control_id: str, msg: Message) -> str:

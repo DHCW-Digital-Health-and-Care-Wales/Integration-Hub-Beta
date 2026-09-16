@@ -47,6 +47,7 @@ class ErrorHandler(AbstractErrorHandler):
             logger.error("Failed to log message failure before sending NACK: %s", e)
 
         nack = self._build_nack(ack_code, error_msg)
+        logger.info("NACK built successfully (MSA-1=%s, control_id=%s)", ack_code, nack.msa.msa_2.value)
         return nack.to_mllp()
 
     def _classify_failure(self) -> tuple[str, str, str]:
