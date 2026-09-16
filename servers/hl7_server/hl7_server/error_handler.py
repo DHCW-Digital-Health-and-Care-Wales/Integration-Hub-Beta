@@ -39,7 +39,12 @@ class ErrorHandler(AbstractErrorHandler):
         error_msg, category, ack_code = self._classify_failure()
 
         logger.error(error_msg)
-        self.event_logger.log_message_failed(self.incoming_message, error_msg, category)
+        # Telemetry failures must not prevent the NACK from being sent: EventLogger re-raises on
+        # send failure, so keep this best-effort and always proceed to build/return the NACK.
+        try:
+            self.event_logger.log_message_failed(self.incoming_message, error_msg, category)
+        except Exception as e:
+            logger.error("Failed to log message failure before sending NACK: %s", e)
 
         nack = self._build_nack(ack_code, error_msg)
         return nack.to_mllp()

@@ -92,6 +92,23 @@ class TestErrorHandler(unittest.TestCase):
         self.assertTrue(reply.startswith("\x0b"))
         self.assertTrue(reply.endswith("\x1c\r"))
 
+    @patch("hl7_server.error_handler.logger")
+    def test_reply_still_returns_nack_when_event_logger_raises(self, mock_logger: MagicMock) -> None:
+        # EventLogger re-raises on telemetry send failure; that must not prevent the NACK from
+        # being built and returned to the sender.
+        exception = ValidationException("Message has wrong version")
+        mock_event_logger = MagicMock()
+        mock_event_logger.log_message_failed.side_effect = RuntimeError("App Insights unavailable")
+
+        handler = ErrorHandler(exception, VALID_MESSAGE, mock_event_logger)
+        reply = handler.reply()
+
+        mock_event_logger.log_message_failed.assert_called_once()
+        mock_logger.error.assert_any_call(
+            "Failed to log message failure before sending NACK: %s", mock_event_logger.log_message_failed.side_effect
+        )
+        self.assertIn("MSA|AR|0123456789", reply)
+
 
 if __name__ == "__main__":
     unittest.main()
