@@ -54,7 +54,9 @@ def validate_host(host: str) -> str:
     check that keeps the arbitrary-target field from being used to smuggle shell
     metacharacters or absurdly long input through to socket calls.
     """
-    host = (host or "").strip()
+    if not isinstance(host, str):
+        raise InvalidTargetError("Host must be a string")
+    host = host.strip()
     if not host:
         raise InvalidTargetError("Host must not be empty")
     if len(host) > 253:
