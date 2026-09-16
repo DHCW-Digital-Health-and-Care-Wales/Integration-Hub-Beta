@@ -332,6 +332,6 @@ failing loudly:
 - Build this as a new shared lib so all transformers (not just one flow) can adopt it incrementally,
   starting by migrating `HEALTH_BOARD_MAPPING` to the static provider as a proof of concept.
 - Configure backend routing and Cosmos connection details entirely via **environment variables**
-  (`LOOKUP_TABLE_BACKENDS`, `LOOKUP_COSMOS_*`), read using the same `AppConfig`-style helpers
+  (`LOOKUP_COSMOS_TABLES`, `LOOKUP_COSMOS_*`), read using the same `AppConfig`-style helpers
   transformers already use, and wired in by Terraform's existing `environment_variables` container
   app pattern — no new config file format to support in either the app or the infrastructure repo.
