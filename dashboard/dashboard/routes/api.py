@@ -178,7 +178,9 @@ def api_network_test_run() -> tuple[Response, int] | Response:
     before touching any socket calls — invalid input gets a 400 rather than reaching
     ``network_test.run_latency_test``.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON body must be an object"}), 400
     try:
         result = network_test.run_latency_test(payload.get("host", ""), payload.get("port", ""))
     except network_test.InvalidTargetError as _exc:
