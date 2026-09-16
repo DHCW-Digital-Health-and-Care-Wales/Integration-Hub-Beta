@@ -181,8 +181,8 @@ def api_network_test_run() -> tuple[Response, int] | Response:
     payload = request.get_json(silent=True) or {}
     try:
         result = network_test.run_latency_test(payload.get("host", ""), payload.get("port", ""))
-    except network_test.InvalidTargetError as exc:
-        return jsonify({"error": str(exc)}), 400
+    except network_test.InvalidTargetError as _exc:
+        return jsonify({"error": "Invalid host or port."}), 400
 
     # The test itself has already run and succeeded regardless of Cosmos's health —
     # a persistence failure is surfaced as a warning, not a failed test result.
