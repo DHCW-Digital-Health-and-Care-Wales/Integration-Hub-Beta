@@ -199,8 +199,8 @@ def api_network_test_history() -> tuple[Response, int] | Response:
     try:
         host = network_test.validate_host(request.args.get("host", ""))
         port = network_test.validate_port(request.args.get("port", ""))
-    except network_test.InvalidTargetError as exc:
-        return jsonify({"error": str(exc)}), 400
+    except network_test.InvalidTargetError:
+        return jsonify({"error": "Invalid host or port."}), 400
 
     if request.method == "DELETE":
         network_test.delete_history(host, port)
