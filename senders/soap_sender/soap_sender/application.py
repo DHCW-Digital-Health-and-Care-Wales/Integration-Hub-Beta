@@ -103,36 +103,42 @@ def main() -> None:
         app_config.soap_envelope_format,
     )
 
-    with (
-        factory.create_message_receiver_client(
-            app_config.ingress_queue_name, app_config.ingress_session_id
-        ) as receiver_client,
-        SOAPSenderClient(
-            app_config.soap_endpoint_url,
-            app_config.soap_timeout_seconds,
-            app_config.soap_api_key,
-            app_config.soap_client_cert_path,
-            app_config.soap_envelope_format,
-        ) as soap_sender_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
-        message_store_client,
-    ):
-        logger.info("SOAP Sender processor started.")
+    # Bind the startup/health probe first, before constructing the Service Bus and
+    # SOAP clients, so the container reports healthy even when the downstream SOAP
+    # endpoint or Service Bus is briefly unavailable at (re)start.
+    with TCPHealthCheckServer(
+        app_config.health_check_hostname, app_config.health_check_port
+    ) as health_check_server:
         health_check_server.start()
 
-        batch_size = _calculate_batch_size(throttler)
+        with (
+            factory.create_message_receiver_client(
+                app_config.ingress_queue_name, app_config.ingress_session_id
+            ) as receiver_client,
+            SOAPSenderClient(
+                app_config.soap_endpoint_url,
+                app_config.soap_timeout_seconds,
+                app_config.soap_api_key,
+                app_config.soap_client_cert_path,
+                app_config.soap_envelope_format,
+            ) as soap_sender_client,
+            message_store_client,
+        ):
+            logger.info("SOAP Sender processor started.")
 
-        def message_processor(message: ServiceBusMessage) -> bool:
-            return _process_message(
-                message, soap_sender_client, event_logger, metric_sender,
-                throttler, message_store_client, app_config.ingress_session_id,
+            batch_size = _calculate_batch_size(throttler)
+
+            def message_processor(message: ServiceBusMessage) -> bool:
+                return _process_message(
+                    message, soap_sender_client, event_logger, metric_sender,
+                    throttler, message_store_client, app_config.ingress_session_id,
+                )
+
+            wrapped_processor = processor_manager.wrap_handler(
+                message_processor, "soap-sender", app_config.ingress_queue_name
             )
-
-        wrapped_processor = processor_manager.wrap_handler(
-            message_processor, "soap-sender", app_config.ingress_queue_name
-        )
-        while processor_manager.is_running:
-            receiver_client.receive_messages(batch_size, wrapped_processor)
+            while processor_manager.is_running:
+                receiver_client.receive_messages(batch_size, wrapped_processor)
 
 
 def _process_message(

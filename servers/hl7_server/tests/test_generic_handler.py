@@ -121,7 +121,15 @@ class TestGenericHandler(unittest.TestCase):
         "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
         {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},
     )
-    def test_flow_property_builder_failure_does_not_prevent_tracking_metadata(self) -> None:
+    @patch("hl7_server.generic_handler.validate_and_convert_parsed_message_with_flow_schema")
+    def test_flow_property_builder_failure_does_not_prevent_tracking_metadata(
+        self, mock_validate_flow_xml: MagicMock
+    ) -> None:
+        validation_result = MagicMock()
+        validation_result.is_valid = True
+        validation_result.error_message = None
+        validation_result.xml_string = "<ADT_A05 xmlns=\"urn:hl7-org:v2xml\" />"
+        mock_validate_flow_xml.return_value = validation_result
         validator = HL7Validator(flow_name="mpi")
         handler = GenericHandler(
             VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE,
@@ -149,6 +157,12 @@ class TestGenericHandler(unittest.TestCase):
     def test_mpi_outbound_flow_sets_tracking_metadata_with_update_source(
         self, mock_validate_flow_xml: MagicMock
     ) -> None:
+        validation_result = MagicMock()
+        validation_result.is_valid = True
+        validation_result.error_message = None
+        validation_result.xml_string = "<ADT_A05 xmlns=\"urn:hl7-org:v2xml\" />"
+        mock_validate_flow_xml.return_value = validation_result
+
         validator = HL7Validator(flow_name="mpi")
         with patch(ACK_BUILDER_ATTRIBUTE) as mock_builder:
             mock_ack_instance = mock_builder.return_value
@@ -171,7 +185,7 @@ class TestGenericHandler(unittest.TestCase):
 
             handler.reply()
 
-        mock_validate_flow_xml.assert_not_called()
+        mock_validate_flow_xml.assert_called_once_with(ANY, VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE, "mpi")
         call_args = self.mock_sender.send_text_message.call_args
         self.assertEqual(call_args[0][0], VALID_MPI_OUTBOUND_MESSAGE_WITH_UPDATE_SOURCE)
         tracking_metadata_properties = call_args[0][1]

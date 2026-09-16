@@ -1,6 +1,7 @@
 import configparser
 import logging
 import os
+from typing import Callable
 
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
@@ -8,6 +9,7 @@ from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7_validation import convert_er7_to_xml
 from hl7apy.parser import parse_message
 from message_bus_lib.connection_config import ConnectionConfig
+from message_bus_lib.dead_letter import DeadLetterMessage
 from message_bus_lib.message_receiver_client import MessageReceiverClient
 from message_bus_lib.message_store_client import MessageStoreClient
 from message_bus_lib.metadata_utils import (
@@ -23,7 +25,7 @@ from metric_sender_lib.metric_sender import MetricSender
 from otel_lib import configure_otel
 from processor_manager_lib import ProcessorManager
 
-from hl7_sender.ack_processor import get_ack_result
+from hl7_sender.ack_processor import AckOutcome, get_ack_result
 from hl7_sender.app_config import AppConfig
 from hl7_sender.hl7_sender_client import HL7SenderClient
 from hl7_sender.message_throttler import MessageThrottler
@@ -40,6 +42,18 @@ config.read(config_path)
 
 MAX_BATCH_SIZE = config.getint("DEFAULT", "max_batch_size")
 LOCK_RENEWAL_BUFFER_SECONDS = 30
+
+
+def _send_metric_best_effort(send_fn: Callable[[], None], metric_name: str) -> None:
+    """Send a telemetry metric without letting a telemetry failure affect the delivery decision.
+
+    Metrics are observability-only: if emitting one fails (e.g. Azure Monitor exporter issue),
+    that must not change whether a message is treated as retryable, dead-lettered, or successful.
+    """
+    try:
+        send_fn()
+    except Exception:
+        logger.exception(f"Failed to send metric '{metric_name}' - continuing without blocking message processing")
 
 
 def _calculate_batch_size(throttler: MessageThrottler) -> int:
@@ -84,35 +98,41 @@ def main() -> None:
         app_config.message_store_queue_name, app_config.microservice_id, app_config.peer_service
     )
 
-    with (
-        factory.create_message_receiver_client(
-            app_config.ingress_queue_name, app_config.ingress_session_id
-        ) as receiver_client,
-        HL7SenderClient(
-            app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
-        ) as hl7_sender_client,
-        TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port) as health_check_server,
-        message_store_client,
-    ):
-        logger.info("Processor started.")
+    # Bind the startup/health probe first, before constructing the Service Bus and
+    # MLLP clients, so the container reports healthy even when the downstream MLLP
+    # endpoint or Service Bus is briefly unavailable at (re)start.
+    with TCPHealthCheckServer(
+        app_config.health_check_hostname, app_config.health_check_port
+    ) as health_check_server:
         health_check_server.start()
 
-        batch_size = _calculate_batch_size(throttler)
+        with (
+            factory.create_message_receiver_client(
+                app_config.ingress_queue_name, app_config.ingress_session_id
+            ) as receiver_client,
+            HL7SenderClient(
+                app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
+            ) as hl7_sender_client,
+            message_store_client,
+        ):
+            logger.info("Processor started.")
 
-        def message_processor(message: ServiceBusMessage) -> bool:
-            return _process_message(
-                message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
-                app_config.ingress_session_id,
-            )
+            batch_size = _calculate_batch_size(throttler)
 
-        wrapped_processor = processor_manager.wrap_handler(
-            message_processor, "hl7-sender", app_config.ingress_queue_name
-        )
-        while processor_manager.is_running:
-            receiver_client.receive_messages(
-                batch_size,
-                wrapped_processor,
+            def message_processor(message: ServiceBusMessage) -> bool:
+                return _process_message(
+                    message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
+                    app_config.ingress_session_id,
+                )
+
+            wrapped_processor = processor_manager.wrap_handler(
+                message_processor, "hl7-sender", app_config.ingress_queue_name
             )
+            while processor_manager.is_running:
+                receiver_client.receive_messages(
+                    batch_size,
+                    wrapped_processor,
+                )
 
 
 def _process_message(
@@ -158,19 +178,81 @@ def _process_message(
         throttler.wait_if_needed()
         ack_response = hl7_sender_client.send_message(message_body)
 
-        ack_success = get_ack_result(ack_response)
+        ack_result = get_ack_result(ack_response)
 
-        if ack_success:
-            metric_sender.send_message_sent_metric()
+        nack_attributes = {
+            "ack_code": ack_result.ack_code or "UNKNOWN",
+            "correlation_id": meta["correlation_id"],
+            "message_id": message_id,
+            "endpoint": f"{hl7_sender_client.receiver_mllp_hostname}:{hl7_sender_client.receiver_mllp_port}",
+        }
 
-        event_logger.log_message_processed(
+        if ack_result.outcome == AckOutcome.SUCCESS:
+            _send_metric_best_effort(metric_sender.send_message_sent_metric, "messages_sent")
+
+            event_logger.log_message_processed(
+                message_body,
+                f"Message sent successfully, received ACK: {ack_response}",
+                correlation_id=correlation_id_opt,
+            )
+            logger.info(f"Sent message: {message_id}")
+
+            return True
+
+        if ack_result.outcome == AckOutcome.AR:
+            error_msg = (
+                f"Application Reject ACK (AR) received for message {message_id} "
+                f"from {nack_attributes['endpoint']}, full ACK: {ack_response}"
+            )
+            logger.error(error_msg)
+            event_logger.log_message_failed(
+                message_body,
+                error_msg,
+                "Non-recoverable NACK (AR) - message routed to dead-letter/escalation path",
+                correlation_id=correlation_id_opt,
+            )
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_nack_ar_metric(attributes=nack_attributes),
+                "messages_nack_ar",
+            )
+
+            raise DeadLetterMessage(
+                reason="AR",
+                description=(
+                    f"Application Reject ACK (AR) for message_id={message_id}, "
+                    f"correlation_id={meta['correlation_id']}"
+                ),
+            )
+
+        # AckOutcome.AE or AckOutcome.INVALID - recoverable failure, will be abandoned and retried
+        # according to the queue's configured retry policy.
+        reason_code = ack_result.outcome.value
+        error_msg = (
+            f"Negative ACK ({reason_code}) received for message {message_id} "
+            f"from {nack_attributes['endpoint']}, full ACK: {ack_response}"
+        )
+        logger.error(error_msg)
+        event_logger.log_message_failed(
             message_body,
-            f"Message sent successfully, received ACK: {ack_response}",
+            error_msg,
+            f"Recoverable NACK ({reason_code}) - message will be retried",
             correlation_id=correlation_id_opt,
         )
-        logger.info(f"Sent message: {message_id}")
+        if ack_result.outcome == AckOutcome.AE:
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_nack_ae_metric(attributes=nack_attributes),
+                "messages_nack_ae",
+            )
+            _send_metric_best_effort(
+                lambda: metric_sender.send_message_retry_attempt_metric(attributes=nack_attributes),
+                "messages_retry_attempt",
+            )
 
-        return ack_success
+        return False
+
+    except DeadLetterMessage:
+        # Propagate so MessageReceiverClient dead-letters the message instead of retrying it.
+        raise
 
     except (TimeoutError, ConnectionError) as e:
         error_msg = f"Failed to send message {message_id}: {e}"

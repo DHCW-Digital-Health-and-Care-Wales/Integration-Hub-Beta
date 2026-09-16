@@ -7,4 +7,5 @@ class Hl7Constants:
     ACK_MESSAGE_TYPE_FORMAT = 'ACK'
     ACCEPT_ACK_CODE = 'AA'
     ERROR_ACK_CODE = 'AE'
+    REJECT_ACK_CODE = 'AR'
 

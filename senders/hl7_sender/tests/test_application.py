@@ -3,7 +3,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 from azure.servicebus import ServiceBusMessage
 from hl7apy.core import Message
+from message_bus_lib.dead_letter import DeadLetterMessage
 
+from hl7_sender.ack_processor import AckOutcome, AckResult
 from hl7_sender.app_config import AppConfig
 from hl7_sender.application import (
     MAX_BATCH_SIZE,
@@ -68,7 +70,7 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", hl7_ack_message)
 
         result = _process_message(
             service_bus_message,
@@ -84,7 +86,13 @@ class TestProcessMessage(unittest.TestCase):
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
         mock_event_logger.log_message_processed.assert_called_once()
+        mock_event_logger.log_message_failed.assert_not_called()
         mock_metric_sender.send_message_sent_metric.assert_called_once()
+
+        # Preserve normal behaviour for AA: none of the NACK retry/escalation flow is triggered.
+        mock_metric_sender.send_message_nack_ae_metric.assert_not_called()
+        mock_metric_sender.send_message_nack_ar_metric.assert_not_called()
+        mock_metric_sender.send_message_retry_attempt_metric.assert_not_called()
         mock_throttler.wait_if_needed.assert_called_once()
 
         self.assertTrue(result)
@@ -107,7 +115,10 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.return_value = hl7_message
         hl7_ack_message = "HL7 ack message"
         mock_hl7_sender_client.send_message.return_value = hl7_ack_message
-        mock_ack_processor.return_value = False
+        mock_hl7_sender_client.receiver_mllp_hostname = "mpi.example.org"
+        mock_hl7_sender_client.receiver_mllp_port = 2575
+        service_bus_message.application_properties = {"CorrelationId": "upstream-correlation-id-123"}
+        mock_ack_processor.return_value = AckResult(AckOutcome.AE, "AE", "MSGID1234", hl7_ack_message)
 
         result = _process_message(
             service_bus_message,
@@ -122,11 +133,117 @@ class TestProcessMessage(unittest.TestCase):
         mock_parse_message.assert_called_once_with(hl7_string)
         mock_ack_processor.assert_called_once_with(hl7_ack_message)
         mock_event_logger.log_message_received.assert_called_once()
-        mock_event_logger.log_message_processed.assert_called_once()
+        mock_event_logger.log_message_failed.assert_called_once()
         mock_metric_sender.send_message_sent_metric.assert_not_called()
+
+        # Correlation: verify the NACK is traceable back to the original message
+        # (message_id from MSH-10, correlation_id from Service Bus metadata, ack_code, endpoint).
+        expected_attributes = {
+            "ack_code": "AE",
+            "correlation_id": "upstream-correlation-id-123",
+            "message_id": "MSGID1234",
+            "endpoint": "mpi.example.org:2575",
+        }
+        mock_metric_sender.send_message_nack_ae_metric.assert_called_once_with(attributes=expected_attributes)
+        mock_metric_sender.send_message_retry_attempt_metric.assert_called_once_with(attributes=expected_attributes)
         mock_throttler.wait_if_needed.assert_called_once()
 
+        # Surfacing for operations: logs must include the ACK code and downstream endpoint.
+        failed_log_message = mock_event_logger.log_message_failed.call_args.args[1]
+        self.assertIn("AE", failed_log_message)
+        self.assertIn("mpi.example.org:2575", failed_log_message)
+
         self.assertFalse(result)
+
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
+    def test_process_message_ar_ack_dead_letters_message(
+        self, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+        mock_parse_message.return_value = hl7_message
+        hl7_ack_message = "HL7 ack message"
+        mock_hl7_sender_client.send_message.return_value = hl7_ack_message
+        mock_hl7_sender_client.receiver_mllp_hostname = "mpi.example.org"
+        mock_hl7_sender_client.receiver_mllp_port = 2575
+        service_bus_message.application_properties = {"CorrelationId": "upstream-correlation-id-123"}
+        mock_ack_processor.return_value = AckResult(AckOutcome.AR, "AR", "MSGID1234", hl7_ack_message)
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            _process_message(
+                service_bus_message,
+                mock_hl7_sender_client,
+                mock_event_logger,
+                mock_metric_sender,
+                mock_throttler,
+                mock_message_store,
+                TEST_SESSION_ID,
+            )
+
+        self.assertEqual(ctx.exception.reason, "AR")
+        # Correlation: the dead-letter description and the AR metric both carry the
+        # original message's correlation_id/message_id so operators can trace the NACK back to it.
+        self.assertIn("message_id=MSGID1234", ctx.exception.description)
+        self.assertIn("correlation_id=upstream-correlation-id-123", ctx.exception.description)
+        mock_event_logger.log_message_failed.assert_called_once()
+        mock_metric_sender.send_message_sent_metric.assert_not_called()
+        expected_attributes = {
+            "ack_code": "AR",
+            "correlation_id": "upstream-correlation-id-123",
+            "message_id": "MSGID1234",
+            "endpoint": "mpi.example.org:2575",
+        }
+        mock_metric_sender.send_message_nack_ar_metric.assert_called_once_with(attributes=expected_attributes)
+        mock_metric_sender.send_message_nack_ae_metric.assert_not_called()
+
+        # Surfacing for operations: logs must include the ACK code and downstream endpoint.
+        failed_log_message = mock_event_logger.log_message_failed.call_args.args[1]
+        self.assertIn("AR", failed_log_message)
+        self.assertIn("mpi.example.org:2575", failed_log_message)
+
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
+    def test_process_message_ar_still_dead_letters_when_metric_send_fails(
+        self, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        """A telemetry failure must not change the non-recoverable (AR) delivery decision."""
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+        mock_parse_message.return_value = hl7_message
+        hl7_ack_message = "HL7 ack message"
+        mock_hl7_sender_client.send_message.return_value = hl7_ack_message
+        mock_ack_processor.return_value = AckResult(AckOutcome.AR, "AR", "MSGID1234", hl7_ack_message)
+        mock_metric_sender.send_message_nack_ar_metric.side_effect = RuntimeError("Azure Monitor unavailable")
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            _process_message(
+                service_bus_message,
+                mock_hl7_sender_client,
+                mock_event_logger,
+                mock_metric_sender,
+                mock_throttler,
+                mock_message_store,
+                TEST_SESSION_ID,
+            )
+
+        self.assertEqual(ctx.exception.reason, "AR")
 
     @patch("hl7_sender.application.parse_message")
     def test_process_message_send_errors(self, mock_parse_message: Mock) -> None:
@@ -256,7 +373,7 @@ class TestProcessMessage(unittest.TestCase):
             mock_message_store,
         ) = _setup()
         mock_parse_message.return_value = hl7_message
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
         mock_convert_xml.return_value = "<xml>content</xml>"
         message_stored = {"value": False}
 
@@ -308,7 +425,7 @@ class TestProcessMessage(unittest.TestCase):
         service_bus_message.delivery_count = 1  # type: ignore[attr-defined]  # Simulate a retry delivery attempt
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
         mock_convert_xml.return_value = "<xml/>"
 
         result = _process_message(
@@ -343,7 +460,7 @@ class TestProcessMessage(unittest.TestCase):
         ) = _setup()
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
         mock_convert_xml.side_effect = ValueError("Cannot parse")
 
         _process_message(
@@ -385,7 +502,7 @@ class TestProcessMessage(unittest.TestCase):
         ) = _setup()
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
         mock_convert_xml.return_value = "<xml/>"
         mock_message_store.send_to_store.side_effect = Exception("Store unavailable")
 
@@ -431,7 +548,7 @@ class TestProcessMessage(unittest.TestCase):
 
         mock_parse_message.return_value = hl7_message
         mock_hl7_sender_client.send_message.return_value = "ACK"
-        mock_ack_processor.return_value = True
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
         mock_convert_xml.return_value = "<xml/>"
 
         _process_message(

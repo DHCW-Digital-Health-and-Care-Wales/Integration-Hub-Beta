@@ -31,6 +31,17 @@ class TestGenericHandler(unittest.TestCase):
 
         mock_nack_builder.assert_called_once()
 
+    @patch("hl7_mock_receiver.generic_handler.build_reject_ack")
+    def test_message_with_reject_in_message_returns_reject_ack(self, mock_reject_ack_builder: MagicMock) -> None:
+        reject_message = (
+            "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
+            "PID|1||123456^^^Hospital^MR||Doe^reject\r"
+        )
+        handler = GenericHandler(reject_message, self.mock_sender)
+        handler.reply()
+
+        mock_reject_ack_builder.assert_called_once()
+
     def test_message_sent_to_service_bus(self) -> None:
         self.handler.reply()
 
