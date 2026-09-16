@@ -333,7 +333,7 @@ class TestBuildEndpointOptions:
         assert options[0]["host"] == "mpi.internal"
 
     def test_skips_flows_missing_host_or_port(self) -> None:
-        flows = {
+        flows: dict[str, dict[str, Any]] = {
             "phw-to-mpi": {"source": "PHW", "source_host": None, "source_port": 2575},
             "paris-to-mpi": {"source": "Paris", "source_host": "paris.internal", "source_port": None},
         }
