@@ -723,7 +723,7 @@ starting by migrating `HEALTH_BOARD_MAPPING` to the static provider as a proof o
 
 - Configure backend routing and Cosmos connection details entirely via **environment variables**
 
-(`LOOKUP_COSMOS_TABLES`, `LOOKUP_COSMOS_*`), read using the same `AppConfig`-style helpers
+(`LOOKUP_TABLE_BACKENDS`, `LOOKUP_COSMOS_*`), read using the same `AppConfig`-style helpers
 
 transformers already use, and wired in by Terraform's existing `environment_variables` container
 
