@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Network Test") }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-ethernet" style="color:var(--accent-cyan)"></i>
+        {{ _("Network Test") }}
+      </h1>
+      <p class="page-subtitle">
+        {{ _("Check TCP connectivity and latency to flow servers, flow destinations, or any host:port.") }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Target picker -->
+  <div class="dash-card mb-3 p-3">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="cfg-label" for="source-endpoint-input">
+          <i class="bi bi-hdd-network me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow Source Server") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="source-endpoint-input" list="source-endpoint-list"
+               placeholder="{{ _('Search source servers…') }}" autocomplete="off">
+        <datalist id="source-endpoint-list">
+          {% for ep in source_endpoints %}
+          <option value="{{ ep.label }}" data-host="{{ ep.host }}" data-port="{{ ep.port }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if not source_endpoints %}
+        <div class="cfg-hint">{{ _("No flow source servers discovered yet.") }}</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="cfg-label" for="destination-endpoint-input">
+          <i class="bi bi-send me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow Destination") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="destination-endpoint-input" list="destination-endpoint-list"
+               placeholder="{{ _('Search flow destinations…') }}" autocomplete="off">
+        <datalist id="destination-endpoint-list">
+          {% for ep in destination_endpoints %}
+          <option value="{{ ep.label }}" data-host="{{ ep.host }}" data-port="{{ ep.port }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if not destination_endpoints %}
+        <div class="cfg-hint">{{ _("No flow destinations discovered yet.") }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <hr style="border-color:var(--border-color); margin:1rem 0;">
+
+    <div class="row g-3 align-items-end">
+      <div class="col-8 col-md-5">
+        <label class="cfg-label" for="target-host">
+          <i class="bi bi-globe2 me-1"></i>{{ _("Host / IP") }}
+        </label>
+        <input type="text" class="dash-input w-100" id="target-host"
+               placeholder="{{ _('e.g. msg.mpi.sit.cymru.nhs.uk') }}" maxlength="253">
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="cfg-label" for="target-port">{{ _("Port") }}</label>
+        <input type="number" class="dash-input w-100" id="target-port" min="1" max="65535" placeholder="443">
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="button" class="btn-dash btn-dash--primary w-100" id="run-test-btn">
+          <i class="bi bi-play-fill"></i> {{ _("Run Test") }}
+        </button>
+      </div>
+    </div>
+    <div id="network-test-error" class="mt-2" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
+  </div>
+
+  <!-- Latest result — shown immediately from the run response, independent of whether
+       it could also be persisted to (or listed from) the history store below. -->
+  <div class="dash-card mb-3 p-3" id="network-test-result-card" style="display:none;">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-clipboard-data me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Latest Result") }}
+      </h6>
+      <span id="network-test-result-target" class="font-mono" style="font-size:0.8rem; color:var(--text-muted);"></span>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Status") }}</div>
+        <div id="network-test-result-status" style="font-weight:600;"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Avg Latency") }}</div>
+        <div id="network-test-result-avg"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Loss") }}</div>
+        <div id="network-test-result-loss"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("DNS Resolution") }}</div>
+        <div id="network-test-result-dns" class="font-mono" style="font-size:0.8rem;"></div>
+      </div>
+    </div>
+    <div class="mt-2" id="network-test-result-attempts" style="font-size:0.75rem; color:var(--text-muted);"></div>
+  </div>
+
+  <!-- Tested endpoints — latest result per host:port; click a row to expand its history -->
+  <div class="dash-card" id="network-test-list-card">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-list-check me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Tested Endpoints") }}
+      </h6>
+      <span style="font-size:0.7rem; color:var(--text-muted);">{{ _("Click a row to view its latency history") }}</span>
+    </div>
+    <div class="scroll-panel">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th style="width:24px;"></th>
+            <th>{{ _("Endpoint") }}</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Avg Latency") }}</th>
+            <th>{{ _("Loss") }}</th>
+            <th>{{ _("Last Tested") }}</th>
+            <th style="width:1%;"></th>
+          </tr>
+        </thead>
+        <tbody id="network-test-tbody"></tbody>
+      </table>
+    </div>
+    <div id="network-test-list-empty" class="no-data" style="display:none;">
+      <i class="bi bi-signpost-split" style="font-size:2rem; color:var(--text-dim); opacity:0.6;"></i>
+      <span style="color:var(--text-muted); font-size:0.85rem;">
+        {{ _("No endpoints tested yet — run a test above.") }}
+      </span>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/network-test-chart.js') }}"></script>
+<script>
+(function () {
+  'use strict';
+
+  function optionFor(datalistId, value) {
+    var list = document.getElementById(datalistId);
+    if (!list) return null;
+    var options = list.getElementsByTagName('option');
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].value === value) return options[i];
+    }
+    return null;
+  }
+
+  function wireEndpointPicker(inputId, datalistId) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('input', function () {
+      var opt = optionFor(datalistId, input.value);
+      if (opt) {
+        document.getElementById('target-host').value = opt.getAttribute('data-host') || '';
+        document.getElementById('target-port').value = opt.getAttribute('data-port') || '';
+      }
+    });
+  }
+
+  wireEndpointPicker('source-endpoint-input', 'source-endpoint-list');
+  wireEndpointPicker('destination-endpoint-input', 'destination-endpoint-list');
+
+  function showError(message, isWarning) {
+    var el = document.getElementById('network-test-error');
+    el.textContent = message;
+    el.style.color = isWarning ? 'var(--accent-amber)' : 'var(--accent-red)';
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function fmtLatency(ms) {
+    return (ms === null || ms === undefined) ? '—' : Math.round(ms) + ' ms';
+  }
+
+  function fmtRelativeTime(unixSeconds) {
+    if (!unixSeconds) return '—';
+    var diffSec = Math.max(0, (Date.now() / 1000) - unixSeconds);
+    if (diffSec < 60) return Math.round(diffSec) + 's {{ _("ago") }}';
+    if (diffSec < 3600) return Math.round(diffSec / 60) + 'm {{ _("ago") }}';
+    if (diffSec < 86400) return Math.round(diffSec / 3600) + 'h {{ _("ago") }}';
+    return Math.round(diffSec / 86400) + 'd {{ _("ago") }}';
+  }
+
+  function rowKey(host, port) { return host + ':' + port; }
+  function safeId(key) { return key.replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+  // --- Latest result (shown directly from the run response) -----------------
+
+  function renderLatestResult(result) {
+    document.getElementById('network-test-result-target').textContent = result.host + ':' + result.port;
+    document.getElementById('network-test-result-status').innerHTML = statusCell(result);
+    document.getElementById('network-test-result-avg').textContent = fmtLatency(result.avg_latency_ms);
+    document.getElementById('network-test-result-loss').textContent =
+      result.loss_percent !== undefined ? result.loss_percent + '%' : '—';
+
+    var dns = result.dns || {};
+    document.getElementById('network-test-result-dns').textContent = dns.resolved
+      ? ((dns.addresses || []).join(', ') || '—')
+      : ('{{ _("Failed") }}' + (dns.error ? ' — ' + dns.error : ''));
+
+    var attempts = result.attempts || [];
+    document.getElementById('network-test-result-attempts').textContent = attempts.length
+      ? '{{ _("Attempts") }}: ' + attempts.map(function (a, i) {
+          return '#' + (i + 1) + ' ' + (a.success ? fmtLatency(a.latency_ms) : (a.error || '{{ _("failed") }}'));
+        }).join('   ')
+      : '';
+
+    var card = document.getElementById('network-test-result-card');
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // --- Endpoint list (latest result per host:port) --------------------------
+
+  var METRICS = [
+    { id: 'avg', label: '{{ _("Avg Latency") }}', icon: 'bi-stopwatch' },
+    { id: 'minmax', label: '{{ _("Min / Max") }}', icon: 'bi-arrows-collapse' },
+    { id: 'loss', label: '{{ _("Packet Loss") }}', icon: 'bi-graph-down' }
+  ];
+
+  var expandedKey = null;       // host:port of the currently expanded row, or null
+  var chartInstances = {};      // key -> chart instance (recreated whenever a row expands)
+  var rowMetric = {};           // key -> last-selected metric, remembered across expand/collapse
+
+  function statusCell(latest) {
+    if (!latest || latest.success === undefined) return '<span style="color:var(--text-muted);">—</span>';
+    return latest.success
+      ? '<span style="color:var(--accent-green);"><i class="bi bi-check-circle-fill"></i> {{ _("Reachable") }}</span>'
+      : '<span style="color:var(--accent-red);"><i class="bi bi-x-circle-fill"></i> {{ _("Unreachable") }}</span>';
+  }
+
+  function collapseExpanded() {
+    var existing = document.querySelector('.net-test-detail-row');
+    if (existing) existing.remove();
+    document.querySelectorAll('.net-test-chevron').forEach(function (el) {
+      el.classList.remove('bi-chevron-down');
+      el.classList.add('bi-chevron-right');
+    });
+    // Detach the chart's resize/mousemove listeners so they don't linger on the
+    // now-removed canvas.
+    if (expandedKey && chartInstances[expandedKey]) {
+      chartInstances[expandedKey].destroy();
+      delete chartInstances[expandedKey];
+    }
+  }
+
+  function deleteEndpointData(host, port) {
+    showError('');
+    var url = '/api/network-test/history?host=' + encodeURIComponent(host) + '&port=' + encodeURIComponent(port);
+    fetch(url, { method: 'DELETE' })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Failed to delete endpoint data.") }}');
+          return;
+        }
+        // The endpoint disappears from the list entirely once its history is gone.
+        collapseExpanded();
+        expandedKey = null;
+        return refreshEndpointList();
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      });
+  }
+
+  function csvCell(value) {
+    if (value === null || value === undefined) return '';
+    var str = String(value);
+    // Quote any value containing a comma, quote, or newline, per RFC 4180.
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }
+
+  function samplesToCsv(samples) {
+    var header = ['timestamp', 'success', 'avg_latency_ms', 'min_latency_ms', 'max_latency_ms', 'loss_percent'];
+    var rows = samples.map(function (s) {
+      return [
+        s.timestamp ? new Date(s.timestamp * 1000).toISOString() : '',
+        s.success,
+        s.avg_latency_ms,
+        s.min_latency_ms,
+        s.max_latency_ms,
+        s.loss_percent
+      ].map(csvCell).join(',');
+    });
+    return header.join(',') + '\r\n' + rows.join('\r\n');
+  }
+
+  function exportEndpointData(host, port, samples) {
+    if (!samples.length) {
+      showError('{{ _("No history to export for this endpoint yet.") }}');
+      return;
+    }
+    showError('');
+
+    var blob = new Blob([samplesToCsv(samples)], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'network-test-' + host + '-' + port + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function insertDetailRow(row, key, host, port) {
+    row.querySelector('.net-test-chevron').classList.remove('bi-chevron-right');
+    row.querySelector('.net-test-chevron').classList.add('bi-chevron-down');
+
+    var id = safeId(key);
+    var detailRow = document.createElement('tr');
+    detailRow.className = 'net-test-detail-row';
+    var td = document.createElement('td');
+    td.colSpan = 7;
+    td.style.padding = '0';
+    td.innerHTML =
+      '<div style="padding:0.85rem 1.25rem 1.1rem; background:rgba(255,255,255,0.02); border-top:1px solid var(--border-color);">' +
+        '<div class="d-flex align-items-center justify-content-between gap-2 mb-2">' +
+          '<div class="d-flex align-items-center gap-2" id="metric-btns-' + id + '"></div>' +
+          '<div class="d-flex align-items-center gap-2">' +
+            '<button type="button" class="btn-dash btn-dash--sm" id="export-btn-' + id + '" title="{{ _("Export this endpoint\u2019s history as CSV") }}">' +
+              '<i class="bi bi-download"></i> {{ _("Export") }}' +
+            '</button>' +
+            '<button type="button" class="btn-dash btn-dash--sm" id="delete-btn-' + id + '" title="{{ _("Delete stored history for this endpoint") }}">' +
+              '<i class="bi bi-trash3"></i> {{ _("Delete Data") }}' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="position:relative; width:100%; height:220px;">' +
+          '<canvas id="chart-' + id + '" style="width:100%; height:100%;"></canvas>' +
+          '<div class="no-data" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center;" id="chart-empty-' + id + '">' +
+            '<span style="color:var(--text-muted); font-size:0.8rem;">{{ _("No history yet — run the test a few more times.") }}</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    detailRow.appendChild(td);
+    row.insertAdjacentElement('afterend', detailRow);
+
+    // Scroll so the whole expanded panel (metric buttons + graph) is visible,
+    // not just the row that was clicked.
+    detailRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    var activeMetric = rowMetric[key] || 'avg';
+    var btnContainer = document.getElementById('metric-btns-' + id);
+    METRICS.forEach(function (m) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-dash btn-dash--sm' + (m.id === activeMetric ? ' active' : '');
+      btn.innerHTML = '<i class="bi ' + m.icon + '"></i> ' + m.label;
+      btn.addEventListener('click', function () {
+        rowMetric[key] = m.id;
+        Array.prototype.forEach.call(btnContainer.children, function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        if (chartInstances[key]) chartInstances[key].setMetric(m.id);
+      });
+      btnContainer.appendChild(btn);
+    });
+
+    var canvas = document.getElementById('chart-' + id);
+    var chart = window.NetworkTestChart.create(canvas);
+    chartInstances[key] = chart;
+    var currentSamples = [];
+
+    document.getElementById('export-btn-' + id).addEventListener('click', function () {
+      exportEndpointData(host, port, currentSamples);
+    });
+
+    document.getElementById('delete-btn-' + id).addEventListener('click', function () {
+      if (!window.confirm('{{ _("Delete all stored test history for") }} ' + host + ':' + port + '? {{ _("This cannot be undone.") }}')) {
+        return;
+      }
+      deleteEndpointData(host, port);
+    });
+
+    fetch('/api/network-test/history?host=' + encodeURIComponent(host) + '&port=' + encodeURIComponent(port))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var samples = data.samples || [];
+        currentSamples = samples;
+        var emptyEl = document.getElementById('chart-empty-' + id);
+        if (emptyEl) emptyEl.style.display = samples.length ? 'none' : 'flex';
+        chart.render(samples, activeMetric);
+      })
+      .catch(function () { /* history is a nice-to-have — ignore fetch failures */ });
+  }
+
+  function toggleRow(row, key, host, port) {
+    if (expandedKey === key) {
+      collapseExpanded();
+      expandedKey = null;
+      return;
+    }
+    collapseExpanded();
+    expandedKey = key;
+    insertDetailRow(row, key, host, port);
+  }
+
+  function renderEndpointTable(endpoints) {
+    var tbody = document.getElementById('network-test-tbody');
+    var emptyEl = document.getElementById('network-test-list-empty');
+    collapseExpanded();
+    tbody.innerHTML = '';
+    emptyEl.style.display = endpoints.length ? 'none' : 'flex';
+
+    endpoints.forEach(function (ep) {
+      var key = rowKey(ep.host, ep.port);
+      var latest = ep.latest || {};
+      var row = document.createElement('tr');
+      row.className = 'net-test-row';
+      row.style.cursor = 'pointer';
+      row.dataset.host = ep.host;
+      row.dataset.port = ep.port;
+      row.innerHTML =
+        '<td><i class="bi bi-chevron-right net-test-chevron"></i></td>' +
+        '<td class="font-mono">' + ep.host + ':' + ep.port + '</td>' +
+        '<td>' + statusCell(latest) + '</td>' +
+        '<td>' + fmtLatency(latest.avg_latency_ms) + '</td>' +
+        '<td>' + (latest.loss_percent !== undefined ? latest.loss_percent + '%' : '—') + '</td>' +
+        '<td style="color:var(--text-muted); font-size:0.75rem;">' + fmtRelativeTime(latest.timestamp) + '</td>' +
+        '<td></td>';
+      row.addEventListener('click', function () { toggleRow(row, key, ep.host, ep.port); });
+
+      var rerunBtn = document.createElement('button');
+      rerunBtn.type = 'button';
+      rerunBtn.className = 'btn-dash btn-dash--sm';
+      rerunBtn.title = '{{ _("Run test for this endpoint") }}';
+      rerunBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+      rerunBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        runTest(ep.host, ep.port, rerunBtn);
+      });
+      row.lastElementChild.appendChild(rerunBtn);
+
+      tbody.appendChild(row);
+
+      if (key === expandedKey) insertDetailRow(row, key, ep.host, ep.port);
+    });
+  }
+
+  function refreshEndpointList() {
+    return fetch('/api/network-test/list')
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderEndpointTable(data.endpoints || []); })
+      .catch(function () { /* list is best-effort — leave the table as-is on failure */ });
+  }
+
+  refreshEndpointList();
+
+  // --- Run test ---------------------------------------------------------
+
+  function runTest(host, port, triggerBtn) {
+    showError('');
+
+    var originalHtml = null;
+    if (triggerBtn) {
+      originalHtml = triggerBtn.innerHTML;
+      triggerBtn.disabled = true;
+      triggerBtn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i>' + (triggerBtn === runTestBtn ? ' {{ _("Testing…") }}' : '');
+    }
+
+    return fetch('/api/network-test/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: host, port: port })
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Test failed.") }}');
+          return;
+        }
+        // Show the result straight away — it must not depend on the history store
+        // (Cosmos) being reachable or the endpoint list re-fetch succeeding.
+        renderLatestResult(res.data);
+        // Auto-expand the tested endpoint's row once the refreshed list re-renders it —
+        // renderEndpointTable() calls insertDetailRow() for it, which scrolls the panel
+        // into view itself.
+        expandedKey = rowKey(res.data.host, res.data.port);
+        // The test itself succeeded even if its history couldn't be saved — a warning,
+        // not an error, and it must not be cleared by refreshEndpointList()'s own calls.
+        showError(res.data.history_warning || '', true);
+        return refreshEndpointList();
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      })
+      .finally(function () {
+        // The button may already have been discarded by refreshEndpointList()'s
+        // re-render (per-row buttons) — restoring a detached node is a harmless no-op.
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = originalHtml;
+        }
+      });
+  }
+
+  var runTestBtn = document.getElementById('run-test-btn');
+  runTestBtn.addEventListener('click', function () {
+    var host = document.getElementById('target-host').value.trim();
+    var port = document.getElementById('target-port').value.trim();
+
+    if (!host || !port) {
+      showError('{{ _("Enter a host and port, or pick one from the dropdowns above.") }}');
+      return;
+    }
+
+    runTest(host, port, runTestBtn);
+  });
+})();
+</script>
+{% endblock %}

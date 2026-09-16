@@ -67,8 +67,9 @@ services:
           - "phw-hl7-server"
 
   # REST-based HL7 receiver (HTTP counterpart to phw-hl7-server).
-  # Serves the RISP flow: POST http://localhost:8081/hl7MessageReceiver  {"messageContent": "MSH|..."}
+  # Serves the RISP flow: POST http://localhost:8085/hl7MessageReceiver  {"messageContent": "MSH|..."}
   # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=risp) - see servers/rest_server/README.md.
+  # Host port 8085 (not 8081) to avoid clashing with cosmos-emulator's 8081.
   risp-hl7-rest-server:
     container_name: risp-hl7-rest-server
     build:
@@ -80,7 +81,7 @@ services:
     env_file:
       - ./env/servers/risp-hl7-rest-server.env
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:8085:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/hl7MessageReceiver/ping', timeout=2).status == 200 else sys.exit(1)"]
       interval: 10s
@@ -93,6 +94,7 @@ services:
     profiles:
       - hl7-rest
       - risp-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -125,6 +127,7 @@ services:
     profiles:
       - hl7-rest
       - rest-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -149,12 +152,14 @@ services:
       - sb-emulator
     profiles:
       - lims-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
           - "hl7-soap-server"
 
   # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Host port 8086 (not 8083) to avoid clashing with rest-hl7-server's 8083.
   pms-hl7-soap-server:
     container_name: pms-hl7-soap-server
     build:
@@ -166,13 +171,14 @@ services:
     env_file:
       - ./env/servers/pms-soap-hl7-server.env
     ports:
-      - "8083:8081"
+      - "8086:8081"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
       - sb-emulator
     profiles:
       - pms-soap-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -197,6 +203,7 @@ services:
       - sb-emulator
     profiles:
       - wpas-to-proms
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -216,6 +223,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
+      - everything
     restart: on-failure
     networks:
       integration-hub:
@@ -239,6 +247,7 @@ services:
       - sb-emulator
     profiles:
       - risp-to-mpi
+      - everything
     restart: on-failure
     networks:
       integration-hub:
@@ -271,6 +280,7 @@ services:
       - risp-to-mpi
       - wpas-to-proms
       - rest-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -302,6 +312,7 @@ services:
       - risp-to-mpi
       - wpas-to-proms
       - mpi-to-topic
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -325,6 +336,7 @@ services:
       - sb-emulator
     profiles:
       - paris-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -348,6 +360,7 @@ services:
       - sb-emulator
     profiles:
       - wds-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -371,6 +384,7 @@ services:
       - sb-emulator
     profiles:
       - mosaiq-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -394,6 +408,7 @@ services:
       - sb-emulator
     profiles:
       - chemo-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -437,6 +452,7 @@ services:
       - sb-emulator
     profiles:
       - pims-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -456,6 +472,7 @@ services:
       - sb-emulator
     profiles:
       - pims-to-mpi
+      - everything
     restart: on-failure
     networks:
       integration-hub:
@@ -480,6 +497,7 @@ services:
       - sb-emulator
     profiles:
       - mpi-to-topic
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -503,6 +521,7 @@ services:
       - sb-emulator
     profiles:
       - mpi-to-topic
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -535,6 +554,7 @@ services:
       - wds-to-mpi
       - risp-to-mpi
       - wpas-to-proms
+      - everything
       - mpi-to-topic
     networks:
       integration-hub:

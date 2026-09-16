@@ -29,9 +29,9 @@ import logging
 import threading
 from typing import Any
 
+from azure.core.exceptions import AzureError
 from azure.cosmos import CosmosClient, PartitionKey
 from azure.cosmos.exceptions import (
-    CosmosHttpResponseError,
     CosmosResourceExistsError,
     CosmosResourceNotFoundError,
 )
@@ -122,7 +122,9 @@ def _get_container() -> Any | None:
         # existing container client rather than degrading this worker's persistence.
         database = client.get_database_client(config.COSMOS_DATABASE)
         return database.get_container_client(config.COSMOS_CONTAINER)
-    except CosmosHttpResponseError as exc:
+    except AzureError as exc:
+        # Covers both Cosmos-returned HTTP errors and connectivity failures (DNS,
+        # timeouts, connection refused) — either way the container is unavailable.
         log.error("Failed to access Cosmos container '%s': %s", config.COSMOS_CONTAINER, exc)
         return None
 
@@ -142,25 +144,54 @@ def get_document(pk: str, doc_id: str) -> dict | None:
         item = container.read_item(item=doc_id, partition_key=pk)
     except CosmosResourceNotFoundError:
         return None
-    except CosmosHttpResponseError as exc:
+    except AzureError as exc:
+        # Broad catch so an unreachable Cosmos account (not just an HTTP error
+        # response) still degrades gracefully instead of raising.
         log.warning("Failed to read Cosmos document %s/%s: %s", pk, doc_id, exc)
         return None
 
     return {k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")}
 
 
-def upsert_document(pk: str, doc_id: str, data: dict) -> None:
+def query_documents(pk: str) -> list[dict]:
+    """Return every document in a partition, with system/routing fields stripped.
+
+    Used where callers need to list all documents of a kind (e.g. every tested
+    network endpoint) rather than read one by known id. Returns an empty list
+    when Cosmos is not configured, the partition is empty, or a query error
+    occurs — matching :func:`get_document`'s graceful degradation behaviour.
+    """
+    container = _get_container()
+    if container is None:
+        return []
+
+    try:
+        items = container.query_items(
+            query="SELECT * FROM c WHERE c.pk = @pk",
+            parameters=[{"name": "@pk", "value": pk}],
+            partition_key=pk,
+        )
+        return [{k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")} for item in items]
+    except AzureError as exc:
+        log.warning("Failed to query Cosmos documents for partition %s: %s", pk, exc)
+        return []
+
+
+def upsert_document(pk: str, doc_id: str, data: dict) -> bool:
     """Create or replace a document identified by ``pk``/``doc_id``.
 
     The ``data`` payload is stored verbatim alongside the ``id`` and ``pk`` routing
     fields. Errors are logged and swallowed so a persistence outage never breaks a
-    request — matching the previous JSON-file save behaviour.
+    request — matching the previous JSON-file save behaviour. Returns ``True`` on a
+    successful write and ``False`` otherwise, so callers that want to warn the user
+    about a degraded persistence layer (rather than silently losing data) can do so.
     """
     container = _get_container()
     if container is None:
         if is_configured():
             log.error("Cannot persist Cosmos document %s/%s — container unavailable", pk, doc_id)
-        return
+            return False
+        return True
 
     document = {k: v for k, v in data.items() if k not in _RESERVED_KEYS}
     document["id"] = doc_id
@@ -168,8 +199,29 @@ def upsert_document(pk: str, doc_id: str, data: dict) -> None:
 
     try:
         container.upsert_item(body=document)
-    except CosmosHttpResponseError as exc:
+    except AzureError as exc:
         log.error("Failed to persist Cosmos document %s/%s: %s", pk, doc_id, exc)
+        return False
+
+    return True
+
+
+def delete_document(pk: str, doc_id: str) -> None:
+    """Delete a single document identified by ``pk``/``doc_id``.
+
+    A no-op (not an error) when the document is already missing or Cosmos isn't
+    configured — matching the other helpers' graceful degradation behaviour.
+    """
+    container = _get_container()
+    if container is None:
+        return
+
+    try:
+        container.delete_item(item=doc_id, partition_key=pk)
+    except CosmosResourceNotFoundError:
+        pass
+    except AzureError as exc:
+        log.error("Failed to delete Cosmos document %s/%s: %s", pk, doc_id, exc)
 
 
 def _reset_client_for_tests() -> None:

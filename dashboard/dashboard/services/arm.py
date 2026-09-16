@@ -41,6 +41,10 @@ _FLOW_ENV_VARS = frozenset(
         "INGRESS_QUEUE_NAME",
         "INGRESS_TOPIC_NAME",
         "INGRESS_SUBSCRIPTION_NAME",
+        # Sender destination — used to populate real host:port targets for the
+        # network connectivity test page (see dashboard.services.network_test).
+        "RECEIVER_MLLP_HOST",
+        "RECEIVER_MLLP_PORT",
     }
 )
 
@@ -150,6 +154,7 @@ def _list_container_apps() -> list[dict]:
     for app in apps:
         env_vars: dict[str, str] = {}
         target_port: int | None = None
+        fqdn: str | None = None
 
         # Extract env vars from all containers
         containers = (app.template.containers or []) if app.template else []
@@ -158,9 +163,11 @@ def _list_container_apps() -> list[dict]:
                 if env.name in _FLOW_ENV_VARS and env.value:
                     env_vars[env.name] = env.value
 
-        # Extract ingress target port (used as source port for HL7 servers)
+        # Extract ingress target port and FQDN (used as the reachable source
+        # host:port for HL7 servers on the network connectivity test page)
         if app.configuration and app.configuration.ingress:
             target_port = app.configuration.ingress.target_port
+            fqdn = app.configuration.ingress.fqdn
 
         if env_vars.get("WORKFLOW_ID"):
             result.append(
@@ -168,6 +175,7 @@ def _list_container_apps() -> list[dict]:
                     "name": app.name,
                     "env": env_vars,
                     "target_port": target_port,
+                    "fqdn": fqdn,
                 }
             )
 
@@ -228,10 +236,22 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
             subscription_senders.append(app)
 
     source_port: int | None = servers[0]["target_port"] if servers else None
+    source_host: str | None = servers[0].get("fqdn") if servers else None
     topic: str | None = None
     pre_queue: str | None = None
     post_queue: str | None = None
     transformer_name: str | None = None
+
+    # --- Destination (RECEIVER_MLLP_HOST/PORT, set on senders/subscription senders) ---
+    destination_host: str | None = None
+    destination_port: int | None = None
+    for app in senders + subscription_senders:
+        host = app["env"].get("RECEIVER_MLLP_HOST")
+        if host:
+            destination_host = host
+            raw_port = app["env"].get("RECEIVER_MLLP_PORT")
+            destination_port = int(raw_port) if raw_port and raw_port.isdigit() else None
+            break
 
     # --- Topic-based flow (e.g. MPI Outbound) ---
     for srv in servers:
@@ -283,6 +303,9 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
         "label": meta.get("label", workflow_id.replace("-", " ").title()),
         "source": meta.get("source", workflow_id.split("-", maxsplit=1)[0].upper()),
         "source_port": source_port,
+        "source_host": source_host,
+        "destination_host": destination_host,
+        "destination_port": destination_port,
         "pre_queue": pre_queue,
         "transformer": transformer_name,
         "post_queue": post_queue,

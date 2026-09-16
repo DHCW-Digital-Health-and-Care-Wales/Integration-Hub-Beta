@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
-from dashboard.services import cache
+from dashboard.services import cache, network_test
 from dashboard.services.alarm1 import get_alarm_status, load_alarm_config
 from dashboard.services.alarm2 import get_alarm2_status, load_alarm2_config
 from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
@@ -183,6 +183,22 @@ def trace_page(operation_id: str) -> str | tuple[str, int]:
     return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)
 
 
+def network_test_page() -> str:
+    """Render the Network Test page for support staff to check connectivity to flow endpoints."""
+    flows = get_flows()
+    source_endpoints = network_test.build_endpoint_options(
+        flows, host_key="source_host", port_key="source_port", name_key="source"
+    )
+    destination_endpoints = network_test.build_endpoint_options(
+        flows, host_key="destination_host", port_key="destination_port", name_key="destination"
+    )
+    return render_template(
+        "network_test.html",
+        source_endpoints=source_endpoints,
+        destination_endpoints=destination_endpoints,
+    )
+
+
 def register(app: Flask) -> None:
     """Register every page route onto ``app`` with its original flat endpoint name."""
     app.add_url_rule("/set-language", endpoint="set_language", view_func=set_language, methods=["POST"])
@@ -192,3 +208,4 @@ def register(app: Flask) -> None:
     app.add_url_rule("/service-bus", endpoint="service_bus_page", view_func=service_bus_page)
     app.add_url_rule("/messages", endpoint="messages_page", view_func=messages_page)
     app.add_url_rule("/trace/<operation_id>", endpoint="trace_page", view_func=trace_page)
+    app.add_url_rule("/network-test", endpoint="network_test_page", view_func=network_test_page)
