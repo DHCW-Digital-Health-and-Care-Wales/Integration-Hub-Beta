@@ -412,6 +412,7 @@
   function renderEndpointTable(endpoints) {
     var tbody = document.getElementById('network-test-tbody');
     var emptyEl = document.getElementById('network-test-list-empty');
+    collapseExpanded();
     tbody.innerHTML = '';
     emptyEl.style.display = endpoints.length ? 'none' : 'flex';
 
