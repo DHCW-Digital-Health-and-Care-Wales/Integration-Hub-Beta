@@ -18,7 +18,7 @@ class TestParseIntFormField:
         assert parse_int_form_field(form, "gap", 60) == 30
 
     def test_returns_default_when_field_missing(self) -> None:
-        form = ImmutableMultiDict({})
+        form: ImmutableMultiDict[str, str] = ImmutableMultiDict({})
         assert parse_int_form_field(form, "gap", 60) == 60
 
     def test_returns_default_when_value_not_an_integer(self) -> None:

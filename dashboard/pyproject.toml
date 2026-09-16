@@ -34,6 +34,7 @@ dev = [
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
     "setuptools>=83.0.0",
+    "types-requests>=2.32.0",
 ]
 
 [tool.coverage.run]
