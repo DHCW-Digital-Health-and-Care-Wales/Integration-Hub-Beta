@@ -6,6 +6,7 @@ Socket calls are mocked throughout — no real network access is required.
 from __future__ import annotations
 
 import socket
+import threading
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -84,6 +85,21 @@ class TestResolveHost:
         assert result["addresses"] == []
         assert "error" in result
 
+    def test_bounds_a_slow_or_unresponsive_resolver(self) -> None:
+        """A DNS server that never answers must not hang the caller indefinitely."""
+        released = threading.Event()
+
+        def _slow_getaddrinfo(host: str, port: Any) -> list[Any]:
+            released.wait(2.0)  # released below so the background thread doesn't linger past the test
+            return [(None, None, None, None, ("10.0.0.5", 0))]
+
+        with patch.object(network_test.socket, "getaddrinfo", side_effect=_slow_getaddrinfo):
+            result = network_test.resolve_host("example.com", timeout=0.05)
+        released.set()
+
+        assert result["resolved"] is False
+        assert "timed out" in result["error"].lower()
+
 
 # ---------------------------------------------------------------------------
 # run_latency_test
@@ -140,6 +156,32 @@ class TestRunLatencyTest:
 
         assert result["attempts"][0]["success"] is False
         assert "refused" in result["attempts"][0]["error"].lower()
+
+    def test_connects_to_the_resolved_address_not_the_hostname(self) -> None:
+        """Avoids create_connection repeating (and potentially hanging on) DNS per attempt."""
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.__exit__.return_value = False
+
+        with (
+            patch.object(network_test.socket, "getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]),
+            patch.object(network_test.socket, "create_connection", return_value=connection) as create_connection,
+        ):
+            network_test.run_latency_test("example.com", 443, attempts=2)
+
+        create_connection.assert_called_with(("10.0.0.5", 443), timeout=network_test.DEFAULT_TIMEOUT_SECONDS)
+
+    def test_skips_connect_attempts_when_dns_resolution_fails(self) -> None:
+        """A doomed connect target shouldn't be retried — it would just repeat the same failure."""
+        with (
+            patch.object(network_test.socket, "getaddrinfo", side_effect=socket.gaierror("no such host")),
+            patch.object(network_test.socket, "create_connection") as create_connection,
+        ):
+            result = network_test.run_latency_test("does-not-exist.invalid", 443, attempts=3)
+
+        create_connection.assert_not_called()
+        assert result["failure_count"] == 3
+        assert all("no such host" in a["error"] for a in result["attempts"])
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +261,21 @@ class TestHistoryPersistence:
             network_test.delete_history("example.com", 443)
 
         delete_document.assert_called_once_with("network-test", "history:example.com:443")
+
+    def test_save_returns_true_when_upsert_succeeds(self) -> None:
+        with (
+            patch.object(network_test.cosmos_store, "get_document", return_value=None),
+            patch.object(network_test.cosmos_store, "upsert_document", return_value=True),
+        ):
+            assert network_test.save_history_sample("example.com", 443, _fake_result()) is True
+
+    def test_save_returns_false_when_cosmos_is_unreachable(self) -> None:
+        """The caller uses this to warn the user without failing the test result itself."""
+        with (
+            patch.object(network_test.cosmos_store, "get_document", return_value=None),
+            patch.object(network_test.cosmos_store, "upsert_document", return_value=False),
+        ):
+            assert network_test.save_history_sample("example.com", 443, _fake_result()) is False
 
 
 class TestListTestedEndpoints:

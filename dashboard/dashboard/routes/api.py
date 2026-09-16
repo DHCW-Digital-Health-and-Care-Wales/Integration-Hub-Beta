@@ -184,7 +184,10 @@ def api_network_test_run() -> tuple[Response, int] | Response:
     except network_test.InvalidTargetError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    network_test.save_history_sample(result["host"], result["port"], result)
+    # The test itself has already run and succeeded regardless of Cosmos's health —
+    # a persistence failure is surfaced as a warning, not a failed test result.
+    if not network_test.save_history_sample(result["host"], result["port"], result):
+        result["history_warning"] = "Result could not be saved to history — the history store is unreachable."
     return jsonify(result)
 
 

@@ -76,6 +76,37 @@
     <div id="network-test-error" class="mt-2" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
   </div>
 
+  <!-- Latest result — shown immediately from the run response, independent of whether
+       it could also be persisted to (or listed from) the history store below. -->
+  <div class="dash-card mb-3 p-3" id="network-test-result-card" style="display:none;">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-clipboard-data me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Latest Result") }}
+      </h6>
+      <span id="network-test-result-target" class="font-mono" style="font-size:0.8rem; color:var(--text-muted);"></span>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Status") }}</div>
+        <div id="network-test-result-status" style="font-weight:600;"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Avg Latency") }}</div>
+        <div id="network-test-result-avg"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("Loss") }}</div>
+        <div id="network-test-result-loss"></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="cfg-hint">{{ _("DNS Resolution") }}</div>
+        <div id="network-test-result-dns" class="font-mono" style="font-size:0.8rem;"></div>
+      </div>
+    </div>
+    <div class="mt-2" id="network-test-result-attempts" style="font-size:0.75rem; color:var(--text-muted);"></div>
+  </div>
+
   <!-- Tested endpoints — latest result per host:port; click a row to expand its history -->
   <div class="dash-card" id="network-test-list-card">
     <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between;">
@@ -143,9 +174,10 @@
   wireEndpointPicker('source-endpoint-input', 'source-endpoint-list');
   wireEndpointPicker('destination-endpoint-input', 'destination-endpoint-list');
 
-  function showError(message) {
+  function showError(message, isWarning) {
     var el = document.getElementById('network-test-error');
     el.textContent = message;
+    el.style.color = isWarning ? 'var(--accent-amber)' : 'var(--accent-red)';
     el.style.display = message ? 'block' : 'none';
   }
 
@@ -164,6 +196,32 @@
 
   function rowKey(host, port) { return host + ':' + port; }
   function safeId(key) { return key.replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+  // --- Latest result (shown directly from the run response) -----------------
+
+  function renderLatestResult(result) {
+    document.getElementById('network-test-result-target').textContent = result.host + ':' + result.port;
+    document.getElementById('network-test-result-status').innerHTML = statusCell(result);
+    document.getElementById('network-test-result-avg').textContent = fmtLatency(result.avg_latency_ms);
+    document.getElementById('network-test-result-loss').textContent =
+      result.loss_percent !== undefined ? result.loss_percent + '%' : '—';
+
+    var dns = result.dns || {};
+    document.getElementById('network-test-result-dns').textContent = dns.resolved
+      ? ((dns.addresses || []).join(', ') || '—')
+      : ('{{ _("Failed") }}' + (dns.error ? ' — ' + dns.error : ''));
+
+    var attempts = result.attempts || [];
+    document.getElementById('network-test-result-attempts').textContent = attempts.length
+      ? '{{ _("Attempts") }}: ' + attempts.map(function (a, i) {
+          return '#' + (i + 1) + ' ' + (a.success ? fmtLatency(a.latency_ms) : (a.error || '{{ _("failed") }}'));
+        }).join('   ')
+      : '';
+
+    var card = document.getElementById('network-test-result-card');
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   // --- Endpoint list (latest result per host:port) --------------------------
 
@@ -410,7 +468,7 @@
     if (triggerBtn) {
       originalHtml = triggerBtn.innerHTML;
       triggerBtn.disabled = true;
-      triggerBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>' + (triggerBtn === runTestBtn ? ' {{ _("Testing…") }}' : '');
+      triggerBtn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i>' + (triggerBtn === runTestBtn ? ' {{ _("Testing…") }}' : '');
     }
 
     return fetch('/api/network-test/run', {
@@ -424,10 +482,16 @@
           showError(res.data.error || '{{ _("Test failed.") }}');
           return;
         }
+        // Show the result straight away — it must not depend on the history store
+        // (Cosmos) being reachable or the endpoint list re-fetch succeeding.
+        renderLatestResult(res.data);
         // Auto-expand the tested endpoint's row once the refreshed list re-renders it —
         // renderEndpointTable() calls insertDetailRow() for it, which scrolls the panel
         // into view itself.
         expandedKey = rowKey(res.data.host, res.data.port);
+        // The test itself succeeded even if its history couldn't be saved — a warning,
+        // not an error, and it must not be cleared by refreshEndpointList()'s own calls.
+        showError(res.data.history_warning || '', true);
         return refreshEndpointList();
       })
       .catch(function () {

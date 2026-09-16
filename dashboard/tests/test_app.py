@@ -424,6 +424,29 @@ class TestNetworkTestRoutes:
         assert response.status_code == 400
         assert "error" in response.get_json()
 
+    def test_api_run_returns_result_without_warning_when_history_saved(self, client: FlaskClient) -> None:
+        fake_result = {"host": "example.com", "port": 443, "success": True}
+        with (
+            patch("dashboard.routes.api.network_test.run_latency_test", return_value=fake_result),
+            patch("dashboard.routes.api.network_test.save_history_sample", return_value=True),
+        ):
+            response = client.post("/api/network-test/run", json={"host": "example.com", "port": 443})
+        assert response.status_code == 200
+        assert "history_warning" not in response.get_json()
+
+    def test_api_run_includes_warning_when_history_unreachable(self, client: FlaskClient) -> None:
+        """The test result itself must still be returned even if Cosmos is unreachable."""
+        fake_result = {"host": "example.com", "port": 443, "success": True}
+        with (
+            patch("dashboard.routes.api.network_test.run_latency_test", return_value=fake_result),
+            patch("dashboard.routes.api.network_test.save_history_sample", return_value=False),
+        ):
+            response = client.post("/api/network-test/run", json={"host": "example.com", "port": 443})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "history_warning" in data
+
     def test_api_history_get_returns_samples(self, client: FlaskClient) -> None:
         with patch("dashboard.routes.api.network_test.get_history", return_value=[{"timestamp": 1.0}]):
             response = client.get("/api/network-test/history?host=example.com&port=443")

@@ -14,6 +14,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from azure.core.exceptions import ServiceRequestError
 from azure.cosmos.exceptions import (
     CosmosHttpResponseError,
     CosmosResourceExistsError,
@@ -84,6 +85,13 @@ class TestGetDocument:
         with patch.object(cosmos_store, "_get_container", return_value=container):
             assert cosmos_store.get_document("alarm1", "config") is None
 
+    def test_returns_none_when_cosmos_is_unreachable(self) -> None:
+        """A connection-level failure (not an HTTP error response) must degrade the same way."""
+        container = MagicMock()
+        container.read_item.side_effect = ServiceRequestError(message="connection refused")
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            assert cosmos_store.get_document("alarm1", "config") is None
+
 
 # ---------------------------------------------------------------------------
 # query_documents
@@ -130,8 +138,11 @@ class TestUpsertDocument:
     def test_injects_id_and_pk(self) -> None:
         container = MagicMock()
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            cosmos_store.upsert_document("alarm2", "state", {"rules": {"r1": {"last_alarm_at": "2026-01-01T00:00:00"}}})
+            result = cosmos_store.upsert_document(
+                "alarm2", "state", {"rules": {"r1": {"last_alarm_at": "2026-01-01T00:00:00"}}}
+            )
 
+        assert result is True
         container.upsert_item.assert_called_once_with(
             body={"rules": {"r1": {"last_alarm_at": "2026-01-01T00:00:00"}}, "id": "state", "pk": "alarm2"}
         )
@@ -146,15 +157,29 @@ class TestUpsertDocument:
 
     def test_noop_when_container_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_container", return_value=None):
-            # Should not raise.
-            cosmos_store.upsert_document("alarm1", "config", {"rules": {}})
+            # Not configured: no warning is warranted, so this counts as success.
+            assert cosmos_store.upsert_document("alarm1", "config", {"rules": {}}) is True
+
+    def test_returns_false_when_container_unavailable_but_configured(self) -> None:
+        with (
+            patch.object(cosmos_store, "_get_container", return_value=None),
+            patch.object(cosmos_store, "is_configured", return_value=True),
+        ):
+            assert cosmos_store.upsert_document("alarm1", "config", {"rules": {}}) is False
 
     def test_swallows_http_error(self) -> None:
         container = MagicMock()
         container.upsert_item.side_effect = CosmosHttpResponseError(message="boom")
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            # Should log and return without raising.
-            cosmos_store.upsert_document("alarm1", "config", {"rules": {}})
+            # Should log and return False without raising.
+            assert cosmos_store.upsert_document("alarm1", "config", {"rules": {}}) is False
+
+    def test_swallows_connectivity_error(self) -> None:
+        container = MagicMock()
+        container.upsert_item.side_effect = ServiceRequestError(message="connection refused")
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            # Should log and return False without raising.
+            assert cosmos_store.upsert_document("alarm1", "config", {"rules": {}}) is False
 
 
 # ---------------------------------------------------------------------------

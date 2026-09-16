@@ -12,6 +12,7 @@ means real hop-by-hop traceroute is out of scope (see ``network_testing.md``).
 
 from __future__ import annotations
 
+import concurrent.futures
 import ipaddress
 import logging
 import re
@@ -25,6 +26,13 @@ log = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 3.0
 DEFAULT_ATTEMPTS = 4
+DEFAULT_DNS_TIMEOUT_SECONDS = 3.0
+
+# DNS lookups run on this executor so a slow/unresponsive resolver can be bounded by
+# ``future.result(timeout=...)`` instead of hanging the request for the OS resolver's
+# own (much longer, and not configurable from here) retry/timeout cycle. The lookup
+# thread itself isn't cancellable and is simply abandoned on timeout.
+_DNS_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="network-test-dns")
 
 # Cosmos partition + history sizing for latency graphing. This reuses the generic
 # document store already used for alarm config/state (see cosmos_store.py) rather
@@ -74,11 +82,17 @@ def validate_port(port: Any) -> int:
     return port_int
 
 
-def resolve_host(host: str) -> dict[str, Any]:
-    """Resolve a hostname to its IP address(es), timing the lookup."""
+def resolve_host(host: str, timeout: float = DEFAULT_DNS_TIMEOUT_SECONDS) -> dict[str, Any]:
+    """Resolve a hostname to its IP address(es), timing the lookup.
+
+    The lookup runs on a background thread so a non-responsive DNS server can't hang
+    the request beyond ``timeout`` seconds — the OS resolver's own retry/timeout cycle
+    can otherwise take tens of seconds.
+    """
     started = time.monotonic()
+    future = _DNS_EXECUTOR.submit(socket.getaddrinfo, host, None)
     try:
-        infos = socket.getaddrinfo(host, None)
+        infos = future.result(timeout=timeout)
         addresses = sorted({info[4][0] for info in infos})
         return {
             "resolved": True,
@@ -91,6 +105,13 @@ def resolve_host(host: str) -> dict[str, Any]:
             "addresses": [],
             "resolve_time_ms": round((time.monotonic() - started) * 1000, 2),
             "error": str(exc),
+        }
+    except concurrent.futures.TimeoutError:
+        return {
+            "resolved": False,
+            "addresses": [],
+            "resolve_time_ms": round((time.monotonic() - started) * 1000, 2),
+            "error": f"DNS resolution timed out after {timeout:g}s",
         }
 
 
@@ -111,6 +132,7 @@ def run_latency_test(
     port: Any,
     attempts: int = DEFAULT_ATTEMPTS,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    dns_timeout: float = DEFAULT_DNS_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     """Run repeated TCP connect attempts against host:port and summarise latency/loss.
 
@@ -120,8 +142,24 @@ def run_latency_test(
     validated_host = validate_host(host)
     validated_port = validate_port(port)
 
-    dns = resolve_host(validated_host)
-    attempt_results = [_tcp_connect_once(validated_host, validated_port, timeout) for _ in range(max(1, attempts))]
+    dns = resolve_host(validated_host, timeout=dns_timeout)
+
+    if dns["resolved"] and dns["addresses"]:
+        # Connect using the already-resolved address so create_connection doesn't
+        # repeat (and potentially hang on) DNS resolution for every attempt.
+        connect_host = dns["addresses"][0]
+        attempt_results = [_tcp_connect_once(connect_host, validated_port, timeout) for _ in range(max(1, attempts))]
+    elif dns["resolved"]:
+        # getaddrinfo succeeded but returned no addresses at all — extremely unusual,
+        # fall back to letting create_connection resolve the hostname itself.
+        attempt_results = [
+            _tcp_connect_once(validated_host, validated_port, timeout) for _ in range(max(1, attempts))
+        ]
+    else:
+        # DNS resolution failed or timed out — every connect attempt would just repeat
+        # the same (possibly slow) failure, so report it directly instead of retrying.
+        dns_error = dns.get("error", "DNS resolution failed")
+        attempt_results = [{"success": False, "latency_ms": None, "error": dns_error} for _ in range(max(1, attempts))]
 
     latencies = [a["latency_ms"] for a in attempt_results if a["success"]]
     failures = [a for a in attempt_results if not a["success"]]
@@ -146,11 +184,15 @@ def _history_doc_id(host: str, port: int) -> str:
     return f"history:{host}:{port}"
 
 
-def save_history_sample(host: str, port: int, result: dict[str, Any]) -> None:
+def save_history_sample(host: str, port: int, result: dict[str, Any]) -> bool:
     """Append a test result to the endpoint's rolling history (for the latency graph).
 
     A no-op when Cosmos isn't configured — matches the alarm services' graceful
-    degradation behaviour rather than failing the request.
+    degradation behaviour rather than failing the request. Returns ``True`` when the
+    sample was persisted (or Cosmos isn't configured, so no persistence is expected —
+    see ``cosmos_store.upsert_document``) and ``False`` when Cosmos is configured but
+    unreachable, so the caller can tell the user the test itself is fine but its
+    history wasn't saved.
     """
     doc_id = _history_doc_id(host, port)
     existing = cosmos_store.get_document(_HISTORY_PK, doc_id) or {"samples": []}
@@ -166,7 +208,7 @@ def save_history_sample(host: str, port: int, result: dict[str, Any]) -> None:
         }
     )
     samples = samples[-_MAX_HISTORY_SAMPLES:]
-    cosmos_store.upsert_document(_HISTORY_PK, doc_id, {"host": host, "port": port, "samples": samples})
+    return cosmos_store.upsert_document(_HISTORY_PK, doc_id, {"host": host, "port": port, "samples": samples})
 
 
 def get_history(host: str, port: int) -> list[dict[str, Any]]:
