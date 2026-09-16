@@ -18,6 +18,7 @@ from hl7_server.size_limited_mllp_server import SizeLimitedMLLPServer
 from .app_config import AppConfig
 from .error_handler import ErrorHandler
 from .generic_handler import GenericHandler
+from .hl7_ack_builder import HL7AckBuilder
 
 # Configure logging
 log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -82,6 +83,7 @@ class Hl7ServerApplication:
 
         flow_name = app_config.hl7_validation_flow
         standard_version = app_config.hl7_validation_standard
+        self.ack_builder = HL7AckBuilder()
 
         generic_handler_args = (
             GenericHandler,
@@ -111,12 +113,12 @@ class Hl7ServerApplication:
             "ADT^A04^ADT_A01": generic_handler_args,
             "ADT^A08^ADT_A01": generic_handler_args,
             "ADT^A40^ADT_A40": generic_handler_args,
-            "ERR": (ErrorHandler, self.event_logger),
+            "ERR": (ErrorHandler, self.event_logger, self.ack_builder),
         }
 
         try:
             self._server = SizeLimitedMLLPServer(
-                self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger
+                self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger, self.ack_builder
             )
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()

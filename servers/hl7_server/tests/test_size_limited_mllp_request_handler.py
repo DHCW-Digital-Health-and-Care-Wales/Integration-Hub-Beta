@@ -4,12 +4,14 @@ from unittest.mock import Mock, patch
 
 from event_logger_lib.event_logger import EventLogger
 
+from hl7_server.hl7_ack_builder import HL7AckBuilder
 from hl7_server.size_limited_mllp_request_handler import SizeLimitedMLLPRequestHandler
 
 
 class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_event_logger = Mock(spec=EventLogger)
+        self.ack_builder = HL7AckBuilder()
 
         self.start_block = b'\x0b'      # MLLP start block (ASCII 11)
         self.end_block = b'\x1c'        # MLLP end block (ASCII 28)
@@ -22,6 +24,7 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         mock_server = Mock()
         mock_server.max_message_size_bytes = max_size
         mock_server.event_logger = self.mock_event_logger
+        mock_server.ack_builder = self.ack_builder
         handler.server = mock_server
 
         mock_request = Mock()
@@ -64,6 +67,30 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         self.assertIn("Message size limit exceeded", event_log_args[2])
 
         self.assertGreaterEqual(handler.request.recv.call_count, 2)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_sent_when_message_exceeds_size_limit(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=50)
+
+        oversized_content = "X" * 100
+
+        message_chunks: List[bytes] = [
+            self.start_block,
+            oversized_content[:30].encode('utf-8'),
+            oversized_content[30:].encode('utf-8')
+        ]
+
+        handler.request.recv.side_effect = message_chunks
+
+        handler.handle()
+
+        handler.wfile.write.assert_called_once()
+        written_response = handler.wfile.write.call_args[0][0].decode('utf-8')
+        self.assertTrue(written_response.startswith("\x0b"))
+        self.assertTrue(written_response.endswith("\x1c\r"))
+        self.assertIn("MSA|AE|", written_response)
+
+        handler.request.close.assert_called_once()
 
     @patch('hl7_server.size_limited_mllp_request_handler.logger')
     def test_valid_message_processed_successfully_without_closure(self, mock_logger: Mock) -> None:
