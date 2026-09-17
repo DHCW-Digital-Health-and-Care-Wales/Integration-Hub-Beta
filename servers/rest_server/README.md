@@ -202,9 +202,9 @@ HL7_VALIDATION_FLOW=mpi
 PIPELINE=hl7
 ENVIRONMENT=DEV
 HL7_VALIDATION_FLOW=risp
-EGRESS_QUEUE_NAME=pre-risp-transform
+EGRESS_TOPIC_NAME=local-inthub-core-reference-transformer-ingress
 EGRESS_SESSION_ID=risp-to-mpi
-WRRS_QUEUE_NAME=risp-to-wrrs
+WRRS_TOPIC_NAME=local-inthub-wrrs-outbound
 WRRS_EGRESS_SESSION_ID=risp-to-wrrs
 WRRS_WORKFLOW_ID=risp-to-wrrs
 ```

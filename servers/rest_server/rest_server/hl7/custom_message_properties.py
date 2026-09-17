@@ -39,8 +39,23 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
     }
 
 
+def build_risp_properties(msg: Message) -> dict[str, str]:
+    """RISP flow properties: exposes the HL7 trigger event (MSH.9.2) as ``MessageType``.
+
+    Every RISP-sourced message always carries a value in MSH.9.2 (validated up-front by
+    ``risp_validation.validate_risp_message``/``resolve_trigger`` before routing), so this is a
+    reliable, low-risk mechanical copy of an already-present field - not a new data dependency.
+    Combined with ``SourceSystem`` (MSH.3, already set by ``build_common_properties``), this lets
+    Service Bus subscriptions filter RISP's topic(s) by trigger event and source application.
+    """
+    return {
+        "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
+    }
+
+
 FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {
     "mpi": build_mpi_properties,
+    "risp": build_risp_properties,
 }
 
 

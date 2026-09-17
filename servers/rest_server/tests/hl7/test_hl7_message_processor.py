@@ -76,6 +76,11 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         sender.send_text_message.assert_called_once()
         wrrs.send_text_message.assert_not_called()
 
+        # RISP messages carry a MessageType application property (MSH.9.2 trigger event) so
+        # Service Bus subscriptions can filter on it - see custom_message_properties.build_risp_properties.
+        mpi_args = sender.send_text_message.call_args
+        self.assertEqual(mpi_args[0][1]["MessageType"], "A28")
+
     def test_a40_sends_to_both_mpi_transformer_and_wrrs(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")
         assert wrrs is not None
@@ -88,11 +93,14 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         # The MPI transformer destination gets the raw ER7 payload.
         mpi_args = sender.send_text_message.call_args
         self.assertEqual(mpi_args[0][0], RISP_A40_MESSAGE)
+        self.assertEqual(mpi_args[0][1]["MessageType"], "A40")
 
-        # The WRRS destination gets an XML payload with the WRRS workflow id.
+        # The WRRS destination gets an XML payload with the WRRS workflow id, and the same
+        # MessageType property (both destination copies share the tracking properties dict).
         wrrs_args = wrrs.send_text_message.call_args
         self.assertIn("<", wrrs_args[0][0])
         self.assertEqual(wrrs_args[0][1]["WorkflowID"], "risp-to-wrrs")
+        self.assertEqual(wrrs_args[0][1]["MessageType"], "A40")
 
     def test_oru_r01_sends_only_to_wrrs_after_schema_validation(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")

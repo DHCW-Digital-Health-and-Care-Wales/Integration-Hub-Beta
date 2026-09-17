@@ -33,34 +33,6 @@
             }
           },
           {
-            "Name": "local-inthub-core-reference-transformer-ingress",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
-          },
-          {
-            "Name": "local-inthub-wrrs-outbound",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
-          },
-          {
             "Name": "local-inthub-lims-transformer-ingress",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
@@ -207,6 +179,34 @@
             "Subscriptions": [
               {
                 "Name": "local-inthub-wpas-transformer-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-core-reference-transformer-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-core-reference-transformer-ingress-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-wrrs-outbound",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-wrrs-outbound-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
