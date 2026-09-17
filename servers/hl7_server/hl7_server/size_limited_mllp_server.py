@@ -4,6 +4,7 @@ from typing import Any, Optional
 from event_logger_lib.event_logger import EventLogger
 from hl7apy.mllp import MLLPServer
 
+from hl7_server.hl7_ack_builder import HL7AckBuilder
 from hl7_server.size_limited_mllp_request_handler import SizeLimitedMLLPRequestHandler
 
 logger = logging.getLogger(__name__)
@@ -18,10 +19,12 @@ class SizeLimitedMLLPServer(MLLPServer):
         handlers: dict[str, Any],
         max_message_size_bytes: int,
         event_logger: Optional[EventLogger] = None,
+        ack_builder: Optional[HL7AckBuilder] = None,
         timeout: int = 10
     ) -> None:
         self.max_message_size_bytes = max_message_size_bytes
         self.event_logger = event_logger
+        self.ack_builder = ack_builder or HL7AckBuilder()
 
         # Initialize parent class with custom request handler
         super().__init__(

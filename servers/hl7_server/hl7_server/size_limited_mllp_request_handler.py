@@ -5,6 +5,8 @@ from typing import Optional
 from event_logger_lib.event_logger import EventLogger
 from hl7apy.mllp import MLLPRequestHandler
 
+from hl7_server.hl7_ack_builder import HL7AckBuilder
+
 logger = logging.getLogger(__name__)
 
 MAX_PARTIAL_MESSAGE_LOG_SIZE = 1000
@@ -14,6 +16,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
     def handle(self) -> None:
         max_message_size: int = getattr(self.server, 'max_message_size_bytes')
         event_logger: Optional[EventLogger] = getattr(self.server, 'event_logger', None)
+        ack_builder: Optional[HL7AckBuilder] = getattr(self.server, 'ack_builder', None)
 
         end_seq = self.eb + self.cr
         accumulated_data = b""
@@ -38,7 +41,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 # Check size limit before reading more data
                 remaining_space = max_message_size - len(accumulated_data)
                 if remaining_space <= 0:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger)
+                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger, ack_builder)
                     return
 
                 # Read next chunk, limited by remaining space
@@ -52,14 +55,14 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
                 # Double-check size limit after adding chunk
                 if len(accumulated_data) > max_message_size:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger)
+                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger, ack_builder)
                     return
 
             except socket.timeout:
                 self.request.close()
                 return
 
-        self._process_complete_message(accumulated_data, max_message_size)
+        self._process_complete_message(accumulated_data, max_message_size, ack_builder)
 
     def _validate_start_block(self, data: bytes) -> bool:
         return len(data) > 0 and data[:1] == self.sb
@@ -70,7 +73,9 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
         return data[-len(end_seq):] == end_seq
 
-    def _process_complete_message(self, accumulated_data: bytes, max_message_size: int) -> None:
+    def _process_complete_message(
+        self, accumulated_data: bytes, max_message_size: int, ack_builder: Optional[HL7AckBuilder] = None
+    ) -> None:
         try:
             message_content = self._extract_hl7_message(accumulated_data.decode(self.encoding))
             if message_content is not None:
@@ -81,22 +86,42 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
                 response = self._route_message(message_content)
                 self.wfile.write(response.encode(self.encoding))
+                # Positive confirmation the response (ACK or NACK) was written to the socket -
+                # without this, "no error logged" could otherwise be misread as proof of delivery.
+                logger.info(f"Response of {len(response)} chars written to client")
 
         except Exception as e:
+            # This is a last resort: the registered ERR handler (see error_handler.ErrorHandler)
+            # already turns validation/parsing/unexpected failures into a NACK before they reach
+            # here. This branch only catches what escapes that path entirely - e.g. a decode
+            # failure before parsing, or the ERR handler itself failing - so a NACK still reaches
+            # the sender instead of the connection being silently closed.
             logger.error(f"Error processing message: {e}")
+            self._send_fallback_nack(f"Unexpected error while processing message: {e}", ack_builder)
         finally:
             self.request.close()
+
+    def _send_fallback_nack(self, reason: str, ack_builder: Optional[HL7AckBuilder]) -> None:
+        try:
+            builder = ack_builder or HL7AckBuilder()
+            nack = builder.build_generic_nack(reason)
+            framed_nack = nack.to_mllp()
+            self.wfile.write(framed_nack.encode(self.encoding))
+            logger.info(f"Fallback AE NACK ({len(framed_nack)} chars) written to client")
+        except Exception as e:
+            logger.error(f"Failed to send fallback NACK: {e}")
 
     def _handle_size_limit_exceeded(
         self,
         accumulated_data: bytes,
         max_message_size: int,
-        event_logger: Optional[EventLogger]
+        event_logger: Optional[EventLogger],
+        ack_builder: Optional[HL7AckBuilder] = None,
     ) -> None:
         error_msg = (
             f"Message size ({len(accumulated_data)} bytes) "
             f"exceeds maximum allowed size ({max_message_size} bytes). "
-            "Connection will be closed."
+            "An AE NACK will be returned and the connection closed."
         )
         logger.error(error_msg)
 
@@ -111,4 +136,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
             except Exception:
                 pass
 
+        # The buffer is deliberately never parsed here (that's the point of the size guard), so
+        # there's no original message to echo - always build a generic AE NACK with a fresh control ID.
+        self._send_fallback_nack(error_msg, ack_builder)
         self.request.close()

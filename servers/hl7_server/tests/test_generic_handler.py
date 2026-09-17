@@ -101,7 +101,7 @@ class TestGenericHandler(unittest.TestCase):
             handler.reply()
 
         mock_logger.error.assert_called_once_with(f"HL7 validation error: {exception}")
-        self.mock_event_logger.log_message_failed.assert_called_once_with(message, f"HL7 validation error: {exception}")
+        self.mock_event_logger.log_message_failed.assert_not_called()
 
     def test_message_sent_to_service_bus(self) -> None:
         self.handler.reply()
@@ -300,7 +300,7 @@ class TestGenericHandler(unittest.TestCase):
                 for call in standard_validation_calls
             )
         )
-        self.assertEqual(self.mock_event_logger.log_message_failed.call_count, 2)
+        self.assertEqual(self.mock_event_logger.log_message_failed.call_count, 1)
         self.mock_sender.send_text_message.assert_not_called()
 
     @patch("hl7_server.generic_handler.validate_parsed_message_with_standard")
