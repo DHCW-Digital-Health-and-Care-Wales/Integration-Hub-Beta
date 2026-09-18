@@ -365,19 +365,19 @@ def flow_health(flow_id: str, queues_by_name: dict[str, dict], flows: dict[str, 
                     sub.get("dead_letter_message_count", 0),
                 )
             )
-    else:
-        # Queue-based flow — check pre/post queues
-        relevant = [q for q in [flow.get("pre_queue"), flow.get("post_queue")] if q]
-        for qname in relevant:
-            q = queues_by_name.get(qname)
-            if q is None:
-                continue
-            statuses.append(
-                queue_health(
-                    q.get("active_message_count", 0),
-                    q.get("dead_letter_message_count", 0),
-                )
+
+    # Queue-based or hybrid topic->queue flow — check pre/post queues too.
+    relevant = [q for q in [flow.get("pre_queue"), flow.get("post_queue")] if q]
+    for qname in relevant:
+        q = queues_by_name.get(qname)
+        if q is None:
+            continue
+        statuses.append(
+            queue_health(
+                q.get("active_message_count", 0),
+                q.get("dead_letter_message_count", 0),
             )
+        )
     if not statuses:
         return "unknown"
     if "critical" in statuses:

@@ -128,6 +128,34 @@ class TestFlowHealth:
     def test_unknown_when_no_queues_found(self) -> None:
         assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
+    def test_hybrid_topic_to_queue_flow_uses_subscription_and_post_queue_health(self) -> None:
+        flows = {
+            "wds-to-wis": {
+                "label": "WDS → WIS",
+                "source": "WDS",
+                "source_port": None,
+                "pre_queue": None,
+                "transformer": "WDS Transformer",
+                "post_queue": "post-wis-sender",
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-wds-wis-transformer",
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                    }
+                ],
+                "destination": "WIS",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        queues_by_name = {
+            "post-wis-sender": self._make_queue("post-wis-sender", dlq=1),
+        }
+
+        assert flow_health("wds-to-wis", queues_by_name, flows) == "warning"
+
     def test_all_flows_defined(self) -> None:
         expected = {
             "phw-to-mpi",
