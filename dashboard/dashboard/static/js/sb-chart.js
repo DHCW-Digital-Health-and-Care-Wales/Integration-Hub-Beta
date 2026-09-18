@@ -160,8 +160,9 @@
     if (loader) loader.style.display = 'block';
 
     var url = '/api/servicebus-metrics?hours=' + hours;
-    if (window.__chartQueueFilter) {
-      url += '&queue=' + encodeURIComponent(window.__chartQueueFilter);
+    if (window.__chartEntityType && window.__chartEntityName) {
+      url += '&entity_type=' + encodeURIComponent(window.__chartEntityType);
+      url += '&entity_name=' + encodeURIComponent(window.__chartEntityName);
     }
 
     fetch(url)

@@ -19,11 +19,11 @@ from dashboard.services import cache, network_test
 from dashboard.services.alarm1 import get_alarm_status, load_alarm_config
 from dashboard.services.alarm2 import get_alarm2_status, load_alarm2_config
 from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
-from dashboard.services.arm import queue_to_microservice_ids
+from dashboard.services.arm import entity_to_microservice_ids
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today, get_throughput_filter_options
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_flows, queue_to_workflow_id
-from dashboard.services.service_bus import get_queues
+from dashboard.services.flows import build_flow_data, entity_to_workflow_id, get_flows
+from dashboard.services.service_bus import get_namespace_snapshot
 from dashboard.services.status_builder import build_alarm_map, get_cached_status
 from dashboard.services.traces import get_trace
 
@@ -122,55 +122,61 @@ def exceptions_page() -> str:
 
 
 def service_bus_page() -> str:
-    """Render the Service Bus page showing queue depths and dead-letter counts."""
+    """Render the Service Bus page showing namespace inventory and topic drill-downs."""
     cached_sb = cache.cached_nowait(
         "servicebus",
-        lambda: {"queues": get_queues()},
+        get_namespace_snapshot,
         ttl=config.API_CACHE_TTL,
     )
     queues = cached_sb["queues"]
+    topics = cached_sb["topics"]
     flows = build_flow_data(queues)
     return render_template(
         "service_bus.html",
+        namespace_snapshot=cached_sb,
         queues=queues,
+        topics=topics,
         flows=flows,
         data_is_stale=cache.is_cache_stale("servicebus"),
     )
 
 
 def messages_page() -> str:
-    """Render the Messages page, optionally filtered to a specific Service Bus queue."""
-    queue_filter = request.args.get("queue", "").strip()
+    """Render the Messages page, optionally filtered to a Service Bus entity."""
+    legacy_queue_filter = request.args.get("queue", "").strip()
+    entity_type = request.args.get("entity_type", "").strip().lower() or ("queue" if legacy_queue_filter else "")
+    entity_name = request.args.get("entity_name", "").strip() or legacy_queue_filter
     flow_label = None
     microservice_ids: list[str] | None = None
 
-    if queue_filter:
-        microservice_ids = queue_to_microservice_ids(queue_filter)
+    if entity_type and entity_name:
+        microservice_ids = entity_to_microservice_ids(entity_type, entity_name)
         if not microservice_ids:
             microservice_ids = ["__no_match__"]
-        workflow_id = queue_to_workflow_id(queue_filter)
+        workflow_id = entity_to_workflow_id(entity_type, entity_name)
         if workflow_id:
             flows = get_flows()
             flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
 
-    # Vary the cache key by queue_filter: the builder's result depends on
+    # Vary the cache key by entity filter: the builder's result depends on
     # microservice_ids, so a fixed "messages" key would serve one filter's
     # cached data to a different filter.
-    cache_key = f"messages_{queue_filter}" if queue_filter else "messages"
+    filter_cache_fragment = f"{entity_type}_{entity_name}" if entity_type and entity_name else "all"
+    cache_key = f"messages_{filter_cache_fragment}"
     messages = cache.cached_nowait(
         cache_key,
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
-    cached_sb = cache.cached_nowait("servicebus", lambda: {"queues": get_queues()}, ttl=config.API_CACHE_TTL)
-    queue_names = sorted(q["name"] for q in cached_sb.get("queues", []) if q.get("name"))
+    cached_sb = cache.cached_nowait("servicebus", get_namespace_snapshot, ttl=config.API_CACHE_TTL)
     return render_template(
         "messages.html",
         messages=messages,
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
-        queue_filter=queue_filter,
+        entity_type=entity_type,
+        entity_name=entity_name,
         flow_label=flow_label,
-        queue_names=queue_names,
+        namespace_snapshot=cached_sb,
         data_is_stale=cache.is_cache_stale(cache_key),
     )
 

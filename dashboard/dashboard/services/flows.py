@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from dashboard import config
-from dashboard.services.arm import discover_flows  # noqa: PLC0415 (deferred to avoid circular at load time)
+from dashboard.services.arm import discover_flows, get_subscription_consumers_by_topic  # noqa: PLC0415 (deferred to avoid circular at load time)
 from dashboard.services.service_bus import (  # noqa: PLC0415
     get_queue_names,
     get_subscriptions,
@@ -178,12 +178,79 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
 def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
     """For flows that have a topic, fetch subscriptions from Service Bus."""
 
+    consumers_by_topic = get_subscription_consumers_by_topic()
+
     for flow in flows.values():
         topic = flow.get("topic")
-        if topic and not flow.get("subscriptions"):
+        if topic:
             subs = get_subscriptions(topic)
-            flow["subscriptions"] = subs
+            flow["subscriptions"] = _merge_subscription_records(
+                topic,
+                flow.get("subscriptions", []),
+                consumers_by_topic.get(topic, []),
+                subs,
+            )
             log.info("Topic %s has %d subscriptions", topic, len(subs))
+
+
+def _merge_subscription_records(
+    topic_name: str,
+    flow_subscriptions: list[dict],
+    consumer_subscriptions: list[dict],
+    service_bus_subscriptions: list[dict],
+) -> list[dict]:
+    """Merge discovery metadata with Service Bus subscription counts."""
+
+    merged: dict[str, dict] = {}
+
+    def _seed(records: list[dict]) -> None:
+        for record in records:
+            name = record.get("name")
+            if not name:
+                continue
+            current = merged.setdefault(
+                name,
+                {
+                    "name": name,
+                    "topic": topic_name,
+                    "entity_name": f"{topic_name}/{name}",
+                    "consumer_apps": [],
+                },
+            )
+            for key, value in record.items():
+                if key == "consumer_apps":
+                    continue
+                if value is not None:
+                    current[key] = value
+            existing_ids = {app.get("microservice_id") for app in current.get("consumer_apps", [])}
+            for app in record.get("consumer_apps", []):
+                microservice_id = app.get("microservice_id")
+                if microservice_id in existing_ids:
+                    continue
+                current.setdefault("consumer_apps", []).append(app)
+                existing_ids.add(microservice_id)
+
+    _seed(flow_subscriptions)
+    _seed(consumer_subscriptions)
+
+    for sub in service_bus_subscriptions:
+        name = sub.get("name")
+        if not name:
+            continue
+        current = merged.setdefault(
+            name,
+            {
+                "name": name,
+                "topic": topic_name,
+                "entity_name": f"{topic_name}/{name}",
+                "consumer_apps": [],
+            },
+        )
+        current.update(sub)
+        current["topic"] = topic_name
+        current["entity_name"] = f"{topic_name}/{name}"
+
+    return [merged[name] for name in sorted(merged)]
 
 
 # Module-level default — populated lazily on first access
@@ -338,11 +405,30 @@ def queue_to_workflow_id(queue_name: str) -> str | None:
     or ``post_queue`` matches *queue_name* (case-insensitive).
     Returns ``None`` if no match is found.
     """
+    return entity_to_workflow_id("queue", queue_name)
+
+
+def entity_to_workflow_id(entity_type: str, entity_name: str) -> str | None:
+    """Map a queue, topic, or topic subscription back to its owning workflow."""
     flows = get_flows()
-    lower = queue_name.lower()
+    lower = entity_name.lower()
+    entity_type_lower = entity_type.lower()
     for flow_id, flow in flows.items():
         pre = (flow.get("pre_queue") or "").lower()
         post = (flow.get("post_queue") or "").lower()
+        topic = (flow.get("topic") or "").lower()
+
+        if entity_type_lower == "queue" and lower in (pre, post):
+            return flow_id
+        if entity_type_lower == "topic" and topic == lower:
+            return flow_id
+        if entity_type_lower == "subscription" and "/" in entity_name:
+            topic_name, subscription_name = entity_name.split("/", maxsplit=1)
+            if topic != topic_name.lower():
+                continue
+            for sub in flow.get("subscriptions", []):
+                if (sub.get("name") or "").lower() == subscription_name.lower():
+                    return flow_id
         if lower in (pre, post):
             return flow_id
     return None
@@ -375,8 +461,15 @@ def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) ->
             sub_summaries.append(
                 {
                     "name": sub["name"],
+                    "topic": sub.get("topic") or flow.get("topic"),
+                    "entity_type": "subscription",
+                    "entity_name": sub.get("entity_name")
+                    or f"{flow.get('topic')}/{sub['name']}" if flow.get("topic") else sub["name"],
                     "active": active,
                     "dlq": dlq,
+                    "status": sub.get("status", "Unknown"),
+                    "message_count": sub.get("message_count", 0),
+                    "consumer_apps": sub.get("consumer_apps", []),
                     "health": queue_health(active, dlq),
                 }
             )
@@ -403,15 +496,18 @@ def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) ->
 
 def _queue_summary(name: str | None, q: dict | None) -> dict:
     if not name:
-        return {"name": None, "active": 0, "dlq": 0, "health": "healthy", "exists": False}
+        return {"name": None, "entity_type": "queue", "entity_name": None, "active": 0, "dlq": 0, "health": "healthy", "exists": False}
     if q is None:
-        return {"name": name, "active": 0, "dlq": 0, "health": "unknown", "exists": False}
+        return {"name": name, "entity_type": "queue", "entity_name": name, "active": 0, "dlq": 0, "health": "unknown", "exists": False}
     active = q.get("active_message_count", 0)
     dlq = q.get("dead_letter_message_count", 0)
     return {
         "name": name,
+        "entity_type": "queue",
+        "entity_name": name,
         "active": active,
         "dlq": dlq,
+        "status": q.get("status", "Unknown"),
         "health": queue_health(active, dlq),
         "exists": True,
     }

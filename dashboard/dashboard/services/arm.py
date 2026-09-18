@@ -295,6 +295,28 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
         # the egress queue is the "post-queue" for dashboard display.
         post_queue = server_egress_queue
 
+    subscriptions: list[dict] = []
+    for ss in subscription_senders:
+        sub_name = ss["env"].get("INGRESS_SUBSCRIPTION_NAME")
+        sub_topic = ss["env"].get("INGRESS_TOPIC_NAME")
+        if not sub_name or not sub_topic:
+            continue
+        subscriptions.append(
+            {
+                "name": sub_name,
+                "topic": sub_topic,
+                "entity_name": f"{sub_topic}/{sub_name}",
+                "consumer_apps": [
+                    {
+                        "app_name": ss["name"],
+                        "microservice_id": ss["env"].get("MICROSERVICE_ID") or ss["name"],
+                        "sender_type": "subscription_sender",
+                        "workflow_id": workflow_id,
+                    }
+                ],
+            }
+        )
+
     # Display metadata
     meta = _DISPLAY_META.get(workflow_id, {})
     colour_idx = hash(workflow_id) % len(_AUTO_COLOURS)
@@ -310,7 +332,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
         "transformer": transformer_name,
         "post_queue": post_queue,
         "topic": topic,
-        "subscriptions": [],  # populated later from Service Bus
+        "subscriptions": subscriptions,
         "destination": meta.get("destination", "MPI"),
         "colour": meta.get("colour", _AUTO_COLOURS[colour_idx]),
         "icon": meta.get("icon", "bi-arrow-left-right"),
@@ -346,6 +368,24 @@ def _merge_subscription_sender_flows(flows: dict[str, dict]) -> None:
             to_remove.append(fid)
 
     for fid in to_remove:
+        topic = flows[fid].get("topic")
+        owner_id = topic_owners.get(topic) if topic else None
+        if owner_id:
+            owner = flows[owner_id]
+            owner_subs = owner.setdefault("subscriptions", [])
+            existing_keys = {
+                (sub.get("topic"), sub.get("name"), tuple(app.get("microservice_id") for app in sub.get("consumer_apps", [])))
+                for sub in owner_subs
+            }
+            for sub in flows[fid].get("subscriptions", []):
+                key = (
+                    sub.get("topic"),
+                    sub.get("name"),
+                    tuple(app.get("microservice_id") for app in sub.get("consumer_apps", [])),
+                )
+                if key not in existing_keys:
+                    owner_subs.append(sub)
+                    existing_keys.add(key)
         log.debug("Merging subscription-sender flow %r into topic owner", fid)
         del flows[fid]
 
@@ -420,17 +460,88 @@ def queue_to_microservice_ids(queue_name: str) -> list[str]:
     Relies on the cached Container App data populated by :func:`discover_flows`.
     Returns an empty list if no match is found.
     """
+    return entity_to_microservice_ids("queue", queue_name)
+
+
+def _split_subscription_entity_name(entity_name: str) -> tuple[str | None, str | None]:
+    if "/" not in entity_name:
+        return None, None
+    topic_name, subscription_name = entity_name.split("/", maxsplit=1)
+    topic_name = topic_name.strip() or None
+    subscription_name = subscription_name.strip() or None
+    return topic_name, subscription_name
+
+
+def entity_to_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
+    """Return microservice IDs related to a queue, topic, or topic subscription."""
     # Ensure discovery has run at least once
     discover_flows()
 
-    lower = queue_name.lower()
+    entity_type_lower = entity_type.lower()
+    lower = entity_name.lower()
+    topic_name: str | None = None
+    subscription_name: str | None = None
+    if entity_type_lower == "subscription":
+        topic_name, subscription_name = _split_subscription_entity_name(entity_name)
+        if not topic_name or not subscription_name:
+            return []
+
     result: list[str] = []
     for app in _cached_apps:
         env = app["env"]
         ingress = (env.get("INGRESS_QUEUE_NAME") or "").lower()
         egress = (env.get("EGRESS_QUEUE_NAME") or "").lower()
-        if lower in (ingress, egress):
+        ingress_topic = (env.get("INGRESS_TOPIC_NAME") or "").lower()
+        egress_topic = (env.get("EGRESS_TOPIC_NAME") or "").lower()
+        ingress_subscription = (env.get("INGRESS_SUBSCRIPTION_NAME") or "").lower()
+
+        matches = False
+        if entity_type_lower == "queue":
+            matches = lower in (ingress, egress)
+        elif entity_type_lower == "topic":
+            matches = lower in (ingress_topic, egress_topic)
+        elif entity_type_lower == "subscription":
+            matches = ingress_topic == topic_name.lower() and ingress_subscription == subscription_name.lower()
+
+        if matches:
             ms_id = env.get("MICROSERVICE_ID") or app["name"]
             if ms_id not in result:
                 result.append(ms_id)
     return result
+
+
+def get_subscription_consumers_by_topic() -> dict[str, list[dict]]:
+    """Return topic -> subscription consumer metadata built from cached Container App discovery."""
+    discover_flows()
+
+    consumers_by_topic: dict[str, list[dict]] = {}
+    seen: set[tuple[str, str, str]] = set()
+    for app in _cached_apps:
+        env = app["env"]
+        topic_name = env.get("INGRESS_TOPIC_NAME")
+        subscription_name = env.get("INGRESS_SUBSCRIPTION_NAME")
+        workflow_id = env.get("WORKFLOW_ID")
+        if not topic_name or not subscription_name or not workflow_id:
+            continue
+
+        key = (topic_name, subscription_name, env.get("MICROSERVICE_ID") or app["name"])
+        if key in seen:
+            continue
+        seen.add(key)
+
+        entry = {
+            "name": subscription_name,
+            "topic": topic_name,
+            "entity_name": f"{topic_name}/{subscription_name}",
+            "consumer_apps": [
+                {
+                    "app_name": app["name"],
+                    "microservice_id": env.get("MICROSERVICE_ID") or app["name"],
+                    "sender_type": "subscription_sender",
+                    "workflow_id": workflow_id,
+                }
+            ],
+        }
+        consumers_by_topic.setdefault(topic_name, []).append(entry)
+
+    return consumers_by_topic

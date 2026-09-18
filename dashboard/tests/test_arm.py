@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dashboard.services.arm import _build_flow, _classify_app
+from dashboard.services.arm import _build_flow, _classify_app, _merge_subscription_sender_flows
 
 
 class TestClassifyApp:
@@ -138,6 +138,37 @@ class TestBuildFlow:
         assert flow["post_queue"] is None
         assert flow["label"] == "MPI Outbound"
         assert flow["source_port"] == 2580
+        assert flow["subscriptions"][0]["name"] == "prefix-sbs-mpi-phw-sender"
+        assert flow["subscriptions"][0]["consumer_apps"][0]["app_name"] == "mpi-phw-sender-ca"
+
+    def test_merge_subscription_sender_flow_keeps_consumer_metadata(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "topic": "prefix-sbt-mpi-hl7-input",
+                "source_port": 2580,
+                "pre_queue": None,
+                "post_queue": None,
+                "subscriptions": [],
+            },
+            "bcu-to-chemo": {
+                "topic": "prefix-sbt-mpi-hl7-input",
+                "source_port": None,
+                "pre_queue": None,
+                "post_queue": None,
+                "subscriptions": [
+                    {
+                        "name": "prefix-sbs-bcu-chemo",
+                        "topic": "prefix-sbt-mpi-hl7-input",
+                        "consumer_apps": [{"app_name": "bcu-sender", "microservice_id": "bcu_sender", "workflow_id": "bcu-to-chemo"}],
+                    }
+                ],
+            },
+        }
+
+        _merge_subscription_sender_flows(flows)
+
+        assert "bcu-to-chemo" not in flows
+        assert flows["mpi-to-topic"]["subscriptions"][0]["consumer_apps"][0]["app_name"] == "bcu-sender"
 
     def test_unknown_flow_gets_generated_metadata(self) -> None:
         apps: list[dict[str, Any]] = [

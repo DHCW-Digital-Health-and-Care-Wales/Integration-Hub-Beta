@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from dashboard.services.flows import _FLOW_DEFS, flow_health, overall_health, queue_health
+from dashboard.services.flows import _FLOW_DEFS, build_flow_data, flow_health, overall_health, queue_health
 
 # Test flows with hardcoded queue names - independent of config.py
 TEST_FLOWS = {
@@ -156,3 +156,44 @@ class TestOverallHealth:
 
     def test_unknown_with_mixed_unknown(self) -> None:
         assert overall_health(["healthy", "unknown"]) == "unknown"
+
+
+class TestBuildFlowData:
+    def test_subscription_consumer_metadata_is_retained(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "prefix-sbt-mpi-hl7-input",
+                "subscriptions": [
+                    {
+                        "name": "prefix-sbs-outbound",
+                        "topic": "prefix-sbt-mpi-hl7-input",
+                        "status": "Active",
+                        "message_count": 8,
+                        "active_message_count": 4,
+                        "dead_letter_message_count": 1,
+                        "consumer_apps": [
+                            {
+                                "app_name": "mpi-phw-sender-ca",
+                                "microservice_id": "mpi_phw_sender",
+                                "sender_type": "subscription_sender",
+                                "workflow_id": "mpi-to-topic",
+                            }
+                        ],
+                    }
+                ],
+                "destination": "Downstream Systems",
+                "colour": "#f59e0b",
+                "icon": "bi-broadcast",
+            }
+        }
+
+        result = build_flow_data([], flows)
+
+        assert result[0]["subscriptions"][0]["entity_name"] == "prefix-sbt-mpi-hl7-input/prefix-sbs-outbound"
+        assert result[0]["subscriptions"][0]["consumer_apps"][0]["app_name"] == "mpi-phw-sender-ca"
