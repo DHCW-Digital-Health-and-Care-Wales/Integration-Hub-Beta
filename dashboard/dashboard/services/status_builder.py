@@ -25,7 +25,7 @@ from dashboard.services.alarm2 import get_alarm2_config_page_data, get_alarm2_st
 from dashboard.services.alarm3 import get_alarm3_config_page_data, get_alarm3_status
 from dashboard.services.azure_monitor import get_exceptions, get_retry_delay_metrics_by_flow
 from dashboard.services.flows import build_flow_data, get_active_flows, overall_health
-from dashboard.services.service_bus import get_queues
+from dashboard.services.service_bus import get_namespace_snapshot
 
 LONDON_TZ = ZoneInfo("Europe/London")
 
@@ -46,17 +46,19 @@ def build_status() -> dict:
     # Run the three independent Azure API calls concurrently to cut cold-cache
     # latency from ~3× to ~1× round-trip time.
     with ThreadPoolExecutor(max_workers=3) as pool:
-        fut_queues = pool.submit(get_queues)
+        fut_snapshot = pool.submit(get_namespace_snapshot)
         fut_flows = pool.submit(get_active_flows)
         fut_exc = pool.submit(get_exceptions, hours=1)
-        queues = fut_queues.result()
+        namespace_snapshot = fut_snapshot.result()
+        queues = namespace_snapshot["queues"]
         active_flows = fut_flows.result()
         exceptions_1h = fut_exc.result()
 
     flows = build_flow_data(queues, active_flows)
 
-    total_active = sum(q.get("active_message_count", 0) for q in queues)
-    total_dlq = sum(q.get("dead_letter_message_count", 0) for q in queues)
+    namespace_kpis = namespace_snapshot["kpis"]
+    total_active = namespace_kpis["queue_active_messages"] + namespace_kpis["subscription_active_messages"]
+    total_dlq = namespace_kpis["queue_dead_letter_messages"] + namespace_kpis["subscription_dead_letter_messages"]
 
     exception_count = len(exceptions_1h)
 
@@ -101,6 +103,12 @@ def build_status() -> dict:
     return {
         "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
         "system_health": sys_health,
+        "namespace_kpis": namespace_kpis,
+        "flow_kpis": {
+            "flows_healthy": healthy_count,
+            "flows_warning": warning_count,
+            "flows_critical": critical_count,
+        },
         "kpis": {
             "total_active_messages": total_active,
             "total_dlq_messages": total_dlq,
@@ -111,6 +119,7 @@ def build_status() -> dict:
         },
         "flows": flows,
         "queues": queues,
+        "topics": namespace_snapshot["topics"],
         "recent_exceptions": exceptions_1h[:5],
         "retry_delays": retry_rows,
         "retry_delay_kpis": {

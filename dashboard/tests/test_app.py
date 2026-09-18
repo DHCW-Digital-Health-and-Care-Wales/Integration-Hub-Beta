@@ -43,6 +43,21 @@ EMPTY_QUEUES: list = []
 EMPTY_EXCEPTIONS: list = []
 EMPTY_MESSAGES: list = []
 EMPTY_CONTAINER_METRICS: dict = {}
+EMPTY_NAMESPACE_SNAPSHOT: dict = {
+    "queues": [],
+    "topics": [],
+    "kpis": {
+        "queue_active_messages": 0,
+        "queue_dead_letter_messages": 0,
+        "topic_active_messages": 0,
+        "topic_dead_letter_messages": 0,
+        "subscription_active_messages": 0,
+        "subscription_dead_letter_messages": 0,
+        "queue_count": 0,
+        "topic_count": 0,
+        "subscription_count": 0,
+    },
+}
 
 
 def _mock_patches() -> list:
@@ -57,7 +72,7 @@ def _mock_patches() -> list:
 class TestPageRoutes:
     def test_index_returns_200(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
             response = client.get("/")
@@ -65,7 +80,7 @@ class TestPageRoutes:
 
     def test_flows_returns_200(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
             patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
@@ -123,9 +138,44 @@ class TestPageRoutes:
         assert b"No exceptions were found in the last 72 hours" in response.data
 
     def test_service_bus_returns_200(self, client: FlaskClient) -> None:
-        with patch("dashboard.routes.pages.get_queues", return_value=EMPTY_QUEUES):
+        with patch("dashboard.routes.pages.cache.cached_nowait", return_value=EMPTY_NAMESPACE_SNAPSHOT):
             response = client.get("/service-bus")
         assert response.status_code == 200
+
+    def test_service_bus_includes_topics_when_queues_are_empty(self, client: FlaskClient) -> None:
+        snapshot = {
+            **EMPTY_NAMESPACE_SNAPSHOT,
+            "topics": [
+                {
+                    "name": "prefix-sbt-mpi-hl7-input",
+                    "status": "Active",
+                    "active_message_count": 2,
+                    "dead_letter_message_count": 0,
+                    "scheduled_message_count": 0,
+                    "message_count": 2,
+                    "subscriptions": [
+                        {
+                            "name": "prefix-sbs-outbound",
+                            "entity_name": "prefix-sbt-mpi-hl7-input/prefix-sbs-outbound",
+                            "status": "Active",
+                            "active_message_count": 2,
+                            "dead_letter_message_count": 0,
+                            "message_count": 2,
+                            "health": "healthy",
+                            "consumer_apps": [{"app_name": "sender-ca", "sender_type": "subscription_sender", "workflow_id": "mpi-to-topic"}],
+                        }
+                    ],
+                    "health": "healthy",
+                }
+            ],
+            "kpis": {**EMPTY_NAMESPACE_SNAPSHOT["kpis"], "topic_count": 1, "subscription_count": 1, "topic_active_messages": 2, "subscription_active_messages": 2},
+        }
+        with patch("dashboard.routes.pages.cache.cached_nowait", return_value=snapshot):
+            response = client.get("/service-bus")
+
+        assert response.status_code == 200
+        assert b"prefix-sbt-mpi-hl7-input" in response.data
+        assert b"prefix-sbs-outbound" in response.data
 
     def test_messages_returns_200(self, client: FlaskClient) -> None:
         with patch("dashboard.routes.pages.get_messages_today", return_value=EMPTY_MESSAGES):
@@ -146,8 +196,8 @@ class TestPageRoutes:
     def test_messages_cache_key_varies_by_queue_filter(self, client: FlaskClient) -> None:
         """Different queue filters must not share/overwrite the same cache entry."""
 
-        def fake_microservice_ids(queue_name: str) -> list[str]:
-            return ["svc-a"] if queue_name == "queueA" else ["svc-b"]
+        def fake_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
+            return ["svc-a"] if entity_type == "queue" and entity_name == "queueA" else ["svc-b"]
 
         def fake_messages(microservice_ids: list[str] | None = None) -> list[dict]:
             count = 1 if microservice_ids == ["svc-a"] else 2
@@ -157,7 +207,7 @@ class TestPageRoutes:
             ]
 
         with (
-            patch("dashboard.routes.pages.queue_to_microservice_ids", side_effect=fake_microservice_ids),
+            patch("dashboard.routes.pages.entity_to_microservice_ids", side_effect=fake_microservice_ids),
             patch("dashboard.routes.pages.get_messages_today", side_effect=fake_messages),
         ):
             response_a = client.get("/messages?queue=queueA")
@@ -167,6 +217,19 @@ class TestPageRoutes:
         assert response_b.status_code == 200
         assert b'<div class="kpi-number">1</div>' in response_a.data
         assert b'<div class="kpi-number">2</div>' in response_b.data
+
+    def test_messages_accepts_subscription_filter(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.routes.pages.entity_to_microservice_ids", return_value=["sub-sender"]),
+            patch("dashboard.routes.pages.entity_to_workflow_id", return_value="mpi-to-topic"),
+            patch("dashboard.routes.pages.get_flows", return_value={"mpi-to-topic": {"label": "MPI Outbound"}}),
+            patch("dashboard.routes.pages.get_messages_today", return_value=[{"timestamp": "2024-01-01T00:00:00", "event": "Processed", "app": "sub-sender", "dimensions": {}}]),
+            patch("dashboard.routes.pages.cache.cached_nowait", side_effect=[[{"timestamp": "2024-01-01T00:00:00", "event": "Processed", "app": "sub-sender", "dimensions": {}}], EMPTY_NAMESPACE_SNAPSHOT]),
+        ):
+            response = client.get("/messages?entity_type=subscription&entity_name=topic-a/sub-a")
+
+        assert response.status_code == 200
+        assert b"topic-a/sub-a" in response.data
 
 
 class TestSetLanguage:
@@ -233,7 +296,7 @@ class TestNavEnvLabel:
         with (
             patch("dashboard.app.config.ENVIRONMENT_LABEL", "TESTING"),
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#a855f7"),
-            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
             response = client.get("/")
@@ -244,7 +307,7 @@ class TestNavEnvLabel:
         with (
             patch("dashboard.app.config.ENVIRONMENT_LABEL", ""),
             patch("dashboard.app.config.ENVIRONMENT_COLOR", "#94a3b8"),
-            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
             response = client.get("/")
@@ -319,7 +382,7 @@ class TestApiRoutes:
 
     def test_api_status_returns_json(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.services.status_builder.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
             patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
         ):
             response = client.get("/api/status")
@@ -345,6 +408,24 @@ class TestApiRoutes:
         data = response.get_json()
         assert "messages" in data
         assert "count" in data
+
+    def test_api_messages_accepts_subscription_filter(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.routes.api.entity_to_microservice_ids", return_value=["sub-sender"]),
+            patch("dashboard.routes.api.get_messages_today", return_value=EMPTY_MESSAGES) as mock_messages,
+        ):
+            response = client.get("/api/messages?entity_type=subscription&entity_name=topic-a/sub-a")
+
+        assert response.status_code == 200
+        mock_messages.assert_called_once_with(microservice_ids=["sub-sender"])
+
+    def test_api_servicebus_metrics_accepts_subscription_filters(self, client: FlaskClient) -> None:
+        fake_metrics = {"incoming": [], "outgoing": [], "timespan": "1h"}
+        with patch("dashboard.routes.api.get_message_metrics", return_value=fake_metrics) as mock_metrics:
+            response = client.get("/api/servicebus-metrics?entity_type=subscription&entity_name=topic-a/sub-a")
+
+        assert response.status_code == 200
+        mock_metrics.assert_called_once_with(1, queue_name=None, entity_type="subscription", entity_name="topic-a/sub-a")
 
     def test_api_container_app_history_returns_json(self, client: FlaskClient) -> None:
         fake_history = {

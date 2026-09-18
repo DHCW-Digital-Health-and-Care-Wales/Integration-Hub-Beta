@@ -131,6 +131,112 @@ def get_subscriptions(topic_name: str) -> list[dict]:
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
         return []
 
+
+def _entity_health(active: int, dlq: int) -> str:
+    if active >= config.QUEUE_CRITICAL_THRESHOLD:
+        return "critical"
+    if active >= config.QUEUE_WARNING_THRESHOLD or dlq >= config.DLQ_WARNING_THRESHOLD:
+        return "warning"
+    return "healthy"
+
+
+def get_namespace_snapshot() -> dict:
+    """Return a unified namespace snapshot covering queues, topics, and subscriptions."""
+    from dashboard.services.arm import get_subscription_consumers_by_topic  # noqa: PLC0415
+
+    queues = []
+    for queue in get_queues():
+        active = queue.get("active_message_count", 0)
+        dlq = queue.get("dead_letter_message_count", 0)
+        queues.append(
+            {
+                **queue,
+                "entity_type": "queue",
+                "entity_name": queue["name"],
+                "health": _entity_health(active, dlq),
+            }
+        )
+
+    consumers_by_topic = get_subscription_consumers_by_topic()
+    topics: list[dict] = []
+    subscription_active_total = 0
+    subscription_dlq_total = 0
+
+    for topic in get_topics():
+        active = topic.get("active_message_count", 0)
+        dlq = topic.get("dead_letter_message_count", 0)
+        subscriptions_by_name: dict[str, dict] = {}
+
+        for consumer in consumers_by_topic.get(topic["name"], []):
+            sub_name = consumer.get("name")
+            if not sub_name:
+                continue
+            subscriptions_by_name[sub_name] = {
+                "name": sub_name,
+                "topic": topic["name"],
+                "entity_type": "subscription",
+                "entity_name": consumer.get("entity_name") or f"{topic['name']}/{sub_name}",
+                "status": "Unknown",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+                "message_count": 0,
+                "consumer_apps": consumer.get("consumer_apps", []),
+            }
+
+        for subscription in get_subscriptions(topic["name"]):
+            sub_name = subscription.get("name")
+            if not sub_name:
+                continue
+            existing = subscriptions_by_name.setdefault(
+                sub_name,
+                {
+                    "name": sub_name,
+                    "topic": topic["name"],
+                    "entity_type": "subscription",
+                    "entity_name": f"{topic['name']}/{sub_name}",
+                    "consumer_apps": [],
+                },
+            )
+            existing.update(subscription)
+            existing["entity_type"] = "subscription"
+            existing["entity_name"] = f"{topic['name']}/{sub_name}"
+            existing["topic"] = topic["name"]
+
+        subscriptions: list[dict] = []
+        for subscription in sorted(subscriptions_by_name.values(), key=lambda item: item["name"]):
+            sub_active = subscription.get("active_message_count", 0)
+            sub_dlq = subscription.get("dead_letter_message_count", 0)
+            subscription["health"] = _entity_health(sub_active, sub_dlq)
+            subscription_active_total += sub_active
+            subscription_dlq_total += sub_dlq
+            subscriptions.append(subscription)
+
+        topics.append(
+            {
+                **topic,
+                "entity_type": "topic",
+                "entity_name": topic["name"],
+                "health": _entity_health(active, dlq),
+                "subscriptions": subscriptions,
+            }
+        )
+
+    return {
+        "queues": queues,
+        "topics": topics,
+        "kpis": {
+            "queue_active_messages": sum(q.get("active_message_count", 0) for q in queues),
+            "queue_dead_letter_messages": sum(q.get("dead_letter_message_count", 0) for q in queues),
+            "topic_active_messages": sum(t.get("active_message_count", 0) for t in topics),
+            "topic_dead_letter_messages": sum(t.get("dead_letter_message_count", 0) for t in topics),
+            "subscription_active_messages": subscription_active_total,
+            "subscription_dead_letter_messages": subscription_dlq_total,
+            "queue_count": len(queues),
+            "topic_count": len(topics),
+            "subscription_count": sum(len(topic.get("subscriptions", [])) for topic in topics),
+        },
+    }
+
     try:
         client = _get_client()
         subs = client.subscriptions.list_by_topic(
@@ -207,14 +313,21 @@ def _zero_fill(points: list[dict], timespan_hours: int, bin_minutes: int) -> lis
     return filled
 
 
-def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) -> dict:
+def get_message_metrics(
+    timespan_hours: int = 1,
+    queue_name: str | None = None,
+    entity_type: str | None = None,
+    entity_name: str | None = None,
+) -> dict:
     """Query Log Analytics for Service Bus IncomingMessages / OutgoingMessages.
 
     Uses a KQL query against the ``AzureMetrics`` table rather than the
     Azure Monitor Metrics REST API, because the installed SDK only ships
     the ``LogsQueryClient``.
 
-    If *queue_name* is provided the results are scoped to that single queue.
+    If *entity_type* and *entity_name* are provided the results are scoped to
+    that queue, topic, or subscription. ``queue_name`` is kept for backward
+    compatibility and maps to ``entity_type='queue'``.
 
     Returns a dict with ``incoming`` and ``outgoing`` lists of
     ``{"time": ISO-string, "value": int}`` data points, plus a
@@ -237,12 +350,28 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
     else:
         bin_size = "1h"
 
-    queue_filter_kql = ""
-    if queue_name:
-        safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", queue_name)
-        # ResourceId contains the full path: .../namespaces/<ns>/queues/<queue-name>
-        # Resource column holds only the namespace name, so we must use ResourceId.
-        queue_filter_kql = f"| where tolower(ResourceId) contains '/{safe_queue.lower()}'\n"
+    entity_filter_kql = ""
+    entity_type = entity_type or ("queue" if queue_name else None)
+    entity_name = entity_name or queue_name
+    if entity_type and entity_name:
+        safe_entity_type = entity_type.lower()
+        if safe_entity_type == "queue":
+            safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", entity_name)
+            entity_filter_kql = f"| where tolower(ResourceId) contains '/queues/{safe_queue.lower()}'\n"
+        elif safe_entity_type == "topic":
+            safe_topic = re.sub(r"[^a-zA-Z0-9\-_]", "", entity_name)
+            entity_filter_kql = (
+                f"| where tolower(ResourceId) contains '/topics/{safe_topic.lower()}'\n"
+                "| where tolower(ResourceId) !contains '/subscriptions/'\n"
+            )
+        elif safe_entity_type == "subscription" and "/" in entity_name:
+            topic_name, subscription_name = entity_name.split("/", maxsplit=1)
+            safe_topic = re.sub(r"[^a-zA-Z0-9\-_]", "", topic_name)
+            safe_subscription = re.sub(r"[^a-zA-Z0-9\-_]", "", subscription_name)
+            entity_filter_kql = (
+                f"| where tolower(ResourceId) contains '/topics/{safe_topic.lower()}/'\n"
+                f"| where tolower(ResourceId) contains '/subscriptions/{safe_subscription.lower()}'\n"
+            )
 
     # Scope to this environment's Service Bus namespace so that results are not
     # polluted by other environments sharing the same Log Analytics workspace.
@@ -257,7 +386,7 @@ def get_message_metrics(timespan_hours: int = 1, queue_name: str | None = None) 
         "| where MetricName in ('IncomingMessages', 'OutgoingMessages')\n"
         f"| where TimeGenerated > ago({timespan_hours}h)\n"
         f"{ns_filter_kql}"
-        f"{queue_filter_kql}"
+        f"{entity_filter_kql}"
         f"| summarize Value=sum(Total) by bin(TimeGenerated, {bin_size}), MetricName\n"
         "| order by TimeGenerated asc\n"
     )
