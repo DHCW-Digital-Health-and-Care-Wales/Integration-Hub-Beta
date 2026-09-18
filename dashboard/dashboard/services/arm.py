@@ -97,6 +97,14 @@ _DISPLAY_META: dict[str, dict] = {
         "colour": "#f97316",
         "icon": "bi-hospital",
     },
+    "wds-to-wis": {
+        "label": "WDS → WIS",
+        "source": "WDS",
+        "destination": "WIS",
+        "colour": "#0ea5e9",
+        "icon": "bi-send",
+        "transformer": "WDS Transformer",
+    },
     "mpi-to-topic": {
         "label": "MPI Outbound",
         "source": "MPI",
@@ -185,6 +193,7 @@ def _classify_app(env: dict[str, str]) -> str:
     Roles:
     - ``server``: receives HL7 and sends to a queue or topic
     - ``transformer``: reads from one queue, writes to another
+    - ``subscription_transformer``: reads from a topic subscription, writes to a queue
     - ``sender``: reads from a queue and delivers HL7 downstream
     - ``subscription_sender``: reads from a topic subscription
     """
@@ -193,6 +202,8 @@ def _classify_app(env: dict[str, str]) -> str:
     has_egress_topic = bool(env.get("EGRESS_TOPIC_NAME"))
     has_ingress_topic = bool(env.get("INGRESS_TOPIC_NAME"))
 
+    if has_ingress_topic and has_egress_queue:
+        return "subscription_transformer"
     if has_ingress_topic:
         return "subscription_sender"
     if has_ingress_queue and has_egress_queue:
@@ -213,6 +224,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     """Build a single flow definition from a group of apps sharing a WORKFLOW_ID."""
     servers: list[dict] = []
     transformers: list[dict] = []
+    subscription_transformers: list[dict] = []
     senders: list[dict] = []
     subscription_senders: list[dict] = []
 
@@ -222,6 +234,8 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
             servers.append(app)
         elif role == "transformer":
             transformers.append(app)
+        elif role == "subscription_transformer":
+            subscription_transformers.append(app)
         elif role == "sender":
             senders.append(app)
         elif role == "subscription_sender":
@@ -242,6 +256,12 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     if not topic:
         for ss in subscription_senders:
             t = ss["env"].get("INGRESS_TOPIC_NAME")
+            if t:
+                topic = t
+                break
+    if not topic:
+        for st in subscription_transformers:
+            t = st["env"].get("INGRESS_TOPIC_NAME")
             if t:
                 topic = t
                 break
@@ -267,6 +287,15 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
             # Derive from app name: strip common prefix/suffix patterns
             raw = t_app["name"]
             transformer_name = raw.replace("-", " ").title()
+    elif subscription_transformers:
+        st_app = subscription_transformers[0]
+        post_queue = st_app["env"].get("EGRESS_QUEUE_NAME")
+        meta_tfr = _DISPLAY_META.get(workflow_id, {}).get("transformer")
+        if meta_tfr:
+            transformer_name = meta_tfr
+        else:
+            raw = st_app["name"]
+            transformer_name = raw.replace("-", " ").title()
     elif senders and not topic:
         # No transformer — server sends directly to sender queue
         post_queue = senders[0]["env"].get("INGRESS_QUEUE_NAME")
@@ -276,6 +305,26 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
         post_queue = server_egress_queue
 
     subscriptions: list[dict] = []
+    for st in subscription_transformers:
+        sub_name = st["env"].get("INGRESS_SUBSCRIPTION_NAME")
+        sub_topic = st["env"].get("INGRESS_TOPIC_NAME")
+        if not sub_name or not sub_topic:
+            continue
+        subscriptions.append(
+            {
+                "name": sub_name,
+                "topic": sub_topic,
+                "entity_name": f"{sub_topic}/{sub_name}",
+                "consumer_apps": [
+                    {
+                        "app_name": st["name"],
+                        "microservice_id": st["env"].get("MICROSERVICE_ID") or st["name"],
+                        "sender_type": "subscription_transformer",
+                        "workflow_id": workflow_id,
+                    }
+                ],
+            }
+        )
     for ss in subscription_senders:
         sub_name = ss["env"].get("INGRESS_SUBSCRIPTION_NAME")
         sub_topic = ss["env"].get("INGRESS_TOPIC_NAME")

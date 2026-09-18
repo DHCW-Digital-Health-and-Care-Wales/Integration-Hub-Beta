@@ -131,6 +131,27 @@ def get_subscriptions(topic_name: str) -> list[dict]:
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
         return []
 
+    try:
+        client = _get_client()
+        subs = client.subscriptions.list_by_topic(
+            config.AZURE_RESOURCE_GROUP,
+            config.AZURE_SERVICE_BUS_NAMESPACE,
+            topic_name,
+        )
+        return [
+            {
+                "name": s.name,
+                "status": str(s.status) if s.status else "Unknown",
+                "active_message_count": (s.count_details.active_message_count if s.count_details else 0) or 0,
+                "dead_letter_message_count": (s.count_details.dead_letter_message_count if s.count_details else 0) or 0,
+                "message_count": s.message_count or 0,
+            }
+            for s in subs
+        ]
+    except Exception as exc:
+        log.error("Failed to fetch subscriptions for topic %s: %s", topic_name, exc)
+        return []
+
 
 def _entity_health(active: int, dlq: int) -> str:
     if active >= config.QUEUE_CRITICAL_THRESHOLD:
@@ -236,27 +257,6 @@ def get_namespace_snapshot() -> dict:
             "subscription_count": sum(len(topic.get("subscriptions", [])) for topic in topics),
         },
     }
-
-    try:
-        client = _get_client()
-        subs = client.subscriptions.list_by_topic(
-            config.AZURE_RESOURCE_GROUP,
-            config.AZURE_SERVICE_BUS_NAMESPACE,
-            topic_name,
-        )
-        return [
-            {
-                "name": s.name,
-                "status": str(s.status) if s.status else "Unknown",
-                "active_message_count": (s.count_details.active_message_count if s.count_details else 0) or 0,
-                "dead_letter_message_count": (s.count_details.dead_letter_message_count if s.count_details else 0) or 0,
-                "message_count": s.message_count or 0,
-            }
-            for s in subs
-        ]
-    except Exception as exc:
-        log.error("Failed to fetch subscriptions for topic %s: %s", topic_name, exc)
-        return []
 
 
 # ---------------------------------------------------------------------------
