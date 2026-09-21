@@ -339,6 +339,9 @@ requires-dist = [
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
+[package.metadata.requires-dev]
+dev = [{ name = "coverage", specifier = ">=7.6.0" }]
+
 [[package]]
 name = "fhir-core"
 version = "1.1.10"
@@ -381,6 +384,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.9.1" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "ruff", specifier = ">=0.14.8" },
 ]
@@ -399,6 +403,9 @@ requires-dist = [
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "coverage", specifier = ">=7.6.0" }]
 
 [[package]]
 name = "hishel"
@@ -455,6 +462,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -503,6 +511,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -549,6 +558,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -605,6 +615,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -631,6 +642,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -727,6 +739,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.15.0" },
 ]
@@ -761,6 +774,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.9.1" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "ruff", specifier = ">=0.14.8" },
 ]
@@ -1120,6 +1134,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.15.0" },
 ]
@@ -1153,7 +1168,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "otel-lib", directory = "../../shared_libs/otel_lib" }]
+dev = [
+    { name = "coverage", specifier = ">=7.6.0" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+]
 
 [[package]]
 name = "proms-fhir-transformer"
@@ -1195,6 +1213,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = "==1.18.2" },
     { name = "ruff", specifier = "==0.14.9" },
 ]
@@ -1405,6 +1424,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.9.1" },
+    { name = "coverage", specifier = ">=7.6.0" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "ruff", specifier = ">=0.14.8" },
 ]
