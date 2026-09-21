@@ -169,20 +169,128 @@ _PROMS_PREREAD = """\
   <clinicianName>Price, David</clinicianName>
 </PromsEventRequest>"""
 
+# --- TEMP: placeholder samples for the additional WPAS PROMS event scenarios ---
+# No real WPAS sample payloads exist yet for these codes (SURGERY-PERF, SURGERY-DN,
+# PREOP-VIS, PREOP-AR are all placeholder eventCode values — see
+# PROMS Scenarios.xlsx "PROMS Message-TEMP" column). Field values are dummy/
+# best-guess data pending real samples from WPAS.
+
+_PROMS_SURGERY_PERF = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <eventCode>SURGERY-PERF</eventCode>
+  <eventDate>2024-07-21</eventDate>
+  <eventPathway>ORTHO</eventPathway>
+  <pathway>7A22867981</pathway>
+  <nhsNumber>9434766118</nhsNumber>
+  <crn>CV0044318</crn>
+  <patientFirstname>Ifor</patientFirstname>
+  <patientSurname>Rees</patientSurname>
+  <gender>M</gender>
+  <dob>1968-02-11</dob>
+  <postCode>CF10 1EP</postCode>
+  <referrer_location>UNIVERSITY HOSPITAL OF WALES, HEATH PARK, CARDIFF, CF14 4XW</referrer_location>
+  <referrer_postcode>CF14 4XW</referrer_postcode>
+  <dhaCode>7A4</dhaCode>
+  <consultant_code>JONMG</consultant_code>
+  <clinicianName>Morgan, James</clinicianName>
+  <appointmentDate>2024-07-21</appointmentDate>
+  <appointmentTime>10:00</appointmentTime>
+</PromsEventRequest>"""
+
+_PROMS_DISCHARGE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <eventCode>SURGERY-DN</eventCode>
+  <eventDate>2024-07-23</eventDate>
+  <pathway>7A22867982</pathway>
+  <activityNotekey>ANK-7A22867982</activityNotekey>
+  <nhsNumber>9434766126</nhsNumber>
+  <crn>CV0044326</crn>
+  <patientFirstname>Ifor</patientFirstname>
+  <patientSurname>Rees</patientSurname>
+  <gender>M</gender>
+  <dob>1968-02-11</dob>
+  <postCode>CF10 1EP</postCode>
+  <referrer_location>UNIVERSITY HOSPITAL OF WALES, HEATH PARK, CARDIFF, CF14 4XW</referrer_location>
+  <referrer_postcode>CF14 4XW</referrer_postcode>
+  <dhaCode>7A4</dhaCode>
+  <consultant_code>JONMG</consultant_code>
+  <clinicianName>Morgan, James</clinicianName>
+</PromsEventRequest>"""
+
+_PROMS_OUTPATIENT = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <eventCode>PREOP-VIS</eventCode>
+  <eventDate>2024-08-20</eventDate>
+  <pathway>7A22867984</pathway>
+  <activityNotekey>ANK-7A22867984</activityNotekey>
+  <nhsNumber>9434766142</nhsNumber>
+  <crn>SB0011318</crn>
+  <patientFirstname>Bethan</patientFirstname>
+  <patientSurname>Lewis</patientSurname>
+  <gender>F</gender>
+  <dob>1972-05-09</dob>
+  <postCode>SA2 8QA</postCode>
+  <referrer_location>MORRISTON HOSPITAL, SWANSEA, SA6 6NL</referrer_location>
+  <referrer_postcode>SA6 6NL</referrer_postcode>
+  <dhaCode>7A2</dhaCode>
+  <consultant_code>DAVIP</consultant_code>
+  <clinicianName>Price, David</clinicianName>
+</PromsEventRequest>"""
+
+_PROMS_RESCHEDULE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <eventCode>PREOP-AR</eventCode>
+  <eventDate>2024-08-10</eventDate>
+  <pathway>7A22867983</pathway>
+  <activityNotekey>ANK-7A22867983</activityNotekey>
+  <nhsNumber>9434766134</nhsNumber>
+  <crn>SB0011300</crn>
+  <patientFirstname>Gareth</patientFirstname>
+  <patientSurname>Jones</patientSurname>
+  <gender>M</gender>
+  <dob>1960-01-20</dob>
+  <postCode>SA2 8QA</postCode>
+  <referrer_location>MORRISTON HOSPITAL, SWANSEA, SA6 6NL</referrer_location>
+  <referrer_postcode>SA6 6NL</referrer_postcode>
+  <dhaCode>7A2</dhaCode>
+  <consultant_code>DAVIP</consultant_code>
+  <clinicianName>Price, David</clinicianName>
+  <main_specialty_name>Trauma and Orthopaedics</main_specialty_name>
+  <appointmentDate>2024-08-22</appointmentDate>
+  <appointmentTime>16:30</appointmentTime>
+</PromsEventRequest>"""
+
 
 class PromsPlugin(ServicePlugin):
     tab_label = "PROMS Transformer"
     description = (
         "WPAS XML (PromsEventRequest) → Promptly FHIR R4B message Bundle\n"
-        "Supported eventCodes: REFERRAL · SURGERY · PREOP · INPATIENT · CANCELLED · PREREAD"
+        "Supported eventCodes: REFERRAL · SURGERY(-PROC/-PERF/-DN) · PREOP(-AS/-VIS/-AR) · "
+        "INPATIENT · CANCELLED · PREREAD  (TEMP: suffixed codes are placeholders, see README)"
     )
     input_label = "WPAS PromsEventRequest XML"
     output_label = "FHIR R4B JSON Bundle"
     button_label = "▶  Transform"
     samples = {
         "REFERRAL (Referral)": _PROMS_REFERRAL,
-        "SURGERY (Procedure)": _PROMS_SURGERY,
-        "PREOP (Appointment)": _PROMS_PREOP,
+        "SURGERY (Procedure, legacy)": _PROMS_SURGERY,
+        "SURGERY-PERF (Surgery Performed) TEMP": _PROMS_SURGERY_PERF,
+        "SURGERY-DN (Discharge) TEMP": _PROMS_DISCHARGE,
+        "PREOP (Appointment, legacy)": _PROMS_PREOP,
+        "PREOP-VIS (Outpatient Visit) TEMP": _PROMS_OUTPATIENT,
+        "PREOP-AR (Appointment Reschedule) TEMP": _PROMS_RESCHEDULE,
         "INPATIENT (Encounter)": _PROMS_INPATIENT,
         "CANCELLED (Appointment Cancelled)": _PROMS_CANCELLED,
         "PREREAD (Pre-admission)": _PROMS_PREREAD,
@@ -201,3 +309,4 @@ class PromsPlugin(ServicePlugin):
         entries = [e.resource.get_resource_type() for e in (bundle.entry or [])]
         summary = f"✓  {len(entries)} entries: {', '.join(entries)}"
         return pretty, summary
+

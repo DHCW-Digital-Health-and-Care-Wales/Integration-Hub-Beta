@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Integration Hub Tester GUI",
+            "name": "Component Tester GUI",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/dev_tools/integration_hub_tester/app.py",
