@@ -76,10 +76,15 @@ user story:
   (previously shared by 2 scenarios). Whether WPAS will actually emit these
   literal values is unconfirmed. Bare `SURGERY`/`PREOP` are kept as a legacy
   fallback so unmigrated payloads still route somewhere sensible.
-- The Discharge `Encounter.status`/`Encounter.class` values (`finished` /
-  `DIS` / `Discharge`) are a placeholder red/bold addition the user made to
-  the Encounter sheet of the "Final" mapping spreadsheet; not yet formally
-  confirmed.
+- The Discharge `Encounter.status`/`Encounter.class` values are a placeholder
+  red/bold addition the user made to the Encounter sheet of the "Final"
+  mapping spreadsheet; not yet formally confirmed. `status="finished"` is
+  used as given, but `class` reuses the valid v3 ActCode `IMP` / "Inpatient
+  encounter" rather than the originally-suggested `DIS` — the v3 ActCode
+  `EncounterClass` value set has no "discharge" code, since discharge isn't a
+  distinct encounter class, just the same encounter reaching `finished`
+  status (a Copilot PR review flagged the original `DIS` code as
+  terminology-invalid).
 - Appointment Reschedule has no dedicated `eventCode` in either spreadsheet
   scenario description — the acceptance criteria describe it purely as "an
   appointment update message ... when the date or time has changed" with no
@@ -222,10 +227,13 @@ from the specification owner:
   and `PREOP-AS`/`PREOP-VIS`/`PREOP-AR` are TEMP values pending confirmation
   that WPAS will emit distinct `eventCode` values per scenario (see
   [Message type routing](#message-type-routing)).
-- **Discharge Encounter values are placeholders.** `status="finished"`,
-  `class.code="DIS"`, `class.display="Discharge"` are a TEMP red/bold addition
-  the user made to the Encounter sheet of the "Final" mapping spreadsheet;
-  not yet formally confirmed by WPAS/the spec owner.
+- **Discharge Encounter values are placeholders.** `status="finished"` is a
+  TEMP red/bold addition the user made to the Encounter sheet of the "Final"
+  mapping spreadsheet; not yet formally confirmed by WPAS/the spec owner.
+  `class.code`/`class.display` reuse the valid v3 ActCode `IMP` / "Inpatient
+  encounter" (not the originally-suggested `DIS`, which is not a valid
+  `EncounterClass` code — flagged by a Copilot PR review) since discharge is
+  represented by encounter status, not a distinct class.
 - **No real WPAS sample data for the four new scenarios** (Surgery Performed,
   Outpatient Visit, Discharge Notification, Appointment Reschedule) — the test
   fixtures for these are dummy/best-guess values modelled on the existing

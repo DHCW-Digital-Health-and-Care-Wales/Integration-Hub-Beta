@@ -19,6 +19,8 @@ from tests.wpas_messages import (
     EXPLICIT_EVENT_CODE_MESSAGE,
     INPATIENT_MESSAGE,
     LEGACY_MESSAGE_TYPE_MESSAGE,
+    LEGACY_MESSAGE_TYPE_PREOP_MESSAGE,
+    LEGACY_MESSAGE_TYPE_SURGERY_MESSAGE,
     MINIMAL_REFERRAL_MESSAGE,
     NESTED_REFERRAL_MESSAGE,
     OUTPATIENT_MESSAGE,
@@ -96,6 +98,25 @@ class TestMessageTypeRouting(unittest.TestCase):
         bundle = build(LEGACY_MESSAGE_TYPE_MESSAGE)
         header = resource_at(bundle, 0)
         self.assertEqual(header.eventCoding.code, "REFERRAL")
+
+    def test_legacy_message_type_surgery_preserves_raw_code(self) -> None:
+        # Regression test: a legacy payload routed via <MESSAGE_TYPE>SURGERY</MESSAGE_TYPE>
+        # (no <eventCode> field) must still route to PROCEDURE_PERFORMED, but
+        # eventCoding.code must preserve the supplied "SURGERY" value rather than
+        # being silently rewritten to the canonical "SURGERY-PROC" placeholder code.
+        bundle = build(LEGACY_MESSAGE_TYPE_SURGERY_MESSAGE)
+        header = resource_at(bundle, 0)
+        self.assertEqual(header.eventCoding.code, "SURGERY")
+        types = [e.resource.get_resource_type() for e in bundle.entry]
+        self.assertIn("Procedure", types)
+
+    def test_legacy_message_type_preop_preserves_raw_code(self) -> None:
+        # Same regression as above for the PREOP -> APPOINTMENT_SCHEDULED legacy alias.
+        bundle = build(LEGACY_MESSAGE_TYPE_PREOP_MESSAGE)
+        header = resource_at(bundle, 0)
+        self.assertEqual(header.eventCoding.code, "PREOP")
+        types = [e.resource.get_resource_type() for e in bundle.entry]
+        self.assertIn("Appointment", types)
 
     def test_routing_is_case_insensitive(self) -> None:
         mt = resolve_message_type("referral")

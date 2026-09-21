@@ -391,3 +391,34 @@ LEGACY_MESSAGE_TYPE_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
   <patientFirstname>Type</patientFirstname>
 </PromsEventRequest>
 """
+
+# Legacy SURGERY/PREOP payloads routed via the MESSAGE_TYPE alias (no
+# <eventCode> field at all) rather than the modern <eventCode> field. These
+# regression-test that eventCoding.code preserves the raw supplied routing
+# value ("SURGERY"/"PREOP") rather than being silently rewritten to the
+# canonical disambiguated MessageType code (SURGERY-PROC/PREOP-AS).
+LEGACY_MESSAGE_TYPE_SURGERY_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <MESSAGE_TYPE>SURGERY</MESSAGE_TYPE>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <nhsNumber>9434765927</nhsNumber>
+  <patientFirstname>Megan</patientFirstname>
+  <patientSurname>Williams</patientSurname>
+  <gender>F</gender>
+  <dob>1975-06-30</dob>
+</PromsEventRequest>
+"""
+
+LEGACY_MESSAGE_TYPE_PREOP_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
+<PromsEventRequest>
+  <MESSAGE_TYPE>PREOP</MESSAGE_TYPE>
+  <system_id>149</system_id>
+  <hbCode>X98</hbCode>
+  <nhsNumber>9434765935</nhsNumber>
+  <patientFirstname>Gareth</patientFirstname>
+  <patientSurname>Jones</patientSurname>
+  <gender>M</gender>
+  <dob>1960-01-20</dob>
+</PromsEventRequest>
+"""

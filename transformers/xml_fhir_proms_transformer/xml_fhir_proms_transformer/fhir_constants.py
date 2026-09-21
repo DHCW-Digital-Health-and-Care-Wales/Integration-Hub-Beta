@@ -114,9 +114,15 @@ ENCOUNTER_CLASS_PREADMISSION_DISPLAY = "Pre-admission"
 ENCOUNTER_CLASS_AMBULATORY_CODE = "AMB"
 ENCOUNTER_CLASS_AMBULATORY_DISPLAY = "Ambulatory"
 # TEMP: placeholder pending WPAS/spec owner confirmation (WPAS PROMS Mapping -
-# Final.xlsx, Encounter sheet, red/bold additions).
-ENCOUNTER_CLASS_DISCHARGE_CODE = "DIS"
-ENCOUNTER_CLASS_DISCHARGE_DISPLAY = "Discharge"
+# Final.xlsx, Encounter sheet, red/bold additions). The v3 ActCode
+# EncounterClass value set has no dedicated "discharge" code — discharge is
+# not a distinct encounter class, it is the same (e.g. inpatient) encounter
+# reaching status="finished" (optionally with hospitalization.
+# dischargeDisposition, not yet mapped). Reusing the valid IMP code here keeps
+# the bundle terminology-valid; revisit once the spec owner confirms whether
+# discharges should also carry a dischargeDisposition or a different class.
+ENCOUNTER_CLASS_DISCHARGE_CODE = ENCOUNTER_CLASS_INPATIENT_CODE
+ENCOUNTER_CLASS_DISCHARGE_DISPLAY = ENCOUNTER_CLASS_INPATIENT_DISPLAY
 
 # --- Procedure --------------------------------------------------------------
 # Confirmed by the WPAS PROMS Mapping - FHIR Review (By Profile v1-0 - Final)

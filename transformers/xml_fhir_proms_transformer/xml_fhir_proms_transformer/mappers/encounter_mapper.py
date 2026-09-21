@@ -32,7 +32,9 @@ _ENCOUNTER_CLASS: dict[str, tuple[str, str, str]] = {
     "PREADMISSION": ("PRENC", "pre-admission", "planned"),
     "OUTPATIENT_VISIT": (ENCOUNTER_CLASS_AMBULATORY_CODE, ENCOUNTER_CLASS_AMBULATORY_DISPLAY, "finished"),
     # TEMP: placeholder pending WPAS/spec owner confirmation (red/bold addition
-    # in WPAS PROMS Mapping - Final.xlsx, Encounter sheet).
+    # in WPAS PROMS Mapping - Final.xlsx, Encounter sheet). Class code reuses
+    # IMP (see fhir_constants.ENCOUNTER_CLASS_DISCHARGE_CODE) since v3 ActCode
+    # has no dedicated "discharge" class — only status differs ("finished").
     "DISCHARGE": (ENCOUNTER_CLASS_DISCHARGE_CODE, ENCOUNTER_CLASS_DISCHARGE_DISPLAY, "finished"),
 }
 _DEFAULT_CLASS = ("AMB", "ambulatory", "in-progress")
