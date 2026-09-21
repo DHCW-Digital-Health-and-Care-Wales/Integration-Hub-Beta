@@ -1,15 +1,24 @@
 """WPAS -> Promptly FHIR message Bundle transformer.
 
 Assembles the FHIR R4B message bundles defined by the WPAS PROMS Mapping
-spreadsheet (By Profile v1-0). The entry order is positional:
+spreadsheet (By Profile v1-0 - Final) and the PROMS Scenarios spreadsheet. The
+entry order is positional:
 
-    REFERRAL:  MessageHeader, Patient, ServiceRequest, PractitionerRole,
-               Practitioner, Organization, Location
-    SURGERY:   MessageHeader, Patient, Procedure, Practitioner, Organization, Location
-    PREOP:     MessageHeader, Patient, Appointment, Practitioner, Organization, Location
-    INPATIENT: MessageHeader, Patient, Encounter, Practitioner, Organization, Location
-    CANCELLED: MessageHeader, Patient, Appointment(cancelled), Practitioner, Organization, Location
-    PREREAD:   MessageHeader, Patient, Encounter(pre-admission), Practitioner, Organization, Location
+    REFERRAL:     MessageHeader, Patient, ServiceRequest, PractitionerRole,
+                  Practitioner, Organization, Location
+    SURGERY-PROC: MessageHeader, Patient, Procedure, Practitioner, Organization, Location
+    SURGERY-PERF: MessageHeader, Patient, Procedure, Practitioner, Organization, Location
+    SURGERY-DN:   MessageHeader, Patient, Encounter(discharge), Practitioner, Organization, Location
+    PREOP-AS:     MessageHeader, Patient, Appointment, Practitioner, Organization, Location
+    PREOP-VIS:    MessageHeader, Patient, Encounter(outpatient), Practitioner, Organization, Location
+    PREOP-AR:     MessageHeader, Patient, Appointment(rescheduled), Practitioner, Organization, Location
+    INPATIENT:    MessageHeader, Patient, Encounter, Practitioner, Organization, Location
+    CANCELLED:    MessageHeader, Patient, Appointment(cancelled), Practitioner, Organization, Location
+    PREREAD:      MessageHeader, Patient, Encounter(pre-admission), Practitioner, Organization, Location
+
+SURGERY/PREOP (without a suffix) are kept as a legacy fallback — see
+message_types.py. SURGERY-*/PREOP-* are TEMP placeholder codes pending
+WPAS/spec owner confirmation.
 
 Resource ids are UUIDs cross-referenced between entries as `urn:uuid:` fullUrls.
 Target FHIR version is R4B.
@@ -45,6 +54,12 @@ logger = logging.getLogger(__name__)
 def _entry(resource_uuid: str, resource: Resource) -> BundleEntry:
     """Build a bundle entry with the urn:uuid: fullUrl the mapping requires."""
     return BundleEntry(fullUrl=urn_uuid(resource_uuid), resource=resource)
+
+
+# Groups of MessageType.name values that share a clinical-resource mapper.
+_PROCEDURE_TYPES = ("PROCEDURE_PERFORMED", "SURGERY_PERFORMED")
+_APPOINTMENT_TYPES = ("APPOINTMENT_SCHEDULED", "APPOINTMENT_CANCELLED", "APPOINTMENT_RESCHEDULE")
+_ENCOUNTER_TYPES = ("INPATIENT_ADMISSION", "PREADMISSION", "OUTPATIENT_VISIT", "DISCHARGE")
 
 
 def _build_referral_bundle(
@@ -128,7 +143,8 @@ def _build_standard_bundle(
     uuid_factory: UuidFactory,
     resolver: ReferenceDataResolver,
 ) -> Bundle:
-    """Assemble the non-Referral bundles (Surgery, PreOp, Inpatient, Cancelled, PreRead).
+    """Assemble the non-Referral bundles (Procedure, Surgery, Discharge, Appointment,
+    Outpatient, Reschedule, Inpatient, Cancelled, PreRead).
 
     Entry order: MessageHeader, Patient, <clinical resource>,
                  Practitioner, Organization, Location
@@ -152,13 +168,13 @@ def _build_standard_bundle(
     # Build the clinical resource (entry[2]) based on bundle type
     type_name = message_type.name
     clinical_resource: Resource
-    if type_name == "PROCEDURE_PERFORMED":
+    if type_name in _PROCEDURE_TYPES:
         clinical_resource = map_procedure(message, clinical_uuid, patient_uuid)
-    elif type_name in ("APPOINTMENT_SCHEDULED", "APPOINTMENT_CANCELLED"):
+    elif type_name in _APPOINTMENT_TYPES:
         clinical_resource = map_appointment(
             message, clinical_uuid, patient_uuid, message_type, linked_practitioner_uuid
         )
-    elif type_name in ("INPATIENT_ADMISSION", "PREADMISSION"):
+    elif type_name in _ENCOUNTER_TYPES:
         clinical_resource = map_encounter(message, clinical_uuid, patient_uuid, message_type)
     else:
         # Fallback — log and build an encounter as the safest default
@@ -174,9 +190,9 @@ def _build_standard_bundle(
                 message_header_uuid=mh_uuid,
                 patient_uuid=patient_uuid,
                 organization_uuid=linked_org_uuid,
-                procedure_uuid=clinical_uuid if type_name == "PROCEDURE_PERFORMED" else None,
-                appointment_uuid=clinical_uuid if "APPOINTMENT" in type_name else None,
-                encounter_uuid=clinical_uuid if "ADMISSION" in type_name or "PREADMISSION" in type_name else None,
+                procedure_uuid=clinical_uuid if type_name in _PROCEDURE_TYPES else None,
+                appointment_uuid=clinical_uuid if type_name in _APPOINTMENT_TYPES else None,
+                encounter_uuid=clinical_uuid if type_name in _ENCOUNTER_TYPES else None,
                 practitioner_uuid=linked_practitioner_uuid,
             ),
         ),

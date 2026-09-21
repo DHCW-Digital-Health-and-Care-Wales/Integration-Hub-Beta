@@ -1,16 +1,28 @@
 """Message type routing: WPAS eventCode -> FHIR bundle shape.
 
-Derived from the WPAS PROMS Mapping spreadsheet (FHIR Review v1-0).  The actual
-WPAS payload always has root element <PromsEventRequest>; routing is on the
-<eventCode> child field, not the root tag.
+Derived from the WPAS PROMS Mapping spreadsheet (FHIR Review v1-0) and the
+PROMS Scenarios spreadsheet. The actual WPAS payload always has root element
+<PromsEventRequest>; routing is on the <eventCode> child field, not the root
+tag.
 
     eventCode values -> bundle shape
-    REFERRAL  -> Referral bundle  (MH, Patient, ServiceRequest, PractitionerRole, Practitioner, Org, Location)
-    SURGERY   -> Procedure bundle (MH, Patient, Procedure, Practitioner, Org, Location)
-    PREOP     -> Appointment bundle (MH, Patient, Appointment, Practitioner, Org, Location)
-    INPATIENT -> Encounter bundle (MH, Patient, Encounter, Practitioner, Org, Location)
-    CANCELLED -> Appointment Cancellation bundle (same shape as PREOP, status=cancelled)
-    PREREAD   -> Encounter Pre-admission bundle (same shape as INPATIENT)
+    REFERRAL     -> Referral bundle    (MH, Patient, ServiceRequest, PractitionerRole, Practitioner, Org, Location)
+    SURGERY-PROC -> Procedure bundle   (MH, Patient, Procedure, Practitioner, Org, Location)
+    SURGERY-PERF -> Surgery bundle     (same shape as SURGERY-PROC)
+    SURGERY-DN   -> Discharge bundle   (MH, Patient, Encounter, Practitioner, Org, Location)
+    PREOP-AS     -> Appointment bundle (MH, Patient, Appointment, Practitioner, Org, Location)
+    PREOP-VIS    -> Outpatient bundle  (MH, Patient, Encounter, Practitioner, Org, Location)
+    PREOP-AR     -> Appointment Reschedule bundle (same shape as PREOP-AS)
+    INPATIENT    -> Encounter bundle   (MH, Patient, Encounter, Practitioner, Org, Location)
+    CANCELLED    -> Appointment Cancellation bundle (same shape as PREOP-AS, status=cancelled)
+    PREREAD      -> Encounter Pre-admission bundle (same shape as INPATIENT)
+
+TEMP: SURGERY-PROC/PERF/DN and PREOP-AS/VIS/AR are placeholder eventCode values
+(PROMS Scenarios.xlsx "PROMS Message-TEMP" column) pending confirmation from
+WPAS/the spec owner that WPAS will actually emit distinct codes per scenario.
+The plain "SURGERY" and "PREOP" codes are kept as a legacy fallback, routed to
+the original Procedure Performed / Appointment Scheduled scenarios, in case
+WPAS has not yet switched to the new codes.
 
 Each MessageType fixes the bundle entry order and carries the metadata needed by
 the MessageHeader mapper (eventCoding code/display/definition).
@@ -23,16 +35,24 @@ from dataclasses import dataclass, field
 from .fhir_constants import (
     APPOINTMENT_CANCELLED_CODE,
     APPOINTMENT_CANCELLED_DISPLAY,
+    APPOINTMENT_RESCHEDULE_CODE,
+    APPOINTMENT_RESCHEDULE_DISPLAY,
     APPOINTMENT_SCHEDULED_CODE,
     APPOINTMENT_SCHEDULED_DISPLAY,
-    ENCOUNTER_CODE,
-    ENCOUNTER_DISPLAY,
+    DISCHARGE_CODE,
+    DISCHARGE_DISPLAY,
+    INPATIENT_CODE,
+    INPATIENT_DISPLAY,
+    OUTPATIENT_CODE,
+    OUTPATIENT_DISPLAY,
     PREADMISSION_CODE,
     PREADMISSION_DISPLAY,
     PROCEDURE_CODE,
     PROCEDURE_DISPLAY,
     REFERRAL_EVENT_CODE,
     REFERRAL_EVENT_DISPLAY,
+    SURGERY_PERFORMED_CODE,
+    SURGERY_PERFORMED_DISPLAY,
     WPAS_EVENT_DEFINITION_BASE,
 )
 
@@ -84,7 +104,7 @@ REFERRAL = MessageType(
 )
 
 PROCEDURE_PERFORMED = MessageType(
-    code="SURGERY",
+    code="SURGERY-PROC",
     name="PROCEDURE_PERFORMED",
     event_code=PROCEDURE_CODE,
     event_display=PROCEDURE_DISPLAY,
@@ -93,7 +113,7 @@ PROCEDURE_PERFORMED = MessageType(
 )
 
 APPOINTMENT_SCHEDULED = MessageType(
-    code="PREOP",
+    code="PREOP-AS",
     name="APPOINTMENT_SCHEDULED",
     event_code=APPOINTMENT_SCHEDULED_CODE,
     event_display=APPOINTMENT_SCHEDULED_DISPLAY,
@@ -105,8 +125,8 @@ APPOINTMENT_SCHEDULED = MessageType(
 INPATIENT_ADMISSION = MessageType(
     code="INPATIENT",
     name="INPATIENT_ADMISSION",
-    event_code=ENCOUNTER_CODE,
-    event_display=ENCOUNTER_DISPLAY,
+    event_code=INPATIENT_CODE,
+    event_display=INPATIENT_DISPLAY,
     entry_order=(MESSAGE_HEADER, PATIENT, ENCOUNTER) + _COMMON_TAIL,
     definition=f"{WPAS_EVENT_DEFINITION_BASE}/encounter",
 )
@@ -132,45 +152,61 @@ PREADMISSION = MessageType(
 
 # Surgery performed maps to the same shape as Procedure.
 SURGERY_PERFORMED = MessageType(
-    code="SURGERY",
-    name="SurgeryPerformed",
-    event_code=PROCEDURE_CODE,
-    event_display=PROCEDURE_DISPLAY,
+    code="SURGERY-PERF",
+    name="SURGERY_PERFORMED",
+    event_code=SURGERY_PERFORMED_CODE,
+    event_display=SURGERY_PERFORMED_DISPLAY,
     entry_order=(MESSAGE_HEADER, PATIENT, PROCEDURE) + _COMMON_TAIL,
     definition=f"{WPAS_EVENT_DEFINITION_BASE}/surgery",
 )
 
 # Outpatient visit uses Encounter shape.
 OUTPATIENT_VISIT = MessageType(
-    code="PREOP",
-    name="OutpatientVisit",
-    event_code=ENCOUNTER_CODE,
-    event_display=ENCOUNTER_DISPLAY,
+    code="PREOP-VIS",
+    name="OUTPATIENT_VISIT",
+    event_code=OUTPATIENT_CODE,
+    event_display=OUTPATIENT_DISPLAY,
     entry_order=(MESSAGE_HEADER, PATIENT, ENCOUNTER) + _COMMON_TAIL,
     definition=f"{WPAS_EVENT_DEFINITION_BASE}/outpatient",
 )
 
 # Discharge maps to Encounter.
 DISCHARGE = MessageType(
-    code="SURGERY",
-    name="Discharge",
-    event_code=ENCOUNTER_CODE,
-    event_display=ENCOUNTER_DISPLAY,
+    code="SURGERY-DN",
+    name="DISCHARGE",
+    event_code=DISCHARGE_CODE,
+    event_display=DISCHARGE_DISPLAY,
     entry_order=(MESSAGE_HEADER, PATIENT, ENCOUNTER) + _COMMON_TAIL,
     definition=f"{WPAS_EVENT_DEFINITION_BASE}/discharge",
 )
 
-# Primary routing table: one canonical MessageType per distinct eventCode.
-# The spreadsheet defines multiple scenarios for SURGERY and PREOP but the
-# eventCode alone cannot distinguish them — a single mapping is used per code
-# until the specification owner confirms a disambiguation field.
-# SPEC GAP: SURGERY is used for procedure-performed, surgery-performed and
-# discharge. PREOP is used for appointment-scheduled and outpatient-visit.
-# These are currently treated identically per code; raise with spec owner.
+# Appointment reschedule uses the same shape as Appointment Scheduled; the
+# Appointment.start/.end carry the updated date/time (see appointment_mapper).
+APPOINTMENT_RESCHEDULE = MessageType(
+    code="PREOP-AR",
+    name="APPOINTMENT_RESCHEDULE",
+    event_code=APPOINTMENT_RESCHEDULE_CODE,
+    event_display=APPOINTMENT_RESCHEDULE_DISPLAY,
+    entry_order=(MESSAGE_HEADER, PATIENT, APPOINTMENT) + _COMMON_TAIL,
+    definition=f"{WPAS_EVENT_DEFINITION_BASE}/appointment-reschedule",
+    appointment_status="booked",
+)
+
+# Primary routing table: one MessageType per distinct eventCode.
+# TEMP: the SURGERY-*/PREOP-* codes are placeholders (see module docstring).
+# The bare "SURGERY"/"PREOP" codes are kept as a legacy fallback, routed to
+# the original Procedure Performed / Appointment Scheduled scenarios, for
+# payloads that have not yet switched to the new disambiguated codes.
 MESSAGE_TYPES_BY_CODE: dict[str, MessageType] = {
     "REFERRAL": REFERRAL,
-    "SURGERY": PROCEDURE_PERFORMED,   # SPEC GAP: also maps surgery/discharge
-    "PREOP": APPOINTMENT_SCHEDULED,   # SPEC GAP: also maps outpatient visit
+    "SURGERY": PROCEDURE_PERFORMED,  # legacy fallback
+    "SURGERY-PROC": PROCEDURE_PERFORMED,
+    "SURGERY-PERF": SURGERY_PERFORMED,
+    "SURGERY-DN": DISCHARGE,
+    "PREOP": APPOINTMENT_SCHEDULED,  # legacy fallback
+    "PREOP-AS": APPOINTMENT_SCHEDULED,
+    "PREOP-VIS": OUTPATIENT_VISIT,
+    "PREOP-AR": APPOINTMENT_RESCHEDULE,
     "INPATIENT": INPATIENT_ADMISSION,
     "CANCELLED": APPOINTMENT_CANCELLED,
     "PREREAD": PREADMISSION,
@@ -202,5 +238,4 @@ def resolve_message_type(event_code: str | None, root_tag: str = "") -> MessageT
 
 
 # Legacy aliases kept for any remaining references during transition.
-OUTPATIENT = APPOINTMENT_SCHEDULED
 PATIENT_UPDATE = INPATIENT_ADMISSION
