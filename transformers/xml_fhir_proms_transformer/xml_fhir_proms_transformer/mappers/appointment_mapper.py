@@ -1,4 +1,4 @@
-"""Appointment mapper — used for PREOP and CANCELLED bundle types."""
+"""Appointment mapper — used for PREOP-AS, PREOP-AR and CANCELLED bundle types."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def map_appointment(
     message_type: MessageType,
     practitioner_uuid: Optional[str] = None,
 ) -> Appointment:
-    """Build the Appointment resource for PREOP or CANCELLED bundles."""
+    """Build the Appointment resource for PREOP-AS, PREOP-AR or CANCELLED bundles."""
     participants = [
         AppointmentParticipant(
             actor=Reference(reference=f"urn:uuid:{patient_uuid}", type="Patient"),

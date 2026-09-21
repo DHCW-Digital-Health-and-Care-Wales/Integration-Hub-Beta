@@ -30,11 +30,28 @@ WPAS_EVENT_DEFINITION_BASE = "https://fhir.promptly.health/wpas/MessageDefinitio
 REFERRAL_EVENT_CODE = "REFERRAL"
 REFERRAL_EVENT_DISPLAY = "Patient Referral"
 
-PROCEDURE_CODE = "SURGERY"
+# TEMP: placeholder eventCode values pending WPAS/spec owner confirmation.
+# SURGERY and PREOP were previously ambiguous (each covered 2-3 distinct
+# scenarios per the PROMS Scenarios / WPAS PROMS Mapping spreadsheets). These
+# suffixed codes disambiguate them; see PROMS Scenarios.xlsx "PROMS
+# Message-TEMP" column.
+PROCEDURE_CODE = "SURGERY-PROC"
 PROCEDURE_DISPLAY = "Procedure Performed"
 
-APPOINTMENT_SCHEDULED_CODE = "PREOP"
+SURGERY_PERFORMED_CODE = "SURGERY-PERF"
+SURGERY_PERFORMED_DISPLAY = "Surgery Performed"
+
+DISCHARGE_CODE = "SURGERY-DN"
+DISCHARGE_DISPLAY = "Discharge Notification"
+
+APPOINTMENT_SCHEDULED_CODE = "PREOP-AS"
 APPOINTMENT_SCHEDULED_DISPLAY = "Appointment Scheduled"
+
+OUTPATIENT_CODE = "PREOP-VIS"
+OUTPATIENT_DISPLAY = "Outpatient Visit"
+
+APPOINTMENT_RESCHEDULE_CODE = "PREOP-AR"
+APPOINTMENT_RESCHEDULE_DISPLAY = "Appointment Reschedule"
 
 INPATIENT_CODE = "INPATIENT"
 INPATIENT_DISPLAY = "Inpatient Admission"
@@ -96,10 +113,17 @@ ENCOUNTER_CLASS_PREADMISSION_CODE = "PRENC"
 ENCOUNTER_CLASS_PREADMISSION_DISPLAY = "Pre-admission"
 ENCOUNTER_CLASS_AMBULATORY_CODE = "AMB"
 ENCOUNTER_CLASS_AMBULATORY_DISPLAY = "Ambulatory"
+# TEMP: placeholder pending WPAS/spec owner confirmation (WPAS PROMS Mapping -
+# Final.xlsx, Encounter sheet, red/bold additions).
+ENCOUNTER_CLASS_DISCHARGE_CODE = "DIS"
+ENCOUNTER_CLASS_DISCHARGE_DISPLAY = "Discharge"
 
 # --- Procedure --------------------------------------------------------------
-# SPEC GAP: hardcoded value in spreadsheet is "Yes" which is not a valid
-# FHIR EventStatus code. Using "completed" pending confirmation from spec owner.
+# Confirmed by the WPAS PROMS Mapping - FHIR Review (By Profile v1-0 - Final)
+# spreadsheet: Procedure.status is hardcoded to "Completed" once the
+# procedure/surgery has taken place. This supersedes the earlier
+# PROMS_FHIR_Mapping_Analysis_v2.md recommendation of "unknown", which was
+# based on a different, now-superseded spreadsheet.
 PROCEDURE_STATUS_DEFAULT = "completed"
 
 # --- Appointment ------------------------------------------------------------
@@ -121,7 +145,3 @@ PATIENT_UPDATE_DISPLAY = "Patient update"
 PSOM_REQUEST_DEFINITION = "https://fhir.nhs.wales/MessageDefinition/DataStandardsWales-PSOM-request"
 PATIENT_UPDATE_DEFINITION = "https://fhir.nhs.wales/MessageDefinition/DataStandardsWales-PSOM-PatientUpdate"
 MESSAGE_EVENT_SYSTEM = WPAS_EVENT_SYSTEM  # alias
-
-# Aliases for Encounter event coding (INPATIENT / PREREAD share the encounter shape)
-ENCOUNTER_CODE = INPATIENT_CODE
-ENCOUNTER_DISPLAY = INPATIENT_DISPLAY

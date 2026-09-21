@@ -1,4 +1,5 @@
-"""Encounter mapper — used for INPATIENT and PREREAD bundle types."""
+"""Encounter mapper — used for INPATIENT, PREREAD, PREOP-VIS (outpatient) and
+SURGERY-DN (discharge) bundle types."""
 
 from __future__ import annotations
 
@@ -10,6 +11,10 @@ from fhir.resources.R4B.identifier import Identifier
 from fhir.resources.R4B.reference import Reference
 
 from ..fhir_constants import (
+    ENCOUNTER_CLASS_AMBULATORY_CODE,
+    ENCOUNTER_CLASS_AMBULATORY_DISPLAY,
+    ENCOUNTER_CLASS_DISCHARGE_CODE,
+    ENCOUNTER_CLASS_DISCHARGE_DISPLAY,
     ENCOUNTER_CLASS_SYSTEM,
     ENCOUNTER_IDENTIFIER_SYSTEM,
     ENCOUNTER_PROFILE,
@@ -19,9 +24,16 @@ from ..proms_parser import PromsMessage
 from .mapping_utils import profile_meta
 
 # Map MessageType.name → (class code, class display, encounter status)
+# Confirmed by the WPAS PROMS Mapping - FHIR Review (By Profile v1-0 - Final)
+# spreadsheet, Encounter sheet: inpatient/preadmission/outpatient/discharge
+# each have their own class code/display and status.
 _ENCOUNTER_CLASS: dict[str, tuple[str, str, str]] = {
     "INPATIENT_ADMISSION": ("IMP", "inpatient encounter", "in-progress"),
     "PREADMISSION": ("PRENC", "pre-admission", "planned"),
+    "OUTPATIENT_VISIT": (ENCOUNTER_CLASS_AMBULATORY_CODE, ENCOUNTER_CLASS_AMBULATORY_DISPLAY, "finished"),
+    # TEMP: placeholder pending WPAS/spec owner confirmation (red/bold addition
+    # in WPAS PROMS Mapping - Final.xlsx, Encounter sheet).
+    "DISCHARGE": (ENCOUNTER_CLASS_DISCHARGE_CODE, ENCOUNTER_CLASS_DISCHARGE_DISPLAY, "finished"),
 }
 _DEFAULT_CLASS = ("AMB", "ambulatory", "in-progress")
 
@@ -32,7 +44,7 @@ def map_encounter(
     patient_uuid: str,
     message_type: MessageType,
 ) -> Encounter:
-    """Build the Encounter resource for INPATIENT or PREREAD bundles."""
+    """Build the Encounter resource for INPATIENT, PREREAD, outpatient-visit or discharge bundles."""
     type_name = message_type.name
     class_code, class_display, status = _ENCOUNTER_CLASS.get(type_name, _DEFAULT_CLASS)
 
