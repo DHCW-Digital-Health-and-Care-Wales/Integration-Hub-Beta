@@ -15,15 +15,23 @@ from fhir.resources.R4B.resource import Resource
 
 from tests.wpas_messages import (
     CANCELLED_MESSAGE,
+    DISCHARGE_MESSAGE,
     EXPLICIT_EVENT_CODE_MESSAGE,
     INPATIENT_MESSAGE,
     LEGACY_MESSAGE_TYPE_MESSAGE,
+    LEGACY_MESSAGE_TYPE_PREOP_MESSAGE,
+    LEGACY_MESSAGE_TYPE_SURGERY_MESSAGE,
     MINIMAL_REFERRAL_MESSAGE,
     NESTED_REFERRAL_MESSAGE,
+    OUTPATIENT_MESSAGE,
+    PREOP_AS_MESSAGE,
     PREOP_MESSAGE,
     PREREAD_MESSAGE,
     REFERRAL_MESSAGE,
+    RESCHEDULE_MESSAGE,
     SURGERY_MESSAGE,
+    SURGERY_PERF_MESSAGE,
+    SURGERY_PROC_MESSAGE,
     UNROUTABLE_MESSAGE,
 )
 from xml_fhir_proms_transformer import fhir_constants as fc
@@ -60,11 +68,17 @@ def resource_at(bundle: Bundle, index: int) -> Resource:
 
 
 class TestMessageTypeRouting(unittest.TestCase):
-    def test_routes_all_six_wpas_event_codes(self) -> None:
+    def test_routes_all_wpas_event_codes(self) -> None:
         for event_code, expected_name in (
             ("REFERRAL", "REFERRAL"),
-            ("SURGERY", "PROCEDURE_PERFORMED"),
-            ("PREOP", "APPOINTMENT_SCHEDULED"),
+            ("SURGERY", "PROCEDURE_PERFORMED"),  # legacy fallback
+            ("SURGERY-PROC", "PROCEDURE_PERFORMED"),
+            ("SURGERY-PERF", "SURGERY_PERFORMED"),
+            ("SURGERY-DN", "DISCHARGE"),
+            ("PREOP", "APPOINTMENT_SCHEDULED"),  # legacy fallback
+            ("PREOP-AS", "APPOINTMENT_SCHEDULED"),
+            ("PREOP-VIS", "OUTPATIENT_VISIT"),
+            ("PREOP-AR", "APPOINTMENT_RESCHEDULE"),
             ("INPATIENT", "INPATIENT_ADMISSION"),
             ("CANCELLED", "APPOINTMENT_CANCELLED"),
             ("PREREAD", "PREADMISSION"),
@@ -84,6 +98,25 @@ class TestMessageTypeRouting(unittest.TestCase):
         bundle = build(LEGACY_MESSAGE_TYPE_MESSAGE)
         header = resource_at(bundle, 0)
         self.assertEqual(header.eventCoding.code, "REFERRAL")
+
+    def test_legacy_message_type_surgery_preserves_raw_code(self) -> None:
+        # Regression test: a legacy payload routed via <MESSAGE_TYPE>SURGERY</MESSAGE_TYPE>
+        # (no <eventCode> field) must still route to PROCEDURE_PERFORMED, but
+        # eventCoding.code must preserve the supplied "SURGERY" value rather than
+        # being silently rewritten to the canonical "SURGERY-PROC" placeholder code.
+        bundle = build(LEGACY_MESSAGE_TYPE_SURGERY_MESSAGE)
+        header = resource_at(bundle, 0)
+        self.assertEqual(header.eventCoding.code, "SURGERY")
+        types = [e.resource.get_resource_type() for e in bundle.entry]
+        self.assertIn("Procedure", types)
+
+    def test_legacy_message_type_preop_preserves_raw_code(self) -> None:
+        # Same regression as above for the PREOP -> APPOINTMENT_SCHEDULED legacy alias.
+        bundle = build(LEGACY_MESSAGE_TYPE_PREOP_MESSAGE)
+        header = resource_at(bundle, 0)
+        self.assertEqual(header.eventCoding.code, "PREOP")
+        types = [e.resource.get_resource_type() for e in bundle.entry]
+        self.assertIn("Appointment", types)
 
     def test_routing_is_case_insensitive(self) -> None:
         mt = resolve_message_type("referral")
@@ -114,8 +147,22 @@ class TestBundleEnvelope(unittest.TestCase):
             ["MessageHeader", "Patient", "Procedure", "Practitioner", "Organization", "Location"],
         )
 
+    def test_surgery_proc_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(SURGERY_PROC_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Procedure", "Practitioner", "Organization", "Location"],
+        )
+
     def test_preop_entry_order_matches_spec(self) -> None:
         types = [e.resource.get_resource_type() for e in build(PREOP_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Appointment", "Practitioner", "Organization", "Location"],
+        )
+
+    def test_preop_as_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(PREOP_AS_MESSAGE).entry]
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Appointment", "Practitioner", "Organization", "Location"],
@@ -140,6 +187,34 @@ class TestBundleEnvelope(unittest.TestCase):
         self.assertEqual(
             types,
             ["MessageHeader", "Patient", "Encounter", "Practitioner", "Organization", "Location"],
+        )
+
+    def test_surgery_performed_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(SURGERY_PERF_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Procedure", "Practitioner", "Organization", "Location"],
+        )
+
+    def test_discharge_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(DISCHARGE_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Encounter", "Practitioner", "Organization", "Location"],
+        )
+
+    def test_outpatient_visit_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(OUTPATIENT_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Encounter", "Practitioner", "Organization", "Location"],
+        )
+
+    def test_appointment_reschedule_entry_order_matches_spec(self) -> None:
+        types = [e.resource.get_resource_type() for e in build(RESCHEDULE_MESSAGE).entry]
+        self.assertEqual(
+            types,
+            ["MessageHeader", "Patient", "Appointment", "Practitioner", "Organization", "Location"],
         )
 
     def test_every_entry_has_urn_uuid_full_url_matching_its_resource_id(self) -> None:
@@ -172,6 +247,30 @@ class TestMessageHeader(unittest.TestCase):
         header = resource_at(build(SURGERY_MESSAGE), 0)
         self.assertEqual(header.eventCoding.code, "SURGERY")
 
+    def test_surgery_proc_event_coding(self) -> None:
+        header = resource_at(build(SURGERY_PROC_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "SURGERY-PROC")
+
+    def test_preop_as_event_coding(self) -> None:
+        header = resource_at(build(PREOP_AS_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "PREOP-AS")
+
+    def test_surgery_performed_event_coding(self) -> None:
+        header = resource_at(build(SURGERY_PERF_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "SURGERY-PERF")
+
+    def test_discharge_event_coding(self) -> None:
+        header = resource_at(build(DISCHARGE_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "SURGERY-DN")
+
+    def test_outpatient_visit_event_coding(self) -> None:
+        header = resource_at(build(OUTPATIENT_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "PREOP-VIS")
+
+    def test_appointment_reschedule_event_coding(self) -> None:
+        header = resource_at(build(RESCHEDULE_MESSAGE), 0)
+        self.assertEqual(header.eventCoding.code, "PREOP-AR")
+
     def test_destination_is_promptly_collect(self) -> None:
         header = resource_at(build(REFERRAL_MESSAGE), 0)
         self.assertEqual(header.destination[0].name, fc.PROMPTLY_COLLECT_DESTINATION_NAME)
@@ -203,6 +302,34 @@ class TestMessageHeader(unittest.TestCase):
         procedure = resource_at(bundle, 2)
         focus_refs = [f.reference for f in header.focus]
         self.assertIn(f"urn:uuid:{procedure.id}", focus_refs)
+
+    def test_surgery_performed_focus_includes_procedure(self) -> None:
+        bundle = build(SURGERY_PERF_MESSAGE)
+        header = resource_at(bundle, 0)
+        procedure = resource_at(bundle, 2)
+        focus_refs = [f.reference for f in header.focus]
+        self.assertIn(f"urn:uuid:{procedure.id}", focus_refs)
+
+    def test_discharge_focus_includes_encounter(self) -> None:
+        bundle = build(DISCHARGE_MESSAGE)
+        header = resource_at(bundle, 0)
+        encounter = resource_at(bundle, 2)
+        focus_refs = [f.reference for f in header.focus]
+        self.assertIn(f"urn:uuid:{encounter.id}", focus_refs)
+
+    def test_outpatient_visit_focus_includes_encounter(self) -> None:
+        bundle = build(OUTPATIENT_MESSAGE)
+        header = resource_at(bundle, 0)
+        encounter = resource_at(bundle, 2)
+        focus_refs = [f.reference for f in header.focus]
+        self.assertIn(f"urn:uuid:{encounter.id}", focus_refs)
+
+    def test_appointment_reschedule_focus_includes_appointment(self) -> None:
+        bundle = build(RESCHEDULE_MESSAGE)
+        header = resource_at(bundle, 0)
+        appointment = resource_at(bundle, 2)
+        focus_refs = [f.reference for f in header.focus]
+        self.assertIn(f"urn:uuid:{appointment.id}", focus_refs)
 
     def test_minimal_message_still_builds_a_header(self) -> None:
         header = resource_at(build(MINIMAL_REFERRAL_MESSAGE), 0)
@@ -397,10 +524,14 @@ class TestLocation(unittest.TestCase):
 
 
 class TestProcedure(unittest.TestCase):
-    def test_status_is_unknown(self) -> None:
+    def test_status_is_completed(self) -> None:
         procedure = resource_at(build(SURGERY_MESSAGE), 2)
         self.assertEqual(procedure.meta.profile, [fc.PROCEDURE_PROFILE])
-        self.assertEqual(procedure.status, "unknown")
+        self.assertEqual(procedure.status, "completed")
+
+    def test_surgery_performed_status_is_completed(self) -> None:
+        procedure = resource_at(build(SURGERY_PERF_MESSAGE), 2)
+        self.assertEqual(procedure.status, "completed")
 
     def test_subject_references_patient(self) -> None:
         bundle = build(SURGERY_MESSAGE)
@@ -449,6 +580,17 @@ class TestAppointment(unittest.TestCase):
         appointment = resource_at(build(PREOP_MESSAGE), 2)
         self.assertEqual(appointment.participant[0].status, "tentative")
 
+    def test_reschedule_status_is_booked(self) -> None:
+        appointment = resource_at(build(RESCHEDULE_MESSAGE), 2)
+        self.assertEqual(appointment.status, "booked")
+
+    def test_reschedule_contains_updated_date_and_time(self) -> None:
+        appointment = resource_at(build(RESCHEDULE_MESSAGE), 2)
+        # RESCHEDULE_MESSAGE carries appointmentDate=2024-08-22 / appointmentTime=16:30
+        self.assertIn("2024-08-22", appointment.start.isoformat())
+        self.assertEqual(appointment.start.hour, 16)
+        self.assertEqual(appointment.start.minute, 30)
+
 
 class TestEncounter(unittest.TestCase):
     def test_inpatient_class_is_imp(self) -> None:
@@ -464,6 +606,16 @@ class TestEncounter(unittest.TestCase):
     def test_preread_class_is_prenc(self) -> None:
         encounter = resource_at(build(PREREAD_MESSAGE), 2)
         self.assertEqual(encounter.status, "planned")
+
+    def test_outpatient_visit_status_is_finished(self) -> None:
+        encounter = resource_at(build(OUTPATIENT_MESSAGE), 2)
+        self.assertEqual(encounter.status, "finished")
+        self.assertEqual(encounter.class_fhir.code, fc.ENCOUNTER_CLASS_AMBULATORY_CODE)
+
+    def test_discharge_status_is_finished(self) -> None:
+        encounter = resource_at(build(DISCHARGE_MESSAGE), 2)
+        self.assertEqual(encounter.status, "finished")
+        self.assertEqual(encounter.class_fhir.code, fc.ENCOUNTER_CLASS_DISCHARGE_CODE)
 
     def test_subject_references_patient(self) -> None:
         bundle = build(INPATIENT_MESSAGE)

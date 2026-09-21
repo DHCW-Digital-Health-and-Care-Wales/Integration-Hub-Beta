@@ -84,7 +84,15 @@ def map_message_header(
     practitioner_uuid: Optional[str] = None,
 ) -> MessageHeader:
     """Build the MessageHeader for the given message type."""
-    event_code = message.get("eventCode", "event_code", "EVENT_CODE") or message_type.event_code
+    # Same field-name aliases as proms_parser.get_message_type() (the routing
+    # lookup), so eventCoding.code preserves whichever raw routing field the
+    # payload actually supplied - including the legacy MESSAGE_TYPE/messageType
+    # aliases - instead of silently substituting the canonical MessageType
+    # code (e.g. SURGERY-PROC) for legacy payloads that never used <eventCode>.
+    event_code = message.get(
+        "eventCode", "event_code", "EVENT_CODE",
+        "MESSAGE_TYPE", "messageType", "MSG_TYPE", "msgType",
+    ) or message_type.event_code
 
     message_header = MessageHeader(
         id=message_header_uuid,
