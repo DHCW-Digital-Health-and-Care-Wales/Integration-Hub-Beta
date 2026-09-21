@@ -15,6 +15,11 @@
         {{ _("Check TCP connectivity and latency to flow servers, flow destinations, or any host:port.") }}
       </p>
     </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('network_test_config_page') }}" class="btn-dash" title="{{ _('Configure flow source servers') }}">
+        <i class="bi bi-gear-fill"></i> {{ _("Configure") }}
+      </a>
+    </div>
   </div>
 
   <!-- Target picker -->
@@ -32,7 +37,10 @@
           {% endfor %}
         </datalist>
         {% if not source_endpoints %}
-        <div class="cfg-hint">{{ _("No flow source servers discovered yet.") }}</div>
+        <div class="cfg-hint">
+          {{ _("No flow source servers configured yet.") }}
+          <a href="{{ url_for('network_test_config_page') }}">{{ _("Add one on the configuration screen.") }}</a>
+        </div>
         {% endif %}
       </div>
 

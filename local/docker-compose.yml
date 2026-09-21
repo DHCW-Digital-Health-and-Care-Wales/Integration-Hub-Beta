@@ -581,6 +581,7 @@ services:
     restart: unless-stopped
     profiles:
       - dashboard
+      - everything
     networks:
       integration-hub:
         aliases:

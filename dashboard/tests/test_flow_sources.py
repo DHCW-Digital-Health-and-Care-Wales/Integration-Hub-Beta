@@ -1,0 +1,259 @@
+"""Unit tests for dashboard.services.flow_sources.
+
+Cosmos calls are mocked throughout — no real Cosmos access is required.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
+
+from dashboard.services import flow_sources
+
+# ---------------------------------------------------------------------------
+# add_source / update_source / delete_source
+# ---------------------------------------------------------------------------
+
+
+class TestAddSource:
+    def test_persists_and_returns_source_with_generated_id(self) -> None:
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True) as upsert,
+        ):
+            source = flow_sources.add_source("PHW HL7 Server", "phw.example.nhs.uk", "2575")
+
+        assert source["description"] == "PHW HL7 Server"
+        assert source["url"] == "phw.example.nhs.uk"
+        assert source["port"] == 2575
+        assert source["id"]
+        upsert.assert_called_once_with(
+            "flow-source-server",
+            source["id"],
+            {**source, "source_id": source["id"]},
+            doc_type="flow_source_server",
+        )
+
+    def test_strips_description_whitespace(self) -> None:
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True),
+        ):
+            source = flow_sources.add_source("  PHW  ", "phw.example.nhs.uk", 2575)
+        assert source["description"] == "PHW"
+
+    def test_rejects_empty_description(self) -> None:
+        with pytest.raises(flow_sources.InvalidSourceError):
+            flow_sources.add_source("", "phw.example.nhs.uk", 2575)
+
+    def test_rejects_description_too_long(self) -> None:
+        with pytest.raises(flow_sources.InvalidSourceError):
+            flow_sources.add_source("a" * 201, "phw.example.nhs.uk", 2575)
+
+    def test_rejects_invalid_url(self) -> None:
+        with pytest.raises(flow_sources.InvalidSourceError):
+            flow_sources.add_source("PHW", "not a valid host!", 2575)
+
+    def test_rejects_invalid_port(self) -> None:
+        with pytest.raises(flow_sources.InvalidSourceError):
+            flow_sources.add_source("PHW", "phw.example.nhs.uk", 999999)
+
+    def test_rejects_duplicate_url_and_port(self) -> None:
+        existing = [{"source_id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "upsert_document") as upsert,
+            pytest.raises(flow_sources.InvalidSourceError),
+        ):
+            flow_sources.add_source("PHW again", "phw.example.nhs.uk", 2575)
+        upsert.assert_not_called()
+
+    def test_duplicate_check_is_case_insensitive_on_url(self) -> None:
+        existing = [{"source_id": "1", "description": "PHW", "url": "PHW.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            pytest.raises(flow_sources.InvalidSourceError),
+        ):
+            flow_sources.add_source("PHW again", "phw.example.nhs.uk", 2575)
+
+    def test_allows_same_url_with_different_port(self) -> None:
+        existing = [{"source_id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True),
+        ):
+            source = flow_sources.add_source("PHW alt port", "phw.example.nhs.uk", 2576)
+        assert source["port"] == 2576
+
+
+class TestUpdateSource:
+    def test_persists_with_supplied_id(self) -> None:
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True) as upsert,
+        ):
+            source = flow_sources.update_source("abc-123", "PHW", "phw.example.nhs.uk", 2575)
+
+        assert source["id"] == "abc-123"
+        upsert.assert_called_once_with(
+            "flow-source-server",
+            "abc-123",
+            {**source, "source_id": "abc-123"},
+            doc_type="flow_source_server",
+        )
+
+    def test_rejects_invalid_fields(self) -> None:
+        with pytest.raises(flow_sources.InvalidSourceError):
+            flow_sources.update_source("abc-123", "", "phw.example.nhs.uk", 2575)
+
+    def test_allows_saving_unchanged_url_and_port_on_itself(self) -> None:
+        existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True),
+        ):
+            source = flow_sources.update_source("abc-123", "PHW renamed", "phw.example.nhs.uk", 2575)
+        assert source["description"] == "PHW renamed"
+
+    def test_rejects_url_and_port_matching_a_different_source(self) -> None:
+        existing = [
+            {"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            {"source_id": "other-456", "description": "Paris", "url": "paris.example.nhs.uk", "port": 2577},
+        ]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "upsert_document") as upsert,
+            pytest.raises(flow_sources.InvalidSourceError),
+        ):
+            flow_sources.update_source("abc-123", "PHW", "paris.example.nhs.uk", 2577)
+        upsert.assert_not_called()
+
+
+class TestDeleteSource:
+    def test_delegates_to_cosmos_store(self) -> None:
+        with patch.object(flow_sources.cosmos_store, "delete_document") as delete_document:
+            flow_sources.delete_source("abc-123")
+        delete_document.assert_called_once_with("flow-source-server", "abc-123")
+
+
+class TestListSources:
+    def test_returns_sorted_by_description(self) -> None:
+        documents = [
+            {"source_id": "2", "description": "Zeta", "url": "z.example.com", "port": 443},
+            {"source_id": "1", "description": "alpha", "url": "a.example.com", "port": 22},
+        ]
+        with patch.object(flow_sources.cosmos_store, "query_documents", return_value=documents):
+            sources = flow_sources.list_sources()
+
+        assert [s["description"] for s in sources] == ["alpha", "Zeta"]
+
+    def test_remaps_source_id_to_id(self) -> None:
+        """Regression test: cosmos_store strips "id" as routing metadata, so the
+        document's real identifier must round-trip via the "source_id" field —
+        otherwise edit/delete break because the frontend never gets a usable id.
+        """
+        documents = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with patch.object(flow_sources.cosmos_store, "query_documents", return_value=documents):
+            sources = flow_sources.list_sources()
+
+        assert sources == [{"id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+
+
+class TestListSourcesAsEndpointOptions:
+    def test_builds_label_host_port_options(self) -> None:
+        documents = [{"source_id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with patch.object(flow_sources.cosmos_store, "query_documents", return_value=documents):
+            options = flow_sources.list_sources_as_endpoint_options()
+
+        assert options == [{"label": "PHW (phw.example.nhs.uk:2575)", "host": "phw.example.nhs.uk", "port": 2575}]
+
+    def test_returns_empty_list_when_no_sources(self) -> None:
+        with patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]):
+            assert flow_sources.list_sources_as_endpoint_options() == []
+
+
+# ---------------------------------------------------------------------------
+# parse_csv / import_sources
+# ---------------------------------------------------------------------------
+
+
+class TestParseCsv:
+    def test_parses_valid_rows(self) -> None:
+        csv_text = "description,url,port\nPHW,phw.example.nhs.uk,2575\nParis,paris.example.nhs.uk,2577\n"
+        rows, errors = flow_sources.parse_csv(csv_text)
+
+        assert errors == []
+        assert rows == [
+            {"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            {"description": "Paris", "url": "paris.example.nhs.uk", "port": 2577},
+        ]
+
+    def test_header_matched_case_insensitively_and_any_order(self) -> None:
+        csv_text = "Port,Description,URL\n2575,PHW,phw.example.nhs.uk\n"
+        rows, errors = flow_sources.parse_csv(csv_text)
+
+        assert errors == []
+        assert rows == [{"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+
+    def test_skips_invalid_rows_but_keeps_valid_ones(self) -> None:
+        csv_text = "description,url,port\nPHW,phw.example.nhs.uk,2575\nBad,,not-a-port\n"
+        rows, errors = flow_sources.parse_csv(csv_text)
+
+        assert rows == [{"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        assert len(errors) == 1
+        assert "Row 3" in errors[0]
+
+    def test_empty_file_returns_error(self) -> None:
+        rows, errors = flow_sources.parse_csv("")
+        assert rows == []
+        assert errors == ["CSV file is empty."]
+
+    def test_missing_required_column_returns_error(self) -> None:
+        rows, errors = flow_sources.parse_csv("description,url\nPHW,phw.example.nhs.uk\n")
+        assert rows == []
+        assert "port" in errors[0]
+
+    def test_flags_duplicate_rows_within_the_same_file(self) -> None:
+        csv_text = (
+            "description,url,port\n"
+            "PHW,phw.example.nhs.uk,2575\n"
+            "PHW dupe,PHW.example.nhs.uk,2575\n"
+        )
+        rows, errors = flow_sources.parse_csv(csv_text)
+
+        assert rows == [{"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        assert len(errors) == 1
+        assert "Row 3" in errors[0] and "row 2" in errors[0]
+
+
+class TestImportSources:
+    def test_imports_valid_rows_and_reports_errors(self) -> None:
+        csv_text = "description,url,port\nPHW,phw.example.nhs.uk,2575\nBad,,not-a-port\n"
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True) as upsert,
+        ):
+            result = flow_sources.import_sources(csv_text)
+
+        assert result["imported"] == 1
+        assert len(result["errors"]) == 1
+        upsert.assert_called_once()
+        persisted_doc = upsert.call_args.args[2]
+        assert persisted_doc["source_id"] == persisted_doc["id"]
+
+    def test_skips_rows_matching_an_already_stored_source(self) -> None:
+        csv_text = "description,url,port\nPHW,phw.example.nhs.uk,2575\nParis,paris.example.nhs.uk,2577\n"
+        existing = [{"source_id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True) as upsert,
+        ):
+            result = flow_sources.import_sources(csv_text)
+
+        assert result["imported"] == 1
+        assert len(result["errors"]) == 1
+        assert "already exists" in result["errors"][0]
+        persisted_doc = upsert.call_args.args[2]
+        assert persisted_doc["url"] == "paris.example.nhs.uk"
+

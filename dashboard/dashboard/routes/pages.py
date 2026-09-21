@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
-from dashboard.services import cache, network_test
+from dashboard.services import cache, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status, load_alarm_config
 from dashboard.services.alarm2 import get_alarm2_status, load_alarm2_config
 from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
@@ -186,9 +186,9 @@ def trace_page(operation_id: str) -> str | tuple[str, int]:
 def network_test_page() -> str:
     """Render the Network Test page for support staff to check connectivity to flow endpoints."""
     flows = get_flows()
-    source_endpoints = network_test.build_endpoint_options(
-        flows, host_key="source_host", port_key="source_port", name_key="source"
-    )
+    # Flow source servers are user-managed (see network_test_config_page) — deliberately
+    # not sourced from ARM-discovered flow definitions.
+    source_endpoints = flow_sources.list_sources_as_endpoint_options()
     destination_endpoints = network_test.build_endpoint_options(
         flows, host_key="destination_host", port_key="destination_port", name_key="destination"
     )
@@ -197,6 +197,11 @@ def network_test_page() -> str:
         source_endpoints=source_endpoints,
         destination_endpoints=destination_endpoints,
     )
+
+
+def network_test_config_page() -> str:
+    """Render the Flow Source Servers configuration screen (reached via the gear icon)."""
+    return render_template("network_test_config.html", sources=flow_sources.list_sources())
 
 
 def register(app: Flask) -> None:
@@ -209,3 +214,6 @@ def register(app: Flask) -> None:
     app.add_url_rule("/messages", endpoint="messages_page", view_func=messages_page)
     app.add_url_rule("/trace/<operation_id>", endpoint="trace_page", view_func=trace_page)
     app.add_url_rule("/network-test", endpoint="network_test_page", view_func=network_test_page)
+    app.add_url_rule(
+        "/network-test/config", endpoint="network_test_config_page", view_func=network_test_config_page
+    )
