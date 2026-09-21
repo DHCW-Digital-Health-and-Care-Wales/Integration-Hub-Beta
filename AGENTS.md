@@ -227,8 +227,8 @@ Alarm config/state persistence (Azure Cosmos DB) uses:
 ```
 COSMOS_ENDPOINT            # account URI; empty disables persistence (reads return empty)
 COSMOS_KEY                 # account key -> key auth + auto-create DB/container; empty -> AAD RBAC
-COSMOS_DATABASE            # default: integration-hub-dashboard
-COSMOS_CONTAINER           # default: alarms (partition key /pk)
+COSMOS_DATABASE            # default: integration-hub
+COSMOS_CONTAINER           # default: dashboard (partition key /pk; holds alarm + network-test data)
 COSMOS_DISABLE_SSL_VERIFY  # true only for the local emulator's self-signed cert
 ```
 Locally, run the Cosmos emulator via the shared Compose stack in `local/`

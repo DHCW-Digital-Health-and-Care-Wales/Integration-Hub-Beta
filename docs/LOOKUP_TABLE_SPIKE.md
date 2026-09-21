@@ -113,7 +113,7 @@ requires Cosmos-sourced values to be cached, and diverges from the dashboard on 
   `Integration-Hub-Terraform/components/app-platform/cosmosdb.tf`) rather than provisioning a new
   Cosmos account per environment — see
   [Infrastructure: reuse the dashboard's Cosmos account](#infrastructure-reuse-the-dashboards-cosmos-account)
-  below. Add a new `lookups` container to that account (alongside the existing `alarms` container),
+  below. Add a new `lookups` container to that account (alongside the existing `dashboard` container),
   partitioned by `table_name` with `id` = lookup key, so a table name + key resolves to a
   single-partition point read — same low-cost pattern as the alarm store. Some tables need a
   **composite key** (more than one field combining to identify a row) — see
@@ -258,7 +258,7 @@ tfvars entries per environment, exactly as was done for the dashboard's `COSMOS_
 dashboard (`module.noc_dashboard_cosmos` in `components/app-platform/cosmosdb.tf`), rather than
 provisioning a second account. Concretely:
 
-- Add a `lookups` entry to that module's `containers` map (alongside the existing `alarms`
+- Add a `lookups` entry to that module's `containers` map (alongside the existing `dashboard`
   container), e.g. `lookups = { name = "lookups", partition_key_path = "/table_name" }`. No new
   `azurerm_cosmosdb_account` resource, module call, or private endpoint is needed.
 - `LOOKUP_COSMOS_ENDPOINT`/`LOOKUP_COSMOS_DATABASE` are therefore set to the **same values** as the

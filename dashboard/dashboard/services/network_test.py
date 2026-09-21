@@ -210,7 +210,9 @@ def save_history_sample(host: str, port: int, result: dict[str, Any]) -> bool:
         }
     )
     samples = samples[-_MAX_HISTORY_SAMPLES:]
-    return cosmos_store.upsert_document(_HISTORY_PK, doc_id, {"host": host, "port": port, "samples": samples})
+    return cosmos_store.upsert_document(
+        _HISTORY_PK, doc_id, {"host": host, "port": port, "samples": samples}, doc_type="network_test_history"
+    )
 
 
 def get_history(host: str, port: int) -> list[dict[str, Any]]:

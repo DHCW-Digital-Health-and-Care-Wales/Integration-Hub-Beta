@@ -62,6 +62,7 @@ class TestGetDocument:
         container.read_item.return_value = {
             "id": "config",
             "pk": "alarm1",
+            "type": "alarm_config",
             "_rid": "abc",
             "_etag": "xyz",
             "_ts": 123,
@@ -148,12 +149,24 @@ class TestUpsertDocument:
         )
 
     def test_overrides_reserved_keys_in_payload(self) -> None:
-        """Any stray id/pk in the payload is replaced by the routing arguments."""
+        """Any stray id/pk/type in the payload is replaced by the routing arguments."""
         container = MagicMock()
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            cosmos_store.upsert_document("alarm3", "config", {"id": "hacked", "pk": "hacked", "rules": {}})
+            cosmos_store.upsert_document(
+                "alarm3", "config", {"id": "hacked", "pk": "hacked", "type": "hacked", "rules": {}}
+            )
 
         container.upsert_item.assert_called_once_with(body={"rules": {}, "id": "config", "pk": "alarm3"})
+
+    def test_stamps_type_discriminator_when_supplied(self) -> None:
+        """A supplied doc_type is written as a storage-managed ``type`` field."""
+        container = MagicMock()
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            cosmos_store.upsert_document("alarm1", "config", {"rules": {}}, doc_type="alarm_config")
+
+        container.upsert_item.assert_called_once_with(
+            body={"rules": {}, "id": "config", "pk": "alarm1", "type": "alarm_config"}
+        )
 
     def test_noop_when_container_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_container", return_value=None):
@@ -291,12 +304,12 @@ class TestGetContainer:
             patch.object(cosmos_store, "_get_client", return_value=client),
             patch.object(cosmos_store.config, "COSMOS_KEY", "the-key"),
             patch.object(cosmos_store.config, "COSMOS_DATABASE", "db"),
-            patch.object(cosmos_store.config, "COSMOS_CONTAINER", "alarms"),
+            patch.object(cosmos_store.config, "COSMOS_CONTAINER", "dashboard"),
         ):
             result = cosmos_store._get_container()
 
         assert result is existing_container
-        database.get_container_client.assert_called_once_with("alarms")
+        database.get_container_client.assert_called_once_with("dashboard")
 
     def test_returns_none_on_other_http_error(self) -> None:
         database = MagicMock(name="database")
@@ -309,7 +322,7 @@ class TestGetContainer:
             patch.object(cosmos_store, "_get_client", return_value=client),
             patch.object(cosmos_store.config, "COSMOS_KEY", "the-key"),
             patch.object(cosmos_store.config, "COSMOS_DATABASE", "db"),
-            patch.object(cosmos_store.config, "COSMOS_CONTAINER", "alarms"),
+            patch.object(cosmos_store.config, "COSMOS_CONTAINER", "dashboard"),
         ):
             assert cosmos_store._get_container() is None
 
