@@ -43,6 +43,11 @@ omit = ["tests/*", ".venv/*"]
 [tool.coverage.report]
 skip_empty = true
 
+# Force a minimum on the transitive anyio (pulled in via starlette/fastapi) to pull in
+# the fix for GHSA-5p39-cfhj-2xmp and GHSA-82r6-8w77-94w6 (both fixed in 4.14.2).
+[tool.uv]
+override-dependencies = ["anyio>=4.14.2"]
+
 # ===================================================================
 # Tool Configuration
 # ===================================================================
