@@ -76,5 +76,8 @@ class RestServerPlugin(ServicePlugin):
             lines += ["=" * 60, f"422 Unprocessable Entity — NACK  ({exc.reason})", "=" * 60, exc.nack_message]
             return "\n".join(lines), f"✗  422 — validation failed: {exc.reason}"
         except Hl7ParseError as exc:
-            lines += ["=" * 60, f"500 Internal Server Error  ({exc.reason})", "=" * 60]
+            # Mirror the real route (rest_server/hl7/routes/messages.py), which builds and
+            # returns a generic NACK for unparsable messages rather than a bare error message.
+            nack = HL7AckBuilder().build_generic_nack(exc.reason)
+            lines += ["=" * 60, f"500 Internal Server Error  ({exc.reason})", "=" * 60, nack]
             return "\n".join(lines), f"✗  500 — could not parse message: {exc.reason}"

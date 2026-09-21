@@ -351,6 +351,16 @@ with no reinstall step needed (except after editing a `pyproject.toml`, which
 needs `uv sync`). This is what makes breakpoint debugging in the service source
 files work.
 
+> **Exception:** `wrds-service` is **not** editable here, so source edits to
+> `shared_libs/wrds_service` won't be picked up without a `uv sync`/reinstall.
+> It's also a transitive dependency via `hl7-core-reference-transformer`
+> (`transformers/hl7_core_reference_transformer/pyproject.toml`), which
+> declares its own non-editable `wrds-service` path dependency — `uv lock`
+> fails with a "conflicting URLs" error if only one of the two is marked
+> editable, since uv treats editable/non-editable specs for the same path as
+> different requirements. Fixing this properly would require updating both
+> `pyproject.toml` files together and is out of scope for this dev tool alone.
+
 ### Bypassing infrastructure dependencies (`BaseTransformer`, Service Bus, WRDS)
 
 Several service classes have constructors that read config and/or connect to

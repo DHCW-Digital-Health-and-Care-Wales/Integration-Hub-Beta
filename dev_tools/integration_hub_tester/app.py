@@ -286,8 +286,11 @@ class ServicePage(tk.Frame):
         tk.Label(action, textvariable=self._size_var, bg=t["bg"], fg=t["blue"],
                  font=font.Font(family="Segoe UI", size=8)).pack(side=tk.RIGHT)
 
-        # Keyboard shortcut: Enter triggers the action button from this tab.
-        self.bind_all("<Control-Return>", lambda _e: self._run() if self.winfo_ismapped() else None)
+        # Keyboard shortcut: Ctrl+Return triggers the action button — bound once
+        # for the whole app (see IntegrationHubTesterApp._run_active_page), since
+        # bind_all() shares a single global handler per sequence: registering it
+        # here on every ServicePage would silently overwrite all earlier tabs'
+        # bindings, leaving only the very last one constructed able to respond.
 
     # ------------------------------------------------------------------
     # Actions
@@ -347,6 +350,11 @@ class ServicePage(tk.Frame):
         self._set_status("Cleared.", ok=True)
         self._size_var.set("")
 
+    def trigger_action(self) -> None:
+        """Public entry point for the app-level Ctrl+Return handler (see
+        IntegrationHubTesterApp._run_active_page) to run this page's action."""
+        self._run()
+
     def _run(self) -> None:
         text = self._input.get("1.0", tk.END).strip()
         if not text:
@@ -397,9 +405,22 @@ class IntegrationHubTesterApp(tk.Tk):
         self.geometry("1500x900")
         self.minsize(1000, 640)
         self._mock_manager = MockReceiverManager()
+        self._mock_poll_after_id: str | None = None
         self._build()
+        # Bound once at the app level — bind_all() only ever keeps a single
+        # handler per key sequence, so each ServicePage no longer registers
+        # its own (see ServicePage._build). Dispatches to whichever page is
+        # currently selected via _selected_category/_selected_service.
+        self.bind_all("<Control-Return>", self._run_active_page)
         # Ensure any running mock receiver is stopped when the window is closed.
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _run_active_page(self, _event: object = None) -> None:
+        page = self._service_pages.get(self._selected_category, {}).get(
+            self._selected_service.get(self._selected_category)
+        )
+        if page is not None:
+            page.trigger_action()
 
     def _build(self) -> None:
         t = current_theme()
@@ -587,6 +608,14 @@ class IntegrationHubTesterApp(tk.Tk):
 
         _current_theme_name = "dark" if _current_theme_name == "light" else "light"
 
+        # Cancel the running mock-status poll loop before rebuilding — the
+        # root window (self) isn't destroyed here, only its children, so any
+        # pending after() callback would otherwise survive and a new loop
+        # would be started alongside it by the rebuilt mock receiver bar.
+        if self._mock_poll_after_id is not None:
+            self.after_cancel(self._mock_poll_after_id)
+            self._mock_poll_after_id = None
+
         for child in self.winfo_children():
             child.destroy()
         self._build()
@@ -669,9 +698,15 @@ class IntegrationHubTesterApp(tk.Tk):
         self._mock_status_lbl.configure(fg="#2ECC71" if running else "#E05050")
 
     def _poll_mock_receiver_status(self) -> None:
-        """Check if the mock receiver process is still alive every 2 seconds."""
+        """Check if the mock receiver process is still alive every 2 seconds.
+
+        The after() id is tracked so _toggle_theme can cancel the loop before
+        rebuilding the widget tree — otherwise each theme toggle would start
+        an additional, never-cancelled polling loop (the root Tk window that
+        after() is scheduled on isn't destroyed on rebuild, only its children).
+        """
         self._update_mock_status()
-        self.after(2000, self._poll_mock_receiver_status)
+        self._mock_poll_after_id = self.after(2000, self._poll_mock_receiver_status)
 
     def _on_close(self) -> None:
         """Stop any running mock receiver before closing the window."""
