@@ -40,9 +40,17 @@ class TestConfigDefaults:
         cfg = self._load_config({})
         assert cfg.API_CACHE_TTL == 30
 
+    def test_cosmos_container_default(self) -> None:
+        cfg = self._load_config({})
+        assert cfg.COSMOS_CONTAINER == "dashboard"
+
     def test_warning_threshold_override(self) -> None:
         cfg = self._load_config({"QUEUE_WARNING_THRESHOLD": "25"})
         assert cfg.QUEUE_WARNING_THRESHOLD == 25
+
+    def test_cosmos_container_override(self) -> None:
+        cfg = self._load_config({"COSMOS_CONTAINER": "custom-container"})
+        assert cfg.COSMOS_CONTAINER == "custom-container"
 
 
 class TestEnvironmentLabel:

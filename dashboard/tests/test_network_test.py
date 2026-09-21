@@ -205,11 +205,14 @@ def _fake_result(**overrides: Any) -> dict[str, Any]:
 class TestHistoryPersistence:
     def test_save_appends_and_get_returns_samples(self) -> None:
         store: dict[str, Any] = {}
+        upsert_doc_type: str | None = None
 
         def fake_get(pk: str, doc_id: str) -> dict | None:
             return store.get(doc_id)
 
         def fake_upsert(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> None:
+            nonlocal upsert_doc_type
+            upsert_doc_type = doc_type
             store[doc_id] = data
 
         with (
@@ -229,6 +232,7 @@ class TestHistoryPersistence:
                 "loss_percent": 0.0,
             }
         ]
+        assert upsert_doc_type == "network_test_history"
 
     def test_get_history_returns_empty_when_no_document(self) -> None:
         with patch.object(network_test.cosmos_store, "get_document", return_value=None):
@@ -239,11 +243,14 @@ class TestHistoryPersistence:
             _fake_result(timestamp=float(i)) for i in range(network_test._MAX_HISTORY_SAMPLES)
         ]
         stored: dict[str, Any] = {}
+        upsert_doc_type: str | None = None
 
         def fake_get(pk: str, doc_id: str) -> dict | None:
             return {"samples": existing_samples} if doc_id not in stored else stored[doc_id]
 
         def fake_upsert(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> None:
+            nonlocal upsert_doc_type
+            upsert_doc_type = doc_type
             stored[doc_id] = data
 
         with (
@@ -255,6 +262,7 @@ class TestHistoryPersistence:
         saved_samples = stored["history:example.com:443"]["samples"]
         assert len(saved_samples) == network_test._MAX_HISTORY_SAMPLES
         assert saved_samples[-1]["timestamp"] == 999.0
+        assert upsert_doc_type == "network_test_history"
 
     def test_delete_history_removes_the_document(self) -> None:
         with patch.object(network_test.cosmos_store, "delete_document") as delete_document:
