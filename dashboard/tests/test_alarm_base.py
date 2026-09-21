@@ -30,7 +30,7 @@ class TestLoadSaveConfig:
     def test_save_config_upserts_with_partition_and_doc_id(self) -> None:
         with patch("dashboard.services.alarm_base.cosmos_store.upsert_document") as mock_upsert:
             alarm_base.save_config("alarm3", {"rules": {}}, "config")
-        mock_upsert.assert_called_once_with("alarm3", "config", {"rules": {}})
+        mock_upsert.assert_called_once_with("alarm3", "config", {"rules": {}}, doc_type="alarm_config")
 
 
 class TestLoadSaveState:
@@ -41,7 +41,7 @@ class TestLoadSaveState:
     def test_save_state_upserts_with_partition_and_doc_id(self) -> None:
         with patch("dashboard.services.alarm_base.cosmos_store.upsert_document") as mock_upsert:
             alarm_base.save_state("alarm2", {"rules": {"r1": {}}}, "state")
-        mock_upsert.assert_called_once_with("alarm2", "state", {"rules": {"r1": {}}})
+        mock_upsert.assert_called_once_with("alarm2", "state", {"rules": {"r1": {}}}, doc_type="alarm_state")
 
 
 class TestPauseUnpauseRule:

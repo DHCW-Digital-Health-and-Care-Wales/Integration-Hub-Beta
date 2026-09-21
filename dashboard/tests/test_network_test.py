@@ -209,7 +209,7 @@ class TestHistoryPersistence:
         def fake_get(pk: str, doc_id: str) -> dict | None:
             return store.get(doc_id)
 
-        def fake_upsert(pk: str, doc_id: str, data: dict) -> None:
+        def fake_upsert(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> None:
             store[doc_id] = data
 
         with (
@@ -243,7 +243,7 @@ class TestHistoryPersistence:
         def fake_get(pk: str, doc_id: str) -> dict | None:
             return {"samples": existing_samples} if doc_id not in stored else stored[doc_id]
 
-        def fake_upsert(pk: str, doc_id: str, data: dict) -> None:
+        def fake_upsert(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> None:
             stored[doc_id] = data
 
         with (

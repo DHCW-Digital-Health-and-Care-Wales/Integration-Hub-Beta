@@ -29,7 +29,9 @@ COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT", "")
 # for data-plane RBAC against the Cosmos account.
 COSMOS_KEY = os.getenv("COSMOS_KEY", "")
 COSMOS_DATABASE = os.getenv("COSMOS_DATABASE", "integration-hub")
-COSMOS_CONTAINER = os.getenv("COSMOS_CONTAINER", "alarms")
+# Single container holding all dashboard-owned persistence (alarm config/state and
+# network test history), keyed by partition. Named for the owning app, not one data type.
+COSMOS_CONTAINER = os.getenv("COSMOS_CONTAINER", "dashboard")
 # Disable TLS verification — required for the local Cosmos emulator's self-signed
 # certificate. Must never be enabled against a real Cosmos account.
 COSMOS_DISABLE_SSL_VERIFY = os.getenv("COSMOS_DISABLE_SSL_VERIFY", "false").lower() == "true"
