@@ -39,7 +39,37 @@ _SOAP_FAIL_BODY = """\
   </soapenv:Body>
 </soapenv:Envelope>"""
 
+_SOAP_REJECT_BODY = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Body>
+    <SendHL7Message>
+      <hl7Message>MSH|reject|test</hl7Message>
+    </SendHL7Message>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
 _MALFORMED_XML = "this is not xml at all"
+
+_WIS_ENVELOPE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<ns1:Envelope xmlns:ns1="http://Cypris.Nhs.Wales.Uk/CaptureFromFiorona/Input">
+  <ns1:Body>
+    <ns3:CaptureFromFiorona xmlns:ns3="http://Cypris.Nhs.Wales.Uk/">
+      <ns3:inputString>&lt;HL7v2xml&gt;&lt;MSH.1&gt;|&lt;/MSH.1&gt;&lt;/HL7v2xml&gt;</ns3:inputString>
+    </ns3:CaptureFromFiorona>
+  </ns1:Body>
+</ns1:Envelope>"""
+
+_WIS_ENVELOPE_NO_PAYLOAD = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<ns1:Envelope xmlns:ns1="http://Cypris.Nhs.Wales.Uk/CaptureFromFiorona/Input">
+  <ns1:Body>
+    <ns3:CaptureFromFiorona xmlns:ns3="http://Cypris.Nhs.Wales.Uk/">
+      <ns3:inputString></ns3:inputString>
+    </ns3:CaptureFromFiorona>
+  </ns1:Body>
+</ns1:Envelope>"""
 
 
 class TestSoapHandler(unittest.TestCase):
@@ -64,10 +94,17 @@ class TestSoapHandler(unittest.TestCase):
     def test_parse_fail_trigger_sets_fault_flag(self) -> None:
         result = parse_soap_request(_SOAP_FAIL_BODY)
         self.assertTrue(result.is_fault_requested)
+        self.assertEqual(result.ack_code, "AE")
+
+    def test_parse_reject_trigger_sets_reject_flag(self) -> None:
+        result = parse_soap_request(_SOAP_REJECT_BODY)
+        self.assertEqual(result.ack_code, "AR")
+        self.assertTrue(result.is_fault_requested)
 
     def test_parse_normal_message_no_fault_flag(self) -> None:
         result = parse_soap_request(_SOAP_11_ACK)
         self.assertFalse(result.is_fault_requested)
+        self.assertEqual(result.ack_code, "AA")
 
     def test_parse_malformed_xml_returns_result_without_raising(self) -> None:
         # Should not raise — returns a result with is_fault_requested=False
@@ -78,6 +115,30 @@ class TestSoapHandler(unittest.TestCase):
     def test_parse_soap12_extracts_control_id(self) -> None:
         result = parse_soap_request(_SOAP_12_ENVELOPE)
         self.assertEqual(result.message_control_id, "CTRLID999")
+
+    def test_parse_valid_wis_request_extracts_payload(self) -> None:
+        result = parse_soap_request(_WIS_ENVELOPE)
+        self.assertIsNone(result.hl7_payload)
+        self.assertTrue(result.is_well_formed_xml)
+        assert result.wis_payload is not None
+        self.assertIn("HL7v2xml", result.wis_payload)
+
+    def test_parse_wis_request_no_fault(self) -> None:
+        result = parse_soap_request(_WIS_ENVELOPE)
+        self.assertFalse(result.is_fault_requested)
+        self.assertEqual(result.ack_code, "AA")
+
+    def test_parse_wis_request_no_payload_falls_back_to_raw_envelope(self) -> None:
+        result = parse_soap_request(_WIS_ENVELOPE_NO_PAYLOAD)
+        self.assertIsNone(result.hl7_payload)
+        self.assertIsNone(result.wis_payload)
+        self.assertTrue(result.is_well_formed_xml)
+        self.assertEqual(result.raw_body, _WIS_ENVELOPE_NO_PAYLOAD)
+
+    def test_parse_malformed_xml_is_not_well_formed(self) -> None:
+        result = parse_soap_request(_MALFORMED_XML)
+        self.assertFalse(result.is_well_formed_xml)
+        self.assertIsNone(result.wis_payload)
 
 
 class TestSoapResponseBuilder(unittest.TestCase):

@@ -18,6 +18,7 @@ parameters:
       - restserver
       - hl7sender
       - hl7mockreceiver
+      - httpmockreceiver
       - hl7subscriptionsender
       - hl7pimstransformer
       - hl7phwtransformer
@@ -91,6 +92,17 @@ stages:
           parameters:
             appName: 'mock_receivers/hl7_mock_receiver'
             appDisplayName: 'HL7 Mock Receiver'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'httpmockreceiver') }}:
+    - stage: CodeQuality_httpmockreceiver
+      displayName: 'Code Quality — HTTP Mock Receiver'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'mock_receivers/http_mock_receiver'
+            appDisplayName: 'HTTP Mock Receiver'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -296,6 +308,25 @@ stages:
             appName: 'hl7mockreceiver'
             dockerfilePath: 'mock_receivers/hl7_mock_receiver/Dockerfile'
             buildContext: 'mock_receivers/hl7_mock_receiver'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'httpmockreceiver') }}:
+    - stage: Build_httpmockreceiver
+      displayName: 'Build — HTTP Mock Receiver'
+      dependsOn: CodeQuality_httpmockreceiver
+      condition: in(dependencies.CodeQuality_httpmockreceiver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHTTPMockReceiver'
+            displayName: 'Build and Push HTTP Mock Receiver'
+            appName: 'httpmockreceiver'
+            dockerfilePath: 'mock_receivers/http_mock_receiver/Dockerfile'
+            buildContext: 'mock_receivers/http_mock_receiver'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)

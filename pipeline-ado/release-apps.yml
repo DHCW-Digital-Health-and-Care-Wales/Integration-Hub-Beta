@@ -40,6 +40,7 @@ parameters:
       - WIS SOAP Sender
       - Message Store Service
       - HL7 Mock Receiver
+      - HTTP Mock Receiver
       - Network Test App
       
   - name: selectedEnvironment
@@ -113,6 +114,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Mock Receiver - Build'
       source: 'HL7 Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'HTTP Mock Receiver - Build'
+      source: 'HTTP Mock Receiver - Build'
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
@@ -297,6 +301,11 @@ stages:
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Mock Receiver - Build'
+
+        - name: 'HTTP Mock Receiver'
+          appImageName: 'httpmockreceiver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HTTP Mock Receiver - Build'
 
         # Network Test App
         - name: 'Network Test App'
