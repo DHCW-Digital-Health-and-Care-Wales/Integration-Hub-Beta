@@ -32,7 +32,7 @@ def load_config(partition_key: str, config_doc_id: str = "config") -> dict:
 
 def save_config(partition_key: str, cfg: dict, config_doc_id: str = "config") -> None:
     """Persist an alarm's rule config to Cosmos DB."""
-    cosmos_store.upsert_document(partition_key, config_doc_id, cfg)
+    cosmos_store.upsert_document(partition_key, config_doc_id, cfg, doc_type="alarm_config")
 
 
 def load_state(partition_key: str, state_doc_id: str = "state") -> dict:
@@ -49,7 +49,7 @@ def load_state(partition_key: str, state_doc_id: str = "state") -> dict:
 
 def save_state(partition_key: str, state: dict, state_doc_id: str = "state") -> None:
     """Persist an alarm's per-rule state to Cosmos DB."""
-    cosmos_store.upsert_document(partition_key, state_doc_id, state)
+    cosmos_store.upsert_document(partition_key, state_doc_id, state, doc_type="alarm_state")
 
 
 def pause_rule(

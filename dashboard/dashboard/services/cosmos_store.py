@@ -42,9 +42,10 @@ from dashboard.services.credentials import get_azure_credential
 log = logging.getLogger(__name__)
 
 # Cosmos reserves any property whose name starts with ``_`` (``_rid``, ``_etag`` …)
-# plus the ``id``/``pk`` routing fields. These are stripped from documents on read so
-# callers get back exactly the payload they stored.
-_RESERVED_KEYS = frozenset({"id", "pk"})
+# plus the ``id``/``pk`` routing fields and the ``type`` discriminator. All are
+# storage-managed metadata, so they are stripped from documents on read (and ignored
+# in caller payloads on write) — callers get back exactly the payload they stored.
+_RESERVED_KEYS = frozenset({"id", "pk", "type"})
 
 # Single-element mutable cache holding the process-wide client. A dict is used (rather
 # than a reassigned module global) so the singleton can be updated without ``global``.
@@ -96,7 +97,7 @@ def _get_client() -> CosmosClient | None:
 
 
 def _get_container() -> Any | None:
-    """Return the alarm container client, creating the database/container in dev.
+    """Return the dashboard container client, creating the database/container in dev.
 
     When key-based auth is used (emulator / dev) the database and container are created
     on demand so a fresh emulator needs no manual setup. With RBAC auth they are assumed
@@ -177,14 +178,18 @@ def query_documents(pk: str) -> list[dict]:
         return []
 
 
-def upsert_document(pk: str, doc_id: str, data: dict) -> bool:
+def upsert_document(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> bool:
     """Create or replace a document identified by ``pk``/``doc_id``.
 
     The ``data`` payload is stored verbatim alongside the ``id`` and ``pk`` routing
-    fields. Errors are logged and swallowed so a persistence outage never breaks a
-    request — matching the previous JSON-file save behaviour. Returns ``True`` on a
-    successful write and ``False`` otherwise, so callers that want to warn the user
-    about a degraded persistence layer (rather than silently losing data) can do so.
+    fields and, when supplied, a ``type`` discriminator naming the kind of document
+    (e.g. ``alarm_config``). The discriminator is storage-managed metadata: it lets the
+    mixed-type container be queried/browsed by kind, and is stripped again on read so
+    callers only see their own payload. Errors are logged and swallowed so a persistence
+    outage never breaks a request — matching the previous JSON-file save behaviour.
+    Returns ``True`` on a successful write and ``False`` otherwise, so callers that want
+    to warn the user about a degraded persistence layer (rather than silently losing
+    data) can do so.
     """
     container = _get_container()
     if container is None:
@@ -196,6 +201,8 @@ def upsert_document(pk: str, doc_id: str, data: dict) -> bool:
     document = {k: v for k, v in data.items() if k not in _RESERVED_KEYS}
     document["id"] = doc_id
     document["pk"] = pk
+    if doc_type is not None:
+        document["type"] = doc_type
 
     try:
         container.upsert_item(body=document)

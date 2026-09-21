@@ -79,8 +79,8 @@ See `dashboard/config.py` for the full list.
 |----------|-------------|---------|
 | `COSMOS_ENDPOINT` | Cosmos account URI (emulator: `https://localhost:8081`). Empty disables persistence. | — |
 | `COSMOS_KEY` | Account key. When set, key auth is used and the DB/container are auto-created; empty uses RBAC. | — |
-| `COSMOS_DATABASE` | Cosmos database name | `integration-hub-dashboard` |
-| `COSMOS_CONTAINER` | Cosmos container name (partition key `/pk`) | `alarms` |
+| `COSMOS_DATABASE` | Cosmos database name | `integration-hub` |
+| `COSMOS_CONTAINER` | Cosmos container name (partition key `/pk`) | `dashboard` |
 | `COSMOS_DISABLE_SSL_VERIFY` | Disable TLS verification — required for the local emulator only | `false` |
 
 ## Azure authentication

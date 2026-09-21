@@ -228,7 +228,7 @@ Cosmos account per environment — see
 
 [Infrastructure: reuse the dashboard's Cosmos account](#infrastructure-reuse-the-dashboards-cosmos-account)
 
-below. Add a new `lookups` container to that account (alongside the existing `alarms` container),
+below. Add a new `lookups` container to that account (alongside the existing `dashboard` container),
 
 partitioned by `table_name` with `id` = lookup key, so a table name + key resolves to a
 
@@ -575,8 +575,7 @@ provisioning a second account. Concretely:
 
   
 
-- Add a `lookups` entry to that module's `containers` map (alongside the existing `alarms`
-
+- Add a `lookups` entry to that module's `containers` map (alongside the existing `dashboard`
 container), e.g. `lookups = { name = "lookups", partition_key_path = "/table_name" }`. No new
 
 `azurerm_cosmosdb_account` resource, module call, or private endpoint is needed.
