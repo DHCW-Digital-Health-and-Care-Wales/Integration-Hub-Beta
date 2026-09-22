@@ -10,6 +10,11 @@ dependencies = [
     "hl7-pims-transformer",
     "proms-fhir-transformer",
     "hl7-server",
+    "hl7-core-reference-transformer",
+    "wrds-service",
+    "rest-server",
+    "hl7-soap-server",
+    "hl7-sender",
 ]
 
 [tool.uv.sources]
@@ -18,3 +23,8 @@ hl7-chemo-transformer = { path = "../../transformers/hl7_chemo_transformer", edi
 hl7-pims-transformer = { path = "../../transformers/hl7_pims_transformer", editable = true }
 proms-fhir-transformer = { path = "../../transformers/xml_fhir_proms_transformer", editable = true }
 hl7-server           = { path = "../../servers/hl7_server", editable = true }
+hl7-core-reference-transformer = { path = "../../transformers/hl7_core_reference_transformer", editable = true }
+wrds-service         = { path = "../../shared_libs/wrds_service" }
+rest-server          = { path = "../../servers/rest_server", editable = true }
+hl7-soap-server      = { path = "../../servers/hl7_soap_server", editable = true }
+hl7-sender           = { path = "../../senders/hl7_sender", editable = true }
