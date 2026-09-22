@@ -423,7 +423,11 @@ def _merge_subscription_sender_flows(flows: dict[str, dict]) -> None:
             owner = flows[owner_id]
             owner_subs = owner.setdefault("subscriptions", [])
             existing_keys = {
-                (sub.get("topic"), sub.get("name"), tuple(app.get("microservice_id") for app in sub.get("consumer_apps", [])))
+                (
+                    sub.get("topic"),
+                    sub.get("name"),
+                    tuple(app.get("microservice_id") for app in sub.get("consumer_apps", [])),
+                )
                 for sub in owner_subs
             }
             for sub in flows[fid].get("subscriptions", []):
