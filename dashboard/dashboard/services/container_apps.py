@@ -37,15 +37,31 @@ def _build_app_flow_map() -> dict[str, str]:
     return an empty dict and the caller falls back to keyword matching.
     """
     try:
-        arm.discover_flows()
+        flows = arm.discover_flows()
         if not arm._cached_apps:
             return {}
 
-        return {
-            app["name"]: app["env"]["WORKFLOW_ID"]
-            for app in arm._cached_apps
-            if app.get("name") and app.get("env", {}).get("WORKFLOW_ID")
+        topic_owner_flow_map = {
+            flow["topic"]: flow_id
+            for flow_id, flow in flows.items()
+            if flow.get("topic") and flow.get("source_port")
         }
+
+        app_flow_map: dict[str, str] = {}
+        for app in arm._cached_apps:
+            name = app.get("name")
+            env = app.get("env", {})
+            workflow_id = env.get("WORKFLOW_ID")
+            if not name or not workflow_id:
+                continue
+
+            if workflow_id not in flows:
+                topic_name = env.get("INGRESS_TOPIC_NAME") or env.get("EGRESS_TOPIC_NAME")
+                workflow_id = topic_owner_flow_map.get(topic_name, workflow_id)
+
+            app_flow_map[name] = workflow_id
+
+        return app_flow_map
     except Exception:
         return {}
 
