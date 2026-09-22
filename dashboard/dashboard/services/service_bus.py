@@ -227,7 +227,7 @@ def get_namespace_snapshot() -> dict:
         for subscription in sorted(subscriptions_by_name.values(), key=lambda item: item["name"]):
             sub_active = subscription.get("active_message_count", 0)
             sub_dlq = subscription.get("dead_letter_message_count", 0)
-            subscription["health"] = _entity_health(sub_active, sub_dlq)
+            subscription["health"] = "unknown" if subscription.get("status") == "Unknown" else _entity_health(sub_active, sub_dlq)
             subscription_active_total += sub_active
             subscription_dlq_total += sub_dlq
             subscriptions.append(subscription)
