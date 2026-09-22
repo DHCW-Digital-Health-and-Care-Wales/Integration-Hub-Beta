@@ -359,6 +359,9 @@ def flow_health(flow_id: str, queues_by_name: dict[str, dict], flows: dict[str, 
     subscriptions = flow.get("subscriptions", [])
     if subscriptions:
         for sub in subscriptions:
+            if sub.get("status", "Unknown") == "Unknown":
+                statuses.append("unknown")
+                continue
             statuses.append(
                 queue_health(
                     sub.get("active_message_count", 0),
@@ -384,6 +387,8 @@ def flow_health(flow_id: str, queues_by_name: dict[str, dict], flows: dict[str, 
         return "critical"
     if "warning" in statuses:
         return "warning"
+    if "unknown" in statuses:
+        return "unknown"
     return "healthy"
 
 
