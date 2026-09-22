@@ -264,6 +264,13 @@ class TestDeleteDocument:
         with patch.object(cosmos_store, "_get_container", return_value=None):
             assert cosmos_store.delete_document("network-test", "history:a:1") is True
 
+    def test_returns_false_when_container_unavailable_but_configured(self) -> None:
+        with (
+            patch.object(cosmos_store, "_get_container", return_value=None),
+            patch.object(cosmos_store, "is_configured", return_value=True),
+        ):
+            assert cosmos_store.delete_document("network-test", "history:a:1") is False
+
     def test_noop_when_document_already_missing(self) -> None:
         container = MagicMock()
         container.delete_item.side_effect = CosmosResourceNotFoundError(message="missing")

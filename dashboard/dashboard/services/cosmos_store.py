@@ -252,6 +252,9 @@ def delete_document(pk: str, doc_id: str) -> bool:
     """
     container = _get_container()
     if container is None:
+        if is_configured():
+            log.error("Cannot delete Cosmos document %s/%s — container unavailable", pk, doc_id)
+            return False
         return True
 
     try:
