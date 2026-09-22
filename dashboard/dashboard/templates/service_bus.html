@@ -11,65 +11,61 @@
         <i class="bi bi-stack" style="color:var(--accent-cyan)"></i>
         {{ _("Azure Service Bus") }}
       </h1>
-      <p class="page-subtitle">{{ _("Queue depths, dead-letter counts and flow mapping") }}</p>
+      <p class="page-subtitle">{{ _("Namespace inventory with queue, topic and subscription visibility") }}</p>
     </div>
     <a href="{{ url_for('service_bus_page') }}" class="btn-dash">
       <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
     </a>
   </div>
 
-  {% if queues %}
+  {% if queues or topics %}
 
-  <!-- Summary KPIs -->
-  {% set total_active = queues | sum(attribute='active_message_count') %}
-  {% set total_dlq    = queues | sum(attribute='dead_letter_message_count') %}
-  {% set total_sched  = queues | sum(attribute='scheduled_message_count') %}
-  {% set warn_queues  = queues | selectattr('active_message_count', 'ge', 10) | list | length %}
-  {% set crit_queues  = queues | selectattr('active_message_count', 'ge', 50) | list | length %}
+  <!-- Namespace KPIs -->
+  {% set ns = namespace_snapshot.kpis %}
 
   <div class="kpi-strip stagger-children mb-3">
-    <a href="#queue-table" class="kpi-card kpi-card--link">
+    <a href="#queue-inventory-table" class="kpi-card kpi-card--link">
       <div class="kpi-icon blue"><i class="bi bi-envelope-fill"></i></div>
       <div class="kpi-body">
-        <div class="kpi-number">{{ total_active }}</div>
-        <div class="kpi-label">{{ _("Total Active") }}</div>
+        <div class="kpi-number">{{ ns.queue_active_messages }}</div>
+        <div class="kpi-label">{{ _("Queue Backlog") }}</div>
       </div>
     </a>
-    <a href="#queue-table" class="kpi-card kpi-card--link">
-      <div class="kpi-icon {% if total_dlq > 0 %}red{% else %}green{% endif %}">
+    <a href="#queue-inventory-table" class="kpi-card kpi-card--link">
+      <div class="kpi-icon {% if ns.queue_dead_letter_messages > 0 %}red{% else %}green{% endif %}">
         <i class="bi bi-exclamation-octagon-fill"></i>
       </div>
       <div class="kpi-body">
-        <div class="kpi-number {% if total_dlq > 0 %}text-danger{% endif %}">{{ total_dlq }}</div>
-        <div class="kpi-label">{{ _("Total DLQ") }}</div>
+        <div class="kpi-number {% if ns.queue_dead_letter_messages > 0 %}text-danger{% endif %}">{{ ns.queue_dead_letter_messages }}</div>
+        <div class="kpi-label">{{ _("Queue DLQ") }}</div>
       </div>
     </a>
-    <div class="kpi-card">
-      <div class="kpi-icon purple"><i class="bi bi-clock-history"></i></div>
+    <a href="#topic-inventory-table" class="kpi-card kpi-card--link">
+      <div class="kpi-icon purple"><i class="bi bi-broadcast"></i></div>
       <div class="kpi-body">
-        <div class="kpi-number">{{ total_sched }}</div>
-        <div class="kpi-label">{{ _("Scheduled") }}</div>
+        <div class="kpi-number">{{ ns.topic_active_messages }}</div>
+        <div class="kpi-label">{{ _("Topic Backlog") }}</div>
       </div>
-    </div>
-    <div class="kpi-card">
+    </a>
+    <a href="#topic-inventory-table" class="kpi-card kpi-card--link">
+      <div class="kpi-icon {% if ns.topic_dead_letter_messages > 0 %}red{% else %}amber{% endif %}"><i class="bi bi-sign-turn-right-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number {% if ns.topic_dead_letter_messages > 0 %}text-danger{% endif %}">{{ ns.topic_dead_letter_messages }}</div>
+        <div class="kpi-label">{{ _("Topic DLQ") }}</div>
+      </div>
+    </a>
+    <a href="#topic-drilldown" class="kpi-card kpi-card--link">
       <div class="kpi-icon cyan"><i class="bi bi-collection-fill"></i></div>
       <div class="kpi-body">
-        <div class="kpi-number">{{ queues | length }}</div>
-        <div class="kpi-label">{{ _("Total Queues") }}</div>
-      </div>
-    </div>
-    <a href="#queue-table" class="kpi-card kpi-card--link">
-      <div class="kpi-icon amber"><i class="bi bi-exclamation-circle-fill"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-number {% if warn_queues > 0 %}text-warning{% endif %}">{{ warn_queues }}</div>
-        <div class="kpi-label">{{ _("Warning Queues") }}</div>
+        <div class="kpi-number">{{ ns.subscription_active_messages }}</div>
+        <div class="kpi-label">{{ _("Subscription Backlog") }}</div>
       </div>
     </a>
-    <a href="#queue-table" class="kpi-card kpi-card--link">
-      <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
+    <a href="#topic-drilldown" class="kpi-card kpi-card--link">
+      <div class="kpi-icon {% if ns.subscription_dead_letter_messages > 0 %}red{% else %}green{% endif %}"><i class="bi bi-diagram-3-fill"></i></div>
       <div class="kpi-body">
-        <div class="kpi-number {% if crit_queues > 0 %}text-danger{% endif %}">{{ crit_queues }}</div>
-        <div class="kpi-label">{{ _("Critical Queues") }}</div>
+        <div class="kpi-number {% if ns.subscription_dead_letter_messages > 0 %}text-danger{% endif %}">{{ ns.subscription_dead_letter_messages }}</div>
+        <div class="kpi-label">{{ _("Subscription DLQ") }}</div>
       </div>
     </a>
   </div>
@@ -87,7 +83,7 @@
           {{ flow.label }}
         </div>
         <span class="status-badge {{ flow.health }}">{{ flow.health }}</span>
-        {% set flow_dlq = (flow.pre_queue.dlq or 0) + (flow.post_queue.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
+        {% set flow_dlq = (flow.pre_queue.dlq or 0) + (flow.post_queue.dlq or 0) + (flow.topic_summary.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
         {% if flow_dlq > 0 %}
         <div class="dlq-badge-pill mt-1" style="font-size:0.6rem;">
           DLQ: {{ flow_dlq }}
@@ -99,17 +95,17 @@
   </div>
   {% endif %}
 
-  <!-- Queue table -->
+  <!-- Namespace inventory -->
   <div class="section-header">
-    <span class="section-title"><i class="bi bi-table"></i> {{ _("All Queues") }}</span>
+    <span class="section-title"><i class="bi bi-table"></i> {{ _("Namespace Inventory") }}</span>
   </div>
-  <div class="queue-table-wrapper">
+  <div class="queue-table-wrapper mb-3">
     <div class="queue-table-header">
-      <h6><i class="bi bi-list-ul me-1"></i> {{ _("Queue Details") }}</h6>
-      <span class="text-muted" style="font-size:0.72rem;">{{ _("Click column headers to sort") }}</span>
+      <h6><i class="bi bi-list-ul me-1"></i> {{ _("Queues") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ ns.queue_count }} {{ _("queues") }}</span>
     </div>
     <div class="scroll-panel" style="max-height:none;">
-      <table class="dash-table" id="queue-table">
+      <table class="dash-table" id="queue-inventory-table">
         <thead>
           <tr>
             <th data-sort="name">{{ _("Queue") }} <span class="sort-icon"></span></th>
@@ -130,7 +126,7 @@
           {% set q_health = 'critical' if active >= 50 else ('warning' if (active >= 10 or dlq > 0) else 'healthy') %}
           <tr data-queue-name="{{ q.name }}" class="{{ 'table-danger-row' if q_health == 'critical' else '' }}">
             <td class="queue-name-cell" data-col="name">
-              <a href="{{ url_for('messages_page', queue=q.name) }}" class="queue-link">{{ q.name }}</a>
+              <a href="{{ url_for('messages_page', entity_type='queue', entity_name=q.name) }}" class="queue-link">{{ q.name }}</a>
             </td>
             <td class="count-cell text-end {{ 'critical' if active >= 50 else ('warning' if active >= 10 else 'zero') }}"
                 data-col="active">{{ active }}</td>
@@ -154,6 +150,110 @@
     </div>
   </div>
 
+  <div class="queue-table-wrapper mb-3">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-broadcast me-1"></i> {{ _("Topics") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ ns.topic_count }} {{ _("topics") }}</span>
+    </div>
+    <div class="scroll-panel" style="max-height:none;">
+      <table class="dash-table" id="topic-inventory-table">
+        <thead>
+          <tr>
+            <th>{{ _("Topic") }}</th>
+            <th class="text-end">{{ _("Active") }}</th>
+            <th class="text-end">{{ _("DLQ") }}</th>
+            <th class="text-end">{{ _("Scheduled") }}</th>
+            <th class="text-end">{{ _("Subscriptions") }}</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Health") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for topic in topics | sort(attribute='active_message_count', reverse=True) %}
+          <tr class="{{ 'table-danger-row' if topic.health == 'critical' else '' }}">
+            <td class="queue-name-cell">
+              <a href="{{ url_for('messages_page', entity_type='topic', entity_name=topic.name) }}" class="queue-link">{{ topic.name }}</a>
+            </td>
+            <td class="count-cell text-end {{ 'critical' if topic.active_message_count >= 50 else ('warning' if topic.active_message_count >= 10 else 'zero') }}">{{ topic.active_message_count }}</td>
+            <td class="count-cell text-end {{ 'dlq-warn' if topic.dead_letter_message_count > 0 else 'zero' }}">{{ topic.dead_letter_message_count }}</td>
+            <td class="count-cell text-end zero">{{ topic.scheduled_message_count }}</td>
+            <td class="text-end">{{ topic.subscriptions | length }}</td>
+            <td><span class="status-badge {{ 'healthy' if topic.status == 'Active' else 'warning' }}">{{ topic.status }}</span></td>
+            <td><span class="status-badge {{ topic.health }}">{{ topic.health }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-header" id="topic-drilldown">
+    <span class="section-title"><i class="bi bi-diagram-3"></i> {{ _("Topic Drill-Down") }}</span>
+  </div>
+  {% for topic in topics | sort(attribute='active_message_count', reverse=True) %}
+  <details class="queue-table-wrapper mb-3" {% if topic.health != 'healthy' or topic.subscriptions | rejectattr('health', 'equalto', 'healthy') | list %}open{% endif %}>
+    <summary class="queue-table-header" style="cursor:pointer; list-style:none;">
+      <h6><i class="bi bi-broadcast-pin me-1"></i> {{ topic.name }}</h6>
+      <div style="display:flex; align-items:center; gap:0.75rem; font-size:0.72rem; color:var(--text-muted);">
+        <span>{{ topic.subscriptions | length }} {{ _("subscriptions") }}</span>
+        <span>{{ _("Active:") }} {{ topic.active_message_count }}</span>
+        {% if topic.dead_letter_message_count > 0 %}<span class="dlq-badge-pill">DLQ: {{ topic.dead_letter_message_count }}</span>{% endif %}
+        <span class="status-badge {{ topic.health }}">{{ topic.health }}</span>
+      </div>
+    </summary>
+    <div class="scroll-panel" style="max-height:none;">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>{{ _("Subscription") }}</th>
+            <th class="text-end">{{ _("Active") }}</th>
+            <th class="text-end">{{ _("DLQ") }}</th>
+            <th class="text-end">{{ _("Total") }}</th>
+            <th>{{ _("Status") }}</th>
+            <th>{{ _("Consumer Apps") }}</th>
+            <th>{{ _("Workflows") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in topic.subscriptions %}
+          <tr class="{{ 'table-danger-row' if sub.health == 'critical' else '' }}">
+            <td class="queue-name-cell">
+              <a href="{{ url_for('messages_page', entity_type='subscription', entity_name=sub.entity_name) }}" class="queue-link">{{ sub.name }}</a>
+            </td>
+            <td class="count-cell text-end {{ 'critical' if sub.active_message_count >= 50 else ('warning' if sub.active_message_count >= 10 else 'zero') }}">{{ sub.active_message_count }}</td>
+            <td class="count-cell text-end {{ 'dlq-warn' if sub.dead_letter_message_count > 0 else 'zero' }}">{{ sub.dead_letter_message_count }}</td>
+            <td class="count-cell text-end zero">{{ sub.message_count }}</td>
+            <td><span class="status-badge {{ sub.health }}">{{ sub.status }}</span></td>
+            <td style="font-size:0.75rem; color:var(--text-muted);">
+              {% if sub.consumer_apps %}
+                {% for consumer in sub.consumer_apps %}
+                  <div>{{ consumer.app_name }} <span style="color:var(--text-dim)">({{ consumer.sender_type }})</span></div>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td style="font-size:0.75rem; color:var(--text-muted);">
+              {% if sub.consumer_apps %}
+                {% for consumer in sub.consumer_apps %}
+                  <div>{{ consumer.workflow_id }}</div>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center" style="padding:1rem; color:var(--text-muted);">{{ _("No subscriptions found for this topic") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endfor %}
+
   {% else %}
   <div class="dash-card">
     <div class="no-data" style="padding:3rem;">
@@ -167,10 +267,6 @@
   {% endif %}
 
 </div><!-- /page-wrapper -->
-{% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
 
 {% include 'SB_Emulator_MC.html' %}

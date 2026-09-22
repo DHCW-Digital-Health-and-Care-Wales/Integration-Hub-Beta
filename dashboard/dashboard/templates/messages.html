@@ -2,6 +2,13 @@
 
 {% block title %}{{ _("Messages") }}{% endblock %}
 
+{% block head %}
+<script>
+  window.__chartEntityType = {{ (entity_type or '') | tojson }};
+  window.__chartEntityName = {{ (entity_name or '') | tojson }};
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="page-wrapper">
 
@@ -18,11 +25,12 @@
     </a>
   </div>
 
-  {% if queue_filter %}
+  {% if entity_type and entity_name %}
   <div class="dash-card mb-3" style="border-left:3px solid var(--accent-cyan); padding:0.7rem 1rem; display:flex; align-items:center; justify-content:space-between;">
     <span style="font-size:0.82rem;">
       <i class="bi bi-funnel-fill" style="color:var(--accent-cyan)"></i>
-      {{ _("Filtered by queue:") }} <strong style="color:var(--accent-cyan)">{{ queue_filter }}</strong>
+      {{ _("Filtered by") }} <strong style="color:var(--accent-cyan)">{{ entity_type }}</strong>
+      <strong style="color:var(--accent-cyan)">{{ entity_name }}</strong>
       {% if flow_label %}<span style="color:var(--text-muted)"> · {{ flow_label }}</span>{% endif %}
     </span>
     <a href="{{ url_for('messages_page') }}" class="btn-dash btn-dash--sm">

@@ -19,7 +19,7 @@ from dashboard.services import cache, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status
 from dashboard.services.alarm2 import get_alarm2_status
 from dashboard.services.alarm3 import get_alarm3_status
-from dashboard.services.arm import discover_flows
+from dashboard.services.arm import discover_flows, entity_to_microservice_ids
 from dashboard.services.azure_monitor import (
     get_container_app_metric_history,
     get_hl7_throughput_metrics,
@@ -27,7 +27,7 @@ from dashboard.services.azure_monitor import (
 )
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows
-from dashboard.services.service_bus import get_message_metrics, get_queues
+from dashboard.services.service_bus import get_message_metrics, get_queues, get_topics
 from dashboard.services.status_builder import LONDON_TZ, alarm_summary, get_cached_status
 
 
@@ -74,7 +74,7 @@ def api_flows() -> Response:
     """JSON endpoint returning live flow health and container-app metrics."""
     queues = get_queues()
     active_flows = get_active_flows()
-    flows = build_flow_data(queues, active_flows)
+    flows = build_flow_data(queues, active_flows, get_topics())
     container_metrics = get_container_apps_metrics()
     return jsonify(
         {
@@ -98,8 +98,18 @@ def api_container_app_history(name: str) -> Response:
 
 
 def api_messages() -> Response:
-    """JSON endpoint returning all messages processed today."""
-    messages = get_messages_today()
+    """JSON endpoint returning messages processed today, optionally filtered by Service Bus entity."""
+    legacy_queue_filter = request.args.get("queue", "").strip()
+    entity_type = request.args.get("entity_type", "").strip().lower() or ("queue" if legacy_queue_filter else "")
+    entity_name = request.args.get("entity_name", "").strip() or legacy_queue_filter
+    microservice_ids: list[str] | None = None
+
+    if entity_type and entity_name:
+        microservice_ids = entity_to_microservice_ids(entity_type, entity_name)
+        if not microservice_ids:
+            microservice_ids = ["__no_match__"]
+
+    messages = get_messages_today(microservice_ids=microservice_ids)
     return jsonify({"messages": messages, "count": len(messages)})
 
 
@@ -108,13 +118,22 @@ def api_servicebus_metrics() -> Response:
 
     Query params:
         hours: one of 1, 6, 12, 24, 168, 720 (defaults to 1).
-        queue:  optional queue name filter.
+        entity_type: optional queue/topic/subscription filter type.
+        entity_name: optional entity name filter. Subscriptions use topic/subscription.
+        queue: legacy queue name filter.
     """
     hours = request.args.get("hours", "1", type=str)
     allowed = {"1": 1, "6": 6, "12": 12, "24": 24, "168": 168, "720": 720}
     timespan_hours = allowed.get(hours, 1)
     queue = request.args.get("queue", "").strip() or None
-    metrics = get_message_metrics(timespan_hours, queue_name=queue)
+    entity_type = request.args.get("entity_type", "").strip().lower() or None
+    entity_name = request.args.get("entity_name", "").strip() or None
+    metrics = get_message_metrics(
+        timespan_hours,
+        queue_name=queue,
+        entity_type=entity_type,
+        entity_name=entity_name,
+    )
     return jsonify(metrics)
 
 

@@ -104,8 +104,9 @@
       if (rowActive) {
         const pre = flow.pre_queue || {};
         const post = flow.post_queue || {};
+        const topic = flow.topic_summary || {};
         const subActive = (flow.subscriptions || []).reduce((s, q) => s + (q.active || 0), 0);
-        const total = (pre.active || 0) + (post.active || 0) + subActive;
+        const total = (pre.active || 0) + (post.active || 0) + (topic.active || 0) + subActive;
         animateCounter(rowActive, total);
         rowActive.className = "text-end count-cell " +
           (total >= 50 ? "critical" : total >= 10 ? "warning" : "zero");
@@ -114,8 +115,9 @@
       if (rowDlq) {
         const pre = flow.pre_queue || {};
         const post = flow.post_queue || {};
+        const topic = flow.topic_summary || {};
         const subDlq = (flow.subscriptions || []).reduce((s, q) => s + (q.dlq || 0), 0);
-        const total = (pre.dlq || 0) + (post.dlq || 0) + subDlq;
+        const total = (pre.dlq || 0) + (post.dlq || 0) + (topic.dlq || 0) + subDlq;
         animateCounter(rowDlq, total);
         rowDlq.className = "text-end count-cell " + (total > 0 ? "dlq-warn" : "zero");
       }

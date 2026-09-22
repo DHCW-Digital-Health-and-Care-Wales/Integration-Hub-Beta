@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from dashboard.services.arm import _cached_flows
+import dashboard.services.arm as arm
 from dashboard.services.azure_monitor import get_container_app_metrics
 from dashboard.services.flows import get_flows
 
@@ -37,12 +37,31 @@ def _build_app_flow_map() -> dict[str, str]:
     return an empty dict and the caller falls back to keyword matching.
     """
     try:
-        if not _cached_flows:
+        flows = arm.discover_flows()
+        if not arm._cached_apps:
             return {}
 
-        # Rebuild from the raw cached app list — not available directly,
-        # so we use the fallback keyword approach alongside discovery.
-        return {}
+        topic_owner_flow_map = {
+            flow["topic"]: flow_id
+            for flow_id, flow in flows.items()
+            if flow.get("topic") and flow.get("source_port")
+        }
+
+        app_flow_map: dict[str, str] = {}
+        for app in arm._cached_apps:
+            name = app.get("name")
+            env = app.get("env", {})
+            workflow_id = env.get("WORKFLOW_ID")
+            if not name or not workflow_id:
+                continue
+
+            if workflow_id not in flows:
+                topic_name = env.get("INGRESS_TOPIC_NAME") or env.get("EGRESS_TOPIC_NAME")
+                workflow_id = topic_owner_flow_map.get(topic_name, workflow_id)
+
+            app_flow_map[name] = workflow_id
+
+        return app_flow_map
     except Exception:
         return {}
 
@@ -64,9 +83,10 @@ def get_container_apps_metrics() -> dict[str, list[dict]]:
     raw = get_container_app_metrics()
     grouped: dict[str, list[dict]] = {fid: [] for fid in get_flows()}
     grouped["other"] = []
+    app_flow_map = _build_app_flow_map()
 
     for app in raw:
-        flow_id = _infer_flow(app["name"])
+        flow_id = app_flow_map.get(app["name"]) or _infer_flow(app["name"])
         if flow_id and flow_id in grouped:
             grouped[flow_id].append(app)
         else:
