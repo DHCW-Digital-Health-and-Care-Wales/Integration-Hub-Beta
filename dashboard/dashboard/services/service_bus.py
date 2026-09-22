@@ -161,6 +161,16 @@ def _entity_health(active: int, dlq: int) -> str:
     return "healthy"
 
 
+def _merge_consumer_apps(subscription: dict, consumer_apps: list[dict]) -> None:
+    existing_ids = {app.get("microservice_id") for app in subscription.get("consumer_apps", [])}
+    for app in consumer_apps:
+        microservice_id = app.get("microservice_id")
+        if microservice_id in existing_ids:
+            continue
+        subscription.setdefault("consumer_apps", []).append(app)
+        existing_ids.add(microservice_id)
+
+
 def get_namespace_snapshot() -> dict:
     """Return a unified namespace snapshot covering queues, topics, and subscriptions."""
     from dashboard.services.arm import get_subscription_consumers_by_topic  # noqa: PLC0415
@@ -192,17 +202,29 @@ def get_namespace_snapshot() -> dict:
             sub_name = consumer.get("name")
             if not sub_name:
                 continue
-            subscriptions_by_name[sub_name] = {
-                "name": sub_name,
-                "topic": topic["name"],
-                "entity_type": "subscription",
-                "entity_name": consumer.get("entity_name") or f"{topic['name']}/{sub_name}",
-                "status": "Unknown",
-                "active_message_count": 0,
-                "dead_letter_message_count": 0,
-                "message_count": 0,
-                "consumer_apps": consumer.get("consumer_apps", []),
-            }
+            subscription = subscriptions_by_name.setdefault(
+                sub_name,
+                {
+                    "name": sub_name,
+                    "topic": topic["name"],
+                    "entity_type": "subscription",
+                    "entity_name": consumer.get("entity_name") or f"{topic['name']}/{sub_name}",
+                    "status": "Unknown",
+                    "active_message_count": 0,
+                    "dead_letter_message_count": 0,
+                    "message_count": 0,
+                    "consumer_apps": [],
+                },
+            )
+            subscription.update(
+                {
+                    "name": sub_name,
+                    "topic": topic["name"],
+                    "entity_type": "subscription",
+                    "entity_name": consumer.get("entity_name") or f"{topic['name']}/{sub_name}",
+                }
+            )
+            _merge_consumer_apps(subscription, consumer.get("consumer_apps", []))
 
         for subscription in get_subscriptions(topic["name"]):
             sub_name = subscription.get("name")
@@ -227,7 +249,9 @@ def get_namespace_snapshot() -> dict:
         for subscription in sorted(subscriptions_by_name.values(), key=lambda item: item["name"]):
             sub_active = subscription.get("active_message_count", 0)
             sub_dlq = subscription.get("dead_letter_message_count", 0)
-            subscription["health"] = "unknown" if subscription.get("status") == "Unknown" else _entity_health(sub_active, sub_dlq)
+            subscription["health"] = (
+                "unknown" if subscription.get("status") == "Unknown" else _entity_health(sub_active, sub_dlq)
+            )
             subscription_active_total += sub_active
             subscription_dlq_total += sub_dlq
             subscriptions.append(subscription)
