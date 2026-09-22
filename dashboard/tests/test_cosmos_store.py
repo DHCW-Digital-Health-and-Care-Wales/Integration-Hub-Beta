@@ -255,28 +255,26 @@ class TestDeleteDocument:
     def test_deletes_by_pk_and_id(self) -> None:
         container = MagicMock()
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            cosmos_store.delete_document("network-test", "history:a:1")
+            result = cosmos_store.delete_document("network-test", "history:a:1")
 
+        assert result is True
         container.delete_item.assert_called_once_with(item="history:a:1", partition_key="network-test")
 
     def test_noop_when_container_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_container", return_value=None):
-            # Should not raise.
-            cosmos_store.delete_document("network-test", "history:a:1")
+            assert cosmos_store.delete_document("network-test", "history:a:1") is True
 
     def test_noop_when_document_already_missing(self) -> None:
         container = MagicMock()
         container.delete_item.side_effect = CosmosResourceNotFoundError(message="missing")
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            # Should not raise.
-            cosmos_store.delete_document("network-test", "history:a:1")
+            assert cosmos_store.delete_document("network-test", "history:a:1") is True
 
     def test_swallows_http_error(self) -> None:
         container = MagicMock()
         container.delete_item.side_effect = CosmosHttpResponseError(message="boom")
         with patch.object(cosmos_store, "_get_container", return_value=container):
-            # Should log and return without raising.
-            cosmos_store.delete_document("network-test", "history:a:1")
+            assert cosmos_store.delete_document("network-test", "history:a:1") is False
 
 
 # ---------------------------------------------------------------------------

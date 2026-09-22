@@ -233,9 +233,9 @@ def api_network_test_sources() -> tuple[Response, int] | Response:
                 payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
             )
         except flow_sources.InvalidSourceError as exc:
-            return jsonify({"error": str(exc)}), 400
+            return jsonify({"error": exc.safe_message}), 400
         except flow_sources.SourcePersistenceError as exc:
-            return jsonify({"error": str(exc)}), 503
+            return jsonify({"error": exc.safe_message}), 503
         return jsonify(source), 201
 
     return jsonify({"sources": flow_sources.list_sources()})
@@ -255,9 +255,9 @@ def api_network_test_source(source_id: str) -> tuple[Response, int] | Response:
             source_id, payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
         )
     except flow_sources.InvalidSourceError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return jsonify({"error": exc.safe_message}), 400
     except flow_sources.SourcePersistenceError as exc:
-        return jsonify({"error": str(exc)}), 503
+        return jsonify({"error": exc.safe_message}), 503
     return jsonify(source)
 
 
@@ -282,7 +282,7 @@ def api_network_test_sources_import() -> tuple[Response, int] | Response:
         return jsonify({"error": "CSV file must be UTF-8 encoded."}), 400
 
     result = flow_sources.import_sources(content)
-    if any("Source persistence is " in error for error in result["errors"]):
+    if result["persistence_failed"]:
         return jsonify(result), 503
     return jsonify(result)
 

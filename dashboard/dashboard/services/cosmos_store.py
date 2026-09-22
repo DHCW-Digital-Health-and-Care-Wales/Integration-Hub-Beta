@@ -244,7 +244,7 @@ def create_document(pk: str, doc_id: str, data: dict, doc_type: str | None = Non
     return True
 
 
-def delete_document(pk: str, doc_id: str) -> None:
+def delete_document(pk: str, doc_id: str) -> bool:
     """Delete a single document identified by ``pk``/``doc_id``.
 
     A no-op (not an error) when the document is already missing or Cosmos isn't
@@ -252,14 +252,17 @@ def delete_document(pk: str, doc_id: str) -> None:
     """
     container = _get_container()
     if container is None:
-        return
+        return True
 
     try:
         container.delete_item(item=doc_id, partition_key=pk)
     except CosmosResourceNotFoundError:
-        pass
+        return True
     except AzureError as exc:
         log.error("Failed to delete Cosmos document %s/%s: %s", pk, doc_id, exc)
+        return False
+
+    return True
 
 
 def _reset_client_for_tests() -> None:

@@ -32,9 +32,17 @@ _CSV_REQUIRED_FIELDS = ("description", "url", "port")
 class InvalidSourceError(ValueError):
     """Raised when a supplied source's description/url/port fails validation."""
 
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.safe_message = message
+
 
 class SourcePersistenceError(RuntimeError):
     """Raised when a source change could not be saved durably."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.safe_message = message
 
 
 _PERSISTENCE_DISABLED_MESSAGE = "Source persistence is not configured."
@@ -213,10 +221,13 @@ def update_source(source_id: str, description: str, url: str, port: Any) -> dict
         _persist(source_id, source)
         return _public_source(source)
 
-    assert existing is not None
+    if existing is None:
+        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
     old_storage_id = str(existing["_storage_id"])
     new_storage_id = _create(source_id, source, new_key)
-    cosmos_store.delete_document(_PK, old_storage_id)
+    if not cosmos_store.delete_document(_PK, old_storage_id):
+        cosmos_store.delete_document(_PK, new_storage_id)
+        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
     source["_storage_id"] = new_storage_id
     return _public_source(source)
 
@@ -258,7 +269,7 @@ def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:
                 row.get(normalized_fields["port"], ""),
             )
         except InvalidSourceError as exc:
-            errors.append(f"Row {row_number}: {exc}")
+            errors.append(f"Row {row_number}: {exc.safe_message}")
             continue
 
         key = _duplicate_key(source["url"], source["port"])
@@ -274,17 +285,18 @@ def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:
 def import_sources(file_content: str) -> dict[str, Any]:
     """Parse and persist every valid row from an uploaded CSV file.
 
-    Returns a summary ``{"imported": <count>, "errors": [...]}`` — rows that fail
-    validation, duplicate another row in the same file, or duplicate an already-stored
-    source (by url:port, case-insensitive) are reported but don't abort the rest of
-    the import.
+    Returns a summary ``{"imported": <count>, "errors": [...], "persistence_failed":
+    <bool>}`` — rows that fail validation, duplicate another row in the same file, or
+    duplicate an already-stored source (by url:port, case-insensitive) are reported but
+    don't abort the rest of the import.
     """
     valid_rows, errors = parse_csv(file_content)
+    persistence_failed = False
     try:
         _ensure_persistence_configured()
     except SourcePersistenceError as exc:
-        errors.append(str(exc))
-        return {"imported": 0, "errors": errors}
+        errors.append(exc.safe_message)
+        return {"imported": 0, "errors": errors, "persistence_failed": True}
 
     imported = 0
     for row in valid_rows:
@@ -292,10 +304,12 @@ def import_sources(file_content: str) -> dict[str, Any]:
         try:
             add_source(row["description"], row["url"], row["port"])
         except InvalidSourceError as exc:
-            errors.append(f"{label}: {exc}")
+            errors.append(f"{label}: {exc.safe_message}")
         except SourcePersistenceError as exc:
-            errors.append(f"{label}: {exc}")
+            errors.append(f"{label}: {exc.safe_message}")
+            persistence_failed = True
+            break
         else:
             imported += 1
 
-    return {"imported": imported, "errors": errors}
+    return {"imported": imported, "errors": errors, "persistence_failed": persistence_failed}

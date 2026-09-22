@@ -553,20 +553,27 @@ class TestNetworkTestConfigRoutes:
 
     def test_api_sources_import_returns_summary(self, client: FlaskClient) -> None:
         csv_bytes = b"description,url,port\nPHW,phw.example.nhs.uk,2575\n"
-        with patch("dashboard.routes.api.flow_sources.import_sources", return_value={"imported": 1, "errors": []}):
+        with patch(
+            "dashboard.routes.api.flow_sources.import_sources",
+            return_value={"imported": 1, "errors": [], "persistence_failed": False},
+        ):
             response = client.post(
                 "/api/network-test/sources/import",
                 data={"file": (io.BytesIO(csv_bytes), "sources.csv")},
                 content_type="multipart/form-data",
             )
         assert response.status_code == 200
-        assert response.get_json() == {"imported": 1, "errors": []}
+        assert response.get_json() == {"imported": 1, "errors": [], "persistence_failed": False}
 
     def test_api_sources_import_returns_503_for_persistence_error(self, client: FlaskClient) -> None:
         csv_bytes = b"description,url,port\nPHW,phw.example.nhs.uk,2575\n"
         with patch(
             "dashboard.routes.api.flow_sources.import_sources",
-            return_value={"imported": 0, "errors": ["Source persistence is currently unavailable."]},
+            return_value={
+                "imported": 0,
+                "errors": ["Source persistence is currently unavailable."],
+                "persistence_failed": True,
+            },
         ):
             response = client.post(
                 "/api/network-test/sources/import",
@@ -574,7 +581,11 @@ class TestNetworkTestConfigRoutes:
                 content_type="multipart/form-data",
             )
         assert response.status_code == 503
-        assert response.get_json() == {"imported": 0, "errors": ["Source persistence is currently unavailable."]}
+        assert response.get_json() == {
+            "imported": 0,
+            "errors": ["Source persistence is currently unavailable."],
+            "persistence_failed": True,
+        }
 
 
 class TestEnvLoading:

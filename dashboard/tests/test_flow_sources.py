@@ -162,7 +162,7 @@ class TestUpdateSource:
         with (
             patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
             patch.object(flow_sources.cosmos_store, "create_document", return_value=True) as create,
-            patch.object(flow_sources.cosmos_store, "delete_document") as delete,
+            patch.object(flow_sources.cosmos_store, "delete_document", return_value=True) as delete,
         ):
             source = flow_sources.update_source("abc-123", "PHW", "paris.example.nhs.uk", 2577)
 
@@ -181,6 +181,21 @@ class TestUpdateSource:
             doc_type="flow_source_server",
         )
         delete.assert_called_once_with("flow-source-server", "abc-123")
+
+    def test_rolls_back_new_document_when_old_document_delete_fails(self) -> None:
+        existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "create_document", return_value=True),
+            patch.object(flow_sources.cosmos_store, "delete_document", side_effect=[False, True]) as delete,
+            pytest.raises(flow_sources.SourcePersistenceError),
+        ):
+            flow_sources.update_source("abc-123", "PHW", "paris.example.nhs.uk", 2577)
+
+        assert delete.call_args_list == [
+            (("flow-source-server", "abc-123"), {}),
+            (("flow-source-server", "flow-source:paris.example.nhs.uk:2577"), {}),
+        ]
 
     def test_raises_persistence_error_when_update_write_fails(self) -> None:
         existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
@@ -318,8 +333,11 @@ class TestImportSources:
         ):
             result = flow_sources.import_sources(csv_text)
 
-        assert result["imported"] == 1
-        assert len(result["errors"]) == 1
+        assert result == {
+            "imported": 1,
+            "errors": ["Row 3: Host must not be empty"],
+            "persistence_failed": False,
+        }
         create.assert_called_once()
         persisted_doc = create.call_args.args[2]
         assert persisted_doc["source_id"] == persisted_doc["id"]
@@ -338,6 +356,7 @@ class TestImportSources:
             result = flow_sources.import_sources(csv_text)
 
         assert result["imported"] == 1
+        assert result["persistence_failed"] is False
         assert len(result["errors"]) == 1
         assert "already exists" in result["errors"][0]
         persisted_doc = create.call_args.args[2]
@@ -348,4 +367,8 @@ class TestImportSources:
         with patch.object(flow_sources.cosmos_store, "is_configured", return_value=False):
             result = flow_sources.import_sources(csv_text)
 
-        assert result == {"imported": 0, "errors": ["Source persistence is not configured."]}
+        assert result == {
+            "imported": 0,
+            "errors": ["Source persistence is not configured."],
+            "persistence_failed": True,
+        }
