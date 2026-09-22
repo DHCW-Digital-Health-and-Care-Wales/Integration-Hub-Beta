@@ -5,6 +5,7 @@ They cover:
   - is_configured()          : endpoint-driven activation
   - get_document()           : hit / miss / not-configured / error paths and field stripping
   - upsert_document()        : payload shaping (id/pk injection) and no-op when unconfigured
+  - create_document()        : create-only writes and duplicate handling
   - client auth selection    : key-based vs RBAC credential, and SSL verification toggle
 """
 
@@ -196,6 +197,56 @@ class TestUpsertDocument:
 
 
 # ---------------------------------------------------------------------------
+# create_document
+# ---------------------------------------------------------------------------
+
+
+class TestCreateDocument:
+    def test_injects_id_and_pk(self) -> None:
+        container = MagicMock()
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            result = cosmos_store.create_document("alarm2", "state", {"rules": {"r1": "value"}})
+
+        assert result is True
+        container.create_item.assert_called_once_with(body={"rules": {"r1": "value"}, "id": "state", "pk": "alarm2"})
+
+    def test_stamps_type_discriminator_when_supplied(self) -> None:
+        container = MagicMock()
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            cosmos_store.create_document("alarm1", "config", {"rules": {}}, doc_type="alarm_config")
+
+        container.create_item.assert_called_once_with(
+            body={"rules": {}, "id": "config", "pk": "alarm1", "type": "alarm_config"}
+        )
+
+    def test_noop_when_container_unavailable(self) -> None:
+        with patch.object(cosmos_store, "_get_container", return_value=None):
+            assert cosmos_store.create_document("alarm1", "config", {"rules": {}}) is True
+
+    def test_returns_false_when_container_unavailable_but_configured(self) -> None:
+        with (
+            patch.object(cosmos_store, "_get_container", return_value=None),
+            patch.object(cosmos_store, "is_configured", return_value=True),
+        ):
+            assert cosmos_store.create_document("alarm1", "config", {"rules": {}}) is False
+
+    def test_raises_duplicate_conflict(self) -> None:
+        container = MagicMock()
+        container.create_item.side_effect = CosmosResourceExistsError(message="duplicate")
+        with (
+            patch.object(cosmos_store, "_get_container", return_value=container),
+            pytest.raises(CosmosResourceExistsError),
+        ):
+            cosmos_store.create_document("alarm1", "config", {"rules": {}})
+
+    def test_swallows_other_http_errors(self) -> None:
+        container = MagicMock()
+        container.create_item.side_effect = CosmosHttpResponseError(message="boom")
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            assert cosmos_store.create_document("alarm1", "config", {"rules": {}}) is False
+
+
+# ---------------------------------------------------------------------------
 # delete_document
 # ---------------------------------------------------------------------------
 
@@ -329,4 +380,3 @@ class TestGetContainer:
     def test_returns_none_when_client_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_client", return_value=None):
             assert cosmos_store._get_container() is None
-

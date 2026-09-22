@@ -14,6 +14,8 @@ import io
 import uuid
 from typing import Any
 
+from azure.cosmos.exceptions import CosmosResourceExistsError
+
 from dashboard.services import cosmos_store
 from dashboard.services.network_test import InvalidTargetError, validate_host, validate_port
 
@@ -29,6 +31,14 @@ _CSV_REQUIRED_FIELDS = ("description", "url", "port")
 
 class InvalidSourceError(ValueError):
     """Raised when a supplied source's description/url/port fails validation."""
+
+
+class SourcePersistenceError(RuntimeError):
+    """Raised when a source change could not be saved durably."""
+
+
+_PERSISTENCE_DISABLED_MESSAGE = "Source persistence is not configured."
+_PERSISTENCE_UNAVAILABLE_MESSAGE = "Source persistence is currently unavailable."
 
 
 def _validate_description(description: str) -> str:
@@ -67,7 +77,47 @@ def _duplicate_key(url: str, port: int) -> tuple[str, int]:
     return (url.lower(), port)
 
 
-def _persist(source_id: str, source: dict[str, Any]) -> None:
+def _storage_id(key: tuple[str, int]) -> str:
+    """Return the deterministic Cosmos id for a source endpoint."""
+    return f"flow-source:{key[0]}:{key[1]}"
+
+
+def _with_internal_ids(document: dict[str, Any]) -> dict[str, Any]:
+    """Map persisted IDs into the public id plus an internal storage id."""
+    source_id = document.get("source_id")
+    source = {k: v for k, v in document.items() if k not in {"source_id", "storage_id"}}
+    source["id"] = source_id
+    source["_storage_id"] = str(document.get("storage_id") or source_id)
+    return source
+
+
+def _public_source(source: dict[str, Any]) -> dict[str, Any]:
+    """Strip internal persistence metadata from a source record."""
+    return {k: v for k, v in source.items() if k != "_storage_id"}
+
+
+def _list_source_documents() -> list[dict[str, Any]]:
+    """Return every configured source including internal persistence metadata."""
+    sources = [_with_internal_ids(document) for document in cosmos_store.query_documents(_PK)]
+    sources.sort(key=lambda source: str(source.get("description", "")).lower())
+    return sources
+
+
+def _find_source_document(source_id: str) -> dict[str, Any] | None:
+    """Return one configured source by its public id."""
+    for source in _list_source_documents():
+        if source["id"] == source_id:
+            return source
+    return None
+
+
+def _ensure_persistence_configured() -> None:
+    """Reject writes when this dashboard instance has no durable source storage."""
+    if not cosmos_store.is_configured():
+        raise SourcePersistenceError(_PERSISTENCE_DISABLED_MESSAGE)
+
+
+def _persist(source_id: str, source: dict[str, Any], storage_id: str | None = None) -> None:
     """Write a source document, stashing its id under "source_id".
 
     ``cosmos_store`` treats "id" as Cosmos routing metadata and strips it back out of
@@ -76,17 +126,40 @@ def _persist(source_id: str, source: dict[str, Any]) -> None:
     with no usable id, breaking edit/delete. Storing it under "source_id" instead (not
     a reserved key) means it comes back unchanged on read.
     """
-    cosmos_store.upsert_document(_PK, source_id, {**source, "source_id": source_id}, doc_type=_DOC_TYPE)
+    resolved_storage_id = storage_id or str(source.get("_storage_id") or source_id)
+    persisted_source = {k: v for k, v in source.items() if not k.startswith("_")}
+    if not cosmos_store.upsert_document(
+        _PK,
+        resolved_storage_id,
+        {**persisted_source, "source_id": source_id, "storage_id": resolved_storage_id},
+        doc_type=_DOC_TYPE,
+    ):
+        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
+
+
+def _create(source_id: str, source: dict[str, Any], key: tuple[str, int]) -> str:
+    """Create a source document atomically, failing if another source already owns the key."""
+    storage_id = _storage_id(key)
+    persisted_source = {k: v for k, v in source.items() if not k.startswith("_")}
+    try:
+        created = cosmos_store.create_document(
+            _PK,
+            storage_id,
+            {**persisted_source, "source_id": source_id, "storage_id": storage_id},
+            doc_type=_DOC_TYPE,
+        )
+    except CosmosResourceExistsError as exc:
+        raise InvalidSourceError(f"A source for {source['url']}:{source['port']} already exists") from exc
+
+    if not created:
+        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
+
+    return storage_id
 
 
 def list_sources() -> list[dict[str, Any]]:
     """Return every configured flow source server, sorted by description."""
-    sources = []
-    for document in cosmos_store.query_documents(_PK):
-        document["id"] = document.pop("source_id", None)
-        sources.append(document)
-    sources.sort(key=lambda source: str(source.get("description", "")).lower())
-    return sources
+    return [_public_source(source) for source in _list_source_documents()]
 
 
 def list_sources_as_endpoint_options() -> list[dict[str, Any]]:
@@ -113,13 +186,12 @@ def add_source(description: str, url: str, port: Any) -> dict[str, Any]:
     same url:port (case-insensitive) already exists.
     """
     source = _validate_source(description, url, port)
+    _ensure_persistence_configured()
     key = _duplicate_key(source["url"], source["port"])
-    if any(_duplicate_key(s["url"], s["port"]) == key for s in list_sources()):
-        raise InvalidSourceError(f"A source for {source['url']}:{source['port']} already exists")
 
     source["id"] = str(uuid.uuid4())
-    _persist(source["id"], source)
-    return source
+    source["_storage_id"] = _create(source["id"], source, key)
+    return _public_source(source)
 
 
 def update_source(source_id: str, description: str, url: str, port: Any) -> dict[str, Any]:
@@ -129,18 +201,31 @@ def update_source(source_id: str, description: str, url: str, port: Any) -> dict
     *different* existing source — the source being edited is excluded from that check.
     """
     source = _validate_source(description, url, port)
-    key = _duplicate_key(source["url"], source["port"])
-    if any(s["id"] != source_id and _duplicate_key(s["url"], s["port"]) == key for s in list_sources()):
-        raise InvalidSourceError(f"A source for {source['url']}:{source['port']} already exists")
-
+    _ensure_persistence_configured()
+    existing = _find_source_document(source_id)
+    existing_key = _duplicate_key(existing["url"], existing["port"]) if existing else None
+    new_key = _duplicate_key(source["url"], source["port"])
     source["id"] = source_id
-    _persist(source_id, source)
-    return source
+    if existing is not None:
+        source["_storage_id"] = existing["_storage_id"]
+
+    if existing_key is None or existing_key == new_key:
+        _persist(source_id, source)
+        return _public_source(source)
+
+    assert existing is not None
+    old_storage_id = str(existing["_storage_id"])
+    new_storage_id = _create(source_id, source, new_key)
+    cosmos_store.delete_document(_PK, old_storage_id)
+    source["_storage_id"] = new_storage_id
+    return _public_source(source)
 
 
 def delete_source(source_id: str) -> None:
     """Permanently remove a flow source server. A no-op if it's already gone."""
-    cosmos_store.delete_document(_PK, source_id)
+    source = _find_source_document(source_id)
+    storage_id = str(source["_storage_id"]) if source is not None else source_id
+    cosmos_store.delete_document(_PK, storage_id)
 
 
 def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:
@@ -195,17 +280,22 @@ def import_sources(file_content: str) -> dict[str, Any]:
     the import.
     """
     valid_rows, errors = parse_csv(file_content)
+    try:
+        _ensure_persistence_configured()
+    except SourcePersistenceError as exc:
+        errors.append(str(exc))
+        return {"imported": 0, "errors": errors}
 
-    existing_keys = {_duplicate_key(s["url"], s["port"]) for s in list_sources()}
     imported = 0
     for row in valid_rows:
-        key = _duplicate_key(row["url"], row["port"])
-        if key in existing_keys:
-            errors.append(f"{row['description']} ({row['url']}:{row['port']}): already exists, skipped")
-            continue
-        row["id"] = str(uuid.uuid4())
-        _persist(row["id"], row)
-        imported += 1
+        label = f"{row['description']} ({row['url']}:{row['port']})"
+        try:
+            add_source(row["description"], row["url"], row["port"])
+        except InvalidSourceError as exc:
+            errors.append(f"{label}: {exc}")
+        except SourcePersistenceError as exc:
+            errors.append(f"{label}: {exc}")
+        else:
+            imported += 1
 
     return {"imported": imported, "errors": errors}
-

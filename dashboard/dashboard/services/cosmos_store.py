@@ -213,6 +213,37 @@ def upsert_document(pk: str, doc_id: str, data: dict, doc_type: str | None = Non
     return True
 
 
+def create_document(pk: str, doc_id: str, data: dict, doc_type: str | None = None) -> bool:
+    """Create a new document identified by ``pk``/``doc_id``.
+
+    Behaves like :func:`upsert_document`, except a duplicate ``pk``/``doc_id`` is
+    surfaced to the caller via :class:`CosmosResourceExistsError` so the write path can
+    distinguish "already exists" from an unavailable persistence layer.
+    """
+    container = _get_container()
+    if container is None:
+        if is_configured():
+            log.error("Cannot create Cosmos document %s/%s — container unavailable", pk, doc_id)
+            return False
+        return True
+
+    document = {k: v for k, v in data.items() if k not in _RESERVED_KEYS}
+    document["id"] = doc_id
+    document["pk"] = pk
+    if doc_type is not None:
+        document["type"] = doc_type
+
+    try:
+        container.create_item(body=document)
+    except CosmosResourceExistsError:
+        raise
+    except AzureError as exc:
+        log.error("Failed to create Cosmos document %s/%s: %s", pk, doc_id, exc)
+        return False
+
+    return True
+
+
 def delete_document(pk: str, doc_id: str) -> None:
     """Delete a single document identified by ``pk``/``doc_id``.
 

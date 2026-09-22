@@ -232,8 +232,10 @@ def api_network_test_sources() -> tuple[Response, int] | Response:
             source = flow_sources.add_source(
                 payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
             )
-        except flow_sources.InvalidSourceError:
-            return jsonify({"error": "Invalid source configuration."}), 400
+        except flow_sources.InvalidSourceError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except flow_sources.SourcePersistenceError as exc:
+            return jsonify({"error": str(exc)}), 503
         return jsonify(source), 201
 
     return jsonify({"sources": flow_sources.list_sources()})
@@ -252,8 +254,10 @@ def api_network_test_source(source_id: str) -> tuple[Response, int] | Response:
         source = flow_sources.update_source(
             source_id, payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
         )
-    except flow_sources.InvalidSourceError:
-        return jsonify({"error": "Invalid source configuration."}), 400
+    except flow_sources.InvalidSourceError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except flow_sources.SourcePersistenceError as exc:
+        return jsonify({"error": str(exc)}), 503
     return jsonify(source)
 
 
@@ -277,7 +281,10 @@ def api_network_test_sources_import() -> tuple[Response, int] | Response:
     except UnicodeDecodeError:
         return jsonify({"error": "CSV file must be UTF-8 encoded."}), 400
 
-    return jsonify(flow_sources.import_sources(content))
+    result = flow_sources.import_sources(content)
+    if any("Source persistence is " in error for error in result["errors"]):
+        return jsonify(result), 503
+    return jsonify(result)
 
 
 def register(app: Flask) -> None:

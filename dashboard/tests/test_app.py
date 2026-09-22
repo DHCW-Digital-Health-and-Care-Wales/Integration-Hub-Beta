@@ -514,7 +514,19 @@ class TestNetworkTestConfigRoutes:
         with patch("dashboard.routes.api.flow_sources.add_source", side_effect=flow_sources.InvalidSourceError("bad")):
             response = client.post("/api/network-test/sources", json={"description": "", "url": "", "port": ""})
         assert response.status_code == 400
-        assert "error" in response.get_json()
+        assert response.get_json() == {"error": "bad"}
+
+    def test_api_sources_post_returns_persistence_error(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.api.flow_sources.add_source",
+            side_effect=flow_sources.SourcePersistenceError("Source persistence is currently unavailable."),
+        ):
+            response = client.post(
+                "/api/network-test/sources",
+                json={"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            )
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Source persistence is currently unavailable."}
 
     def test_api_source_put_updates_source(self, client: FlaskClient) -> None:
         updated = {"id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}
@@ -549,6 +561,20 @@ class TestNetworkTestConfigRoutes:
             )
         assert response.status_code == 200
         assert response.get_json() == {"imported": 1, "errors": []}
+
+    def test_api_sources_import_returns_503_for_persistence_error(self, client: FlaskClient) -> None:
+        csv_bytes = b"description,url,port\nPHW,phw.example.nhs.uk,2575\n"
+        with patch(
+            "dashboard.routes.api.flow_sources.import_sources",
+            return_value={"imported": 0, "errors": ["Source persistence is currently unavailable."]},
+        ):
+            response = client.post(
+                "/api/network-test/sources/import",
+                data={"file": (io.BytesIO(csv_bytes), "sources.csv")},
+                content_type="multipart/form-data",
+            )
+        assert response.status_code == 503
+        assert response.get_json() == {"imported": 0, "errors": ["Source persistence is currently unavailable."]}
 
 
 class TestEnvLoading:
