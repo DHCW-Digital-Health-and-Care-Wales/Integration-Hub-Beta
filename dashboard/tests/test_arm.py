@@ -200,7 +200,13 @@ class TestBuildFlow:
                     {
                         "name": "prefix-sbs-bcu-chemo",
                         "topic": "prefix-sbt-mpi-hl7-input",
-                        "consumer_apps": [{"app_name": "bcu-sender", "microservice_id": "bcu_sender", "workflow_id": "bcu-to-chemo"}],
+                        "consumer_apps": [
+                            {
+                                "app_name": "bcu-sender",
+                                "microservice_id": "bcu_sender",
+                                "workflow_id": "bcu-to-chemo",
+                            }
+                        ],
                     }
                 ],
             },
