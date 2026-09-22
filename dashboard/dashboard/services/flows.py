@@ -470,7 +470,7 @@ def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) ->
                     "status": sub.get("status", "Unknown"),
                     "message_count": sub.get("message_count", 0),
                     "consumer_apps": sub.get("consumer_apps", []),
-                    "health": queue_health(active, dlq),
+                    "health": "unknown" if sub.get("status", "Unknown") == "Unknown" else queue_health(active, dlq),
                 }
             )
 
