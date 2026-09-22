@@ -225,6 +225,15 @@ class TestDeleteSource:
             flow_sources.delete_source("abc-123")
         delete_document.assert_called_once_with("flow-source-server", "abc-123")
 
+    def test_missing_source_is_a_noop(self) -> None:
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "delete_document") as delete_document,
+        ):
+            flow_sources.delete_source("missing")
+
+        delete_document.assert_not_called()
+
     def test_raises_persistence_error_when_delete_fails(self) -> None:
         existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
         with (

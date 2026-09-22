@@ -29,6 +29,13 @@
     </div>
   </div>
 
+  <div id="sources-status" class="dash-card mb-3" style="display:none; border-left:3px solid var(--accent-cyan); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-cyan); font-size:0.83rem;">
+      <i class="bi bi-info-circle-fill"></i>
+      <span id="sources-status-text"></span>
+    </div>
+  </div>
+
   <!-- Add source -->
   <div class="dash-card mb-3 p-3">
     <h6 style="margin:0 0 0.75rem; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
@@ -151,6 +158,13 @@
     el.style.display = message ? 'block' : 'none';
   }
 
+  function showStatus(message) {
+    var el = document.getElementById('sources-status');
+    var textEl = document.getElementById('sources-status-text');
+    textEl.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
   function escapeHtml(value) {
     var div = document.createElement('div');
     div.textContent = value;
@@ -224,6 +238,7 @@
 
   document.getElementById('add-source-btn').addEventListener('click', function () {
     showError('');
+    showStatus('');
     var description = document.getElementById('add-description').value.trim();
     var url = document.getElementById('add-url').value.trim();
     var port = document.getElementById('add-port').value.trim();
@@ -253,6 +268,7 @@
 
   document.getElementById('import-csv-btn').addEventListener('click', function () {
     showError('');
+    showStatus('');
     var fileInput = document.getElementById('import-csv-file');
     var file = fileInput.files && fileInput.files[0];
     if (!file) {
@@ -276,7 +292,7 @@
         }
         fileInput.value = '';
         return refreshSources().then(function () {
-          showError(summaryMessage);
+          showStatus(summaryMessage);
         });
       })
       .catch(function () {
@@ -301,6 +317,7 @@
   document.getElementById('edit-source-save-btn').addEventListener('click', function () {
     var errorEl = document.getElementById('edit-source-error');
     errorEl.style.display = 'none';
+    showStatus('');
 
     var sourceId = document.getElementById('edit-source-id').value;
     var description = document.getElementById('edit-description').value.trim();
@@ -335,6 +352,7 @@
       return;
     }
     showError('');
+    showStatus('');
     fetch('/api/network-test/sources/' + encodeURIComponent(source.id), { method: 'DELETE' })
       .then(parseJsonResponse)
       .then(function (res) {

@@ -236,7 +236,9 @@ def update_source(source_id: str, description: str, url: str, port: Any) -> dict
 def delete_source(source_id: str) -> None:
     """Permanently remove a flow source server. A no-op if it's already gone."""
     source = _find_source_document(source_id)
-    storage_id = str(source["_storage_id"]) if source is not None else source_id
+    if source is None:
+        return
+    storage_id = str(source["_storage_id"])
     if not cosmos_store.delete_document(_PK, storage_id):
         raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
 
