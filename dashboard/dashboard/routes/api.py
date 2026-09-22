@@ -252,8 +252,8 @@ def api_network_test_source(source_id: str) -> tuple[Response, int] | Response:
         source = flow_sources.update_source(
             source_id, payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
         )
-    except flow_sources.InvalidSourceError as exc:
-        return jsonify({"error": str(exc)}), 400
+    except flow_sources.InvalidSourceError:
+        return jsonify({"error": "Invalid source configuration."}), 400
     return jsonify(source)
 
 
