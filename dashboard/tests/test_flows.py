@@ -5,6 +5,7 @@ Pure logic — no Azure calls, no mocking needed.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import patch
 
 from dashboard.services.flows import (
@@ -136,7 +137,7 @@ class TestFlowHealth:
         assert flow_health("phw-to-mpi", {}, TEST_FLOWS) == "unknown"
 
     def test_hybrid_topic_to_queue_flow_uses_subscription_and_post_queue_health(self) -> None:
-        flows = {
+        flows: dict[str, dict[str, Any]] = {
             "wds-to-wis": {
                 "label": "WDS → WIS",
                 "source": "WDS",
@@ -434,7 +435,7 @@ class TestBuildFlowData:
         """A flow that consumes (but does not publish to) a shared topic must
         not have the topic's own backlog counted against it — that belongs to
         the owning/publishing flow."""
-        flows = {
+        flows: dict[str, dict[str, Any]] = {
             "wds-to-wis": {
                 "label": "WDS → WIS",
                 "source": "WDS",

@@ -183,7 +183,7 @@ class TestBuildFlow:
         assert flow["subscriptions"][0]["consumer_apps"][0]["sender_type"] == "subscription_transformer"
 
     def test_merge_subscription_sender_flow_keeps_consumer_metadata(self) -> None:
-        flows = {
+        flows: dict[str, dict[str, Any]] = {
             "mpi-to-topic": {
                 "topic": "prefix-sbt-mpi-hl7-input",
                 "source_port": 2580,

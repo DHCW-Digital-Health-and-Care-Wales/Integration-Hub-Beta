@@ -519,9 +519,9 @@ def queue_to_microservice_ids(queue_name: str) -> list[str]:
 def _split_subscription_entity_name(entity_name: str) -> tuple[str | None, str | None]:
     if "/" not in entity_name:
         return None, None
-    topic_name, subscription_name = entity_name.split("/", maxsplit=1)
-    topic_name = topic_name.strip() or None
-    subscription_name = subscription_name.strip() or None
+    raw_topic_name, raw_subscription_name = entity_name.split("/", maxsplit=1)
+    topic_name = raw_topic_name.strip() or None
+    subscription_name = raw_subscription_name.strip() or None
     return topic_name, subscription_name
 
 
@@ -538,6 +538,8 @@ def entity_to_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
         topic_name, subscription_name = _split_subscription_entity_name(entity_name)
         if not topic_name or not subscription_name:
             return []
+        topic_name_lower = topic_name.lower()
+        subscription_name_lower = subscription_name.lower()
 
     result: list[str] = []
     for app in _cached_apps:
@@ -554,7 +556,7 @@ def entity_to_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
         elif entity_type_lower == "topic":
             matches = lower in (ingress_topic, egress_topic)
         elif entity_type_lower == "subscription":
-            matches = ingress_topic == topic_name.lower() and ingress_subscription == subscription_name.lower()
+            matches = ingress_topic == topic_name_lower and ingress_subscription == subscription_name_lower
 
         if matches:
             ms_id = env.get("MICROSERVICE_ID") or app["name"]
