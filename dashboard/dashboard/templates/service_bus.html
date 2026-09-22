@@ -191,7 +191,7 @@
     <span class="section-title"><i class="bi bi-diagram-3"></i> {{ _("Topic Drill-Down") }}</span>
   </div>
   {% for topic in topics | sort(attribute='active_message_count', reverse=True) %}
-  <details class="queue-table-wrapper mb-3" {% if topic.health != 'healthy' or topic.subscriptions | selectattr('health', 'equalto', 'critical') | list %}open{% endif %}>
+  <details class="queue-table-wrapper mb-3" {% if topic.health != 'healthy' or topic.subscriptions | rejectattr('health', 'equalto', 'healthy') | list %}open{% endif %}>
     <summary class="queue-table-header" style="cursor:pointer; list-style:none;">
       <h6><i class="bi bi-broadcast-pin me-1"></i> {{ topic.name }}</h6>
       <div style="display:flex; align-items:center; gap:0.75rem; font-size:0.72rem; color:var(--text-muted);">
