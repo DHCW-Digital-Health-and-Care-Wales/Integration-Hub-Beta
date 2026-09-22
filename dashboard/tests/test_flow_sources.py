@@ -5,6 +5,7 @@ Cosmos calls are mocked throughout — no real Cosmos access is required.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +14,7 @@ from dashboard.services import flow_sources
 
 
 @pytest.fixture(autouse=True)
-def _configured_persistence() -> None:
+def _configured_persistence() -> Generator[None, None, None]:
     with patch.object(flow_sources.cosmos_store, "is_configured", return_value=True):
         yield
 
