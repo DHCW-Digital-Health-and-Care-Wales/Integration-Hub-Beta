@@ -485,8 +485,6 @@ def entity_to_workflow_id(entity_type: str, entity_name: str) -> str | None:
             for sub in flow.get("subscriptions", []):
                 if (sub.get("name") or "").lower() == subscription_name.lower():
                     return flow_id
-        if lower in (pre, post):
-            return flow_id
     return None
 
 
