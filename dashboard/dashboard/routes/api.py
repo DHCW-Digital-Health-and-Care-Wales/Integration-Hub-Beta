@@ -15,7 +15,7 @@ from datetime import datetime
 from flask import Flask, Response, jsonify, request
 
 import dashboard.config as config
-from dashboard.services import cache, network_test
+from dashboard.services import cache, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status
 from dashboard.services.alarm2 import get_alarm2_status
 from dashboard.services.alarm3 import get_alarm3_status
@@ -238,6 +238,77 @@ def api_network_test_list() -> Response:
     return jsonify({"endpoints": network_test.list_tested_endpoints()})
 
 
+def api_network_test_sources() -> tuple[Response, int] | Response:
+    """GET returns every configured flow source server; POST adds one from a JSON body.
+
+    Powers the Network Test configuration screen's table and "add" form.
+    """
+    if request.method == "POST":
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "JSON body must be an object"}), 400
+        try:
+            source = flow_sources.add_source(
+                payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
+            )
+        except flow_sources.InvalidSourceError as exc:
+            return jsonify({"error": exc.safe_message}), 400
+        except flow_sources.SourcePersistenceError as exc:
+            return jsonify({"error": exc.safe_message}), 503
+        return jsonify(source), 201
+
+    return jsonify({"sources": flow_sources.list_sources()})
+
+
+def api_network_test_source(source_id: str) -> tuple[Response, int] | Response:
+    """PUT updates a flow source server from a JSON body; DELETE removes it."""
+    if request.method == "DELETE":
+        try:
+            flow_sources.delete_source(source_id)
+        except flow_sources.SourcePersistenceError as exc:
+            return jsonify({"error": exc.safe_message}), 503
+        return jsonify({"deleted": True, "id": source_id})
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON body must be an object"}), 400
+    try:
+        source = flow_sources.update_source(
+            source_id, payload.get("description", ""), payload.get("url", ""), payload.get("port", "")
+        )
+    except flow_sources.InvalidSourceError as exc:
+        return jsonify({"error": exc.safe_message}), 400
+    except flow_sources.SourcePersistenceError as exc:
+        return jsonify({"error": exc.safe_message}), 503
+    return jsonify(source)
+
+
+# Uploaded CSV files are read fully into memory (they hold a handful of rows of plain
+# text), so an explicit size cap guards against an oversized upload exhausting memory.
+_MAX_IMPORT_CSV_BYTES = 1_000_000
+
+
+def api_network_test_sources_import() -> tuple[Response, int] | Response:
+    """POST a CSV file (multipart field "file") to bulk-import flow source servers."""
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        return jsonify({"error": "No CSV file uploaded."}), 400
+
+    raw = upload.read(_MAX_IMPORT_CSV_BYTES + 1)
+    if len(raw) > _MAX_IMPORT_CSV_BYTES:
+        return jsonify({"error": "CSV file is too large."}), 400
+
+    try:
+        content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return jsonify({"error": "CSV file must be UTF-8 encoded."}), 400
+
+    result = flow_sources.import_sources(content)
+    if result["persistence_failed"]:
+        return jsonify(result), 503
+    return jsonify(result)
+
+
 def register(app: Flask) -> None:
     """Register every API route onto ``app`` with its original flat endpoint name."""
     app.add_url_rule("/healthz", endpoint="healthz", view_func=healthz)
@@ -263,3 +334,21 @@ def register(app: Flask) -> None:
         methods=["GET", "DELETE"],
     )
     app.add_url_rule("/api/network-test/list", endpoint="api_network_test_list", view_func=api_network_test_list)
+    app.add_url_rule(
+        "/api/network-test/sources",
+        endpoint="api_network_test_sources",
+        view_func=api_network_test_sources,
+        methods=["GET", "POST"],
+    )
+    app.add_url_rule(
+        "/api/network-test/sources/import",
+        endpoint="api_network_test_sources_import",
+        view_func=api_network_test_sources_import,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/network-test/sources/<source_id>",
+        endpoint="api_network_test_source",
+        view_func=api_network_test_source,
+        methods=["PUT", "DELETE"],
+    )
