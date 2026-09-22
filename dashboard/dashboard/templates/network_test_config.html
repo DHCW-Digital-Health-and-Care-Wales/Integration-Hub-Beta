@@ -270,11 +270,14 @@
           showError(res.data.error || '{{ _("Failed to import CSV.") }}');
           return;
         }
+        var summaryMessage = '';
         if (res.data.errors && res.data.errors.length) {
-          showError('{{ _("Imported") }} ' + res.data.imported + '. ' + res.data.errors.join(' '));
+          summaryMessage = '{{ _("Imported") }} ' + res.data.imported + '. ' + res.data.errors.join(' ');
         }
         fileInput.value = '';
-        return refreshSources();
+        return refreshSources().then(function () {
+          showError(summaryMessage);
+        });
       })
       .catch(function () {
         showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
