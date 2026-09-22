@@ -150,8 +150,9 @@
         {% for flow in status.flows %}
         {% set pre  = flow.pre_queue %}
         {% set post = flow.post_queue %}
-        {% set flow_active = (pre.active or 0) + (post.active or 0) + (flow.subscriptions | sum(attribute='active') if flow.subscriptions else 0) %}
-        {% set flow_dlq    = (pre.dlq   or 0) + (post.dlq   or 0) + (flow.subscriptions | sum(attribute='dlq')    if flow.subscriptions else 0) %}
+        {% set topic = flow.topic_summary %}
+        {% set flow_active = (pre.active or 0) + (post.active or 0) + (topic.active or 0) + (flow.subscriptions | sum(attribute='active') if flow.subscriptions else 0) %}
+        {% set flow_dlq    = (pre.dlq   or 0) + (post.dlq   or 0) + (topic.dlq   or 0) + (flow.subscriptions | sum(attribute='dlq')    if flow.subscriptions else 0) %}
         <tr class="flow-row"
             data-flow-id="{{ flow.id }}"
             data-label="{{ flow.label | lower }}"

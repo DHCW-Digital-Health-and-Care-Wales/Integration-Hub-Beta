@@ -83,3 +83,74 @@ def test_topic_backlog_and_dlq_included_in_totals() -> None:
     assert status["kpis"]["total_active_messages"] == 11
     # queue(1) + topic(3) + subscription(6) = 10
     assert status["kpis"]["total_dlq_messages"] == 10
+
+
+def test_build_status_uses_snapshot_subscription_counts_for_flows() -> None:
+    namespace_snapshot = {
+        "queues": [],
+        "topics": [
+            {
+                "name": "topic-a",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+                "subscriptions": [
+                    {
+                        "name": "sub-a",
+                        "topic": "topic-a",
+                        "status": "Active",
+                        "message_count": 5,
+                        "active_message_count": 4,
+                        "dead_letter_message_count": 1,
+                        "consumer_apps": [],
+                    }
+                ],
+            }
+        ],
+        "kpis": {
+            "queue_active_messages": 0,
+            "queue_dead_letter_messages": 0,
+            "topic_active_messages": 0,
+            "topic_dead_letter_messages": 0,
+            "subscription_active_messages": 4,
+            "subscription_dead_letter_messages": 1,
+            "queue_count": 0,
+            "topic_count": 1,
+            "subscription_count": 1,
+        },
+    }
+    active_flows = {
+        "mpi-to-topic": {
+            "label": "MPI Outbound",
+            "source": "MPI",
+            "source_port": 2580,
+            "pre_queue": None,
+            "transformer": None,
+            "post_queue": None,
+            "topic": "topic-a",
+            "subscriptions": [
+                {
+                    "name": "sub-a",
+                    "topic": "topic-a",
+                    "status": "Active",
+                    "message_count": 0,
+                    "active_message_count": 0,
+                    "dead_letter_message_count": 0,
+                    "consumer_apps": [],
+                }
+            ],
+            "destination": "Downstream Systems",
+            "colour": "#0ea5e9",
+            "icon": "bi-send",
+        }
+    }
+
+    with (
+        patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=namespace_snapshot),
+        patch("dashboard.services.status_builder.get_active_flows", return_value=active_flows),
+        patch("dashboard.services.status_builder.get_exceptions", return_value=[]),
+        patch("dashboard.services.status_builder.get_retry_delay_metrics_by_flow", return_value=[]),
+    ):
+        status = build_status()
+
+    assert status["flows"][0]["subscriptions"][0]["active"] == 4
+    assert status["flows"][0]["subscriptions"][0]["dlq"] == 1

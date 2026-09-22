@@ -164,13 +164,25 @@ class TestPageRoutes:
                             "dead_letter_message_count": 0,
                             "message_count": 2,
                             "health": "healthy",
-                            "consumer_apps": [{"app_name": "sender-ca", "sender_type": "subscription_sender", "workflow_id": "mpi-to-topic"}],
+                            "consumer_apps": [
+                                {
+                                    "app_name": "sender-ca",
+                                    "sender_type": "subscription_sender",
+                                    "workflow_id": "mpi-to-topic",
+                                }
+                            ],
                         }
                     ],
                     "health": "healthy",
                 }
             ],
-            "kpis": {**EMPTY_NAMESPACE_SNAPSHOT["kpis"], "topic_count": 1, "subscription_count": 1, "topic_active_messages": 2, "subscription_active_messages": 2},
+            "kpis": {
+                **EMPTY_NAMESPACE_SNAPSHOT["kpis"],
+                "topic_count": 1,
+                "subscription_count": 1,
+                "topic_active_messages": 2,
+                "subscription_active_messages": 2,
+            },
         }
         with patch("dashboard.routes.pages.cache.cached_nowait", return_value=snapshot):
             response = client.get("/service-bus")
@@ -225,8 +237,31 @@ class TestPageRoutes:
             patch("dashboard.routes.pages.entity_to_microservice_ids", return_value=["sub-sender"]),
             patch("dashboard.routes.pages.entity_to_workflow_id", return_value="mpi-to-topic"),
             patch("dashboard.routes.pages.get_flows", return_value={"mpi-to-topic": {"label": "MPI Outbound"}}),
-            patch("dashboard.routes.pages.get_messages_today", return_value=[{"timestamp": "2024-01-01T00:00:00", "event": "Processed", "app": "sub-sender", "dimensions": {}}]),
-            patch("dashboard.routes.pages.cache.cached_nowait", side_effect=[[{"timestamp": "2024-01-01T00:00:00", "event": "Processed", "app": "sub-sender", "dimensions": {}}], EMPTY_NAMESPACE_SNAPSHOT]),
+            patch(
+                "dashboard.routes.pages.get_messages_today",
+                return_value=[
+                    {
+                        "timestamp": "2024-01-01T00:00:00",
+                        "event": "Processed",
+                        "app": "sub-sender",
+                        "dimensions": {},
+                    }
+                ],
+            ),
+            patch(
+                "dashboard.routes.pages.cache.cached_nowait",
+                side_effect=[
+                    [
+                        {
+                            "timestamp": "2024-01-01T00:00:00",
+                            "event": "Processed",
+                            "app": "sub-sender",
+                            "dimensions": {},
+                        }
+                    ],
+                    EMPTY_NAMESPACE_SNAPSHOT,
+                ],
+            ),
         ):
             response = client.get("/messages?entity_type=subscription&entity_name=topic-a/sub-a")
 
@@ -427,7 +462,12 @@ class TestApiRoutes:
             response = client.get("/api/servicebus-metrics?entity_type=subscription&entity_name=topic-a/sub-a")
 
         assert response.status_code == 200
-        mock_metrics.assert_called_once_with(1, queue_name=None, entity_type="subscription", entity_name="topic-a/sub-a")
+        mock_metrics.assert_called_once_with(
+            1,
+            queue_name=None,
+            entity_type="subscription",
+            entity_name="topic-a/sub-a",
+        )
 
     def test_api_container_app_history_returns_json(self, client: FlaskClient) -> None:
         fake_history = {

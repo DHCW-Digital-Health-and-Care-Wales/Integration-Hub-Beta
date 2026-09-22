@@ -270,6 +270,58 @@ class TestFlowHealth:
         ):
             assert flow_health("mpi-to-topic", queues_by_name, flows, topics_by_name) == "warning"
 
+    def test_missing_publisher_topic_is_unknown_when_snapshot_was_supplied(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-outbound",
+                        "status": "Active",
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                    }
+                ],
+                "destination": "Downstream Systems",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+
+        assert flow_health("mpi-to-topic", {}, flows, {}) == "unknown"
+
+    def test_missing_queue_stage_is_unknown_when_queue_is_absent(self) -> None:
+        flows = {
+            "wds-to-wis": {
+                "label": "WDS → WIS",
+                "source": "WDS",
+                "source_port": None,
+                "pre_queue": None,
+                "transformer": "WDS Transformer",
+                "post_queue": "post-wis-sender",
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-wds-wis-transformer",
+                        "status": "Active",
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                    }
+                ],
+                "destination": "WIS",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+
+        assert flow_health("wds-to-wis", {}, flows) == "unknown"
+
     def test_all_flows_defined(self) -> None:
         expected = {
             "phw-to-mpi",
@@ -434,6 +486,56 @@ class TestBuildFlowData:
         assert topic_summary["exists"] is False
         assert topic_summary["active"] == 0
         assert topic_summary["dlq"] == 0
+
+    def test_snapshot_subscriptions_refresh_flow_counts(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-outbound",
+                        "topic": "topic-wds-input",
+                        "status": "Active",
+                        "message_count": 0,
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                        "consumer_apps": [{"app_name": "sender-ca", "microservice_id": "sender"}],
+                    }
+                ],
+                "destination": "Downstream Systems",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        topics = [
+            {
+                "name": "topic-wds-input",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+                "subscriptions": [
+                    {
+                        "name": "sub-outbound",
+                        "topic": "topic-wds-input",
+                        "status": "Active",
+                        "message_count": 9,
+                        "active_message_count": 7,
+                        "dead_letter_message_count": 2,
+                        "consumer_apps": [{"app_name": "sender-ca", "microservice_id": "sender"}],
+                    }
+                ],
+            }
+        ]
+
+        result = build_flow_data([], flows, topics)
+
+        assert result[0]["subscriptions"][0]["active"] == 7
+        assert result[0]["subscriptions"][0]["dlq"] == 2
 
 
 class TestMergeSubscriptionRecords:
