@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Flow Source Servers") }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-gear-fill" style="color:var(--accent-cyan)"></i>
+        {{ _("Flow Source Servers") }}
+      </h1>
+      <p class="page-subtitle">
+        {{ _("Maintain the list of flow source servers available on the Network Test page.") }}
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('network_test_page') }}" class="btn-dash">
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Network Test") }}
+      </a>
+    </div>
+  </div>
+
+  <div id="sources-error" class="dash-card mb-3" style="display:none; border-left:3px solid var(--accent-red); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-red); font-size:0.83rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span id="sources-error-text"></span>
+    </div>
+  </div>
+
+  <div id="sources-status" class="dash-card mb-3" style="display:none; border-left:3px solid var(--accent-cyan); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-cyan); font-size:0.83rem;">
+      <i class="bi bi-info-circle-fill"></i>
+      <span id="sources-status-text"></span>
+    </div>
+  </div>
+
+  <!-- Add source -->
+  <div class="dash-card mb-3 p-3">
+    <h6 style="margin:0 0 0.75rem; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+      <i class="bi bi-plus-circle me-1" style="color:var(--accent-cyan);"></i>{{ _("Add Source") }}
+    </h6>
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="cfg-label" for="add-description">{{ _("Description") }}</label>
+        <input type="text" class="dash-input w-100" id="add-description" maxlength="200"
+               placeholder="{{ _('e.g. PHW HL7 Server') }}">
+      </div>
+      <div class="col-8 col-md-4">
+        <label class="cfg-label" for="add-url">{{ _("URL") }}</label>
+        <input type="text" class="dash-input w-100" id="add-url" maxlength="253"
+               placeholder="{{ _('e.g. phw.example.nhs.uk') }}">
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="cfg-label" for="add-port">{{ _("Port") }}</label>
+        <input type="number" class="dash-input w-100" id="add-port" min="1" max="65535" placeholder="2575">
+      </div>
+      <div class="col-12 col-md-2">
+        <button type="button" class="btn-dash btn-dash--primary w-100" id="add-source-btn">
+          <i class="bi bi-plus-lg"></i> {{ _("Add") }}
+        </button>
+      </div>
+    </div>
+
+    <hr style="border-color:var(--border-color); margin:1rem 0;">
+
+    <h6 style="margin:0 0 0.75rem; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+      <i class="bi bi-file-earmark-arrow-up me-1" style="color:var(--accent-cyan);"></i>{{ _("Import from CSV") }}
+    </h6>
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-8">
+        <input type="file" class="dash-input w-100" id="import-csv-file" accept=".csv,text/csv">
+        <div class="cfg-hint mt-1">
+          {{ _("Header row with columns") }} <code>description</code>, <code>url</code>, <code>port</code>.
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <button type="button" class="btn-dash w-100" id="import-csv-btn">
+          <i class="bi bi-upload"></i> {{ _("Upload") }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sources table -->
+  <div class="dash-card" id="sources-list-card">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color);">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-hdd-network me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Flow Source Servers") }}
+      </h6>
+    </div>
+    <div class="scroll-panel">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>{{ _("Description") }}</th>
+            <th>{{ _("URL") }}</th>
+            <th>{{ _("Port") }}</th>
+            <th style="width:1%;"></th>
+          </tr>
+        </thead>
+        <tbody id="sources-tbody"></tbody>
+      </table>
+    </div>
+    <div id="sources-list-empty" class="no-data" style="display:none;">
+      <i class="bi bi-hdd-network" style="font-size:2rem; color:var(--text-dim); opacity:0.6;"></i>
+      <span style="color:var(--text-muted); font-size:0.85rem;">
+        {{ _("No flow source servers configured yet — add one above or import a CSV.") }}
+      </span>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- ── Edit Modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="editSourceModal" tabindex="-1" aria-labelledby="editSourceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="editSourceModalLabel">
+          <i class="bi bi-pencil-square me-2" style="color:var(--accent-cyan)"></i>{{ _("Edit Source") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-source-id">
+        <label class="cfg-label" for="edit-description">{{ _("Description") }}</label>
+        <input type="text" class="dash-input w-100 mb-3" id="edit-description" maxlength="200">
+        <label class="cfg-label" for="edit-url">{{ _("URL") }}</label>
+        <input type="text" class="dash-input w-100 mb-3" id="edit-url" maxlength="253">
+        <label class="cfg-label" for="edit-port">{{ _("Port") }}</label>
+        <input type="number" class="dash-input w-100" id="edit-port" min="1" max="65535">
+        <div id="edit-source-error" class="mt-2" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash btn-dash--primary" id="edit-source-save-btn">
+          <i class="bi bi-check-lg"></i> {{ _("Save") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  'use strict';
+
+  function showError(message) {
+    var el = document.getElementById('sources-error');
+    var textEl = document.getElementById('sources-error-text');
+    textEl.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function showStatus(message) {
+    var el = document.getElementById('sources-status');
+    var textEl = document.getElementById('sources-status-text');
+    textEl.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function escapeHtml(value) {
+    var div = document.createElement('div');
+    div.textContent = value;
+    return div.innerHTML;
+  }
+
+  function renderSources(sources) {
+    var tbody = document.getElementById('sources-tbody');
+    var emptyEl = document.getElementById('sources-list-empty');
+    tbody.innerHTML = '';
+    emptyEl.style.display = sources.length ? 'none' : 'flex';
+
+    sources.forEach(function (source) {
+      var row = document.createElement('tr');
+      row.innerHTML =
+        '<td>' + escapeHtml(source.description) + '</td>' +
+        '<td class="font-mono">' + escapeHtml(source.url) + '</td>' +
+        '<td class="font-mono">' + escapeHtml(String(source.port)) + '</td>' +
+        '<td></td>';
+
+      var actions = document.createElement('div');
+      actions.className = 'd-flex gap-1';
+
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn-dash btn-dash--sm';
+      editBtn.title = '{{ _("Edit") }}';
+      editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+      editBtn.addEventListener('click', function () { openEditModal(source); });
+      actions.appendChild(editBtn);
+
+      var deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn-dash btn-dash--sm';
+      deleteBtn.title = '{{ _("Delete") }}';
+      deleteBtn.innerHTML = '<i class="bi bi-trash3"></i>';
+      deleteBtn.addEventListener('click', function () { deleteSource(source); });
+      actions.appendChild(deleteBtn);
+
+      row.lastElementChild.appendChild(actions);
+      tbody.appendChild(row);
+    });
+  }
+
+  function refreshSources() {
+    return fetch('/api/network-test/sources')
+      .then(parseJsonResponse)
+      .then(function (res) { renderSources((res.data && res.data.sources) || []); })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      });
+  }
+
+  refreshSources();
+
+  function parseJsonResponse(response) {
+    return response.text().then(function (text) {
+      var data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          data = {};
+        }
+      }
+      return { ok: response.ok, data: data };
+    });
+  }
+
+  // --- Add source ---------------------------------------------------------
+
+  document.getElementById('add-source-btn').addEventListener('click', function () {
+    showError('');
+    showStatus('');
+    var description = document.getElementById('add-description').value.trim();
+    var url = document.getElementById('add-url').value.trim();
+    var port = document.getElementById('add-port').value.trim();
+
+    fetch('/api/network-test/sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: description, url: url, port: port })
+    })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Failed to add source.") }}');
+          return;
+        }
+        document.getElementById('add-description').value = '';
+        document.getElementById('add-url').value = '';
+        document.getElementById('add-port').value = '';
+        return refreshSources();
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      });
+  });
+
+  // --- CSV import ----------------------------------------------------------
+
+  document.getElementById('import-csv-btn').addEventListener('click', function () {
+    showError('');
+    showStatus('');
+    var fileInput = document.getElementById('import-csv-file');
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) {
+      showError('{{ _("Choose a CSV file to upload first.") }}');
+      return;
+    }
+
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/network-test/sources/import', { method: 'POST', body: formData })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Failed to import CSV.") }}');
+          return;
+        }
+        var summaryMessage = '';
+        if (res.data.errors && res.data.errors.length) {
+          summaryMessage = '{{ _("Imported") }} ' + res.data.imported + '. ' + res.data.errors.join(' ');
+        }
+        fileInput.value = '';
+        return refreshSources().then(function () {
+          showStatus(summaryMessage);
+        });
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      });
+  });
+
+  // --- Edit source -----------------------------------------------------
+
+  var editModalEl = document.getElementById('editSourceModal');
+  var editModal = new bootstrap.Modal(editModalEl);
+
+  function openEditModal(source) {
+    document.getElementById('edit-source-id').value = source.id;
+    document.getElementById('edit-description').value = source.description;
+    document.getElementById('edit-url').value = source.url;
+    document.getElementById('edit-port').value = source.port;
+    document.getElementById('edit-source-error').style.display = 'none';
+    editModal.show();
+  }
+
+  document.getElementById('edit-source-save-btn').addEventListener('click', function () {
+    var errorEl = document.getElementById('edit-source-error');
+    errorEl.style.display = 'none';
+    showStatus('');
+
+    var sourceId = document.getElementById('edit-source-id').value;
+    var description = document.getElementById('edit-description').value.trim();
+    var url = document.getElementById('edit-url').value.trim();
+    var port = document.getElementById('edit-port').value.trim();
+
+    fetch('/api/network-test/sources/' + encodeURIComponent(sourceId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: description, url: url, port: port })
+    })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          errorEl.textContent = res.data.error || '{{ _("Failed to save source.") }}';
+          errorEl.style.display = 'block';
+          return;
+        }
+        editModal.hide();
+        return refreshSources();
+      })
+      .catch(function () {
+        errorEl.textContent = '{{ _("Could not reach the dashboard API — check your connection and try again.") }}';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  // --- Delete source ---------------------------------------------------
+
+  function deleteSource(source) {
+    if (!window.confirm('{{ _("Delete") }} "' + source.description + '"? {{ _("This cannot be undone.") }}')) {
+      return;
+    }
+    showError('');
+    showStatus('');
+    fetch('/api/network-test/sources/' + encodeURIComponent(source.id), { method: 'DELETE' })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || '{{ _("Failed to delete source.") }}');
+          return;
+        }
+        return refreshSources();
+      })
+      .catch(function () {
+        showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
+      });
+  }
+})();
+</script>
+{% endblock %}

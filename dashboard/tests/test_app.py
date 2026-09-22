@@ -6,6 +6,7 @@ All Azure service calls are mocked.
 
 from __future__ import annotations
 
+import io
 import os
 from collections.abc import Generator
 from pathlib import Path
@@ -16,6 +17,7 @@ from dotenv import load_dotenv
 from flask.testing import FlaskClient
 
 from dashboard import app as app_module
+from dashboard.services import flow_sources
 
 app = app_module.app
 
@@ -408,9 +410,26 @@ class TestApiRoutes:
 
 class TestNetworkTestRoutes:
     def test_page_renders(self, client: FlaskClient) -> None:
-        with patch("dashboard.routes.pages.get_flows", return_value={}):
+        with (
+            patch("dashboard.routes.pages.get_flows", return_value={}),
+            patch("dashboard.routes.pages.flow_sources.list_sources", return_value=[]),
+        ):
             response = client.get("/network-test")
         assert response.status_code == 200
+
+    def test_source_endpoints_come_from_flow_sources_not_flows(self, client: FlaskClient) -> None:
+        """Flow source servers must be entirely Cosmos-managed, independent of ARM-discovered flows."""
+        fake_flows = {"phw-to-mpi": {"source": "PHW", "source_host": "phw.internal", "source_port": 2575}}
+        fake_sources = [{"id": "1", "description": "Custom PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch("dashboard.routes.pages.get_flows", return_value=fake_flows),
+            patch("dashboard.routes.pages.flow_sources.list_sources", return_value=fake_sources),
+        ):
+            response = client.get("/network-test")
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "Custom PHW" in body
+        assert "phw.internal" not in body
 
     def test_api_list_returns_json(self, client: FlaskClient) -> None:
         endpoints = [{"host": "a.example.com", "port": 443, "latest": {"success": True}}]
@@ -465,6 +484,117 @@ class TestNetworkTestRoutes:
         response = client.delete("/api/network-test/history?host=example.com&port=not-a-port")
         assert response.status_code == 400
         assert "error" in response.get_json()
+
+
+class TestNetworkTestConfigRoutes:
+    def test_config_page_renders(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.pages.flow_sources.list_sources", return_value=[]):
+            response = client.get("/network-test/config")
+        assert response.status_code == 200
+
+    def test_api_sources_get_returns_json(self, client: FlaskClient) -> None:
+        sources = [{"id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with patch("dashboard.routes.api.flow_sources.list_sources", return_value=sources):
+            response = client.get("/api/network-test/sources")
+        assert response.status_code == 200
+        assert response.get_json() == {"sources": sources}
+
+    def test_api_sources_post_adds_source(self, client: FlaskClient) -> None:
+        added = {"id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}
+        with patch("dashboard.routes.api.flow_sources.add_source", return_value=added) as add_source:
+            response = client.post(
+                "/api/network-test/sources",
+                json={"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            )
+        assert response.status_code == 201
+        assert response.get_json() == added
+        add_source.assert_called_once_with("PHW", "phw.example.nhs.uk", 2575)
+
+    def test_api_sources_post_rejects_invalid_body(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.api.flow_sources.add_source", side_effect=flow_sources.InvalidSourceError("bad")):
+            response = client.post("/api/network-test/sources", json={"description": "", "url": "", "port": ""})
+        assert response.status_code == 400
+        assert response.get_json() == {"error": "bad"}
+
+    def test_api_sources_post_returns_persistence_error(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.api.flow_sources.add_source",
+            side_effect=flow_sources.SourcePersistenceError("Source persistence is currently unavailable."),
+        ):
+            response = client.post(
+                "/api/network-test/sources",
+                json={"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            )
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Source persistence is currently unavailable."}
+
+    def test_api_source_put_updates_source(self, client: FlaskClient) -> None:
+        updated = {"id": "1", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}
+        with patch("dashboard.routes.api.flow_sources.update_source", return_value=updated) as update_source:
+            response = client.put(
+                "/api/network-test/sources/1",
+                json={"description": "PHW", "url": "phw.example.nhs.uk", "port": 2575},
+            )
+        assert response.status_code == 200
+        assert response.get_json() == updated
+        update_source.assert_called_once_with("1", "PHW", "phw.example.nhs.uk", 2575)
+
+    def test_api_source_delete_removes_source(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.api.flow_sources.delete_source") as delete_source:
+            response = client.delete("/api/network-test/sources/1")
+        assert response.status_code == 200
+        assert response.get_json() == {"deleted": True, "id": "1"}
+        delete_source.assert_called_once_with("1")
+
+    def test_api_source_delete_returns_persistence_error(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.api.flow_sources.delete_source",
+            side_effect=flow_sources.SourcePersistenceError("Source persistence is currently unavailable."),
+        ):
+            response = client.delete("/api/network-test/sources/1")
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Source persistence is currently unavailable."}
+
+    def test_api_sources_import_requires_file(self, client: FlaskClient) -> None:
+        response = client.post("/api/network-test/sources/import", data={}, content_type="multipart/form-data")
+        assert response.status_code == 400
+        assert "error" in response.get_json()
+
+    def test_api_sources_import_returns_summary(self, client: FlaskClient) -> None:
+        csv_bytes = b"description,url,port\nPHW,phw.example.nhs.uk,2575\n"
+        with patch(
+            "dashboard.routes.api.flow_sources.import_sources",
+            return_value={"imported": 1, "errors": [], "persistence_failed": False},
+        ):
+            response = client.post(
+                "/api/network-test/sources/import",
+                data={"file": (io.BytesIO(csv_bytes), "sources.csv")},
+                content_type="multipart/form-data",
+            )
+        assert response.status_code == 200
+        assert response.get_json() == {"imported": 1, "errors": [], "persistence_failed": False}
+
+    def test_api_sources_import_returns_503_for_persistence_error(self, client: FlaskClient) -> None:
+        csv_bytes = b"description,url,port\nPHW,phw.example.nhs.uk,2575\n"
+        with patch(
+            "dashboard.routes.api.flow_sources.import_sources",
+            return_value={
+                "imported": 0,
+                "errors": ["Source persistence is currently unavailable."],
+                "persistence_failed": True,
+            },
+        ):
+            response = client.post(
+                "/api/network-test/sources/import",
+                data={"file": (io.BytesIO(csv_bytes), "sources.csv")},
+                content_type="multipart/form-data",
+            )
+        assert response.status_code == 503
+        assert response.get_json() == {
+            "imported": 0,
+            "errors": ["Source persistence is currently unavailable."],
+            "persistence_failed": True,
+        }
 
 
 class TestEnvLoading:
