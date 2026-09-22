@@ -12,7 +12,10 @@ from __future__ import annotations
 import logging
 
 from dashboard import config
-from dashboard.services.arm import discover_flows, get_subscription_consumers_by_topic  # noqa: PLC0415 (deferred to avoid circular at load time)
+from dashboard.services.arm import (  # noqa: PLC0415 (deferred to avoid circular at load time)
+    discover_flows,
+    get_subscription_consumers_by_topic,
+)
 from dashboard.services.service_bus import (  # noqa: PLC0415
     get_queue_names,
     get_subscriptions,
@@ -568,9 +571,25 @@ def build_flow_data(
 
 def _queue_summary(name: str | None, q: dict | None) -> dict:
     if not name:
-        return {"name": None, "entity_type": "queue", "entity_name": None, "active": 0, "dlq": 0, "health": "healthy", "exists": False}
+        return {
+            "name": None,
+            "entity_type": "queue",
+            "entity_name": None,
+            "active": 0,
+            "dlq": 0,
+            "health": "healthy",
+            "exists": False,
+        }
     if q is None:
-        return {"name": name, "entity_type": "queue", "entity_name": name, "active": 0, "dlq": 0, "health": "unknown", "exists": False}
+        return {
+            "name": name,
+            "entity_type": "queue",
+            "entity_name": name,
+            "active": 0,
+            "dlq": 0,
+            "health": "unknown",
+            "exists": False,
+        }
     active = q.get("active_message_count", 0)
     dlq = q.get("dead_letter_message_count", 0)
     return {
@@ -588,9 +607,25 @@ def _queue_summary(name: str | None, q: dict | None) -> dict:
 def _topic_summary(name: str | None, topic: dict | None) -> dict:
     """Summarise a flow's topic entity (backlog/DLQ) for template + totals use."""
     if not name:
-        return {"name": None, "entity_type": "topic", "entity_name": None, "active": 0, "dlq": 0, "health": "healthy", "exists": False}
+        return {
+            "name": None,
+            "entity_type": "topic",
+            "entity_name": None,
+            "active": 0,
+            "dlq": 0,
+            "health": "healthy",
+            "exists": False,
+        }
     if topic is None:
-        return {"name": name, "entity_type": "topic", "entity_name": name, "active": 0, "dlq": 0, "health": "unknown", "exists": False}
+        return {
+            "name": name,
+            "entity_type": "topic",
+            "entity_name": name,
+            "active": 0,
+            "dlq": 0,
+            "health": "unknown",
+            "exists": False,
+        }
     active = topic.get("active_message_count", 0)
     dlq = topic.get("dead_letter_message_count", 0)
     return {
