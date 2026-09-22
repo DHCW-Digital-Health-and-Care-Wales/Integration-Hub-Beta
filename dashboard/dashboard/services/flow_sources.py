@@ -213,17 +213,15 @@ def update_source(source_id: str, description: str, url: str, port: Any) -> dict
     existing = _find_source_document(source_id)
     if existing is None:
         raise InvalidSourceError("Source not found.")
-    existing_key = _duplicate_key(existing["url"], existing["port"]) if existing else None
+    existing_key = _duplicate_key(existing["url"], existing["port"])
     new_key = _duplicate_key(source["url"], source["port"])
     source["id"] = source_id
     source["_storage_id"] = existing["_storage_id"]
 
-    if existing_key is None or existing_key == new_key:
+    if existing_key == new_key:
         _persist(source_id, source)
         return _public_source(source)
 
-    if existing is None:
-        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
     old_storage_id = str(existing["_storage_id"])
     new_storage_id = _create(source_id, source, new_key)
     if not cosmos_store.delete_document(_PK, old_storage_id):
