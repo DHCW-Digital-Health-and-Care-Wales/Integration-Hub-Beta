@@ -27,7 +27,7 @@ from dashboard.services.azure_monitor import (
 )
 from dashboard.services.container_apps import get_container_apps_metrics
 from dashboard.services.flows import build_flow_data, get_active_flows
-from dashboard.services.service_bus import get_message_metrics, get_queues
+from dashboard.services.service_bus import get_message_metrics, get_queues, get_topics
 from dashboard.services.status_builder import LONDON_TZ, alarm_summary, get_cached_status
 
 
@@ -74,7 +74,7 @@ def api_flows() -> Response:
     """JSON endpoint returning live flow health and container-app metrics."""
     queues = get_queues()
     active_flows = get_active_flows()
-    flows = build_flow_data(queues, active_flows)
+    flows = build_flow_data(queues, active_flows, get_topics())
     container_metrics = get_container_apps_metrics()
     return jsonify(
         {

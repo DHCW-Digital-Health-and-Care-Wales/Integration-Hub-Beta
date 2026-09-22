@@ -54,11 +54,19 @@ def build_status() -> dict:
         active_flows = fut_flows.result()
         exceptions_1h = fut_exc.result()
 
-    flows = build_flow_data(queues, active_flows)
+    flows = build_flow_data(queues, active_flows, namespace_snapshot["topics"])
 
     namespace_kpis = namespace_snapshot["kpis"]
-    total_active = namespace_kpis["queue_active_messages"] + namespace_kpis["subscription_active_messages"]
-    total_dlq = namespace_kpis["queue_dead_letter_messages"] + namespace_kpis["subscription_dead_letter_messages"]
+    total_active = (
+        namespace_kpis["queue_active_messages"]
+        + namespace_kpis["topic_active_messages"]
+        + namespace_kpis["subscription_active_messages"]
+    )
+    total_dlq = (
+        namespace_kpis["queue_dead_letter_messages"]
+        + namespace_kpis["topic_dead_letter_messages"]
+        + namespace_kpis["subscription_dead_letter_messages"]
+    )
 
     exception_count = len(exceptions_1h)
 

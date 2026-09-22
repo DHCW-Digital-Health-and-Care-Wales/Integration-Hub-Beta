@@ -7,7 +7,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from dashboard.services.flows import _FLOW_DEFS, build_flow_data, flow_health, overall_health, queue_health
+from dashboard.services.flows import (
+    _FLOW_DEFS,
+    _merge_subscription_records,
+    build_flow_data,
+    flow_health,
+    overall_health,
+    queue_health,
+)
 
 # Test flows with hardcoded queue names - independent of config.py
 TEST_FLOWS = {
@@ -185,6 +192,84 @@ class TestFlowHealth:
 
         assert flow_health("wds-to-wis", queues_by_name, flows) == "unknown"
 
+    def test_topic_backlog_drives_flow_health(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-outbound",
+                        "status": "Active",
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                    }
+                ],
+                "destination": "Downstream Systems",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        queues_by_name: dict[str, dict] = {}
+        topics_by_name = {
+            "topic-wds-input": {
+                "name": "topic-wds-input",
+                "active_message_count": 60,
+                "dead_letter_message_count": 0,
+            }
+        }
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert flow_health("mpi-to-topic", queues_by_name, flows, topics_by_name) == "critical"
+
+    def test_topic_dead_letters_drive_flow_health(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "topic-wds-input",
+                "subscriptions": [
+                    {
+                        "name": "sub-outbound",
+                        "status": "Active",
+                        "active_message_count": 0,
+                        "dead_letter_message_count": 0,
+                    }
+                ],
+                "destination": "Downstream Systems",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        queues_by_name: dict[str, dict] = {}
+        topics_by_name = {
+            "topic-wds-input": {
+                "name": "topic-wds-input",
+                "active_message_count": 0,
+                "dead_letter_message_count": 3,
+            }
+        }
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            assert flow_health("mpi-to-topic", queues_by_name, flows, topics_by_name) == "warning"
+
     def test_all_flows_defined(self) -> None:
         expected = {
             "phw-to-mpi",
@@ -254,3 +339,144 @@ class TestBuildFlowData:
 
         assert result[0]["subscriptions"][0]["entity_name"] == "prefix-sbt-mpi-hl7-input/prefix-sbs-outbound"
         assert result[0]["subscriptions"][0]["consumer_apps"][0]["app_name"] == "mpi-phw-sender-ca"
+
+    def test_topic_summary_is_populated_from_topics(self) -> None:
+        flows = {
+            "mpi-to-topic": {
+                "label": "MPI Outbound",
+                "source": "MPI",
+                "source_port": 2580,
+                "pre_queue": None,
+                "transformer": None,
+                "post_queue": None,
+                "topic": "topic-wds-input",
+                "subscriptions": [],
+                "destination": "Downstream Systems",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        topics = [
+            {
+                "name": "topic-wds-input",
+                "active_message_count": 7,
+                "dead_letter_message_count": 2,
+            }
+        ]
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            result = build_flow_data([], flows, topics)
+
+        topic_summary = result[0]["topic_summary"]
+        assert topic_summary["exists"] is True
+        assert topic_summary["active"] == 7
+        assert topic_summary["dlq"] == 2
+        assert topic_summary["health"] == "warning"
+        assert result[0]["health"] == "warning"
+
+    def test_shared_topic_backlog_ignored_for_consumer_flow(self) -> None:
+        """A flow that consumes (but does not publish to) a shared topic must
+        not have the topic's own backlog counted against it — that belongs to
+        the owning/publishing flow."""
+        flows = {
+            "wds-to-wis": {
+                "label": "WDS → WIS",
+                "source": "WDS",
+                "source_port": None,
+                "pre_queue": None,
+                "transformer": "WDS Transformer",
+                "post_queue": "post-wis-sender",
+                "topic": "topic-wds-input",
+                "subscriptions": [],
+                "destination": "WIS",
+                "colour": "#0ea5e9",
+                "icon": "bi-send",
+            }
+        }
+        topics = [
+            {
+                "name": "topic-wds-input",
+                "active_message_count": 7,
+                "dead_letter_message_count": 2,
+            }
+        ]
+        queues = [
+            {
+                "name": "post-wis-sender",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+            }
+        ]
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
+            result = build_flow_data(queues, flows, topics)
+
+        topic_summary = result[0]["topic_summary"]
+        assert topic_summary["exists"] is False
+        assert topic_summary["active"] == 0
+        assert topic_summary["dlq"] == 0
+        # Consumer flow judged only on its own queue backlog — the shared
+        # topic's backlog (which would be 'warning') must not leak in.
+        assert result[0]["health"] == "healthy"
+
+    def test_topic_summary_defaults_when_no_topic(self) -> None:
+        result = build_flow_data([], TEST_FLOWS)
+
+        topic_summary = result[0]["topic_summary"]
+        assert topic_summary["exists"] is False
+        assert topic_summary["active"] == 0
+        assert topic_summary["dlq"] == 0
+
+
+class TestMergeSubscriptionRecords:
+    """A topic can be shared by several flows; enrichment must only retain the
+    subscriptions that discovery attributed to *this* flow."""
+
+    TOPIC = "topic-wds-input"
+    OWNED = "sbs-wds-mpi-sender"
+    OTHER = "sbs-wds-wis-transformer"
+
+    def test_foreign_subscription_on_shared_topic_is_not_imported(self) -> None:
+        flow_subscriptions = [{"name": self.OWNED}]
+        # Service Bus returns *every* subscription on the shared topic.
+        service_bus_subscriptions = [
+            {"name": self.OWNED, "status": "Active", "active_message_count": 3, "dead_letter_message_count": 0},
+            {"name": self.OTHER, "status": "Active", "active_message_count": 9, "dead_letter_message_count": 1},
+        ]
+
+        merged = _merge_subscription_records(self.TOPIC, flow_subscriptions, [], service_bus_subscriptions)
+
+        names = {sub["name"] for sub in merged}
+        assert names == {self.OWNED}, "foreign subscription leaked into this flow"
+
+    def test_owned_subscription_is_enriched_with_live_counts(self) -> None:
+        flow_subscriptions = [{"name": self.OWNED}]
+        service_bus_subscriptions = [
+            {"name": self.OWNED, "status": "Active", "active_message_count": 3, "dead_letter_message_count": 2},
+        ]
+
+        merged = _merge_subscription_records(self.TOPIC, flow_subscriptions, [], service_bus_subscriptions)
+
+        assert len(merged) == 1
+        sub = merged[0]
+        assert sub["name"] == self.OWNED
+        assert sub["active_message_count"] == 3
+        assert sub["dead_letter_message_count"] == 2
+        assert sub["entity_name"] == f"{self.TOPIC}/{self.OWNED}"
+
+    def test_no_owned_subscriptions_returns_empty(self) -> None:
+        service_bus_subscriptions = [
+            {"name": self.OTHER, "status": "Active", "active_message_count": 9, "dead_letter_message_count": 1},
+        ]
+
+        merged = _merge_subscription_records(self.TOPIC, [], [], service_bus_subscriptions)
+
+        assert merged == []

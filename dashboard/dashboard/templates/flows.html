@@ -91,8 +91,8 @@
   {% for source, source_flows in status.flows | groupby('source') %}
   {% set ns = namespace(group_active=0, group_dlq=0, group_health='healthy') %}
   {% for f in source_flows %}
-    {% set f_active = (f.pre_queue.active or 0) + (f.post_queue.active or 0) + (f.subscriptions | sum(attribute='active') if f.subscriptions else 0) %}
-    {% set f_dlq    = (f.pre_queue.dlq   or 0) + (f.post_queue.dlq   or 0) + (f.subscriptions | sum(attribute='dlq')    if f.subscriptions else 0) %}
+    {% set f_active = (f.pre_queue.active or 0) + (f.post_queue.active or 0) + (f.topic_summary.active or 0) + (f.subscriptions | sum(attribute='active') if f.subscriptions else 0) %}
+    {% set f_dlq    = (f.pre_queue.dlq   or 0) + (f.post_queue.dlq   or 0) + (f.topic_summary.dlq   or 0) + (f.subscriptions | sum(attribute='dlq')    if f.subscriptions else 0) %}
     {% set ns.group_active = ns.group_active + f_active %}
     {% set ns.group_dlq    = ns.group_dlq    + f_dlq %}
     {% if f.health == 'critical' %}{% set ns.group_health = 'critical' %}

@@ -130,7 +130,7 @@ def service_bus_page() -> str:
     )
     queues = cached_sb["queues"]
     topics = cached_sb["topics"]
-    flows = build_flow_data(queues)
+    flows = build_flow_data(queues, topics=topics)
     return render_template(
         "service_bus.html",
         namespace_snapshot=cached_sb,

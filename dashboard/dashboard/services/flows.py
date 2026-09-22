@@ -176,7 +176,13 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
 
 
 def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
-    """For flows that have a topic, fetch subscriptions from Service Bus."""
+    """Enrich each topic-based flow's own subscriptions with live Service Bus counts.
+
+    ``get_subscriptions(topic)`` returns *every* subscription on the topic, and a
+    topic may be shared by several flows, so the per-flow ownership filtering in
+    :func:`_merge_subscription_records` is what keeps a subscription from
+    appearing under a flow that does not own it.
+    """
 
     consumers_by_topic = get_subscription_consumers_by_topic()
 
@@ -199,14 +205,32 @@ def _merge_subscription_records(
     consumer_subscriptions: list[dict],
     service_bus_subscriptions: list[dict],
 ) -> list[dict]:
-    """Merge discovery metadata with Service Bus subscription counts."""
+    """Merge discovery metadata with Service Bus subscription counts.
+
+    A single topic can be shared by more than one flow — e.g. the WDS server
+    publishes to ``sbt-wds-hl7-input``, which is consumed independently by the
+    WDS→MPI subscription sender and the WDS→WIS transformer.  Ownership is
+    therefore taken from ``flow_subscriptions`` (the subscriptions Container App
+    discovery attributed to *this* flow).  ``consumer_subscriptions`` and
+    ``service_bus_subscriptions`` may list *every* subscription on the shared
+    topic, so they are used only to enrich the owned subscriptions with consumer
+    metadata and live counts — never to introduce a subscription that belongs to
+    a different flow.
+    """
+
+    # Only subscriptions discovered for this flow are retained; this prevents a
+    # subscription owned by one flow from leaking into every flow that shares
+    # the topic.
+    owned_names = {name for sub in flow_subscriptions if (name := sub.get("name"))}
+    if not owned_names:
+        return []
 
     merged: dict[str, dict] = {}
 
     def _seed(records: list[dict]) -> None:
         for record in records:
             name = record.get("name")
-            if not name:
+            if not name or name not in owned_names:
                 continue
             current = merged.setdefault(
                 name,
@@ -235,7 +259,7 @@ def _merge_subscription_records(
 
     for sub in service_bus_subscriptions:
         name = sub.get("name")
-        if not name:
+        if not name or name not in owned_names:
             continue
         current = merged.setdefault(
             name,
@@ -341,19 +365,43 @@ def queue_health(active: int, dlq: int) -> str:
     return "healthy"
 
 
-def flow_health(flow_id: str, queues_by_name: dict[str, dict], flows: dict[str, dict] | None = None) -> str:
+def flow_health(
+    flow_id: str,
+    queues_by_name: dict[str, dict],
+    flows: dict[str, dict] | None = None,
+    topics_by_name: dict[str, dict] | None = None,
+) -> str:
     """
     Return overall health for a flow given a mapping of queue-name → queue dict.
     Queue dicts must contain ``active_message_count`` and ``dead_letter_message_count``.
 
     For topic-based flows (MPI Outbound), health is derived from the
-    subscription message counts stored directly in the flow definition.
+    subscription message counts stored directly in the flow definition, plus
+    the backlog/dead-letter counts of the topic entity itself when a
+    ``topics_by_name`` mapping is supplied.  A topic can be shared by several
+    flows, so the topic entity's own backlog only counts towards the flow that
+    *owns* the topic (the publisher, identified by ``source_port``); consumer
+    flows on the same topic are judged solely on their subscription backlog.
     """
     if flows is None:
         flows = get_flows()
     flow = flows[flow_id]
 
     statuses: list[str] = []
+
+    # Topic-based flow — check the topic entity's own backlog/DLQ, but only for
+    # the flow that owns (publishes to) the topic to avoid counting a shared
+    # topic's backlog against every consumer flow.
+    topic_name = flow.get("topic")
+    if topic_name and topics_by_name and flow.get("source_port"):
+        topic = topics_by_name.get(topic_name)
+        if topic is not None:
+            statuses.append(
+                queue_health(
+                    topic.get("active_message_count", 0),
+                    topic.get("dead_letter_message_count", 0),
+                )
+            )
 
     # Topic-based flow — check subscriptions
     subscriptions = flow.get("subscriptions", [])
@@ -439,24 +487,42 @@ def entity_to_workflow_id(entity_type: str, entity_name: str) -> str | None:
     return None
 
 
-def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) -> list[dict]:
+def build_flow_data(
+    queues: list[dict],
+    flows: dict[str, dict] | None = None,
+    topics: list[dict] | None = None,
+) -> list[dict]:
     """
     Given the raw list of queue dicts from service_bus.get_queues(),
     return a list of enriched flow dicts ready for the template / API.
 
     Pass an explicit ``flows`` dict (e.g. from ``get_active_flows()``) to
     restrict output to deployed flows.  Defaults to all flows if omitted.
+
+    Pass the ``topics`` list (from ``get_namespace_snapshot()`` /
+    ``get_topics()``) so topic-level backlog and dead-letter counts feed into
+    each flow's health and per-flow totals.
     """
     if flows is None:
         flows = get_flows()
     queues_by_name: dict[str, dict] = {q["name"]: q for q in queues}
+    topics_by_name: dict[str, dict] = {t["name"]: t for t in (topics or [])}
 
     result = []
     for flow_id, flow in flows.items():
         pre_q = queues_by_name.get(flow.get("pre_queue", ""))
         post_q = queues_by_name.get(flow.get("post_queue", ""))
 
-        health = flow_health(flow_id, queues_by_name, flows)
+        health = flow_health(flow_id, queues_by_name, flows, topics_by_name)
+
+        # Topic backlog/DLQ only counts for the flow that owns (publishes to)
+        # the topic; a shared topic must not be counted against consumer flows.
+        owns_topic = bool(flow.get("topic") and flow.get("source_port"))
+        topic_summary = (
+            _topic_summary(flow.get("topic"), topics_by_name.get(flow.get("topic") or ""))
+            if owns_topic
+            else _topic_summary(None, None)
+        )
 
         # Build subscription summaries for topic-based flows
         sub_summaries = []
@@ -493,6 +559,7 @@ def build_flow_data(queues: list[dict], flows: dict[str, dict] | None = None) ->
                 "pre_queue": _queue_summary(flow.get("pre_queue"), pre_q),
                 "post_queue": _queue_summary(flow.get("post_queue"), post_q),
                 "topic": flow.get("topic"),
+                "topic_summary": topic_summary,
                 "subscriptions": sub_summaries,
             }
         )
@@ -513,6 +580,25 @@ def _queue_summary(name: str | None, q: dict | None) -> dict:
         "active": active,
         "dlq": dlq,
         "status": q.get("status", "Unknown"),
+        "health": queue_health(active, dlq),
+        "exists": True,
+    }
+
+
+def _topic_summary(name: str | None, topic: dict | None) -> dict:
+    """Summarise a flow's topic entity (backlog/DLQ) for template + totals use."""
+    if not name:
+        return {"name": None, "entity_type": "topic", "entity_name": None, "active": 0, "dlq": 0, "health": "healthy", "exists": False}
+    if topic is None:
+        return {"name": name, "entity_type": "topic", "entity_name": name, "active": 0, "dlq": 0, "health": "unknown", "exists": False}
+    active = topic.get("active_message_count", 0)
+    dlq = topic.get("dead_letter_message_count", 0)
+    return {
+        "name": name,
+        "entity_type": "topic",
+        "entity_name": name,
+        "active": active,
+        "dlq": dlq,
         "health": queue_health(active, dlq),
         "exists": True,
     }
