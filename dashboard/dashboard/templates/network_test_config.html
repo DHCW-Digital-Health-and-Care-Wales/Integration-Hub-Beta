@@ -197,14 +197,28 @@
 
   function refreshSources() {
     return fetch('/api/network-test/sources')
-      .then(function (r) { return r.json(); })
-      .then(function (data) { renderSources(data.sources || []); })
+      .then(parseJsonResponse)
+      .then(function (res) { renderSources((res.data && res.data.sources) || []); })
       .catch(function () {
         showError('{{ _("Could not reach the dashboard API — check your connection and try again.") }}');
       });
   }
 
   refreshSources();
+
+  function parseJsonResponse(response) {
+    return response.text().then(function (text) {
+      var data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          data = {};
+        }
+      }
+      return { ok: response.ok, data: data };
+    });
+  }
 
   // --- Add source ---------------------------------------------------------
 
@@ -219,7 +233,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: description, url: url, port: port })
     })
-      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(parseJsonResponse)
       .then(function (res) {
         if (!res.ok) {
           showError(res.data.error || '{{ _("Failed to add source.") }}');
@@ -250,7 +264,7 @@
     formData.append('file', file);
 
     fetch('/api/network-test/sources/import', { method: 'POST', body: formData })
-      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(parseJsonResponse)
       .then(function (res) {
         if (!res.ok) {
           showError(res.data.error || '{{ _("Failed to import CSV.") }}');
@@ -295,7 +309,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: description, url: url, port: port })
     })
-      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(parseJsonResponse)
       .then(function (res) {
         if (!res.ok) {
           errorEl.textContent = res.data.error || '{{ _("Failed to save source.") }}';
@@ -319,7 +333,7 @@
     }
     showError('');
     fetch('/api/network-test/sources/' + encodeURIComponent(source.id), { method: 'DELETE' })
-      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(parseJsonResponse)
       .then(function (res) {
         if (!res.ok) {
           showError(res.data.error || '{{ _("Failed to delete source.") }}');

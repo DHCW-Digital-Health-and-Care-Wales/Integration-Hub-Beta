@@ -211,11 +211,12 @@ def update_source(source_id: str, description: str, url: str, port: Any) -> dict
     source = _validate_source(description, url, port)
     _ensure_persistence_configured()
     existing = _find_source_document(source_id)
+    if existing is None:
+        raise InvalidSourceError("Source not found.")
     existing_key = _duplicate_key(existing["url"], existing["port"]) if existing else None
     new_key = _duplicate_key(source["url"], source["port"])
     source["id"] = source_id
-    if existing is not None:
-        source["_storage_id"] = existing["_storage_id"]
+    source["_storage_id"] = existing["_storage_id"]
 
     if existing_key is None or existing_key == new_key:
         _persist(source_id, source)
@@ -236,7 +237,8 @@ def delete_source(source_id: str) -> None:
     """Permanently remove a flow source server. A no-op if it's already gone."""
     source = _find_source_document(source_id)
     storage_id = str(source["_storage_id"]) if source is not None else source_id
-    cosmos_store.delete_document(_PK, storage_id)
+    if not cosmos_store.delete_document(_PK, storage_id):
+        raise SourcePersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
 
 
 def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:

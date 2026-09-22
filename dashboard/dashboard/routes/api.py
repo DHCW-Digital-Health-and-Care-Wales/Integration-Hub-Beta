@@ -244,7 +244,10 @@ def api_network_test_sources() -> tuple[Response, int] | Response:
 def api_network_test_source(source_id: str) -> tuple[Response, int] | Response:
     """PUT updates a flow source server from a JSON body; DELETE removes it."""
     if request.method == "DELETE":
-        flow_sources.delete_source(source_id)
+        try:
+            flow_sources.delete_source(source_id)
+        except flow_sources.SourcePersistenceError as exc:
+            return jsonify({"error": exc.safe_message}), 503
         return jsonify({"deleted": True, "id": source_id})
 
     payload = request.get_json(silent=True)

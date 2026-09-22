@@ -546,6 +546,15 @@ class TestNetworkTestConfigRoutes:
         assert response.get_json() == {"deleted": True, "id": "1"}
         delete_source.assert_called_once_with("1")
 
+    def test_api_source_delete_returns_persistence_error(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.api.flow_sources.delete_source",
+            side_effect=flow_sources.SourcePersistenceError("Source persistence is currently unavailable."),
+        ):
+            response = client.delete("/api/network-test/sources/1")
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Source persistence is currently unavailable."}
+
     def test_api_sources_import_requires_file(self, client: FlaskClient) -> None:
         response = client.post("/api/network-test/sources/import", data={}, content_type="multipart/form-data")
         assert response.status_code == 400

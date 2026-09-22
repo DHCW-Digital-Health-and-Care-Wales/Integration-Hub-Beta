@@ -113,8 +113,9 @@ class TestAddSource:
 
 class TestUpdateSource:
     def test_persists_with_supplied_id(self) -> None:
+        existing = [{"source_id": "abc-123", "description": "Old PHW", "url": "phw.example.nhs.uk", "port": 2575}]
         with (
-            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
             patch.object(flow_sources.cosmos_store, "upsert_document", return_value=True) as upsert,
         ):
             source = flow_sources.update_source("abc-123", "PHW", "phw.example.nhs.uk", 2575)
@@ -130,6 +131,13 @@ class TestUpdateSource:
     def test_rejects_invalid_fields(self) -> None:
         with pytest.raises(flow_sources.InvalidSourceError):
             flow_sources.update_source("abc-123", "", "phw.example.nhs.uk", 2575)
+
+    def test_rejects_updating_unknown_source(self) -> None:
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=[]),
+            pytest.raises(flow_sources.InvalidSourceError, match="Source not found."),
+        ):
+            flow_sources.update_source("missing", "PHW", "phw.example.nhs.uk", 2575)
 
     def test_allows_saving_unchanged_url_and_port_on_itself(self) -> None:
         existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
@@ -212,10 +220,19 @@ class TestDeleteSource:
         existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
         with (
             patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
-            patch.object(flow_sources.cosmos_store, "delete_document") as delete_document,
+            patch.object(flow_sources.cosmos_store, "delete_document", return_value=True) as delete_document,
         ):
             flow_sources.delete_source("abc-123")
         delete_document.assert_called_once_with("flow-source-server", "abc-123")
+
+    def test_raises_persistence_error_when_delete_fails(self) -> None:
+        existing = [{"source_id": "abc-123", "description": "PHW", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch.object(flow_sources.cosmos_store, "query_documents", return_value=existing),
+            patch.object(flow_sources.cosmos_store, "delete_document", return_value=False),
+            pytest.raises(flow_sources.SourcePersistenceError),
+        ):
+            flow_sources.delete_source("abc-123")
 
 
 class TestListSources:
