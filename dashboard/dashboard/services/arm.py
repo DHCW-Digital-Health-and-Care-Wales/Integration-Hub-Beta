@@ -586,7 +586,7 @@ def get_subscription_consumers_by_topic() -> dict[str, list[dict]]:
                 {
                     "app_name": app["name"],
                     "microservice_id": env.get("MICROSERVICE_ID") or app["name"],
-                    "sender_type": "subscription_sender",
+                    "sender_type": _classify_app(env),
                     "workflow_id": workflow_id,
                 }
             ],
