@@ -11,6 +11,7 @@ unchanged.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from flask import Flask, Response, jsonify, request
 
@@ -26,7 +27,7 @@ from dashboard.services.azure_monitor import (
     get_messages_today,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows
+from dashboard.services.flows import build_flow_data, get_active_flows, get_flows
 from dashboard.services.service_bus import get_message_metrics, get_queues, get_topics
 from dashboard.services.status_builder import LONDON_TZ, alarm_summary, get_cached_status
 
@@ -230,12 +231,55 @@ def api_network_test_history() -> tuple[Response, int] | Response:
     return jsonify({"host": host, "port": port, "samples": network_test.get_history(host, port)})
 
 
+def _describe_endpoint(
+    host: str, port: int, flows: dict[str, dict], sources: list[dict[str, Any]]
+) -> str | None:
+    """Match a tested host:port against configured flow sources or flow destinations.
+
+    Returns the friendly description/name for the endpoint (for display in the
+    "Tested Endpoints" table), or ``None`` if the host:port isn't recognised (e.g. an
+    arbitrary target tested via the free-text host/port fields).
+    """
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        source_url = source.get("url")
+        source_port = source.get("port")
+        if isinstance(source_url, str) and source_port == port and source_url.lower() == host.lower():
+            source_description = source.get("description")
+            return str(source_description) if source_description else None
+    for flow in flows.values():
+        if (
+            str(flow.get("destination_host", "")).lower() == host.lower()
+            and flow.get("destination_port") == port
+        ):
+            return str(flow.get("destination")) if flow.get("destination") else None
+    return None
+
+
 def api_network_test_list() -> Response:
     """JSON endpoint returning every tested host:port with its most recent result.
 
-    Powers the endpoint list on the network test page.
+    Powers the endpoint list on the network test page — each endpoint is enriched with
+    a "description" (matched by host:port against configured flow sources / discovered
+    flow destinations) so the table can show a friendly name instead of a raw host:port.
     """
-    return jsonify({"endpoints": network_test.list_tested_endpoints()})
+    endpoints = network_test.list_tested_endpoints()
+    flows = get_flows()
+    sources = flow_sources.list_sources()
+    described_endpoints = []
+    for endpoint in endpoints:
+        host = endpoint.get("host")
+        port = endpoint.get("port")
+        if not isinstance(host, str) or not isinstance(port, int):
+            continue
+        described_endpoints.append(
+            {
+                **endpoint,
+                "description": _describe_endpoint(host, port, flows, sources),
+            }
+        )
+    return jsonify({"endpoints": described_endpoints})
 
 
 def api_network_test_sources() -> tuple[Response, int] | Response:
