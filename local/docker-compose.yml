@@ -101,7 +101,7 @@ services:
           - "risp-hl7-rest-server"
 
   # REST ingestion server instance (rest_server) for local testing.
-  # Endpoint path is configured by ENDPOINT_PATH in ./rest-hl7-server.env.
+  # Endpoint path is configured by ENDPOINT_PATH in ./env/servers/rest-hl7-server.env.
   # Built from servers/rest_server - see servers/rest_server/README.md.
   rest-hl7-server:
     container_name: rest-hl7-server
@@ -112,7 +112,7 @@ services:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./rest-hl7-server.env
+      - ./env/servers/rest-hl7-server.env
     ports:
       - "127.0.0.1:8083:8080"
     healthcheck:

@@ -6,7 +6,7 @@ trigger:
       - release-*
   paths:
     include:
-      - hl7_wds_transformer/*
+      - transformers/hl7_wds_transformer/*
       - shared_libs/*
       - pipeline-ado/templates/*
       - ca-certs/*
@@ -44,8 +44,8 @@ stages:
           jobName: 'BuildPushHL7WdsTransformer'
           displayName: 'Build and Push WDS HL7 Transformer'
           appName: 'wds-hl7transformer'
-          dockerfilePath: 'hl7_wds_transformer/Dockerfile'
-          buildContext: 'hl7_wds_transformer'
+          dockerfilePath: 'transformers/hl7_wds_transformer/Dockerfile'
+          buildContext: 'transformers/hl7_wds_transformer'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
           acrName: $(acrName)
           azureServiceConnection: $(azureServiceConnection)
