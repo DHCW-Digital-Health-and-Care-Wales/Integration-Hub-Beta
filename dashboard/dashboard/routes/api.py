@@ -265,13 +265,18 @@ def api_network_test_list() -> Response:
     endpoints = network_test.list_tested_endpoints()
     flows = get_flows()
     sources = flow_sources.list_sources()
-    described_endpoints = [
-        {
-            **endpoint,
-            "description": _describe_endpoint(endpoint["host"], endpoint["port"], flows, sources),
-        }
-        for endpoint in endpoints
-    ]
+    described_endpoints = []
+    for endpoint in endpoints:
+        host = endpoint.get("host")
+        port = endpoint.get("port")
+        if not isinstance(host, str) or not isinstance(port, int):
+            continue
+        described_endpoints.append(
+            {
+                **endpoint,
+                "description": _describe_endpoint(host, port, flows, sources),
+            }
+        )
     return jsonify({"endpoints": described_endpoints})
 
 

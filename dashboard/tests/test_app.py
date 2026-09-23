@@ -639,6 +639,23 @@ class TestNetworkTestRoutes:
         assert "description" not in endpoints[0]
         assert response.get_json()["endpoints"][0]["description"] is None
 
+    def test_api_list_ignores_incomplete_tested_endpoint_records(self, client: FlaskClient) -> None:
+        """Incomplete tested endpoints should be skipped rather than breaking the list API."""
+        endpoints = [
+            {"latest": {"success": False}},
+            {"host": "a.example.com", "port": 443, "latest": {"success": True}},
+        ]
+        with (
+            patch("dashboard.routes.api.network_test.list_tested_endpoints", return_value=endpoints),
+            patch("dashboard.routes.api.get_flows", return_value={}),
+            patch("dashboard.routes.api.flow_sources.list_sources", return_value=[]),
+        ):
+            response = client.get("/api/network-test/list")
+        assert response.status_code == 200
+        assert response.get_json() == {
+            "endpoints": [{"host": "a.example.com", "port": 443, "latest": {"success": True}, "description": None}]
+        }
+
     def test_api_run_rejects_invalid_host(self, client: FlaskClient) -> None:
         response = client.post("/api/network-test/run", json={"host": "", "port": 443})
         assert response.status_code == 400
