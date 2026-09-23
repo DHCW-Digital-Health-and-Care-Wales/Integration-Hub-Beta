@@ -83,7 +83,7 @@ stages:
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer|unittest"
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer|unittest"
                 "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer|unittest"
-                "hl7_wds_transformer|WDS HL7 Transformer|pytest"
+                "transformers/hl7_wds_transformer|WDS HL7 Transformer|pytest"
                 "senders/hl7_sender|HL7 Sender|unittest"
                 "senders/hl7_subscription_sender|HL7 Subscription Sender|unittest"
                 "senders/soap_sender|SOAP Sender|pytest"
