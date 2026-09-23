@@ -265,9 +265,14 @@ def api_network_test_list() -> Response:
     endpoints = network_test.list_tested_endpoints()
     flows = get_flows()
     sources = flow_sources.list_sources()
-    for endpoint in endpoints:
-        endpoint["description"] = _describe_endpoint(endpoint["host"], endpoint["port"], flows, sources)
-    return jsonify({"endpoints": endpoints})
+    described_endpoints = [
+        {
+            **endpoint,
+            "description": _describe_endpoint(endpoint["host"], endpoint["port"], flows, sources),
+        }
+        for endpoint in endpoints
+    ]
+    return jsonify({"endpoints": described_endpoints})
 
 
 def api_network_test_sources() -> tuple[Response, int] | Response:
