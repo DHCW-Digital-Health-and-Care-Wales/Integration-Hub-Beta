@@ -205,6 +205,12 @@
   function rowKey(host, port) { return host + ':' + port; }
   function safeId(key) { return key.replace(/[^a-zA-Z0-9_-]/g, '_'); }
 
+  function escapeHtml(value) {
+    var div = document.createElement('div');
+    div.textContent = value;
+    return div.innerHTML;
+  }
+
   // --- Latest result (shown directly from the run response) -----------------
 
   function renderLatestResult(result) {
@@ -337,6 +343,7 @@
     td.style.padding = '0';
     td.innerHTML =
       '<div style="padding:0.85rem 1.25rem 1.1rem; background:rgba(255,255,255,0.02); border-top:1px solid var(--border-color);">' +
+        '<div class="cfg-hint font-mono mb-2">' + escapeHtml(host) + ':' + escapeHtml(String(port)) + '</div>' +
         '<div class="d-flex align-items-center justify-content-between gap-2 mb-2">' +
           '<div class="d-flex align-items-center gap-2" id="metric-btns-' + id + '"></div>' +
           '<div class="d-flex align-items-center gap-2">' +
@@ -434,7 +441,7 @@
       row.dataset.port = ep.port;
       row.innerHTML =
         '<td><i class="bi bi-chevron-right net-test-chevron"></i></td>' +
-        '<td class="font-mono">' + ep.host + ':' + ep.port + '</td>' +
+        '<td>' + escapeHtml(ep.description || (ep.host + ':' + ep.port)) + '</td>' +
         '<td>' + statusCell(latest) + '</td>' +
         '<td>' + fmtLatency(latest.avg_latency_ms) + '</td>' +
         '<td>' + (latest.loss_percent !== undefined ? latest.loss_percent + '%' : '—') + '</td>' +
