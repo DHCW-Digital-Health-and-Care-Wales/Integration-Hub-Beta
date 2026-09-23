@@ -11,6 +11,7 @@ unchanged.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from flask import Flask, Response, jsonify, request
 
@@ -230,14 +231,16 @@ def api_network_test_history() -> tuple[Response, int] | Response:
     return jsonify({"host": host, "port": port, "samples": network_test.get_history(host, port)})
 
 
-def _describe_endpoint(host: str, port: int, flows: dict[str, dict]) -> str | None:
+def _describe_endpoint(
+    host: str, port: int, flows: dict[str, dict], sources: list[dict[str, Any]]
+) -> str | None:
     """Match a tested host:port against configured flow sources or flow destinations.
 
     Returns the friendly description/name for the endpoint (for display in the
     "Tested Endpoints" table), or ``None`` if the host:port isn't recognised (e.g. an
     arbitrary target tested via the free-text host/port fields).
     """
-    for source in flow_sources.list_sources():
+    for source in sources:
         if source["url"].lower() == host.lower() and source["port"] == port:
             return str(source["description"])
     for flow in flows.values():
@@ -258,8 +261,9 @@ def api_network_test_list() -> Response:
     """
     endpoints = network_test.list_tested_endpoints()
     flows = get_flows()
+    sources = flow_sources.list_sources()
     for endpoint in endpoints:
-        endpoint["description"] = _describe_endpoint(endpoint["host"], endpoint["port"], flows)
+        endpoint["description"] = _describe_endpoint(endpoint["host"], endpoint["port"], flows, sources)
     return jsonify({"endpoints": endpoints})
 
 

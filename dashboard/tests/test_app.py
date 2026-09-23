@@ -595,6 +595,24 @@ class TestNetworkTestRoutes:
             response = client.get("/api/network-test/list")
         assert response.get_json()["endpoints"][0]["description"] == "MPI"
 
+    def test_api_list_loads_flow_sources_once_for_all_endpoints(self, client: FlaskClient) -> None:
+        """Configured flow sources should be loaded once per list request, not once per row."""
+        endpoints = [
+            {"host": "phw.example.nhs.uk", "port": 2575, "latest": {"success": True}},
+            {"host": "other.example.nhs.uk", "port": 443, "latest": {"success": True}},
+        ]
+        sources = [{"id": "1", "description": "PHW Source", "url": "phw.example.nhs.uk", "port": 2575}]
+        with (
+            patch("dashboard.routes.api.network_test.list_tested_endpoints", return_value=endpoints),
+            patch("dashboard.routes.api.get_flows", return_value={}),
+            patch("dashboard.routes.api.flow_sources.list_sources", return_value=sources) as list_sources,
+        ):
+            response = client.get("/api/network-test/list")
+        assert response.status_code == 200
+        assert response.get_json()["endpoints"][0]["description"] == "PHW Source"
+        assert response.get_json()["endpoints"][1]["description"] is None
+        list_sources.assert_called_once_with()
+
     def test_api_run_rejects_invalid_host(self, client: FlaskClient) -> None:
         response = client.post("/api/network-test/run", json={"host": "", "port": 443})
         assert response.status_code == 400
