@@ -241,6 +241,8 @@ def _describe_endpoint(
     arbitrary target tested via the free-text host/port fields).
     """
     for source in sources:
+        if not isinstance(source, dict):
+            continue
         source_url = source.get("url")
         source_port = source.get("port")
         if isinstance(source_url, str) and source_port == port and source_url.lower() == host.lower():

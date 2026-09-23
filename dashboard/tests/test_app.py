@@ -626,6 +626,18 @@ class TestNetworkTestRoutes:
         assert response.status_code == 200
         assert response.get_json()["endpoints"][0]["description"] is None
 
+    def test_api_list_ignores_non_mapping_flow_source_records(self, client: FlaskClient) -> None:
+        """Non-dict source entries should be skipped rather than breaking the list API."""
+        endpoints = [{"host": "phw.example.nhs.uk", "port": 2575, "latest": {"success": True}}]
+        with (
+            patch("dashboard.routes.api.network_test.list_tested_endpoints", return_value=endpoints),
+            patch("dashboard.routes.api.get_flows", return_value={}),
+            patch("dashboard.routes.api.flow_sources.list_sources", return_value=[None]),
+        ):
+            response = client.get("/api/network-test/list")
+        assert response.status_code == 200
+        assert response.get_json()["endpoints"][0]["description"] is None
+
     def test_api_list_does_not_mutate_tested_endpoint_records(self, client: FlaskClient) -> None:
         """The list API should not add presentation fields onto cached endpoint records."""
         endpoints = [{"host": "a.example.com", "port": 443, "latest": {"success": True}}]
