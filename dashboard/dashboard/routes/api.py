@@ -241,8 +241,11 @@ def _describe_endpoint(
     arbitrary target tested via the free-text host/port fields).
     """
     for source in sources:
-        if source["url"].lower() == host.lower() and source["port"] == port:
-            return str(source["description"])
+        source_url = source.get("url")
+        source_port = source.get("port")
+        if isinstance(source_url, str) and source_port == port and source_url.lower() == host.lower():
+            source_description = source.get("description")
+            return str(source_description) if source_description else None
     for flow in flows.values():
         if (
             str(flow.get("destination_host", "")).lower() == host.lower()
