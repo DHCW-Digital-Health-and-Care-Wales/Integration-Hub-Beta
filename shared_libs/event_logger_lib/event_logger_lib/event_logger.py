@@ -8,11 +8,21 @@ from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 
 from .log_event import EventType, LogEvent
-from .redaction import redact_hl7_message
+from .redaction import redact_hl7_message, redact_warning_details
 
 logger = logging.getLogger(__name__)
 
 _REDACTION_DISABLED_VALUES = frozenset({"false", "0", "no", "off"})
+
+# The Python log level used for each event type. Events that represent a failure or
+# a data-quality concern are logged above INFO so severity-based filtering/alerting
+# (e.g. in the console, or App Insights queries on SeverityLevel) surfaces them
+# without needing to parse the 'event_type' field out of the message body.
+_LOG_LEVEL_BY_EVENT_TYPE: dict[EventType, str] = {
+    EventType.MESSAGE_FAILED: "error",
+    EventType.VALIDATION_FAILED: "error",
+    EventType.VALIDATION_WARNING: "warning",
+}
 
 
 class EventLogger:
@@ -215,6 +225,26 @@ class EventLogger:
         )
         self._send_log_event(event)
 
+    def log_validation_warning(
+        self,
+        message_content: str,
+        warning_details: str,
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        # warning_details may embed a raw HL7 field value (e.g. hl7apy's table-value checks) -
+        # redact it the same way message_content is redacted, so both are disabled together via
+        # HL7_LOG_REDACTION_ENABLED.
+        logged_warning_details = (
+            redact_warning_details(warning_details) if self.redaction_enabled else warning_details
+        )
+        event = self._create_log_event(
+            EventType.VALIDATION_WARNING,
+            message_content,
+            error_details=logged_warning_details,
+            correlation_id=correlation_id,
+        )
+        self._send_log_event(event)
+
     def _send_log_event(self, event: LogEvent) -> None:
         try:
             event_dict = {
@@ -235,11 +265,13 @@ class EventLogger:
             except ImportError:
                 pass  # opentelemetry not installed — skip trace correlation
 
+            log_method = getattr(logger, _LOG_LEVEL_BY_EVENT_TYPE.get(event.event_type, "info"))
+
             if self.azure_monitor_enabled:
-                logger.info("Integration Hub Event", extra=event_dict)
+                log_method("Integration Hub Event", extra=event_dict)
                 logger.debug(f"Event logged to Azure Monitor: {event.event_type.value}")
             else:
-                logger.info(f"Integration Hub Event: {event_dict}")
+                log_method(f"Integration Hub Event: {event_dict}")
 
         except Exception as e:
             logger.error(f"Failed to log event: {e}")
