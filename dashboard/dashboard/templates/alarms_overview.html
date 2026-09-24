@@ -19,6 +19,9 @@
       <span id="poll-indicator" class="poll-indicator">
         <i class="bi bi-clock me-1"></i><span id="poll-indicator-text">{{ _("Auto-refresh active") }}</span>
       </span>
+      <a href="{{ url_for('alarms_by_flow_page') }}" class="btn-dash">
+        <i class="bi bi-diagram-3"></i> {{ _("View by Flow") }}
+      </a>
       <a href="{{ url_for('alarms_overview_page') }}?refresh=1" class="btn-dash">
         <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
@@ -114,7 +117,7 @@
         <a href="{{ url_for('alarm_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
@@ -199,7 +202,7 @@
         <a href="{{ url_for('alarm2_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm2_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
@@ -284,7 +287,7 @@
         <a href="{{ url_for('alarm3_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>

@@ -19,7 +19,7 @@
       <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash">
         <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
       </a>
-      <a href="{{ url_for('alarm_config_page') }}" class="btn-dash">
+      <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash">
         <i class="bi bi-gear-fill"></i> {{ _("Configure") }}
       </a>
       <a href="{{ url_for('alarm_page') }}" class="btn-dash">
@@ -45,7 +45,7 @@
     <div class="no-data" style="padding:3rem; text-align:center;">
       <i class="bi bi-bell-slash" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
       <p style="margin-top:1rem; color:var(--text-muted);">{{ _("No alarms have been configured yet.") }}</p>
-      <a href="{{ url_for('alarm_config_page') }}" class="btn-dash mt-2">
+      <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash mt-2">
         <i class="bi bi-gear-fill"></i> {{ _("Configure Alarms") }}
       </a>
     </div>
@@ -269,7 +269,7 @@
 
             <td style="text-align:center; white-space:nowrap;">
               <!-- Gear icon → config -->
-              <a href="{{ url_for('alarm_config_page') }}#rule-{{ row.id }}"
+              <a href="{{ url_for('alarm_flow_config_page', flow=row.workflow_id) }}#a1-rule-{{ row.id }}"
                  title="Go to config for {{ row.display_name }}"
                  class="btn-dash"
                  style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;">

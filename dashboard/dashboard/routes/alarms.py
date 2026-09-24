@@ -20,22 +20,26 @@ import dashboard.config as config
 from dashboard.services import cache
 from dashboard.services.alarm1 import (
     get_alarm_status,
+    get_config_page_data,
     load_alarm_config,
     pause_alarm_rule,
     unpause_alarm_rule,
 )
 from dashboard.services.alarm2 import (
+    get_alarm2_config_page_data,
     get_alarm2_status,
     load_alarm2_config,
     pause_alarm2_rule,
     unpause_alarm2_rule,
 )
 from dashboard.services.alarm3 import (
+    get_alarm3_config_page_data,
     get_alarm3_status,
     load_alarm3_config,
     pause_alarm3_rule,
     unpause_alarm3_rule,
 )
+from dashboard.services.flows import build_flow_options, get_flows
 from dashboard.services.status_builder import LONDON_TZ
 
 # Sort order used to bubble paused/critical rows to the top of alarm tables.
@@ -315,9 +319,62 @@ def alarm3_page() -> str:
     )
 
 
+def _rows_for_flow(status_rows: list[dict] | None, cfg_rows: list[dict], workflow_id: str) -> list[dict]:
+    """Return live status rows for ``workflow_id``, plus configured rules missing from the live status.
+
+    Status rows only cover enabled rules (and are absent on a cold cache), so config rows
+    fill the gap: disabled rules get status ``disabled``, enabled-but-not-yet-evaluated get ``unknown``.
+    """
+    matched = [r for r in (status_rows or []) if (r.get("workflow_id") or "").strip() == workflow_id]
+    seen = {r.get("id") for r in matched}
+    for cfg in cfg_rows:
+        if (cfg.get("workflow_id") or "").strip() != workflow_id or cfg.get("id") in seen:
+            continue
+        matched.append({**cfg, "status": "unknown" if cfg.get("alarm_enabled") else "disabled"})
+    return matched
+
+
+def alarms_by_flow_page() -> str:
+    """Render the View by Flow page showing Alarms 1-3 for a single selected flow."""
+    cfg1 = get_config_page_data()
+    cfg2 = get_alarm2_config_page_data()
+    cfg3 = get_alarm3_config_page_data()
+    flow_options = build_flow_options(get_flows(), cfg1 + cfg2 + cfg3)
+
+    requested = request.args.get("flow", "").strip()
+    selected_flow = next((o for o in flow_options if o["id"] == requested), None)
+
+    alarm1_rows: list[dict] = []
+    alarm2_rows: list[dict] = []
+    alarm3_rows: list[dict] = []
+    if selected_flow:
+        a1_status, a2_status, a3_status = cache.multi_cached_nowait(
+            [
+                ("alarms", get_alarm_status, config.API_CACHE_TTL),
+                ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+                ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+            ]
+        )
+        alarm1_rows = _rows_for_flow(a1_status, cfg1, selected_flow["id"])
+        alarm2_rows = _rows_for_flow(a2_status, cfg2, selected_flow["id"])
+        alarm3_rows = _rows_for_flow(a3_status, cfg3, selected_flow["id"])
+
+    return render_template(
+        "alarms_by_flow.html",
+        flow_options=flow_options,
+        selected_flow=selected_flow,
+        alarm1_rows=alarm1_rows,
+        alarm2_rows=alarm2_rows,
+        alarm3_rows=alarm3_rows,
+        config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
+    )
+
+
 def register(app: Flask) -> None:
     """Register every alarm page/pause/unpause route onto ``app`` with its original flat endpoint name."""
     app.add_url_rule("/alarms", endpoint="alarms_overview_page", view_func=alarms_overview_page)
+    app.add_url_rule("/alarms/by-flow", endpoint="alarms_by_flow_page", view_func=alarms_by_flow_page)
     app.add_url_rule("/alarms/inactivity", endpoint="alarm_page", view_func=alarm_page)
     app.add_url_rule("/alarms/outgoing-messages", endpoint="alarm2_page", view_func=alarm2_page)
     app.add_url_rule("/alarms/failures", endpoint="alarm3_page", view_func=alarm3_page)

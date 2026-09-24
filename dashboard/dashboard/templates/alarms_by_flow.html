@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Alarms by Flow") }}{% endblock %}
+
+{% macro flow_display(opt) %}{{ opt.label }}{% if opt.label != opt.id %} ({{ opt.id }}){% endif %}{% endmacro %}
+
+{% macro status_badge(row) -%}
+  {% if row.status == 'critical' %}
+    <span class="status-badge critical"><i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}</span>
+  {% elif row.status == 'suppressed' %}
+    <span class="status-badge suppressed"><i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}</span>
+  {% elif row.status == 'paused' %}
+    <span class="status-badge paused" {% if row.pause_reason %}title="{{ row.pause_reason }}"{% endif %}>
+      <i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}
+    </span>
+  {% elif row.status == 'disabled' %}
+    <span class="status-badge disabled"><i class="bi bi-slash-circle me-1"></i>{{ _("Disabled") }}</span>
+  {% elif row.status == 'healthy' %}
+    <span class="status-badge healthy"><i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}</span>
+  {% else %}
+    <span class="status-badge unknown"><i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro rule_cell(row) -%}
+  <td style="font-weight:500;">
+    {{ row.display_name }}
+    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">{{ row.id }}</div>
+  </td>
+{%- endmacro %}
+
+{% macro gap_cell(row) -%}
+  <td style="font-size:0.82rem;">
+    <span style="color:var(--text-muted);">{{ row.alerting_gap_minutes }} {{ _("min") }}</span>
+    {% if row.status == 'suppressed' and row.cooldown_remaining %}
+      <div style="color:var(--accent-amber); font-size:0.75rem; margin-top:2px;">
+        <i class="bi bi-hourglass-split me-1"></i>{{ row.cooldown_remaining | int }} {{ _("min left") }}
+      </div>
+    {% endif %}
+    {% if row.status == 'paused' and row.pause_remaining %}
+      <div style="color:var(--accent-cyan); font-size:0.75rem; margin-top:2px;">
+        <i class="bi bi-pause-circle me-1"></i>{{ row.pause_remaining | int }} {{ _("min left") }}
+      </div>
+    {% endif %}
+  </td>
+{%- endmacro %}
+
+{% macro actions_cell(row, flow_id, alarm_no) -%}
+  <td style="text-align:center; white-space:nowrap;">
+    <a href="{{ url_for('alarm_flow_config_page', flow=flow_id) }}#a{{ alarm_no }}-rule-{{ row.id }}"
+       title="{{ _('Configure') }} {{ row.display_name }}"
+       class="btn-dash"
+       style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center;">
+      <i class="bi bi-gear-fill"></i>
+    </a>
+  </td>
+{%- endmacro %}
+
+{% macro last_message_cells(row) -%}
+  <td style="font-family:monospace; font-size:0.82rem;">{{ row.last_message_display or "\u2014" }}</td>
+  <td>
+    {% if row.status in ('critical', 'suppressed') %}
+      <span style="color:var(--accent-red); font-weight:600;">{{ row.duration_label }}</span>
+    {% elif row.status == 'healthy' and row.duration_label %}
+      <span style="color:var(--accent-green);">{{ row.duration_label }}</span>
+    {% else %}
+      <span style="color:var(--text-muted);">&mdash;</span>
+    {% endif %}
+  </td>
+  <td style="font-size:0.82rem;">
+    {% if row.period_threshold_minutes is defined and row.period_threshold_minutes is not none %}
+      {{ row.period_threshold_minutes }} {{ _("min") }}
+      <span style="color:var(--text-muted); font-size:0.75rem;">({{ row.current_period | title }})</span>
+    {% else %}
+      <span style="color:var(--text-muted);">
+        {{ row.day_threshold_minutes }} / {{ row.evening_threshold_minutes }} / {{ row.weekend_threshold_minutes }} {{ _("min") }}
+      </span>
+    {% endif %}
+  </td>
+{%- endmacro %}
+
+{% macro section_header(title, desc, detail_endpoint, flow_id, alarm_no) -%}
+  <div class="queue-table-header">
+    <div>
+      <h6 class="mb-0"><i class="bi bi-alarm me-1"></i> {{ title }}</h6>
+      <div style="font-size:0.72rem; color:var(--text-muted);">{{ desc }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for(detail_endpoint) }}" class="btn-dash btn-dash-sm">
+        <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
+      </a>
+      <a href="{{ url_for('alarm_flow_config_page', flow=flow_id) }}#a{{ alarm_no }}-section" class="btn-dash btn-dash-sm">
+        <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
+      </a>
+    </div>
+  </div>
+{%- endmacro %}
+
+{% macro empty_row(colspan) -%}
+  <tr>
+    <td colspan="{{ colspan }}" style="text-align:center; color:var(--text-muted); padding:1.25rem;">
+      <i class="bi bi-bell-slash me-1"></i>{{ _("No rules are configured for this flow.") }}
+    </td>
+  </tr>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-diagram-3" style="color:var(--accent-cyan)"></i>
+        {{ _("Alarms by Flow") }}
+      </h1>
+      <p class="page-subtitle">{{ _("Alarm 1, 2 and 3 status for a single integration flow") }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash">
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
+      </a>
+      {% if selected_flow %}
+      <a href="{{ url_for('alarm_flow_config_page', flow=selected_flow.id) }}" class="btn-dash">
+        <i class="bi bi-gear-fill"></i> {{ _("Configure") }}
+      </a>
+      <a href="{{ url_for('alarms_by_flow_page', flow=selected_flow.id) }}" class="btn-dash">
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="dash-card mb-3" style="padding:0.9rem 1.1rem;">
+    <form id="flow-form" method="get" action="{{ url_for('alarms_by_flow_page') }}" data-flow-search
+          class="d-flex align-items-center gap-2 flex-wrap">
+      <label for="flow-search-input" class="cfg-label mb-0">
+        <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow") }}
+      </label>
+      <input type="text" class="dash-input js-flow-search" id="flow-search-input" list="flow-search-list"
+             style="min-width:320px;" placeholder="{{ _('Search flows…') }}" autocomplete="off"
+             value="{{ flow_display(selected_flow) if selected_flow else '' }}">
+      <datalist id="flow-search-list">
+        {% for opt in flow_options %}
+        <option value="{{ flow_display(opt) }}" data-flow-id="{{ opt.id }}"></option>
+        {% endfor %}
+      </datalist>
+      <input type="hidden" name="flow" id="flow-id-input" value="{{ selected_flow.id if selected_flow else '' }}">
+      {% if selected_flow %}
+      <span class="text-muted ms-auto" style="font-size:0.72rem;">{{ _("Refreshed at") }} {{ refreshed_at }}</span>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if not config_ok and selected_flow %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>{{ _("Log Analytics workspace is not configured \u2014 alarm status cannot be evaluated.") }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not flow_options %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem; text-align:center;">
+      <i class="bi bi-diagram-3" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("No flows are available.") }}</p>
+    </div>
+  </div>
+
+  {% elif not selected_flow %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem; text-align:center;">
+      <i class="bi bi-funnel" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("Select a flow to view its alarms.") }}</p>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alarms-by-flow-grid">
+
+    <!-- Alarm 1 — Inactivity -->
+    <div class="queue-table-wrapper" id="alarm1-section">
+      {{ section_header(_("Alarm 1 \u2014 Inactivity"), _("HL7 server message inactivity monitoring"),
+                        'alarm_page', selected_flow.id, 1) }}
+      <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+        <table class="dash-table w-100">
+          <thead>
+            <tr>
+              <th>{{ _("Status") }}</th>
+              <th>{{ _("Rule") }}</th>
+              <th>{{ _("Last Message") }}</th>
+              <th>{{ _("Time Since") }}</th>
+              <th>{{ _("Threshold") }}</th>
+              <th>{{ _("Alerting Gap") }}</th>
+              <th style="width:2.5rem;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in alarm1_rows %}
+            <tr class="alarm-row--{{ row.status }}">
+              <td>{{ status_badge(row) }}</td>
+              {{ rule_cell(row) }}
+              {{ last_message_cells(row) }}
+              {{ gap_cell(row) }}
+              {{ actions_cell(row, selected_flow.id, 1) }}
+            </tr>
+            {% else %}
+            {{ empty_row(7) }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Alarm 2 — Outgoing Message Volume -->
+    <div class="queue-table-wrapper" id="alarm2-section">
+      {{ section_header(_("Alarm 2 \u2014 Outgoing Message Volume"),
+                        _("Fires when outgoing messages sent drops at or below threshold"),
+                        'alarm2_page', selected_flow.id, 2) }}
+      <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+        <table class="dash-table w-100">
+          <thead>
+            <tr>
+              <th>{{ _("Status") }}</th>
+              <th>{{ _("Rule") }}</th>
+              <th>{{ _("Last Sent") }}</th>
+              <th>{{ _("Time Since") }}</th>
+              <th>{{ _("Threshold") }}</th>
+              <th>{{ _("Alerting Gap") }}</th>
+              <th style="width:2.5rem;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in alarm2_rows %}
+            <tr class="alarm-row--{{ row.status }}">
+              <td>{{ status_badge(row) }}</td>
+              {{ rule_cell(row) }}
+              {{ last_message_cells(row) }}
+              {{ gap_cell(row) }}
+              {{ actions_cell(row, selected_flow.id, 2) }}
+            </tr>
+            {% else %}
+            {{ empty_row(7) }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Alarm 3 — Message Processing Failures -->
+    <div class="queue-table-wrapper" id="alarm3-section">
+      {{ section_header(_("Alarm 3 \u2014 Message Processing Failures"),
+                        _("Fires when MESSAGE_FAILED events meet or exceed threshold"),
+                        'alarm3_page', selected_flow.id, 3) }}
+      <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+        <table class="dash-table w-100">
+          <thead>
+            <tr>
+              <th>{{ _("Status") }}</th>
+              <th>{{ _("Rule") }}</th>
+              <th>{{ _("Failures") }}</th>
+              <th>{{ _("Window") }}</th>
+              <th>{{ _("Threshold") }}</th>
+              <th>{{ _("Alerting Gap") }}</th>
+              <th style="width:2.5rem;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in alarm3_rows %}
+            <tr class="alarm-row--{{ row.status }}">
+              <td>{{ status_badge(row) }}</td>
+              {{ rule_cell(row) }}
+              <td style="font-size:0.82rem;
+                {% if row.status in ('critical', 'suppressed') %}color:var(--accent-red); font-weight:600;{% endif %}">
+                {{ row.failure_display or "\u2014" }}
+              </td>
+              <td style="font-size:0.82rem; color:var(--text-muted);">
+                {{ row.window_label or ((row.window_duration_minutes ~ " " ~ _("min")) if row.window_duration_minutes else "\u2014") }}
+              </td>
+              <td style="font-size:0.82rem;">{{ row.threshold }}</td>
+              {{ gap_cell(row) }}
+              {{ actions_cell(row, selected_flow.id, 3) }}
+            </tr>
+            {% else %}
+            {{ empty_row(7) }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+  .alarms-by-flow-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .queue-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .dash-table { border-collapse: collapse; }
+  .dash-table thead tr {
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.03);
+  }
+  .dash-table th {
+    padding: 0.6rem 1rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .dash-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.83rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+  .dash-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+  .alarm-row--critical {
+    background: rgba(239,68,68,0.04);
+    border-left: 3px solid var(--accent-red);
+  }
+  .alarm-row--suppressed {
+    background: rgba(245,158,11,0.04);
+    border-left: 3px solid var(--accent-amber);
+  }
+  .alarm-row--paused {
+    background: rgba(18,163,201,0.04);
+    border-left: 3px solid var(--accent-cyan);
+  }
+  .alarm-row--unknown {
+    background: rgba(148,163,184,0.04);
+    border-left: 3px solid var(--border-color);
+  }
+  .alarm-row--disabled { opacity: 0.6; }
+
+  .status-badge.suppressed {
+    background: rgba(245,158,11,0.12);
+    color: var(--accent-amber);
+    border-color: rgba(245,158,11,0.35);
+  }
+  .status-badge.paused {
+    background: rgba(18,163,201,0.12);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.35);
+  }
+  .status-badge.disabled {
+    background: rgba(148,163,184,0.1);
+    color: var(--text-muted);
+    border-color: rgba(148,163,184,0.3);
+  }
+
+  .btn-dash-sm {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.8rem;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/flow-search.js') }}"></script>
+{% endblock %}

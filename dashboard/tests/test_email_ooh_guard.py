@@ -31,6 +31,18 @@ app = app_module.app
 
 # A rule ID used across all test classes.
 RID = "phw-to-mpi-outgoing"
+FLOW_CONFIG_URL = "/alarms/config?flow=phw-to-mpi"
+
+
+def _prefixed(form_data: dict, prefix: str) -> dict:
+    """Namespace un-prefixed alarm form fields the way the per-flow config screen submits them."""
+    return {f"{prefix}{k}": v for k, v in form_data.items()}
+
+
+@pytest.fixture(autouse=True)
+def _stub_flows() -> Generator[None, None, None]:
+    with patch("dashboard.routes.alarm_config.get_flows", return_value={"phw-to-mpi": {"label": "PHW → MPI"}}):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +63,7 @@ def client() -> Generator[FlaskClient, None, None]:
 
 
 def _alarm1_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
-    """Minimal form payload for /alarm-config (Alarm 1 — inactivity)."""
+    """Minimal un-prefixed Alarm 1 (inactivity) form payload."""
     data: dict = {
         f"alerting_gap_{rid}": "60",
         f"day_threshold_{rid}": "60",
@@ -69,7 +81,7 @@ def _alarm1_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
 
 
 def _alarm2_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
-    """Minimal form payload for /alarm2-config (Alarm 2 — outgoing messages)."""
+    """Minimal un-prefixed Alarm 2 (outgoing messages) form payload."""
     data: dict = {
         f"alerting_gap_{rid}": "60",
         f"day_threshold_{rid}": "60",
@@ -86,7 +98,7 @@ def _alarm2_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
 
 
 def _alarm3_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
-    """Minimal form payload for /alarm3-config (Alarm 3 — failures)."""
+    """Minimal un-prefixed Alarm 3 (failures) form payload."""
     data: dict = {
         f"alerting_gap_{rid}": "60",
         f"window_duration_{rid}": "15",
@@ -102,7 +114,7 @@ def _alarm3_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Alarm 1  (/alarm-config)
+# Alarm 1
 # ---------------------------------------------------------------------------
 
 
@@ -110,14 +122,14 @@ class TestAlarm1EmailOohGuard:
     """email_ooh_enabled must be False whenever email_alerts_enabled is False."""
 
     def _post(self, client: FlaskClient, form_data: dict) -> dict:
-        """POST to /alarm-config and return the config dict passed to save."""
+        """POST Alarm 1 fields to the per-flow config screen and return the config dict passed to save."""
         mock_save = MagicMock()
         with (
             patch("dashboard.routes.alarm_config.load_alarm_config", return_value={"rules": {}}),
             patch("dashboard.routes.alarm_config.save_alarm_config", mock_save),
             patch("dashboard.routes.alarm_config.get_config_page_data", return_value=[]),
         ):
-            resp = client.post("/alarm-config", data=form_data)
+            resp = client.post(FLOW_CONFIG_URL, data=_prefixed(form_data, "a1-"))
         assert resp.status_code == 200
         mock_save.assert_called_once()
         return mock_save.call_args[0][0]
@@ -156,7 +168,7 @@ class TestAlarm1EmailOohGuard:
 
 
 # ---------------------------------------------------------------------------
-# Alarm 2  (/alarm2-config)
+# Alarm 2
 # ---------------------------------------------------------------------------
 
 
@@ -170,7 +182,7 @@ class TestAlarm2EmailOohGuard:
             patch("dashboard.routes.alarm_config.save_alarm2_config", mock_save),
             patch("dashboard.routes.alarm_config.get_alarm2_config_page_data", return_value=[]),
         ):
-            resp = client.post("/alarm2-config", data=form_data)
+            resp = client.post(FLOW_CONFIG_URL, data=_prefixed(form_data, "a2-"))
         assert resp.status_code == 200
         mock_save.assert_called_once()
         return mock_save.call_args[0][0]
@@ -202,7 +214,7 @@ class TestAlarm2EmailOohGuard:
 
 
 # ---------------------------------------------------------------------------
-# Alarm 3  (/alarm3-config)
+# Alarm 3
 # ---------------------------------------------------------------------------
 
 
@@ -216,7 +228,7 @@ class TestAlarm3EmailOohGuard:
             patch("dashboard.routes.alarm_config.save_alarm3_config", mock_save),
             patch("dashboard.routes.alarm_config.get_alarm3_config_page_data", return_value=[]),
         ):
-            resp = client.post("/alarm3-config", data=form_data)
+            resp = client.post(FLOW_CONFIG_URL, data=_prefixed(form_data, "a3-"))
         assert resp.status_code == 200
         mock_save.assert_called_once()
         return mock_save.call_args[0][0]

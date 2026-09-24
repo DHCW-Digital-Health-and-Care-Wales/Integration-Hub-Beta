@@ -10,14 +10,18 @@ import io
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from dotenv import load_dotenv
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
 
 from dashboard import app as app_module
+from dashboard.routes import alarms as alarms_routes
 from dashboard.services import flow_sources
+from dashboard.services.flows import build_flow_options
 
 app = app_module.app
 
@@ -825,6 +829,117 @@ class TestNetworkTestConfigRoutes:
             "errors": ["Source persistence is currently unavailable."],
             "persistence_failed": True,
         }
+
+
+class TestAlarmsByFlowRoutes:
+    FLOWS: dict[str, dict[str, Any]] = {
+        "phw-to-mpi": {"label": "PHW → MPI"},
+        "pims-to-mpi": {"label": "PIMS → MPI"},
+    }
+
+    def _get(
+        self,
+        client: FlaskClient,
+        url: str,
+        cfg1: list[dict] | None = None,
+        cfg2: list[dict] | None = None,
+        cfg3: list[dict] | None = None,
+        statuses: tuple[list[dict] | None, list[dict] | None, list[dict] | None] = ([], [], []),
+    ) -> tuple[TestResponse, int]:
+        with (
+            patch("dashboard.routes.alarms.get_flows", return_value=self.FLOWS),
+            patch("dashboard.routes.alarms.get_config_page_data", return_value=cfg1 or []),
+            patch("dashboard.routes.alarms.get_alarm2_config_page_data", return_value=cfg2 or []),
+            patch("dashboard.routes.alarms.get_alarm3_config_page_data", return_value=cfg3 or []),
+            patch("dashboard.routes.alarms.cache.multi_cached_nowait", return_value=statuses) as mock_cache,
+        ):
+            response = client.get(url)
+        return response, mock_cache.call_count
+
+    def test_overview_has_view_by_flow_button(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.alarms.cache.multi_cached_nowait", return_value=([], [], [])):
+            response = client.get("/alarms")
+        assert response.status_code == 200
+        assert b"View by Flow" in response.data
+        assert b'href="/alarms/by-flow"' in response.data
+
+    def test_no_flow_selected_shows_prompt_and_skips_status_fetch(self, client: FlaskClient) -> None:
+        response, cache_calls = self._get(client, "/alarms/by-flow")
+        assert response.status_code == 200
+        assert b"Select a flow to view its alarms." in response.data
+        assert b'data-flow-id="phw-to-mpi"' in response.data
+        assert cache_calls == 0
+
+    def test_unknown_flow_is_treated_as_unselected(self, client: FlaskClient) -> None:
+        response, cache_calls = self._get(client, "/alarms/by-flow?flow=not-a-flow")
+        assert response.status_code == 200
+        assert b"Select a flow to view its alarms." in response.data
+        assert cache_calls == 0
+
+    def test_workflow_only_in_alarm_config_appears_in_dropdown(self, client: FlaskClient) -> None:
+        cfg3 = [{"id": "wds-failures", "display_name": "WDS", "workflow_id": "wds-to-mpi", "alarm_enabled": True}]
+        response, _ = self._get(client, "/alarms/by-flow", cfg3=cfg3)
+        assert b'data-flow-id="wds-to-mpi"' in response.data
+
+    def test_selected_flow_shows_only_its_alarm_rows(self, client: FlaskClient) -> None:
+        a1 = [
+            {"id": "phw-inactivity", "display_name": "PHW Inactivity", "workflow_id": "phw-to-mpi",
+             "status": "critical", "alerting_gap_minutes": 30},
+            {"id": "pims-inactivity", "display_name": "PIMS Inactivity", "workflow_id": "pims-to-mpi",
+             "status": "healthy", "alerting_gap_minutes": 30},
+        ]
+        a3 = [
+            {"id": "phw-failures", "display_name": "PHW Failures", "workflow_id": "phw-to-mpi",
+             "status": "healthy", "failure_display": "0", "threshold": 5, "alerting_gap_minutes": 60},
+        ]
+        response, cache_calls = self._get(client, "/alarms/by-flow?flow=phw-to-mpi", statuses=(a1, [], a3))
+        assert response.status_code == 200
+        assert b"PHW Inactivity" in response.data
+        assert b"PHW Failures" in response.data
+        assert b"PIMS Inactivity" not in response.data
+        # Alarm 2 has no rules for this flow, so its section shows the empty-state row.
+        assert b"No rules are configured for this flow." in response.data
+        assert cache_calls == 1
+        # Search field and hidden flow id are pre-filled with the current selection.
+        assert 'value="PHW → MPI (phw-to-mpi)"'.encode() in response.data
+        assert b'id="flow-id-input" value="phw-to-mpi"' in response.data
+
+
+class TestRowsForFlow:
+    def test_filters_status_rows_by_workflow(self) -> None:
+        status = [{"id": "a", "workflow_id": "x", "status": "healthy"}, {"id": "b", "workflow_id": "y"}]
+        assert [r["id"] for r in alarms_routes._rows_for_flow(status, [], "x")] == ["a"]
+
+    def test_adds_disabled_rules_from_config(self) -> None:
+        cfg = [{"id": "c", "workflow_id": "x", "alarm_enabled": False}]
+        rows = alarms_routes._rows_for_flow([], cfg, "x")
+        assert rows == [{"id": "c", "workflow_id": "x", "alarm_enabled": False, "status": "disabled"}]
+
+    def test_enabled_rule_missing_from_cold_cache_is_unknown(self) -> None:
+        cfg = [{"id": "c", "workflow_id": "x", "alarm_enabled": True}]
+        rows = alarms_routes._rows_for_flow(None, cfg, "x")
+        assert rows[0]["status"] == "unknown"
+
+    def test_config_row_does_not_duplicate_live_status_row(self) -> None:
+        status = [{"id": "c", "workflow_id": "x", "status": "critical"}]
+        cfg = [{"id": "c", "workflow_id": "x", "alarm_enabled": True}]
+        rows = alarms_routes._rows_for_flow(status, cfg, "x")
+        assert rows == status
+
+    def test_empty_inputs_return_empty_list(self) -> None:
+        assert alarms_routes._rows_for_flow(None, [], "x") == []
+
+
+class TestFlowOptions:
+    def test_merges_and_sorts_by_label(self) -> None:
+        flows = {"pims-to-mpi": {"label": "PIMS → MPI"}, "phw-to-mpi": {"label": "PHW → MPI"}}
+        cfg = [{"workflow_id": "abc-flow"}, {"workflow_id": "phw-to-mpi"}, {"workflow_id": ""}]
+        options = build_flow_options(flows, cfg)
+        assert options == [
+            {"id": "abc-flow", "label": "abc-flow"},
+            {"id": "phw-to-mpi", "label": "PHW → MPI"},
+            {"id": "pims-to-mpi", "label": "PIMS → MPI"},
+        ]
 
 
 class TestEnvLoading:

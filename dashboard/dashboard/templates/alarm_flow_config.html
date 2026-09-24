@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Alarm Configuration") }}{% endblock %}
+
+{% macro flow_display(opt) %}{{ opt.label }}{% if opt.label != opt.id %} ({{ opt.id }}){% endif %}{% endmacro %}
+
+{% macro state_label(id, on) -%}
+  <span id="{{ id }}" class="cfg-state{% if on %} cfg-state--on{% endif %}">
+    {%- if on %}{{ _("Enabled") }}{% else %}{{ _("Disabled") }}{% endif -%}
+  </span>
+{%- endmacro %}
+
+{# Header row of an existing rule card: enable / email / OOH switches and the remove button. #}
+{% macro rule_header(p, r, alarm_label) -%}
+  {% set rid = r.id %}
+  <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2 flex-wrap gap-2"
+       style="border-bottom:1px solid var(--border-color);">
+    <div>
+      <div style="font-weight:600; font-size:0.92rem;">{{ r.display_name }}</div>
+      <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">{{ rid }}</div>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-2">
+        <label for="{{ p }}enabled_{{ rid }}" class="cfg-switch-label">{{ alarm_label }}</label>
+        <div class="form-check form-switch cfg-switch-wrap">
+          <input class="form-check-input cfg-switch js-state-toggle" type="checkbox" role="switch"
+                 id="{{ p }}enabled_{{ rid }}" name="{{ p }}enabled_{{ rid }}"
+                 data-state-label="{{ p }}label_{{ rid }}"
+                 {% if r.alarm_enabled %}checked{% endif %}>
+        </div>
+        {{ state_label(p ~ 'label_' ~ rid, r.alarm_enabled) }}
+      </div>
+      <div class="cfg-divider"></div>
+      <div class="d-flex align-items-center gap-2">
+        <label for="{{ p }}email_{{ rid }}" class="cfg-switch-label">
+          <i class="bi bi-envelope-fill me-1" style="color:var(--accent-cyan);"></i>{{ _("Email") }}
+        </label>
+        <div class="form-check form-switch cfg-switch-wrap">
+          <input class="form-check-input cfg-switch js-state-toggle js-email-toggle" type="checkbox" role="switch"
+                 id="{{ p }}email_{{ rid }}" name="{{ p }}email_{{ rid }}"
+                 data-state-label="{{ p }}email_label_{{ rid }}"
+                 data-ooh-group="{{ p }}ooh_group_{{ rid }}"
+                 data-ooh-input="{{ p }}email_ooh_{{ rid }}"
+                 {% if r.email_alerts_enabled %}checked{% endif %}
+                 {% if not smtp_configured %}disabled title="{{ _('Configure SMTP in .env to enable') }}"{% endif %}>
+        </div>
+        {{ state_label(p ~ 'email_label_' ~ rid, r.email_alerts_enabled and smtp_configured) }}
+      </div>
+      <div id="{{ p }}ooh_group_{{ rid }}" class="align-items-center gap-2"
+           style="display:{% if r.email_alerts_enabled %}flex{% else %}none{% endif %};">
+        <div class="cfg-divider me-1"></div>
+        <label for="{{ p }}email_ooh_{{ rid }}" class="cfg-switch-label">
+          <i class="bi bi-moon-fill me-1" style="color:var(--accent-cyan);"></i>{{ _("Email OOH") }}
+        </label>
+        <div class="form-check form-switch cfg-switch-wrap">
+          <input class="form-check-input cfg-switch js-state-toggle" type="checkbox" role="switch"
+                 id="{{ p }}email_ooh_{{ rid }}" name="{{ p }}email_ooh_{{ rid }}"
+                 data-state-label="{{ p }}email_ooh_label_{{ rid }}"
+                 {% if r.email_ooh_enabled %}checked{% endif %}>
+        </div>
+        {{ state_label(p ~ 'email_ooh_label_' ~ rid, r.email_ooh_enabled) }}
+      </div>
+      <div class="cfg-divider"></div>
+      <button type="button" class="btn-dash btn-remove-rule"
+              data-delete-name="{{ p }}delete_{{ rid }}" data-rule-name="{{ r.display_name }}"
+              title="{{ _('Remove this rule') }}">
+        <i class="bi bi-trash3"></i>
+      </button>
+    </div>
+  </div>
+  <input type="hidden" name="{{ p }}workflow_id_{{ rid }}" value="{{ r.workflow_id }}">
+{%- endmacro %}
+
+{% macro display_name_field(name, value, placeholder='', disabled=false) -%}
+  <div class="col-12 col-sm-6 col-xl-4">
+    <label class="cfg-label" for="{{ name }}"><i class="bi bi-tag me-1"></i>{{ _("Display Name") }}</label>
+    <input type="text" class="dash-input w-100" id="{{ name }}" name="{{ name }}"
+           value="{{ value }}" maxlength="80" placeholder="{{ placeholder }}" {% if disabled %}disabled{% endif %}>
+    <div class="cfg-hint">{{ _("Human-readable label shown in the dashboard") }}</div>
+  </div>
+{%- endmacro %}
+
+{% macro number_field(name, value, label, icon, colour, min, max, unit, hint='', disabled=false) -%}
+  <div class="col-12 col-sm-6 col-xl-4">
+    <label class="cfg-label" for="{{ name }}">
+      <i class="bi {{ icon }} me-1" style="color:var({{ colour }})"></i>{{ label }}
+    </label>
+    <div class="cfg-input-row">
+      <input type="number" class="dash-input cfg-num" id="{{ name }}" name="{{ name }}"
+             value="{{ value }}" min="{{ min }}" max="{{ max }}" step="1" {% if disabled %}disabled{% endif %}>
+      <span class="cfg-unit">{{ unit }}</span>
+    </div>
+    {% if hint %}<div class="cfg-hint">{{ hint }}</div>{% endif %}
+  </div>
+{%- endmacro %}
+
+{# names/values are (day, evening, weekend) triples. #}
+{% macro thresholds_field(names, values, min, max, label, hint, disabled=false) -%}
+  <div class="col-12 col-sm-6 col-xl-4">
+    <label class="cfg-label">
+      <i class="bi bi-clock-fill me-1" style="color:var(--accent-amber)"></i>{{ label }}
+    </label>
+    <div class="d-flex align-items-center gap-1 flex-wrap">
+      {% for badge_cls, badge in [('badge-day', _("Day")), ('badge-eve', _("Eve")), ('badge-wkd', _("Wkd"))] %}
+      <label for="{{ names[loop.index0] }}" class="cfg-period-badge {{ badge_cls }}">{{ badge }}</label>
+      <input type="number" class="dash-input cfg-num" id="{{ names[loop.index0] }}" name="{{ names[loop.index0] }}"
+             value="{{ values[loop.index0] }}" min="{{ min }}" max="{{ max }}" step="1"
+             {% if disabled %}disabled{% endif %}>
+      {% endfor %}
+      <span class="cfg-unit">{{ _("min") }}</span>
+    </div>
+    <div class="cfg-hint">{{ hint }}</div>
+  </div>
+{%- endmacro %}
+
+{# "Add rule" panel for one alarm type; fields start disabled so nothing is submitted until opened. #}
+{% macro add_panel(p, alarm_label, name_placeholder) -%}
+  <div class="dash-card mb-3 js-add-panel" id="{{ p }}add-panel" style="display:none;">
+    <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border-color);">
+      <div style="font-weight:600; font-size:0.92rem;">
+        <i class="bi bi-plus-circle me-2" style="color:var(--accent-cyan)"></i>{{ _("New %(alarm)s rule", alarm=alarm_label) }}
+      </div>
+      <div style="font-size:0.72rem; color:var(--text-muted);">
+        {{ _("Workflow ID") }}: <code>{{ selected_flow.id }}</code>
+      </div>
+    </div>
+    <div class="p-3">
+      <input type="hidden" name="{{ p }}new_workflow_id" value="{{ selected_flow.id }}" disabled>
+      <div class="row g-3">
+        {{ display_name_field(p ~ 'new_display_name', '', name_placeholder, disabled=true) }}
+        <div class="col-12 col-sm-6 col-xl-4">
+          <label class="cfg-label" for="{{ p }}new_enabled">
+            <i class="bi bi-toggle-on me-1" style="color:var(--accent-green)"></i>{{ _("Enabled") }}
+          </label>
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <div class="form-check form-switch cfg-switch-wrap">
+              <input class="form-check-input cfg-switch js-state-toggle" type="checkbox" role="switch"
+                     id="{{ p }}new_enabled" name="{{ p }}new_enabled"
+                     data-state-label="{{ p }}new_enabled_label" checked disabled>
+            </div>
+            {{ state_label(p ~ 'new_enabled_label', true) }}
+          </div>
+        </div>
+        {{ caller() }}
+      </div>
+    </div>
+  </div>
+{%- endmacro %}
+
+{% macro section_header(p, title, desc, detail_endpoint, add_label) -%}
+  <div class="cfg-section-header">
+    <div>
+      <h5 class="cfg-section-title"><i class="bi bi-alarm me-2" style="color:var(--accent-amber)"></i>{{ title }}</h5>
+      <div class="cfg-section-desc">{{ desc }}</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button type="button" class="btn-dash btn-dash-sm" data-bs-toggle="offcanvas"
+              data-bs-target="#{{ p }}help" aria-controls="{{ p }}help">
+        <i class="bi bi-question-circle me-1"></i> {{ _("Help") }}
+      </button>
+      <a href="{{ url_for(detail_endpoint) }}" class="btn-dash btn-dash-sm">
+        <i class="bi bi-eye me-1"></i> {{ _("View Status") }}
+      </a>
+      <button type="button" class="btn-dash btn-dash-sm js-add-rule" data-panel="{{ p }}add-panel"
+              data-add-label="{{ add_label }}">
+        <i class="bi bi-plus-circle me-1"></i> {{ add_label }}
+      </button>
+    </div>
+  </div>
+{%- endmacro %}
+
+{% macro help_panel(p, title) -%}
+  <div class="offcanvas offcanvas-end alarm-help" tabindex="-1" id="{{ p }}help" aria-labelledby="{{ p }}help-title">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="{{ p }}help-title">
+        <i class="bi bi-question-circle me-2" style="color:var(--accent-cyan)"></i>{{ title }}
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+              aria-label="{{ _('Close') }}"></button>
+    </div>
+    <div class="offcanvas-body">{{ caller() }}</div>
+  </div>
+{%- endmacro %}
+
+{% macro help_common_settings() -%}
+  <dt>{{ _("Enable switch") }}</dt>
+  <dd>{{ _("Turns evaluation on or off. A disabled rule keeps its settings but never fires.") }}</dd>
+  <dt>{{ _("Email") }}</dt>
+  <dd>{{ _("Sends an email alert each time the alarm fires. Greyed out when email alerting is not configured for the dashboard.") }}</dd>
+  <dt>{{ _("Email OOH") }}</dt>
+  <dd>{{ _("Out-of-hours email preference for this rule. Only available while Email is on; turning Email off clears it.") }}</dd>
+  <dt>{{ _("Display Name") }}</dt>
+  <dd>{{ _("Label shown on the alarm pages and in alert emails.") }}</dd>
+{%- endmacro %}
+
+{% macro help_alerting_gap() -%}
+  <dt>{{ _("Alerting Gap") }}</dt>
+  <dd>{{ _("After the alarm fires it will not fire again for this many minutes — the rule shows as Suppressed instead. Once the condition clears the gap resets, so the next problem alerts straight away.") }}</dd>
+{%- endmacro %}
+
+{% macro help_periods() -%}
+  <ul class="alarm-help-periods">
+    <li><i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
+      <strong>{{ _("Day") }}</strong>: {{ _("Mon–Fri 09:00–17:00") }}</li>
+    <li><i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
+      <strong>{{ _("Evening") }}</strong>: {{ _("Mon–Fri 17:00–09:00") }}</li>
+    <li><i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
+      <strong>{{ _("Weekend") }}</strong>: {{ _("Fri 17:00 → Mon 09:00") }}</li>
+  </ul>
+{%- endmacro %}
+
+{% macro empty_rules(alarm_label) -%}
+  <div class="dash-card mb-3 cfg-empty">
+    <i class="bi bi-bell-slash me-1"></i>
+    {{ _("No %(alarm)s rules are configured for this flow.", alarm=alarm_label) }}
+  </div>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-gear-fill" style="color:var(--accent-cyan)"></i>
+        {{ _("Alarm Configuration") }}
+      </h1>
+      <p class="page-subtitle">{{ _("Configure Alarm 1, 2 and 3 for a single integration flow") }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash" id="back-to-summary">
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
+      </a>
+      <a href="{{ url_for('alarms_by_flow_page', flow=selected_flow.id if selected_flow and not selected_flow.is_new else None) }}"
+         class="btn-dash">
+        <i class="bi bi-diagram-3"></i> {{ _("View by Flow") }}
+      </a>
+    </div>
+  </div>
+
+  <div class="dash-card mb-3" style="padding:0.9rem 1.1rem;">
+    <form id="flow-form" method="get" action="{{ url_for('alarm_flow_config_page') }}"
+          data-flow-search data-allow-custom="true" class="d-flex align-items-center gap-2 flex-wrap">
+      <label for="flow-search-input" class="cfg-label mb-0">
+        <i class="bi bi-diagram-3 me-1" style="color:var(--accent-cyan)"></i>{{ _("Flow") }}
+      </label>
+      <input type="text" class="dash-input js-flow-search" id="flow-search-input" list="flow-search-list"
+             style="min-width:320px;" placeholder="{{ _('Search flows or enter a new workflow ID…') }}"
+             autocomplete="off" maxlength="120"
+             value="{{ flow_display(selected_flow) if selected_flow else '' }}">
+      <datalist id="flow-search-list">
+        {% for opt in flow_options %}
+        <option value="{{ flow_display(opt) }}" data-flow-id="{{ opt.id }}"></option>
+        {% endfor %}
+      </datalist>
+      <input type="hidden" name="flow" id="flow-id-input" value="{{ selected_flow.id if selected_flow else '' }}">
+      <button type="submit" class="btn-dash"><i class="bi bi-box-arrow-in-right me-1"></i> {{ _("Open") }}</button>
+      <span class="cfg-hint mt-0">{{ _("To add alarms for a flow that isn't listed, enter its workflow ID and press Open.") }}</span>
+    </form>
+  </div>
+
+  {% if flow_invalid %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-red); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-red); font-size:0.83rem;">
+      <i class="bi bi-x-octagon-fill"></i>
+      <span>{{ _("Invalid workflow ID. Use letters, numbers, '_' or '-' (max 120 characters).") }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if saved %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-green); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-green); font-size:0.83rem;">
+      <i class="bi bi-check-circle-fill"></i>
+      <span>{{ _("Configuration saved successfully.") }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not selected_flow %}
+  <div class="dash-card">
+    <div class="no-data" style="padding:3rem; text-align:center;">
+      <i class="bi bi-funnel" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
+      <p style="margin-top:1rem; color:var(--text-muted);">{{ _("Select a flow to configure its alarms.") }}</p>
+    </div>
+  </div>
+
+  {% else %}
+
+  {% if selected_flow.is_new %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-cyan); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-cyan); font-size:0.83rem;">
+      <i class="bi bi-info-circle-fill"></i>
+      <span>
+        <code>{{ selected_flow.id }}</code>
+        {{ _("is not a discovered flow and has no alarms yet. Add rules below \u2014 it will appear in the flow list once saved.") }}
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="mb-3 d-flex gap-4 flex-wrap" style="font-size:0.75rem; color:var(--text-muted);">
+    <span><i class="bi bi-sun-fill me-1" style="color:var(--accent-amber)"></i>
+      <strong>{{ _("Day") }}</strong>: {{ _("Mon\u2013Fri 09:00\u201317:00") }}</span>
+    <span><i class="bi bi-moon-fill me-1" style="color:var(--accent-blue)"></i>
+      <strong>{{ _("Evening") }}</strong>: {{ _("Mon\u2013Fri 17:00\u201309:00") }}</span>
+    <span><i class="bi bi-calendar-week-fill me-1" style="color:var(--accent-purple)"></i>
+      <strong>{{ _("Weekend") }}</strong>: {{ _("Fri 17:00 \u2192 Mon 09:00") }}</span>
+  </div>
+
+  <form id="flow-config-form" method="post" action="{{ url_for('alarm_flow_config_page', flow=selected_flow.id) }}">
+
+    <!-- ================================================================ -->
+    <!-- Alarm 1 — Inactivity                                             -->
+    <!-- ================================================================ -->
+    <section class="cfg-section" id="a1-section">
+      {{ section_header('a1-', _("Alarm 1 \u2014 Inactivity"),
+                        _("Fires when the flow has received no messages for longer than the current period threshold."),
+                        'alarm_page', _("Add Alarm 1 rule")) }}
+      {% for r in alarm1_rules %}
+      <div class="dash-card mb-3 rule-card" id="a1-rule-{{ r.id }}">
+        {{ rule_header('a1-', r, _("Alarm 1")) }}
+        <div class="p-3">
+          <div class="row g-3">
+            {{ display_name_field('a1-display_name_' ~ r.id, r.display_name) }}
+            {{ thresholds_field(
+                 ['a1-day_threshold_' ~ r.id, 'a1-evening_threshold_' ~ r.id, 'a1-weekend_threshold_' ~ r.id],
+                 [r.day_threshold_minutes, r.evening_threshold_minutes, r.weekend_threshold_minutes],
+                 1, 44640, _("Thresholds"),
+                 _("Inactivity duration before alarm fires for the current time period")) }}
+            {{ number_field('a1-alerting_gap_' ~ r.id, r.alerting_gap_minutes, _("Alerting Gap"),
+                            'bi-clock-history', '--accent-red', 1, 44640, _("min"),
+                            _("Minimum gap between successive alarm fires")) }}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      {{ empty_rules(_("Alarm 1")) }}
+      {% endfor %}
+
+      {% call add_panel('a1-', _("Alarm 1"), _("Auto-generated if blank")) %}
+        {{ thresholds_field(['a1-new_day_threshold', 'a1-new_evening_threshold', 'a1-new_weekend_threshold'],
+                            [60, 120, 240], 1, 44640, _("Thresholds"),
+                            _("Inactivity duration before alarm fires for the current time period"), disabled=true) }}
+        {{ number_field('a1-new_alerting_gap', 60, _("Alerting Gap"), 'bi-clock-history', '--accent-red',
+                        1, 44640, _("min"), disabled=true) }}
+      {% endcall %}
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- Alarm 2 — Outgoing Message Volume                                 -->
+    <!-- ================================================================ -->
+    <section class="cfg-section" id="a2-section">
+      {{ section_header('a2-', _("Alarm 2 \u2014 Outgoing Message Volume"),
+                        _("Fires when the flow has sent no messages (messages_sent metric) for longer than the current period threshold."),
+                        'alarm2_page', _("Add Alarm 2 rule")) }}
+      {% for r in alarm2_rules %}
+      <div class="dash-card mb-3 rule-card" id="a2-rule-{{ r.id }}">
+        {{ rule_header('a2-', r, _("Alarm 2")) }}
+        <div class="p-3">
+          <div class="row g-3">
+            {{ display_name_field('a2-display_name_' ~ r.id, r.display_name) }}
+            {{ thresholds_field(
+                 ['a2-day_threshold_' ~ r.id, 'a2-evening_threshold_' ~ r.id, 'a2-weekend_threshold_' ~ r.id],
+                 [r.day_threshold_minutes, r.evening_threshold_minutes, r.weekend_threshold_minutes],
+                 0, 9999999, _("Inactivity Thresholds"),
+                 _("Alarm fires when no messages sent for longer than this threshold")) }}
+            {{ number_field('a2-alerting_gap_' ~ r.id, r.alerting_gap_minutes, _("Alerting Gap"),
+                            'bi-clock-history', '--accent-red', 1, 44640, _("min"),
+                            _("Minimum gap between successive alarm fires")) }}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      {{ empty_rules(_("Alarm 2")) }}
+      {% endfor %}
+
+      {% call add_panel('a2-', _("Alarm 2"), selected_flow.id) %}
+        {{ thresholds_field(['a2-new_day_threshold', 'a2-new_evening_threshold', 'a2-new_weekend_threshold'],
+                            [60, 120, 240], 0, 9999999, _("Inactivity Thresholds"),
+                            _("Alarm fires when no messages sent for longer than this threshold"), disabled=true) }}
+        {{ number_field('a2-new_alerting_gap', 60, _("Alerting Gap"), 'bi-clock-history', '--accent-red',
+                        1, 44640, _("min"), disabled=true) }}
+      {% endcall %}
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- Alarm 3 — Message Processing Failures                             -->
+    <!-- ================================================================ -->
+    <section class="cfg-section" id="a3-section">
+      {{ section_header('a3-', _("Alarm 3 \u2014 Message Processing Failures"),
+                        _("Fires when MESSAGE_FAILED events within the lookback window meet or exceed the threshold."),
+                        'alarm3_page', _("Add Alarm 3 rule")) }}
+      {% for r in alarm3_rules %}
+      <div class="dash-card mb-3 rule-card" id="a3-rule-{{ r.id }}">
+        {{ rule_header('a3-', r, _("Alarm 3")) }}
+        <div class="p-3">
+          <div class="row g-3">
+            {{ display_name_field('a3-display_name_' ~ r.id, r.display_name) }}
+            {{ number_field('a3-window_duration_' ~ r.id, r.window_duration_minutes, _("Lookback Window"),
+                            'bi-calendar-range', '--accent-blue', 1, 44640, _("min"),
+                            _("Time window for the MESSAGE_FAILED query (e.g. 15 = 15 minutes)")) }}
+            {{ number_field('a3-threshold_' ~ r.id, r.threshold, _("Threshold"),
+                            'bi-arrow-up-circle', '--accent-red', 1, 9999999, _("failures"),
+                            _("Alarm fires when failure count >= this value")) }}
+            {{ number_field('a3-alerting_gap_' ~ r.id, r.alerting_gap_minutes, _("Alerting Gap"),
+                            'bi-clock-history', '--accent-red', 1, 44640, _("min"),
+                            _("Minimum gap between successive alarm fires")) }}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      {{ empty_rules(_("Alarm 3")) }}
+      {% endfor %}
+
+      {% call add_panel('a3-', _("Alarm 3"), selected_flow.id ~ " Failures") %}
+        {{ number_field('a3-new_window_duration', 15, _("Lookback Window"), 'bi-calendar-range', '--accent-blue',
+                        1, 44640, _("min"), disabled=true) }}
+        {{ number_field('a3-new_threshold', 1, _("Threshold"), 'bi-arrow-up-circle', '--accent-red',
+                        1, 9999999, _("failures"), disabled=true) }}
+        {{ number_field('a3-new_alerting_gap', 60, _("Alerting Gap"), 'bi-clock-history', '--accent-red',
+                        1, 44640, _("min"), disabled=true) }}
+      {% endcall %}
+    </section>
+
+    <div class="d-flex justify-content-end mt-3 mb-4">
+      <button type="submit" class="btn-dash btn-dash--primary">
+        <i class="bi bi-floppy-fill"></i> {{ _("Save Flow Settings") }}
+      </button>
+    </div>
+  </form>
+
+  <!-- ================================================================ -->
+  <!-- Help panels (opened from each section's Help button)             -->
+  <!-- ================================================================ -->
+  {% call help_panel('a1-', _("Alarm 1 \u2014 Inactivity")) %}
+    <h6>{{ _("What it does") }}</h6>
+    <p>{{ _("Alerts when this flow stops receiving messages. Each time alarm status refreshes, the dashboard looks up the most recent MESSAGE_RECEIVED event logged for the flow's workflow ID in Log Analytics (AppTraces). If the time since that message is longer than the threshold for the current period, the alarm fires.") }}</p>
+    <p>{{ _("Use it to catch a source system or HL7 server that has gone quiet.") }}</p>
+    {{ help_periods() }}
+    <h6>{{ _("How to configure") }}</h6>
+    <dl>
+      {{ help_common_settings() }}
+      <dt>{{ _("Thresholds (Day / Eve / Wkd)") }}</dt>
+      <dd>{{ _("Minutes without a received message before the alarm fires, for each period. Set lower values for busy periods and higher values for naturally quiet ones.") }}</dd>
+      {{ help_alerting_gap() }}
+    </dl>
+    <h6>{{ _("Good to know") }}</h6>
+    <ul>
+      <li>{{ _("If no message has been seen in the last 30 days the status shows Unknown rather than In Alarm.") }}</li>
+      <li>{{ _("For planned outages, pause the rule from the Alarm 1 status page instead of disabling it.") }}</li>
+    </ul>
+  {% endcall %}
+
+  {% call help_panel('a2-', _("Alarm 2 \u2014 Outgoing Message Volume")) %}
+    <h6>{{ _("What it does") }}</h6>
+    <p>{{ _("Alerts when this flow stops sending messages to its destination. Each time alarm status refreshes, the dashboard looks up the most recent messages_sent metric recorded for the flow's workflow ID in Log Analytics (AppMetrics). If the time since the last sent message is longer than the threshold for the current period, the alarm fires.") }}</p>
+    <p>{{ _("Pair it with Alarm 1: Alarm 1 watches messages coming in, Alarm 2 watches messages going out, so a flow that receives but no longer delivers is still caught.") }}</p>
+    {{ help_periods() }}
+    <h6>{{ _("How to configure") }}</h6>
+    <dl>
+      {{ help_common_settings() }}
+      <dt>{{ _("Inactivity Thresholds (Day / Eve / Wkd)") }}</dt>
+      <dd>{{ _("Minutes without a sent message before the alarm fires, for each period.") }}</dd>
+      {{ help_alerting_gap() }}
+    </dl>
+    <h6>{{ _("Good to know") }}</h6>
+    <ul>
+      <li>{{ _("The search looks back one day longer than the largest threshold (up to 30 days); if nothing was sent in that time the status shows Unknown.") }}</li>
+      <li>{{ _("For planned outages, pause the rule from the Alarm 2 status page instead of disabling it.") }}</li>
+    </ul>
+  {% endcall %}
+
+  {% call help_panel('a3-', _("Alarm 3 \u2014 Message Processing Failures")) %}
+    <h6>{{ _("What it does") }}</h6>
+    <p>{{ _("Alerts when messages on this flow are failing. Each time alarm status refreshes, the dashboard counts the MESSAGE_FAILED events logged for the flow's workflow ID in Log Analytics (AppTraces) over the lookback window. If the count is at or above the threshold, the alarm fires.") }}</p>
+    <p>{{ _("Unlike Alarms 1 and 2 it does not change by time of day \u2014 the same window and threshold apply at all times.") }}</p>
+    <h6>{{ _("How to configure") }}</h6>
+    <dl>
+      {{ help_common_settings() }}
+      <dt>{{ _("Lookback Window") }}</dt>
+      <dd>{{ _("How many minutes of history to count failures over, e.g. 15 counts failures in the last 15 minutes.") }}</dd>
+      <dt>{{ _("Threshold") }}</dt>
+      <dd>{{ _("Number of failures in the window that trips the alarm. 1 alerts on any failure; raise it to ignore occasional one-off failures.") }}</dd>
+      {{ help_alerting_gap() }}
+    </dl>
+    <h6>{{ _("Good to know") }}</h6>
+    <ul>
+      <li>{{ _("A longer window with a higher threshold smooths out bursts; a short window with a low threshold alerts fastest.") }}</li>
+      <li>{{ _("For planned outages, pause the rule from the Alarm 3 status page instead of disabling it.") }}</li>
+    </ul>
+  {% endcall %}
+  {% endif %}
+
+</div>
+
+<style>
+  .cfg-section { margin-bottom: 1.75rem; }
+  .cfg-section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .cfg-section-title { font-size: 1rem; font-weight: 600; margin: 0; color: var(--text-primary); }
+  .cfg-section-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+  .cfg-empty { padding: 1.1rem 1.25rem; font-size: 0.83rem; color: var(--text-muted); }
+
+  .cfg-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+  }
+  .cfg-hint {
+    font-size: 0.67rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    opacity: 0.72;
+  }
+  .cfg-input-row { display: flex; align-items: center; gap: 0.4rem; }
+  .cfg-num { width: 76px; text-align: right; }
+  .cfg-unit { font-size: 0.78rem; color: var(--text-muted); }
+  .cfg-period-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-day { background: rgba(18,163,201,0.15); color: var(--accent-cyan); }
+  .badge-eve { background: rgba(248,202,77,0.15); color: var(--accent-amber); }
+  .badge-wkd { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+  .cfg-switch-label { font-size: 0.8rem; color: var(--text-muted); cursor: pointer; margin: 0; }
+  .form-check.form-switch.cfg-switch-wrap { margin: 0; padding-left: 0; min-height: 0; }
+  .form-switch .form-check-input.cfg-switch { width: 2.8em; height: 1.4em; cursor: pointer; margin: 0; }
+  .cfg-state { font-size: 0.78rem; font-weight: 600; min-width: 60px; color: var(--text-muted); }
+  .cfg-state--on { color: var(--accent-green); }
+  .cfg-divider { width: 1px; height: 24px; background: var(--border-color); }
+
+  .btn-dash-sm { font-size: 0.78rem; padding: 0.3rem 0.8rem; }
+  .btn-dash--primary {
+    background: var(--accent-cyan);
+    color: #fff;
+    border-color: var(--accent-cyan);
+  }
+  .btn-dash--primary:hover { background: color-mix(in srgb, var(--accent-cyan) 80%, white); }
+  .form-check-input:checked {
+    background-color: var(--accent-cyan) !important;
+    border-color: var(--accent-cyan) !important;
+  }
+  .btn-remove-rule {
+    color: var(--accent-red);
+    border-color: rgba(239,68,68,0.3);
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+  }
+  .btn-remove-rule:hover { background: rgba(239,68,68,0.1); border-color: var(--accent-red); }
+  .rule-card--removing {
+    opacity: 0.4;
+    pointer-events: none;
+    border-left: 3px solid var(--accent-red) !important;
+  }
+  @keyframes rule-card-highlight {
+    0%   { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    65%  { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(6,182,212,0.2); background: rgba(6,182,212,0.06); }
+    100% { box-shadow: none; background: transparent; }
+  }
+  .rule-card--highlighted { animation: rule-card-highlight 2.8s ease-out forwards; }
+
+  .alarm-help {
+    --bs-offcanvas-width: 460px;
+    background: var(--card-bg-solid, #1b2a3b);
+    color: var(--text-primary);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -16px 0 60px rgba(0,0,0,0.5);
+  }
+  .alarm-help .offcanvas-header { border-bottom: 1px solid var(--border-color); }
+  .alarm-help .offcanvas-title { font-size: 1rem; font-weight: 600; }
+  .alarm-help .offcanvas-body { font-size: 0.83rem; line-height: 1.55; }
+  .alarm-help h6 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent-cyan);
+    margin: 1.25rem 0 0.5rem;
+  }
+  .alarm-help h6:first-child { margin-top: 0; }
+  .alarm-help p, .alarm-help dd, .alarm-help li { color: var(--text-muted); }
+  .alarm-help dt { color: var(--text-primary); font-weight: 600; margin-top: 0.6rem; }
+  .alarm-help dd { margin: 0.1rem 0 0; }
+  .alarm-help ul { padding-left: 1.1rem; }
+  .alarm-help .alarm-help-periods { list-style: none; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/flow-search.js') }}"></script>
+<script>
+(function () {
+  'use strict';
+
+  // <main> forms its own stacking context, so the help offcanvases must live on <body> to sit above the navbar.
+  document.querySelectorAll('.alarm-help').forEach(function (el) { document.body.appendChild(el); });
+
+  var i18nEnabled = {{ _("Enabled") | tojson }};
+  var i18nDisabled = {{ _("Disabled") | tojson }};
+  var i18nRemove = {{ _("Remove rule \"%(name)s\"? This will take effect when you save.", name="{name}") | tojson }};
+  var i18nRemoving = {{ _("Removing…") | tojson }};
+  var i18nCancel = {{ _("Cancel") | tojson }};
+
+  var form = document.getElementById('flow-config-form');
+  if (!form) return;
+
+  function setState(labelId, on) {
+    var lbl = document.getElementById(labelId);
+    if (!lbl) return;
+    lbl.textContent = on ? i18nEnabled : i18nDisabled;
+    lbl.classList.toggle('cfg-state--on', on);
+  }
+
+  form.querySelectorAll('.js-state-toggle').forEach(function (cb) {
+    cb.addEventListener('change', function () { setState(cb.dataset.stateLabel, cb.checked); });
+  });
+
+  // Email off hides and clears OOH so a hidden-but-checked OOH switch is never submitted.
+  form.querySelectorAll('.js-email-toggle').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var group = document.getElementById(cb.dataset.oohGroup);
+      if (group) group.style.display = cb.checked ? 'flex' : 'none';
+      if (!cb.checked) {
+        var ooh = document.getElementById(cb.dataset.oohInput);
+        if (ooh) { ooh.checked = false; setState(ooh.dataset.stateLabel, false); }
+      }
+    });
+  });
+
+  form.querySelectorAll('.btn-remove-rule').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.rule-card');
+      if (!card || !confirm(i18nRemove.replace('{name}', btn.dataset.ruleName))) return;
+      card.classList.add('rule-card--removing');
+      card.querySelectorAll('input, select, textarea').forEach(function (el) { el.disabled = true; });
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = btn.dataset.deleteName;
+      hidden.value = '1';
+      card.appendChild(hidden);
+      btn.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> ' + i18nRemoving;
+      window._formDirty = true;
+    });
+  });
+
+  document.querySelectorAll('.js-add-rule').forEach(function (btn) {
+    var panel = document.getElementById(btn.dataset.panel);
+    if (!panel) return;
+    var addHtml = btn.innerHTML;
+    btn.addEventListener('click', function () {
+      var opening = panel.style.display === 'none';
+      panel.style.display = opening ? 'block' : 'none';
+      panel.querySelectorAll('input').forEach(function (el) { el.disabled = !opening; });
+      btn.innerHTML = opening ? '<i class="bi bi-dash-circle me-1"></i> ' + i18nCancel : addHtml;
+      if (opening) {
+        window._formDirty = true;
+        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var first = panel.querySelector('input[type="text"]');
+        if (first) first.focus();
+      }
+    });
+  });
+
+  form.addEventListener('change', function () { window._formDirty = true; });
+  form.addEventListener('input', function () { window._formDirty = true; });
+  form.addEventListener('submit', function () { window._formDirty = false; });
+
+  function highlight(card) {
+    if (!card) return;
+    card.classList.add('rule-card--highlighted');
+    setTimeout(function () { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+  }
+
+  {% if new_rule_anchor %}
+  highlight(document.getElementById({{ new_rule_anchor | tojson }}));
+  {% else %}
+  if (window.location.hash) highlight(document.getElementById(decodeURIComponent(window.location.hash.slice(1))));
+  {% endif %}
+})();
+</script>
+{% endblock %}

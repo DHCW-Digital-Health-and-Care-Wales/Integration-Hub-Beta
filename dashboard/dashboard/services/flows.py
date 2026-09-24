@@ -457,6 +457,16 @@ def overall_health(flow_statuses: list[str]) -> str:
     return "unknown"
 
 
+def build_flow_options(flows: dict[str, dict], alarm_rules: list[dict]) -> list[dict[str, str]]:
+    """Return flow picker options for discovered flows plus any workflow referenced only by an alarm rule."""
+    labels: dict[str, str] = {fid: flow.get("label") or fid for fid, flow in flows.items()}
+    for rule in alarm_rules:
+        wid = (rule.get("workflow_id") or "").strip()
+        if wid and wid not in labels:
+            labels[wid] = wid
+    return sorted(({"id": k, "label": v} for k, v in labels.items()), key=lambda o: o["label"].lower())
+
+
 def queue_to_workflow_id(queue_name: str) -> str | None:
     """Map a queue name back to the workflow_id (flow ID) that owns it.
 
