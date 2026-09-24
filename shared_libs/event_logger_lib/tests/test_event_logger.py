@@ -39,9 +39,11 @@ class TestEventLogger(unittest.TestCase):
         timestamp: str,
         validation_result: Optional[str] = None,
         error_details: Optional[str] = None,
+        log_level: str = "info",
     ) -> None:
-        mock_logger.info.assert_called_once()
-        call_args = mock_logger.info.call_args
+        log_method: MagicMock = getattr(mock_logger, log_level)
+        log_method.assert_called_once()
+        call_args = log_method.call_args
         self.assertEqual(call_args[0][0], "Integration Hub Event")
 
         extra = call_args[1]["extra"]
@@ -232,6 +234,7 @@ class TestEventLogger(unittest.TestCase):
             "2025-01-01T12:00:00+00:00",
             validation_result=validation_result,
             error_details=error_details,
+            log_level="error",
         )
         mock_logger.debug.assert_called_once_with(
             "Event logged to Azure Monitor: MESSAGE_FAILED"
@@ -284,6 +287,7 @@ class TestEventLogger(unittest.TestCase):
             message_content,
             "2025-01-01T12:00:00+00:00",
             validation_result=validation_result,
+            log_level="error",
         )
         mock_logger.debug.assert_called_once_with(
             "Event logged to Azure Monitor: VALIDATION_FAILED"
@@ -310,6 +314,7 @@ class TestEventLogger(unittest.TestCase):
             message_content,
             "2025-01-01T12:00:00+00:00",
             error_details=warning_details,
+            log_level="warning",
         )
         mock_logger.debug.assert_called_once_with(
             "Event logged to Azure Monitor: VALIDATION_WARNING"
