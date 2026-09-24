@@ -68,6 +68,27 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.ingress_topic_name, "topic")
         self.assertEqual(config.ingress_subscription_name, "subscription")
 
+    @patch("transformer_base_lib.app_config.os.getenv")
+    def test_read_env_config_with_topic_egress_returns_config(
+        self, mock_getenv: MagicMock
+    ) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_QUEUE_NAME": "ingress_queue",
+                "EGRESS_TOPIC_NAME": "egress_topic",
+                "INGRESS_SESSION_ID": "in_session_id",
+                "WORKFLOW_ID": "workflow_id",
+                "MICROSERVICE_ID": "microservice_id",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.ingress_queue_name, "ingress_queue")
+        self.assertIsNone(config.egress_queue_name)
+        self.assertEqual(config.egress_topic_name, "egress_topic")
+
     def test_queue_and_topic_ingress_together_raises_error(self) -> None:
         with self.assertRaises(RuntimeError) as context:
             validate_ingress_config(
@@ -97,6 +118,26 @@ class TestAppConfig(unittest.TestCase):
             "INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME must both be set",
             str(context.exception),
         )
+
+    @patch("transformer_base_lib.app_config.os.getenv")
+    def test_queue_and_topic_egress_together_raises_error(
+        self, mock_getenv: MagicMock
+    ) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_QUEUE_NAME": "ingress_queue",
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_TOPIC_NAME": "egress_topic",
+                "WORKFLOW_ID": "workflow_id",
+                "MICROSERVICE_ID": "microservice_id",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        with self.assertRaises(RuntimeError) as context:
+            AppConfig.read_env_config()
+        self.assertIn("cannot be set together", str(context.exception))
 
     def test_valid_queue_ingress_does_not_raise(self) -> None:
         validate_ingress_config(
