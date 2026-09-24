@@ -27,7 +27,6 @@ class TestPIDMapper(unittest.TestCase):
             "pid_5.xpn_3",
             "pid_5.xpn_4",
             "pid_5.xpn_5",
-            "pid_8",
             "pid_11.xad_1",
             "pid_11.xad_2",
             "pid_11.xad_3",
@@ -169,3 +168,46 @@ class TestPIDMapper(unittest.TestCase):
                 error_message = str(context.exception)
                 self.assertIn("Invalid datetime format after timezone removal", error_message)
                 self.assertIn("Expected format: YYYYMMDD (8 digits) or YYYYMMDDHHMMSS (14 digits)", error_message)
+
+
+class TestPIDMapperReferenceLookups(unittest.TestCase):
+    """Tests for the hardcoded placeholder enrichment of gender / marital status /
+    ethnic group / NHS number status."""
+
+    def setUp(self) -> None:
+        # Base message: PID.8='F', PID.16='M', PID.22='1', PID.3 NI repetition CX.2='03'.
+        self.base_hl7_message = (
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
+            'PID|||^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
+            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
+            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
+        )
+        self.original_message = parse_message(self.base_hl7_message)
+        self.new_message = Message(version="2.5")
+
+    def test_all_fields_enriched_from_placeholder_tables(self) -> None:
+        map_pid(self.original_message, self.new_message)
+
+        # Each field with a present source value is set to its fixed placeholder.
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_8"), "GenderPlaceholder")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_16.ce_1"), "MaritalStatusPlaceholder")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_22.ce_1"), "EthnicityPlaceholder")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_32"), "NHSNumberStatusPlaceholder")
+
+    def test_empty_source_fields_are_skipped(self) -> None:
+        # No gender, marital, ethnicity or NI repetition present -> no enrichment.
+        original_message = parse_message(self.base_hl7_message)
+        original_message.pid.pid_8.value = ""
+        original_message.pid.pid_16.value = ""
+        original_message.pid.pid_22.value = ""
+        # Remove the NI repetition so there is no NHS number status source.
+        original_message.pid.pid_3[0].value = "N5022039^^^^PI"
+        original_message.pid.pid_3[1].value = "1000000001^^^^PI"
+        new_message = Message(version="2.5")
+
+        map_pid(original_message, new_message)
+
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_8"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_16"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_22"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_32"), "")
