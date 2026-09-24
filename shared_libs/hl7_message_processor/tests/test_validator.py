@@ -36,11 +36,14 @@ VALID_ADT_A05_WITH_TABLE_WARNING = (
 
 
 class ValidateHl7MessageStrictTests(unittest.TestCase):
-    def test_invalid_nm_value_raises_single_error(self) -> None:
-        with self.assertRaises(Hl7MessageValidationError) as ctx:
+    def test_invalid_nm_value_is_logged_and_does_not_raise(self) -> None:
+        # hl7apy's parse-time exception text embeds the raw offending value, so it must never be
+        # raised/returned to the caller - only logged. No NACK content is built from this exception;
+        # the caller already produces its own generic NACK independently.
+        with self.assertLogs("hl7_message_processor.validator", level="ERROR") as logs:
             validate_hl7_message(INVALID_NM_VALUE_MESSAGE, validation_level=VALIDATION_LEVEL.STRICT)
 
-        self.assertIn("W99999 is not an HL7 valid NM value", str(ctx.exception))
+        self.assertTrue(any("HL7 message failed validation" in message for message in logs.output))
 
     def test_valid_message_passes(self) -> None:
         with self.assertLogs("hl7_message_processor.validator", level="INFO") as logs:

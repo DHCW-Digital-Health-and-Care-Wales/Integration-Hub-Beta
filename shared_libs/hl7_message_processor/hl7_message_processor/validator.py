@@ -12,8 +12,13 @@ are always logged via the standard logger and can also be surfaced to a caller-s
 callback (e.g. to emit a structured "Integration Hub Event" via that caller's own ``EventLogger`` -
 this module deliberately has no ``event_logger_lib`` dependency of its own) - note the callback DOES
 receive the raw warning text, PII included, by explicit design decision (accepted risk; the caller
-owns any further redaction). See notes/hl7apy-native-validation-design-report.md for the full design
-rationale.
+owns any further redaction).
+
+A message that hl7apy cannot even parse (e.g. a value that isn't valid for its declared datatype)
+is a special case: hl7apy's own exception text for this embeds the raw offending value, so it is
+logged only, never raised or returned - the caller doesn't need it echoed back, since any NACK sent
+to the sender is already built independently of this function. See
+notes/hl7apy-native-validation-design-report.md for the full design rationale.
 """
 
 from __future__ import annotations
@@ -110,15 +115,20 @@ def validate_hl7_message(
     per warning with hl7apy's raw warning text (this DOES include the raw field value - it is the
     caller's responsibility to redact it first if that's a requirement for its logging destination).
 
+    If ``er7_message`` can't be parsed at all, hl7apy's own exception text may embed the raw
+    offending value, so it is only logged (never raised) and this function returns without running
+    the rest of validation.
+
     Raises:
-        Hl7MessageValidationError: on any error-level violation, message is every error joined with
-            "\\n" (PII-safe - never includes raw field values).
+        Hl7MessageValidationError: on any error-level violation reported by hl7apy's ``validate()``
+            pass, message is every error joined with "\\n" (PII-safe - never includes raw field
+            values).
     """
     try:
         message = parse_message(er7_message, validation_level=validation_level, find_groups=True)
     except (HL7apyException, ValueError) as error:
         logger.error("HL7 message failed validation: %s", error)
-        raise Hl7MessageValidationError(str(error)) from error
+        return
 
     errors, warnings = _collect_hl7apy_validation_results(message)
 

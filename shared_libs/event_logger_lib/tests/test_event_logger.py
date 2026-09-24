@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from event_logger_lib.event_logger import EventLogger
 from event_logger_lib.log_event import EventType
+from event_logger_lib.redaction import REDACTION_MASK
 
 
 class TestEventLogger(unittest.TestCase):
@@ -318,6 +319,31 @@ class TestEventLogger(unittest.TestCase):
         )
         mock_logger.debug.assert_called_once_with(
             "Event logged to Azure Monitor: VALIDATION_WARNING"
+        )
+
+    @patch("event_logger_lib.event_logger.datetime")
+    @patch("event_logger_lib.event_logger.logger")
+    def test_log_validation_warning_redacts_details_when_redaction_enabled(self, mock_logger, mock_datetime):
+        # Arrange - self.event_logger has redaction disabled via setUp; build one with redaction
+        # enabled to prove warning_details (which may embed a raw HL7 field value) gets masked.
+        event_logger = self._build_logger_with_redaction(True)
+        mock_datetime.now.return_value = datetime(
+            2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+        )
+        message_content = "Test HL7 Message"
+        warning_details = "Value HOME not in table HL70190 in element PID_11.XAD_7"
+
+        # Act
+        event_logger.log_validation_warning(message_content, warning_details)
+
+        # Assert
+        self._assert_log_event(
+            mock_logger,
+            "VALIDATION_WARNING",
+            REDACTION_MASK,
+            "2025-01-01T12:00:00+00:00",
+            error_details=REDACTION_MASK,
+            log_level="warning",
         )
 
     @patch("event_logger_lib.event_logger.logger")

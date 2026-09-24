@@ -1,6 +1,6 @@
 import unittest
 
-from event_logger_lib.redaction import REDACTION_MASK, redact_hl7_message
+from event_logger_lib.redaction import REDACTION_MASK, redact_hl7_message, redact_warning_details
 
 
 class TestRedactHl7Message(unittest.TestCase):
@@ -66,6 +66,23 @@ class TestRedactHl7Message(unittest.TestCase):
 
         self.assertIn("ADT^A28", redacted)
         self.assertNotIn("SMITH", redacted)
+
+
+class TestRedactWarningDetails(unittest.TestCase):
+    def test_table_value_warning_is_fully_masked(self):
+        redacted = redact_warning_details("Value HOME not in table HL70190 in element PID_11.XAD_7")
+
+        self.assertEqual(redacted, REDACTION_MASK)
+        self.assertNotIn("HOME", redacted)
+
+    def test_other_warning_formats_are_also_fully_masked(self):
+        # Warning text isn't a stable contract - any non-empty warning is masked, not just known formats.
+        self.assertEqual(redact_warning_details("Exceeded max length (20) of PID_5.XPN_1"), REDACTION_MASK)
+        self.assertEqual(redact_warning_details("Some other warning containing SMITH"), REDACTION_MASK)
+
+    def test_empty_and_whitespace_returned_unchanged(self):
+        self.assertEqual(redact_warning_details(""), "")
+        self.assertEqual(redact_warning_details("   "), "   ")
 
 
 if __name__ == "__main__":
