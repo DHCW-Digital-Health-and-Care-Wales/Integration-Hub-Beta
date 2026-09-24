@@ -29,7 +29,7 @@ class TestPimsTransformer(unittest.TestCase):
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "F")
+        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
             "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL",
@@ -71,7 +71,7 @@ class TestPimsTransformer(unittest.TestCase):
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TEST^TEST-TEST^""^^MISS')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "F")
+        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
         self.assertEqual(transformed_message.pid.pid_11.value, '1 TEST^TEST^TEST^""^CF11 9AD')
         self.assertEqual(transformed_message.pid.pid_13[0].value, "07000000001")
         self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001")
@@ -107,7 +107,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
         self.assertEqual(transformed_message.pid.pid_5.value, "TEST^TEST^TEST^^MS.")
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "F")
+        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
             "1, TEST^TEST TEST^TEST^TEST^CF11 9AD",
