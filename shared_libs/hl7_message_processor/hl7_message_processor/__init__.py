@@ -6,12 +6,13 @@ in this package.
 """
 
 from .converter import er7_to_xml, xml_to_er7
-from .exceptions import MessageNotProcessableError, SchemaNotFoundError, XmlValidationError
+from .exceptions import Hl7MessageValidationError, MessageNotProcessableError, SchemaNotFoundError, XmlValidationError
 from .processor import ProcessedMessage, process_er7
 from .schema_resolver import SchemaResolver, resolve_schema_path
-from .validator import validate_xml
+from .validator import validate_hl7_message, validate_xml
 
 __all__ = [
+    "Hl7MessageValidationError",
     "MessageNotProcessableError",
     "ProcessedMessage",
     "SchemaNotFoundError",
@@ -20,6 +21,7 @@ __all__ = [
     "er7_to_xml",
     "process_er7",
     "resolve_schema_path",
+    "validate_hl7_message",
     "validate_xml",
     "xml_to_er7",
 ]
