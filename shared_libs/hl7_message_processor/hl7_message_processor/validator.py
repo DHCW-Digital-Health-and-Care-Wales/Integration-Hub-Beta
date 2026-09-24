@@ -1,4 +1,4 @@
-"""XSD schema validation and hl7apy-native ER7 validation, both PII-safe.
+"""XSD schema validation and hl7apy-native ER7 validation, both PII-safe by default.
 
 ``str(xmlschema error)`` embeds an ``Instance:`` block containing the full XML document being
 validated - for HL7 messages that includes patient-identifiable information (PII). This module only
@@ -7,8 +7,13 @@ section 5.4) - never the raw instance.
 
 ``validate_hl7_message`` applies the same PII-safety rule to hl7apy's own reference-driven
 validation: only its error-level messages (element/child names, cardinality, datatype) are raised,
-never its warning-level messages (e.g. table-value checks), which embed the raw field value. See
-notes/hl7apy-native-validation-design-report.md for the full design rationale.
+never its warning-level messages (e.g. table-value checks), which embed the raw field value. Warnings
+are always logged via the standard logger and can also be surfaced to a caller-supplied ``on_warning``
+callback (e.g. to emit a structured "Integration Hub Event" via that caller's own ``EventLogger`` -
+this module deliberately has no ``event_logger_lib`` dependency of its own) - note the callback DOES
+receive the raw warning text, PII included, by explicit design decision (accepted risk; the caller
+owns any further redaction). See notes/hl7apy-native-validation-design-report.md for the full design
+rationale.
 """
 
 from __future__ import annotations
@@ -17,7 +22,7 @@ import logging
 import os
 import tempfile
 from functools import lru_cache
-from typing import Any
+from typing import Any, Callable, Optional
 
 import xmlschema
 from hl7apy.consts import VALIDATION_LEVEL
@@ -82,7 +87,11 @@ def _collect_hl7apy_validation_results(message: Any) -> tuple[list[str], list[st
         os.remove(report_path)
 
 
-def validate_hl7_message(er7_message: str, validation_level: int = VALIDATION_LEVEL.TOLERANT) -> None:
+def validate_hl7_message(
+    er7_message: str,
+    validation_level: int = VALIDATION_LEVEL.TOLERANT,
+    on_warning: Optional[Callable[[str], None]] = None,
+) -> None:
     """Validate ``er7_message`` using hl7apy's reference-driven structural/value validation.
 
     Unlike ``validate_xml``, this checks the ER7 message directly against hl7apy's own HL7 v2
@@ -94,8 +103,12 @@ def validate_hl7_message(er7_message: str, validation_level: int = VALIDATION_LE
     ``Element.validate()`` pass is run to also catch cardinality violations (e.g. a missing required
     segment), which aren't detected at parse time under either level.
 
-    hl7apy's warning-level findings (e.g. a value absent from its HL7 table) are logged but never
-    included in the raised exception, since they embed the raw field value (PII).
+    hl7apy's warning-level findings (e.g. a value absent from its HL7 table) are always logged via
+    the standard logger. This module deliberately has no dependency on ``event_logger_lib`` (kept
+    pure/PII-agnostic) - callers that want each warning surfaced as a structured "Integration Hub
+    Event" (e.g. via ``EventLogger.log_validation_warning``) should pass ``on_warning``, invoked once
+    per warning with hl7apy's raw warning text (this DOES include the raw field value - it is the
+    caller's responsibility to redact it first if that's a requirement for its logging destination).
 
     Raises:
         Hl7MessageValidationError: on any error-level violation, message is every error joined with
@@ -111,6 +124,8 @@ def validate_hl7_message(er7_message: str, validation_level: int = VALIDATION_LE
 
     for warning_text in warnings:
         logger.warning("HL7 message validation warning: %s", warning_text)
+        if on_warning is not None:
+            on_warning(warning_text)
 
     if errors:
         for error_text in errors:

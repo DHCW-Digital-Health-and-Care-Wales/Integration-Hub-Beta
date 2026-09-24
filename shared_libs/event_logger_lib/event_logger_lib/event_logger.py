@@ -215,6 +215,20 @@ class EventLogger:
         )
         self._send_log_event(event)
 
+    def log_validation_warning(
+        self,
+        message_content: str,
+        warning_details: str,
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        event = self._create_log_event(
+            EventType.VALIDATION_WARNING,
+            message_content,
+            error_details=warning_details,
+            correlation_id=correlation_id,
+        )
+        self._send_log_event(event)
+
     def _send_log_event(self, event: LogEvent) -> None:
         try:
             event_dict = {

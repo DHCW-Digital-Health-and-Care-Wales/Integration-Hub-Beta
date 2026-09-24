@@ -25,6 +25,13 @@ INVALID_NM_VALUE_MESSAGE = (
     "PD1|||^^W99999|G9999999"
 )
 
+VALID_ADT_A05_WITH_TABLE_WARNING = (
+    "MSH|^~\\&|SENDAPP|SENDFAC|RECAPP|RECFAC|20241230133601||ADT^A28^ADT_A05|MSG00001|P|2.5.1\r"
+    "EVN|A28|20241230133601\r"
+    "PID|1||123456^^^MRN^MR||DOE^JOHN||||||^^^^^^HOME\r"
+    "PV1|1|I"
+)
+
 
 class ValidateHl7MessageStrictTests(unittest.TestCase):
     def test_invalid_nm_value_raises_single_error(self) -> None:
@@ -70,6 +77,34 @@ class ValidateHl7MessageTolerantTests(unittest.TestCase):
         # to prove the *default* level is TOLERANT (parses successfully either way here).
         with self.assertRaises(Hl7MessageValidationError):
             validate_hl7_message(MISSING_SEGMENTS_ADT_A05)
+
+    def test_on_warning_callback_receives_raw_warning_text(self) -> None:
+        received: list[str] = []
+
+        validate_hl7_message(
+            VALID_ADT_A05_WITH_TABLE_WARNING,
+            validation_level=VALIDATION_LEVEL.TOLERANT,
+            on_warning=received.append,
+        )
+
+        self.assertEqual(len(received), 1)
+        self.assertIn("HOME", received[0])
+        self.assertIn("HL70190", received[0])
+
+    def test_on_warning_callback_not_called_when_no_warnings(self) -> None:
+        received: list[str] = []
+
+        validate_hl7_message(
+            VALID_ADT_A05,
+            validation_level=VALIDATION_LEVEL.TOLERANT,
+            on_warning=received.append,
+        )
+
+        self.assertEqual(received, [])
+
+    def test_on_warning_callback_is_optional(self) -> None:
+        # Must not raise even though the message produces a warning and no callback is supplied.
+        validate_hl7_message(VALID_ADT_A05_WITH_TABLE_WARNING, validation_level=VALIDATION_LEVEL.TOLERANT)
 
 
 class ValidateHl7MessageReportFileCleanupTests(unittest.TestCase):

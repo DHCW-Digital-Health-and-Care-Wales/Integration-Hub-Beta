@@ -289,6 +289,32 @@ class TestEventLogger(unittest.TestCase):
             "Event logged to Azure Monitor: VALIDATION_FAILED"
         )
 
+    @patch("event_logger_lib.event_logger.datetime")
+    @patch("event_logger_lib.event_logger.logger")
+    def test_log_validation_warning(self, mock_logger, mock_datetime):
+        # Arrange
+        event_logger = self.event_logger
+        mock_datetime.now.return_value = datetime(
+            2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+        )
+        message_content = "Test HL7 Message"
+        warning_details = "Value HOME not in table HL70190 in element PID_11.XAD_7"
+
+        # Act
+        event_logger.log_validation_warning(message_content, warning_details)
+
+        # Assert
+        self._assert_log_event(
+            mock_logger,
+            "VALIDATION_WARNING",
+            message_content,
+            "2025-01-01T12:00:00+00:00",
+            error_details=warning_details,
+        )
+        mock_logger.debug.assert_called_once_with(
+            "Event logged to Azure Monitor: VALIDATION_WARNING"
+        )
+
     @patch("event_logger_lib.event_logger.logger")
     def test_send_log_event_exception_handling(self, mock_logger):
         # Arrange
