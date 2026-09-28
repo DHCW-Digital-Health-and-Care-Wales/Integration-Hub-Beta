@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pause_macros.html" import pause_indicator with context %}
 
 {% block title %}{{ _("Overview") }}{% endblock %}
 
@@ -42,6 +43,7 @@
       <p class="page-subtitle">{{ _("Real-time view of all HL7 integration flows") }}</p>
     </div>
     <div class="refresh-bar">
+      {{ pause_indicator(pause_summary) }}
       <span>{{ _("Last updated:") }} <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
       <div class="refresh-countdown">
         <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
@@ -199,6 +201,7 @@
     {% set a1_critical   = alarm1_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
     {% set a1_suppressed = alarm1_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set a1_healthy    = alarm1_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set a1_paused     = alarm1_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div class="col-12 col-md-4">
       <div id="alarm1-summary-card" class="queue-table-wrapper h-100
@@ -244,6 +247,10 @@
             <div id="alarm1-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a1_healthy }}</div>
             <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
           </div>
+          <div>
+            <div id="alarm1-sum-paused" class="alarm-sum-num"{% if a1_paused > 0 %} style="color:var(--accent-cyan)"{% endif %}>{{ a1_paused }}</div>
+            <div class="alarm-sum-lbl">{{ _("Paused") }}</div>
+          </div>
         </div>
         {% else %}
         <p class="alarm-sum-empty">
@@ -270,6 +277,7 @@
     {% set a2_critical   = alarm2_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
     {% set a2_suppressed = alarm2_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set a2_healthy    = alarm2_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set a2_paused     = alarm2_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div class="col-12 col-md-4">
       <div id="alarm2-summary-card" class="queue-table-wrapper h-100
@@ -315,6 +323,10 @@
             <div id="alarm2-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a2_healthy }}</div>
             <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
           </div>
+          <div>
+            <div id="alarm2-sum-paused" class="alarm-sum-num"{% if a2_paused > 0 %} style="color:var(--accent-cyan)"{% endif %}>{{ a2_paused }}</div>
+            <div class="alarm-sum-lbl">{{ _("Paused") }}</div>
+          </div>
         </div>
         {% else %}
         <p class="alarm-sum-empty">
@@ -337,6 +349,7 @@
     {% set a3_critical   = alarm3_rows | selectattr('status', 'equalto', 'critical')   | list | length %}
     {% set a3_suppressed = alarm3_rows | selectattr('status', 'equalto', 'suppressed') | list | length %}
     {% set a3_healthy    = alarm3_rows | selectattr('status', 'equalto', 'healthy')    | list | length %}
+    {% set a3_paused     = alarm3_rows | selectattr('status', 'equalto', 'paused')     | list | length %}
 
     <div class="col-12 col-md-4">
       <div id="alarm3-summary-card" class="queue-table-wrapper h-100
@@ -381,6 +394,10 @@
           <div>
             <div id="alarm3-sum-healthy" class="alarm-sum-num alarm-sum-green">{{ a3_healthy }}</div>
             <div class="alarm-sum-lbl">{{ _("Healthy") }}</div>
+          </div>
+          <div>
+            <div id="alarm3-sum-paused" class="alarm-sum-num"{% if a3_paused > 0 %} style="color:var(--accent-cyan)"{% endif %}>{{ a3_paused }}</div>
+            <div class="alarm-sum-lbl">{{ _("Paused") }}</div>
           </div>
         </div>
         {% else %}

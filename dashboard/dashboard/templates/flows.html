@@ -146,6 +146,21 @@
         {% if flow_dlq > 0 %}
         <span class="dlq-badge-pill"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ flow_dlq }}</span>
         {% endif %}
+        {# Flow-level pause state: any active or scheduled pause touching this flow's alarms. #}
+        {% set fp = flow_pauses.get(flow.id) %}
+        {% if fp and fp.active %}
+        <a href="{{ url_for('alarm_pauses_page', _anchor='pause-' ~ fp.active.pause_id) }}"
+           class="flow-pause-badge flow-pause-badge--active"
+           title="{{ fp.active.reason }}{% if fp.active.requested_by %} — {{ fp.active.requested_by }}{% endif %}">
+          <i class="bi bi-pause-circle-fill"></i>{{ _("Alarms paused") }}
+          {% if fp.active.indefinite %}· {{ _("until cancelled") }}{% else %}· {{ _("until") }} {{ fp.active.end_display }}{% endif %}
+        </a>
+        {% elif fp and fp.scheduled %}
+        <a href="{{ url_for('alarm_pauses_page', _anchor='pause-' ~ fp.scheduled.pause_id) }}"
+           class="flow-pause-badge flow-pause-badge--scheduled" title="{{ fp.scheduled.reason }}">
+          <i class="bi bi-calendar-event"></i>{{ _("Pause scheduled") }} {{ fp.scheduled.start_display }}
+        </a>
+        {% endif %}
         <span class="status-badge {{ flow.health }} large flow-health-badge">
           <span class="flow-status-dot {{ flow.health }}" style="width:7px;height:7px;"></span>
           {{ flow.health | upper }}
@@ -575,7 +590,7 @@
           {% set a = flow_alarms.alarm1 %}
           {% if a %}
             {% set st = a.status %}
-            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% elif st == 'paused' %}fac--paused{% else %}fac--healthy{% endif %}">
               <div class="fac-header">
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
@@ -586,6 +601,7 @@
                   {% if a.alarm_enabled %}
                     {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
                     {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
                     {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}
@@ -616,7 +632,7 @@
           {% set a = flow_alarms.alarm2 %}
           {% if a %}
             {% set st = a.status %}
-            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% elif st == 'paused' %}fac--paused{% else %}fac--healthy{% endif %}">
               <div class="fac-header">
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
@@ -627,6 +643,7 @@
                   {% if a.alarm_enabled %}
                     {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
                     {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
                     {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}
@@ -656,7 +673,7 @@
           {% set a = flow_alarms.alarm3 %}
           {% if a %}
             {% set st = a.status %}
-            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% else %}fac--healthy{% endif %}">
+            <div class="flow-alarm-chip {% if not a.alarm_enabled %}fac--disabled{% elif st == 'critical' %}fac--critical{% elif st == 'suppressed' %}fac--suppressed{% elif st == 'paused' %}fac--paused{% else %}fac--healthy{% endif %}">
               <div class="fac-header">
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
@@ -667,6 +684,7 @@
                   {% if a.alarm_enabled %}
                     {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
                     {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
                     {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
                     {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
                     {% endif %}

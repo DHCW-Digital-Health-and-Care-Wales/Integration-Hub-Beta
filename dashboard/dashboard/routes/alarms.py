@@ -1,4 +1,4 @@
-"""Alarm overview/status pages and pause/unpause actions for Alarms 1-3.
+"""Alarm overview/status pages, alarm pause actions and the Alarm Pauses page/API.
 
 Extracted from ``dashboard.app`` as part of the route-module split. These are
 plain view functions (no Flask ``Blueprint`` — see ``dashboard.routes``
@@ -6,18 +6,30 @@ module docstring for why), registered onto the app by ``register(app)`` with
 explicit endpoint names matching their original flat names so existing
 ``url_for(...)`` calls and any programmatic references keep working
 unchanged.
+
+Pause endpoints:
+
+  * ``POST /alarmN/pause/<rule_id>`` / ``POST /alarmN/unpause/<rule_id>`` — start-now
+    pause / resume of a single rule (used by the alarm tables' Pause/Resume buttons).
+  * ``GET /alarms/pauses`` — page listing active, scheduled and recently ended pauses.
+  * ``GET /api/alarm-pauses`` — the same lists as JSON.
+  * ``GET /api/alarm-pauses/options`` — flow/rule picker data for the pause modal.
+  * ``POST /api/alarm-pauses`` — create a pause (any scope, now or scheduled).
+  * ``POST /api/alarm-pauses/<pause_id>/cancel`` — cancel a scheduled pause or end an active one.
+
+Pause storage and rules live in :mod:`dashboard.services.alarm_pauses`; after any
+change the cached alarm rows are re-patched so the reloaded page is correct immediately.
 """
 
 from __future__ import annotations
 
-import logging
-import time
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import datetime, timezone
 
-from flask import Flask, Response, current_app, jsonify, render_template, request
+from flask import Flask, Response, current_app, jsonify, render_template, request, url_for
 
 import dashboard.config as config
-from dashboard.services import cache
+from dashboard.services import alarm_base, alarm_pauses, cache, cosmos_store
 from dashboard.services.alarm1 import (
     get_alarm_status,
     get_config_page_data,
@@ -44,6 +56,11 @@ from dashboard.services.status_builder import LONDON_TZ
 
 # Sort order used to bubble paused/critical rows to the top of alarm tables.
 _PAUSE_ORDER = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
+
+# Alarm type -> in-memory cache key holding that alarm's evaluated status rows.
+ALARM_CACHE_KEYS = {"alarm1": "alarms", "alarm2": "alarm2", "alarm3": "alarm3"}
+# Short alarm-type names used when labelling rule targets on the pauses page/modal.
+ALARM_TYPE_LABELS = {"alarm1": "Inactivity", "alarm2": "Volume", "alarm3": "Failures"}
 
 
 def alarms_overview_page() -> str:
@@ -78,6 +95,7 @@ def alarms_overview_page() -> str:
         no_alarm2_configured=not any_alarm2,
         alarm3_rows=alarm3_rows,
         no_alarm3_configured=not any_alarm3,
+        pause_summary=alarm_pauses.current_summary(),
         config_ok=bool(config.AZURE_LOG_ANALYTICS_WORKSPACE_ID),
         refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
         refresh_interval=int(config.API_CACHE_TTL),
@@ -104,181 +122,251 @@ def alarm_page() -> str:
     )
 
 
-def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 1 rule for a given duration with an optional reason.
+def _patch_cached_rows(resumed: tuple[str, str] | None = None) -> None:
+    """Re-apply pause records to the cached alarm rows so the next page load reflects a change instantly.
 
-    Expects a JSON body: ``{"duration_minutes": int, "reason": str}``.
-    Optimistically updates the in-memory cache so the page reload is instant
-    rather than waiting for a fresh Azure Log Analytics query.
+    ``resumed`` names an ``(alarm_type, rule_id)`` whose legacy pause was just cleared.
+    The caches are then marked stale so a background refresh re-evaluates the true status.
+    """
+    pauses = alarm_pauses.list_pauses()
+    now = datetime.now(timezone.utc)
+    with cache.cache_lock:
+        for alarm_type, key in ALARM_CACHE_KEYS.items():
+            entry = cache.cache_data.get(key)
+            if not entry or not isinstance(entry.get("data"), list):
+                continue
+            rows: list[dict] = entry["data"]
+            for row in rows:
+                wid = (row.get("workflow_id") or "").strip()
+                pause = alarm_pauses.active_pause_for(pauses, alarm_type, row.get("id", ""), wid, now)
+                if pause is not None:
+                    row.update(status="paused", **alarm_pauses.pause_row_fields(pause, now))
+                elif row.get("status") == "paused" and (
+                    row.get("pause_id") or resumed == (alarm_type, row.get("id"))
+                ):
+                    row.update(status="unknown", **alarm_base.EMPTY_PAUSE_FIELDS)
+            alarm_pauses.annotate_scheduled(rows, alarm_type, pauses, now)
+            rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
+            entry["ts"] = 0.0
+
+
+def _pause_error_response(exc: Exception) -> tuple[Response, int]:
+    """Map pause-service exceptions to a JSON error response.
+
+    409 = rule is covered by a wider pause (includes a ``manage_url`` to that pause),
+    404 = unknown pause id, 400 = validation failure, 503 = pause storage unavailable.
+    """
+    if isinstance(exc, alarm_pauses.PauseConflictError):
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": exc.safe_message,
+                    "pause_id": exc.pause_id,
+                    "manage_url": url_for("alarm_pauses_page", _anchor=f"pause-{exc.pause_id}"),
+                }
+            ),
+            409,
+        )
+    if isinstance(exc, alarm_pauses.PauseNotFoundError):
+        return jsonify({"ok": False, "error": exc.safe_message}), 404
+    if isinstance(exc, alarm_pauses.PauseError):
+        return jsonify({"ok": False, "error": exc.safe_message}), 400
+    if isinstance(exc, alarm_pauses.PausePersistenceError):
+        current_app.logger.error("Alarm pause persistence failure: %s", exc)
+        return jsonify({"ok": False, "error": exc.safe_message}), 503
+    raise exc
+
+
+# Exceptions the pause service raises for expected, user-facing failures.
+_PAUSE_EXCEPTIONS = (alarm_pauses.PauseError, alarm_pauses.PausePersistenceError)
+
+
+def _pause_now(pause_fn: Callable[[str, int | None, str, str], dict], rule_id: str) -> tuple[Response, int] | Response:
+    """Handle a start-now single-rule pause request.
+
+    Expects ``{"duration_minutes": int, "indefinite": bool, "reason": str, "requested_by": str}``.
+    ``duration_minutes`` defaults to 60 (the previous behaviour) and is ignored when
+    ``indefinite`` is true. ``pause_fn`` is the alarm module's ``pause_alarm*_rule``.
     """
     data = request.get_json(silent=True) or {}
+    duration: int | None = None
+    if not data.get("indefinite"):
+        try:
+            duration = int(data.get("duration_minutes", 60))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "Invalid duration_minutes value."}), 400
     try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError) as exc:
-        current_app.logger.warning("Invalid pause request payload: %s", exc)
-        return jsonify({"ok": False, "error": "Invalid duration_minutes value."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm_rule(rule_id, duration, reason)
-
-    # Optimistically patch the cached row so the page reload is instant.
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarms", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarms"]["data"] = cached_rows
-            cache.cache_data["alarms"]["ts"] = time.monotonic()  # mark as fresh
-    return jsonify({"ok": True})
+        pause = pause_fn(rule_id, duration, str(data.get("reason", "")), str(data.get("requested_by", "")))
+    except _PAUSE_EXCEPTIONS as exc:
+        return _pause_error_response(exc)
+    _patch_cached_rows()
+    return jsonify({"ok": True, "pause": pause})
 
 
-def alarm1_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 1 rule, restoring normal evaluation.
+def _resume(alarm_type: str, resume_fn: Callable[[str], None], rule_id: str) -> tuple[Response, int] | Response:
+    """Handle a single-rule resume request.
 
-    Optimistically sets the row to 'unknown' in the cache so the reload is
-    instant, then marks the cache as stale so a background refresh re-evaluates
-    the true alarm status shortly afterwards.
+    ``resume_fn`` is the alarm module's ``unpause_alarm*_rule``; it raises
+    ``PauseConflictError`` (-> 409) when the rule is paused by a flow/all-flows pause.
     """
-    unpause_alarm_rule(rule_id)
-
-    # Optimistically patch the cached row: show 'unknown' instantly,
-    # then let the stale cache trigger a background re-evaluation.
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarms", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarms"]["data"] = cached_rows
-        # Mark stale — background refresh will resolve the true status shortly.
-        if "alarms" in cache.cache_data:
-            cache.cache_data["alarms"]["ts"] = 0.0
+    try:
+        resume_fn(rule_id)
+    except _PAUSE_EXCEPTIONS as exc:
+        return _pause_error_response(exc)
+    _patch_cached_rows(resumed=(alarm_type, rule_id))
     return jsonify({"ok": True})
+
+
+def alarm1_pause(rule_id: str) -> tuple[Response, int] | Response:
+    """Pause an Alarm 1 rule from now."""
+    return _pause_now(pause_alarm_rule, rule_id)
+
+
+def alarm1_unpause(rule_id: str) -> tuple[Response, int] | Response:
+    """Resume an Alarm 1 rule."""
+    return _resume("alarm1", unpause_alarm_rule, rule_id)
 
 
 def alarm2_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 2 rule for a given duration with an optional reason."""
-    data = request.get_json(silent=True) or {}
-    try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError):
-        logging.getLogger(__name__).warning(
-            "Invalid pause request payload for alarm2 rule_id=%s",
-            rule_id,
-            exc_info=True,
-        )
-        return jsonify({"ok": False, "error": "Invalid duration_minutes value."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm2_rule(rule_id, duration, reason)
-
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarm2", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarm2"]["data"] = cached_rows
-            cache.cache_data["alarm2"]["ts"] = time.monotonic()
-    return jsonify({"ok": True})
+    """Pause an Alarm 2 rule from now."""
+    return _pause_now(pause_alarm2_rule, rule_id)
 
 
-def alarm2_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 2 rule, restoring normal evaluation."""
-    unpause_alarm2_rule(rule_id)
-
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarm2", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarm2"]["data"] = cached_rows
-        if "alarm2" in cache.cache_data:
-            cache.cache_data["alarm2"]["ts"] = 0.0
-    return jsonify({"ok": True})
+def alarm2_unpause(rule_id: str) -> tuple[Response, int] | Response:
+    """Resume an Alarm 2 rule."""
+    return _resume("alarm2", unpause_alarm2_rule, rule_id)
 
 
 def alarm3_pause(rule_id: str) -> tuple[Response, int] | Response:
-    """Pause an Alarm 3 rule for a given duration with an optional reason."""
-    data = request.get_json(silent=True) or {}
+    """Pause an Alarm 3 rule from now."""
+    return _pause_now(pause_alarm3_rule, rule_id)
+
+
+def alarm3_unpause(rule_id: str) -> tuple[Response, int] | Response:
+    """Resume an Alarm 3 rule."""
+    return _resume("alarm3", unpause_alarm3_rule, rule_id)
+
+
+def _rule_catalogue() -> dict[str, list[dict]]:
+    """Return every non-deleted rule per alarm type (for validation and the pause modal)."""
+    return {
+        "alarm1": get_config_page_data(),
+        "alarm2": get_alarm2_config_page_data(),
+        "alarm3": get_alarm3_config_page_data(),
+    }
+
+
+def _label_targets(views: list[dict], flow_labels: dict[str, str], catalogue: dict[str, list[dict]]) -> None:
+    """Add human-readable ``target_labels`` to pause views in place."""
+    rule_labels = {
+        (alarm_type, r["id"]): r.get("display_name") or r["id"]
+        for alarm_type, rules in catalogue.items()
+        for r in rules
+    }
+    for view in views:
+        if view["scope_type"] == alarm_pauses.SCOPE_FLOWS:
+            view["target_labels"] = [flow_labels.get(wid, wid) for wid in view["targets"]]
+        elif view["scope_type"] == alarm_pauses.SCOPE_RULE:
+            view["target_labels"] = [
+                f"{ALARM_TYPE_LABELS.get(t.get('alarm_type', ''), t.get('alarm_type', ''))}: "
+                f"{rule_labels.get((t.get('alarm_type'), t.get('rule_id')), t.get('rule_id'))}"
+                for t in view["targets"]
+            ]
+        else:
+            view["target_labels"] = []
+
+
+def _pause_page_context() -> dict:
+    """Build the grouped pause lists plus picker data shared by the page and JSON API."""
+    catalogue = _rule_catalogue()
+    flow_options = build_flow_options(get_flows(), [r for rules in catalogue.values() for r in rules])
+    flow_labels = {o["id"]: o["label"] for o in flow_options}
+    now = datetime.now(timezone.utc)
+    pauses = alarm_pauses.list_pauses()
+    groups = alarm_pauses.group_for_display(pauses, now)
+    for views in groups.values():
+        _label_targets(views, flow_labels, catalogue)
+    return {
+        "groups": groups,
+        "summary": alarm_pauses.summarise(pauses, now),
+        "flow_options": flow_options,
+        "rule_options": [
+            {
+                "alarm_type": alarm_type,
+                "rule_id": r["id"],
+                "label": f"{ALARM_TYPE_LABELS[alarm_type]}: {r.get('display_name') or r['id']}",
+                "workflow_id": r.get("workflow_id", ""),
+            }
+            for alarm_type, rules in catalogue.items()
+            for r in rules
+        ],
+    }
+
+
+def alarm_pauses_page() -> str:
+    """Render the Alarm Pauses page (active, scheduled and recently ended pauses)."""
+    return render_template(
+        "alarm_pauses.html",
+        **_pause_page_context(),
+        persistence_configured=cosmos_store.is_configured(),
+        refreshed_at=datetime.now(LONDON_TZ).strftime("%d %b %Y  %H:%M:%S %Z"),
+    )
+
+
+def api_alarm_pauses_list() -> Response:
+    """JSON list of pauses grouped as active / scheduled / recent, plus summary counts."""
+    context = _pause_page_context()
+    return jsonify({"groups": context["groups"], "summary": context["summary"]})
+
+
+def api_alarm_pauses_options() -> Response:
+    """JSON flow and rule picker options for the shared pause modal.
+
+    Served separately (and fetched lazily by ``alarm-pause.js``) so every page that
+    includes the modal doesn't have to run flow discovery on render.
+    """
+    context = _pause_page_context()
+    return jsonify({"flow_options": context["flow_options"], "rule_options": context["rule_options"]})
+
+
+def api_alarm_pauses_create() -> tuple[Response, int] | Response:
+    """Create a pause of any scope, starting now or at a scheduled time.
+
+    Body (see ``alarm_pauses.build_pause``)::
+
+        {"scope_type": "rule" | "flows" | "all",
+         "targets": [{"alarm_type": "alarm1", "rule_id": "..."}] | ["<workflow_id>", ...] | [],
+         "start": null | "YYYY-MM-DDTHH:MM" (UK time),
+         "end_mode": "duration" | "until" | "indefinite",
+         "duration_minutes": int, "end": "YYYY-MM-DDTHH:MM",
+         "reason": str, "requested_by": str}
+
+    Returns 201 with the created pause view.
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "Expected a JSON object."}), 400
+    known_rules = {
+        alarm_type: {r["id"]: (r.get("workflow_id") or "").strip() for r in rules}
+        for alarm_type, rules in _rule_catalogue().items()
+    }
     try:
-        duration = int(data.get("duration_minutes", 60))
-        if duration < 1:
-            raise ValueError("duration_minutes must be >= 1")
-    except (TypeError, ValueError):
-        logging.warning("Invalid alarm3 pause payload", exc_info=True)
-        return jsonify({"ok": False, "error": "Invalid request payload."}), 400
-
-    reason = str(data.get("reason", "")).strip()
-    pause_alarm3_rule(rule_id, duration, reason)
-
-    now = datetime.now(LONDON_TZ)
-    paused_until_dt = now + timedelta(minutes=duration)
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarm3", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "paused"
-                    row["pause_remaining"] = float(duration)
-                    row["pause_reason"] = reason
-                    row["paused_until"] = paused_until_dt.strftime("%d %b %Y  %H:%M %Z")
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarm3"]["data"] = cached_rows
-            cache.cache_data["alarm3"]["ts"] = time.monotonic()
-    return jsonify({"ok": True})
+        pause = alarm_pauses.create_pause(data, known_rules)
+    except _PAUSE_EXCEPTIONS as exc:
+        return _pause_error_response(exc)
+    _patch_cached_rows()
+    return jsonify({"ok": True, "pause": pause}), 201
 
 
-def alarm3_unpause(rule_id: str) -> Response:
-    """Remove a manual pause from an Alarm 3 rule, restoring normal evaluation."""
-    unpause_alarm3_rule(rule_id)
-
-    with cache.cache_lock:
-        cached_rows = cache.cache_data.get("alarm3", {}).get("data")
-        if isinstance(cached_rows, list):
-            for row in cached_rows:
-                if row.get("id") == rule_id:
-                    row["status"] = "unknown"
-                    row.pop("pause_remaining", None)
-                    row.pop("pause_reason", None)
-                    row.pop("paused_until", None)
-                    break
-            cached_rows.sort(key=lambda r: _PAUSE_ORDER.get(r.get("status", ""), 9))
-            cache.cache_data["alarm3"]["data"] = cached_rows
-        if "alarm3" in cache.cache_data:
-            cache.cache_data["alarm3"]["ts"] = 0.0
-    return jsonify({"ok": True})
+def api_alarm_pauses_cancel(pause_id: str) -> tuple[Response, int] | Response:
+    """Cancel a scheduled pause or end an active one now."""
+    try:
+        pause = alarm_pauses.cancel_pause(pause_id)
+    except _PAUSE_EXCEPTIONS as exc:
+        return _pause_error_response(exc)
+    _patch_cached_rows()
+    return jsonify({"ok": True, "pause": pause})
 
 
 def alarm2_page() -> str:
@@ -395,4 +483,18 @@ def register(app: Flask) -> None:
     )
     app.add_url_rule(
         "/alarm3/unpause/<rule_id>", endpoint="alarm3_unpause", view_func=alarm3_unpause, methods=["POST"]
+    )
+    app.add_url_rule("/alarms/pauses", endpoint="alarm_pauses_page", view_func=alarm_pauses_page)
+    app.add_url_rule("/api/alarm-pauses", endpoint="api_alarm_pauses_list", view_func=api_alarm_pauses_list)
+    app.add_url_rule(
+        "/api/alarm-pauses/options", endpoint="api_alarm_pauses_options", view_func=api_alarm_pauses_options
+    )
+    app.add_url_rule(
+        "/api/alarm-pauses", endpoint="api_alarm_pauses_create", view_func=api_alarm_pauses_create, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/api/alarm-pauses/<pause_id>/cancel",
+        endpoint="api_alarm_pauses_cancel",
+        view_func=api_alarm_pauses_cancel,
+        methods=["POST"],
     )

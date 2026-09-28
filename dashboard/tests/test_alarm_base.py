@@ -1,7 +1,6 @@
 """
 Unit tests for dashboard.services.alarm_base — the shared Cosmos DB config/
-state persistence and pause/unpause helpers used by alarm1.py, alarm2.py,
-and alarm3.py.
+state persistence and pause helpers used by alarm1.py, alarm2.py, and alarm3.py.
 """
 
 from __future__ import annotations
@@ -44,21 +43,103 @@ class TestLoadSaveState:
         mock_upsert.assert_called_once_with("alarm2", "state", {"rules": {"r1": {}}}, doc_type="alarm_state")
 
 
-class TestPauseUnpauseRule:
-    def test_pause_rule_writes_paused_until_and_reason(self) -> None:
+class TestResolvePause:
+    NOW = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
+
+    def _record(self, end: datetime | None) -> dict:
+        return {
+            "pause_id": "p1",
+            "scope_type": "flows",
+            "targets": ["phw-to-mpi"],
+            "start_at": (self.NOW - timedelta(hours=1)).isoformat(),
+            "end_at": end.isoformat() if end else None,
+            "reason": "Deployment",
+            "requested_by": "Yoana",
+        }
+
+    def test_active_pause_record_returns_row_fields(self) -> None:
+        fields = alarm_base.resolve_pause(
+            {}, "alarm1", "r1", "phw-to-mpi", [self._record(self.NOW + timedelta(minutes=30))], self.NOW
+        )
+        assert fields is not None
+        assert fields["pause_id"] == "p1"
+        assert fields["pause_remaining"] == 30
+        assert fields["paused_by"] == "Yoana"
+        assert set(fields) == set(alarm_base.EMPTY_PAUSE_FIELDS)
+
+    def test_pause_on_another_flow_does_not_apply(self) -> None:
+        assert alarm_base.resolve_pause({}, "alarm1", "r1", "pims-to-mpi", [self._record(None)], self.NOW) is None
+
+    def test_legacy_paused_until_is_still_honoured(self) -> None:
+        rule_state = {"paused_until": (self.NOW + timedelta(minutes=20)).isoformat(), "pause_reason": "old"}
+        fields = alarm_base.resolve_pause(rule_state, "alarm1", "r1", "phw-to-mpi", [], self.NOW)
+        assert fields is not None
+        assert fields["pause_id"] is None
+        assert fields["pause_scope"] == "rule"
+        assert fields["pause_reason"] == "old"
+        assert fields["pause_remaining"] == 20
+
+    def test_expired_legacy_pause_does_not_apply(self) -> None:
+        rule_state = {"paused_until": (self.NOW - timedelta(minutes=1)).isoformat()}
+        assert alarm_base.resolve_pause(rule_state, "alarm1", "r1", "phw-to-mpi", [], self.NOW) is None
+
+
+class TestClearExpiredLegacyPause:
+    NOW = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
+
+    def test_clears_expired_pause_and_keeps_other_state(self) -> None:
+        state_rules = {"r1": {"paused_until": "2026-10-01T11:00:00+00:00", "pause_reason": "x", "last_alarm_at": "z"}}
+        assert alarm_base.clear_expired_legacy_pause(state_rules, "r1", self.NOW) is True
+        assert state_rules == {"r1": {"last_alarm_at": "z"}}
+
+    def test_removes_rule_entry_when_it_becomes_empty(self) -> None:
+        state_rules = {"r1": {"paused_until": "2026-10-01T11:00:00+00:00"}}
+        assert alarm_base.clear_expired_legacy_pause(state_rules, "r1", self.NOW) is True
+        assert state_rules == {}
+
+    def test_leaves_unexpired_or_missing_pause_alone(self) -> None:
+        state_rules = {"r1": {"paused_until": "2026-10-01T13:00:00+00:00"}, "r2": {"last_alarm_at": "z"}}
+        assert alarm_base.clear_expired_legacy_pause(state_rules, "r1", self.NOW) is False
+        assert alarm_base.clear_expired_legacy_pause(state_rules, "r2", self.NOW) is False
+        assert alarm_base.clear_expired_legacy_pause(state_rules, "missing", self.NOW) is False
+
+
+class TestPauseRuleNowAndResume:
+    def test_pause_rule_now_creates_single_rule_pause(self) -> None:
+        with patch("dashboard.services.alarm_base.alarm_pauses.create_pause", return_value={"pause_id": "p"}) as mock:
+            alarm_base.pause_rule_now("alarm2", {"r1": "phw-to-mpi"}, "r1", 45, "Fix", "Matt")
+        payload, known_rules = mock.call_args[0]
+        assert payload["scope_type"] == "rule"
+        assert payload["targets"] == [{"alarm_type": "alarm2", "rule_id": "r1"}]
+        assert payload["end_mode"] == "duration"
+        assert payload["duration_minutes"] == 45
+        assert (payload["reason"], payload["requested_by"]) == ("Fix", "Matt")
+        assert known_rules == {"alarm2": {"r1": "phw-to-mpi"}}
+
+    def test_pause_rule_now_without_duration_is_indefinite(self) -> None:
+        with patch("dashboard.services.alarm_base.alarm_pauses.create_pause") as mock:
+            alarm_base.pause_rule_now("alarm1", {"r1": ""}, "r1", None, "Fix", "Matt")
+        assert mock.call_args[0][0]["end_mode"] == "indefinite"
+
+    def test_resume_rule_clears_legacy_and_cancels_record(self) -> None:
         with (
-            patch("dashboard.services.alarm_base.load_state", return_value={"rules": {}}) as mock_load,
+            patch("dashboard.services.alarm_base.unpause_rule") as mock_legacy,
+            patch("dashboard.services.alarm_base.alarm_pauses.cancel_rule_pause") as mock_cancel,
+        ):
+            alarm_base.resume_rule("alarm3", {"r1": "phw-to-mpi"}, "r1", "Alarm 3")
+        mock_legacy.assert_called_once_with("alarm3", "r1", "Alarm 3", "state")
+        mock_cancel.assert_called_once_with("alarm3", "r1", "phw-to-mpi")
+
+
+class TestPauseUnpauseRule:
+    def test_unpause_rule_skips_write_when_no_legacy_pause(self) -> None:
+        state = {"rules": {"rule-1": {"last_alarm_at": "z"}}}
+        with (
+            patch("dashboard.services.alarm_base.load_state", return_value=state),
             patch("dashboard.services.alarm_base.save_state") as mock_save,
         ):
-            alarm_base.pause_rule("alarm1", "rule-1", 30, "maintenance", "Alarm 1")
-
-        mock_load.assert_called_once_with("alarm1", "state")
-        saved_state = mock_save.call_args[0][1]
-        rule_state = saved_state["rules"]["rule-1"]
-        assert rule_state["pause_reason"] == "maintenance"
-        paused_until = datetime.fromisoformat(rule_state["paused_until"])
-        assert paused_until > datetime.now(timezone.utc)
-        assert paused_until < datetime.now(timezone.utc) + timedelta(minutes=31)
+            alarm_base.unpause_rule("alarm1", "rule-1", "Alarm 1")
+        mock_save.assert_not_called()
 
     def test_unpause_rule_removes_pause_fields_but_keeps_other_state(self) -> None:
         existing_state = {"rules": {"rule-1": {"paused_until": "x", "pause_reason": "y", "last_alarm_at": "z"}}}

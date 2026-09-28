@@ -245,9 +245,10 @@
     const critEl  = document.getElementById(`${prefix}-sum-critical`);
     const suppEl  = document.getElementById(`${prefix}-sum-suppressed`);
     const hlthEl  = document.getElementById(`${prefix}-sum-healthy`);
+    const pausEl  = document.getElementById(`${prefix}-sum-paused`);
     if (!card) return;
 
-    const { critical = 0, suppressed = 0, healthy = 0, total = 0 } = summary;
+    const { critical = 0, suppressed = 0, healthy = 0, paused = 0, total = 0 } = summary;
 
     card.classList.remove("alarm-summary--critical", "alarm-summary--suppressed");
     if (critical > 0)        card.classList.add("alarm-summary--critical");
@@ -274,11 +275,25 @@
       suppEl.className = "alarm-sum-num" + (suppressed > 0 ? " alarm-sum-amber" : "");
     }
     if (hlthEl) animateCounter(hlthEl, healthy);
+    if (pausEl) {
+      animateCounter(pausEl, paused);
+      pausEl.style.color = paused > 0 ? "var(--accent-cyan)" : "";
+    }
   }
 
   function updateAlarm1Summary(summary) { _updateAlarmSummaryCard("alarm1", summary); }
   function updateAlarm2Summary(summary) { _updateAlarmSummaryCard("alarm2", summary); }
   function updateAlarm3Summary(summary) { _updateAlarmSummaryCard("alarm3", summary); }
+
+  /** Refresh the "N paused · M scheduled" pill in the page header (partials/pause_macros.html). */
+  function updatePauseIndicator(summary) {
+    const pill = document.getElementById("pause-indicator");
+    if (!pill || !summary) return;
+    document.getElementById("pause-indicator-active").textContent = summary.active;
+    document.getElementById("pause-indicator-scheduled").textContent = summary.scheduled;
+    pill.classList.toggle("pause-indicator--active", summary.active > 0);
+    pill.classList.toggle("pause-indicator--scheduled", !summary.active && summary.scheduled > 0);
+  }
 
   function updateRetryDelays(retryRows, retryKpis) {
     if (!Array.isArray(retryRows)) return;
@@ -352,6 +367,7 @@
       updateAlarm1Summary(data.alarm1_summary);
       updateAlarm2Summary(data.alarm2_summary);
       updateAlarm3Summary(data.alarm3_summary);
+      updatePauseIndicator(data.pause_summary);
       updateRetryDelays(data.retry_delays, data.retry_delay_kpis);
 
       if (lastRefreshedEl) {

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{# Alarm Pauses: every active, scheduled and recently ended pause, with cancel/end actions.
+   Reached from the pause indicator on the overview pages (/ and /alarms). Rows carry
+   id="pause-<pause_id>" so the Resume button on a rule covered by a wider pause can link here. #}
+
+{% block title %}{{ _("Alarm Pauses") }}{% endblock %}
+
+{% macro scope_cell(p) -%}
+  <td>
+    {% if p.scope_type == 'all' %}
+      <span style="font-weight:600; color:var(--accent-amber);"><i class="bi bi-globe2 me-1"></i>{{ _("All flows") }}</span>
+    {% elif p.scope_type == 'flows' %}
+      <div style="font-weight:600;">
+        <i class="bi bi-diagram-3 me-1"></i>{{ _("Single flow") if p.targets | length == 1 else _("%(n)s flows", n=p.targets | length) }}
+      </div>
+    {% else %}
+      <div style="font-weight:600;">
+        <i class="bi bi-bell me-1"></i>{{ _("Single alarm") if p.targets | length == 1 else _("%(n)s alarms", n=p.targets | length) }}
+      </div>
+    {% endif %}
+    {% if p.target_labels %}
+      <div style="font-size:0.74rem; color:var(--text-muted); margin-top:2px;">{{ p.target_labels | join(", ") }}</div>
+    {% endif %}
+  </td>
+{%- endmacro %}
+
+{% macro window_cells(p) -%}
+  <td style="white-space:nowrap;">{{ p.start_display }}</td>
+  <td style="white-space:nowrap;">
+    {% if p.indefinite %}
+      <span style="color:var(--accent-amber);"><i class="bi bi-infinity me-1"></i>{{ _("Until cancelled") }}</span>
+    {% else %}
+      {{ p.end_display }}
+    {% endif %}
+  </td>
+{%- endmacro %}
+
+{% macro detail_cells(p) -%}
+  <td style="max-width:320px;">{{ p.reason }}</td>
+  <td>
+    {{ p.requested_by }}
+    <div style="font-size:0.7rem; color:var(--text-muted);">{{ p.created_display }}</div>
+  </td>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-pause-circle-fill" style="color:var(--accent-cyan)"></i>
+        {{ _("Alarm Pauses") }}
+      </h1>
+      <p class="page-subtitle">{{ _("Paused alarms and scheduled pauses for planned maintenance and downtime") }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('alarms_overview_page') }}" class="btn-dash">
+        <i class="bi bi-arrow-left me-1"></i> {{ _("Alarms Summary") }}
+      </a>
+      <a href="{{ url_for('alarm_pauses_page') }}" class="btn-dash">
+        <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
+      </a>
+      <button type="button" class="btn-dash" data-pause-open data-scope="flow"
+              {% if not persistence_configured %}disabled title="{{ _('Pause storage is not configured') }}"{% endif %}
+              style="color:var(--accent-cyan); border-color:rgba(18,163,201,0.45);">
+        <i class="bi bi-calendar-plus me-1"></i> {{ _("Schedule pause") }}
+      </button>
+    </div>
+  </div>
+
+  {% if not persistence_configured %}
+  <div class="dash-card mb-3" style="border-left:3px solid var(--accent-amber); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-amber); font-size:0.82rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>{{ _("Cosmos DB is not configured \u2014 pauses cannot be created on this dashboard instance.") }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="kpi-strip stagger-children mb-3" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr))">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="bi bi-pause-circle-fill"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ summary.active }}</div>
+        <div class="kpi-label">{{ _("Active pauses") }}</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="bi bi-calendar-event"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-number">{{ summary.scheduled }}</div>
+        <div class="kpi-label">{{ _("Scheduled pauses") }}</div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Active ── #}
+  <div class="queue-table-wrapper mb-3" id="active-pauses">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-pause-circle-fill me-1" style="color:var(--accent-cyan)"></i> {{ _("Active pauses") }}</h6>
+      <span class="text-muted" style="font-size:0.72rem;">{{ _("Refreshed at") }} {{ refreshed_at }}</span>
+    </div>
+    <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+      <table class="dash-table w-100">
+        <thead>
+          <tr>
+            <th>{{ _("Scope") }}</th><th>{{ _("Started") }}</th><th>{{ _("Ends") }}</th>
+            <th>{{ _("Reason") }}</th><th>{{ _("Requested by") }}</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in groups.active %}
+          <tr id="pause-{{ p.pause_id }}" class="pause-row--active">
+            {{ scope_cell(p) }}
+            {{ window_cells(p) }}
+            {{ detail_cells(p) }}
+            <td style="text-align:right; white-space:nowrap;">
+              {% if p.remaining_minutes is not none %}
+                <span style="font-size:0.75rem; color:var(--accent-cyan); margin-right:0.5rem;">
+                  <i class="bi bi-hourglass-split me-1"></i>{{ p.remaining_minutes | int }} {{ _("min left") }}
+                </span>
+              {% endif %}
+              <button type="button" class="btn-dash btn-dash-sm" data-pause-cancel="{{ p.pause_id }}" data-pause-status="active"
+                      style="color:var(--accent-green); border-color:rgba(74,222,128,0.35);">
+                <i class="bi bi-play-fill me-1"></i>{{ _("End now") }}
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="pause-empty">{{ _("No alarms are paused.") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Scheduled ── #}
+  <div class="queue-table-wrapper mb-3" id="scheduled-pauses">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-calendar-event me-1" style="color:var(--accent-amber)"></i> {{ _("Scheduled pauses") }}</h6>
+    </div>
+    <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+      <table class="dash-table w-100">
+        <thead>
+          <tr>
+            <th>{{ _("Scope") }}</th><th>{{ _("Starts") }}</th><th>{{ _("Ends") }}</th>
+            <th>{{ _("Reason") }}</th><th>{{ _("Requested by") }}</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in groups.scheduled %}
+          <tr id="pause-{{ p.pause_id }}">
+            {{ scope_cell(p) }}
+            {{ window_cells(p) }}
+            {{ detail_cells(p) }}
+            <td style="text-align:right;">
+              <button type="button" class="btn-dash btn-dash-sm" data-pause-cancel="{{ p.pause_id }}" data-pause-status="scheduled"
+                      style="color:var(--accent-red); border-color:rgba(239,68,68,0.35);">
+                <i class="bi bi-x-circle me-1"></i>{{ _("Cancel") }}
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="pause-empty">{{ _("No pauses are scheduled.") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Recently ended (last 7 days) ── #}
+  <div class="queue-table-wrapper" id="recent-pauses">
+    <div class="queue-table-header">
+      <h6><i class="bi bi-clock-history me-1"></i> {{ _("Recently ended (last 7 days)") }}</h6>
+    </div>
+    <div class="scroll-panel" style="max-height:none; overflow-x:auto;">
+      <table class="dash-table w-100">
+        <thead>
+          <tr>
+            <th>{{ _("Scope") }}</th><th>{{ _("Start") }}</th><th>{{ _("End") }}</th>
+            <th>{{ _("Reason") }}</th><th>{{ _("Requested by") }}</th><th>{{ _("Outcome") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in groups.recent %}
+          <tr id="pause-{{ p.pause_id }}" style="opacity:0.8;">
+            {{ scope_cell(p) }}
+            {{ window_cells(p) }}
+            {{ detail_cells(p) }}
+            <td style="font-size:0.78rem; white-space:nowrap;">
+              {% if p.status == 'cancelled' %}
+                <span style="color:var(--text-muted);"><i class="bi bi-x-circle me-1"></i>{{ _("Cancelled before start") }}</span>
+              {% elif p.cancelled_early %}
+                <span style="color:var(--text-muted);"><i class="bi bi-stop-circle me-1"></i>{{ _("Ended early") }}</span>
+              {% else %}
+                <span style="color:var(--text-muted);"><i class="bi bi-check-circle me-1"></i>{{ _("Completed") }}</span>
+              {% endif %}
+              {% if p.cancelled_display %}<div style="font-size:0.7rem; color:var(--text-muted);">{{ p.cancelled_display }}</div>{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="pause-empty">{{ _("No pauses have ended in the last 7 days.") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .dash-table { border-collapse: collapse; }
+  .dash-table thead tr { border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.03); }
+  .dash-table th {
+    padding: 0.6rem 1rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted); white-space: nowrap;
+  }
+  .dash-table td { padding: 0.7rem 1rem; font-size: 0.83rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+  .pause-row--active { border-left: 3px solid var(--accent-cyan); background: rgba(18,163,201,0.04); }
+  .pause-empty { text-align: center; color: var(--text-muted); padding: 1.25rem !important; }
+  /* Highlight the pause targeted by a #pause-<id> link (e.g. from a rule's "Manage pause"). */
+  tr:target { outline: 2px solid var(--accent-cyan); outline-offset: -2px; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{% include "partials/pause_modal.html" %}
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pause_macros.html" import pause_note, pause_action with context %}
 
 {% block title %}{{ _("Alarms by Flow") }}{% endblock %}
 
@@ -20,6 +21,7 @@
   {% else %}
     <span class="status-badge unknown"><i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}</span>
   {% endif %}
+  {{ pause_note(row) }}
 {%- endmacro %}
 
 {% macro rule_cell(row) -%}
@@ -53,6 +55,7 @@
        style="padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center;">
       <i class="bi bi-gear-fill"></i>
     </a>
+    {{ pause_action(row, 'alarm' ~ alarm_no) }}
   </td>
 {%- endmacro %}
 
@@ -126,6 +129,11 @@
       <a href="{{ url_for('alarms_by_flow_page', flow=selected_flow.id) }}" class="btn-dash">
         <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
+      <button type="button" class="btn-dash" data-pause-open data-scope="flow"
+              data-workflow-id="{{ selected_flow.id }}"
+              style="color:var(--accent-cyan); border-color:rgba(18,163,201,0.45);">
+        <i class="bi bi-pause-circle me-1"></i> {{ _("Pause this flow") }}
+      </button>
       {% endif %}
     </div>
   </div>
@@ -375,4 +383,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/flow-search.js') }}"></script>
+{% include "partials/pause_modal.html" %}
 {% endblock %}

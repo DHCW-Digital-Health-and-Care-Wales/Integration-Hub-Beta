@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
-from dashboard.services import cache, flow_sources, network_test
+from dashboard.services import alarm_pauses, cache, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status, load_alarm_config
 from dashboard.services.alarm2 import get_alarm2_status, load_alarm2_config
 from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
@@ -78,6 +78,7 @@ def index() -> str:
         no_alarm1_configured=not any(r.get("alarm_enabled", False) for r in cfg1.get("rules", {}).values()),
         no_alarm2_configured=not any(r.get("alarm_enabled", False) for r in cfg2.get("rules", {}).values()),
         no_alarm3_configured=not any(r.get("alarm_enabled", False) for r in cfg3.get("rules", {}).values()),
+        pause_summary=alarm_pauses.current_summary(),
         queue_warn_threshold=config.QUEUE_WARNING_THRESHOLD,
         queue_crit_threshold=config.QUEUE_CRITICAL_THRESHOLD,
         throughput_filters=throughput_filters,
@@ -97,6 +98,7 @@ def flows_page() -> str:
         status=status,
         container_metrics=container_metrics,
         alarm_map=build_alarm_map(),
+        flow_pauses=alarm_pauses.current_flow_summary([f["id"] for f in status.get("flows", []) if f.get("id")]),
         refresh_interval=config.API_CACHE_TTL,
         data_is_stale=cache.is_cache_stale("status"),
     )

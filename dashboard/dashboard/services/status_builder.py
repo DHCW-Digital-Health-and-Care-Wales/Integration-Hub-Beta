@@ -188,6 +188,7 @@ def alarm_summary(rows: list[dict] | None) -> dict:
     return {
         "critical": sum(1 for r in rows if r.get("status") == "critical"),
         "suppressed": sum(1 for r in rows if r.get("status") == "suppressed"),
+        "paused": sum(1 for r in rows if r.get("status") == "paused"),
         "unknown": sum(1 for r in rows if r.get("status") == "unknown"),
         "healthy": sum(1 for r in rows if r.get("status") == "healthy"),
         "total": len(rows),
