@@ -26,3 +26,13 @@ class XmlValidationError(Exception):
     The message is built from only the schema-level ``reason``/``path`` of each xmlschema violation -
     never the raw instance XML, which for HL7 messages would embed patient-identifiable information.
     """
+
+
+class Hl7MessageValidationError(Exception):
+    """Raised when an ER7 message fails hl7apy's own structural/value validation.
+
+    Built only from hl7apy's error-level Validator messages (element/child names, cardinality,
+    datatype mismatches) - never from its warning-level messages (e.g. table-value checks), which
+    embed the raw field value and would leak patient-identifiable information. Warnings are logged
+    separately (see ``validator.validate_hl7_message``) but never included in this exception's message.
+    """

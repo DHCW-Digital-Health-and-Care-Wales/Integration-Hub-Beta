@@ -132,7 +132,7 @@ class Hl7MessageProcessor:
             error_msg = f"HL7 parsing error: {e}"
             logger.error(error_msg)
             self.event_logger.log_validation_result(raw_message, error_msg, is_success=False)
-            self.event_logger.log_message_failed(raw_message, error_msg)
+            self.event_logger.log_message_failed(raw_message, error_msg, "Message could not be parsed")
             raise Hl7ParseError(str(e)) from e
 
     def _run_common_validation(self, raw_message: str, msg: Message, message_type: str) -> None:
@@ -216,7 +216,9 @@ class Hl7MessageProcessor:
     ) -> NoReturn:
         logger.error("HL7 validation error: %s", reason)
         self.event_logger.log_validation_result(raw_message, reason, is_success=False, correlation_id=correlation_id)
-        self.event_logger.log_message_failed(raw_message, reason, correlation_id=correlation_id)
+        self.event_logger.log_message_failed(
+            raw_message, reason, "Message rejected - failed validation", correlation_id=correlation_id
+        )
         nack = self.ack_builder.build_validation_nack(msg, reason)
         raise Hl7ValidationError(nack, reason)
 

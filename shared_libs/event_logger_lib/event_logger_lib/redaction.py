@@ -94,3 +94,25 @@ def redact_hl7_message(message_content: str) -> str:
         for segment in segments
     ]
     return "\r".join(redacted_segments)
+
+
+def redact_warning_details(warning_text: str) -> str:
+    """Return a redacted copy of a validation warning message, safe for logging.
+
+    Some validation warnings (e.g. hl7apy's table-value checks) embed the raw field
+    value that triggered them, which may be patient-identifiable. There's no stable,
+    documented contract for warning text formats, so - unlike ``redact_hl7_message`` -
+    this can't selectively keep some parts and mask others; the entire warning is
+    masked whenever it is non-empty.
+
+    Args:
+        warning_text: The raw warning text to redact.
+
+    Returns:
+        ``REDACTION_MASK`` for any non-empty warning text. Empty or whitespace-only
+        input is returned unchanged.
+    """
+    if not warning_text or not warning_text.strip():
+        return warning_text
+
+    return REDACTION_MASK
