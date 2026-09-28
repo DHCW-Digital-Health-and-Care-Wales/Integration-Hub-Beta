@@ -54,7 +54,7 @@ ALARM_PREFIXES: dict[int, str] = {1: "a1-", 2: "a2-", 3: "a3-"}
 # Custom workflow ids must survive the alarms' KQL sanitiser ([^a-zA-Z0-9_-] is stripped) unchanged.
 _WORKFLOW_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,119}")
 
-ApplyFn = Callable[[ImmutableMultiDict, dict], str | None]
+ApplyFn = Callable[[ImmutableMultiDict, dict, str], str | None]
 
 
 # ---------------------------------------------------------------------------
@@ -67,15 +67,29 @@ def _scoped_form(form: MultiDict, prefix: str) -> ImmutableMultiDict:
     return ImmutableMultiDict([(k[len(prefix) :], v) for k, v in form.items(multi=True) if k.startswith(prefix)])
 
 
-def _apply_deletions(form: ImmutableMultiDict, rules_cfg: dict) -> None:
+def _owned_by_flow(rules_cfg: dict, rid: str, workflow_id: str) -> bool:
+    # Enforced server-side so a crafted POST cannot edit or create rules for another flow.
+    return (rules_cfg.get(rid, {}).get("workflow_id") or "").strip() == workflow_id
+
+
+def _apply_deletions(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: str) -> None:
     for key in form:
         if key.startswith("delete_"):
-            rules_cfg.setdefault(key[len("delete_") :], {})["deleted"] = True
+            rid = key[len("delete_") :]
+            if _owned_by_flow(rules_cfg, rid, workflow_id):
+                rules_cfg[rid]["deleted"] = True
 
 
-def _submitted_rule_ids(form: ImmutableMultiDict, rules_cfg: dict) -> list[str]:
+def _submitted_rule_ids(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: str) -> list[str]:
     ids = [key[len("alerting_gap_") :] for key in form if key.startswith("alerting_gap_")]
-    return [rid for rid in ids if not rules_cfg.get(rid, {}).get("deleted")]
+    return [
+        rid for rid in ids if _owned_by_flow(rules_cfg, rid, workflow_id) and not rules_cfg[rid].get("deleted")
+    ]
+
+
+def _add_requested(form: ImmutableMultiDict) -> bool:
+    # The hidden field only signals that the add panel was opened; its value is not trusted.
+    return bool((form.get("new_workflow_id") or "").strip())
 
 
 def _apply_common_fields(entry: dict, form: ImmutableMultiDict, rid: str) -> None:
@@ -83,28 +97,26 @@ def _apply_common_fields(entry: dict, form: ImmutableMultiDict, rid: str) -> Non
     entry["email_alerts_enabled"] = f"email_{rid}" in form
     entry["email_ooh_enabled"] = f"email_ooh_{rid}" in form and entry["email_alerts_enabled"]
     entry["display_name"] = (form.get(f"display_name_{rid}") or "").strip()
-    entry["workflow_id"] = (form.get(f"workflow_id_{rid}") or "").strip()
 
 
-def _apply_alarm1_form(form: ImmutableMultiDict, rules_cfg: dict) -> str | None:
+def _apply_alarm1_form(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: str) -> str | None:
     """Apply Alarm 1 (inactivity) deletions/updates/addition; return the new rule id, if any."""
-    _apply_deletions(form, rules_cfg)
-    for rid in _submitted_rule_ids(form, rules_cfg):
-        entry = rules_cfg.setdefault(rid, {})
+    _apply_deletions(form, rules_cfg, workflow_id)
+    for rid in _submitted_rule_ids(form, rules_cfg, workflow_id):
+        entry = rules_cfg[rid]
         _apply_common_fields(entry, form, rid)
         entry["alerting_gap_minutes"] = parse_int_form_field(form, f"alerting_gap_{rid}", 60)
         entry["day_threshold_minutes"] = parse_int_form_field(form, f"day_threshold_{rid}", 60)
         entry["evening_threshold_minutes"] = parse_int_form_field(form, f"evening_threshold_{rid}", 120)
         entry["weekend_threshold_minutes"] = parse_int_form_field(form, f"weekend_threshold_{rid}", 240)
 
-    new_wid = (form.get("new_workflow_id") or "").strip()
-    if not new_wid:
+    if not _add_requested(form):
         return None
-    new_rid = generate_alarm1_rule_id(new_wid, set(rules_cfg))
+    new_rid = generate_alarm1_rule_id(workflow_id, set(rules_cfg))
     rules_cfg[new_rid] = {
         "display_name": (form.get("new_display_name") or "").strip(),
         "alarm_enabled": "new_enabled" in form,
-        "workflow_id": new_wid,
+        "workflow_id": workflow_id,
         "day_threshold_minutes": parse_int_form_field(form, "new_day_threshold", 60),
         "evening_threshold_minutes": parse_int_form_field(form, "new_evening_threshold", 120),
         "weekend_threshold_minutes": parse_int_form_field(form, "new_weekend_threshold", 240),
@@ -115,25 +127,24 @@ def _apply_alarm1_form(form: ImmutableMultiDict, rules_cfg: dict) -> str | None:
     return new_rid
 
 
-def _apply_alarm2_form(form: ImmutableMultiDict, rules_cfg: dict) -> str | None:
+def _apply_alarm2_form(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: str) -> str | None:
     """Apply Alarm 2 (outgoing volume) deletions/updates/addition; return the new rule id, if any."""
-    _apply_deletions(form, rules_cfg)
-    for rid in _submitted_rule_ids(form, rules_cfg):
-        entry = rules_cfg.setdefault(rid, {})
+    _apply_deletions(form, rules_cfg, workflow_id)
+    for rid in _submitted_rule_ids(form, rules_cfg, workflow_id):
+        entry = rules_cfg[rid]
         _apply_common_fields(entry, form, rid)
         entry["day_threshold_minutes"] = parse_int_form_field(form, f"day_threshold_{rid}", 60, minimum=0)
         entry["evening_threshold_minutes"] = parse_int_form_field(form, f"evening_threshold_{rid}", 120, minimum=0)
         entry["weekend_threshold_minutes"] = parse_int_form_field(form, f"weekend_threshold_{rid}", 240, minimum=0)
         entry["alerting_gap_minutes"] = parse_int_form_field(form, f"alerting_gap_{rid}", 60, minimum=1)
 
-    new_wid = (form.get("new_workflow_id") or "").strip()
-    if not new_wid:
+    if not _add_requested(form):
         return None
-    new_rid = generate_rule_id(new_wid, set(rules_cfg))
+    new_rid = generate_rule_id(workflow_id, set(rules_cfg))
     rules_cfg[new_rid] = {
-        "display_name": (form.get("new_display_name") or "").strip() or new_wid,
+        "display_name": (form.get("new_display_name") or "").strip() or workflow_id,
         "alarm_enabled": "new_enabled" in form,
-        "workflow_id": new_wid,
+        "workflow_id": workflow_id,
         "day_threshold_minutes": parse_int_form_field(form, "new_day_threshold", 60, minimum=0),
         "evening_threshold_minutes": parse_int_form_field(form, "new_evening_threshold", 120, minimum=0),
         "weekend_threshold_minutes": parse_int_form_field(form, "new_weekend_threshold", 240, minimum=0),
@@ -144,24 +155,23 @@ def _apply_alarm2_form(form: ImmutableMultiDict, rules_cfg: dict) -> str | None:
     return new_rid
 
 
-def _apply_alarm3_form(form: ImmutableMultiDict, rules_cfg: dict) -> str | None:
+def _apply_alarm3_form(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: str) -> str | None:
     """Apply Alarm 3 (failures) deletions/updates/addition; return the new rule id, if any."""
-    _apply_deletions(form, rules_cfg)
-    for rid in _submitted_rule_ids(form, rules_cfg):
-        entry = rules_cfg.setdefault(rid, {})
+    _apply_deletions(form, rules_cfg, workflow_id)
+    for rid in _submitted_rule_ids(form, rules_cfg, workflow_id):
+        entry = rules_cfg[rid]
         _apply_common_fields(entry, form, rid)
         entry["window_duration_minutes"] = parse_int_form_field(form, f"window_duration_{rid}", 15, minimum=1)
         entry["threshold"] = parse_int_form_field(form, f"threshold_{rid}", 1, minimum=1)
         entry["alerting_gap_minutes"] = parse_int_form_field(form, f"alerting_gap_{rid}", 60, minimum=1)
 
-    new_wid = (form.get("new_workflow_id") or "").strip()
-    if not new_wid:
+    if not _add_requested(form):
         return None
-    new_rid = generate_alarm3_rule_id(new_wid, set(rules_cfg))
+    new_rid = generate_alarm3_rule_id(workflow_id, set(rules_cfg))
     rules_cfg[new_rid] = {
-        "display_name": (form.get("new_display_name") or "").strip() or f"{new_wid} Failures",
+        "display_name": (form.get("new_display_name") or "").strip() or f"{workflow_id} Failures",
         "alarm_enabled": "new_enabled" in form,
-        "workflow_id": new_wid,
+        "workflow_id": workflow_id,
         "window_duration_minutes": parse_int_form_field(form, "new_window_duration", 15, minimum=1),
         "threshold": parse_int_form_field(form, "new_threshold", 1, minimum=1),
         "alerting_gap_minutes": parse_int_form_field(form, "new_alerting_gap", 60, minimum=1),
@@ -180,8 +190,8 @@ def _alarm_handlers() -> dict[int, tuple[str, Callable[[], dict], Callable[[dict
     }
 
 
-def save_flow_alarm_form(form: MultiDict) -> dict[int, str | None]:
-    """Apply each alarm type's namespaced fields; only alarm types present in the form are saved.
+def save_flow_alarm_form(form: MultiDict, workflow_id: str) -> dict[int, str | None]:
+    """Apply each alarm type's namespaced fields to ``workflow_id``'s rules; only alarm types in the form are saved.
 
     Returns ``{alarm_no: new_rule_id_or_None}`` for every alarm type that was saved.
     """
@@ -191,7 +201,7 @@ def save_flow_alarm_form(form: MultiDict) -> dict[int, str | None]:
         if not scoped:
             continue
         cfg = load()
-        new_ids[alarm_no] = apply(scoped, cfg.setdefault("rules", {}))
+        new_ids[alarm_no] = apply(scoped, cfg.setdefault("rules", {}), workflow_id)
         save(cfg)
         with cache.cache_lock:
             cache.cache_data[cache_key]["ts"] = 0.0
@@ -239,7 +249,7 @@ def alarm_flow_config_page() -> str:
     if request.method == "POST":
         if selected_flow is None:
             abort(400)
-        new_ids = save_flow_alarm_form(request.form)
+        new_ids = save_flow_alarm_form(request.form, selected_flow["id"])
         saved = True
         new_rule_anchor = next(
             (f"{ALARM_PREFIXES[n]}rule-{rid}" for n, rid in sorted(new_ids.items()) if rid), None

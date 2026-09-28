@@ -24,7 +24,16 @@ class TestEnsureLocalEndpoint:
     def test_local_endpoints_are_allowed(self, endpoint: str) -> None:
         seed.ensure_local_endpoint(endpoint)
 
-    @pytest.mark.parametrize("endpoint", ["", "https://prod-acct.documents.azure.com:443/"])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "",
+            "https://prod-acct.documents.azure.com:443/",
+            "https://attacker.example/?next=localhost",
+            "https://localhost.attacker.example:8081",
+            "https://user@remote.example/localhost",
+        ],
+    )
     def test_missing_or_remote_endpoints_exit(self, endpoint: str) -> None:
         with pytest.raises(SystemExit):
             seed.ensure_local_endpoint(endpoint)

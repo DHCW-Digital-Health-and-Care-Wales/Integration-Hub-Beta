@@ -126,6 +126,14 @@ class TestLegacyRuleEndpoints:
         response = client.post("/alarm3/pause/r", json={"duration_minutes": "soon"})
         assert response.status_code == 400
 
+    @pytest.mark.parametrize("body", [[1], "text", 5])
+    def test_pause_now_rejects_non_object_json(self, client: FlaskClient, body: object) -> None:
+        with patch("dashboard.routes.alarms.pause_alarm_rule") as mock_pause:
+            response = client.post("/alarm1/pause/phw-inactivity", json=body)
+        assert response.status_code == 400
+        assert response.get_json()["error"] == "Expected a JSON object."
+        mock_pause.assert_not_called()
+
     def test_pause_now_without_reason_is_rejected(self, client: FlaskClient) -> None:
         # Unpatched pause_alarm_rule: validation runs for real against the alarm's own rule list.
         with patch("dashboard.services.alarm1.get_config_page_data", return_value=CFG1):
@@ -138,6 +146,13 @@ class TestLegacyRuleEndpoints:
             response = client.post("/alarm1/unpause/phw-inactivity")
         assert response.status_code == 200
         mock_resume.assert_called_once_with("phw-inactivity")
+
+    def test_unpause_when_storage_unavailable_returns_503(self, client: FlaskClient) -> None:
+        # Unpatched resume path; conftest disables Cosmos so the pause read fails.
+        with patch("dashboard.services.alarm1.get_config_page_data", return_value=CFG1):
+            response = client.post("/alarm1/unpause/phw-inactivity")
+        assert response.status_code == 503
+        assert response.get_json()["ok"] is False
 
     def test_unpause_under_wider_pause_returns_409_with_manage_url(self, client: FlaskClient) -> None:
         conflict = alarm_pauses.PauseConflictError("Wider pause", "p9")

@@ -460,9 +460,17 @@ def _persist(pause: dict[str, Any]) -> None:
         raise PausePersistenceError("Pause persistence is currently unavailable.")
 
 
-def list_pauses() -> list[dict]:
-    """Return every stored pause. Returns ``[]`` when Cosmos is unavailable (fail open)."""
-    return [p for p in cosmos_store.query_documents(PARTITION_KEY) if p.get("pause_id")]
+def list_pauses(strict: bool = False) -> list[dict]:
+    """Return every stored pause.
+
+    Fails open (``[]``) when Cosmos is unavailable, unless ``strict`` — then raises
+    ``PausePersistenceError`` so write paths never act on a failed read.
+    """
+    try:
+        documents = cosmos_store.query_documents(PARTITION_KEY, strict=strict)
+    except cosmos_store.CosmosUnavailableError as exc:
+        raise PausePersistenceError("Pause persistence is currently unavailable.") from exc
+    return [p for p in documents if p.get("pause_id")]
 
 
 def purge_old(pauses: list[dict], now: datetime) -> None:
@@ -504,7 +512,7 @@ def cancel_pause(pause_id: str, now: datetime | None = None) -> dict[str, Any]:
     """Cancel a scheduled pause, or end an active one immediately. Returns the updated view."""
     now = now or _utcnow()
     _ensure_persistence_configured()
-    pauses = list_pauses()
+    pauses = list_pauses(strict=True)
     pause = next((p for p in pauses if p.get("pause_id") == pause_id), None)
     if pause is None:
         raise PauseNotFoundError("Pause not found.")
@@ -527,10 +535,11 @@ def cancel_rule_pause(alarm_type: str, rule_id: str, workflow_id: str, now: date
 
     Raises :class:`PauseConflictError` when the covering pause spans more than this rule
     (flow/all scope or several rules) — cancelling it would resume other alarms too.
+    Raises :class:`PausePersistenceError` when pauses cannot be read.
     A no-op when no pause record covers the rule.
     """
     now = now or _utcnow()
-    pause = active_pause_for(list_pauses(), alarm_type, rule_id, workflow_id, now)
+    pause = active_pause_for(list_pauses(strict=True), alarm_type, rule_id, workflow_id, now)
     if pause is None:
         return
     if pause.get("scope_type") != SCOPE_RULE or len(pause.get("targets") or []) != 1:

@@ -35,6 +35,11 @@ A3_RULES: list[dict[str, Any]] = [
 ]
 
 
+def _stored(rules: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a fresh stored config document (``{"rules": {id: cfg}}``) from page-data rows."""
+    return {"rules": {r["id"]: {k: v for k, v in r.items() if k != "id"} for r in rules}}
+
+
 @pytest.fixture()
 def client() -> Generator[FlaskClient, None, None]:
     app.config["TESTING"] = True
@@ -51,9 +56,9 @@ def saves() -> Generator[dict[int, MagicMock], None, None]:
         patch("dashboard.routes.alarm_config.get_config_page_data", return_value=A1_RULES),
         patch("dashboard.routes.alarm_config.get_alarm2_config_page_data", return_value=[]),
         patch("dashboard.routes.alarm_config.get_alarm3_config_page_data", return_value=A3_RULES),
-        patch("dashboard.routes.alarm_config.load_alarm_config", side_effect=lambda: {"rules": {}}),
+        patch("dashboard.routes.alarm_config.load_alarm_config", side_effect=lambda: _stored(A1_RULES)),
         patch("dashboard.routes.alarm_config.load_alarm2_config", side_effect=lambda: {"rules": {}}),
-        patch("dashboard.routes.alarm_config.load_alarm3_config", side_effect=lambda: {"rules": {}}),
+        patch("dashboard.routes.alarm_config.load_alarm3_config", side_effect=lambda: _stored(A3_RULES)),
         patch("dashboard.routes.alarm_config.save_alarm_config", mocks[1]),
         patch("dashboard.routes.alarm_config.save_alarm2_config", mocks[2]),
         patch("dashboard.routes.alarm_config.save_alarm3_config", mocks[3]),
@@ -144,7 +149,7 @@ class TestFlowConfigPagePost:
     def test_only_submitted_alarm_types_are_saved(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
         response = client.post(
             "/alarms/config?flow=phw-to-mpi",
-            data={"a3-alerting_gap_phw-to-mpi-failures": "30", "a3-workflow_id_phw-to-mpi-failures": "phw-to-mpi",
+            data={"a3-alerting_gap_phw-to-mpi-failures": "30",
                   "a3-threshold_phw-to-mpi-failures": "4", "a3-window_duration_phw-to-mpi-failures": "10"},
         )
         assert response.status_code == 200
@@ -175,11 +180,15 @@ class TestFlowConfigPagePost:
     def test_same_rule_id_across_alarm_types_does_not_collide(
         self, client: FlaskClient, saves: dict[int, MagicMock]
     ) -> None:
-        client.post(
-            "/alarms/config?flow=phw-to-mpi",
-            data={"a1-alerting_gap_shared": "11", "a1-workflow_id_shared": "phw-to-mpi",
-                  "a2-alerting_gap_shared": "22", "a2-workflow_id_shared": "phw-to-mpi"},
-        )
+        shared = [{"id": "shared", "workflow_id": "phw-to-mpi", "alerting_gap_minutes": 60}]
+        with (
+            patch("dashboard.routes.alarm_config.load_alarm_config", side_effect=lambda: _stored(shared)),
+            patch("dashboard.routes.alarm_config.load_alarm2_config", side_effect=lambda: _stored(shared)),
+        ):
+            client.post(
+                "/alarms/config?flow=phw-to-mpi",
+                data={"a1-alerting_gap_shared": "11", "a2-alerting_gap_shared": "22"},
+            )
         assert saves[1].call_args[0][0]["rules"]["shared"]["alerting_gap_minutes"] == 11
         assert saves[2].call_args[0][0]["rules"]["shared"]["alerting_gap_minutes"] == 22
         assert not saves[3].called
@@ -192,7 +201,38 @@ class TestFlowConfigPagePost:
             data={"a1-delete_phw-to-mpi": "1", "a1-alerting_gap_phw-to-mpi": "99"},
         )
         rule = saves[1].call_args[0][0]["rules"]["phw-to-mpi"]
-        assert rule == {"deleted": True}
+        assert rule["deleted"] is True
+        assert rule["alerting_gap_minutes"] == 60
+
+
+class TestFlowConfigScoping:
+    """A crafted POST must not reach rules outside the flow selected in ``?flow=``."""
+
+    def test_update_to_another_flows_rule_is_ignored(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        client.post("/alarms/config?flow=phw-to-mpi", data={"a1-alerting_gap_pims-to-mpi": "5"})
+        assert saves[1].call_args[0][0]["rules"]["pims-to-mpi"]["alerting_gap_minutes"] == 60
+
+    def test_delete_of_another_flows_rule_is_ignored(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        client.post("/alarms/config?flow=phw-to-mpi", data={"a1-delete_pims-to-mpi": "1"})
+        assert not saves[1].call_args[0][0]["rules"]["pims-to-mpi"].get("deleted")
+
+    def test_unknown_rule_id_is_not_created(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        client.post("/alarms/config?flow=phw-to-mpi", data={"a1-alerting_gap_injected": "5", "a1-delete_ghost": "1"})
+        assert set(saves[1].call_args[0][0]["rules"]) == {"phw-to-mpi", "pims-to-mpi"}
+
+    def test_posted_workflow_id_cannot_move_a_rule(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        client.post(
+            "/alarms/config?flow=phw-to-mpi",
+            data={"a1-alerting_gap_phw-to-mpi": "30", "a1-workflow_id_phw-to-mpi": "pims-to-mpi"},
+        )
+        assert saves[1].call_args[0][0]["rules"]["phw-to-mpi"]["workflow_id"] == "phw-to-mpi"
+
+    def test_new_rule_uses_selected_flow_not_posted_value(
+        self, client: FlaskClient, saves: dict[int, MagicMock]
+    ) -> None:
+        client.post("/alarms/config?flow=pims-to-mpi", data={"a2-new_workflow_id": "phw-to-mpi"})
+        (new_rule,) = saves[2].call_args[0][0]["rules"].values()
+        assert new_rule["workflow_id"] == "pims-to-mpi"
 
 
 class TestLegacyConfigRedirects:

@@ -27,6 +27,7 @@ import logging
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from dashboard import config
 from dashboard.services import alarm1, alarm2, alarm3, alarm_base, alarm_pauses, cosmos_store
@@ -36,7 +37,7 @@ log = logging.getLogger("seed_example_alarms")
 
 EXAMPLE_TAG = "example"
 EXAMPLE_REQUESTED_BY = "Example data (seed script)"
-_LOCAL_HOSTS = ("localhost", "127.0.0.1", "cosmos-emulator")
+_LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "cosmos-emulator"})
 
 # Alarm type -> (Cosmos partition, rule-id suffix); suffixes match each module's generate_rule_id().
 _ALARMS: dict[str, tuple[str, str]] = {
@@ -54,7 +55,7 @@ def ensure_local_endpoint(endpoint: str) -> None:
     """Exit unless ``endpoint`` points at a local emulator — never seed shared/cloud Cosmos accounts."""
     if not endpoint:
         sys.exit("COSMOS_ENDPOINT is not set — start the emulator and configure dashboard/.env first.")
-    if not any(host in endpoint.lower() for host in _LOCAL_HOSTS):
+    if urlparse(endpoint).hostname not in _LOCAL_HOSTS:
         sys.exit(f"Refusing to seed non-local Cosmos endpoint: {endpoint}")
 
 

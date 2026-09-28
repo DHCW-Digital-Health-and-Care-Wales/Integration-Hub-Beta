@@ -102,12 +102,13 @@ def resume_rule(
     alarm_label: str,
     state_doc_id: str = "state",
 ) -> None:
-    """Resume a rule: clear any legacy pause and cancel its single-rule pause record.
+    """Resume a rule: cancel its single-rule pause record, then clear any legacy pause.
 
-    Raises ``alarm_pauses.PauseConflictError`` if the rule is covered by a wider pause.
+    Raises ``alarm_pauses.PauseConflictError`` if the rule is covered by a wider pause,
+    leaving the legacy pause untouched.
     """
-    unpause_rule(alarm_type, rule_id, alarm_label, state_doc_id)
     alarm_pauses.cancel_rule_pause(alarm_type, rule_id, known_rules.get(rule_id, ""))
+    unpause_rule(alarm_type, rule_id, alarm_label, state_doc_id)
 
 
 def resolve_pause(

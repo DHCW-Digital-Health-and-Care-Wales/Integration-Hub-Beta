@@ -8,6 +8,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import pytest
+
 from dashboard.services import alarm_base
 
 
@@ -129,6 +131,16 @@ class TestPauseRuleNowAndResume:
             alarm_base.resume_rule("alarm3", {"r1": "phw-to-mpi"}, "r1", "Alarm 3")
         mock_legacy.assert_called_once_with("alarm3", "r1", "Alarm 3", "state")
         mock_cancel.assert_called_once_with("alarm3", "r1", "phw-to-mpi")
+
+    def test_resume_rule_conflict_leaves_legacy_pause_untouched(self) -> None:
+        conflict = alarm_base.alarm_pauses.PauseConflictError("Wider pause", "p9")
+        with (
+            patch("dashboard.services.alarm_base.unpause_rule") as mock_legacy,
+            patch("dashboard.services.alarm_base.alarm_pauses.cancel_rule_pause", side_effect=conflict),
+        ):
+            with pytest.raises(alarm_base.alarm_pauses.PauseConflictError):
+                alarm_base.resume_rule("alarm3", {"r1": "phw-to-mpi"}, "r1", "Alarm 3")
+        mock_legacy.assert_not_called()
 
 
 class TestPauseUnpauseRule:

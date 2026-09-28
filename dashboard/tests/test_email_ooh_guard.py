@@ -39,6 +39,11 @@ def _prefixed(form_data: dict, prefix: str) -> dict:
     return {f"{prefix}{k}": v for k, v in form_data.items()}
 
 
+def _stored_rule() -> dict:
+    """Stored config with RID on the selected flow — updates only apply to that flow's existing rules."""
+    return {"rules": {RID: {"workflow_id": "phw-to-mpi"}}}
+
+
 @pytest.fixture(autouse=True)
 def _stub_flows() -> Generator[None, None, None]:
     with patch("dashboard.routes.alarm_config.get_flows", return_value={"phw-to-mpi": {"label": "PHW → MPI"}}):
@@ -69,7 +74,6 @@ def _alarm1_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
         f"day_threshold_{rid}": "60",
         f"evening_threshold_{rid}": "120",
         f"weekend_threshold_{rid}": "240",
-        f"workflow_id_{rid}": "phw-to-mpi",
         f"display_name_{rid}": "PHW to MPI",
     }
     if email:
@@ -87,7 +91,6 @@ def _alarm2_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
         f"day_threshold_{rid}": "60",
         f"evening_threshold_{rid}": "120",
         f"weekend_threshold_{rid}": "240",
-        f"workflow_id_{rid}": "phw-to-mpi",
         f"display_name_{rid}": "PHW to MPI",
     }
     if email:
@@ -103,7 +106,6 @@ def _alarm3_form(rid: str, *, email: bool, email_ooh: bool) -> dict:
         f"alerting_gap_{rid}": "60",
         f"window_duration_{rid}": "15",
         f"threshold_{rid}": "1",
-        f"workflow_id_{rid}": "phw-to-mpi",
         f"display_name_{rid}": "PHW to MPI",
     }
     if email:
@@ -125,7 +127,7 @@ class TestAlarm1EmailOohGuard:
         """POST Alarm 1 fields to the per-flow config screen and return the config dict passed to save."""
         mock_save = MagicMock()
         with (
-            patch("dashboard.routes.alarm_config.load_alarm_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.load_alarm_config", return_value=_stored_rule()),
             patch("dashboard.routes.alarm_config.save_alarm_config", mock_save),
             patch("dashboard.routes.alarm_config.get_config_page_data", return_value=[]),
         ):
@@ -178,7 +180,7 @@ class TestAlarm2EmailOohGuard:
     def _post(self, client: FlaskClient, form_data: dict) -> dict:
         mock_save = MagicMock()
         with (
-            patch("dashboard.routes.alarm_config.load_alarm2_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.load_alarm2_config", return_value=_stored_rule()),
             patch("dashboard.routes.alarm_config.save_alarm2_config", mock_save),
             patch("dashboard.routes.alarm_config.get_alarm2_config_page_data", return_value=[]),
         ):
@@ -224,7 +226,7 @@ class TestAlarm3EmailOohGuard:
     def _post(self, client: FlaskClient, form_data: dict) -> dict:
         mock_save = MagicMock()
         with (
-            patch("dashboard.routes.alarm_config.load_alarm3_config", return_value={"rules": {}}),
+            patch("dashboard.routes.alarm_config.load_alarm3_config", return_value=_stored_rule()),
             patch("dashboard.routes.alarm_config.save_alarm3_config", mock_save),
             patch("dashboard.routes.alarm_config.get_alarm3_config_page_data", return_value=[]),
         ):

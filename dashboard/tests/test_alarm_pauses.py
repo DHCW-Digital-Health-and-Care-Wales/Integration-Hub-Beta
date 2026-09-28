@@ -376,6 +376,10 @@ class TestPersistence:
         # conftest disables Cosmos, so query_documents degrades to [] — no pause applies.
         assert alarm_pauses.list_pauses() == []
 
+    def test_strict_list_pauses_raises_when_cosmos_unavailable(self) -> None:
+        with pytest.raises(PausePersistenceError, match="unavailable"):
+            alarm_pauses.list_pauses(strict=True)
+
     def test_create_pause_requires_persistence(self) -> None:
         with pytest.raises(PausePersistenceError, match="not configured"):
             alarm_pauses.create_pause(_payload(), KNOWN_RULES, NOW)
@@ -486,3 +490,8 @@ class TestCancelRulePause:
         ):
             alarm_pauses.cancel_rule_pause("alarm1", "phw-inactivity", "phw-to-mpi", NOW)
         mock_cancel.assert_not_called()
+
+    def test_unavailable_storage_raises_instead_of_reporting_no_op(self) -> None:
+        # conftest disables Cosmos; an unreadable store must not look like "nothing to resume".
+        with pytest.raises(PausePersistenceError):
+            alarm_pauses.cancel_rule_pause("alarm1", "phw-inactivity", "phw-to-mpi", NOW)

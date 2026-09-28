@@ -189,7 +189,11 @@ def _pause_now(pause_fn: Callable[[str, int | None, str, str], dict], rule_id: s
     ``duration_minutes`` defaults to 60 (the previous behaviour) and is ignored when
     ``indefinite`` is true. ``pause_fn`` is the alarm module's ``pause_alarm*_rule``.
     """
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    elif not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "Expected a JSON object."}), 400
     duration: int | None = None
     if not data.get("indefinite"):
         try:
