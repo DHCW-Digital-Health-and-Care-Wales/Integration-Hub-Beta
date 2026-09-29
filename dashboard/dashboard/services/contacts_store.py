@@ -36,7 +36,7 @@ _MAX_NAME_LENGTH = 100
 _MAX_ORG_NAME_LENGTH = 200
 _MAX_NOTES_LENGTH = 2000
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_RE = re.compile(r"^[^@\s.]+(?:\.[^@\s.]+)*@[^@\s.]+(?:\.[^@\s.]+)+$")
 _PHONE_RE = re.compile(r"^[0-9+()\-\s]{5,30}$")
 
 # Confirmed dropdown values for the "organisation type" field.
@@ -328,6 +328,7 @@ def update_contact(contact_id: str, data: dict[str, Any]) -> dict[str, Any]:
     contact.update(
         {
             "deleted": existing.get("deleted", False),
+            "deleted_at": existing.get("deleted_at"),
             "created_at": existing.get("created_at") or datetime.now(UTC).isoformat(),
             "updated_at": datetime.now(UTC).isoformat(),
         }
@@ -522,16 +523,21 @@ def import_contacts(file_content: str) -> dict[str, Any]:
         match = existing_by_key.get(key) if key else None
         try:
             if match:
-                update_contact(match["id"], row)
+                contact = update_contact(match["id"], row)
                 updated += 1
             else:
-                add_contact(row)
+                contact = add_contact(row)
                 created += 1
         except InvalidContactError as exc:
             errors.append(f"{label}: {exc.safe_message}")
+            continue
         except ContactPersistenceError as exc:
             errors.append(f"{label}: {exc.safe_message}")
             persistence_failed = True
             break
+        # Keep the index in sync so a later row in the same CSV with the same
+        # email/phone key updates this row instead of creating a duplicate contact.
+        if key:
+            existing_by_key[key] = contact
 
     return {"created": created, "updated": updated, "errors": errors, "persistence_failed": persistence_failed}

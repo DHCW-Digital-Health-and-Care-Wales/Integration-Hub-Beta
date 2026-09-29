@@ -110,7 +110,10 @@ def api_contacts() -> tuple[Response, int] | Response:
 def api_contact(contact_id: str) -> tuple[Response, int] | Response:
     """GET returns one contact; PUT updates it; DELETE soft-deletes it."""
     if request.method == "DELETE":
-        contacts_store.delete_contact(contact_id)
+        try:
+            contacts_store.delete_contact(contact_id)
+        except contacts_store.ContactPersistenceError as exc:
+            return jsonify({"error": exc.safe_message}), 503
         return jsonify({"deleted": True, "id": contact_id})
 
     if request.method == "PUT":

@@ -182,6 +182,35 @@ class TestUpdateContact:
         ):
             contacts_store.update_contact("missing-id", _base_contact())
 
+    def test_preserves_deleted_at_when_editing_a_soft_deleted_contact(self) -> None:
+        existing = [
+            {
+                "contact_id": "abc-123",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane.doe@example.com",
+                "phone_number": "",
+                "organisation_type": "Team",
+                "organisation_name": "Hub Team",
+                "notes": "",
+                "flow_ids": [],
+                "deleted": True,
+                "deleted_at": "2024-01-01T00:00:00+00:00",
+                "created_at": "2023-12-01T00:00:00+00:00",
+                "updated_at": "2024-01-01T00:00:00+00:00",
+            }
+        ]
+        with (
+            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing),
+            patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as upsert,
+        ):
+            updated = contacts_store.update_contact("abc-123", _base_contact(last_name="Smith"))
+
+        assert updated["deleted"] is True
+        assert updated["deleted_at"] == "2024-01-01T00:00:00+00:00"
+        persisted_payload = upsert.call_args[0][2]
+        assert persisted_payload["deleted_at"] == "2024-01-01T00:00:00+00:00"
+
 
 class TestDeleteContact:
     def test_soft_deletes_by_setting_deleted_flag(self) -> None:
@@ -537,3 +566,37 @@ class TestImportContacts:
             result = contacts_store.import_contacts(csv_text)
         assert result["persistence_failed"] is True
         assert result["created"] == 0
+
+    def test_second_row_updates_first_row_when_csv_has_duplicate_key(self) -> None:
+        # Both rows share the same email and no matching contact exists yet, so the
+        # first row must be created and the second row must update that same new
+        # contact rather than creating a second, duplicate one. query_documents and
+        # upsert_document are backed by the same in-memory dict so this also
+        # exercises the real _find()/_persist() lookup path used by update_contact.
+        csv_text = (
+            "first_name,last_name,email,phone_number,organisation_type,organisation_name,flow_ids,notes\n"
+            "Jane,Doe,jane@example.nhs.uk,,Team,Hub Team,,First notes\n"
+            "Jane,Smith,jane@example.nhs.uk,,Team,Hub Team,,Second notes\n"
+        )
+        store: dict[str, dict] = {}
+
+        def fake_query_documents(_pk: str) -> list[dict]:
+            return list(store.values())
+
+        def fake_upsert(_pk: str, contact_id: str, payload: dict, **_kwargs: object) -> bool:
+            store[contact_id] = payload
+            return True
+
+        with (
+            patch.object(contacts_store.cosmos_store, "query_documents", side_effect=fake_query_documents),
+            patch.object(contacts_store.cosmos_store, "upsert_document", side_effect=fake_upsert),
+        ):
+            result = contacts_store.import_contacts(csv_text)
+
+        assert result["created"] == 1
+        assert result["updated"] == 1
+        assert result["errors"] == []
+        assert len(store) == 1
+        (only_contact,) = store.values()
+        assert only_contact["last_name"] == "Smith"
+        assert only_contact["notes"] == "Second notes"

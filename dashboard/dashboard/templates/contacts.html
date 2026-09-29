@@ -267,7 +267,7 @@
   'use strict';
 
   var pageData = JSON.parse(document.getElementById('contacts-page-data').textContent);
-  var state = { page: 1, perPage: pageData.default_page_size, total: 0 };
+  var state = { page: 1, perPage: pageData.default_page_size, total: 0, requestId: 0 };
 
   function showError(message) {
     var el = document.getElementById('contacts-error');
@@ -438,9 +438,18 @@
     params.set('page', String(state.page));
     params.set('per_page', String(state.perPage));
 
+    // Guard against out-of-order responses: search/filter/pagination changes can
+    // fire overlapping fetches, and a slower response for an older query could
+    // otherwise arrive last and overwrite the table/pagination with stale
+    // results. Only the response matching the most recently issued request is
+    // applied; earlier ones are silently ignored.
+    state.requestId += 1;
+    var requestId = state.requestId;
+
     return fetch('/api/contacts?' + params.toString())
       .then(parseJsonResponse)
       .then(function (res) {
+        if (requestId !== state.requestId) return;
         if (!res.ok) {
           showError((res.data && res.data.error) || '{{ _("Failed to load contacts.") }}');
           return;
@@ -449,7 +458,10 @@
         renderContacts((res.data && res.data.contacts) || []);
         renderPagination();
       })
-      .catch(function () { showError(networkErrorMessage()); });
+      .catch(function () {
+        if (requestId !== state.requestId) return;
+        showError(networkErrorMessage());
+      });
   }
 
   document.getElementById('contacts-search').addEventListener('input', debounce(function () {
