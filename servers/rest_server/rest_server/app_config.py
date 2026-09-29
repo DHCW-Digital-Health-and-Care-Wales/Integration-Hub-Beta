@@ -218,6 +218,8 @@ def _read_generic_pipeline_config(
     allowed_fhir_resource_types = _read_csv_list(
         "FHIR_ALLOWED_RESOURCE_TYPES", DEFAULT_FHIR_ALLOWED_RESOURCE_TYPES
     )
+    if content_adapter == "fhir-json" and output_format != "raw":
+        raise RuntimeError("OUTPUT_FORMAT must be 'raw' when CONTENT_ADAPTER is 'fhir-json'.")
 
     return (
         content_adapter,
