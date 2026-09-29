@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
 
 import dashboard.config as config
-from dashboard.services import cache, flow_sources, network_test
+from dashboard.services import cache, contacts_store, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status, load_alarm_config
 from dashboard.services.alarm2 import get_alarm2_status, load_alarm2_config
 from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
@@ -92,10 +92,16 @@ def flows_page() -> str:
         get_container_apps_metrics,
         ttl=config.API_CACHE_TTL,
     )
+    flow_contacts = cache.cached_nowait(
+        "flow_contacts",
+        contacts_store.contacts_by_flow,
+        ttl=config.API_CACHE_TTL,
+    )
     return render_template(
         "flows.html",
         status=status,
         container_metrics=container_metrics,
+        flow_contacts=flow_contacts or {},
         alarm_map=build_alarm_map(),
         refresh_interval=config.API_CACHE_TTL,
         data_is_stale=cache.is_cache_stale("status"),

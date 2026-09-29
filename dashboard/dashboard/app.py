@@ -18,6 +18,7 @@ import dashboard.template_filters as template_filters
 from dashboard.routes import alarm_config as alarm_config_routes
 from dashboard.routes import alarms as alarms_routes
 from dashboard.routes import api as api_routes
+from dashboard.routes import contacts as contacts_routes
 from dashboard.routes import pages as pages_routes
 from dashboard.services.status_builder import (
     build_status,
@@ -113,6 +114,7 @@ pages_routes.register(app)
 api_routes.register(app)
 alarms_routes.register(app)
 alarm_config_routes.register(app)
+contacts_routes.register(app)
 template_filters.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
