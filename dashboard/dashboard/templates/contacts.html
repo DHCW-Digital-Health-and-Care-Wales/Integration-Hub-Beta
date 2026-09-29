@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _("Contacts") }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-person-lines-fill" style="color:var(--accent-cyan)"></i>
+        {{ _("Contacts") }}
+      </h1>
+      <p class="page-subtitle">
+        {{ _("People to contact about a flow — Teams, Health Boards, and Suppliers.") }}
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn-dash" id="import-contacts-open-btn">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i> {{ _("Import CSV") }}
+      </button>
+      <button type="button" class="btn-dash btn-dash--primary" id="add-contact-open-btn">
+        <i class="bi bi-person-plus-fill me-1"></i> {{ _("Add Contact") }}
+      </button>
+    </div>
+  </div>
+
+  <div id="contacts-error" class="dash-card mb-3" style="display:none; border-left:3px solid var(--accent-red); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-red); font-size:0.83rem;">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span id="contacts-error-text"></span>
+    </div>
+  </div>
+
+  <div id="contacts-status" class="dash-card mb-3" style="display:none; border-left:3px solid var(--accent-cyan); padding:0.8rem 1.1rem;">
+    <div class="d-flex align-items-center gap-2" style="color:var(--accent-cyan); font-size:0.83rem;">
+      <i class="bi bi-info-circle-fill"></i>
+      <span id="contacts-status-text"></span>
+    </div>
+  </div>
+
+  <!-- Search / filter toolbar -->
+  <div class="dash-card mb-3 p-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="cfg-label" for="contacts-search">{{ _("Search") }}</label>
+        <input type="text" class="dash-input w-100" id="contacts-search"
+               placeholder="{{ _('Name, email, phone, organisation…') }}">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="cfg-label" for="contacts-flow-filter">{{ _("Flow") }}</label>
+        <select class="dash-input w-100" id="contacts-flow-filter">
+          <option value="">{{ _("All flows") }}</option>
+          {% for flow in flow_options %}
+          <option value="{{ flow.id }}">{{ flow.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-4 d-flex align-items-center" style="padding-bottom:0.4rem;">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="contacts-show-deleted">
+          <label class="form-check-label" for="contacts-show-deleted" style="font-size:0.82rem; color:var(--text-muted);">
+            {{ _("Show deleted contacts") }}
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contacts table -->
+  <div class="dash-card" id="contacts-list-card">
+    <div style="padding:0.85rem 1.25rem 0.6rem; border-bottom:1px solid var(--border-color);">
+      <h6 style="margin:0; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+        <i class="bi bi-people-fill me-1" style="color:var(--accent-cyan);"></i>
+        {{ _("Contacts") }}
+      </h6>
+    </div>
+    <div class="scroll-panel" style="max-height:480px;">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>{{ _("Name") }}</th>
+            <th>{{ _("Organisation") }}</th>
+            <th>{{ _("Contact info") }}</th>
+            <th>{{ _("Linked flows") }}</th>
+            <th style="width:1%;"></th>
+          </tr>
+        </thead>
+        <tbody id="contacts-tbody"></tbody>
+      </table>
+    </div>
+    <div id="contacts-list-empty" class="no-data" style="display:none;">
+      <i class="bi bi-person-lines-fill" style="font-size:2rem; color:var(--text-dim); opacity:0.6;"></i>
+      <span style="color:var(--text-muted); font-size:0.85rem;">
+        {{ _("No contacts found — add one above or import a CSV.") }}
+      </span>
+    </div>
+    <div class="d-flex align-items-center justify-content-between" style="padding:0.65rem 1.25rem; border-top:1px solid var(--border-color); font-size:0.8rem; color:var(--text-muted);">
+      <span id="contacts-pagination-summary"></span>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn-dash btn-dash--sm" id="contacts-prev-btn">
+          <i class="bi bi-chevron-left"></i> {{ _("Previous") }}
+        </button>
+        <button type="button" class="btn-dash btn-dash--sm" id="contacts-next-btn">
+          {{ _("Next") }} <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- ── Add/Edit Modal ─────────────────────────────────────────────────── -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="contactModalLabel">
+          <i class="bi bi-person-plus-fill me-2" style="color:var(--accent-cyan)"></i>
+          <span id="contact-modal-title-text">{{ _("Add Contact") }}</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="contact-id">
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-first-name">{{ _("First name") }} *</label>
+            <input type="text" class="dash-input w-100" id="contact-first-name" maxlength="100">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-last-name">{{ _("Last name") }} *</label>
+            <input type="text" class="dash-input w-100" id="contact-last-name" maxlength="100">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-email">{{ _("Email") }}</label>
+            <input type="email" class="dash-input w-100" id="contact-email" maxlength="200">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-phone">{{ _("Phone number") }}</label>
+            <input type="text" class="dash-input w-100" id="contact-phone" maxlength="30">
+          </div>
+          <div class="col-12">
+            <div class="cfg-hint">{{ _("At least one of email or phone number is required.") }}</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-org-type">{{ _("Organisation type") }} *</label>
+            <select class="dash-input w-100" id="contact-org-type">
+              {% for org_type in organisation_types %}
+              <option value="{{ org_type }}">{{ org_type }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="cfg-label" for="contact-org-name">{{ _("Organisation name") }} *</label>
+            <input type="text" class="dash-input w-100" id="contact-org-name" maxlength="200">
+          </div>
+          <div class="col-12">
+            <label class="cfg-label" for="contact-notes">{{ _("Notes") }}</label>
+            <textarea class="dash-input w-100" id="contact-notes" rows="2" maxlength="2000"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="cfg-label">{{ _("Linked flows") }}</label>
+            <div id="contact-flow-checkboxes" style="max-height:160px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px; padding:0.6rem 0.8rem;">
+              {% for flow in flow_options %}
+              <div class="form-check">
+                <input class="form-check-input contact-flow-checkbox" type="checkbox" value="{{ flow.id }}" id="contact-flow-{{ flow.id }}">
+                <label class="form-check-label" for="contact-flow-{{ flow.id }}" style="font-size:0.82rem;">{{ flow.label }}</label>
+              </div>
+              {% endfor %}
+              {% if not flow_options %}
+              <div style="font-size:0.8rem; color:var(--text-muted);">{{ _("No flows available.") }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div id="contact-modal-error" class="mt-3" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash btn-dash--primary" id="contact-save-btn">
+          <i class="bi bi-check-lg"></i> {{ _("Save") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── View Modal ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="viewContactModal" tabindex="-1" aria-labelledby="viewContactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="viewContactModalLabel">
+          <i class="bi bi-person-vcard-fill me-2" style="color:var(--accent-cyan)"></i>{{ _("Contact details") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body" id="view-contact-body" style="font-size:0.85rem;"></div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Close") }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ───────────────────────────────────────────── -->
+<div class="modal fade" id="deleteContactModal" tabindex="-1" aria-labelledby="deleteContactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="deleteContactModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2" style="color:var(--accent-red)"></i>{{ _("Delete contact?") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body" style="font-size:0.85rem;">
+        <p id="delete-contact-message"></p>
+        <p style="color:var(--text-muted); font-size:0.78rem;">{{ _("This cannot be undone from this screen.") }}</p>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash" style="border-color:var(--accent-red); color:var(--accent-red);" id="delete-contact-confirm-btn">
+          <i class="bi bi-trash3"></i> {{ _("Delete") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Import CSV Modal ───────────────────────────────────────────────── -->
+<div class="modal fade" id="importContactsModal" tabindex="-1" aria-labelledby="importContactsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="importContactsModalLabel">
+          <i class="bi bi-file-earmark-arrow-up me-2" style="color:var(--accent-cyan)"></i>{{ _("Import contacts from CSV") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <input type="file" class="dash-input w-100" id="import-contacts-file" accept=".csv,text/csv">
+        <div class="cfg-hint mt-2">
+          {{ _("Header row with columns") }} <code>first_name</code>, <code>last_name</code>, <code>email</code>,
+          <code>phone_number</code>, <code>organisation_type</code>, <code>organisation_name</code>,
+          <code>flow_ids</code>, <code>notes</code>.
+          {{ _("Use") }} <code>;</code> {{ _("to separate multiple flow ids in one cell.") }}
+        </div>
+        <div id="import-contacts-error" class="mt-2" style="display:none; font-size:0.8rem; color:var(--accent-red);"></div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash btn-dash--primary" id="import-contacts-upload-btn">
+          <i class="bi bi-upload"></i> {{ _("Upload") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script id="contacts-page-data" type="application/json">{{ page_data | tojson }}</script>
+<script>
+(function () {
+  'use strict';
+
+  var pageData = JSON.parse(document.getElementById('contacts-page-data').textContent);
+  var state = { page: 1, perPage: pageData.default_page_size, total: 0 };
+
+  function showError(message) {
+    var el = document.getElementById('contacts-error');
+    var textEl = document.getElementById('contacts-error-text');
+    textEl.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function showStatus(message) {
+    var el = document.getElementById('contacts-status');
+    var textEl = document.getElementById('contacts-status-text');
+    textEl.textContent = message;
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function escapeHtml(value) {
+    var div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
+  function parseJsonResponse(response) {
+    return response.text().then(function (text) {
+      var data = {};
+      if (text) {
+        try { data = JSON.parse(text); } catch (err) { data = {}; }
+      }
+      return { ok: response.ok, data: data };
+    });
+  }
+
+  function networkErrorMessage() {
+    return '{{ _("Could not reach the dashboard API — check your connection and try again.") }}';
+  }
+
+  var flowLabels = pageData.flow_labels;
+  var contactRetentionDays = pageData.contact_retention_days;
+
+  function renderFlowBadges(flowIds) {
+    if (!flowIds || !flowIds.length) {
+      return '<span style="color:var(--text-dim); font-size:0.75rem;">{{ _("None") }}</span>';
+    }
+    return flowIds.map(function (flowId) {
+      var label = flowLabels[flowId] || flowId;
+      return '<span class="badge bg-secondary" style="margin:0 0.2rem 0.2rem 0;">' + escapeHtml(label) + '</span>';
+    }).join('');
+  }
+
+  function renderPurgeCountdown(contact) {
+    // Mirrors the fallback in contacts_store.purge_expired_contacts: prefer
+    // deleted_at, fall back to updated_at for contacts soft-deleted before
+    // deleted_at existed.
+    var deletedAt = contact.deleted_at || contact.updated_at;
+    if (!deletedAt) return '';
+    var deletedTime = new Date(deletedAt).getTime();
+    if (isNaN(deletedTime)) return '';
+    var daysElapsed = (Date.now() - deletedTime) / (24 * 60 * 60 * 1000);
+    var daysLeft = Math.ceil(contactRetentionDays - daysElapsed);
+    if (daysLeft <= 0) {
+      return '{{ _("purges soon") }}';
+    }
+    return daysLeft === 1
+      ? '{{ _("purges in 1 day") }}'
+      : '{{ _("purges in {days} days") }}'.replace('{days}', daysLeft);
+  }
+
+  function renderContacts(contacts) {
+    var tbody = document.getElementById('contacts-tbody');
+    var emptyEl = document.getElementById('contacts-list-empty');
+    tbody.innerHTML = '';
+    emptyEl.style.display = contacts.length ? 'none' : 'flex';
+
+    contacts.forEach(function (contact) {
+      var row = document.createElement('tr');
+      if (contact.deleted) {
+        row.style.opacity = '0.55';
+      }
+
+      var nameCell = document.createElement('td');
+      var purgeHint = contact.deleted ? renderPurgeCountdown(contact) : '';
+      nameCell.innerHTML = escapeHtml(contact.first_name) + ' ' + escapeHtml(contact.last_name) +
+        (contact.deleted ? ' <span class="badge bg-secondary">{{ _("Deleted") }}</span>' : '') +
+        (purgeHint ? ' <span style="font-size:0.7rem; color:var(--text-muted);">(' + purgeHint + ')</span>' : '');
+      row.appendChild(nameCell);
+
+      var orgCell = document.createElement('td');
+      orgCell.innerHTML = '<div>' + escapeHtml(contact.organisation_name) + '</div>' +
+        '<div style="font-size:0.72rem; color:var(--text-muted);">' + escapeHtml(contact.organisation_type) + '</div>';
+      row.appendChild(orgCell);
+
+      var contactCell = document.createElement('td');
+      var contactBits = [];
+      if (contact.email) contactBits.push('<div><i class="bi bi-envelope"></i> ' + escapeHtml(contact.email) + '</div>');
+      if (contact.phone_number) contactBits.push('<div><i class="bi bi-telephone"></i> ' + escapeHtml(contact.phone_number) + '</div>');
+      contactCell.innerHTML = contactBits.join('') || '&mdash;';
+      contactCell.style.fontSize = '0.78rem';
+      row.appendChild(contactCell);
+
+      var flowsCell = document.createElement('td');
+      flowsCell.innerHTML = renderFlowBadges(contact.flow_ids);
+      row.appendChild(flowsCell);
+
+      var actionsCell = document.createElement('td');
+      var actions = document.createElement('div');
+      actions.className = 'd-flex gap-1';
+
+      var viewBtn = document.createElement('button');
+      viewBtn.type = 'button';
+      viewBtn.className = 'btn-dash btn-dash--sm';
+      viewBtn.title = '{{ _("View") }}';
+      viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+      viewBtn.addEventListener('click', function () { openViewModal(contact); });
+      actions.appendChild(viewBtn);
+
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn-dash btn-dash--sm';
+      editBtn.title = '{{ _("Edit") }}';
+      editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+      editBtn.addEventListener('click', function () { openContactModal(contact); });
+      actions.appendChild(editBtn);
+
+      if (!contact.deleted) {
+        var deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-dash btn-dash--sm';
+        deleteBtn.title = '{{ _("Delete") }}';
+        deleteBtn.innerHTML = '<i class="bi bi-trash3"></i>';
+        deleteBtn.addEventListener('click', function () { openDeleteModal(contact); });
+        actions.appendChild(deleteBtn);
+      }
+
+      if (contact.deleted) {
+        var restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.className = 'btn-dash btn-dash--sm';
+        restoreBtn.title = '{{ _("Restore") }}';
+        restoreBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i>';
+        restoreBtn.addEventListener('click', function () { restoreContact(contact); });
+        actions.appendChild(restoreBtn);
+      }
+
+      actionsCell.appendChild(actions);
+      row.appendChild(actionsCell);
+
+      tbody.appendChild(row);
+    });
+  }
+
+  function renderPagination() {
+    var summaryEl = document.getElementById('contacts-pagination-summary');
+    var start = state.total === 0 ? 0 : (state.page - 1) * state.perPage + 1;
+    var end = Math.min(state.page * state.perPage, state.total);
+    summaryEl.textContent = '{{ _("Showing") }} ' + start + '\u2013' + end + ' {{ _("of") }} ' + state.total;
+
+    document.getElementById('contacts-prev-btn').disabled = state.page <= 1;
+    document.getElementById('contacts-next-btn').disabled = state.page * state.perPage >= state.total;
+  }
+
+  function refreshContacts() {
+    var params = new URLSearchParams();
+    var search = document.getElementById('contacts-search').value.trim();
+    var flow = document.getElementById('contacts-flow-filter').value;
+    var showDeleted = document.getElementById('contacts-show-deleted').checked;
+    if (search) params.set('q', search);
+    if (flow) params.set('flow', flow);
+    params.set('include_deleted', showDeleted ? 'true' : 'false');
+    params.set('page', String(state.page));
+    params.set('per_page', String(state.perPage));
+
+    return fetch('/api/contacts?' + params.toString())
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          showError((res.data && res.data.error) || '{{ _("Failed to load contacts.") }}');
+          return;
+        }
+        state.total = (res.data && res.data.total) || 0;
+        renderContacts((res.data && res.data.contacts) || []);
+        renderPagination();
+      })
+      .catch(function () { showError(networkErrorMessage()); });
+  }
+
+  document.getElementById('contacts-search').addEventListener('input', debounce(function () {
+    state.page = 1;
+    refreshContacts();
+  }, 300));
+  document.getElementById('contacts-flow-filter').addEventListener('change', function () {
+    state.page = 1;
+    refreshContacts();
+  });
+  document.getElementById('contacts-show-deleted').addEventListener('change', function () {
+    state.page = 1;
+    refreshContacts();
+  });
+  document.getElementById('contacts-prev-btn').addEventListener('click', function () {
+    if (state.page > 1) { state.page -= 1; refreshContacts(); }
+  });
+  document.getElementById('contacts-next-btn').addEventListener('click', function () {
+    if (state.page * state.perPage < state.total) { state.page += 1; refreshContacts(); }
+  });
+
+  function debounce(fn, wait) {
+    var timer = null;
+    return function () {
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(null, args); }, wait);
+    };
+  }
+
+  refreshContacts();
+
+  // --- Add / Edit modal --------------------------------------------------
+
+  var contactModalEl = document.getElementById('contactModal');
+  var contactModal = new bootstrap.Modal(contactModalEl);
+
+  function resetContactForm() {
+    document.getElementById('contact-id').value = '';
+    document.getElementById('contact-first-name').value = '';
+    document.getElementById('contact-last-name').value = '';
+    document.getElementById('contact-email').value = '';
+    document.getElementById('contact-phone').value = '';
+    document.getElementById('contact-org-type').selectedIndex = 0;
+    document.getElementById('contact-org-name').value = '';
+    document.getElementById('contact-notes').value = '';
+    document.querySelectorAll('.contact-flow-checkbox').forEach(function (cb) { cb.checked = false; });
+    document.getElementById('contact-modal-error').style.display = 'none';
+  }
+
+  function openContactModal(contact) {
+    resetContactForm();
+    if (contact) {
+      document.getElementById('contact-modal-title-text').textContent = '{{ _("Edit Contact") }}';
+      document.getElementById('contact-id').value = contact.id;
+      document.getElementById('contact-first-name').value = contact.first_name || '';
+      document.getElementById('contact-last-name').value = contact.last_name || '';
+      document.getElementById('contact-email').value = contact.email || '';
+      document.getElementById('contact-phone').value = contact.phone_number || '';
+      document.getElementById('contact-org-type').value = contact.organisation_type || '';
+      document.getElementById('contact-org-name').value = contact.organisation_name || '';
+      document.getElementById('contact-notes').value = contact.notes || '';
+      (contact.flow_ids || []).forEach(function (flowId) {
+        var cb = document.getElementById('contact-flow-' + flowId);
+        if (cb) cb.checked = true;
+      });
+    } else {
+      document.getElementById('contact-modal-title-text').textContent = '{{ _("Add Contact") }}';
+    }
+    contactModal.show();
+  }
+
+  document.getElementById('add-contact-open-btn').addEventListener('click', function () { openContactModal(null); });
+
+  document.getElementById('contact-save-btn').addEventListener('click', function () {
+    var errorEl = document.getElementById('contact-modal-error');
+    errorEl.style.display = 'none';
+    showStatus('');
+
+    var contactId = document.getElementById('contact-id').value;
+    var flowIds = Array.prototype.slice.call(document.querySelectorAll('.contact-flow-checkbox:checked'))
+      .map(function (cb) { return cb.value; });
+
+    var payload = {
+      first_name: document.getElementById('contact-first-name').value.trim(),
+      last_name: document.getElementById('contact-last-name').value.trim(),
+      email: document.getElementById('contact-email').value.trim(),
+      phone_number: document.getElementById('contact-phone').value.trim(),
+      organisation_type: document.getElementById('contact-org-type').value,
+      organisation_name: document.getElementById('contact-org-name').value.trim(),
+      notes: document.getElementById('contact-notes').value.trim(),
+      flow_ids: flowIds
+    };
+
+    var url = contactId ? '/api/contacts/' + encodeURIComponent(contactId) : '/api/contacts';
+    var method = contactId ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          errorEl.textContent = (res.data && res.data.error) || '{{ _("Failed to save contact.") }}';
+          errorEl.style.display = 'block';
+          return;
+        }
+        contactModal.hide();
+        return refreshContacts();
+      })
+      .catch(function () {
+        errorEl.textContent = networkErrorMessage();
+        errorEl.style.display = 'block';
+      });
+  });
+
+  // --- View modal ---------------------------------------------------------
+
+  var viewContactModal = new bootstrap.Modal(document.getElementById('viewContactModal'));
+
+  function openViewModal(contact) {
+    var body = document.getElementById('view-contact-body');
+    var rows = [
+      ['{{ _("Name") }}', escapeHtml(contact.first_name) + ' ' + escapeHtml(contact.last_name)],
+      ['{{ _("Organisation") }}', escapeHtml(contact.organisation_name) + ' (' + escapeHtml(contact.organisation_type) + ')'],
+      ['{{ _("Email") }}', contact.email ? escapeHtml(contact.email) : '&mdash;'],
+      ['{{ _("Phone") }}', contact.phone_number ? escapeHtml(contact.phone_number) : '&mdash;'],
+      ['{{ _("Linked flows") }}', renderFlowBadges(contact.flow_ids)],
+      ['{{ _("Notes") }}', contact.notes ? escapeHtml(contact.notes) : '&mdash;']
+    ];
+    body.innerHTML = rows.map(function (r) {
+      return '<div class="mb-2"><div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em;">' +
+        r[0] + '</div><div>' + r[1] + '</div></div>';
+    }).join('');
+    viewContactModal.show();
+  }
+
+  // --- Delete modal --------------------------------------------------------
+
+  var deleteContactModal = new bootstrap.Modal(document.getElementById('deleteContactModal'));
+  var pendingDeleteId = null;
+
+  function restoreContact(contact) {
+    showError('');
+    showStatus('');
+    fetch('/api/contacts/' + encodeURIComponent(contact.id) + '/restore', { method: 'POST' })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          showError((res.data && res.data.error) || '{{ _("Failed to restore contact.") }}');
+          return;
+        }
+        return refreshContacts();
+      })
+      .catch(function () { showError(networkErrorMessage()); });
+  }
+
+  function openDeleteModal(contact) {
+    pendingDeleteId = contact.id;
+    document.getElementById('delete-contact-message').textContent =
+      '{{ _("Delete") }} ' + contact.first_name + ' ' + contact.last_name + '?';
+    deleteContactModal.show();
+  }
+
+  document.getElementById('delete-contact-confirm-btn').addEventListener('click', function () {
+    if (!pendingDeleteId) return;
+    showError('');
+    showStatus('');
+    fetch('/api/contacts/' + encodeURIComponent(pendingDeleteId), { method: 'DELETE' })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        deleteContactModal.hide();
+        if (!res.ok) {
+          showError((res.data && res.data.error) || '{{ _("Failed to delete contact.") }}');
+          return;
+        }
+        return refreshContacts();
+      })
+      .catch(function () {
+        deleteContactModal.hide();
+        showError(networkErrorMessage());
+      });
+  });
+
+  // --- Import CSV ------------------------------------------------------
+
+  var importContactsModal = new bootstrap.Modal(document.getElementById('importContactsModal'));
+  document.getElementById('import-contacts-open-btn').addEventListener('click', function () {
+    document.getElementById('import-contacts-file').value = '';
+    document.getElementById('import-contacts-error').style.display = 'none';
+    importContactsModal.show();
+  });
+
+  document.getElementById('import-contacts-upload-btn').addEventListener('click', function () {
+    var errorEl = document.getElementById('import-contacts-error');
+    errorEl.style.display = 'none';
+    showStatus('');
+
+    var fileInput = document.getElementById('import-contacts-file');
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) {
+      errorEl.textContent = '{{ _("Choose a CSV file to upload first.") }}';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/contacts/import', { method: 'POST', body: formData })
+      .then(parseJsonResponse)
+      .then(function (res) {
+        if (!res.ok) {
+          errorEl.textContent = (res.data && res.data.error) || '{{ _("Failed to import CSV.") }}';
+          errorEl.style.display = 'block';
+          return;
+        }
+        importContactsModal.hide();
+        var summary = '{{ _("Created") }} ' + res.data.created + ', {{ _("updated") }} ' + res.data.updated + '.';
+        if (res.data.errors && res.data.errors.length) {
+          summary += ' ' + res.data.errors.join(' ');
+        }
+        state.page = 1;
+        return refreshContacts().then(function () { showStatus(summary); });
+      })
+      .catch(function () {
+        errorEl.textContent = networkErrorMessage();
+        errorEl.style.display = 'block';
+      });
+  });
+})();
+</script>
+{% endblock %}
