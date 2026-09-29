@@ -80,6 +80,18 @@ def _extract_source_identifier(data: dict[str, Any]) -> str | None:
         if isinstance(source, dict) and isinstance(source.get("endpoint"), str):
             return source["endpoint"]
 
+    if data.get("resourceType") == "Bundle":
+        entries = data.get("entry")
+        if isinstance(entries, list):
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                resource = entry.get("resource")
+                if isinstance(resource, dict) and resource.get("resourceType") == "MessageHeader":
+                    identifier = _extract_source_identifier(resource)
+                    if identifier is not None:
+                        return identifier
+
     return None
 
 
