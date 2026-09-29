@@ -576,6 +576,11 @@ services:
       AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "3"
       # Persist emulator data across restarts.
       AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
+      # vnext-preview defaults to plain HTTP; the dashboard's COSMOS_ENDPOINT uses
+      # https:// and COSMOS_DISABLE_SSL_VERIFY to trust the emulator's self-signed
+      # cert, so HTTPS must be explicitly enabled here or the SDK fails with
+      # "[SSL: WRONG_VERSION_NUMBER]" (TLS handshake against a plain HTTP server).
+      PROTOCOL: "https"
     volumes:
       - cosmos-data:/tmp/cosmos/appdata
     restart: unless-stopped

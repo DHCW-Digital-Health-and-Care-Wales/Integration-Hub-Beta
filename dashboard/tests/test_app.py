@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from flask.testing import FlaskClient
 
 from dashboard import app as app_module
-from dashboard.services import flow_sources
+from dashboard.services import contacts_store, flow_sources
 
 app = app_module.app
 
@@ -825,6 +825,116 @@ class TestNetworkTestConfigRoutes:
             "errors": ["Source persistence is currently unavailable."],
             "persistence_failed": True,
         }
+
+
+class TestContactsRoutes:
+    def test_contacts_page_renders(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.contacts.get_active_flows", return_value={}):
+            response = client.get("/contacts")
+        assert response.status_code == 200
+
+    def test_api_contacts_get_returns_json(self, client: FlaskClient) -> None:
+        contacts = [{"id": "1", "first_name": "Jane", "last_name": "Doe"}]
+        with patch("dashboard.routes.contacts.contacts_store.list_contacts", return_value=(contacts, 1)):
+            response = client.get("/api/contacts?q=jane&page=1&per_page=25")
+        assert response.status_code == 200
+        assert response.get_json() == {"contacts": contacts, "total": 1, "page": 1, "per_page": 25}
+
+    def test_api_contacts_post_adds_contact(self, client: FlaskClient) -> None:
+        added = {"id": "1", "first_name": "Jane", "last_name": "Doe"}
+        with patch("dashboard.routes.contacts.contacts_store.add_contact", return_value=added) as add_contact:
+            response = client.post(
+                "/api/contacts",
+                json={"first_name": "Jane", "last_name": "Doe", "email": "jane@example.nhs.uk"},
+            )
+        assert response.status_code == 201
+        assert response.get_json() == added
+        add_contact.assert_called_once()
+
+    def test_api_contacts_post_rejects_invalid_body(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.contacts.contacts_store.add_contact",
+            side_effect=contacts_store.InvalidContactError("bad"),
+        ):
+            response = client.post("/api/contacts", json={"first_name": ""})
+        assert response.status_code == 400
+        assert response.get_json() == {"error": "bad"}
+
+    def test_api_contacts_post_returns_persistence_error(self, client: FlaskClient) -> None:
+        with patch(
+            "dashboard.routes.contacts.contacts_store.add_contact",
+            side_effect=contacts_store.ContactPersistenceError("Contact persistence is currently unavailable."),
+        ):
+            response = client.post(
+                "/api/contacts",
+                json={"first_name": "Jane", "last_name": "Doe", "email": "jane@example.nhs.uk"},
+            )
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Contact persistence is currently unavailable."}
+
+    def test_api_contact_get_returns_404_for_unknown_id(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.contacts.contacts_store.get_contact", return_value=None):
+            response = client.get("/api/contacts/missing-id")
+        assert response.status_code == 404
+
+    def test_api_contact_put_updates_contact(self, client: FlaskClient) -> None:
+        updated = {"id": "1", "first_name": "Jane", "last_name": "Smith"}
+        with patch("dashboard.routes.contacts.contacts_store.update_contact", return_value=updated):
+            response = client.put(
+                "/api/contacts/1",
+                json={"first_name": "Jane", "last_name": "Smith", "email": "jane@example.nhs.uk"},
+            )
+        assert response.status_code == 200
+        assert response.get_json() == updated
+
+    def test_api_contact_delete_soft_deletes(self, client: FlaskClient) -> None:
+        with patch("dashboard.routes.contacts.contacts_store.delete_contact") as delete_contact:
+            response = client.delete("/api/contacts/1")
+        assert response.status_code == 200
+        assert response.get_json() == {"deleted": True, "id": "1"}
+        delete_contact.assert_called_once_with("1")
+
+    def test_api_contacts_import_returns_summary(self, client: FlaskClient) -> None:
+        csv_bytes = (
+            b"first_name,last_name,email,phone_number,organisation_type,organisation_name,flow_ids,notes\n"
+            b"Jane,Doe,jane@example.nhs.uk,,Team,Hub Team,,\n"
+        )
+        with patch(
+            "dashboard.routes.contacts.contacts_store.import_contacts",
+            return_value={"created": 1, "updated": 0, "errors": [], "persistence_failed": False},
+        ):
+            response = client.post(
+                "/api/contacts/import",
+                data={"file": (io.BytesIO(csv_bytes), "contacts.csv")},
+                content_type="multipart/form-data",
+            )
+        assert response.status_code == 200
+        assert response.get_json() == {"created": 1, "updated": 0, "errors": [], "persistence_failed": False}
+
+    def test_api_contacts_import_returns_503_for_persistence_error(self, client: FlaskClient) -> None:
+        csv_bytes = (
+            b"first_name,last_name,email,phone_number,organisation_type,organisation_name,flow_ids,notes\n"
+            b"Jane,Doe,jane@example.nhs.uk,,Team,Hub Team,,\n"
+        )
+        with patch(
+            "dashboard.routes.contacts.contacts_store.import_contacts",
+            return_value={
+                "created": 0,
+                "updated": 0,
+                "errors": ["Contact persistence is currently unavailable."],
+                "persistence_failed": True,
+            },
+        ):
+            response = client.post(
+                "/api/contacts/import",
+                data={"file": (io.BytesIO(csv_bytes), "contacts.csv")},
+                content_type="multipart/form-data",
+            )
+        assert response.status_code == 503
+
+    def test_api_contacts_import_rejects_missing_file(self, client: FlaskClient) -> None:
+        response = client.post("/api/contacts/import", data={}, content_type="multipart/form-data")
+        assert response.status_code == 400
 
 
 class TestEnvLoading:

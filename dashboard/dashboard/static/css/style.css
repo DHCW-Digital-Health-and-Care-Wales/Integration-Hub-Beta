@@ -29,6 +29,7 @@
   --glow-blue:       #3b82f640;
   --navbar-height:   60px;
   --navbar-bg:       rgba(15,23,42,0.92);
+  --card-bg-solid:   #1b2a3b;
   --font-mono:       'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
 }
 
@@ -56,7 +57,14 @@
   --glow-blue:       #2563eb20;
   --navbar-height:   60px;
   --navbar-bg:       #325083;
+  --card-bg-solid:   #ffffff;
   --font-mono:       'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+}
+
+/* Bootstrap's .btn-close-white forces a white icon via filter, which
+   disappears on the light theme's white modal background. */
+[data-theme="light"] .btn-close-white {
+  filter: none;
 }
 
 /* ---------- Reset & Base ---------- */
@@ -669,17 +677,32 @@ table.dash-table thead th {
   user-select: none;
 }
 
+[data-theme="light"] table.dash-table thead th {
+  background: rgba(100,116,139,0.4);
+}
+
 table.dash-table thead th:hover { color: var(--text-primary); }
 table.dash-table thead th .sort-icon { opacity: 0.4; font-size: 0.65rem; }
 table.dash-table thead th.sorted .sort-icon { opacity: 1; color: var(--accent-blue); }
 
 table.dash-table tbody tr {
-  border-bottom: 1px solid rgba(51,65,85,0.5);
+  border-bottom: 1px solid var(--border-color);
   transition: background 0.15s;
 }
 
-table.dash-table tbody tr:hover { background: rgba(51,65,85,0.4); }
+table.dash-table tbody tr:hover { background: var(--bg-card-hover); }
 table.dash-table tbody tr:last-child { border-bottom: none; }
+
+/* A .dash-card wrapping a table normally tints its whole background on hover
+   (see .dash-card:hover above), which swallows the per-row highlight since both
+   end up the same colour. Suppress the card-level tint so only the hovered row
+   itself highlights. */
+.dash-card:has(table.dash-table):hover {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
 
 table.dash-table td {
   padding: 0.65rem 1rem;
