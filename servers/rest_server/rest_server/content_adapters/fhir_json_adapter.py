@@ -29,8 +29,8 @@ class FhirJsonContentAdapter:
             raise RequestError("Client", "FHIR request body must be a JSON object.", 400)
 
         resource_type = data.get("resourceType")
-        if not resource_type:
-            raise RequestError("Client", "FHIR resource is missing 'resourceType'.", 400)
+        if not isinstance(resource_type, str) or not resource_type:
+            raise RequestError("Client", "FHIR resource has a missing or invalid 'resourceType'.", 400)
 
         return ExtractedPayload(
             payload_xml=raw_body,
