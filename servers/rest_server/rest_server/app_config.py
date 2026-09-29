@@ -14,10 +14,11 @@ load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 DEFAULT_MAX_REQUEST_SIZE_BYTES = 1048576  # 1MB request size cap
 SERVICE_BUS_LIMIT_BYTES = 104857600  # 100MB Azure Service Bus Premium tier limit
 
-VALID_CONTENT_ADAPTERS = {"soap", "xml-raw"}
-VALID_VALIDATOR_TYPES = {"hl7-xsd", "xsd", "none"}
+VALID_CONTENT_ADAPTERS = {"soap", "xml-raw", "fhir-json"}
+VALID_VALIDATOR_TYPES = {"hl7-xsd", "xsd", "none", "fhir"}
 VALID_OUTPUT_FORMATS = {"er7", "raw"}
 SCHEMA_REQUIRED_VALIDATOR_TYPES = {"hl7-xsd", "xsd"}
+DEFAULT_FHIR_ALLOWED_RESOURCE_TYPES = "Bundle"
 
 VALID_PIPELINES = {"generic", "hl7"}
 DEFAULT_PIPELINE = "generic"
@@ -49,6 +50,7 @@ class AppConfig:
     validator_type: str | None
     validation_schema: str | None
     allowed_hl7_structures: List[str]
+    allowed_fhir_resource_types: List[str]
     allowed_source_identifiers: List[str]
     source_identifier_locator: List[str] | None
     message_control_id_locator: List[str] | None
@@ -92,9 +94,14 @@ class AppConfig:
                 f"Unsupported PIPELINE '{pipeline}'. Allowed values: {', '.join(sorted(VALID_PIPELINES))}"
             )
 
-        content_adapter, validator_type, validation_schema, output_format, allowed_hl7_structures = (
-            _read_generic_pipeline_config(pipeline)
-        )
+        (
+            content_adapter,
+            validator_type,
+            validation_schema,
+            output_format,
+            allowed_hl7_structures,
+            allowed_fhir_resource_types,
+        ) = _read_generic_pipeline_config(pipeline)
         hl7_validation_flow = _read_env("HL7_VALIDATION_FLOW")
         wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id = _read_and_validate_wrrs_config(
             hl7_validation_flow
@@ -120,6 +127,7 @@ class AppConfig:
             validator_type=validator_type,
             validation_schema=validation_schema,
             allowed_hl7_structures=allowed_hl7_structures,
+            allowed_fhir_resource_types=allowed_fhir_resource_types,
             allowed_source_identifiers=_read_csv_list_optional("ALLOWED_SOURCE_IDENTIFIERS"),
             source_identifier_locator=_read_path_env("SOURCE_IDENTIFIER_LOCATOR"),
             message_control_id_locator=_read_path_env("MESSAGE_CONTROL_ID_LOCATOR"),
@@ -167,16 +175,19 @@ def _read_and_validate_request_size() -> int:
     return configured_size
 
 
-def _read_generic_pipeline_config(pipeline: str) -> tuple[str | None, str | None, str | None, str | None, List[str]]:
+def _read_generic_pipeline_config(
+    pipeline: str,
+) -> tuple[str | None, str | None, str | None, str | None, List[str], List[str]]:
     """Read/validate the ``generic``-pipeline-only settings, or fail fast if they're misapplied.
 
-    Returns (content_adapter, validator_type, validation_schema, output_format, allowed_hl7_structures).
+    Returns (content_adapter, validator_type, validation_schema, output_format,
+    allowed_hl7_structures, allowed_fhir_resource_types).
     """
     if pipeline != "generic":
         for name in ("CONTENT_ADAPTER", "VALIDATOR_TYPE", "OUTPUT_FORMAT"):
             if _read_env(name) is not None:
                 raise RuntimeError(f"{name} is only valid when PIPELINE=generic (current PIPELINE={pipeline}).")
-        return None, None, None, None, []
+        return None, None, None, None, [], []
 
     content_adapter = _read_required_env("CONTENT_ADAPTER")
     if content_adapter not in VALID_CONTENT_ADAPTERS:
@@ -204,8 +215,18 @@ def _read_generic_pipeline_config(pipeline: str) -> tuple[str | None, str | None
         raise RuntimeError(f"VALIDATION_SCHEMA is required when VALIDATOR_TYPE is '{validator_type}'.")
 
     allowed_hl7_structures = _read_csv_list("ALLOWED_HL7_STRUCTURES", "ADT_A05,ADT_A39")
+    allowed_fhir_resource_types = _read_csv_list(
+        "FHIR_ALLOWED_RESOURCE_TYPES", DEFAULT_FHIR_ALLOWED_RESOURCE_TYPES
+    )
 
-    return content_adapter, validator_type, validation_schema, output_format, allowed_hl7_structures
+    return (
+        content_adapter,
+        validator_type,
+        validation_schema,
+        output_format,
+        allowed_hl7_structures,
+        allowed_fhir_resource_types,
+    )
 
 
 def _read_and_validate_wrrs_config(

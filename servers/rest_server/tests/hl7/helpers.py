@@ -75,6 +75,7 @@ def make_config(
         validator_type=None,
         validation_schema=None,
         allowed_hl7_structures=[],
+        allowed_fhir_resource_types=[],
         allowed_source_identifiers=[],
         source_identifier_locator=None,
         message_control_id_locator=None,

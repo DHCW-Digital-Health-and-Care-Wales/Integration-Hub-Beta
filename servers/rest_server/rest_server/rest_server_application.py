@@ -17,6 +17,7 @@ from message_bus_lib.message_sender_client import MessageSenderClient
 from .app_config import AppConfig
 from .asgi_app import build_fastapi_app
 from .content_adapters.base import ContentAdapter
+from .content_adapters.fhir_json_adapter import FhirJsonContentAdapter
 from .content_adapters.soap_adapter import SoapContentAdapter
 from .content_adapters.xml_raw_adapter import XmlRawContentAdapter
 from .hl7.app import create_hl7_app
@@ -24,6 +25,7 @@ from .hl7.runtime import build_hl7_runtime
 from .infra import SharedResources, build_shared_resources
 from .message_processor import RestMessageProcessor
 from .validators.base import Validator
+from .validators.fhir_validator import FhirResourceValidator
 from .validators.hl7_xsd_validator import Hl7XsdValidator
 from .validators.no_op_validator import NoOpValidator
 from .validators.xsd_validator import XsdValidator
@@ -46,6 +48,8 @@ def build_content_adapter(app_config: AppConfig) -> ContentAdapter:
             source_identifier_path=app_config.source_identifier_locator,
             message_control_id_path=app_config.message_control_id_locator,
         )
+    if app_config.content_adapter == "fhir-json":
+        return FhirJsonContentAdapter()
     raise RuntimeError(f"Unsupported content adapter '{app_config.content_adapter}'")
 
 
@@ -57,6 +61,8 @@ def build_validator(app_config: AppConfig) -> Validator:
         )
     if app_config.validator_type == "xsd":
         return XsdValidator(schema_path=app_config.validation_schema or "")
+    if app_config.validator_type == "fhir":
+        return FhirResourceValidator(allowed_resource_types=app_config.allowed_fhir_resource_types)
     if app_config.validator_type == "none":
         return NoOpValidator()
     raise RuntimeError(f"Unsupported validator type '{app_config.validator_type}'")

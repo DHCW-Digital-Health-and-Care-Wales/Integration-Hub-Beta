@@ -31,6 +31,7 @@ def _config(**overrides: object) -> AppConfig:
         validator_type="none",
         validation_schema=None,
         allowed_hl7_structures=["ADT_A05"],
+        allowed_fhir_resource_types=["Bundle"],
         allowed_source_identifiers=[],
         source_identifier_locator=None,
         message_control_id_locator=None,
