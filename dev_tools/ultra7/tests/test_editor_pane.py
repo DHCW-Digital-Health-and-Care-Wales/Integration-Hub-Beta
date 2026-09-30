@@ -262,7 +262,7 @@ class TestEditorPaneNewMessage(unittest.TestCase):
         # Verify the new message has the content
         messages = self.pane.get_messages()
         self.assertEqual(messages[2].content, "New content")
-        
+
         # Verify existing messages are unchanged
         self.assertEqual(messages[0].content, "Content 1")
         self.assertEqual(messages[1].content, "Content 2")
@@ -271,7 +271,7 @@ class TestEditorPaneNewMessage(unittest.TestCase):
         self.pane._new_message()
         self.pane._new_message()
         self.pane._new_message()
-        
+
         messages = self.pane.get_messages()
         self.assertEqual(len(messages), 5)
         self.assertEqual([m.name for m in messages], [
