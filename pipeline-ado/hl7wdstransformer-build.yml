@@ -6,9 +6,9 @@ trigger:
       - release-*
   paths:
     include:
-      - transformers/hl7_wds_transformer/*
+      - transformers/hl7_wds_transformer/**
       - shared_libs/*
-      - pipeline-ado/templates/*
+      - pipeline-ado/templates/**
       - ca-certs/*
 
 pr: none
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: templates/code-quality-template.yml
         parameters:
-          appName: 'hl7_wds_transformer'
+          appName: 'transformers/hl7_wds_transformer'
           appDisplayName: 'WDS HL7 Transformer'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
