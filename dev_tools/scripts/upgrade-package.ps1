@@ -3,9 +3,20 @@
     Upgrades a Python package across all uv-managed projects in Integration-Hub-Beta.
 
 .DESCRIPTION
-    Walks every directory containing a uv.lock file, optionally raises the minimum
-    version floor in pyproject.toml for direct dependencies, then regenerates the
-    lock file via `uv lock --upgrade-package`.
+    Runs in two phases across every directory containing a uv.lock file:
+
+      Phase 1 - raise the minimum version floor in pyproject.toml (for direct
+                dependencies) in ALL directories first, with no locking yet.
+      Phase 2 - regenerate every lock file via `uv lock --upgrade-package`.
+
+    Local path dependencies (e.g. shared_libs/*) cache a snapshot of their own
+    pyproject.toml `requires-dist` metadata inside every dependent's uv.lock.
+    Bumping manifests and locking directory-by-directory in a single pass would
+    let a dependent lock against a shared lib's pre-bump manifest if that lib
+    hadn't been processed yet (alphabetical ordering), leaving stale floors
+    embedded in the dependent's lock file and failing CI's `uv lock --locked`
+    check. Running phase 1 to completion before any phase-2 locking begins
+    avoids that ordering issue entirely - no need to run this script twice.
 
     Use this script whenever a vulnerability is identified in a shared dependency.
 
@@ -40,15 +51,18 @@ $lockFiles = Get-ChildItem -Path $repoRoot -Recurse -Filter "uv.lock" |
 $upgraded  = @()
 $failed    = @()
 
-foreach ($lock in $lockFiles) {
-    $dir        = $lock.DirectoryName
-    $pyproject  = Join-Path $dir "pyproject.toml"
-    $relDir     = $dir.Substring($repoRoot.Length).TrimStart('\')
+# --- Phase 1: raise the pyproject.toml floor for direct dependencies EVERYWHERE first ---
+# This must fully complete before any `uv lock` runs (phase 2), otherwise a dependent
+# project could lock against a path-dependency's (e.g. shared_libs/*) pre-bump manifest.
+if ($MinVersion) {
+    Write-Host "`n--- Phase 1: bumping pyproject.toml floors ---" -ForegroundColor Yellow
+    foreach ($lock in $lockFiles) {
+        $dir        = $lock.DirectoryName
+        $pyproject  = Join-Path $dir "pyproject.toml"
+        $relDir     = $dir.Substring($repoRoot.Length).TrimStart('\')
 
-    Write-Host "`n=== $relDir ===" -ForegroundColor Cyan
+        if (-not (Test-Path $pyproject)) { continue }
 
-    # --- Optionally raise the pyproject.toml floor for direct dependencies ---
-    if ($MinVersion -and (Test-Path $pyproject)) {
         $content = Get-Content $pyproject -Raw
 
         # Matches lines like:  "pyjwt>=2.12.0",  or  "pyjwt>=2.12.1"
@@ -57,18 +71,25 @@ foreach ($lock in $lockFiles) {
         if ($content -match $pattern) {
             $currentFloor = $Matches[2]
             if ([version]$currentFloor -lt [version]$MinVersion) {
-                Write-Host "  Bumping $Package floor in pyproject.toml: $currentFloor -> $MinVersion"
+                Write-Host "  [$relDir] Bumping $Package floor: $currentFloor -> $MinVersion"
                 $updated = [regex]::Replace($content, $pattern, "`${1}$MinVersion`${3}")
                 [System.IO.File]::WriteAllText($pyproject, $updated)
             } else {
-                Write-Host "  pyproject.toml floor ($currentFloor) already >= $MinVersion — no manifest change needed"
+                Write-Host "  [$relDir] floor ($currentFloor) already >= $MinVersion — no manifest change needed"
             }
         } else {
-            Write-Host "  $Package is a transitive dependency only — no manifest change needed"
+            Write-Host "  [$relDir] $Package is a transitive dependency only — no manifest change needed"
         }
     }
+}
 
-    # --- Upgrade the lock file ---
+# --- Phase 2: regenerate every lock file now that all manifests are settled ---
+Write-Host "`n--- Phase 2: regenerating lock files ---" -ForegroundColor Yellow
+foreach ($lock in $lockFiles) {
+    $dir    = $lock.DirectoryName
+    $relDir = $dir.Substring($repoRoot.Length).TrimStart('\')
+
+    Write-Host "`n=== $relDir ===" -ForegroundColor Cyan
     Write-Host "  Running: uv lock --upgrade-package $Package"
     Push-Location $dir
     try {

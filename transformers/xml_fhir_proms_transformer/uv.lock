@@ -433,7 +433,7 @@ requires-dist = [
     { name = "azure-identity", specifier = "==1.23.0" },
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "cryptography", specifier = ">=50.0.0" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -567,7 +567,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
     { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -602,7 +602,7 @@ requires-dist = [
     { name = "azure-monitor-opentelemetry", specifier = "==1.6.13" },
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -956,7 +956,7 @@ requires-dist = [
     { name = "idna", specifier = ">=3.15" },
     { name = "opentelemetry-api", specifier = ">=1.29.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
@@ -1051,7 +1051,7 @@ requires-dist = [
     { name = "health-check-lib", directory = "../../shared_libs/health_check_lib" },
     { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
     { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "transformer-base-lib", directory = "../../shared_libs/transformer_base_lib" },
     { name = "urllib3", specifier = ">=2.6.3" },
@@ -1348,7 +1348,7 @@ requires-dist = [
     { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
     { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
     { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
-    { name = "pyjwt", specifier = ">=2.14.0" },
+    { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
