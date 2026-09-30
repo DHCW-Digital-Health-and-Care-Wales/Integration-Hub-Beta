@@ -102,8 +102,9 @@ Where pauses appear:
 
 Behaviour worth knowing:
 
-- Pauses need Cosmos DB. Creating or cancelling one returns an error if Cosmos is not
-  configured or unavailable. If pauses can't be *read*, alarms are evaluated as if nothing
+- Pauses need Cosmos DB. Creating, cancelling or resuming one returns 503 if Cosmos is not
+  configured or unavailable, rather than reporting success without a durable change. If
+  pauses can't be *read* during alarm evaluation, alarms are evaluated as if nothing
   is paused, so alerts are never silently lost.
 - Alarms are evaluated when pages or `/api/alarms/status` are requested (cached for
   `API_CACHE_TTL`), so a pause takes effect or ends on the next evaluation, not at the exact
@@ -207,10 +208,32 @@ This means:
 bash check.sh
 ```
 
-Runs ruff, bandit, mypy, and pytest.
+Runs ruff, bandit, mypy, and pytest. The Cosmos emulator integration tests are skipped
+(see below).
 
 `check.sh` only type-checks `dashboard/`, but CI also type-checks the tests. Before pushing, run:
 
 ```bash
 uv run mypy --ignore-missing-imports dashboard/ tests/ scripts/
 ```
+
+### Cosmos emulator integration tests
+
+`tests/test_alarm_pause_emulator.py` runs the alarm pause feature end to end against the
+local Cosmos emulator: pauses are created and cancelled through the Flask routes, stored in
+the emulator and read back by the real Alarm 3 evaluator, which is checked for sending (or
+not sending) an alert email. Only Log Analytics and the email transport are stubbed.
+
+The tests are skipped unless `RUN_COSMOS_EMULATOR_TESTS=1`, so `check.sh` and CI never run
+them. With the emulator running and `COSMOS_*` set in `.env`:
+
+```bash
+RUN_COSMOS_EMULATOR_TESTS=1 uv run pytest tests/test_alarm_pause_emulator.py -v
+```
+
+- They refuse to run unless `COSMOS_ENDPOINT` is a local emulator address, and skip if the
+  emulator is unreachable.
+- Each test uses a throwaway `itest-<id>` flow and removes its rule, alarm state and pauses
+  afterwards, so existing local data is left alone.
+- They skip if an active all-flows pause exists (for example from
+  `seed_example_alarms.py --with-pauses`); clear it with `--remove` or the Alarm Pauses page.
