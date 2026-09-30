@@ -1,0 +1,193 @@
+{# Shared schedule-pause modal. Include once per page; open with any element carrying
+   data-pause-open (optional data-alarm-type / data-rule-id / data-rule-name / data-workflow-id
+   to preselect a rule). Resume buttons use data-pause-resume + data-alarm-type + data-rule-id;
+   cancel/end buttons use data-pause-cancel="<pause_id>". #}
+<style>
+  .status-badge.paused {
+    background: rgba(18,163,201,0.12);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.35);
+  }
+  .status-badge.scheduled {
+    background: rgba(248,202,77,0.10);
+    color: var(--accent-amber);
+    border-color: rgba(248,202,77,0.35);
+  }
+  .duration-opt--selected {
+    background: rgba(18,163,201,0.15);
+    color: var(--accent-cyan);
+    border-color: rgba(18,163,201,0.5);
+  }
+  .pause-modal .form-control,
+  .pause-modal .form-select {
+    background: var(--input-bg, rgba(255,255,255,0.05));
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+  .pause-modal .form-select option { background: var(--card-bg-solid, #1b2a3b); }
+  .pause-modal .pm-section { margin-bottom: 1rem; }
+  .pause-modal .pm-radio { display:flex; flex-wrap:wrap; gap:0.35rem 1rem; font-size:0.83rem; margin-bottom:0.45rem; }
+  .pause-modal .pm-radio label { display:flex; align-items:center; gap:0.35rem; cursor:pointer; }
+  .pause-modal .pm-flow-list {
+    max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color);
+    border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.82rem;
+  }
+  .pause-modal .pm-flow-list label { display:flex; align-items:center; gap:0.4rem; padding:0.15rem 0; cursor:pointer; }
+  .pause-modal .pm-hint { font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem; }
+  .pause-modal .pm-summary {
+    font-size: 0.8rem; border-left: 3px solid var(--accent-cyan);
+    background: rgba(18,163,201,0.06); padding: 0.5rem 0.75rem; border-radius: 4px;
+  }
+  .pause-note { font-size: 0.72rem; margin-top: 3px; line-height: 1.3; }
+  .modal-backdrop { opacity: 0.75 !important; }
+</style>
+
+<div class="modal fade pause-modal" id="pauseModal" tabindex="-1" aria-labelledby="pauseModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:var(--card-bg-solid, #1b2a3b); border:1px solid var(--border-color); color:var(--text-primary); box-shadow:0 16px 60px rgba(0,0,0,0.75);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+        <h5 class="modal-title" id="pauseModalLabel">
+          <i class="bi bi-pause-circle-fill me-2" style="color:var(--accent-cyan)"></i>{{ _("Pause Alarms") }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+
+        {# ── What to pause ── #}
+        <div class="pm-section">
+          <div class="cfg-label mb-1">{{ _("What to pause") }}</div>
+          <div class="pm-radio" id="pmScope">
+            <label id="pmScopeRuleLabel"><input type="radio" name="pmScope" value="rule"> <span>{{ _("Single alarm") }}</span></label>
+            <label><input type="radio" name="pmScope" value="flow"> {{ _("Single flow") }}</label>
+            <label><input type="radio" name="pmScope" value="flows"> {{ _("Multiple flows") }}</label>
+            <label><input type="radio" name="pmScope" value="all"> {{ _("All flows") }}</label>
+          </div>
+
+          <div id="pmRuleRow">
+            <div id="pmRuleFixed" style="font-size:0.85rem; font-weight:600;"></div>
+            <select id="pmRuleSelect" class="form-select" aria-label="{{ _('Alarm') }}"></select>
+          </div>
+          <div id="pmFlowRow">
+            <select id="pmFlowSelect" class="form-select" aria-label="{{ _('Flow') }}"></select>
+            <div class="pm-hint">{{ _("Pauses all alarm types (Inactivity, Volume, Failures) for the flow, including rules added later.") }}</div>
+          </div>
+          <div id="pmFlowsRow">
+            <input type="search" id="pmFlowFilter" class="form-control mb-1" placeholder="{{ _('Filter flows…') }}" aria-label="{{ _('Filter flows') }}">
+            <div class="pm-flow-list" id="pmFlowList"></div>
+            <div class="pm-hint">{{ _("Pauses all alarm types for each selected flow.") }}</div>
+          </div>
+          <div id="pmAllRow" class="pm-hint" style="color:var(--accent-amber);">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ _("Every alarm on every flow will be paused. No alerts will be raised while this pause is active.") }}
+          </div>
+        </div>
+
+        <div class="row g-3">
+          {# ── Start ── #}
+          <div class="col-md-6 pm-section">
+            <div class="cfg-label mb-1">{{ _("Start") }}</div>
+            <div class="pm-radio">
+              <label><input type="radio" name="pmStart" value="now" checked> {{ _("Now") }}</label>
+              <label><input type="radio" name="pmStart" value="later"> {{ _("At a date and time") }}</label>
+            </div>
+            <input type="datetime-local" id="pmStartAt" class="form-control" aria-label="{{ _('Start time') }}">
+            <div class="pm-hint">{{ _("Times are UK time (Europe/London).") }}</div>
+          </div>
+
+          {# ── End ── #}
+          <div class="col-md-6 pm-section">
+            <div class="cfg-label mb-1">{{ _("End") }}</div>
+            <div class="pm-radio">
+              <label><input type="radio" name="pmEnd" value="duration" checked> {{ _("After") }}</label>
+              <label><input type="radio" name="pmEnd" value="until"> {{ _("At a date and time") }}</label>
+              <label><input type="radio" name="pmEnd" value="indefinite"> {{ _("Until cancelled") }}</label>
+            </div>
+            <div id="pmDurationRow">
+              <div class="d-flex flex-wrap gap-2 mb-2" id="pmDurationPicker">
+                {% for label, mins in [("30 min", 30), ("1 hour", 60), ("2 hours", 120), ("4 hours", 240), ("8 hours", 480), ("24 hours", 1440)] %}
+                <button type="button" class="btn-dash duration-opt" data-minutes="{{ mins }}" style="font-size:0.75rem; padding:0.25rem 0.6rem;">{{ _(label) }}</button>
+                {% endfor %}
+                <button type="button" class="btn-dash duration-opt" data-minutes="custom" style="font-size:0.75rem; padding:0.25rem 0.6rem;">{{ _("Custom…") }}</button>
+              </div>
+              <div id="pmCustomRow" class="d-flex align-items-center gap-2">
+                <input type="number" id="pmCustomValue" min="1" max="9999" value="90" class="form-control" style="width:90px;" aria-label="{{ _('Duration') }}">
+                <select id="pmCustomUnit" class="form-select" style="width:110px;" aria-label="{{ _('Unit') }}">
+                  <option value="1">{{ _("minutes") }}</option>
+                  <option value="60" selected>{{ _("hours") }}</option>
+                  <option value="1440">{{ _("days") }}</option>
+                </select>
+              </div>
+            </div>
+            <input type="datetime-local" id="pmEndAt" class="form-control" aria-label="{{ _('End time') }}">
+            <div id="pmIndefiniteHint" class="pm-hint" style="color:var(--accent-amber);">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ _("Alarms stay paused until someone cancels this pause.") }}
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-8 pm-section">
+            <label for="pmReason" class="cfg-label mb-1">{{ _("Reason") }} <span style="color:var(--accent-red)">*</span></label>
+            <textarea id="pmReason" class="form-control" rows="2" maxlength="200" style="resize:none;"
+                      placeholder="{{ _('e.g. Planned maintenance, deployment, known issue…') }}"></textarea>
+          </div>
+          <div class="col-md-4 pm-section">
+            <label for="pmRequestedBy" class="cfg-label mb-1">{{ _("Requested by") }} <span style="color:var(--accent-red)">*</span></label>
+            <input type="text" id="pmRequestedBy" class="form-control" maxlength="100" autocomplete="name"
+                   placeholder="{{ _('Your name') }}">
+          </div>
+        </div>
+
+        <div class="pm-summary" id="pmSummary" aria-live="polite"></div>
+        <div id="pmError" class="mt-2" role="alert" style="color:var(--accent-red); font-size:0.8rem; display:none;"></div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+        <a href="{{ url_for('alarm_pauses_page') }}" class="btn-dash me-auto" style="font-size:0.78rem;">
+          <i class="bi bi-list-ul me-1"></i>{{ _("View all pauses") }}
+        </a>
+        <button type="button" class="btn-dash" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="button" class="btn-dash" id="pmConfirm" style="color:var(--accent-cyan); border-color:rgba(18,163,201,0.45);">
+          <i class="bi bi-pause-circle-fill me-1"></i><span id="pmConfirmLabel">{{ _("Pause") }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="pauseModalConfig">{{ {
+  "urls": {
+    "options": url_for("api_alarm_pauses_options"),
+    "create": url_for("api_alarm_pauses_create"),
+    "cancel": url_for("api_alarm_pauses_cancel", pause_id="__ID__"),
+    "unpause": {
+      "alarm1": url_for("alarm1_unpause", rule_id="__ID__"),
+      "alarm2": url_for("alarm2_unpause", rule_id="__ID__"),
+      "alarm3": url_for("alarm3_unpause", rule_id="__ID__")
+    }
+  },
+  "i18n": {
+    "pause": _("Pause"),
+    "schedule": _("Schedule pause"),
+    "now": _("now"),
+    "untilCancelled": _("until cancelled"),
+    "summaryRule": _("Pause {target} from {start} {end}."),
+    "summaryFlows": _("Pause all alarms on {count} flow(s) from {start} {end}."),
+    "summaryAll": _("Pause ALL alarms on every flow from {start} {end}."),
+    "forDuration": _("for {duration}"),
+    "until": _("until {time}"),
+    "minutes": _("{n} min"),
+    "hours": _("{n} h"),
+    "noTarget": _("Select what to pause."),
+    "needStart": _("Enter a start date and time."),
+    "needEnd": _("Enter an end date and time."),
+    "needDuration": _("Select a valid duration."),
+    "needReason": _("Enter a reason."),
+    "needRequestedBy": _("Enter who requested the pause."),
+    "genericError": _("An error occurred. Please try again."),
+    "networkError": _("Network error. Please try again."),
+    "confirmCancel": _("Cancel this scheduled pause? Alarms will not be paused."),
+    "confirmEnd": _("End this pause now? Alarms will resume immediately."),
+    "noFlows": _("No flows available.")
+  }
+} | tojson }}</script>
+<script src="{{ url_for('static', filename='js/alarm-pause.js') }}"></script>

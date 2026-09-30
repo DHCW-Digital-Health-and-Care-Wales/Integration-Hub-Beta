@@ -2,7 +2,8 @@
 
 Config and state are persisted to Azure Cosmos DB (see :mod:`dashboard.services.cosmos_store`).
 Config is stored as the ``config`` document and per-rule alarm state (last-fired
-timestamps, pauses) as the ``state`` document, both in the ``alarm3`` partition.
+timestamps) as the ``state`` document, both in the ``alarm3`` partition. Pauses
+are separate records managed by :mod:`dashboard.services.alarm_pauses`.
 
 Each rule monitors MESSAGE_FAILED events for a specific workflow_id and has
 the following settings:
@@ -19,6 +20,7 @@ Status values returned per rule:
   'suppressed' – failure count at/above threshold but within cooldown
   'healthy'    – failure count below threshold
   'unknown'    – query failed or no Log Analytics workspace configured
+  'paused'     – covered by an active pause; not evaluated and no email sent
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ from datetime import datetime, timedelta, timezone
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 
 from dashboard import config
-from dashboard.services import alarm_base
+from dashboard.services import alarm_base, alarm_pauses
 from dashboard.services.credentials import get_azure_credential
 from dashboard.services.email_service import send_alert_email
 
@@ -84,19 +86,23 @@ def _save_alarm3_state(state: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def pause_alarm3_rule(rule_id: str, duration_minutes: int, reason: str = "") -> None:
-    """Pause a specific Alarm 3 rule for ``duration_minutes``.
-
-    Writes ``paused_until`` (ISO timestamp) and ``pause_reason`` into the rule's
-    state entry.  The alarm evaluator will skip the rule and return ``status='paused'``
-    until that time has elapsed.
-    """
-    alarm_base.pause_rule(COSMOS_PK, rule_id, duration_minutes, reason, "Alarm 3", STATE_DOC_ID)
+def pause_alarm3_rule(
+    rule_id: str, duration_minutes: int | None, reason: str, requested_by: str
+) -> dict:
+    """Pause a specific Alarm 3 rule from now, for ``duration_minutes`` or indefinitely (``None``)."""
+    return alarm_base.pause_rule_now(
+        COSMOS_PK, _known_rule_workflows(), rule_id, duration_minutes, reason, requested_by
+    )
 
 
 def unpause_alarm3_rule(rule_id: str) -> None:
-    """Remove a manual pause from a specific Alarm 3 rule, restoring normal evaluation."""
-    alarm_base.unpause_rule(COSMOS_PK, rule_id, "Alarm 3", STATE_DOC_ID)
+    """Resume a specific Alarm 3 rule (raises ``PauseConflictError`` if paused by a wider pause)."""
+    alarm_base.resume_rule(COSMOS_PK, _known_rule_workflows(), rule_id, "Alarm 3", STATE_DOC_ID)
+
+
+def _known_rule_workflows() -> dict[str, str]:
+    """Return ``{rule_id: workflow_id}`` for every known, non-deleted Alarm 3 rule."""
+    return {r["id"]: (r.get("workflow_id") or "").strip() for r in get_alarm3_config_page_data()}
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +279,10 @@ def get_alarm3_status() -> list[dict]:
         'suppressed' – failure count >= threshold, within cooldown
         'healthy'    – failure count below threshold
         'unknown'    – query failed or Log Analytics not configured
+        'paused'     – covered by an active pause; not evaluated and no email sent
+
+    Every row carries the pause fields from ``alarm_base.EMPTY_PAUSE_FIELDS`` (filled
+    in when paused) plus ``scheduled_pause`` — the next upcoming pause, or ``None``.
     """
     cfg = load_alarm3_config()
     rules_cfg = cfg.get("rules", {})
@@ -289,6 +299,7 @@ def get_alarm3_status() -> list[dict]:
     state = _load_alarm3_state()
     state_rules = state.setdefault("rules", {})
     state_dirty = False
+    pauses = alarm_pauses.list_pauses()
 
     results: list[dict] = []
 
@@ -298,35 +309,23 @@ def get_alarm3_status() -> list[dict]:
         threshold = int(rule_cfg.get("threshold", DEFAULT_THRESHOLD))
         gap = int(rule_cfg.get("alerting_gap_minutes", DEFAULT_ALERTING_GAP))
         count = counts.get(rid)
+        workflow_id = (rule_cfg.get("workflow_id", rule.get("workflow_id", "")) or "").strip()
 
-        # Check for manual pause before any alarm evaluation.
-        rule_state = state_rules.get(rid, {})
-        paused_until = _parse_dt(rule_state.get("paused_until"))
-        if paused_until and paused_until > now:
-            pause_remaining = (paused_until - now).total_seconds() / 60
+        # Check for a pause before any alarm evaluation so no email can be sent.
+        pause_fields = alarm_base.resolve_pause(
+            state_rules.get(rid, {}), COSMOS_PK, rid, workflow_id, pauses, now
+        )
+        if pause_fields is not None:
             results.append(
-                _build_row(
-                    rid,
-                    rule,
-                    rule_cfg,
-                    count=count,
-                    status="paused",
-                    cooldown_remaining=None,
-                    now=now,
-                    pause_remaining=pause_remaining,
-                    pause_reason=rule_state.get("pause_reason", ""),
-                    paused_until=paused_until,
-                )
+                {
+                    **_build_row(
+                        rid, rule, rule_cfg, count=count, status="paused", cooldown_remaining=None, now=now
+                    ),
+                    **pause_fields,
+                }
             )
             continue
-        # Clear stale pause state if the pause window has elapsed.
-        if paused_until and paused_until <= now:
-            rule_state.pop("paused_until", None)
-            rule_state.pop("pause_reason", None)
-            if rule_state:
-                state_rules[rid] = rule_state
-            elif rid in state_rules:
-                del state_rules[rid]
+        if alarm_base.clear_expired_legacy_pause(state_rules, rid, now):
             state_dirty = True
 
         if count is None:
@@ -392,6 +391,7 @@ def get_alarm3_status() -> list[dict]:
     if state_dirty:
         _save_alarm3_state({"rules": state_rules})
 
+    alarm_pauses.annotate_scheduled(results, COSMOS_PK, pauses, now)
     _order = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}
     results.sort(key=lambda r: _order.get(r["status"], 9))
     return results
@@ -405,9 +405,6 @@ def _build_row(
     status: str,
     cooldown_remaining: float | None,
     now: datetime,
-    pause_remaining: float | None = None,
-    pause_reason: str = "",
-    paused_until: datetime | None = None,
 ) -> dict:
     """Build the status-row dict for a single Alarm 3 rule."""
     window = int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
@@ -423,9 +420,7 @@ def _build_row(
         "failure_display": f"{count:,}" if count is not None else "—",
         "status": status,
         "cooldown_remaining": round(cooldown_remaining, 0) if cooldown_remaining is not None else None,
-        "pause_remaining": round(pause_remaining, 0) if pause_remaining is not None else None,
-        "pause_reason": pause_reason,
-        "paused_until": paused_until.strftime("%d %b %Y  %H:%M UTC") if paused_until else None,
+        **alarm_base.EMPTY_PAUSE_FIELDS,
     }
 
 

@@ -62,3 +62,26 @@ class TestHl7ServerApplication(unittest.TestCase):
 
         self._assert_shutdown(server, thread)
 
+
+@patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"}, clear=True)
+@patch("hl7_mock_receiver.hl7_mock_receiver_application.MLLPServer")
+@patch("hl7_mock_receiver.hl7_mock_receiver_application.ServiceBusClientFactory")
+@patch("hl7_mock_receiver.hl7_mock_receiver_application.threading.Thread")
+class TestHl7ServerApplicationWithoutServiceBus(unittest.TestCase):
+    """No EGRESS_QUEUE_NAME/connection info configured - e.g. standalone via the tester's
+    Mock Receiver bar - the server should still start and skip Service Bus wiring entirely."""
+
+    def setUp(self) -> None:
+        self.app = Hl7MockReceiver()
+
+    def test_start_server_skips_service_bus_client_factory(
+        self, mock_thread: MagicMock, mock_factory: MagicMock, mock_custom_mllp_server: MagicMock
+    ) -> None:
+        mock_custom_mllp_server.return_value = MagicMock()
+        mock_thread.return_value = MagicMock()
+
+        self.app.start_server()
+
+        mock_factory.assert_not_called()
+        self.assertIsNone(self.app.sender_client)
+

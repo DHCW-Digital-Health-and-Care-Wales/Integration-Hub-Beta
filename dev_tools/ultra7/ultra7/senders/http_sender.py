@@ -39,7 +39,7 @@ class HttpSender:
 
         start = time.monotonic()
         try:
-            with urllib.request.urlopen(request, timeout=endpoint.timeout_seconds) as response:  # noqa: S310
+            with urllib.request.urlopen(request, timeout=endpoint.timeout_seconds) as response:  # noqa: S310  # nosec B310
                 response_body = response.read().decode("utf-8", errors="replace")
                 status = response.status
         except urllib.error.HTTPError as exc:

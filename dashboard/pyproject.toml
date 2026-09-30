@@ -77,4 +77,4 @@ where = ["."]
 include = ["dashboard*"]
 
 [tool.setuptools.package-data]
-dashboard = ["templates/*.html", "static/**/*"]
+dashboard = ["templates/**/*.html", "static/**/*"]

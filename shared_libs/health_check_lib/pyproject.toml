@@ -44,6 +44,7 @@ skips = ["*/test_*.py", "*/*_test.py"]  # Stops asserts in tests being flagged.
 [dependency-groups]
 dev = [
     "coverage>=7.6.0",
+    "ruff==0.15.0",
 ]
 
 [tool.coverage.run]

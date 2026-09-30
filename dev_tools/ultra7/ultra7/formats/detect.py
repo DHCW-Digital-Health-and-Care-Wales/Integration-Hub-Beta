@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405 - dev-only tool, input is typed by the developer
 
 from ultra7.models import MessageFormat
 
@@ -28,7 +28,7 @@ def detect_format(content: str) -> MessageFormat:
 
     if stripped.startswith("<"):
         try:
-            ET.fromstring(stripped)
+            ET.fromstring(stripped)  # nosec B314
         except ET.ParseError:
             pass
         else:
