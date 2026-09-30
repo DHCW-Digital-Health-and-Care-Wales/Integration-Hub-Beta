@@ -357,7 +357,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "coverage", specifier = ">=7.6.0" }]
+dev = [
+    { name = "coverage", specifier = ">=7.6.0" },
+    { name = "ruff", specifier = "==0.15.0" },
+]
 
 [[package]]
 name = "hl7-mock-receiver"

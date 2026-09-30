@@ -16,7 +16,7 @@ from typing import Any
 from flask import Flask, Response, jsonify, request
 
 import dashboard.config as config
-from dashboard.services import cache, flow_sources, network_test
+from dashboard.services import alarm_pauses, cache, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status
 from dashboard.services.alarm2 import get_alarm2_status
 from dashboard.services.alarm3 import get_alarm3_status
@@ -57,6 +57,7 @@ def api_status() -> Response:
     data["alarm1_summary"] = alarm_summary(alarm1_rows)
     data["alarm2_summary"] = alarm_summary(alarm2_rows)
     data["alarm3_summary"] = alarm_summary(alarm3_rows)
+    data["pause_summary"] = alarm_pauses.current_summary()
     return jsonify(data)
 
 
@@ -185,6 +186,7 @@ def api_alarms_status() -> Response:
             "alarm1": alarm1_rows,
             "alarm2": alarm2_rows,
             "alarm3": alarm3_rows,
+            "pause_summary": alarm_pauses.current_summary(),
             "refreshed_at": datetime.now(LONDON_TZ).isoformat(),
             "poll_interval_seconds": int(config.API_CACHE_TTL),
         }

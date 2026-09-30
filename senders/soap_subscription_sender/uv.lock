@@ -430,7 +430,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "coverage", specifier = ">=7.6.0" }]
+dev = [
+    { name = "coverage", specifier = ">=7.6.0" },
+    { name = "ruff", specifier = "==0.15.0" },
+]
 
 [[package]]
 name = "health-check-lib"
@@ -448,7 +451,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "coverage", specifier = ">=7.6.0" }]
+dev = [
+    { name = "coverage", specifier = ">=7.6.0" },
+    { name = "ruff", specifier = "==0.15.0" },
+]
 
 [[package]]
 name = "idna"
@@ -986,6 +992,7 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = ">=7.6.0" },
     { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+    { name = "ruff", specifier = "==0.15.0" },
 ]
 
 [[package]]

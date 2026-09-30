@@ -750,6 +750,7 @@ table.dash-table td {
 .status-badge.healthy     { background: rgba(34,197,94,0.12);  color: var(--accent-green); border-color: rgba(34,197,94,0.3); }
 .status-badge.warning     { background: rgba(245,158,11,0.12); color: var(--accent-amber); border-color: rgba(245,158,11,0.35); }
 .status-badge.suppressed  { background: rgba(245,158,11,0.12); color: var(--accent-amber); border-color: rgba(245,158,11,0.35); }
+.status-badge.paused      { background: rgba(18,163,201,0.12); color: var(--accent-cyan);  border-color: rgba(18,163,201,0.35); }
 .status-badge.critical    { background: rgba(239,68,68,0.12);  color: var(--accent-red);   border-color: rgba(239,68,68,0.35); }
 .status-badge.unknown     { background: rgba(148,163,184,0.1); color: var(--text-muted);   border-color: var(--border-color); }
 
@@ -1545,6 +1546,15 @@ a.kpi-card--link:hover {
 .fac--healthy      { border-left-color: var(--accent-green); }
 .fac--suppressed   { border-left-color: var(--accent-amber); }
 .fac--critical     { border-left-color: var(--accent-red); background: rgba(239,68,68,0.03); }
+.fac--paused       { border-left-color: var(--accent-cyan); background: rgba(18,163,201,0.04); }
+
+/* Flow-level pause badges on the Flows page (see flows.html / alarm_pauses.flow_pause_summary). */
+.flow-pause-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 600;
+  padding: 0.2rem 0.55rem; border-radius: 999px; text-decoration: none; white-space: nowrap;
+}
+.flow-pause-badge--active    { color: var(--accent-cyan);  border: 1px solid rgba(18,163,201,0.5);  background: rgba(18,163,201,0.1); }
+.flow-pause-badge--scheduled { color: var(--accent-amber); border: 1px solid rgba(248,202,77,0.45); background: rgba(248,202,77,0.08); }
 
 .fac-header {
   display: flex;

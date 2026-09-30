@@ -25,6 +25,7 @@ dependencies = [
 dev = [
   "otel-lib",
   "coverage>=7.6.0",
+  "ruff==0.15.0",
 ]
 
 [tool.coverage.run]

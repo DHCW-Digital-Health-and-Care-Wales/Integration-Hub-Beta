@@ -53,6 +53,10 @@ _client_cache: dict[str, CosmosClient | None] = {"client": None}
 _client_lock = threading.Lock()
 
 
+class CosmosUnavailableError(RuntimeError):
+    """Raised by strict reads when Cosmos is not configured or the read fails."""
+
+
 def is_configured() -> bool:
     """Return ``True`` when a Cosmos endpoint is configured and persistence is active."""
     return bool(config.COSMOS_ENDPOINT)
@@ -154,16 +158,20 @@ def get_document(pk: str, doc_id: str) -> dict | None:
     return {k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")}
 
 
-def query_documents(pk: str) -> list[dict]:
+def query_documents(pk: str, *, strict: bool = False) -> list[dict]:
     """Return every document in a partition, with system/routing fields stripped.
 
     Used where callers need to list all documents of a kind (e.g. every tested
     network endpoint) rather than read one by known id. Returns an empty list
     when Cosmos is not configured, the partition is empty, or a query error
     occurs — matching :func:`get_document`'s graceful degradation behaviour.
+    With ``strict=True`` the unavailable/error cases raise :class:`CosmosUnavailableError`
+    instead, so callers can tell an empty partition from a failed read.
     """
     container = _get_container()
     if container is None:
+        if strict:
+            raise CosmosUnavailableError("Cosmos is not configured or unreachable.")
         return []
 
     try:
@@ -175,6 +183,8 @@ def query_documents(pk: str) -> list[dict]:
         return [{k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")} for item in items]
     except AzureError as exc:
         log.warning("Failed to query Cosmos documents for partition %s: %s", pk, exc)
+        if strict:
+            raise CosmosUnavailableError(f"Failed to query Cosmos partition {pk}.") from exc
         return []
 
 
