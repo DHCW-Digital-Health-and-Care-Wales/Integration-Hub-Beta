@@ -70,12 +70,18 @@ class Hl7MockReceiver:
 
     def start_server(self) -> None:
         app_config = AppConfig.read_env_config()
-        client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
-        factory = ServiceBusClientFactory(client_config)
 
-        self.sender_client = factory.create_queue_sender_client(
-            app_config.egress_queue_name, app_config.egress_session_id
-        )
+        if app_config.service_bus_enabled:
+            client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
+            factory = ServiceBusClientFactory(client_config)
+            self.sender_client = factory.create_queue_sender_client(
+                app_config.egress_queue_name, app_config.egress_session_id
+            )
+        else:
+            logger.warning(
+                "Service Bus not configured (EGRESS_QUEUE_NAME/connection unset) - "
+                "received messages will be ACKed but not forwarded."
+            )
 
         handlers = {
             GENERIC_HANDLER_KEY: (GenericHandler, self.sender_client),
