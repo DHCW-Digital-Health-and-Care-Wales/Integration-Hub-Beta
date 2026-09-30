@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class GenericHandler(AbstractHandler):
 
-    def __init__(self, msg: Message, sender_client: MessageSenderClient):
+    def __init__(self, msg: Message, sender_client: MessageSenderClient | None):
         super(GenericHandler, self).__init__(msg)
         self.sender_client = sender_client
 
@@ -59,6 +59,9 @@ class GenericHandler(AbstractHandler):
         return ack_msg.to_mllp()
 
     def _send_to_service_bus(self, message_control_id: str) -> None:
+        if self.sender_client is None:
+            logger.info("Service Bus not configured - skipping forward of message %s", message_control_id)
+            return
         try:
             self.sender_client.send_text_message(self.incoming_message)
             logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
