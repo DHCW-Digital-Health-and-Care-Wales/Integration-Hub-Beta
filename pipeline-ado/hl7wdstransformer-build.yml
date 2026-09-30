@@ -7,9 +7,9 @@ trigger:
   paths:
     include:
       - transformers/hl7_wds_transformer/**
-      - shared_libs/*
+      - shared_libs/**
       - pipeline-ado/templates/**
-      - ca-certs/*
+      - ca-certs/**
 
 pr: none
 
