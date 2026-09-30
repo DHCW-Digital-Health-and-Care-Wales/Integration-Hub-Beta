@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -152,6 +153,61 @@ class TestParseUnittest(unittest.TestCase):
     def test_missing_summary_returns_none(self) -> None:
         # e.g. an import crash before unittest printed anything.
         self.assertEqual(qr.parse_unittest("Traceback...\nModuleNotFoundError", ROOT), (None, []))
+
+
+JUNIT_XML = """<?xml version="1.0" encoding="utf-8"?>
+<testsuites><testsuite name="pytest" errors="1" failures="1" skipped="1" tests="4" time="0.50">
+<testcase classname="tests.test_app.TestApp" name="test_ok" time="0.01"/>
+<testcase classname="tests.test_app.TestApp" name="test_bad" time="0.01">
+<failure message="assert 1 == 2&#10;  +1&#10;  -2">def test_bad():
+&gt;       assert 1 == 2
+E       assert 1 == 2
+
+tests/test_app.py:12: AssertionError</failure></testcase>
+<testcase classname="tests.test_broken" name="tests.test_broken" time="0.00">
+<error message="collection failure">ImportError while importing test module</error></testcase>
+<testcase classname="tests.test_app.TestApp" name="test_skip" time="0.00"><skipped message="later"/></testcase>
+</testsuite></testsuites>
+"""
+
+
+class TestParseJunit(unittest.TestCase):
+    def test_parses_counts_failures_and_collection_errors(self) -> None:
+        summary, findings = qr.parse_junit(JUNIT_XML, COMPONENT_DIR, ROOT)
+        self.assertEqual(summary["ran"], 4)
+        self.assertEqual(summary["passed"], 1)
+        self.assertEqual(summary["failures"], 1)
+        self.assertEqual(summary["errors"], 1)
+        self.assertEqual(summary["skipped"], 1)
+        failure, error = findings
+        self.assertEqual(failure.severity, "FAIL")
+        self.assertEqual(failure.code, "tests.test_app.TestApp::test_bad")
+        self.assertEqual(failure.message, "assert 1 == 2")
+        # pytest frames are relative to the component directory.
+        self.assertEqual(failure.location, "dashboard/tests/test_app.py:12")
+        self.assertEqual(error.severity, "ERROR")
+        self.assertEqual(error.message, "collection failure")
+
+    def test_single_testsuite_root_and_no_tests(self) -> None:
+        xml = '<testsuite name="pytest" errors="0" failures="0" skipped="0" tests="0" time="0.01"></testsuite>'
+        summary, findings = qr.parse_junit(xml, COMPONENT_DIR, ROOT)
+        self.assertEqual(summary["ran"], 0)
+        self.assertEqual([f.code for f in findings], ["no-tests"])
+
+
+class TestUsesPytest(unittest.TestCase):
+    def _check(self, content: Optional[str]) -> bool:
+        with tempfile.TemporaryDirectory() as tmp:
+            if content is not None:
+                (Path(tmp) / "check.sh").write_text(content)
+            return qr.uses_pytest(Path(tmp))
+
+    def test_follows_check_sh(self) -> None:
+        self.assertTrue(self._check("#!/bin/bash\nset -e\nuv run ruff check\nuv run pytest\n"))
+        self.assertFalse(self._check("uv run python -m unittest discover tests\n"))
+        # A commented-out pytest line does not count, nor does a missing check.sh.
+        self.assertFalse(self._check("# uv run pytest\nuv run python -m unittest discover tests\n"))
+        self.assertFalse(self._check(None))
 
 
 class TestParseBandit(unittest.TestCase):

@@ -7,6 +7,7 @@
 
 Mirrors the commands in dev_tools/scripts/run-all-{ruff,mypy,tests,security}.sh but asks each tool for
 machine-readable output, then renders a self-contained HTML file (no CDN assets) plus a JSON sidecar.
+Tests run with pytest where the component's check.sh does (as CI's usePytest does), otherwise unittest.
 Standard library only, so it runs anywhere `uv` does.
 
 Usage:
@@ -25,7 +26,9 @@ import os
 import re
 import subprocess  # nosec B404
 import sys
+import tempfile
 import time
+import xml.etree.ElementTree as ET  # nosec B405
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,6 +94,7 @@ class CheckResult:
     summary: Dict[str, float] = field(default_factory=dict)
     output: str = ""
     duration: float = 0.0
+    runner: str = ""
 
 
 # --------------------------------------------------------------------------------------------------
@@ -271,6 +275,57 @@ def parse_unittest(output: str, root: Path) -> Tuple[Optional[Dict[str, float]],
     return summary, findings
 
 
+_PYTEST_FRAME_RE = re.compile(r"^(\S+\.py):(\d+): ", re.MULTILINE)
+
+
+def parse_junit(xml_text: str, cwd: Path, root: Path) -> Tuple[Dict[str, float], List[Finding]]:
+    """Parse a pytest `--junitxml` report (root is <testsuites> or a single <testsuite>)."""
+    # The XML is written by pytest on this machine during the run, not taken from an untrusted source.
+    document = ET.fromstring(xml_text)  # nosec B314
+    suites = list(document.iter("testsuite"))
+    summary: Dict[str, float] = {
+        "ran": sum(int(s.get("tests", 0)) for s in suites),
+        "failures": sum(int(s.get("failures", 0)) for s in suites),
+        "errors": sum(int(s.get("errors", 0)) for s in suites),
+        "skipped": sum(int(s.get("skipped", 0)) for s in suites),
+        "duration": sum(float(s.get("time", 0)) for s in suites),
+    }
+    summary["passed"] = max(0, summary["ran"] - summary["failures"] - summary["errors"] - summary["skipped"])
+
+    findings = []
+    for case in document.iter("testcase"):
+        for outcome in case:
+            if outcome.tag not in ("failure", "error"):
+                continue
+            traceback = (outcome.text or "").strip()
+            frames = _PYTEST_FRAME_RE.findall(traceback)
+            location = _last_project_frame(traceback, root)
+            if not location and frames:
+                path, line = frames[-1]
+                location = f"{relative_path(path, cwd, root)}:{line}"
+            message = (outcome.get("message") or "").strip().splitlines()
+            findings.append(Finding(
+                location=location,
+                code=f"{case.get('classname', '')}::{case.get('name', '')}",
+                message=message[0] if message else outcome.tag,
+                severity="FAIL" if outcome.tag == "failure" else "ERROR",
+                detail=traceback,
+            ))
+    if summary["ran"] == 0:
+        findings.append(Finding(location="tests/", code="no-tests", message="pytest collected no tests",
+                                severity="ERROR"))
+    return summary, findings
+
+
+def uses_pytest(cwd: Path) -> bool:
+    """A component's check.sh is its canonical quality gate; follow it when it runs pytest."""
+    check_script = cwd / "check.sh"
+    if not check_script.is_file():
+        return False
+    lines = check_script.read_text(encoding="utf-8").splitlines()
+    return any(re.search(r"\bpytest\b", line) for line in lines if not line.lstrip().startswith("#"))
+
+
 def parse_bandit(stdout: str, cwd: Path, root: Path) -> List[Finding]:
     data = json.loads(stdout or "{}")
     findings = []
@@ -395,12 +450,26 @@ def run_tests(component: str, root: Path) -> CheckResult:
     if sync.returncode != 0:
         return CheckResult("tests", component, "error", output=tail(sync.stdout + sync.stderr),
                            duration=time.monotonic() - started)
-    proc = run_command(["uv", "run", "python", "-m", "unittest", "discover", "tests", "-v"], cwd)
+    runner = "pytest" if uses_pytest(cwd) else "unittest"
+    summary: Optional[Dict[str, float]]
+    if runner == "pytest":
+        with tempfile.TemporaryDirectory() as tmp:
+            junit = Path(tmp) / "junit.xml"
+            proc = run_command(["uv", "run", "pytest", "tests", "-q", "-p", "no:cacheprovider",
+                                f"--junitxml={junit}"], cwd)
+            try:
+                summary, findings = parse_junit(junit.read_text(encoding="utf-8"), cwd, root)
+            except (OSError, ET.ParseError):
+                summary, findings = None, []
+    else:
+        proc = run_command(["uv", "run", "python", "-m", "unittest", "discover", "tests", "-v"], cwd)
+        summary, findings = parse_unittest(proc.stdout + proc.stderr, root)
     output = proc.stdout + proc.stderr
-    summary, findings = parse_unittest(output, root)
     if summary is None:
-        return CheckResult("tests", component, "error", output=tail(output), duration=time.monotonic() - started)
+        return CheckResult("tests", component, "error", output=tail(output), duration=time.monotonic() - started,
+                           runner=runner)
     result = _result("tests", component, proc.returncode, findings, started, output, summary)
+    result.runner = runner
     if result.status == "error":
         result.status = "fail"
     return result
@@ -536,7 +605,7 @@ def _findings_table(check: str, findings: List[Finding]) -> str:
            f'<tbody>{"".join(rows)}</tbody></table></div>'
 
 
-def _tests_bar(summary: Dict[str, float]) -> str:
+def _tests_bar(summary: Dict[str, float], runner: str) -> str:
     ran = summary.get("ran", 0) or 0
     if not ran:
         return ""
@@ -545,8 +614,10 @@ def _tests_bar(summary: Dict[str, float]) -> str:
     bar = "".join(f'<span class="bar__{name}" style="width:{100 * count / ran:.2f}%"></span>'
                   for name, count in segments if count)
     legend = " &middot; ".join(f"{int(count)} {name}" for name, count in segments if count)
+    via = f" with {_e(runner)}" if runner else ""
     return (f'<div class="tests-summary"><div class="bar">{bar}</div>'
-            f'<div class="muted">{int(ran)} run in {summary.get("duration", 0):.2f}s &middot; {legend}</div></div>')
+            f'<div class="muted">{int(ran)} run{via} in {summary.get("duration", 0):.2f}s &middot; {legend}</div>'
+            '</div>')
 
 
 def _issue_label(result: CheckResult) -> str:
@@ -569,7 +640,7 @@ def _component_card(result: CheckResult) -> str:
     else:
         body = '<p class="ok-text">No issues found.</p>'
     if result.check == "tests":
-        body = _tests_bar(result.summary) + body
+        body = _tests_bar(result.summary, result.runner) + body
     open_attr = " open" if result.status in ("fail", "error") else ""
     return (
         f'<details class="comp" id="{anchor_id(result.check, result.component)}" data-status="{_e(result.status)}" '
