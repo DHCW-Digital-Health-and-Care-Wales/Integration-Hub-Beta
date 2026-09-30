@@ -10,17 +10,19 @@ ENV UV_LINK_MODE=copy
 COPY --from=ca-certs ./*.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 
-WORKDIR /app
+WORKDIR /app/transformers/hl7_wds_transformer
 
-COPY --from=shared_libs . /shared_libs
+# Copy shared libraries (mirrors the repo layout so the project's relative
+# "../../shared_libs/..." uv sources resolve the same way in-container as on disk)
+COPY --from=shared_libs . /app/shared_libs
 
 COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
-COPY hl7_wds_transformer/ /app/hl7_wds_transformer/
+COPY hl7_wds_transformer/ /app/transformers/hl7_wds_transformer/hl7_wds_transformer
 RUN uv --native-tls sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/transformers/hl7_wds_transformer/.venv/bin:$PATH"
 
 RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
