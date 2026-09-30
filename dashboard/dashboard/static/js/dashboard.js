@@ -471,6 +471,21 @@
     filterFlows();
   };
 
+  window.toggleFlowContacts = function (btn) {
+    const card = btn.closest(".flow-detail-card") || btn.parentElement.parentElement;
+    const panel = card ? card.querySelector(".flow-linked-contacts") : null;
+    if (!panel) return;
+    const isOpen = !panel.hasAttribute("hidden");
+    if (isOpen) {
+      panel.setAttribute("hidden", "");
+      btn.setAttribute("aria-expanded", "false");
+      btn.innerHTML = '<i class="bi bi-eye me-1"></i> ' + (btn.dataset.showLabel || "Show contacts");
+    } else {
+      panel.removeAttribute("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      btn.innerHTML = '<i class="bi bi-eye-slash me-1"></i> ' + (btn.dataset.hideLabel || "Hide contacts");
+    }
+  };
   window.filterFlows = function () {
     const q = (document.getElementById("flow-search")?.value || "").toLowerCase().trim();
 

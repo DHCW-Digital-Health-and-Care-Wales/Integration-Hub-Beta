@@ -157,3 +157,7 @@ ALERT_EMAIL_RETRY_BACKOFF_SECONDS = float(os.getenv("ALERT_EMAIL_RETRY_BACKOFF_S
 
 # UI
 SPLASH_SCREEN_ENABLED = os.getenv("SPLASH_SCREEN_ENABLED", "true").lower() == "true"
+
+# Contacts — how many days a soft-deleted contact is kept before being permanently
+# purged from Cosmos (if not restored in the meantime).
+CONTACT_RETENTION_DAYS = int(os.getenv("CONTACT_RETENTION_DAYS", "90"))

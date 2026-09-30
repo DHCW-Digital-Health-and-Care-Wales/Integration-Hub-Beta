@@ -575,6 +575,38 @@
       </div>
       {% endif %}
 
+      {# ── Linked contacts for this flow (read-only; managed from the Contacts page) ── #}
+      {# Contact cards are hidden until the "Show contacts" button is pressed. #}
+      {% set flow_linked_contacts = flow_contacts.get(flow.id, []) if flow_contacts else [] %}
+      {% if flow_linked_contacts %}
+      <div class="d-flex align-items-center justify-content-between mt-3 mb-2">
+        <div class="section-title" style="margin-bottom:0;"><i class="bi bi-person-lines-fill"></i> {{ _("Linked Contacts") }}</div>
+        <button type="button" class="btn-dash btn-dash--sm flow-contacts-toggle-btn" aria-expanded="false"
+                data-show-label="{{ _('Show contacts') }}" data-hide-label="{{ _('Hide contacts') }}"
+                onclick="toggleFlowContacts(this)">
+          <i class="bi bi-eye me-1"></i> {{ _("Show contacts") }}
+        </button>
+      </div>
+      <div class="row g-2 flow-linked-contacts" hidden>
+        {% for contact in flow_linked_contacts %}
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="dash-card" style="padding:0.65rem 0.85rem;">
+            <div style="font-size:0.82rem; font-weight:600; color:var(--text-primary);">
+              {{ contact.first_name }} {{ contact.last_name }}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.15rem;">
+              {{ contact.organisation_type }} &nbsp;·&nbsp; {{ contact.organisation_name }}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem;">
+              {% if contact.email %}<div><i class="bi bi-envelope"></i> {{ contact.email }}</div>{% endif %}
+              {% if contact.phone_number %}<div><i class="bi bi-telephone"></i> {{ contact.phone_number }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
     </div><!-- /flow-detail-body -->
 
       {# ── Alarms for this flow ───────────────────────────────────────────── #}

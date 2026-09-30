@@ -332,6 +332,7 @@ class TestFlowHealth:
             "pims-to-mpi",
             "wds-to-mpi",
             "mpi-outbound",
+            "risp-to-mpi",
         }
         assert {d["id"] for d in _FLOW_DEFS} == expected
 

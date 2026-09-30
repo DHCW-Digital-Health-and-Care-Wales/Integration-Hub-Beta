@@ -120,6 +120,22 @@ _FLOW_DEFS: list[dict] = [
         "colour": "#f59e0b",
         "icon": "bi-broadcast",
     },
+    {
+        "id": "risp-to-mpi",
+        "label": "RISP → MPI",
+        "source": "RISP",
+        "source_port": 2586,
+        # RISP ingresses over HL7-over-REST (no MLLP port) and publishes to a topic, which the
+        # shared core reference transformer consumes before egressing to the shared HL7 sender
+        # queue — a hybrid topic->queue flow (see flow_health's hybrid handling).
+        "topic_suffix": "sbt-risp-hl7-input",
+        "pre_queue_suffix": None,
+        "post_queue_suffix": "sbq-hl7-sender",
+        "transformer": "Core Reference Transformer",
+        "destination": "MPI",
+        "colour": "#14b8a6",
+        "icon": "bi-clipboard2-data",
+    },
 ]
 
 
@@ -128,13 +144,20 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
 
     flows: dict[str, dict] = {}
     for defn in _FLOW_DEFS:
-        # --- Topic-based flow (MPI Outbound) ---
+        # --- Topic-based flow (MPI Outbound, RISP → MPI) ---
         if "topic_suffix" in defn:
             topic_name = resolve_by_suffix(topic_names, defn["topic_suffix"]) if defn["topic_suffix"] else None
             subscriptions: list[dict] = []
             if topic_name:
                 subscriptions = get_subscriptions(topic_name)
                 log.info("Topic %s has %d subscriptions", topic_name, len(subscriptions))
+
+            # Hybrid topic->queue flows (e.g. RISP: REST ingress -> topic -> transformer ->
+            # shared egress queue) also resolve pre/post queue suffixes when present.
+            pre_suffix = defn.get("pre_queue_suffix")
+            post_suffix = defn.get("post_queue_suffix")
+            pre_queue = resolve_by_suffix(queue_names, pre_suffix) if pre_suffix else None
+            post_queue = resolve_by_suffix(queue_names, post_suffix) if post_suffix else None
 
             flows[defn["id"]] = {
                 "label": defn["label"],
@@ -143,9 +166,9 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
                 "source_host": None,
                 "destination_host": None,
                 "destination_port": None,
-                "pre_queue": None,
+                "pre_queue": pre_queue,
                 "transformer": defn["transformer"],
-                "post_queue": None,
+                "post_queue": post_queue,
                 "topic": topic_name,
                 "subscriptions": subscriptions,
                 "destination": defn["destination"],
