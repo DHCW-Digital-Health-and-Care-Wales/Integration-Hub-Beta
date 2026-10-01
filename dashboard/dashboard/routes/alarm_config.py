@@ -248,8 +248,7 @@ def alarm_flow_config_page() -> str:
     new_rule_anchor: str | None = None
     if request.method == "POST":
         if selected_flow is None:
-            abort(400)
-        assert selected_flow is not None  # abort() above never returns
+            return abort(400)
         new_ids = save_flow_alarm_form(request.form, selected_flow["id"])
         saved = True
         new_rule_anchor = next(
