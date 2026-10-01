@@ -1,27 +1,17 @@
 from field_utils_lib import get_hl7_field_value, set_nested_field
 from hl7apy.core import Message
 
+from ..clients.reference_data_client import ReferenceDataLookupClient, ReferenceDataset
 from ..utils.remove_timezone_from_datetime import remove_timezone_from_datetime
 
 # ---------------------------------------------------------------------------
-# Placeholder enrichment values.
+# Reference-data enrichment.
 #
-# These fixed placeholder strings are a temporary stand-in for a future shared
-# lookup mechanism (see the "Value Lookup Tables for Transformers" spike). Each PID
-# field that the PIMS -> MPI flow must translate is set to its placeholder whenever a
-# source value is present. The authoritative mappings live in the SBU PIMS ADT
-# Mapping Document; replace these placeholders once the real reference-data source is
-# available.
+# The PIMS -> MPI flow must translate the source codes carried by PIMS (HL7 v2.3.1) into the
+# codes the eMPI expects for gender, marital status, ethnic group and NHS number status. The
+# authoritative mappings live behind the reference-data REST API (see the SBU PIMS ADT Mapping
+# Document); each code is resolved at runtime via ``ReferenceDataLookupClient``.
 # ---------------------------------------------------------------------------
-
-# PID.8 (Administrative sex).
-_GENDER_PLACEHOLDER = "GenderPlaceholder"
-# PID.16 (Marital status), CE.1.
-_MARITAL_STATUS_PLACEHOLDER = "MaritalStatusPlaceholder"
-# PID.22 (Ethnic group), CE.1.
-_ETHNICITY_PLACEHOLDER = "EthnicityPlaceholder"
-# PID.32 (NHS number status).
-_NHS_NUMBER_STATUS_PLACEHOLDER = "NHSNumberStatusPlaceholder"
 
 # HL7 NULL is represented as a pair of double quotes.
 _HL7_NULL = '""'
@@ -47,32 +37,42 @@ def _get_nhs_number_status_source(original_pid: Message) -> str:
     return ""
 
 
-def _apply_reference_lookups(original_pid: Message, new_message: Message) -> None:
-    """Enrich the target PID with placeholder values for gender, marital status,
-    ethnic group and NHS number status.
+def _apply_reference_lookups(
+    original_pid: Message, new_message: Message, lookup_client: ReferenceDataLookupClient
+) -> None:
+    """Enrich the target PID with eMPI codes for gender, marital status, ethnic group and NHS
+    number status, resolved via the reference-data lookup API.
 
-    Each field is set to its fixed placeholder only when a source value is present;
-    empty or HL7-null source values are left unset. See the SBU PIMS ADT Mapping
-    Document for the authoritative rules.
+    Each field is enriched only when a source value is present; empty or HL7-null source values are
+    left unset. A lookup that fails or returns a malformed code raises
+    ``ReferenceDataLookupError`` (a ``ValueError``), which the transformer pipeline logs to the
+    monitoring solution and which leaves the message queued. See the SBU PIMS ADT Mapping Document
+    for the authoritative rules.
     """
     # PID.8 (Gender): source PID.8 -> target PID.8
-    if not _is_empty_or_hl7_null(get_hl7_field_value(original_pid, "pid_8")):
-        new_message.pid.pid_8 = _GENDER_PLACEHOLDER
+    gender_source = get_hl7_field_value(original_pid, "pid_8")
+    if not _is_empty_or_hl7_null(gender_source):
+        new_message.pid.pid_8 = lookup_client.lookup(ReferenceDataset.GENDER, gender_source)
 
     # PID.16 (Marital status): source PID.16.CE.1 -> target PID.16.CE.1
-    if not _is_empty_or_hl7_null(get_hl7_field_value(original_pid, "pid_16.ce_1")):
-        new_message.pid.pid_16.ce_1 = _MARITAL_STATUS_PLACEHOLDER
+    marital_source = get_hl7_field_value(original_pid, "pid_16.ce_1")
+    if not _is_empty_or_hl7_null(marital_source):
+        new_message.pid.pid_16.ce_1 = lookup_client.lookup(ReferenceDataset.MARITAL_STATUS, marital_source)
 
     # PID.22 (Ethnic group): source PID.22.CE.1 -> target PID.22.CE.1
-    if not _is_empty_or_hl7_null(get_hl7_field_value(original_pid, "pid_22.ce_1")):
-        new_message.pid.pid_22.ce_1 = _ETHNICITY_PLACEHOLDER
+    ethnicity_source = get_hl7_field_value(original_pid, "pid_22.ce_1")
+    if not _is_empty_or_hl7_null(ethnicity_source):
+        new_message.pid.pid_22.ce_1 = lookup_client.lookup(ReferenceDataset.ETHNIC_GROUP, ethnicity_source)
 
     # PID.32 (NHS number status): source PID.3 (NI) CX.2 -> target PID.32
-    if not _is_empty_or_hl7_null(_get_nhs_number_status_source(original_pid)):
-        new_message.pid.pid_32 = _NHS_NUMBER_STATUS_PLACEHOLDER
+    nhs_status_source = _get_nhs_number_status_source(original_pid)
+    if not _is_empty_or_hl7_null(nhs_status_source):
+        new_message.pid.pid_32 = lookup_client.lookup(ReferenceDataset.NHS_STATUS, nhs_status_source)
 
 
-def map_pid(original_hl7_message: Message, new_message: Message) -> None:
+def map_pid(
+    original_hl7_message: Message, new_message: Message, lookup_client: ReferenceDataLookupClient
+) -> None:
     original_pid = getattr(original_hl7_message, "pid", None)
     if not original_pid:
         return  # No PID segment
@@ -133,6 +133,6 @@ def map_pid(original_hl7_message: Message, new_message: Message) -> None:
         remove_timezone_from_datetime(original_pid29_ts1) if len(original_pid29_ts1) > 6 else '""'
     )
 
-    # Enrich gender / marital status / ethnic group / NHS number status using the
-    # hardcoded placeholder tables above (to be replaced by a real lookup source).
-    _apply_reference_lookups(original_pid, new_message)
+    # Enrich gender / marital status / ethnic group / NHS number status via the reference-data
+    # lookup API (replaces the source codes with the codes the eMPI expects).
+    _apply_reference_lookups(original_pid, new_message, lookup_client)

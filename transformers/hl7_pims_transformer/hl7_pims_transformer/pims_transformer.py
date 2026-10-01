@@ -4,6 +4,7 @@ from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from transformer_base_lib import BaseTransformer
 
+from .clients.reference_data_client import ReferenceDataLookupClient
 from .mappers.additional_segment_mapper import map_non_specific_segments
 from .mappers.evn_mapper import map_evn
 from .mappers.mrg_mapper import map_mrg
@@ -13,7 +14,7 @@ from .mappers.pid_mapper import map_pid
 from .mappers.pv1_mapper import map_pv1
 
 
-def transform_pims_message(original_hl7_msg: Message) -> Message:
+def transform_pims_message(original_hl7_msg: Message, lookup_client: ReferenceDataLookupClient) -> Message:
     new_message = Message(version="2.5")
 
     # Some PIMS message structures (e.g. ADT_A39 used for the A40/merge trigger event) nest
@@ -24,7 +25,7 @@ def transform_pims_message(original_hl7_msg: Message) -> Message:
 
     map_msh(flat_hl7_msg, new_message)
     map_evn(flat_hl7_msg, new_message)
-    map_pid(flat_hl7_msg, new_message)
+    map_pid(flat_hl7_msg, new_message, lookup_client)
     map_pd1(flat_hl7_msg, new_message)
     map_pv1(flat_hl7_msg, new_message)
     map_mrg(flat_hl7_msg, new_message)
@@ -39,6 +40,8 @@ class PimsTransformer(BaseTransformer):
     def __init__(self) -> None:
         config_path = os.path.join(os.path.dirname(__file__), "config.ini")
         super().__init__("PIMS", config_path)
+        # Single, thread-safe client reused for every message (built from environment config).
+        self._lookup_client = ReferenceDataLookupClient.from_env()
 
     def transform_message(self, hl7_msg: Message) -> Message:
-        return transform_pims_message(hl7_msg)
+        return transform_pims_message(hl7_msg, self._lookup_client)
