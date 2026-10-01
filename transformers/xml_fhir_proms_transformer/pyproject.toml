@@ -11,7 +11,7 @@ dependencies = [
   "pyjwt>=2.15.1",
   "defusedxml==0.7.1",
   "fhir.resources==8.3.0",
-  "urllib3>=2.6.3",
+  "urllib3>=2.8.0",
   "transformer-base-lib",
   "message-bus-lib",
   "health-check-lib",

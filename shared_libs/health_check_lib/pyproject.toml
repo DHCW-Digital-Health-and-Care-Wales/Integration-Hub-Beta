@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",  
 ]  
 dependencies = [  
-    "urllib3>=2.6.3",
+    "urllib3>=2.8.0",
     "setuptools>=83.0.0",  
 ]  
 
