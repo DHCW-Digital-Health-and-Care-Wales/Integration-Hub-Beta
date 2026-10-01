@@ -5,14 +5,18 @@ from field_utils_lib import get_hl7_field_value
 from hl7apy.parser import parse_message
 
 from hl7_pims_transformer.pims_transformer import transform_pims_message
+from tests.fakes import IdentityLookupClient
 from tests.pims_messages import pims_messages
 
 
 class TestPimsTransformer(unittest.TestCase):
+    def setUp(self) -> None:
+        self.lookup_client = IdentityLookupClient()
+
     def test_transform_pims_a08_message(self) -> None:
         original_message = parse_message(pims_messages["a08"])
 
-        transformed_message = transform_pims_message(original_message)
+        transformed_message = transform_pims_message(original_message, self.lookup_client)
 
         self.assertEqual(transformed_message.version, "2.5")
 
@@ -29,7 +33,7 @@ class TestPimsTransformer(unittest.TestCase):
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TESTER^TEST^""^^MRS.')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
+        self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
             "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL",
@@ -53,7 +57,7 @@ class TestPimsTransformer(unittest.TestCase):
     def test_transform_pims_a04_message(self) -> None:
         original_message = parse_message(pims_messages["a04"])
 
-        transformed_message = transform_pims_message(original_message)
+        transformed_message = transform_pims_message(original_message, self.lookup_client)
 
         self.assertEqual(transformed_message.version, "2.5")
 
@@ -71,7 +75,7 @@ class TestPimsTransformer(unittest.TestCase):
         # empty string should be preserved
         self.assertEqual(transformed_message.pid.pid_5.value, 'TEST^TEST-TEST^""^^MISS')
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
+        self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(transformed_message.pid.pid_11.value, '1 TEST^TEST^TEST^""^CF11 9AD')
         self.assertEqual(transformed_message.pid.pid_13[0].value, "07000000001")
         self.assertEqual(transformed_message.pid.pid_13[1].value, "07000000001")
@@ -92,7 +96,7 @@ class TestPimsTransformer(unittest.TestCase):
     def test_transform_pims_a40_message(self) -> None:
         original_message = parse_message(pims_messages["a40"])
 
-        transformed_message = transform_pims_message(original_message)
+        transformed_message = transform_pims_message(original_message, self.lookup_client)
 
         self.assertEqual(transformed_message.version, "2.5")
 
@@ -107,7 +111,7 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.msh.msh_19.ce_1.value, "EN")
         self.assertEqual(transformed_message.pid.pid_5.value, "TEST^TEST^TEST^^MS.")
         self.assertEqual(transformed_message.pid.pid_7.ts_1.value, "20000101")
-        self.assertEqual(transformed_message.pid.pid_8.value, "GenderPlaceholder")
+        self.assertEqual(transformed_message.pid.pid_8.value, "F")
         self.assertEqual(
             transformed_message.pid.pid_11.value,
             "1, TEST^TEST TEST^TEST^TEST^CF11 9AD",
@@ -137,7 +141,7 @@ class TestPimsTransformer(unittest.TestCase):
         # must still map these segments correctly instead of silently dropping them.
         original_message = parse_message(pims_messages["a40_adt_a39"])
 
-        transformed_message = transform_pims_message(original_message)
+        transformed_message = transform_pims_message(original_message, self.lookup_client)
 
         self.assertEqual(transformed_message.version, "2.5")
 
@@ -175,7 +179,7 @@ class TestPimsTransformer(unittest.TestCase):
     ) -> None:
         original_message = parse_message(pims_messages["a04"])
 
-        transformed_message = transform_pims_message(original_message)
+        transformed_message = transform_pims_message(original_message, self.lookup_client)
 
         # The transformer reparses the original message into a flat (non-grouped) copy before
         # mapping, so mappers receive an equivalent message rather than the same object instance.
@@ -189,6 +193,7 @@ class TestPimsTransformer(unittest.TestCase):
             mock_map_non_specific,
         ):
             mock_mapper.assert_called_once()
-            called_original_message, called_new_message = mock_mapper.call_args.args
+            called_original_message = mock_mapper.call_args.args[0]
+            called_new_message = mock_mapper.call_args.args[1]
             self.assertEqual(called_original_message.to_er7(), original_message.to_er7())
             self.assertIs(called_new_message, transformed_message)
