@@ -763,7 +763,7 @@ def render_html(results: List[CheckResult], meta: Dict[str, str]) -> str:
         f'<title>Integration Hub quality report &ndash; {_e(meta["generated"])}</title>'
         f'<style>{CSS}</style></head><body>'
         '<header class="top"><div class="top__inner">'
-        '<div><div class="brand">NHS Wales &middot; Integration Hub</div><h1>Quality report</h1></div>'
+        '<div><div class="brand">DHCW &middot; Integration Hub</div><h1>Quality report</h1></div>'
         f'<div class="top__meta">{_status_chip(overall, "ALL PASSED" if overall == "pass" else "ISSUES FOUND")}'
         f'<div>Branch <code>{_e(meta["branch"])}</code> @ <code>{_e(meta["commit"])}</code></div>'
         f'<div>{_e(meta["generated"])} &middot; {_e(meta["components"])} components &middot; '
