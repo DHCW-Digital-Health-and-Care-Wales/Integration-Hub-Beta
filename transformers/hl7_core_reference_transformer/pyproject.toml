@@ -11,7 +11,7 @@ dependencies = [
   "cryptography>=50.0.0",
   "pyjwt>=2.15.1",
   "hl7apy==1.3.5",
-  "urllib3>=2.6.3",
+  "urllib3>=2.8.0",
   "requests>=2.32.0",
   "field-utils-lib",
   "transformer-base-lib",

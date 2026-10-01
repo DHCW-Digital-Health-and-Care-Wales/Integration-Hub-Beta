@@ -23,7 +23,8 @@ Values already exported in the shell still take precedence.
 Alarm configuration and runtime state are persisted to Azure Cosmos DB via the
 `azure-cosmos` SDK (`dashboard/services/cosmos_store.py`). Each alarm namespace
 (`alarm1`/`alarm2`/`alarm3`) stores a `config` and a `state` document in a single
-container partitioned on `/pk`.
+container partitioned on `/pk`. Alarm pauses are stored separately, one document per
+pause, in the `alarm-pause` partition (see [Alarm pauses](#alarm-pauses)).
 
 For local development, run the Cosmos DB emulator. It lives in the shared Compose stack
 under `local/` on the `dashboard` profile:
@@ -43,6 +44,113 @@ In cloud environments, set `COSMOS_ENDPOINT` to the account URI, leave `COSMOS_K
 empty to use Managed Identity / service-principal RBAC (data-plane role required), and
 set `COSMOS_DISABLE_SSL_VERIFY=false`. The database and container must be provisioned
 ahead of time (e.g. via Terraform).
+
+### Example data (local emulator only)
+
+`scripts/seed_example_alarms.py` loads example alarm rules into the emulator: one
+Inactivity, Outgoing Volume and Failures rule for every demo flow (`services/demo_data.py`),
+with a mix of enabled/disabled rules, thresholds and email settings. `--with-pauses` also
+adds example pauses in every state (active, scheduled, indefinite, all flows, ended early,
+cancelled).
+
+```bash
+uv run python scripts/seed_example_alarms.py                            # add missing example rules
+uv run python scripts/seed_example_alarms.py --with-pauses              # ...plus example pauses
+uv run python scripts/seed_example_alarms.py --with-pauses --overwrite  # reset example data (e.g. refresh pause times)
+uv run python scripts/seed_example_alarms.py --remove                   # delete all example data
+```
+
+The script refuses to run unless `COSMOS_ENDPOINT` is a local emulator address. Seeded
+rules are tagged `"example": true` and seeded pauses have *Requested by* set to
+`Example data (seed script)`, so `--overwrite` and `--remove` never touch rules or pauses
+created by hand. The `scripts/` folder is not copied into the Docker image. Rules for the
+real flows (PHW, Paris, PIMS, …) match the local flows; the fictional stress-test flows
+(Werfen, Radiology, …) only appear as flows with `DEMO_MODE=true`.
+
+## Alarm pauses
+
+Alarms can be paused to stop alerts during planned maintenance or known outages.
+While a pause is active the affected rules show as **Paused**, are not evaluated, and
+send no alert emails. When the pause ends (or is cancelled) the next evaluation runs as
+normal and raises alerts if the alarm condition is still met.
+
+A pause has:
+
+| Setting | Options |
+|---------|---------|
+| Scope | Single alarm rule, single flow, multiple flows, or all flows. Flow scopes pause all three alarm types and also cover rules added to the flow later. |
+| Start | Now, or a future date/time (up to 365 days ahead) |
+| End | After a duration, at a date/time, or until cancelled |
+| Reason / Requested by | Both required (the dashboard has no user login, so *Requested by* is free text) |
+
+Times are entered and shown in UK time (Europe/London) and stored in UTC. Times that
+don't exist when the clocks go forward are rejected.
+
+Where pauses appear:
+
+- **`/alarms/pauses`** — active, scheduled and recently ended (last 7 days) pauses, with
+  *End now* / *Cancel* actions and a *Schedule pause* button.
+- **Overview (`/`) and Alarms Summary (`/alarms`)** — a "N paused · M scheduled" indicator
+  at the top of the page (in the page header, kept live by the page's auto-refresh) linking
+  to `/alarms/pauses`.
+- **Flows page** — an *Alarms paused* / *Pause scheduled* badge on affected flows, and
+  paused alarm chips.
+- **Alarm tables and Alarms by Flow** — Pause / Resume buttons per rule, and a note showing
+  who paused it and until when, or when the next pause is scheduled. A rule paused as part of
+  a flow or all-flows pause shows *Manage pause* instead of *Resume*, because resuming it
+  would resume the other alarms too.
+
+Behaviour worth knowing:
+
+- Pauses need Cosmos DB. Creating, cancelling or resuming one returns 503 if Cosmos is not
+  configured or unavailable, rather than reporting success without a durable change. If
+  pauses can't be *read* during alarm evaluation, alarms are evaluated as if nothing
+  is paused, so alerts are never silently lost.
+- Alarms are evaluated when pages or `/api/alarms/status` are requested (cached for
+  `API_CACHE_TTL`), so a pause takes effect or ends on the next evaluation, not at the exact
+  second.
+- Ended and cancelled pauses are deleted 30 days after they finish.
+- Pauses created before this feature (stored as `paused_until` in the alarm `state`
+  document) are still honoured until they expire.
+
+Code: `services/alarm_pauses.py` (model, validation, storage), `services/alarm_base.py`
+(`resolve_pause`, used by each alarm evaluator), `routes/alarms.py` (pages and API),
+`templates/partials/pause_modal.html`, `templates/partials/pause_macros.html` and
+`static/js/alarm-pause.js` (shared UI).
+
+### Pause API
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/alarm-pauses` | Pauses grouped as `active` / `scheduled` / `recent`, plus `summary` counts |
+| `GET` | `/api/alarm-pauses/options` | Flow and rule picker options for the pause form |
+| `POST` | `/api/alarm-pauses` | Create a pause (201) |
+| `POST` | `/api/alarm-pauses/<pause_id>/cancel` | Cancel a scheduled pause, or end an active one now |
+| `POST` | `/alarm1\|2\|3/pause/<rule_id>` | Pause one rule from now: `{"duration_minutes", "indefinite", "reason", "requested_by"}` |
+| `POST` | `/alarm1\|2\|3/unpause/<rule_id>` | Resume one rule (409 with `manage_url` if it is covered by a wider pause) |
+
+Create request body:
+
+```json
+{
+  "scope_type": "flows",
+  "targets": ["phw-to-mpi", "pims-to-mpi"],
+  "start": "2026-10-01T22:00",
+  "end_mode": "duration",
+  "duration_minutes": 240,
+  "reason": "Planned network maintenance",
+  "requested_by": "Jane Smith"
+}
+```
+
+- `scope_type`: `rule` (targets are `{"alarm_type": "alarm1", "rule_id": "..."}`), `flows`
+  (targets are workflow ids) or `all` (targets ignored).
+- `start`: `null` for now, or a UK-time `YYYY-MM-DDTHH:MM`.
+- `end_mode`: `duration` (with `duration_minutes`), `until` (with `end`, UK time) or `indefinite`.
+
+Errors return `{"ok": false, "error": "..."}` with 400 (invalid request), 404 (unknown
+pause), 409 (rule covered by a wider pause) or 503 (pause storage unavailable).
+`/api/alarms/status` also includes a `pause_summary` (`{"active": n, "scheduled": n}`).
 
 ## Running with Docker
 
@@ -100,4 +208,32 @@ This means:
 bash check.sh
 ```
 
-Runs ruff, bandit, mypy, and pytest.
+Runs ruff, bandit, mypy, and pytest. The Cosmos emulator integration tests are skipped
+(see below).
+
+`check.sh` only type-checks `dashboard/`, but CI also type-checks the tests. Before pushing, run:
+
+```bash
+uv run mypy --ignore-missing-imports dashboard/ tests/ scripts/
+```
+
+### Cosmos emulator integration tests
+
+`tests/test_alarm_pause_emulator.py` runs the alarm pause feature end to end against the
+local Cosmos emulator: pauses are created and cancelled through the Flask routes, stored in
+the emulator and read back by the real Alarm 3 evaluator, which is checked for sending (or
+not sending) an alert email. Only Log Analytics and the email transport are stubbed.
+
+The tests are skipped unless `RUN_COSMOS_EMULATOR_TESTS=1`, so `check.sh` and CI never run
+them. With the emulator running and `COSMOS_*` set in `.env`:
+
+```bash
+RUN_COSMOS_EMULATOR_TESTS=1 uv run pytest tests/test_alarm_pause_emulator.py -v
+```
+
+- They refuse to run unless `COSMOS_ENDPOINT` is a local emulator address, and skip if the
+  emulator is unreachable.
+- Each test uses a throwaway `itest-<id>` flow and removes its rule, alarm state and pauses
+  afterwards, so existing local data is left alone.
+- They skip if an active all-flows pause exists (for example from
+  `seed_example_alarms.py --with-pauses`); clear it with `--remove` or the Alarm Pauses page.

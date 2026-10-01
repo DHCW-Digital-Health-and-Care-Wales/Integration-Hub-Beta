@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pause_macros.html" import pause_indicator with context %}
 
 {% block title %}{{ _("Alarms Summary") }}{% endblock %}
 
@@ -19,6 +20,10 @@
       <span id="poll-indicator" class="poll-indicator">
         <i class="bi bi-clock me-1"></i><span id="poll-indicator-text">{{ _("Auto-refresh active") }}</span>
       </span>
+      {{ pause_indicator(pause_summary) }}
+      <a href="{{ url_for('alarms_by_flow_page') }}" class="btn-dash">
+        <i class="bi bi-diagram-3"></i> {{ _("View by Flow") }}
+      </a>
       <a href="{{ url_for('alarms_overview_page') }}?refresh=1" class="btn-dash">
         <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </a>
@@ -114,7 +119,7 @@
         <a href="{{ url_for('alarm_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
@@ -199,7 +204,7 @@
         <a href="{{ url_for('alarm2_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm2_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
@@ -284,7 +289,7 @@
         <a href="{{ url_for('alarm3_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-eye me-1"></i> {{ _("View Details") }}
         </a>
-        <a href="{{ url_for('alarm3_config_page') }}" class="btn-dash btn-dash-sm">
+        <a href="{{ url_for('alarm_flow_config_page') }}" class="btn-dash btn-dash-sm">
           <i class="bi bi-gear-fill me-1"></i> {{ _("Configure") }}
         </a>
       </div>
@@ -501,6 +506,16 @@
 
   // ---- Polling ------------------------------------------------------------
 
+  // Refresh the "N paused · M scheduled" pill from the API's pause_summary.
+  function updatePauseIndicator(summary) {
+    var pill = el('pause-indicator');
+    if (!pill || !summary) return;
+    el('pause-indicator-active').textContent = summary.active;
+    el('pause-indicator-scheduled').textContent = summary.scheduled;
+    pill.classList.toggle('pause-indicator--active', summary.active > 0);
+    pill.classList.toggle('pause-indicator--scheduled', !summary.active && summary.scheduled > 0);
+  }
+
   function setIndicator(state, text) {
     var ind = el('poll-indicator');
     var txt = el('poll-indicator-text');
@@ -530,6 +545,7 @@
         updateCard(1, data.alarm1 || []);
         updateCard(2, data.alarm2 || []);
         updateCard(3, data.alarm3 || []);
+        updatePauseIndicator(data.pause_summary);
         lastUpdatedAt = Date.now();
         setIndicator('', '<i class="bi bi-check-circle me-1"></i>Updated just now');
         startCountdown();
@@ -552,6 +568,7 @@
         updateCard(1, data.alarm1 || []);
         updateCard(2, data.alarm2 || []);
         updateCard(3, data.alarm3 || []);
+        updatePauseIndicator(data.pause_summary);
         lastUpdatedAt = Date.now();
         setIndicator('', '<i class="bi bi-check-circle me-1"></i>Refreshed');
         startCountdown();

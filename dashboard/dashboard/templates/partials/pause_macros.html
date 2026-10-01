@@ -1,0 +1,80 @@
+{# Shared macros for showing pause state on alarm rows, the overview pause indicator and the
+   Pause / Resume / Manage pause button. Import with:
+     {% from "partials/pause_macros.html" import pause_note, pause_action, pause_indicator with context %}
+   The buttons are wired up by static/js/alarm-pause.js (include partials/pause_modal.html). #}
+
+{# Overview-page pill ("N paused · M scheduled") linking to the Alarm Pauses page. Always shown
+   so the pauses page is reachable even when nothing is paused. `summary` is
+   alarm_pauses.summarise() output; alarms_overview.html updates the ids live when polling. #}
+{% macro pause_indicator(summary) -%}
+  {% set active = summary.active if summary else 0 %}
+  {% set scheduled = summary.scheduled if summary else 0 %}
+  <a href="{{ url_for('alarm_pauses_page') }}" id="pause-indicator"
+     class="pause-indicator{% if active %} pause-indicator--active{% elif scheduled %} pause-indicator--scheduled{% endif %}"
+     title="{{ _('View paused alarms and scheduled pauses') }}">
+    <i class="bi bi-pause-circle-fill"></i>
+    <span id="pause-indicator-active">{{ active }}</span> {{ _("paused") }}
+    <span class="pause-indicator-sep">&middot;</span>
+    <i class="bi bi-calendar-event"></i>
+    <span id="pause-indicator-scheduled">{{ scheduled }}</span> {{ _("scheduled") }}
+  </a>
+  <style>
+    .pause-indicator {
+      display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 600;
+      padding: 0.2rem 0.65rem; border-radius: 999px; text-decoration: none;
+      color: var(--text-muted); border: 1px solid var(--border-color);
+    }
+    .pause-indicator:hover { color: var(--text-primary); }
+    .pause-indicator--active { color: var(--accent-cyan); border-color: rgba(18,163,201,0.5); background: rgba(18,163,201,0.1); }
+    .pause-indicator--scheduled { color: var(--accent-amber); border-color: rgba(248,202,77,0.45); background: rgba(248,202,77,0.08); }
+    .pause-indicator-sep { opacity: 0.6; }
+  </style>
+{%- endmacro %}
+
+{# Small note under a row's status badge: who paused it and until when, or the next scheduled pause. #}
+{% macro pause_note(row) -%}
+  {% if row.status == 'paused' %}
+    <div class="pause-note" style="color:var(--accent-cyan);">
+      {% if row.pause_indefinite %}
+        <i class="bi bi-infinity me-1"></i>{{ _("Until cancelled") }}
+      {% elif row.paused_until %}
+        <i class="bi bi-pause-circle me-1"></i>{{ _("Until") }} {{ row.paused_until }}
+      {% endif %}
+      {% if row.paused_by %}<div>{{ _("By") }} {{ row.paused_by }}</div>{% endif %}
+    </div>
+  {% elif row.scheduled_pause %}
+    <div class="pause-note" style="color:var(--accent-amber);">
+      <a href="{{ url_for('alarm_pauses_page', _anchor='pause-' ~ row.scheduled_pause.pause_id) }}"
+         style="color:inherit; text-decoration:none;">
+        <i class="bi bi-calendar-event me-1"></i>{{ _("Pause scheduled") }} {{ row.scheduled_pause.start_display }}
+      </a>
+    </div>
+  {% endif %}
+{%- endmacro %}
+
+{# Pause (rule not paused), Resume (paused by a single-rule pause) or Manage pause (paused as
+   part of a flow / all-flows pause, which can only be ended from the Alarm Pauses page). #}
+{% macro pause_action(row, alarm_type) -%}
+  {% set btn_style = "padding:0.2rem 0.5rem; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.25rem;" %}
+  {% if row.status == 'paused' and row.pause_scope and row.pause_scope != 'rule' %}
+    <a href="{{ url_for('alarm_pauses_page', _anchor='pause-' ~ row.pause_id) }}"
+       class="btn-dash ms-1" title="{{ _('Manage pause') }}" style="{{ btn_style }} color:var(--accent-cyan);">
+      <i class="bi bi-sliders"></i>
+    </a>
+  {% elif row.status == 'paused' %}
+    <button type="button" class="btn-dash ms-1" data-pause-resume
+            data-alarm-type="{{ alarm_type }}" data-rule-id="{{ row.id }}"
+            title="{{ _('Resume alarm for') }} {{ row.display_name }}"
+            style="{{ btn_style }} color:var(--accent-green); border-color:rgba(74,222,128,0.35);">
+      <i class="bi bi-play-fill"></i>
+    </button>
+  {% elif row.status != 'disabled' %}
+    <button type="button" class="btn-dash ms-1" data-pause-open
+            data-alarm-type="{{ alarm_type }}" data-rule-id="{{ row.id }}"
+            data-rule-name="{{ row.display_name }}" data-workflow-id="{{ row.workflow_id }}"
+            title="{{ _('Pause alarm for') }} {{ row.display_name }}"
+            style="{{ btn_style }}">
+      <i class="bi bi-pause-fill"></i>
+    </button>
+  {% endif %}
+{%- endmacro %}

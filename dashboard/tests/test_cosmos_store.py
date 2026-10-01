@@ -130,6 +130,24 @@ class TestQueryDocuments:
         with patch.object(cosmos_store, "_get_container", return_value=container):
             assert cosmos_store.query_documents("network-test") == []
 
+    def test_strict_raises_when_not_configured(self) -> None:
+        with patch.object(cosmos_store, "_get_container", return_value=None):
+            with pytest.raises(cosmos_store.CosmosUnavailableError):
+                cosmos_store.query_documents("network-test", strict=True)
+
+    def test_strict_raises_on_query_error(self) -> None:
+        container = MagicMock()
+        container.query_items.side_effect = ServiceRequestError(message="connection refused")
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            with pytest.raises(cosmos_store.CosmosUnavailableError):
+                cosmos_store.query_documents("network-test", strict=True)
+
+    def test_strict_returns_empty_partition(self) -> None:
+        container = MagicMock()
+        container.query_items.return_value = []
+        with patch.object(cosmos_store, "_get_container", return_value=container):
+            assert cosmos_store.query_documents("network-test", strict=True) == []
+
 
 # ---------------------------------------------------------------------------
 # upsert_document
