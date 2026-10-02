@@ -344,7 +344,8 @@ def parse_bandit(stdout: str, cwd: Path, root: Path) -> List[Finding]:
             url=more_info,
             detail=item.get("code") or "",
             links=links,
-            meta={"confidence": (item.get("issue_confidence") or "").upper(), "test": item.get("test_name") or ""},
+            meta={"confidence": (item.get("issue_confidence") or "").upper(), "test": item.get("test_name") or "",
+                  "col": str(item["col_offset"]) if isinstance(item.get("col_offset"), int) else ""},
         ))
     for error in data.get("errors", []):
         findings.append(Finding(
