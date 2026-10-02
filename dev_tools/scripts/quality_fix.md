@@ -134,7 +134,7 @@ quality_fix.py [components ...] [--report PATH] [--apply] [fixers ...] [--triage
 |---|---|
 | `--triage FILE` | Writes the findings left for a person. `.md` gives a markdown table per component; `.json` gives machine-readable output. Can be used without any fixer. |
 | `--recheck` | After `--apply`, re-runs the affected checks with `quality_report.py` and prints how many findings were fixed, are still there, or are new. |
-| `--allow-dirty` | Allows `--apply` when there are uncommitted changes to tracked files. |
+| `--allow-dirty` | Allows `--apply` when there are uncommitted changes, including untracked files. |
 
 ### Exit codes
 
@@ -358,7 +358,12 @@ requests.post(                        ->  requests.post(
 )                                         )
 ```
 
-It refuses calls that pass `**kwargs`, because those may already contain a
+It edits the exact call bandit reported, using the column the report records.
+If a line has several HTTP-like calls (e.g. `cache.get(k) or requests.get(url)`)
+and the report has no column, only a call on `requests` / `httpx` is accepted.
+If that still leaves more than one candidate, the edit is refused.
+
+It also refuses calls that pass `**kwargs`, because those may already contain a
 timeout; fix those by hand. Use `--format` if you want ruff to tidy the layout
 afterwards.
 
@@ -523,15 +528,20 @@ dev_tools/scripts/quality_fix.py --safe --annotate-none --bandit-timeouts --form
 
 - **Dry run by default.** Nothing changes without `--apply`.
 - **Working tree must have no uncommitted changes.** `--apply` refuses to run
-  when tracked files have uncommitted changes, so `git diff` afterwards shows
-  exactly what the script did. Untracked files are ignored. `--allow-dirty`
-  overrides this; `--format` then also formats files you had already changed.
+  when there are uncommitted changes, **including untracked files** (gitignored
+  files such as `dev_tools/reports/` don't count). Ruff could otherwise edit an
+  untracked file, and that change wouldn't show in `git diff` or be undone by
+  `git restore`. `--allow-dirty` overrides this; `--format` then also formats
+  files you had already changed.
 - **Each action is checked.** Python edits are re-parsed with `ast` and must
   keep the same line count. TOML edits are re-parsed with `tomllib`. A failed
   check leaves that file unchanged.
 - **Failures are isolated.** One failed action doesn't stop the run; it is
   reported, and its findings go back into the triage list.
 - **Input from the report is validated.**
+  - Only results for components that exist in this repo are used. Others are
+    ignored with a warning, so a report can't point commands at directories
+    outside the repo.
   - File paths must point to `.py` files inside the repo.
   - Package names and versions must match strict patterns before they are
     passed to `uv`.

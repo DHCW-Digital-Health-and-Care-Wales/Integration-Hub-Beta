@@ -110,6 +110,7 @@ class Report:
     meta: Dict[str, str]
     results: List[Dict[str, Any]]
     findings: List[ReportFinding]
+    ignored: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -166,9 +167,12 @@ class Options:
 # Report loading
 # --------------------------------------------------------------------------------------------------
 
-def load_report(path: Path, components: Optional[Set[str]] = None) -> Report:
+def load_report(path: Path, components: Set[str]) -> Report:
+    """Load findings, keeping only results for `components` (report values become command working dirs)."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    results = [r for r in data.get("results", []) if components is None or r.get("component") in components]
+    all_results = data.get("results", [])
+    results = [r for r in all_results if r.get("component") in components]
+    ignored = sorted({str(r.get("component")) for r in all_results if r.get("component") not in components})
     findings = []
     for result in results:
         for raw in result.get("findings") or []:
@@ -183,7 +187,7 @@ def load_report(path: Path, components: Optional[Set[str]] = None) -> Report:
                 url=raw.get("url", ""),
                 meta=tuple(sorted((str(k), str(v)) for k, v in (raw.get("meta") or {}).items())),
             ))
-    return Report(path=path, meta=data.get("meta", {}), results=results, findings=findings)
+    return Report(path=path, meta=data.get("meta", {}), results=results, findings=findings, ignored=ignored)
 
 
 def source_location(finding: ReportFinding, root: Path) -> Tuple[Path, int]:
@@ -412,7 +416,26 @@ def add_none_return(path: Path, line_no: int) -> str:
     return f"added '-> None' to {func.name}()"
 
 
-def add_request_timeout(path: Path, line_no: int, seconds: int) -> str:
+def _receiver_name(call: ast.Call) -> str:
+    func = call.func
+    return func.value.id if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) else ""
+
+
+def _reported_call(calls: List[ast.Call], line_no: int, col: Optional[int]) -> ast.Call:
+    """Pick the call bandit reported; refuse rather than guess when a line has several candidates."""
+    if col is not None:
+        matches = [c for c in calls if c.col_offset == col]
+        if len(matches) != 1:
+            raise FixError(f"no HTTP call without a timeout at line {line_no}, column {col} (report out of date?)")
+        return matches[0]
+    if len(calls) > 1:
+        calls = [c for c in calls if _receiver_name(c) in ("requests", "httpx")]
+    if len(calls) != 1:
+        raise FixError(f"cannot tell which call on line {line_no} bandit reported; fix by hand")
+    return calls[0]
+
+
+def add_request_timeout(path: Path, line_no: int, seconds: int, col: Optional[int] = None) -> str:
     lines = _read_lines(path)
     _line(lines, line_no)
     calls = [n for n in ast.walk(ast.parse("".join(lines))) if isinstance(n, ast.Call) and n.lineno == line_no
@@ -420,7 +443,7 @@ def add_request_timeout(path: Path, line_no: int, seconds: int) -> str:
              and not any(k.arg == "timeout" for k in n.keywords)]
     if not calls:
         raise FixError(f"no HTTP call without a timeout on line {line_no} (report out of date?)")
-    call = min(calls, key=lambda c: c.col_offset)
+    call = _reported_call(calls, line_no, col)
     if any(k.arg is None for k in call.keywords):
         raise FixError("call passes **kwargs, which may already contain a timeout; fix by hand")
     items: List[ast.AST] = [*call.args, *call.keywords]
@@ -714,7 +737,8 @@ def plan_line_fixes(report: Report, opts: Options, root: Path) -> Plan:
             _line_action(f, "annotate-none", root, "add '-> None'", plan, add_none_return)
         elif f.check == "bandit" and opts.bandit_timeouts and f.code == "B113":
             _line_action(f, "bandit-timeouts", root, f"add timeout={opts.timeout_seconds}", plan,
-                         add_request_timeout, opts.timeout_seconds)
+                         add_request_timeout, opts.timeout_seconds,
+                         int(f.meta_value("col")) if f.meta_value("col").isdigit() else None)
     return plan
 
 
@@ -1045,7 +1069,7 @@ def recheck(before: Report, components: Sequence[str], groups: Sequence[str]) ->
     LOG.info("")
     LOG.info("== Re-running %s for %d component(s) ==", ", ".join(groups), len(components))
     qr.main([*components, "--checks", ",".join(groups), "--output", str(RECHECK_OUTPUT)])
-    after = load_report(RECHECK_OUTPUT.with_suffix(".json"))
+    after = load_report(RECHECK_OUTPUT.with_suffix(".json"), set(components))
     old = Counter(_finding_key(f) for f in before.findings if f.component in components and f.check in checks)
     new = Counter(_finding_key(f) for f in after.findings)
     LOG.info("")
@@ -1123,7 +1147,8 @@ def options_from_args(args: argparse.Namespace) -> Options:
 
 
 def _git_dirty_files(root: Path) -> List[str]:
-    proc = qr.run_command(["git", "status", "--porcelain", "--untracked-files=no"], root)
+    # Untracked files count too: ruff may edit them, and `git restore` couldn't undo that.
+    proc = qr.run_command(["git", "status", "--porcelain", "--untracked-files=all"], root)
     if proc.returncode != 0:
         return [f"(git status failed: {proc.stderr.strip()})"]
     return [line[3:] for line in proc.stdout.splitlines() if line.strip()]
@@ -1168,10 +1193,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             LOG.error("Unknown components: %s", ", ".join(unknown))
             return 2
     try:
-        report = load_report(report_path, selected)
+        report = load_report(report_path, selected or set(components))
     except (OSError, ValueError) as exc:
         LOG.error("Cannot read report %s: %s", report_path, exc)
         return 2
+    unknown_in_report = [c for c in report.ignored if c not in components]
+    if unknown_in_report:
+        LOG.warning("Ignoring report results for components not in this repo: %s", ", ".join(unknown_in_report))
 
     head = qr.run_command(["git", "rev-parse", "--short", "HEAD"], ROOT_DIR).stdout.strip()
     if report.meta.get("commit") and head and report.meta["commit"] != head:

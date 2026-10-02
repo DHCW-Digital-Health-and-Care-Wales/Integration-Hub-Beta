@@ -216,7 +216,7 @@ class TestParseBandit(unittest.TestCase):
             "results": [{
                 "code": "5 subprocess.call(cmd, shell=True)\n", "filename": "dashboard/app.py",
                 "issue_confidence": "HIGH", "issue_cwe": {"id": 78, "link": "https://cwe.mitre.org/data/definitions/78.html"},
-                "issue_severity": "HIGH", "issue_text": "shell=True", "line_number": 5,
+                "issue_severity": "HIGH", "issue_text": "shell=True", "line_number": 5, "col_offset": 4,
                 "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b602.html", "test_id": "B602",
                 "test_name": "subprocess_popen_with_shell_equals_true",
             }],
@@ -225,6 +225,7 @@ class TestParseBandit(unittest.TestCase):
         issue, error = qr.parse_bandit(stdout, COMPONENT_DIR, ROOT)
         self.assertEqual(issue.location, "dashboard/dashboard/app.py:5")
         self.assertEqual(issue.severity, "HIGH")
+        self.assertEqual(issue.meta["col"], "4")
         self.assertEqual([label for label, _ in issue.links], ["Bandit docs", "CWE-78"])
         self.assertEqual(error.code, "scan-error")
 

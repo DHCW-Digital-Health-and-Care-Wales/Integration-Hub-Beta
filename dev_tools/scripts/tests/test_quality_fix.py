@@ -213,6 +213,24 @@ class TestRequestTimeout(TempDirTestCase):
         with self.assertRaises(qf.FixError):
             qf.add_request_timeout(path, 2, 30)
 
+    def test_uses_bandit_column_to_pick_the_reported_call(self) -> None:
+        path = self.write("m.py", "import requests\nr = cache.get(k) or requests.get(url)\n")
+        qf.add_request_timeout(path, 2, 30, col=len("r = cache.get(k) or "))
+        self.assertIn("cache.get(k) or requests.get(url, timeout=30)", self.read("m.py"))
+
+    def test_without_column_prefers_requests_receiver(self) -> None:
+        path = self.write("m.py", "import requests\nr = cache.get(k) or requests.get(url)\n")
+        qf.add_request_timeout(path, 2, 30)
+        self.assertIn("cache.get(k) or requests.get(url, timeout=30)", self.read("m.py"))
+
+    def test_refuses_ambiguous_line_without_column(self) -> None:
+        path = self.write("m.py", "import requests\nr = requests.get(a) or requests.post(b)\n")
+        with self.assertRaises(qf.FixError):
+            qf.add_request_timeout(path, 2, 30)
+        # Edge case: a stale column that matches no call is refused, not guessed.
+        with self.assertRaises(qf.FixError):
+            qf.add_request_timeout(path, 2, 30, col=1)
+
 
 class TestManifestEdits(TempDirTestCase):
     def test_replace_requirement_keeps_formatting(self) -> None:
@@ -257,7 +275,18 @@ class TestPlanning(TempDirTestCase):
         self.components = ["shared_libs/lib", "svc"]
 
     def report(self, results: List[Dict[str, Any]]) -> qf.Report:
-        return qf.load_report(_write_report(self.root / "report.json", results))
+        return qf.load_report(_write_report(self.root / "report.json", results), set(self.components))
+
+    def test_report_components_outside_the_allowed_set_are_dropped(self) -> None:
+        # A crafted report must not be able to point command working directories outside the repo.
+        report = self.report([
+            {"check": "ruff", "component": "../outside", "status": "fail", "findings": [
+                _finding("ruff", "../outside", "../outside/x.py:1:1", "F401", meta={"fix": "safe"})]},
+            {"check": "ruff", "component": "svc", "status": "pass", "findings": []},
+        ])
+        self.assertEqual(report.ignored, ["../outside"])
+        self.assertEqual(report.findings, [])
+        self.assertEqual(qf.plan_ruff(report, False, self.root).actions, [])
 
     def audit_result(self, package: str, installed: str, fixed: str) -> Dict[str, Any]:
         meta = {"package": package, "installed": installed, "fixed_in": fixed, "published": ""}
@@ -369,6 +398,13 @@ class TestPlanning(TempDirTestCase):
 
 
 class TestCli(unittest.TestCase):
+    def test_dirty_check_includes_untracked_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            qf.qr.run_command(["git", "init", "-q"], root)
+            self.assertEqual(qf._git_dirty_files(root), [])
+            (root / "new.py").write_text("x = 1\n", encoding="utf-8")
+            self.assertEqual(qf._git_dirty_files(root), ["new.py"])
     def test_options_shortcuts(self) -> None:
         opts = qf.options_from_args(qf.parse_args(["--safe"]))
         self.assertEqual(opts.selected(), ["ruff", "audit", "audit-pin", "unused-ignores"])
