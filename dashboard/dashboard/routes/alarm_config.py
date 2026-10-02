@@ -32,10 +32,16 @@ from dashboard.services.alarm1 import (
     save_alarm_config,
 )
 from dashboard.services.alarm2 import (
+    KNOWN_RULES as ALARM2_KNOWN_RULES,
+)
+from dashboard.services.alarm2 import (
     generate_rule_id,
     get_alarm2_config_page_data,
     load_alarm2_config,
     save_alarm2_config,
+)
+from dashboard.services.alarm3 import (
+    KNOWN_RULES as ALARM3_KNOWN_RULES,
 )
 from dashboard.services.alarm3 import (
     generate_rule_id as generate_alarm3_rule_id,
@@ -65,6 +71,16 @@ ApplyFn = Callable[[ImmutableMultiDict, dict, str], str | None]
 def _scoped_form(form: MultiDict, prefix: str) -> ImmutableMultiDict:
     """Return the fields starting with ``prefix``, with the prefix stripped."""
     return ImmutableMultiDict([(k[len(prefix) :], v) for k, v in form.items(multi=True) if k.startswith(prefix)])
+
+
+def _seed_known_rules(rules_cfg: dict, known_rules: list[dict], workflow_id: str) -> None:
+    """Store this flow's built-in seed rules so they pass the ownership check and can be edited."""
+    for rule in known_rules:
+        if (rule.get("workflow_id") or "").strip() != workflow_id:
+            continue
+        entry = rules_cfg.setdefault(rule["id"], {})
+        entry.setdefault("workflow_id", workflow_id)
+        entry.setdefault("display_name", rule.get("display_name", rule["id"]))
 
 
 def _owned_by_flow(rules_cfg: dict, rid: str, workflow_id: str) -> bool:
@@ -181,12 +197,12 @@ def _apply_alarm3_form(form: ImmutableMultiDict, rules_cfg: dict, workflow_id: s
     return new_rid
 
 
-def _alarm_handlers() -> dict[int, tuple[str, Callable[[], dict], Callable[[dict], None], ApplyFn]]:
+def _alarm_handlers() -> dict[int, tuple[str, Callable[[], dict], Callable[[dict], None], ApplyFn, list[dict]]]:
     # Built per call (not at import) so tests can patch the module-level load/save names.
     return {
-        1: ("alarms", load_alarm_config, save_alarm_config, _apply_alarm1_form),
-        2: ("alarm2", load_alarm2_config, save_alarm2_config, _apply_alarm2_form),
-        3: ("alarm3", load_alarm3_config, save_alarm3_config, _apply_alarm3_form),
+        1: ("alarms", load_alarm_config, save_alarm_config, _apply_alarm1_form, []),
+        2: ("alarm2", load_alarm2_config, save_alarm2_config, _apply_alarm2_form, ALARM2_KNOWN_RULES),
+        3: ("alarm3", load_alarm3_config, save_alarm3_config, _apply_alarm3_form, ALARM3_KNOWN_RULES),
     }
 
 
@@ -196,12 +212,14 @@ def save_flow_alarm_form(form: MultiDict, workflow_id: str) -> dict[int, str | N
     Returns ``{alarm_no: new_rule_id_or_None}`` for every alarm type that was saved.
     """
     new_ids: dict[int, str | None] = {}
-    for alarm_no, (cache_key, load, save, apply) in _alarm_handlers().items():
+    for alarm_no, (cache_key, load, save, apply, known_rules) in _alarm_handlers().items():
         scoped = _scoped_form(form, ALARM_PREFIXES[alarm_no])
         if not scoped:
             continue
         cfg = load()
-        new_ids[alarm_no] = apply(scoped, cfg.setdefault("rules", {}), workflow_id)
+        rules_cfg = cfg.setdefault("rules", {})
+        _seed_known_rules(rules_cfg, known_rules, workflow_id)
+        new_ids[alarm_no] = apply(scoped, rules_cfg, workflow_id)
         save(cfg)
         with cache.cache_lock:
             cache.cache_data[cache_key]["ts"] = 0.0
