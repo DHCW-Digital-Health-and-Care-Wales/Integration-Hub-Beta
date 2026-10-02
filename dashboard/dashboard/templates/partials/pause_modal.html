@@ -35,6 +35,8 @@
   }
   .pause-modal .pm-flow-list label { display:flex; align-items:center; gap:0.4rem; padding:0.15rem 0; cursor:pointer; }
   .pause-modal .pm-hint { font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem; }
+  /* Not Bootstrap's d-flex: its !important would override the inline display:none used to hide the row. */
+  .pause-modal #pmCustomRow { display: flex; }
   .pause-modal .pm-summary {
     font-size: 0.8rem; border-left: 3px solid var(--accent-cyan);
     background: rgba(18,163,201,0.06); padding: 0.5rem 0.75rem; border-radius: 4px;
@@ -109,7 +111,7 @@
                 {% endfor %}
                 <button type="button" class="btn-dash duration-opt" data-minutes="custom" style="font-size:0.75rem; padding:0.25rem 0.6rem;">{{ _("Custom…") }}</button>
               </div>
-              <div id="pmCustomRow" class="d-flex align-items-center gap-2">
+              <div id="pmCustomRow" class="align-items-center gap-2">
                 <input type="number" id="pmCustomValue" min="1" max="9999" value="90" class="form-control" style="width:90px;" aria-label="{{ _('Duration') }}">
                 <select id="pmCustomUnit" class="form-select" style="width:110px;" aria-label="{{ _('Unit') }}">
                   <option value="1">{{ _("minutes") }}</option>

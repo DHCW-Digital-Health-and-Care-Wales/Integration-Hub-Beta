@@ -204,6 +204,29 @@ class TestFlowConfigPagePost:
         assert rule["deleted"] is True
         assert rule["alerting_gap_minutes"] == 60
 
+    def test_unsaved_seed_rule_can_be_edited(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        # phw-to-mpi-outgoing is an alarm2 seed rule and is absent from the stored config (load returns no rules).
+        client.post(
+            "/alarms/config?flow=phw-to-mpi",
+            data={"a2-enabled_phw-to-mpi-outgoing": "on", "a2-day_threshold_phw-to-mpi-outgoing": "30",
+                  "a2-alerting_gap_phw-to-mpi-outgoing": "45"},
+        )
+        rule = saves[2].call_args[0][0]["rules"]["phw-to-mpi-outgoing"]
+        assert rule["alarm_enabled"] is True
+        assert rule["day_threshold_minutes"] == 30
+        assert rule["alerting_gap_minutes"] == 45
+        assert rule["workflow_id"] == "phw-to-mpi"
+
+    def test_unsaved_seed_rule_can_be_deleted(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:
+        client.post("/alarms/config?flow=phw-to-mpi", data={"a2-delete_phw-to-mpi-outgoing": "1"})
+        assert saves[2].call_args[0][0]["rules"]["phw-to-mpi-outgoing"]["deleted"] is True
+
+    def test_seed_rule_for_another_flow_is_not_editable(
+        self, client: FlaskClient, saves: dict[int, MagicMock]
+    ) -> None:
+        client.post("/alarms/config?flow=pims-to-mpi", data={"a2-alerting_gap_phw-to-mpi-outgoing": "5"})
+        assert "phw-to-mpi-outgoing" not in saves[2].call_args[0][0]["rules"]
+
 
 class TestFlowConfigScoping:
     """A crafted POST must not reach rules outside the flow selected in ``?flow=``."""

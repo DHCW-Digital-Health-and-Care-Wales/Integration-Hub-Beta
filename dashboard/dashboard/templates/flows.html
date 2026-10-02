@@ -686,8 +686,9 @@
                 </div>
               </div>
               <div class="fac-values">
-                <div class="fac-kv"><span class="fac-key">Window</span><span class="fac-val">{{ a.window_duration_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Threshold</span><span class="fac-val">≤ {{ a.threshold }} msgs</span></div>
+                <div class="fac-kv"><span class="fac-key">Day</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Evening</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">Weekend</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
                 <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
                 <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
               </div>
