@@ -146,8 +146,9 @@ highlighted.
 
 *Figure 4 — The new rule after saving*
 
-> **Note:** You can add rules for more than one alarm type before you save. Only the
-> sections you have changed are saved.
+> **Note:** You can add rules for more than one alarm type before you save. Saving submits
+> every alarm section shown on the page, not just the ones you changed. If another operator
+> may have changed this flow, refresh the page before you edit so you don't overwrite their changes.
 
 ### 4.3 Choosing thresholds
 
@@ -348,7 +349,8 @@ The dialog will not save a pause, and will show an error, when any of the follow
 - **Reason** or **Requested by** is empty. These fields allow up to 200 and 100 characters.
 - The start time is in the past, or more than 365 days ahead.
 - The end time is not after the start time.
-- The duration is shorter than 1 minute or longer than 365 days.
+- An **After** duration is shorter than 1 minute or longer than 365 days. This limit does not
+  apply when you set the end with **At a date and time**.
 
 ---
 

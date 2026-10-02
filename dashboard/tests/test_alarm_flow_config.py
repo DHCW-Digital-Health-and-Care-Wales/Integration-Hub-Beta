@@ -227,6 +227,32 @@ class TestFlowConfigPagePost:
         client.post("/alarms/config?flow=pims-to-mpi", data={"a2-alerting_gap_phw-to-mpi-outgoing": "5"})
         assert "phw-to-mpi-outgoing" not in saves[2].call_args[0][0]["rules"]
 
+    def test_unsaved_alarm3_seed_rule_can_be_edited_and_deleted(
+        self, client: FlaskClient, saves: dict[int, MagicMock]
+    ) -> None:
+        # phw-to-mpi-failures is an alarm3 seed rule; stub an empty stored config so it exists only in code.
+        with patch("dashboard.routes.alarm_config.load_alarm3_config", side_effect=lambda: {"rules": {}}):
+            client.post(
+                "/alarms/config?flow=phw-to-mpi",
+                data={"a3-enabled_phw-to-mpi-failures": "on", "a3-threshold_phw-to-mpi-failures": "4",
+                      "a3-window_duration_phw-to-mpi-failures": "10", "a3-alerting_gap_phw-to-mpi-failures": "30"},
+            )
+            rule = saves[3].call_args[0][0]["rules"]["phw-to-mpi-failures"]
+            assert rule["alarm_enabled"] is True
+            assert rule["threshold"] == 4
+            assert rule["window_duration_minutes"] == 10
+            assert rule["workflow_id"] == "phw-to-mpi"
+
+            client.post("/alarms/config?flow=phw-to-mpi", data={"a3-delete_phw-to-mpi-failures": "1"})
+            assert saves[3].call_args[0][0]["rules"]["phw-to-mpi-failures"]["deleted"] is True
+
+    def test_alarm3_seed_rule_for_another_flow_is_not_editable(
+        self, client: FlaskClient, saves: dict[int, MagicMock]
+    ) -> None:
+        with patch("dashboard.routes.alarm_config.load_alarm3_config", side_effect=lambda: {"rules": {}}):
+            client.post("/alarms/config?flow=pims-to-mpi", data={"a3-alerting_gap_phw-to-mpi-failures": "5"})
+        assert "phw-to-mpi-failures" not in saves[3].call_args[0][0]["rules"]
+
 
 class TestFlowConfigScoping:
     """A crafted POST must not reach rules outside the flow selected in ``?flow=``."""
