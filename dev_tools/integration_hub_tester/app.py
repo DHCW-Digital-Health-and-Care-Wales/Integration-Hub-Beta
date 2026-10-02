@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 # Import order = tab order.  Add new services here only.
 from services.chemo_plugin import ChemoPlugin
 from services.core_reference_plugin import CoreReferencePlugin
+from services.fhir_server_plugin import FhirServerPlugin
 from services.hl7_sender_ack_plugin import Hl7SenderAckPlugin
 from services.hl7_sender_plugin import Hl7SenderPlugin
 from services.hl7_server_plugin import Hl7ServerPlugin
@@ -50,6 +51,7 @@ hl7_server_plugin = Hl7ServerPlugin()
 hl7_sender_plugin = Hl7SenderPlugin()
 hl7_sender_ack_plugin = Hl7SenderAckPlugin()
 rest_server_plugin = RestServerPlugin()
+fhir_server_plugin = FhirServerPlugin()
 hl7_soap_server_plugin = HL7SoapServerPlugin()
 soap_sender_plugin = SoapSenderPlugin()
 soap_subscription_sender_plugin = SoapSubscriptionSenderPlugin()
@@ -65,6 +67,7 @@ PLUGINS: list[ServicePlugin] = [
     hl7_sender_ack_plugin,
     rest_server_plugin,
     hl7_soap_server_plugin,
+    fhir_server_plugin,
     soap_sender_plugin,
     soap_subscription_sender_plugin,
 ]
@@ -77,7 +80,7 @@ PLUGINS: list[ServicePlugin] = [
 # the edge of the window).
 PLUGIN_CATEGORIES: list[tuple[str, list[ServicePlugin]]] = [
     ("🔧 Transformers", [phw_plugin, chemo_plugin, pims_plugin, core_reference_plugin, proms_plugin]),
-    ("🖥 Servers", [hl7_server_plugin, rest_server_plugin, hl7_soap_server_plugin]),
+    ("🖥 Servers", [hl7_server_plugin, rest_server_plugin, hl7_soap_server_plugin, fhir_server_plugin]),
     ("📤 Senders", [hl7_sender_plugin, hl7_sender_ack_plugin, soap_sender_plugin, soap_subscription_sender_plugin]),
 ]
 
@@ -231,7 +234,7 @@ class ServicePage(tk.Frame):
         paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 4))
 
-        def _pane(parent: ttk.PanedWindow, label_text: str, editable: bool) -> tk.Text:
+        def _pane(parent: ttk.PanedWindow, label_text: str, editable: bool, wrap: str = tk.NONE) -> tk.Text:
             frame = tk.Frame(parent, bg=t["bg"])
             parent.add(frame, weight=1)
             tk.Label(frame, text=label_text, bg=t["bg"], fg=t["text_fg"],
@@ -241,7 +244,7 @@ class ServicePage(tk.Frame):
             box.rowconfigure(0, weight=1)
             box.columnconfigure(0, weight=1)
             text = tk.Text(
-                box, font=mono, wrap=tk.NONE,
+                box, font=mono, wrap=wrap,
                 bg=t["pane_bg"], fg=t["text_fg"],
                 insertbackground=t["text_fg"],
                 selectbackground=t["blue"], selectforeground="white",
@@ -260,7 +263,7 @@ class ServicePage(tk.Frame):
             return text
 
         self._input = _pane(paned, self._plugin.input_label, editable=True)
-        self._output = _pane(paned, self._plugin.output_label, editable=False)
+        self._output = _pane(paned, self._plugin.output_label, editable=False, wrap=tk.WORD)
 
         # ── Action row ─────────────────────────────────────────────────
         action = tk.Frame(self, bg=t["bg"], pady=5)

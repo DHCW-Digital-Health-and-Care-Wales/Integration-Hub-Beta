@@ -21,6 +21,7 @@ parameters:
       - REST Server
       - WPAS REST Server
       - RISP REST Server
+      - FHIR REST Server
       - HL7 Phw Transformer
       - HL7 Chemo Transformer
       - HL7 Pims Transformer
@@ -205,6 +206,12 @@ stages:
         - name: 'RISP REST Server'
           appImageName: 'restserver'
           appFunctionMidfix: 'risp'
+          buildPipeline: 'REST Server - Build'
+
+        # FHIR REST Server (rest_server image, FHIR flow instance; container app uks-<env>-fhir-restserver-ca)
+        - name: 'FHIR REST Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'fhir'
           buildPipeline: 'REST Server - Build'
 
         # HL7 Transformer Variants

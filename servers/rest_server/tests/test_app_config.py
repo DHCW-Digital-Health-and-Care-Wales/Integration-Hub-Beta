@@ -31,6 +31,7 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.port, 8080)
         self.assertEqual(config.endpoint_path, "/ingest")
         self.assertEqual(config.allowed_hl7_structures, ["ADT_A05", "ADT_A39"])
+        self.assertEqual(config.allowed_fhir_resource_types, ["Bundle"])
         self.assertEqual(config.allowed_source_identifiers, [])
         self.assertIsNone(config.source_identifier_locator)
         self.assertEqual(config.max_request_size_bytes, DEFAULT_MAX_REQUEST_SIZE_BYTES)

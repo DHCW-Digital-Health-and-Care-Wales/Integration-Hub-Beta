@@ -209,6 +209,32 @@ services:
         aliases:
           - "wpas-rest-server"
 
+  # FHIR JSON ingestion PoC (rest_server, PIPELINE=generic, CONTENT_ADAPTER=fhir-json, VALIDATOR_TYPE=fhir).
+  # No downstream transformer/sender defined yet - see servers/rest_server/examples/fhir-json.env.example.
+  fhir-rest-server:
+    container_name: fhir-rest-server
+    build:
+      context: ../servers/rest_server
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/servers/fhir-rest-server.env
+    ports:
+      - "127.0.0.1:8087:8080"
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - fhir-poc
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "fhir-rest-server"
+
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
@@ -554,6 +580,7 @@ services:
       - wds-to-mpi
       - risp-to-mpi
       - wpas-to-proms
+      - fhir-poc
       - everything
       - mpi-to-topic
     networks:

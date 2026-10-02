@@ -24,6 +24,7 @@ dependencies = [
     "msgpack>=1.1.3",
     "defusedxml==0.7.1",
     "cryptography>=50.0.0",
+    "fhir.resources==8.3.0",
     "otel-lib",
     "message-bus-lib",
     "health-check-lib",
