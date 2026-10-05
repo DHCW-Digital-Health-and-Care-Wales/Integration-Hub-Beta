@@ -14,9 +14,8 @@ async def live() -> dict[str, str]:
 
 @router.get("/ready", response_model=None)
 async def ready(request: Request) -> dict[str, object] | JSONResponse:
-    """Readiness: lookup tables are loaded and can be served."""
-    store = getattr(request.app.state, "store", None)
-    if store is None:
+    """Readiness: table definitions are loaded and preloaded tables are in memory."""
+    resolver = getattr(request.app.state, "resolver", None)
+    if resolver is None:
         return JSONResponse(status_code=503, content={"status": "not_ready"})
-    tables = await store.list_tables()
-    return {"status": "ready", "tables": len(tables)}
+    return {"status": "ready", "tables": len(resolver.summaries()), "source": resolver.store.source}

@@ -5,7 +5,7 @@ import unittest
 from pydantic import ValidationError
 
 from lookup_service.errors import InvalidKeyError
-from lookup_service.keys import canonical_key, normalise_part
+from lookup_service.keys import MAX_COSMOS_ID_BYTES, canonical_key, encode_row_id, key_text, normalise_part
 from lookup_service.models import KeyPartRule, TableDefinition
 
 
@@ -76,6 +76,31 @@ class CanonicalKeyTests(unittest.TestCase):
         with self.assertRaises(InvalidKeyError) as ctx:
             canonical_key(self.definition, ["FAC1"])
         self.assertEqual(ctx.exception.table, "ward_map")
+
+
+class EncodeRowIdTests(unittest.TestCase):
+    def test_plain_parts_are_readable(self) -> None:
+        self.assertEqual(encode_row_id(("FAC1", "W2")), "FAC1::W2")
+        self.assertEqual(key_text(("FAC1", "W2")), "FAC1 :: W2")
+
+    def test_cosmos_forbidden_and_separator_characters_are_escaped(self) -> None:
+        self.assertEqual(encode_row_id(("a/b", "c\\d?e#f", "g:h%i")), "a%2Fb::c%5Cd%3Fe%23f::g%3Ah%25i")
+
+    def test_encoding_is_unambiguous(self) -> None:
+        # Without escaping ':' these two keys would both become "a::b::c".
+        self.assertNotEqual(encode_row_id(("a::b", "c")), encode_row_id(("a", "b::c")))
+        self.assertNotEqual(encode_row_id(("a", "b")), encode_row_id(("a::b",)))
+
+    def test_non_ascii_is_kept(self) -> None:
+        self.assertEqual(encode_row_id(("Ysbyty Gwynedd ŵ",)), "Ysbyty Gwynedd ŵ")
+
+    def test_long_keys_are_hashed_deterministically(self) -> None:
+        key = ("x" * 200, "y" * 200)
+        encoded = encode_row_id(key)
+        self.assertTrue(encoded.startswith("h:"))
+        self.assertLessEqual(len(encoded), MAX_COSMOS_ID_BYTES)
+        self.assertEqual(encoded, encode_row_id(key))
+        self.assertNotEqual(encoded, encode_row_id(("x" * 200, "y" * 201)))
 
 
 class TableDefinitionTests(unittest.TestCase):

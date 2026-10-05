@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Upload CSV{% endblock %}
+{% block content %}
+<div class="page-header">
+  <p class="breadcrumb"><a href="{{ url_for('overview') }}">Tables</a> /</p>
+  <h1 class="page-title">Upload CSV</h1>
+  <p class="page-subtitle">Replaces all rows of a table, or creates a new one. The whole file is validated first; nothing is changed if any row is invalid. Maximum {{ max_upload_mb }} MB.</p>
+</div>
+
+{% if uploads_blocked %}
+<div class="alert alert--error">{{ uploads_blocked }}</div>
+{% else %}
+
+{% if error %}
+<section class="dash-card dash-card--error">
+  <h2 class="dash-card__title"><span class="badge badge--error">{{ error.error_code }}</span> {{ error.detail }}</h2>
+  {% if error.errors %}
+  <ul class="error-list">{% for message in error.errors %}<li>{{ message }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endif %}
+
+<form class="dash-card upload-form" method="post" action="{{ url_for('upload_submit') }}" enctype="multipart/form-data">
+  <div class="form-row">
+    <label class="cfg-label">Table name
+      <input class="dash-input" type="text" name="table" required list="existing-tables" value="{{ fields.get('table', '') }}"
+             pattern="[a-z0-9][a-z0-9_\-]{0,63}" title="Lower-case letters, digits, '_' and '-'" id="table-input" />
+      <datalist id="existing-tables">
+        {% for t in tables %}<option value="{{ t.name }}">{{ t.row_count }} rows</option>{% endfor %}
+      </datalist>
+    </label>
+    <label class="cfg-label">CSV file (UTF-8, header row)
+      <input class="dash-input" type="file" name="file" accept=".csv,text/csv" required id="file-input" />
+    </label>
+  </div>
+
+  <div id="header-preview" class="header-preview" hidden>
+    <span class="muted">Columns in file (click to toggle as key):</span>
+    <div id="header-columns"></div>
+  </div>
+
+  <fieldset class="definition-fields">
+    <legend>Table definition <span class="muted">— required for a new table; for an existing table only used when “Replace definition” is ticked</span></legend>
+    <label class="cfg-check"><input type="checkbox" name="redefine" {% if fields.get('redefine') %}checked{% endif %} /> Replace definition of an existing table</label>
+    <div class="form-row">
+      <label class="cfg-label">Key columns (comma-separated, in order)
+        <input class="dash-input" type="text" name="key_columns" id="key-columns" value="{{ fields.get('key_columns', '') }}" placeholder="first column" />
+      </label>
+      <label class="cfg-label">Value columns (blank = all others)
+        <input class="dash-input" type="text" name="value_columns" value="{{ fields.get('value_columns', '') }}" />
+      </label>
+      <label class="cfg-label">Default value column (blank = first value)
+        <input class="dash-input" type="text" name="default_value_column" value="{{ fields.get('default_value_column', '') }}" />
+      </label>
+    </div>
+    <div class="form-row">
+      <label class="cfg-label">Key case normalisation
+        <select class="dash-input" name="key_case">
+          {% for case in key_cases %}<option value="{{ case }}" {% if fields.get('key_case', 'preserve') == case %}selected{% endif %}>{{ case }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="cfg-label">Cache TTL seconds (blank = {{ default_ttl_seconds }})
+        <input class="dash-input" type="number" min="1" name="ttl_seconds" value="{{ fields.get('ttl_seconds', '') }}" />
+      </label>
+      <label class="cfg-check"><input type="checkbox" name="preload" {% if fields.get('preload') %}checked{% endif %} /> Preload whole table into memory</label>
+    </div>
+    <label class="cfg-label">Description
+      <input class="dash-input dash-input--wide" type="text" name="description" maxlength="500" value="{{ fields.get('description', '') }}" />
+    </label>
+  </fieldset>
+
+  <button class="btn-dash btn-dash--primary" type="submit">Upload and replace</button>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/upload.js') }}?v={{ asset_version }}"></script>{% endblock %}
