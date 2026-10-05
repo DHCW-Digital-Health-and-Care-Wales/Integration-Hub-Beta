@@ -137,6 +137,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# local/env/ holds committed Docker Compose env files (not a Python virtualenv) - un-ignore it
+# so the generic "env/" rule above doesn't silently hide new files added under this directory.
+!local/env/
+!local/env/**
+
 # Local-only WRDS response fixture used for local testing without a real WRDS connection
 # (see transformers/hl7_core_reference_transformer/README.md) — never commit real/production-like data.
 wrds_local_fixture.xml

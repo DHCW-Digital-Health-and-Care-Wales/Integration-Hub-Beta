@@ -55,7 +55,7 @@ class CustomMLLPRequestHandler(MLLPRequestHandler):
 class Hl7TopicMockReceiver:
     def __init__(self) -> None:
         self.sender_client = None
-        self._server_thread: threading.Thread
+        self._server_thread: threading.Thread | None = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2576"))
 
@@ -105,10 +105,12 @@ class Hl7TopicMockReceiver:
             self.sender_client.close()
             logger.info("Service Bus sender client shut down.")
 
+        server_thread = getattr(self, "_server_thread", None)
         if self._server:
-            self._server.shutdown()
+            if server_thread is not None and server_thread.is_alive():
+                self._server.shutdown()
             self._server.server_close()
             logger.info("HL7 MLLP server shut down.")
 
-        if self._server_thread:
-            self._server_thread.join()
+        if server_thread is not None and server_thread.ident is not None:
+            server_thread.join()

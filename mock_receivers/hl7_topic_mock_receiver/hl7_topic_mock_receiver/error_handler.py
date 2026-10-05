@@ -21,4 +21,7 @@ class ErrorHandler(AbstractErrorHandler):
             nack_message = build_nack(message_control_id, msg)
             return nack_message.to_mllp()
         except Exception:
-            return "MSH|^~\\&|||||||NACK||P|2.5|||AL\rMSA|AE|UNKNOWN|Error processing message\r"
+            return (
+                "\x0bMSH|^~\\&|||||||ACK|UNKNOWN|P|2.5|||AL\r"
+                "MSA|AE|UNKNOWN|Error processing message\r\x1c\r"
+            )

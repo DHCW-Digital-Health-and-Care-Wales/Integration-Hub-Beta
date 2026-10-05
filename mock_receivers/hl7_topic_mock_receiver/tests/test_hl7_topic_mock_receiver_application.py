@@ -57,11 +57,18 @@ class TestHl7TopicServerApplication(unittest.TestCase):
     ) -> None:
         server, thread = self._setup_mocks(mock_thread, mock_custom_mllp_server)
         thread.start.side_effect = RuntimeError("Simulated server error")
+        thread.is_alive.return_value = False
+        thread.ident = None
 
         with self.assertRaises(RuntimeError):
             self.app.start_server()
 
-        self._assert_shutdown(server, thread)
+        # The thread never actually started running serve_forever, so shutdown() (which waits
+        # for the loop to exit) and join() (which requires a started thread) must be skipped -
+        # only the listener socket should be closed.
+        server.shutdown.assert_not_called()
+        server.server_close.assert_called_once()
+        thread.join.assert_not_called()
 
     def test_start_server_uses_topic_sender_client(
         self, mock_thread: MagicMock, mock_factory: MagicMock, mock_custom_mllp_server: MagicMock
