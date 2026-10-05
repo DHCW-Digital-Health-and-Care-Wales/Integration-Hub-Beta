@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Lookup tables</h1>
+  <p class="page-subtitle">Tables loaded from seed files in the image. Use <strong>Try a lookup</strong> on any table to test it.</p>
+</div>
+
+<section class="kpi-strip">
+  <div class="kpi-card">
+    <div class="kpi-card__value">{{ tables | length }}</div>
+    <div class="kpi-card__label">Tables</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__value">{{ tables | sum(attribute='row_count') }}</div>
+    <div class="kpi-card__label">Total rows</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__value">{{ composite_count }}</div>
+    <div class="kpi-card__label">Composite-key tables</div>
+  </div>
+</section>
+
+{% if tried_table %}
+<section id="result" class="dash-card {{ 'dash-card--error' if error else 'dash-card--ok' }}">
+  <h2 class="dash-card__title">Lookup result · <code>{{ tried_table }}</code></h2>
+  {% if error %}
+    <p class="result-error"><span class="badge badge--error">{{ error.error_code }}</span> {{ error.detail }}</p>
+  {% else %}
+    <dl class="result-grid">
+      <dt>Canonical key</dt><dd><code>{{ result.key | join(' :: ') }}</code></dd>
+      <dt>Value</dt><dd><strong>{{ result.value }}</strong></dd>
+      {% for column, value in result['values'].items() %}
+      <dt>{{ column }}</dt><dd>{{ value }}</dd>
+      {% endfor %}
+      <dt>Source</dt><dd>{{ result.source }}</dd>
+    </dl>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="dash-card">
+  <h2 class="dash-card__title">Tables</h2>
+  {% if not tables %}
+    <p class="empty-state">No tables loaded. Add CSV files to the seed directory and restart.</p>
+  {% else %}
+  <div class="table-scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Table</th><th>Key</th><th>Values</th><th class="num">Rows</th><th>Source</th><th>Loaded (UTC)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tables %}
+      <tr>
+        <td>
+          <code>{{ t.name }}</code>
+          {% if t.description %}<div class="muted">{{ t.description }}</div>{% endif %}
+        </td>
+        <td>
+          {% for c in t.key_columns %}<span class="badge badge--key">{{ c }}</span>{% endfor %}
+        </td>
+        <td>
+          {% for c in t.value_columns %}<span class="badge {{ 'badge--default' if c == t.default_value_column else '' }}">{{ c }}</span>{% endfor %}
+        </td>
+        <td class="num">{{ t.row_count }}</td>
+        <td class="muted">{{ t.source }}</td>
+        <td class="muted">{{ t.loaded_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      </tr>
+      <tr class="tester-row">
+        <td colspan="6">
+          <details {% if tried_table == t.name %}open{% endif %}>
+            <summary>Try a lookup</summary>
+            <form class="tester-form" method="get" action="{{ url_for('overview') }}#result">
+              <input type="hidden" name="table" value="{{ t.name }}" />
+              {% for c in t.key_columns %}
+              <label class="cfg-label">{{ c }}
+                <input class="dash-input" type="text" name="key.{{ c }}" required
+                       value="{{ submitted.get(c, '') if tried_table == t.name else '' }}" />
+              </label>
+              {% endfor %}
+              <button class="btn-dash btn-dash--primary" type="submit">Look up</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>
+
+<p class="muted footnote">API: <code>GET /api/v1/lookup/&lt;table&gt;?k=…</code> or <code>?key.&lt;part&gt;=…</code> · <code>GET /api/v1/tables</code></p>
+{% endblock %}

@@ -561,6 +561,34 @@ services:
         aliases:
           - "buswatch"
 
+  # Lookup service (Phase 0 POC): read-only lookups from CSV seed files baked into the image.
+  # GUI at http://localhost:8090/ - see lookup_service/README.md.
+  lookup-service:
+    container_name: lookup-service
+    build:
+      context: ../lookup_service
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+    env_file:
+      - ./env/lookup/lookup-service.env
+    ports:
+      - "127.0.0.1:8090:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health/ready', timeout=2).status == 200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: on-failure
+    profiles:
+      - lookup
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "lookup-service"
+
   # Azure Cosmos DB emulator - persistence backend for the NOC dashboard.
   # First start pulls a ~1GB image and takes ~1 minute to become healthy.
   cosmos-emulator:
