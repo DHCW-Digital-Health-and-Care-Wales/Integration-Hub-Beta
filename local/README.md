@@ -275,6 +275,7 @@ Profiles:
 - risp-to-mpi
 - wpas-to-proms
 - mpi-to-topic
+- topic-mock-receiver
 - replay
 - dashboard
 
@@ -297,9 +298,10 @@ Each profile starts a complete integration flow with all required services:
 | **wpas-to-proms** | wpas-rest-server, sb-emulator                                                              | WPAS XML ingress flow to PROMS (destination transformer still in development)                     |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
+| **topic-mock-receiver** | mpi-hl7-topic-mock-receiver, sb-emulator                                             | Standalone topic-publishing HL7 mock receiver (hl7_topic_mock_receiver); not wired into any flow yet, runs independently for verification |
 | **dashboard**    | cosmos-emulator                                                                              | Azure Cosmos DB emulator backing the NOC dashboard, which is run on the host via `uv run flask`   |
 
-Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**, **risp-to-mpi**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
+Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**, **risp-to-mpi**, **topic-mock-receiver**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
 
 #### Environment Files Reference
 
@@ -321,6 +323,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/message_processing/message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
 | **env/senders/mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_QUEUE_NAME`, `RECEIVER_MLLP_HOST`, `MAX_MESSAGES_PER_MINUTE=30`              |
 | **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
+| **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver | `PORT=2576`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`                                 |
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
