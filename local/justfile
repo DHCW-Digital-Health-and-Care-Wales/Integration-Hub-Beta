@@ -27,6 +27,8 @@
 # - wpas-to-proms  : PROMS REST ingress to MPI integration
 # - rest-to-mpi    : REST HTTP ingress to MPI integration
 # - mpi-to-topic   : MPI to Outbound Integration
+# - topic-mock-receiver : Standalone topic-publishing HL7 mock receiver (hl7_topic_mock_receiver) -
+#                         not wired into any flow yet, runs independently for verification
 #
 # Tips:
 # -----
@@ -56,7 +58,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile mpi-to-topic --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile mpi-to-topic --profile topic-mock-receiver --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"

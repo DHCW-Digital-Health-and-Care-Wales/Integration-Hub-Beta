@@ -215,6 +215,20 @@
                 }
               }
             ]
+          },
+          {
+            "Name": "local-inthub-hl7-topic-mock-receiver",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-hl7-topic-mock-receiver-verifier",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
           }
         ]
       }
