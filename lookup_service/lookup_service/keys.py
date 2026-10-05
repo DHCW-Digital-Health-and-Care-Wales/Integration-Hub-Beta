@@ -7,10 +7,37 @@ only ever see canonical keys, so normalisation can't drift between load and look
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from collections.abc import Mapping, Sequence
 
 from lookup_service.errors import InvalidKeyError
 from lookup_service.models import KeyPartRule, TableDefinition
+
+KEY_PART_SEPARATOR = "::"
+# Cosmos ids may not contain / \ ? #; ':' and '%' are escaped too so the join stays reversible.
+_ID_UNSAFE_RE = re.compile(r"[%:/\\?#\x00-\x1f\x7f]")
+MAX_COSMOS_ID_BYTES = 255
+HASHED_ID_PREFIX = "h:"
+
+
+def encode_row_id(key: tuple[str, ...]) -> str:
+    """Readable, reversible Cosmos id for a canonical key; a sha256 form when it would be too long."""
+    encoded = KEY_PART_SEPARATOR.join(_ID_UNSAFE_RE.sub(_percent_encode, part) for part in key)
+    if len(encoded.encode("utf-8")) <= MAX_COSMOS_ID_BYTES:
+        return encoded
+    digest = hashlib.sha256(json.dumps(list(key), ensure_ascii=False).encode("utf-8")).hexdigest()
+    return HASHED_ID_PREFIX + digest
+
+
+def key_text(key: tuple[str, ...]) -> str:
+    """Human-readable form of a key, used for display and admin search."""
+    return f" {KEY_PART_SEPARATOR} ".join(key)
+
+
+def _percent_encode(match: re.Match[str]) -> str:
+    return "".join(f"%{byte:02X}" for byte in match.group().encode("utf-8"))
 
 
 def normalise_part(value: str, rule: KeyPartRule) -> str:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import uvicorn
 
@@ -16,6 +17,9 @@ def main() -> None:
         level=getattr(logging, settings.log_level, logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+    # The Azure SDK's HTTP logging includes request URLs, and Cosmos row URLs contain lookup keys.
+    azure_level = (os.getenv("AZURE_LOG_LEVEL") or "WARNING").upper()
+    logging.getLogger("azure").setLevel(getattr(logging, azure_level, logging.WARNING))
     app = create_app(settings)
 
     logger.info("Lookup service listening on %s:%s (environment %s)", settings.host, settings.port,

@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from lookup_service.errors import SeedDataError, TableNotFoundError
+from lookup_service.errors import ReadOnlyStoreError, SeedDataError
+from lookup_service.models import UploadInfo
 from lookup_service.store.file_store import MAX_SEED_FILE_BYTES, FileTableStore
-from tests.helpers import REPO_SEED_DIR, SeedDirTestCase, require_row
+from tests.helpers import REPO_SEED_DIR, SeedDirTestCase, require_row, require_table
 
 
 class RepoSeedTests(unittest.TestCase):
@@ -13,9 +14,10 @@ class RepoSeedTests(unittest.TestCase):
 
     def test_repo_seed_loads(self) -> None:
         store = FileTableStore.load(REPO_SEED_DIR)
-        tables = {t.name: t for t in asyncio.run(store.list_tables())}
-        self.assertEqual(tables["health_board_mapping"].row_count, 4)
-        self.assertEqual(tables["ward_map"].key_columns, ["sending_facility", "ward_code"])
+        records = {r.definition.name: r for r in asyncio.run(store.list_tables())}
+        self.assertEqual(records["health_board_mapping"].stats.row_count, 4)
+        self.assertTrue(records["health_board_mapping"].definition.preload)
+        self.assertEqual(records["ward_map"].definition.key_columns, ("sending_facility", "ward_code"))
 
     def test_health_board_mapping_matches_chemo_pid_mapper(self) -> None:
         store = FileTableStore.load(REPO_SEED_DIR)
@@ -26,50 +28,69 @@ class RepoSeedTests(unittest.TestCase):
 
 
 class FileTableStoreLoadTests(SeedDirTestCase):
+    def load(self) -> FileTableStore:
+        return FileTableStore.load(self.seed_dir)
+
     def test_first_column_is_key_by_default(self) -> None:
         self.write_csv("codes", "code,label,extra\nA,Alpha,x\n")
-        store = FileTableStore.load(self.seed_dir)
-        definition = asyncio.run(store.get_definition("codes"))
-        self.assertEqual(definition.key_columns, ("code",))
-        self.assertEqual(definition.value_columns, ("label", "extra"))
-        self.assertEqual(definition.default_value_column, "label")
+        record = require_table(self.load(), "codes")
+        self.assertEqual(record.definition.key_columns, ("code",))
+        self.assertEqual(record.definition.value_columns, ("label", "extra"))
+        self.assertEqual(record.definition.default_value_column, "label")
+        self.assertEqual(record.stats.last_upload_by, "seed")
 
-    def test_manifest_declares_composite_key_and_normalisation(self) -> None:
+    def test_manifest_declares_composite_key_normalisation_ttl_and_preload(self) -> None:
         self.write_csv("ward_map", "fac,ward,code\nfac1,w1,X\n")
-        self.write_manifest({"ward_map": {"key_columns": ["fac", "ward"],
+        self.write_manifest({"ward_map": {"key_columns": ["fac", "ward"], "ttl_seconds": 60, "preload": True,
                                           "key_normalisation": {"fac": {"case": "upper"},
                                                                 "ward": {"case": "upper"}}}})
-        store = FileTableStore.load(self.seed_dir)
+        store = self.load()
         require_row(store, "ward_map", ("FAC1", "W1"))
+        record = require_table(store, "ward_map")
+        self.assertEqual(record.definition.ttl_seconds, 60)
+        self.assertTrue(record.definition.preload)
 
     def test_tolerates_bom_and_blank_lines_and_trims_header(self) -> None:
         self.write_csv("codes", " code , label \n\nA,Alpha\n,\nB,Beta\n", encoding="utf-8-sig")
-        store = FileTableStore.load(self.seed_dir)
-        self.assertEqual(asyncio.run(store.list_tables())[0].row_count, 2)
-        definition = asyncio.run(store.get_definition("codes"))
-        self.assertEqual(definition.key_columns, ("code",))
+        records = asyncio.run(self.load().list_tables())
+        self.assertEqual(records[0].stats.row_count, 2)
+        self.assertEqual(records[0].definition.key_columns, ("code",))
 
     def test_quoted_values_with_commas(self) -> None:
         self.write_csv("codes", 'code,label\nA,"Alpha, the first"\n')
-        store = FileTableStore.load(self.seed_dir)
-        row = require_row(store, "codes", ("A",))
-        self.assertEqual(row.values["label"], "Alpha, the first")
+        self.assertEqual(require_row(self.load(), "codes", ("A",)).values["label"], "Alpha, the first")
 
     def test_rows_are_immutable(self) -> None:
         self.write_csv("codes", "code,label\nA,Alpha\n")
-        store = FileTableStore.load(self.seed_dir)
-        row = require_row(store, "codes", ("A",))
+        row = require_row(self.load(), "codes", ("A",))
         with self.assertRaises(TypeError):
             row.values["label"] = "changed"  # type: ignore[index]
 
     def test_empty_seed_dir_loads_no_tables(self) -> None:
-        store = FileTableStore.load(self.seed_dir)
-        self.assertEqual(asyncio.run(store.list_tables()), [])
+        self.assertEqual(asyncio.run(self.load().list_tables()), [])
 
-    def test_unknown_table_raises(self) -> None:
-        store = FileTableStore.load(self.seed_dir)
-        with self.assertRaises(TableNotFoundError):
-            asyncio.run(store.get_row("missing", ("A",)))
+    def test_unknown_table_reads_return_nothing(self) -> None:
+        store = self.load()
+        self.assertIsNone(asyncio.run(store.get_row("missing", ("A",))))
+        self.assertIsNone(asyncio.run(store.get_table("missing")))
+        self.assertEqual(asyncio.run(store.load_rows("missing")), [])
+
+    def test_query_rows_searches_keys_and_pages(self) -> None:
+        self.write_csv("codes", "code,label\nA1,x\nB1,y\nA2,z\n")
+        store = self.load()
+        rows, total = asyncio.run(store.query_rows("codes", "a", 0, 1))
+        self.assertEqual(total, 2)
+        self.assertEqual([row.key for row in rows], [("A1",)])
+        rows, _ = asyncio.run(store.query_rows("codes", None, 1, 10))
+        self.assertEqual([row.key for row in rows], [("A2",), ("B1",)])
+
+    def test_is_read_only(self) -> None:
+        self.write_csv("codes", "code,label\nA,Alpha\n")
+        store = self.load()
+        record = require_table(store, "codes")
+        self.assertFalse(store.writable)
+        with self.assertRaises(ReadOnlyStoreError):
+            asyncio.run(store.replace_table(record.definition, [], UploadInfo("me", None)))
 
 
 class FileTableStoreValidationTests(SeedDirTestCase):
@@ -118,6 +139,11 @@ class FileTableStoreValidationTests(SeedDirTestCase):
         self.write_csv("Bad Name", "code,label\nA,Alpha\n")
         self.assert_load_fails("invalid table definition")
 
+    def test_invalid_normalisation_rule(self) -> None:
+        self.write_csv("codes", "code,label\nA,Alpha\n")
+        self.write_manifest({"codes": {"key_normalisation": {"code": {"case": "shouty"}}}})
+        self.assert_load_fails("invalid table definition")
+
     def test_manifest_without_csv(self) -> None:
         self.write_manifest({"ghost": {"key_columns": ["a"]}})
         self.assert_load_fails("no CSV file")
@@ -149,6 +175,10 @@ class FileTableStoreValidationTests(SeedDirTestCase):
     def test_manifest_wrong_shape(self) -> None:
         (self.seed_dir / "tables.json").write_text('{"tables": []}', encoding="utf-8")
         self.assert_load_fails("must be an object")
+
+    def test_not_utf8(self) -> None:
+        (self.seed_dir / "codes.csv").write_bytes(b"code,label\nA,\xff\n")
+        self.assert_load_fails("not valid UTF-8")
 
     def test_oversized_file(self) -> None:
         path = self.write_csv("codes", "code,label\n")

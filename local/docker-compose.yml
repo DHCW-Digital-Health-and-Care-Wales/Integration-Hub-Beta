@@ -561,8 +561,9 @@ services:
         aliases:
           - "buswatch"
 
-  # Lookup service (Phase 0 POC): read-only lookups from CSV seed files baked into the image.
-  # GUI at http://localhost:8090/ - see lookup_service/README.md.
+  # Lookup service: tables in the Cosmos emulator (seeded from lookup_service/seed on first start),
+  # CSV upload via the GUI at http://localhost:8090/ - see lookup_service/README.md.
+  # Restarts until the emulator is ready (first start takes ~1 minute).
   lookup-service:
     container_name: lookup-service
     build:
@@ -581,6 +582,8 @@ services:
       retries: 3
       start_period: 5s
     restart: on-failure
+    depends_on:
+      - cosmos-emulator
     profiles:
       - lookup
       - everything
@@ -614,6 +617,7 @@ services:
     restart: unless-stopped
     profiles:
       - dashboard
+      - lookup
       - everything
     networks:
       integration-hub:

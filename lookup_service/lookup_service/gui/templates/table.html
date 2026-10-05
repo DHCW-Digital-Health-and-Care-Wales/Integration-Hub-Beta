@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ table.name }}{% endblock %}
+{% block content %}
+<div class="page-header page-header--split">
+  <div>
+    <p class="breadcrumb"><a href="{{ url_for('overview') }}">Tables</a> /</p>
+    <h1 class="page-title"><code>{{ table.name }}</code></h1>
+    {% if table.description %}<p class="page-subtitle">{{ table.description }}</p>{% endif %}
+  </div>
+  {% if not uploads_blocked %}
+  <a class="btn-dash btn-dash--primary" href="{{ url_for('upload_page').include_query_params(table=table.name) }}">Replace data</a>
+  {% endif %}
+</div>
+
+{% if uploaded is not none %}
+<div class="alert alert--ok">Upload complete: {{ uploaded }} row(s) loaded.</div>
+{% endif %}
+
+<section class="kpi-strip">
+  <div class="kpi-card"><div class="kpi-card__value">{{ table.row_count }}</div><div class="kpi-card__label">Rows</div></div>
+  <div class="kpi-card">
+    <div class="kpi-card__value">{% if table.preload %}Preloaded{% else %}{{ table.ttl_seconds }}s{% endif %}</div>
+    <div class="kpi-card__label">{% if table.preload %}Whole table in memory{% else %}Cache TTL{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__value">{{ table.cache.entries }}</div>
+    <div class="kpi-card__label">{% if table.cache.mode == 'ttl' %}Cached entries · {{ table.cache.hits }} hit / {{ table.cache.misses }} miss{% else %}Rows in memory{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__value kpi-card__value--small">{{ table.last_upload_at.strftime('%Y-%m-%d %H:%M') if table.last_upload_at else '—' }}</div>
+    <div class="kpi-card__label">Last upload (UTC){% if table.last_upload_by %} · {{ table.last_upload_by }}{% endif %}</div>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="dash-card">
+    <h2 class="dash-card__title">Definition</h2>
+    <dl class="result-grid">
+      <dt>Key</dt>
+      <dd>
+        {% for c in table.key_columns %}
+          <span class="badge badge--key">{{ c }}</span>
+          {% set rule = table.key_normalisation.get(c) %}
+          {% if rule and rule.case != 'preserve' %}<span class="muted">({{ rule.case }})</span>{% endif %}
+        {% endfor %}
+      </dd>
+      <dt>Values</dt>
+      <dd>{% for c in table.value_columns %}<span class="badge {{ 'badge--default' if c == table.default_value_column else '' }}">{{ c }}</span>{% endfor %}</dd>
+      <dt>Default value</dt><dd><code>{{ table.default_value_column }}</code></dd>
+      <dt>Source</dt><dd>{{ table.source }}</dd>
+      <dt>Last file</dt><dd>{{ table.last_upload_file or '—' }}</dd>
+    </dl>
+  </section>
+
+  <section id="tester" class="dash-card {{ 'dash-card--error' if error else ('dash-card--ok' if result else '') }}">
+    <h2 class="dash-card__title">Try a lookup</h2>
+    <form class="tester-form" method="get" action="{{ url_for('table_page', table=table.name) }}#tester">
+      {% for c in table.key_columns %}
+      <label class="cfg-label">{{ c }}
+        <input class="dash-input" type="text" name="key.{{ c }}" required value="{{ submitted.get(c, '') }}" />
+      </label>
+      {% endfor %}
+      <button class="btn-dash btn-dash--primary" type="submit">Look up</button>
+    </form>
+    {% if error %}
+      <p class="result-error"><span class="badge badge--error">{{ error.error_code }}</span> {{ error.detail }}</p>
+    {% elif result %}
+      <dl class="result-grid">
+        <dt>Canonical key</dt><dd><code>{{ result.key | join(' :: ') }}</code></dd>
+        <dt>Value</dt><dd><strong>{{ result.value }}</strong></dd>
+        {% for column, value in result['values'].items() %}<dt>{{ column }}</dt><dd>{{ value }}</dd>{% endfor %}
+        <dt>Served</dt><dd>{{ 'from cache' if result.cached else 'from ' ~ result.source }}</dd>
+      </dl>
+    {% endif %}
+  </section>
+</div>
+
+<section class="dash-card">
+  <div class="dash-card__header">
+    <h2 class="dash-card__title">Rows</h2>
+    <form class="search-form" method="get" action="{{ url_for('table_page', table=table.name) }}">
+      <input class="dash-input" type="search" name="search" value="{{ search }}" placeholder="Search keys…" maxlength="200" />
+      <button class="btn-dash" type="submit">Search</button>
+      {% if search %}<a class="btn-dash" href="{{ url_for('table_page', table=table.name) }}">Clear</a>{% endif %}
+    </form>
+  </div>
+  {% if not rows %}
+    <p class="empty-state">{% if search %}No rows match “{{ search }}”.{% else %}No rows.{% endif %}</p>
+  {% else %}
+  <div class="table-scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        {% for c in table.key_columns %}<th class="key-col">{{ c }}</th>{% endfor %}
+        {% for c in table.value_columns %}<th>{{ c }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for part in row.key %}<td><code>{{ part }}</code></td>{% endfor %}
+        {% for c in table.value_columns %}<td>{{ row['values'][c] }}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="pager">
+    <span class="muted">{{ total }} row(s){% if search %} matching{% endif %} · page {{ page }} of {{ pages }}</span>
+    {% if page > 1 %}<a class="btn-dash" href="{{ url_for('table_page', table=table.name).include_query_params(search=search, page=page - 1) }}">Previous</a>{% endif %}
+    {% if page < pages %}<a class="btn-dash" href="{{ url_for('table_page', table=table.name).include_query_params(search=search, page=page + 1) }}">Next</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

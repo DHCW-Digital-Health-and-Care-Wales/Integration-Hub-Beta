@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<section class="dash-card dash-card--error">
+  <h1 class="dash-card__title">Table <code>{{ table }}</code> does not exist</h1>
+  <p><a href="{{ url_for('overview') }}">Back to tables</a></p>
+</section>
+{% endblock %}

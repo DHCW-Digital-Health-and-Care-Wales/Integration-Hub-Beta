@@ -4,17 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Lookup Service{% endblock %} · Integration Hub</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='css/lookup.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/lookup.css') }}?v={{ asset_version }}" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar__inner">
       <a class="topbar__brand" href="{{ url_for('overview') }}">Integration Hub <span>Lookup Service</span></a>
-      <span class="topbar__tag">Phase 0 · POC · read-only</span>
+      <nav class="topbar__nav">
+        <a href="{{ url_for('overview') }}">Tables</a>
+        <a href="{{ url_for('upload_page') }}">Upload CSV</a>
+      </nav>
     </div>
   </header>
   <main class="page-wrapper">
     {% block content %}{% endblock %}
   </main>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
