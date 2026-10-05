@@ -1,0 +1,96 @@
+/* DHCW brand: NHS Wales Blue #325083, DHCW Blue #12A3C9, DHCW Navy #1B294A, DHCW Yellow #F8CA4D. */
+:root {
+  --nhs-wales-blue: #325083;
+  --dhcw-blue: #12A3C9;
+  --dhcw-navy: #1B294A;
+  --dhcw-yellow: #F8CA4D;
+  --ok: #2e7d32;
+  --error: #b3261e;
+  --bg: #f4f6fa;
+  --card: #ffffff;
+  --border: #dde3ec;
+  --muted: #5f6b7a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Rubik", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--dhcw-navy);
+  font-size: 15px;
+}
+
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+
+.topbar { background: var(--dhcw-navy); border-bottom: 4px solid var(--dhcw-blue); }
+.topbar__inner {
+  max-width: 1200px; margin: 0 auto; padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar__brand { color: #fff; text-decoration: none; font-weight: 600; font-size: 1.1rem; }
+.topbar__brand span { color: var(--dhcw-yellow); font-weight: 400; margin-left: 6px; }
+.topbar__tag { color: #c9d3e3; font-size: 0.85rem; }
+
+.page-wrapper { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.page-header { margin-bottom: 20px; }
+.page-title { margin: 0 0 4px; color: var(--nhs-wales-blue); font-weight: 600; }
+.page-subtitle { margin: 0; color: var(--muted); }
+
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.kpi-card {
+  background: var(--card); border: 1px solid var(--border); border-top: 4px solid var(--dhcw-blue);
+  border-radius: 6px; padding: 14px 16px;
+}
+.kpi-card__value { font-size: 1.8rem; font-weight: 600; color: var(--nhs-wales-blue); }
+.kpi-card__label { color: var(--muted); font-size: 0.85rem; }
+
+.dash-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+  padding: 16px 20px; margin-bottom: 20px;
+}
+.dash-card--ok { border-left: 5px solid var(--ok); }
+.dash-card--error { border-left: 5px solid var(--error); }
+.dash-card__title { margin: 0 0 12px; font-size: 1.1rem; color: var(--dhcw-navy); }
+
+.table-scroll { overflow-x: auto; }
+.data-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 10px 8px; text-align: left; vertical-align: top; }
+.data-table thead th { border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+.data-table tbody tr:not(.tester-row) td { border-top: 1px solid var(--border); }
+.data-table .num { text-align: right; }
+.tester-row td { padding-top: 0; }
+
+details summary { cursor: pointer; color: var(--nhs-wales-blue); font-size: 0.9rem; }
+.tester-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 10px 0 4px; }
+
+.cfg-label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.dash-input {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 4px; font: inherit; min-width: 180px;
+}
+.dash-input:focus { outline: 2px solid var(--dhcw-blue); outline-offset: 1px; }
+
+.btn-dash {
+  padding: 8px 16px; border: 1px solid var(--nhs-wales-blue); border-radius: 4px; background: #fff;
+  color: var(--nhs-wales-blue); font: inherit; cursor: pointer;
+}
+.btn-dash--primary { background: var(--nhs-wales-blue); color: #fff; }
+.btn-dash--primary:hover { background: var(--dhcw-navy); }
+
+.badge {
+  display: inline-block; padding: 2px 8px; margin: 0 4px 4px 0; border-radius: 10px;
+  background: #eef2f7; font-size: 0.8rem;
+}
+.badge--key { background: var(--dhcw-navy); color: #fff; }
+.badge--default { background: var(--dhcw-yellow); color: var(--dhcw-navy); }
+.badge--error { background: var(--error); color: #fff; }
+
+.result-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px; margin: 0; }
+.result-grid dt { color: var(--muted); }
+.result-grid dd { margin: 0; }
+.result-error { margin: 0; }
+
+.muted { color: var(--muted); font-size: 0.85rem; }
+.empty-state { color: var(--muted); }
+.footnote { margin-top: 8px; }

@@ -1,0 +1,17 @@
+{
+  "tables": {
+    "health_board_mapping": {
+      "description": "MSH-3 sending application code to health board (from hl7_chemo_transformer pid_mapper)",
+      "key_columns": ["msh3"]
+    },
+    "ward_map": {
+      "description": "Example composite-key table: illustrative data only, not real ward codes",
+      "key_columns": ["sending_facility", "ward_code"],
+      "default_value_column": "national_ward_code",
+      "key_normalisation": {
+        "sending_facility": {"case": "upper"},
+        "ward_code": {"case": "upper"}
+      }
+    }
+  }
+}

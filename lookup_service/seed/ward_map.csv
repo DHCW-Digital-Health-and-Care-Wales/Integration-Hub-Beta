@@ -1,0 +1,4 @@
+sending_facility,ward_code,national_ward_code,description
+FAC1,W1,7A1-W001,Example ward one
+FAC1,W2,7A1-W002,Example ward two
+FAC2,W1,7A2-W001,Example ward one (second facility)
