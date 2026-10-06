@@ -6,6 +6,7 @@ from rest_server.content_adapters.soap_adapter import SoapContentAdapter
 from rest_server.content_adapters.xml_raw_adapter import XmlRawContentAdapter
 from rest_server.rest_server_application import build_content_adapter, build_validator
 from rest_server.validators.hl7_xsd_validator import Hl7XsdValidator
+from rest_server.validators.hl7apy_validator import Hl7ApyValidator
 from rest_server.validators.no_op_validator import NoOpValidator
 from rest_server.validators.xsd_validator import XsdValidator
 
@@ -77,6 +78,11 @@ class TestBuildValidator(unittest.TestCase):
         validator = build_validator(_config(validator_type="hl7-xsd", validation_schema="phw"))
         self.assertIsInstance(validator, Hl7XsdValidator)
         self.assertEqual(cast(Hl7XsdValidator, validator).schema_group, "phw")
+
+    def test_hl7apy_validator(self) -> None:
+        validator = build_validator(_config(validator_type="hl7apy", allowed_hl7_structures=["ADT_A05"]))
+        self.assertIsInstance(validator, Hl7ApyValidator)
+        self.assertEqual(cast(Hl7ApyValidator, validator).allowed_structures, {"ADT_A05"})
 
     def test_xsd_validator(self) -> None:
         validator = build_validator(_config(validator_type="xsd", validation_schema="/schemas/partner.xsd"))

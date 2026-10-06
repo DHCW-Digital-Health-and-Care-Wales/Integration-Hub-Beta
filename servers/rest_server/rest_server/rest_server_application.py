@@ -25,6 +25,7 @@ from .infra import SharedResources, build_shared_resources
 from .message_processor import RestMessageProcessor
 from .validators.base import Validator
 from .validators.hl7_xsd_validator import Hl7XsdValidator
+from .validators.hl7apy_validator import Hl7ApyValidator
 from .validators.no_op_validator import NoOpValidator
 from .validators.xsd_validator import XsdValidator
 
@@ -55,6 +56,8 @@ def build_validator(app_config: AppConfig) -> Validator:
             schema_group=app_config.validation_schema or "",
             allowed_structures=set(app_config.allowed_hl7_structures),
         )
+    if app_config.validator_type == "hl7apy":
+        return Hl7ApyValidator(allowed_structures=set(app_config.allowed_hl7_structures))
     if app_config.validator_type == "xsd":
         return XsdValidator(schema_path=app_config.validation_schema or "")
     if app_config.validator_type == "none":
