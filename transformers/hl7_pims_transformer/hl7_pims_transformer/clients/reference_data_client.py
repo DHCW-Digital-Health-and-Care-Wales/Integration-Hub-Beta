@@ -30,7 +30,7 @@ import logging
 import os
 import re
 from enum import Enum
-from typing import Optional
+from typing import Mapping, Optional, Protocol, cast, runtime_checkable
 from urllib.parse import quote
 
 import urllib3
@@ -83,6 +83,38 @@ class ReferenceDataset(Enum):
         self.pattern = pattern
 
 
+@runtime_checkable
+class ReferenceDataLookup(Protocol):
+    """Structural type for anything that can resolve a reference-data source code.
+
+    The concrete :class:`ReferenceDataLookupClient` satisfies this protocol, as do the lightweight
+    in-memory test doubles. Annotating the transformer and mappers with the protocol (rather than
+    the concrete HTTP client) keeps them decoupled from the transport implementation and lets tests
+    pass doubles that type-check under mypy without subclassing the real client.
+    """
+
+    def lookup(self, dataset: "ReferenceDataset", source_code: str) -> str:
+        ...
+
+
+class _HttpResponse(Protocol):
+    """Structural type for the subset of an HTTP response the client reads."""
+
+    status: int
+    data: bytes
+
+
+class _HttpRequester(Protocol):
+    """Structural type for the ``urllib3.PoolManager``-style transport the client depends on.
+
+    Only the ``request`` call the client actually makes is captured, so an in-memory test double
+    can satisfy it without subclassing ``urllib3.PoolManager``.
+    """
+
+    def request(self, method: str, url: str, *, headers: Mapping[str, str], timeout: object) -> _HttpResponse:
+        ...
+
+
 class ReferenceDataLookupClient:
     """Resolves PIMS source codes to eMPI target codes via the reference-data REST API.
 
@@ -105,7 +137,7 @@ class ReferenceDataLookupClient:
         max_retries: int = _DEFAULT_MAX_RETRIES,
         retry_backoff_seconds: float = _DEFAULT_RETRY_BACKOFF_SECONDS,
         api_key: Optional[str] = None,
-        http: Optional[urllib3.PoolManager] = None,
+        http: Optional[_HttpRequester] = None,
     ) -> None:
         # Normalise once; an empty base URL is permitted at construction (keeps the transformer
         # import-safe and constructible in tests) but any actual lookup then fails fast.
@@ -113,6 +145,7 @@ class ReferenceDataLookupClient:
         self._timeout = Timeout(total=timeout_seconds)
         self._api_key = api_key or None
 
+        self._http: _HttpRequester
         if http is not None:
             self._http = http
         else:
@@ -126,7 +159,10 @@ class ReferenceDataLookupClient:
                 allowed_methods=frozenset({"GET"}),
                 raise_on_status=False,
             )
-            self._http = urllib3.PoolManager(retries=retry)
+            # urllib3.PoolManager satisfies the _HttpRequester contract at runtime; its typeshed
+            # signature (extra optional params, timeout via **urlopen_kw) does not match the
+            # Protocol structurally, so cast to keep the attribute type consistent.
+            self._http = cast(_HttpRequester, urllib3.PoolManager(retries=retry))
 
     @classmethod
     def from_env(cls) -> "ReferenceDataLookupClient":

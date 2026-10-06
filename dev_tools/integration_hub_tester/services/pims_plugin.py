@@ -1,10 +1,16 @@
 """PIMS Transformer plugin.
 
-transform_pims_message() is a standalone function — no class init needed.
+transform_pims_message() requires a reference-data lookup client, which this plugin builds from
+environment config once and reuses across transformations.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Optional
+
 from .base import ServicePlugin
+
+if TYPE_CHECKING:
+    from hl7_pims_transformer.clients.reference_data_client import ReferenceDataLookupClient
 
 _PIMS_A04 = """\
 MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20250702085450+0000||ADT^A04^ADT_A01|73726643|P|2.3.1
@@ -41,15 +47,21 @@ class PimsPlugin(ServicePlugin):
     }
 
     def __init__(self) -> None:
-        pass
+        # Lazily-built reference-data lookup client, reused across transformations.
+        self._lookup_client: Optional[ReferenceDataLookupClient] = None
 
     def run(self, input_text: str) -> tuple[str, str]:
         from hl7apy.parser import parse_message
 
+        from hl7_pims_transformer.clients.reference_data_client import ReferenceDataLookupClient
         from hl7_pims_transformer.pims_transformer import transform_pims_message
+
+        if self._lookup_client is None:
+            # Built from environment config (REFERENCE_DATA_API_BASE_URL, etc.).
+            self._lookup_client = ReferenceDataLookupClient.from_env()
 
         er7 = input_text.strip().replace("\n", "\r")
         msg = parse_message(er7, find_groups=False)
-        result = transform_pims_message(msg)
+        result = transform_pims_message(msg, self._lookup_client)
         output = result.to_er7().replace("\r", "\n")
         return output, "✓  PIMS transformation applied"

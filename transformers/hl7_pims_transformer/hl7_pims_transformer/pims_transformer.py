@@ -4,7 +4,7 @@ from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from transformer_base_lib import BaseTransformer
 
-from .clients.reference_data_client import ReferenceDataLookupClient
+from .clients.reference_data_client import ReferenceDataLookup, ReferenceDataLookupClient
 from .mappers.additional_segment_mapper import map_non_specific_segments
 from .mappers.evn_mapper import map_evn
 from .mappers.mrg_mapper import map_mrg
@@ -14,7 +14,7 @@ from .mappers.pid_mapper import map_pid
 from .mappers.pv1_mapper import map_pv1
 
 
-def transform_pims_message(original_hl7_msg: Message, lookup_client: ReferenceDataLookupClient) -> Message:
+def transform_pims_message(original_hl7_msg: Message, lookup_client: ReferenceDataLookup) -> Message:
     new_message = Message(version="2.5")
 
     # Some PIMS message structures (e.g. ADT_A39 used for the A40/merge trigger event) nest

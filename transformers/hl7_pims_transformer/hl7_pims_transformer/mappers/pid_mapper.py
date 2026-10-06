@@ -1,7 +1,7 @@
 from field_utils_lib import get_hl7_field_value, set_nested_field
 from hl7apy.core import Message
 
-from ..clients.reference_data_client import ReferenceDataLookupClient, ReferenceDataset
+from ..clients.reference_data_client import ReferenceDataLookup, ReferenceDataset
 from ..utils.remove_timezone_from_datetime import remove_timezone_from_datetime
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ def _get_nhs_number_status_source(original_pid: Message) -> str:
 
 
 def _apply_reference_lookups(
-    original_pid: Message, new_message: Message, lookup_client: ReferenceDataLookupClient
+    original_pid: Message, new_message: Message, lookup_client: ReferenceDataLookup
 ) -> None:
     """Enrich the target PID with eMPI codes for gender, marital status, ethnic group and NHS
     number status, resolved via the reference-data lookup API.
@@ -71,7 +71,7 @@ def _apply_reference_lookups(
 
 
 def map_pid(
-    original_hl7_message: Message, new_message: Message, lookup_client: ReferenceDataLookupClient
+    original_hl7_message: Message, new_message: Message, lookup_client: ReferenceDataLookup
 ) -> None:
     original_pid = getattr(original_hl7_message, "pid", None)
     if not original_pid:

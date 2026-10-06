@@ -1,6 +1,6 @@
 import json
 import unittest
-from typing import Optional
+from typing import Mapping, Optional
 
 import urllib3
 
@@ -25,9 +25,11 @@ class _FakeHttp:
         self._response = response
         self._error = error
         self.last_url: Optional[str] = None
-        self.last_headers: Optional[dict] = None
+        self.last_headers: Optional[Mapping[str, str]] = None
 
-    def request(self, method: str, url: str, headers: dict, timeout: object) -> _FakeResponse:
+    def request(
+        self, method: str, url: str, *, headers: Mapping[str, str], timeout: object
+    ) -> _FakeResponse:
         self.last_url = url
         self.last_headers = headers
         if self._error is not None:
