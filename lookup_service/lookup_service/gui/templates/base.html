@@ -4,21 +4,39 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Lookup Service{% endblock %} · Integration Hub</title>
+
+  <!-- External (not inline) so it runs under the page's CSP; still blocking so it beats first paint. -->
+  <script src="{{ url_for('static', path='js/theme-init.js') }}?v={{ asset_version }}"></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', path='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', path='vendor/inter/inter.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', path='css/lookup.css') }}?v={{ asset_version }}" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar__inner">
-      <a class="topbar__brand" href="{{ url_for('overview') }}">Integration Hub <span>Lookup Service</span></a>
+      <a class="topbar__brand" href="{{ url_for('overview') }}">
+        <img src="{{ url_for('static', path='DHCW-logo-RGB-White.png') }}" alt="DHCW" />
+        Integration Hub <span>Lookup Service</span>
+      </a>
       <nav class="topbar__nav">
-        <a href="{{ url_for('overview') }}">Tables</a>
-        <a href="{{ url_for('upload_page') }}">Upload CSV</a>
+        <a class="{{ 'active' if request.url.path == '/' or request.url.path.startswith('/tables') else '' }}" href="{{ url_for('overview') }}"><i class="bi bi-table"></i> Tables</a>
+        <a class="{{ 'active' if request.url.path.startswith('/upload') else '' }}" href="{{ url_for('upload_page') }}"><i class="bi bi-cloud-upload"></i> Upload CSV</a>
       </nav>
+      <div class="topbar__actions">
+        <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle light/dark theme">
+          <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
+        </button>
+      </div>
     </div>
   </header>
   <main class="page-wrapper">
     {% block content %}{% endblock %}
   </main>
+  <footer class="dash-footer">
+    NHS Wales — Integration Hub Lookup Service
+  </footer>
   {% block scripts %}{% endblock %}
+  <script src="{{ url_for('static', path='js/theme-toggle.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>
