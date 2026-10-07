@@ -118,7 +118,9 @@ class TestHl7ApyValidator(unittest.TestCase):
         # actual message type - just needs to be a structure hl7apy recognises and that isn't
         # "ADT_A05"). xml_to_er7() ignores the root tag entirely, so without this check the
         # allow-list could be bypassed by mismatching the two.
-        smuggled_xml = re.sub(r"<ns0:MSG\.3>[^<]*</ns0:MSG\.3>", "<ns0:MSG.3>ADT_A01</ns0:MSG.3>", self.valid_payload_xml)
+        smuggled_xml = re.sub(
+            r"<ns0:MSG\.3>[^<]*</ns0:MSG\.3>", "<ns0:MSG.3>ADT_A01</ns0:MSG.3>", self.valid_payload_xml
+        )
         validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
         with self.assertRaises(ValidationError):
             validator.validate(smuggled_xml, "ADT_A05")
