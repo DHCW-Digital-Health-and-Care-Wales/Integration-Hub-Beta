@@ -317,7 +317,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/servers/chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
 | **env/transformers/chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
-| **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`                  |
+| **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`, `REFERENCE_DATA_API_BASE_URL`                  |
 | **env/servers/wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
 | **env/message_processing/message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
 | **env/message_processing/message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |
@@ -328,6 +328,30 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
+
+#### PIMS reference-data lookup service
+
+The PIMS transformer enriches four PID fields (gender, marital status, ethnic group and NHS number
+status) by resolving each source code against a **reference-data lookup REST API**. That service is
+supplied and run separately — it is not part of this Compose stack — so the `pims-to-mpi` flow needs
+it reachable before PIMS messages can be transformed.
+
+1. Start the reference-data lookup service on your host, bound to `0.0.0.0:8085` (follow that
+   service's own README).
+2. The PIMS transformer reaches it via `REFERENCE_DATA_API_BASE_URL` in
+   `env/transformers/pims-hl7-transformer.env`, which defaults to `http://host.docker.internal:8085`.
+   This works on Docker Desktop (macOS/Windows/WSL) and on Linux (the Compose file maps
+   `host.docker.internal` to the host gateway).
+3. If your host cannot route to `host.docker.internal` (for example Podman on Windows, which reaches
+   the host via the gvproxy address `192.168.127.254`), create an untracked
+   `env/transformers/pims-hl7-transformer.local.env` to override the URL without changing the shared
+   config. It is loaded automatically when present and ignored by git:
+
+   ```bash
+   echo 'REFERENCE_DATA_API_BASE_URL="http://192.168.127.254:8085"' \
+     > env/transformers/pims-hl7-transformer.local.env
+   ```
+
 
 The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "\*"
 
