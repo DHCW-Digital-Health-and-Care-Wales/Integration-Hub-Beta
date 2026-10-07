@@ -99,6 +99,7 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
                 received_audit_text=transformer.get_received_audit_text(),
                 processed_audit_text_builder=transformer.get_processed_audit_text,
                 failed_audit_text=f"{transformer.transformer_name} transformation failed",
+                codec=transformer.codec,
             )
 
         wrapped_processor = processor_manager.wrap_handler(
