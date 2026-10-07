@@ -46,7 +46,6 @@ from xml_fhir_proms_transformer.proms_transformer import (
     build_fhir_bundle,
     transform_proms_xml_to_fhir_bundle,
 )
-from xml_fhir_proms_transformer.reference_data import DEFAULT_REFERENCE_DATA_RESOLVER
 
 
 def sequential_uuid_factory() -> UuidFactory:
@@ -682,13 +681,7 @@ class TestPromsFhirTransformerEndToEndViaProcessMessage(unittest.TestCase):
     rather than silently falling back to HL7 ER7 parsing/serialising."""
 
     def setUp(self) -> None:
-        patcher = mock.patch.object(PromsFhirTransformer, "__init__", lambda self: None)
-        patcher.start()
-        self.addCleanup(patcher.stop)
         self.transformer = PromsFhirTransformer()
-        self.transformer._resolver = DEFAULT_REFERENCE_DATA_RESOLVER
-        self.transformer.transformer_name = "WPAS_PROMS"
-        self.transformer.codec = FhirJsonCodec(parse_fn=parse_proms_xml)
 
     def test_process_message_produces_a_fhir_bundle_on_the_egress_queue(self) -> None:
         mock_message = mock.MagicMock(spec=ServiceBusMessage)
