@@ -111,6 +111,18 @@ class TestHl7ApyValidator(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate(broken_xml, "ADT_A05")
 
+    def test_root_tag_structure_mismatch_with_msh9_raises(self) -> None:
+        # The XML root element declares "ADT_A05" (an allowed structure), but MSH.9.3 - what
+        # xml_to_er7()/hl7apy actually use to determine the message's real structure - is
+        # changed to a different, disallowed one (arbitrary choice, unrelated to any real flow's
+        # actual message type - just needs to be a structure hl7apy recognises and that isn't
+        # "ADT_A05"). xml_to_er7() ignores the root tag entirely, so without this check the
+        # allow-list could be bypassed by mismatching the two.
+        smuggled_xml = re.sub(r"<ns0:MSG\.3>[^<]*</ns0:MSG\.3>", "<ns0:MSG.3>ADT_A01</ns0:MSG.3>", self.valid_payload_xml)
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
+        with self.assertRaises(ValidationError):
+            validator.validate(smuggled_xml, "ADT_A05")
+
 
 class TestXsdValidator(unittest.TestCase):
     def setUp(self) -> None:
