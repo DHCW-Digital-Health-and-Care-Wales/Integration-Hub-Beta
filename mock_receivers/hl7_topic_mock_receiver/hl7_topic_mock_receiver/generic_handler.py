@@ -21,7 +21,9 @@ class GenericHandler(AbstractHandler):
 
     def reply(self) -> str:
         try:
-            logger.info("Received message: %s", self.incoming_message)
+            # ER7 segments are "\r"-separated - logged with "\n" instead so each segment prints on
+            # its own line rather than carriage-returning over the previous one in a terminal.
+            logger.info("Received message: %s", self.incoming_message.replace("\r", "\n"))
             msg = parse_message(self.incoming_message, find_groups=False)
             message_control_id = msg.msh.msh_10.value
             message_type = msg.msh.msh_9.to_er7()

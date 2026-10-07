@@ -270,7 +270,6 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
-      - lims-to-mpi
       - pms-soap-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
@@ -285,6 +284,32 @@ services:
       integration-hub:
         aliases:
           - "mpi-hl7-sender"
+
+  # Dedicated LIMS -> MPI sender. Unlike the shared mpi-hl7-sender (queue-based ingress), this
+  # mirrors the DEV hl7_lims_mpi_sender container app: subscription-based ingress from the topic
+  # hl7-soap-server publishes to, and sends on to mpi-hl7-topic-mock-receiver (not the queue-based
+  # mpi-hl7-mock-receiver) - see RECEIVER_MLLP_HOST in lims-mpi-hl7-sender.env.
+  lims-mpi-hl7-sender:
+    container_name: lims-mpi-hl7-sender
+    build:
+      context: ../senders/hl7_subscription_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/lims-mpi-hl7-sender.env
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - lims-to-mpi
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "lims-mpi-hl7-sender"
 
   mpi-hl7-mock-receiver:
     container_name: mpi-hl7-mock-receiver
@@ -302,7 +327,6 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
-      - lims-to-mpi
       - pms-soap-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
@@ -333,6 +357,7 @@ services:
     depends_on:
       - sb-emulator
     profiles:
+      - lims-to-mpi
       - topic-mock-receiver
       - everything
     networks:

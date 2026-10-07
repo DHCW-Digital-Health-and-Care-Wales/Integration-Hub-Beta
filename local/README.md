@@ -286,7 +286,7 @@ Each profile starts a complete integration flow with all required services:
 | Profile          | Services Started                                                                            | Use Case                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator     | PHW (Public Health Wales) to MPI integration flow                                                 |
-| **lims-to-mpi**  | hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                          | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no transformer yet)  |
+| **lims-to-mpi**  | hl7-soap-server, lims-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator               | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no transformer yet); uses the topic-based mock receiver, mirroring DEV |
 | **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                   | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator                        | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
@@ -325,6 +325,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver           | `PORT=2576`, `EGRESS_QUEUE_NAME`                                                      |
 | **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver | `PORT=2576`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`                                 |
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
+| **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 
