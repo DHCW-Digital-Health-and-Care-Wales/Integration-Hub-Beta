@@ -65,10 +65,27 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
             config.ingress_session_id,
         )
 
-    with (
-        factory.create_queue_sender_client(
+    if config.egress_topic_name:
+        sender_client_cm = factory.create_topic_sender_client(
+            config.egress_topic_name, config.egress_session_id
+        )
+        logger.info(
+            "%s Transformer initialised with topic egress: %s",
+            transformer.transformer_name,
+            config.egress_topic_name,
+        )
+    else:
+        sender_client_cm = factory.create_queue_sender_client(
             config.egress_queue_name, config.egress_session_id
-        ) as sender_client,
+        )
+        logger.info(
+            "%s Transformer initialised with queue egress: %s",
+            transformer.transformer_name,
+            config.egress_queue_name,
+        )
+
+    with (
+        sender_client_cm as sender_client,
         receiver_client_cm as receiver_client,
         TCPHealthCheckServer(
             config.health_check_hostname, config.health_check_port

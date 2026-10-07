@@ -489,6 +489,14 @@ services:
       - shared_libs=../shared_libs
     env_file:
       - ./env/transformers/pims-hl7-transformer.env
+      # Optional untracked per-workstation overrides (e.g. a Podman/Windows-specific
+      # REFERENCE_DATA_API_BASE_URL). Absent on most machines, so it is not required.
+      - path: ./env/transformers/pims-hl7-transformer.local.env
+        required: false
+    # Allows host.docker.internal (the default reference-data API host) to resolve on Linux,
+    # where it is not provided automatically as it is on Docker Desktop.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     <<: *default-healthcheck
     depends_on:
       - sb-emulator
