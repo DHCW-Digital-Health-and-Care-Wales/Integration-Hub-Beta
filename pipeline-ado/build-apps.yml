@@ -349,7 +349,7 @@ stages:
     - stage: Build_hl7topicmockreceiver
       displayName: 'Build — HL7 Topic Mock Receiver'
       dependsOn: CodeQuality_hl7topicmockreceiver
-      condition: eq(dependencies.CodeQuality_hl7topicmockreceiver.result, 'Succeeded', 'SucceededWithIssues')
+      condition: in(dependencies.CodeQuality_hl7topicmockreceiver.result, 'Succeeded', 'SucceededWithIssues')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:
