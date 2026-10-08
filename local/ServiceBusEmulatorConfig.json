@@ -61,20 +61,6 @@
             }
           },
           {
-            "Name": "local-inthub-pims-transformer-ingress",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
-          },
-          {
             "Name": "local-inthub-messagestore",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
@@ -227,6 +213,56 @@
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
                 }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-pims-hl7-input",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-pims-transformer-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "pims-ingress-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.SourceSystem = 'PIMS' AND user.MessageType IN ('A04', 'A08', 'A40')"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-pims-hl7-transformed",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-pims-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "pims-mpi-sender-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.SourceSystem = 'PIMS' AND user.MessageType IN ('A28', 'A31', 'A40')"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           }

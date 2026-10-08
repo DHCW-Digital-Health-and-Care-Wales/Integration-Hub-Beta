@@ -96,8 +96,10 @@ uv run python -m unittest discover tests
 
 - **SERVICE_BUS_CONNECTION_STRING** - Service bus connection string (optional)
 - **SERVICE_BUS_NAMESPACE** - Service bus namespace (optional)
-- **INGRESS_QUEUE_NAME** - Queue to receive messages from (required)
-- **EGRESS_QUEUE_NAME** - Queue to send transformed messages to (required)
+- **INGRESS_QUEUE_NAME** - Queue to receive messages from (required unless a topic is used)
+- **INGRESS_TOPIC_NAME** / **INGRESS_SUBSCRIPTION_NAME** - Topic subscription to receive messages from (instead of a queue)
+- **EGRESS_QUEUE_NAME** - Queue to send transformed messages to (required unless a topic is used)
+- **EGRESS_TOPIC_NAME** - Topic to send transformed messages to (instead of a queue)
 - **WORKFLOW_ID** - Workflow identifier (required)
 - **MICROSERVICE_ID** - Service identifier (required)
 - **HEALTH_CHECK_HOST** - Health check hostname (optional, default: 127.0.0.1)
