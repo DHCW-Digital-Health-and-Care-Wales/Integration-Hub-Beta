@@ -1,7 +1,5 @@
 import os
-from typing import Dict, Optional
 
-from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 from transformer_base_lib import BaseTransformer
@@ -47,9 +45,3 @@ class PimsTransformer(BaseTransformer):
 
     def transform_message(self, hl7_msg: Message) -> Message:
         return transform_pims_message(hl7_msg, self._lookup_client)
-
-    def get_egress_properties(
-        self, incoming_props: Optional[Dict[str, str]], transformed_msg: Message
-    ) -> Optional[Dict[str, str]]:
-        # MessageType was set from the incoming A04/A08; the transformed topic subscription filters on A28/A31/A40.
-        return {**(incoming_props or {}), "MessageType": get_hl7_field_value(transformed_msg, "msh.msh_9.msg_2")}

@@ -78,13 +78,6 @@ MICROSERVICE_ID=phw-transformer
 HEALTH_CHECK_PORT=9000
 ```
 
-Ingress is either `INGRESS_QUEUE_NAME`, or `INGRESS_TOPIC_NAME` plus `INGRESS_SUBSCRIPTION_NAME`.
-Egress is either `EGRESS_QUEUE_NAME` or `EGRESS_TOPIC_NAME` (set exactly one of each).
-
-Incoming Service Bus application properties are copied to the outgoing message. A transformer can override
-`BaseTransformer.get_egress_properties(incoming_props, transformed_msg)` to change them (for example when the
-HL7 trigger event changes and a topic subscription filters on it).
-
 ## Development
 
 ### Dependencies

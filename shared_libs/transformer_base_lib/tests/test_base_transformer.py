@@ -32,12 +32,5 @@ class TestBaseTransformer(unittest.TestCase):
 
         self.assertEqual(result, "UNKNOWN")
 
-    def test_get_egress_properties_passes_incoming_properties_through(self):
-        transformer = TestTransformer("test_transformer")
-        props = {"SourceSystem": "PIMS"}
-
-        self.assertIs(transformer.get_egress_properties(props, MagicMock()), props)
-        self.assertIsNone(transformer.get_egress_properties(None, MagicMock()))
-
 if __name__ == '__main__':
     unittest.main()
