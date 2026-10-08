@@ -41,6 +41,7 @@ parameters:
       - Message Store Service
       - HL7 Mock Receiver
       - HTTP Mock Receiver
+      - HL7 Topic Mock Receiver
       - Network Test App
       
   - name: selectedEnvironment
@@ -117,6 +118,9 @@ resources:
       trigger: none
     - pipeline: 'HTTP Mock Receiver - Build'
       source: 'HTTP Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'HL7 Topic Mock Receiver - Build'
+      source: 'HL7 Topic Mock Receiver - Build'
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
@@ -306,6 +310,11 @@ stages:
           appImageName: 'httpmockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HTTP Mock Receiver - Build'
+
+        - name: 'HL7 Topic Mock Receiver'
+          appImageName: 'hl7topicmockreceiver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Topic Mock Receiver - Build'
 
         # Network Test App
         - name: 'Network Test App'
