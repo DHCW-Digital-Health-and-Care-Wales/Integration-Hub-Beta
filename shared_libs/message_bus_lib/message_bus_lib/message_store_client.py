@@ -31,7 +31,7 @@ class MessageStoreClient:
         correlation_id: str,
         source_system: str,
         raw_payload: str,
-        session_id: str,
+        session_id: str | None,
         xml_payload: str | None = None,
         target_system: str | None = None,
     ) -> None:
@@ -59,7 +59,7 @@ class MessageStoreClient:
             "TargetSystem": target_system if target_system is not None else self.peer_service,
             "RawPayload": raw_payload,
             "XmlPayload": xml_payload,
-            "SessionId": session_id,
+            "SessionId": session_id or "",
         }
         try:
             self.sender_client.send_text_message(json.dumps(store_event))

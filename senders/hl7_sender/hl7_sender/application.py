@@ -158,7 +158,7 @@ def _process_message(
     metric_sender: MetricSender,
     throttler: MessageThrottler,
     message_store_client: MessageStoreClient,
-    session_id: str,
+    session_id: str | None,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
@@ -305,16 +305,22 @@ def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
         return True
 
 
+def _normalise_session_id(session_id: str | None) -> str:
+    """Convert an optional Service Bus session ID into the message-store format."""
+    return session_id if session_id is not None else ""
+
+
 def _send_to_message_store(
     message_store_client: MessageStoreClient,
     event_logger: EventLogger,
     message_body: str,
     metadata: dict[str, str] | None,
-    session_id: str,
+    session_id: str | None,
 ) -> None:
     """Send a message to the message store queue with XML payload."""
     try:
         incoming_metadata = metadata or {}
+        normalised_session_id = _normalise_session_id(session_id)
 
         xml_payload: str | None = None
         try:
@@ -334,7 +340,7 @@ def _send_to_message_store(
             correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
             source_system=incoming_metadata.get(SOURCE_SYSTEM_KEY, ""),
             raw_payload=message_body,
-            session_id=session_id,
+            session_id=normalised_session_id,
             xml_payload=xml_payload,
         )
     except Exception as e:
