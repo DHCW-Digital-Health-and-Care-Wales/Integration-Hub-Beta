@@ -19,6 +19,7 @@ parameters:
       - hl7sender
       - hl7mockreceiver
       - httpmockreceiver
+      - hl7topicmockreceiver
       - hl7subscriptionsender
       - hl7pimstransformer
       - hl7phwtransformer
@@ -103,6 +104,17 @@ stages:
           parameters:
             appName: 'mock_receivers/http_mock_receiver'
             appDisplayName: 'HTTP Mock Receiver'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7topicmockreceiver') }}:
+    - stage: CodeQuality_hl7topicmockreceiver
+      displayName: 'Code Quality — HL7 Topic Mock Receiver'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'mock_receivers/hl7_topic_mock_receiver'
+            appDisplayName: 'HL7 Topic Mock Receiver'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -327,6 +339,25 @@ stages:
             appName: 'httpmockreceiver'
             dockerfilePath: 'mock_receivers/http_mock_receiver/Dockerfile'
             buildContext: 'mock_receivers/http_mock_receiver'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'hl7topicmockreceiver') }}:
+    - stage: Build_hl7topicmockreceiver
+      displayName: 'Build — HL7 Topic Mock Receiver'
+      dependsOn: CodeQuality_hl7topicmockreceiver
+      condition: eq(dependencies.CodeQuality_hl7topicmockreceiver.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushHL7TopicMockReceiver'
+            displayName: 'Build and Push HL7 Topic Mock Receiver'
+            appName: 'hl7topicmockreceiver'
+            dockerfilePath: 'mock_receivers/hl7_topic_mock_receiver/Dockerfile'
+            buildContext: 'mock_receivers/hl7_topic_mock_receiver'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
