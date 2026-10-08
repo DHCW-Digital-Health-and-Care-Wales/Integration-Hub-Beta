@@ -283,11 +283,13 @@ stages:
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
 
-        # LIMS SOAP Server
+        # LIMS SOAP Server (rest_server image, LIMS flow instance; container app uks-<env>-lims-hl7soapserver-ca).
+        # Migrated from the legacy hl7_soap_server package (strict XSD-only validation) to rest_server's
+        # generic pipeline with VALIDATOR_TYPE=hl7apy, matching local docker-compose's hl7-soap-server.
         - name: 'LIMS HL7 SOAP Server'
-          appImageName: 'hl7soapserver'
+          appImageName: 'restserver'
           appFunctionMidfix: 'lims'
-          buildPipeline: 'HL7 SOAP Server - Build'
+          buildPipeline: 'REST Server - Build'
 
         # PMS SOAP Server
         - name: 'PMS HL7 SOAP Server'

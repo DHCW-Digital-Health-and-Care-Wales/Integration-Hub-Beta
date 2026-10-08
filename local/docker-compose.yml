@@ -133,7 +133,10 @@ services:
         aliases:
           - "rest-hl7-server"
 
-  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
+  # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7apy - see
+  # local/env/servers/lims-soap-hl7-server.env). hl7apy validates against hl7apy's own HL7 v2
+  # reference structures (lenient on optional/empty composite sub-elements), unlike the strict
+  # XSD validator used by the pms-hl7-soap-server instance below.
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
@@ -352,7 +355,7 @@ services:
     env_file:
       - ./env/mock_receivers/mpi-hl7-topic-mock-receiver.env
     ports:
-      - "2584:2576"
+      - "2584:2581"
     restart: on-failure
     depends_on:
       - sb-emulator
