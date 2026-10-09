@@ -99,6 +99,40 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
+    def test_process_message_success_with_replay_session_id(
+        self, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+        mock_parse_message.return_value = hl7_message
+        hl7_ack_message = "HL7 ack message"
+        mock_hl7_sender_client.send_message.return_value = hl7_ack_message
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", hl7_ack_message)
+
+        result = _process_message(
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+            "replay-session",
+        )
+
+        mock_message_store.send_to_store.assert_called_once()
+        self.assertEqual(mock_message_store.send_to_store.call_args.kwargs["session_id"], "replay-session")
+        self.assertTrue(result)
+
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
     def test_process_message_success_with_negative_ack(
         self, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:

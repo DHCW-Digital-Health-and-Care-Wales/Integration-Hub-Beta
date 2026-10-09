@@ -106,10 +106,28 @@ def main() -> None:
     ) as health_check_server:
         health_check_server.start()
 
-        with (
-            factory.create_message_receiver_client(
+        ingress_name = app_config.ingress_queue_name or (
+            f"{app_config.ingress_topic_name}/{app_config.ingress_subscription_name}"
+        )
+
+        if app_config.ingress_queue_name:
+            receiver_client = factory.create_message_receiver_client(
                 app_config.ingress_queue_name, app_config.ingress_session_id
-            ) as receiver_client,
+            )
+        elif app_config.ingress_topic_name and app_config.ingress_subscription_name:
+            receiver_client = factory.create_subscription_receiver_client(
+                app_config.ingress_topic_name,
+                app_config.ingress_subscription_name,
+                app_config.ingress_session_id,
+            )
+        else:
+            raise RuntimeError(
+                "Missing required ingress configuration: set either INGRESS_QUEUE_NAME or "
+                "both INGRESS_TOPIC_NAME and INGRESS_SUBSCRIPTION_NAME."
+            )
+
+        with (
+            receiver_client,
             HL7SenderClient(
                 app_config.receiver_mllp_hostname, app_config.receiver_mllp_port, app_config.ack_timeout_seconds
             ) as hl7_sender_client,
@@ -122,12 +140,10 @@ def main() -> None:
             def message_processor(message: ServiceBusMessage) -> bool:
                 return _process_message(
                     message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
-                    app_config.ingress_session_id,
+                    app_config.message_store_session_id,
                 )
 
-            wrapped_processor = processor_manager.wrap_handler(
-                message_processor, "hl7-sender", app_config.ingress_queue_name
-            )
+            wrapped_processor = processor_manager.wrap_handler(message_processor, "hl7-sender", ingress_name)
             while processor_manager.is_running:
                 receiver_client.receive_messages(
                     batch_size,
@@ -142,7 +158,7 @@ def _process_message(
     metric_sender: MetricSender,
     throttler: MessageThrottler,
     message_store_client: MessageStoreClient,
-    session_id: str,
+    session_id: str | None,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
@@ -289,16 +305,24 @@ def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
         return True
 
 
+def _normalise_session_id(session_id: str | None) -> str:
+    """Validate the replay-routing session ID before storing a message."""
+    if session_id is None or not session_id.strip():
+        raise ValueError("A non-empty replay-routing session ID is required")
+    return session_id
+
+
 def _send_to_message_store(
     message_store_client: MessageStoreClient,
     event_logger: EventLogger,
     message_body: str,
     metadata: dict[str, str] | None,
-    session_id: str,
+    session_id: str | None,
 ) -> None:
     """Send a message to the message store queue with XML payload."""
     try:
         incoming_metadata = metadata or {}
+        normalised_session_id = _normalise_session_id(session_id)
 
         xml_payload: str | None = None
         try:
@@ -318,7 +342,7 @@ def _send_to_message_store(
             correlation_id=incoming_metadata.get(CORRELATION_ID_KEY, ""),
             source_system=incoming_metadata.get(SOURCE_SYSTEM_KEY, ""),
             raw_payload=message_body,
-            session_id=session_id,
+            session_id=normalised_session_id,
             xml_payload=xml_payload,
         )
     except Exception as e:

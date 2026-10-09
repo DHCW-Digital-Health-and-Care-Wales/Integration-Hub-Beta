@@ -44,6 +44,7 @@ Destination host and port should be configured using environment variables confi
 - **SERVICE_BUS_NAMESPACE** - service bus namespace (recommended, required when SERVICE_BUS_CONNECTION_STRING is empty)
 - **INGRESS_QUEUE_NAME** - service bus queue name to read messages from
 - **INGRESS_SESSION_ID** - service bus queue FIFO session name (required — stored alongside each persisted message so the replay job can route replayed messages back through this sender)
+- **REPLAY_SESSION_ID** - Service Bus session ID stored for replay when ingress has no session ID; required when `MESSAGE_STORE_QUEUE_NAME` is set and `INGRESS_SESSION_ID` is unset
 - **RECEIVER_MLLP_HOST** - HL7/mllp destination server host
 - **RECEIVER_MLLP_PORT** - HL7/mllp destination server port
 - **ACK_TIMEOUT_SECONDS** - time for message acklowledgement
