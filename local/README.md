@@ -317,7 +317,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/servers/chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
 | **env/transformers/chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_TOPIC_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
-| **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=pims-to-mpi`, `REFERENCE_DATA_API_BASE_URL`                  |
+| **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `EGRESS_TOPIC_NAME`, `WORKFLOW_ID=pims-to-mpi`, `REFERENCE_DATA_API_BASE_URL`                  |
 | **env/servers/wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
 | **env/message_processing/message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |
 | **env/message_processing/message-replay-job.env**    | Message Replay Job          | `REPLAY_BATCH_ID`, `PRIORITY_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                |

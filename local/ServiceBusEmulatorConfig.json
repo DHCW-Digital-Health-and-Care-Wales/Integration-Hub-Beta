@@ -240,6 +240,31 @@
                 ]
               }
             ]
+          },
+          {
+            "Name": "local-inthub-pims-hl7-transformed",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-pims-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "pims-mpi-sender-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.SourceSystem = 'PIMS' AND user.MessageType IN ('A28', 'A31', 'A40')"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
