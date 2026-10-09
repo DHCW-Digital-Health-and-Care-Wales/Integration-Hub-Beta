@@ -178,7 +178,7 @@
             "Name": "local-inthub-core-reference-transformer-ingress",
             "Subscriptions": [
               {
-                "Name": "local-inthub-core-reference-transformer-ingress-sub",
+                "Name": "local-inthub-core-reference-transformer-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
