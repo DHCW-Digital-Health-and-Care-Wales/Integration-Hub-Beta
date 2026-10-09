@@ -140,7 +140,7 @@ def main() -> None:
             def message_processor(message: ServiceBusMessage) -> bool:
                 return _process_message(
                     message, hl7_sender_client, event_logger, metric_sender, throttler, message_store_client,
-                    app_config.ingress_session_id,
+                    app_config.message_store_session_id,
                 )
 
             wrapped_processor = processor_manager.wrap_handler(message_processor, "hl7-sender", ingress_name)
@@ -306,8 +306,10 @@ def _is_first_delivery_attempt(message: ServiceBusMessage) -> bool:
 
 
 def _normalise_session_id(session_id: str | None) -> str:
-    """Convert an optional Service Bus session ID into the message-store format."""
-    return session_id if session_id is not None else ""
+    """Validate the replay-routing session ID before storing a message."""
+    if session_id is None or not session_id.strip():
+        raise ValueError("A non-empty replay-routing session ID is required")
+    return session_id
 
 
 def _send_to_message_store(

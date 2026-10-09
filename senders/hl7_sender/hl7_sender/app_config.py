@@ -23,15 +23,24 @@ class AppConfig:
     max_messages_per_minute: int | None
     ingress_topic_name: str | None = field(default=None, kw_only=True)
     ingress_subscription_name: str | None = field(default=None, kw_only=True)
+    replay_session_id: str | None = field(default=None, kw_only=True)
+
+    @property
+    def message_store_session_id(self) -> str | None:
+        if self.ingress_session_id and self.ingress_session_id.strip():
+            return self.ingress_session_id
+        return self.replay_session_id
 
     @staticmethod
     def read_env_config() -> AppConfig:
         ingress_queue_name = (_read_env("INGRESS_QUEUE_NAME") or "").strip() or None
         ingress_topic_name = (_read_env("INGRESS_TOPIC_NAME") or "").strip() or None
         ingress_subscription_name = (_read_env("INGRESS_SUBSCRIPTION_NAME") or "").strip() or None
+        message_store_queue_name = _read_env("MESSAGE_STORE_QUEUE_NAME")
+        replay_session_id = (_read_env("REPLAY_SESSION_ID") or "").strip() or None
         validate_ingress_config(ingress_queue_name, ingress_topic_name, ingress_subscription_name)
 
-        return AppConfig(
+        app_config = AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             ingress_queue_name=ingress_queue_name,
             ingress_session_id=_read_env("INGRESS_SESSION_ID"),
@@ -40,7 +49,7 @@ class AppConfig:
             receiver_mllp_port=_read_required_int_env("RECEIVER_MLLP_PORT"),
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
-            message_store_queue_name=_read_env("MESSAGE_STORE_QUEUE_NAME"),
+            message_store_queue_name=message_store_queue_name,
             workflow_id=_read_required_env("WORKFLOW_ID"),
             microservice_id=_read_required_env("MICROSERVICE_ID"),
             health_board=_read_required_env("HEALTH_BOARD"),
@@ -49,7 +58,14 @@ class AppConfig:
             max_messages_per_minute=_read_positive_int_env("MAX_MESSAGES_PER_MINUTE"),
             ingress_topic_name=ingress_topic_name,
             ingress_subscription_name=ingress_subscription_name,
+            replay_session_id=replay_session_id,
         )
+        if message_store_queue_name and not app_config.message_store_session_id:
+            raise RuntimeError(
+                "Missing required configuration: set REPLAY_SESSION_ID when MESSAGE_STORE_QUEUE_NAME is "
+                "configured without INGRESS_SESSION_ID."
+            )
+        return app_config
 
 
 def validate_ingress_config(

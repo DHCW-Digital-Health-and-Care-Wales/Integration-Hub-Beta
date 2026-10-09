@@ -99,7 +99,7 @@ class TestProcessMessage(unittest.TestCase):
 
     @patch("hl7_sender.application.parse_message")
     @patch("hl7_sender.application.get_ack_result")
-    def test_process_message_success_with_missing_session_id(
+    def test_process_message_success_with_replay_session_id(
         self, mock_ack_processor: Mock, mock_parse_message: Mock
     ) -> None:
         (
@@ -124,11 +124,11 @@ class TestProcessMessage(unittest.TestCase):
             mock_metric_sender,
             mock_throttler,
             mock_message_store,
-            None,
+            "replay-session",
         )
 
         mock_message_store.send_to_store.assert_called_once()
-        self.assertEqual(mock_message_store.send_to_store.call_args.kwargs["session_id"], "")
+        self.assertEqual(mock_message_store.send_to_store.call_args.kwargs["session_id"], "replay-session")
         self.assertTrue(result)
 
     @patch("hl7_sender.application.parse_message")

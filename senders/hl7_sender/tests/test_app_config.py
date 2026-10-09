@@ -30,6 +30,7 @@ class TestAppConfig(unittest.TestCase):
         config = AppConfig.read_env_config()
         self.assertEqual(config.connection_string, "conn_str")
         self.assertEqual(config.ingress_queue_name, "ingress_queue")
+        self.assertEqual(config.message_store_session_id, "ingress_session")
         self.assertEqual(config.service_bus_namespace, "namespace")
         self.assertEqual(config.receiver_mllp_hostname, "localhost")
         self.assertEqual(config.receiver_mllp_port, 1234)
@@ -88,6 +89,50 @@ class TestAppConfig(unittest.TestCase):
         self.assertIsNone(config.ingress_queue_name)
         self.assertEqual(config.ingress_topic_name, "ingress-topic")
         self.assertEqual(config.ingress_subscription_name, "ingress-subscription")
+
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_uses_replay_session_for_topic_ingress(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_TOPIC_NAME": "ingress-topic",
+                "INGRESS_SUBSCRIPTION_NAME": "ingress-subscription",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
+                "REPLAY_SESSION_ID": "replay-session",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+
+        self.assertEqual(config.message_store_session_id, "replay-session")
+
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_requires_replay_session_for_topic_message_store(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_TOPIC_NAME": "ingress-topic",
+                "INGRESS_SUBSCRIPTION_NAME": "ingress-subscription",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        with self.assertRaisesRegex(RuntimeError, "REPLAY_SESSION_ID"):
+            AppConfig.read_env_config()
 
     @patch("hl7_sender.app_config.os.getenv")
     def test_read_env_config_missing_required_env_var_raises_error(self, mock_getenv: Mock) -> None:
