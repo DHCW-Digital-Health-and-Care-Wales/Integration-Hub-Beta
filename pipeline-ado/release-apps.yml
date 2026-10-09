@@ -64,6 +64,8 @@ variables:
   # Shared Configuration
   - name: acrName
     value: 'uksdhcwihsharedcr'
+  - name: azureServiceConnectionDR
+    value: 'Azure - NHSWales-DHCW-PROD-DR-IntegrationHub-Subscription'
   - name: azureServiceConnectionNonProd
     value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
   - name: azureServiceConnectionProd
@@ -72,10 +74,13 @@ variables:
     value: 'uks'
     
   # Pool Configuration
+  - name: POOL_NAME_DR
+    value: "UKW-DHCW-IH-DR-ADOManagedPool"
   - name: POOL_NAME_NON_PROD
     value: 'UKS-DHCW-IH-DEV-ADOManagedPool'
   - name: POOL_NAME_PROD
     value: 'UKS-DHCW-IH-PPD-ADOManagedPool'
+
 
 resources:
   pipelines:
@@ -361,6 +366,14 @@ stages:
           azureServiceConnection: $(azureServiceConnectionNonProd)
           dependsOnPrevious: false
           
+        - name: 'dr'
+          environmentName: 'Integration-Hub-Release-Container-Apps-dr'
+          displayName: 'DTE'
+          resourceGroup: 'UK-West-DHCW-IntHub-DR-App-RG'
+          poolName: $(POOL_NAME_DR)
+          azureServiceConnection: $(azureServiceConnectionDR)
+          dependsOnPrevious: true
+                    
         - name: 'dte'
           environmentName: 'Integration-Hub-Release-Container-Apps-dte'
           displayName: 'DTE'
