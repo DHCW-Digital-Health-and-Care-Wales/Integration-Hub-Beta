@@ -411,7 +411,8 @@ def _load_emulator_session_queues() -> frozenset[str]:
         session_queues = _extract_session_queue_names(payload) + _extract_subscription_names(
             payload, session_only=True
         )
-        if _extract_queue_names(payload):  # Only trust config if it has queues at all.
+        entities_present = _extract_queue_names(payload) or _extract_subscription_names(payload)
+        if entities_present:
             return frozenset(session_queues)
 
     return frozenset()
