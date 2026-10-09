@@ -1,673 +1,151 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BusWatch - Digital Health and Care Wales</title>
-    <style>
-        :root {
-            /* DHCW Brand Colours */
-            --nhs-blue: #2C3E72;
-            --nwis-blue: #12A3C9;
-            --nwis-green: #97CC39;
-            --nwis-aqua: #00A8B1;
-            --nwis-red: #CB1C19;
-            
-            /* Neutral Palette */
-            --bg: #f0f4f8;
-            --card: #ffffff;
-            --ink: #1e1b16;
-            --muted: #666666;
-            --border: #e0e0e0;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        html, body {
-            margin: 0;
-            padding: 0;
-            font-family: Calibri, "Segoe UI", sans-serif;
-            color: var(--ink);
-            background: var(--bg);
-            line-height: 1.6;
-        }
-
-        /* Header with NHS Branding */
-        header {
-            background: var(--nhs-blue);
-            color: white;
-            padding: 1.5rem 1rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        header-content {
-            max-width: 1180px;
-            margin: 0 auto;
-        }
-
-        .site-title {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        .brand-banner-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .brand-text {
-            min-width: 0;
-        }
-
-        .brand-logo {
-            flex-shrink: 0;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-
-        .brand-logo img {
-            max-height: 72px;
-            max-width: 220px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-        }
-
-        .org-name {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 400;
-            margin-top: 0.25rem;
-            opacity: 0.95;
-        }
-
-        .strap-line {
-            display: block;
-            font-size: 0.8rem;
-            font-style: italic;
-            margin-top: 0.5rem;
-            color: var(--nwis-green);
-            font-weight: 500;
-        }
-
-        main {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 2rem 1rem 4rem;
-        }
-
-        h1 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: var(--nhs-blue);
-        }
-
-        h2 {
-            margin: 1.5rem 0 0.75rem 0;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--nwis-blue);
-        }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: 0.95rem;
-        }
-
-        .banner-error {
-            margin-top: 1rem;
-            border-left: 4px solid var(--nwis-red);
-            border-radius: 4px;
-            padding: 0.9rem 1rem;
-            background: #fdf0ef;
-            color: var(--nwis-red);
-            font-size: 0.95rem;
-        }
-
-        .banner-success {
-            margin-top: 1rem;
-            border-left: 4px solid var(--nwis-green);
-            border-radius: 4px;
-            padding: 0.9rem 1rem;
-            background: #f3fae8;
-            color: #43620e;
-            font-size: 0.95rem;
-        }
-
-        .queues {
-            display: grid;
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .queue {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--card);
-            padding: 1.25rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: box-shadow 0.2s ease;
-        }
-
-        .queue:hover {
-            box-shadow: 0 4px 12px rgba(44, 62, 114, 0.1);
-        }
-
-        .queue-header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .queue-name {
-            margin: 0;
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: var(--nhs-blue);
-        }
-
-        .queue-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .refresh-note {
-            color: var(--muted);
-            font-size: 0.85rem;
-        }
-
-        .refresh-btn {
-            border: 1px solid var(--nwis-blue);
-            background: transparent;
-            color: var(--nwis-blue);
-            border-radius: 4px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            font-family: Calibri, sans-serif;
-            transition: all 0.2s ease;
-        }
-
-        .refresh-btn:hover {
-            background: var(--nwis-blue);
-            color: white;
-        }
-
-        .clear-queue-btn {
-            border: 1px solid var(--nwis-red);
-            background: transparent;
-            color: var(--nwis-red);
-            border-radius: 4px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: Calibri, sans-serif;
-            transition: all 0.2s ease;
-        }
-
-        .clear-queue-btn:hover {
-            background: var(--nwis-red);
-            color: white;
-        }
-
-        .stats {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.6rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .stat {
-            background: #f0f8fa;
-            color: var(--nwis-aqua);
-            border-left: 3px solid var(--nwis-aqua);
-            border-radius: 4px;
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        th,
-        td {
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-            padding: 0.7rem 0.5rem;
-            font-size: 0.9rem;
-            vertical-align: top;
-        }
-
-        th {
-            color: white;
-            background: var(--nwis-blue);
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            text-transform: uppercase;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover {
-            background: #f8fbfc;
-        }
-
-        a {
-            color: var(--nwis-blue);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .empty {
-            margin-top: 1rem;
-            padding: 1rem;
-            color: var(--muted);
-            font-style: italic;
-            text-align: center;
-            background: #f8f8f8;
-            border-radius: 4px;
-        }
-
-        .queue-error {
-            margin-top: 0.75rem;
-            border-left: 4px solid var(--nwis-red);
-            border-radius: 4px;
-            background: #fdf0ef;
-            color: var(--nwis-red);
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .page-header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .page-header-left {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .filter-panel {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--card);
-            padding: 1rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-        }
-
-        .filter-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(180px, 1fr));
-            gap: 0.75rem;
-            align-items: end;
-        }
-
-        .filter-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .filter-field label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--nwis-blue);
-        }
-
-        .filter-field input {
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.45rem 0.55rem;
-            font-family: Calibri, "Segoe UI", sans-serif;
-            font-size: 0.9rem;
-            color: var(--ink);
-        }
-
-        .clear-filter-btn {
-            border: 1px solid var(--nwis-blue);
-            background: transparent;
-            color: var(--nwis-blue);
-            border-radius: 4px;
-            padding: 0.45rem 0.8rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .clear-filter-btn:hover {
-            background: var(--nwis-blue);
-            color: white;
-        }
-
-        .filter-hint {
-            margin: 0.75rem 0 0 0;
-            color: var(--muted);
-            font-size: 0.85rem;
-        }
-
-        .live-panel {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--card);
-            padding: 0.9rem 1rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.65rem 1rem;
-        }
-
-        .live-panel label {
-            color: var(--muted);
-            font-size: 0.86rem;
-            font-weight: 600;
-        }
-
-        .live-select {
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.35rem 0.45rem;
-            font-size: 0.9rem;
-            font-family: Calibri, "Segoe UI", sans-serif;
-        }
-
-        .live-toggle-btn {
-            border: 1px solid var(--nwis-blue);
-            background: transparent;
-            color: var(--nwis-blue);
-            border-radius: 4px;
-            padding: 0.45rem 0.85rem;
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .live-toggle-btn.active {
-            background: var(--nwis-blue);
-            color: white;
-        }
-
-        .live-status {
-            color: var(--muted);
-            font-size: 0.85rem;
-            min-width: 240px;
-        }
-
-        .refresh-all-btn {
-            border: none;
-            background: var(--nwis-green);
-            color: white;
-            border-radius: 4px;
-            padding: 0.6rem 1.4rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: Calibri, sans-serif;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .refresh-all-btn:hover {
-            background: #7ab83a;
-            box-shadow: 0 4px 12px rgba(151, 204, 57, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .refresh-all-btn:active {
-            transform: translateY(0);
-        }
-
-        .row-count {
-            color: var(--muted);
-            font-size: 0.82rem;
-            font-weight: 500;
-        }
-
-        .message-row-new {
-            background: #f0fbf4;
-            animation: highlight-new-row 2.2s ease-out;
-        }
-
-        @keyframes highlight-new-row {
-            from {
-                background: #dff7e7;
-            }
-            to {
-                background: transparent;
-            }
-        }
-
-        footer {
-            background: var(--nhs-blue);
-            color: white;
-            text-align: center;
-            padding: 1.5rem 1rem;
-            margin-top: 3rem;
-            font-size: 0.85rem;
-        }
-
-        footer a {
-            color: var(--nwis-green);
-            font-weight: 500;
-        }
-
-        @media (max-width: 760px) {
-            th:nth-child(4),
-            td:nth-child(4) {
-                display: none;
-            }
-            .brand-banner-row {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .brand-logo img {
-                max-height: 56px;
-            }
-            .page-header {
-                flex-direction: column;
-            }
-            .refresh-all-btn {
-                width: 100%;
-            }
-            .queue-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .filter-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .live-status {
-                min-width: 0;
-                width: 100%;
-            }
-        }
-    </style>
-</head>
-<body>
-<header>
-    <div style="max-width: 1180px; margin: 0 auto; padding: 0 1rem;">
-        <div class="brand-banner-row">
-            <p class="site-title brand-text">
-                BusWatch
-                <span class="org-name">BusWatch - Digital Health and Care Wales</span>
-                <span class="strap-line">Delivering information and technology for better care</span>
-            </p>
-            <div class="brand-logo" aria-label="Brand logo">
-                <img src="/static/DHCW-logo-RGB-White.png" alt="NHS Wales logo" onerror="this.style.display='none'" />
-            </div>
-        </div>
+{% extends "base.html" %}
+
+{% block title %}Queue Browser{% endblock %}
+{% block nav_queues_active %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="bi bi-stack" style="color:var(--accent-cyan)"></i>
+        Queue Browser
+      </h1>
+      <p class="page-subtitle">Message sample size per queue: {{ peek_count }}</p>
     </div>
-</header>
-
-<main>
-    <div class="page-header">
-        <div class="page-header-left">
-            <h1>Queue Browser</h1>
-            <p class="subtitle">Message sample size per queue: {{ peek_count }}</p>
-        </div>
-        <form method="get" action="/" style="margin: 0;">
-            <button type="submit" name="refresh_all" value="true" class="refresh-all-btn">Refresh All Queues</button>
-        </form>
+    <div class="refresh-bar">
+      <span id="refresh-error" class="refresh-error" role="status"></span>
+      <span>Last updated: <strong id="last-refreshed">-</strong></span>
+      <div class="refresh-countdown" id="refresh-countdown" title="Time until next automatic refresh">
+        <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
+        <span id="countdown-num" class="countdown-num">-</span>s
+      </div>
+      <label class="visually-hidden" for="live-interval">Refresh every</label>
+      <select id="live-interval" class="dash-select" title="Refresh interval">
+        <option value="2">2s</option>
+        <option value="5" selected>5s</option>
+        <option value="10">10s</option>
+        <option value="30">30s</option>
+      </select>
+      <button id="live-toggle-btn" type="button" class="btn-dash" aria-pressed="false">
+        <i class="bi bi-play-fill" id="live-toggle-icon"></i> <span id="live-toggle-label">Start live mode</span>
+      </button>
+      <form method="get" action="/" id="refresh-all-form" class="m-0">
+        <button type="submit" name="refresh_all" value="true" class="btn-dash" title="Refresh all queues now">
+          <i class="bi bi-arrow-repeat"></i> Refresh
+        </button>
+      </form>
     </div>
-    {% if error_message %}
-        <p class="banner-error">
-            <strong>Unable to list queues from Service Bus.</strong> Check connection settings and emulator status.<br />
-            Details: {{ error_message }}
-        </p>
-    {% endif %}
-    {% if action_message %}
-        <p class="banner-success">{{ action_message }}</p>
-    {% endif %}
-    {% if action_error %}
-        <p class="banner-error">{{ action_error }}</p>
-    {% endif %}
+  </div>
 
-    <section class="filter-panel" aria-label="Message filters">
-        <div class="filter-grid">
-            <div class="filter-field">
-                <label for="filter-queue-name">Queue name</label>
-                <input id="filter-queue-name" type="text" placeholder="e.g. training-hl7-server" />
-            </div>
-            <div class="filter-field">
-                <label for="filter-message-id">Message ID</label>
-                <input id="filter-message-id" type="text" placeholder="Exact or partial message id" />
-            </div>
-            <div class="filter-field">
-                <label for="filter-message-text">Message text preview</label>
-                <input id="filter-message-text" type="text" placeholder="Find text in preview, subject, or sequence" />
-            </div>
-        </div>
-        <p class="filter-hint">
-            Filters are local to this page and do not re-query Service Bus.
-            <button id="clear-filters" type="button" class="clear-filter-btn">Clear filters</button>
-        </p>
-    </section>
+  {% if error_message %}
+    <div class="dash-alert dash-alert--error">
+      <i class="bi bi-exclamation-octagon-fill"></i>
+      <div>
+        <strong>Unable to list queues from Service Bus.</strong> Check connection settings and emulator status.<br />
+        Details: {{ error_message }}
+      </div>
+    </div>
+  {% endif %}
+  {% if action_message %}
+    <div class="dash-alert dash-alert--success"><i class="bi bi-check-circle-fill"></i><div>{{ action_message }}</div></div>
+  {% endif %}
+  {% if action_error %}
+    <div class="dash-alert dash-alert--error"><i class="bi bi-exclamation-octagon-fill"></i><div>{{ action_error }}</div></div>
+  {% endif %}
 
-    <section class="live-panel" aria-label="Live mode controls">
-        <button id="live-toggle-btn" type="button" class="live-toggle-btn">Start live mode</button>
-        <label for="live-interval">Refresh every</label>
-        <select id="live-interval" class="live-select">
-            <option value="2">2s</option>
-            <option value="5" selected>5s</option>
-            <option value="10">10s</option>
-            <option value="30">30s</option>
-        </select>
-        <span class="live-status" id="live-status">Live mode is paused.</span>
-    </section>
-
-    <section class="queues" id="queues-section">
-        {% for queue in queues %}
-            <article class="queue" data-queue-name="{{ queue.name | lower }}">
-                <div class="queue-header">
-                    <h2 class="queue-name">{{ queue.name }}</h2>
-                    <div class="queue-actions">
-                        <form method="get" action="/" style="margin: 0;">
-                            <input type="hidden" name="refresh_queue" value="{{ queue.name }}" />
-                            <button type="submit" class="refresh-btn">Refresh</button>
-                        </form>
-                        <form method="post" action="/queues/{{ queue.name }}/clear" style="margin: 0;" onsubmit="return window.confirm('Clear all available messages from {{ queue.name }}?');">
-                            <button type="submit" class="clear-queue-btn">Clear queue</button>
-                        </form>
-                        <span class="refresh-note">Updated: {{ queue.refreshed_at or "-" }}</span>
-                        <span class="row-count" data-row-count></span>
-                    </div>
-                </div>
-
-                {% if queue.messages %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Sequence</th>
-                                <th>Message ID</th>
-                                <th>Enqueued</th>
-                                <th>Content Preview</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for message in queue.messages %}
-                                <tr
-                                    class="message-row"
-                                    data-message-id="{{ (message.message_id or '') | lower }}"
-                                    data-sequence="{{ message.sequence_number or '' }}"
-                                    data-subject="{{ (message.subject or '') | lower }}"
-                                    data-preview="{{ (message.content_preview or '') | lower }}"
-                                >
-                                    <td>
-                                        {% if message.sequence_number is not none %}
-                                            <a href="/queues/{{ queue.name }}/messages/{{ message.sequence_number }}">
-                                                {{ message.sequence_number }}
-                                            </a>
-                                        {% else %}
-                                            n/a
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ message.message_id or "-" }}</td>
-                                    <td>{{ message.enqueued_time_utc or "-" }}</td>
-                                    <td>{{ message.content_preview }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="empty">No messages in the peek window</p>
-                {% endif %}
-
-                {% if queue.error %}
-                    <p class="queue-error">
-                        <strong>Unable to read this queue:</strong> {{ queue.error }}
-                    </p>
-                {% endif %}
-            </article>
-        {% endfor %}
-    </section>
-</main>
-
-<footer>
-    <p>
-        <strong>Digital Health and Care Wales</strong> | 
-        <a href="https://www.wales.nhs.uk/informatics">Learn more</a>
+  <section class="dash-card mb-3" aria-label="Message filters">
+    <div class="filter-grid">
+      <div>
+        <label class="cfg-label" for="filter-queue-name">Queue name</label>
+        <input id="filter-queue-name" class="dash-input" type="text" placeholder="e.g. training-hl7-server" />
+      </div>
+      <div>
+        <label class="cfg-label" for="filter-message-id">Message ID</label>
+        <input id="filter-message-id" class="dash-input" type="text" placeholder="Exact or partial message id" />
+      </div>
+      <div>
+        <label class="cfg-label" for="filter-message-text">Message text preview</label>
+        <input id="filter-message-text" class="dash-input" type="text" placeholder="Find text in preview, subject, or sequence" />
+      </div>
+    </div>
+    <p class="filter-hint">
+      Filters are local to this page and do not re-query Service Bus.
+      <button id="clear-filters" type="button" class="btn-dash btn-dash--sm"><i class="bi bi-x-lg"></i> Clear filters</button>
     </p>
-    <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Passionate about making a difference</p>
-</footer>
+  </section>
 
+  <section class="queues" id="queues-section">
+    {% for queue in queues %}
+      <article class="dash-card queue" data-queue-name="{{ queue.name | lower }}">
+        <div class="queue-header">
+          <h2 class="queue-name">{{ queue.name }}</h2>
+          <div class="queue-actions">
+            <span class="row-count" data-row-count></span>
+            <span class="refresh-note">Updated: {{ queue.refreshed_at or "-" }}</span>
+            <form method="get" action="/">
+              <input type="hidden" name="refresh_queue" value="{{ queue.name }}" />
+              <button type="submit" class="btn-dash btn-dash--sm"><i class="bi bi-arrow-repeat"></i> Refresh</button>
+            </form>
+            <form method="post" action="/queues/{{ queue.name }}/clear" onsubmit="return window.confirm('Clear all available messages from {{ queue.name }}?');">
+              <button type="submit" class="btn-dash btn-dash--sm btn-dash--danger"><i class="bi bi-trash3"></i> Clear queue</button>
+            </form>
+          </div>
+        </div>
+
+        {% if queue.messages %}
+          <div class="table-scroll">
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th>Sequence</th>
+                  <th>Message ID</th>
+                  <th>Enqueued</th>
+                  <th>Content Preview</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for message in queue.messages %}
+                  <tr
+                    class="message-row"
+                    data-message-id="{{ (message.message_id or '') | lower }}"
+                    data-sequence="{{ message.sequence_number or '' }}"
+                    data-subject="{{ (message.subject or '') | lower }}"
+                    data-preview="{{ (message.content_preview or '') | lower }}"
+                  >
+                    <td class="cell-mono">
+                      {% if message.sequence_number is not none %}
+                        <a class="queue-link" href="/queues/{{ queue.name }}/messages/{{ message.sequence_number }}">{{ message.sequence_number }}</a>
+                      {% else %}
+                        n/a
+                      {% endif %}
+                    </td>
+                    <td class="cell-mono">{{ message.message_id or "-" }}</td>
+                    <td class="cell-mono">{{ message.enqueued_time_utc or "-" }}</td>
+                    <td class="cell-mono cell-preview" title="{{ message.content_preview }}">{{ message.content_preview }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="no-data"><i class="bi bi-inbox"></i>No messages in the peek window</div>
+        {% endif %}
+
+        {% if queue.error %}
+          <div class="dash-alert dash-alert--error queue-error">
+            <i class="bi bi-exclamation-octagon-fill"></i>
+            <div><strong>Unable to read this queue:</strong> {{ queue.error }}</div>
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
     (function () {
         const queueFilterInput = document.getElementById("filter-queue-name");
@@ -675,8 +153,16 @@
         const messageTextFilterInput = document.getElementById("filter-message-text");
         const clearButton = document.getElementById("clear-filters");
         const liveToggleButton = document.getElementById("live-toggle-btn");
+        const liveToggleLabel = document.getElementById("live-toggle-label");
+        const liveToggleIcon = document.getElementById("live-toggle-icon");
         const liveIntervalSelect = document.getElementById("live-interval");
-        const liveStatus = document.getElementById("live-status");
+        const refreshError = document.getElementById("refresh-error");
+        const lastRefreshed = document.getElementById("last-refreshed");
+        const countdownNum = document.getElementById("countdown-num");
+        const countdownPill = document.getElementById("refresh-countdown");
+        const refreshIcon = document.getElementById("refresh-icon");
+        const refreshAllForm = document.getElementById("refresh-all-form");
+        const liveIndicator = document.getElementById("live-indicator");
 
         if (
             !queueFilterInput ||
@@ -684,15 +170,28 @@
             !messageTextFilterInput ||
             !clearButton ||
             !liveToggleButton ||
+            !liveToggleLabel ||
+            !liveToggleIcon ||
             !liveIntervalSelect ||
-            !liveStatus
+            !refreshError ||
+            !lastRefreshed ||
+            !countdownNum ||
+            !countdownPill ||
+            !refreshIcon ||
+            !refreshAllForm
         ) {
             return;
         }
 
         let liveModeEnabled = false;
-        let liveTimerId = null;
+        let tickTimerId = null;
+        let secondsLeft = 0;
+        let intervalSeconds = 5;
         let isRefreshing = false;
+        let indicatorTimerId = null;
+
+        countdownPill.classList.add("is-idle");
+        lastRefreshed.textContent = new Date().toLocaleTimeString();
 
         function normalize(value) {
             return (value || "").toString().trim().toLowerCase();
@@ -735,9 +234,17 @@
             });
         }
 
-        function setLiveStatus(message, isError) {
-            liveStatus.textContent = message;
-            liveStatus.style.color = isError ? "var(--nwis-red)" : "var(--muted)";
+        function setRefreshError(message) {
+            refreshError.textContent = message;
+        }
+
+        function flashUpdatedIndicator() {
+            if (!liveIndicator) {
+                return;
+            }
+            liveIndicator.classList.add("show");
+            clearTimeout(indicatorTimerId);
+            indicatorTimerId = setTimeout(() => liveIndicator.classList.remove("show"), 2000);
         }
 
         async function refreshQueuesInPlace() {
@@ -746,6 +253,7 @@
             }
 
             isRefreshing = true;
+            refreshIcon.classList.add("spin-icon");
             const previousMap = toSequenceMap();
 
             try {
@@ -766,40 +274,62 @@
                 currentQueueSection.replaceWith(nextQueueSection);
                 markNewRows(previousMap);
                 applyFilters();
-
-                const now = new Date();
-                setLiveStatus(`Live mode active. Last refresh: ${now.toLocaleTimeString()}.`, false);
+                flashUpdatedIndicator();
+                setRefreshError("");
+                lastRefreshed.textContent = new Date().toLocaleTimeString();
             } catch (error) {
                 const detail = error && error.message ? error.message : "Unknown error";
-                setLiveStatus(`Live refresh failed: ${detail}`, true);
+                setRefreshError(`Refresh failed: ${detail}`);
             } finally {
                 isRefreshing = false;
+                refreshIcon.classList.remove("spin-icon");
             }
+        }
+
+        function updateCountdown() {
+            countdownNum.textContent = liveModeEnabled ? String(secondsLeft) : "-";
+        }
+
+        // Counts down once per second and refreshes when it reaches zero, like the dashboard.
+        function tick() {
+            secondsLeft -= 1;
+            if (secondsLeft <= 0) {
+                secondsLeft = intervalSeconds;
+                refreshQueuesInPlace();
+            }
+            updateCountdown();
         }
 
         function stopLiveMode() {
             liveModeEnabled = false;
-            if (liveTimerId !== null) {
-                clearInterval(liveTimerId);
-                liveTimerId = null;
+            if (tickTimerId !== null) {
+                clearInterval(tickTimerId);
+                tickTimerId = null;
             }
             liveToggleButton.classList.remove("active");
-            liveToggleButton.textContent = "Start live mode";
-            setLiveStatus("Live mode is paused.", false);
+            liveToggleButton.setAttribute("aria-pressed", "false");
+            liveToggleIcon.className = "bi bi-play-fill";
+            liveToggleLabel.textContent = "Start live mode";
+            countdownPill.classList.add("is-idle");
+            updateCountdown();
         }
 
         function startLiveMode() {
-            const intervalSeconds = Number.parseInt(liveIntervalSelect.value, 10) || 5;
+            intervalSeconds = Number.parseInt(liveIntervalSelect.value, 10) || 5;
+            secondsLeft = intervalSeconds;
 
             liveModeEnabled = true;
             liveToggleButton.classList.add("active");
-            liveToggleButton.textContent = "Pause live mode";
-            setLiveStatus(`Live mode active. Refreshing every ${intervalSeconds}s.`, false);
+            liveToggleButton.setAttribute("aria-pressed", "true");
+            liveToggleIcon.className = "bi bi-pause-fill";
+            liveToggleLabel.textContent = "Pause live mode";
+            countdownPill.classList.remove("is-idle");
 
-            if (liveTimerId !== null) {
-                clearInterval(liveTimerId);
+            if (tickTimerId !== null) {
+                clearInterval(tickTimerId);
             }
-            liveTimerId = setInterval(refreshQueuesInPlace, intervalSeconds * 1000);
+            tickTimerId = setInterval(tick, 1000);
+            updateCountdown();
             refreshQueuesInPlace();
         }
 
@@ -869,9 +399,17 @@
             }
         });
 
+        // Manual refresh updates in place (no reload) and restarts the countdown.
+        refreshAllForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            secondsLeft = intervalSeconds;
+            updateCountdown();
+            refreshQueuesInPlace();
+        });
+
+        updateCountdown();
         applyFilters();
     })();
 </script>
-
-</body>
-</html>
+{% endblock %}
