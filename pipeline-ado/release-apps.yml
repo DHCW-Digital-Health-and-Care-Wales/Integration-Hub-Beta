@@ -369,6 +369,7 @@ stages:
         - name: 'dr'
           environmentName: 'Integration-Hub-Release-Container-Apps-dr'
           displayName: 'DR'
+          azureLocation: 'ukw'
           resourceGroup: 'UK-West-DHCW-IntHub-DR-App-RG'
           poolName: $(POOL_NAME_DR)
           azureServiceConnection: $(azureServiceConnectionDR)
