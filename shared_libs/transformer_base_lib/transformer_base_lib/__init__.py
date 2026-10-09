@@ -1,5 +1,6 @@
 from .app_config import AppConfig, TransformerConfig
 from .base_transformer import BaseTransformer
+from .codecs import FhirJsonCodec, Hl7Er7Codec, MessageCodec
 from .message_processor import process_message
 from .run_transformer import run_transformer_app
 
@@ -9,5 +10,8 @@ __all__ = [
     "BaseTransformer",
     "run_transformer_app",
     "process_message",
+    "MessageCodec",
+    "Hl7Er7Codec",
+    "FhirJsonCodec",
 ]
 

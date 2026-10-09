@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 from azure.servicebus import ServiceBusMessage
 
+from transformer_base_lib.codecs import Hl7Er7Codec, MessageCodec
 from transformer_base_lib.message_processor import process_message
 
 
@@ -36,6 +37,7 @@ class TestMessageProcessor(unittest.TestCase):
             received_audit_text="Test received",
             processed_audit_text_builder=lambda msg: "Test processed",
             failed_audit_text="Test failed",
+            codec=Hl7Er7Codec(),
         )
 
         self.assertTrue(result)
@@ -70,12 +72,49 @@ class TestMessageProcessor(unittest.TestCase):
                     received_audit_text="Test received",
                     processed_audit_text_builder=lambda msg: "Test processed",
                     failed_audit_text="Test failed",
+                    codec=Hl7Er7Codec(),
                 )
 
                 self.assertTrue(result)
                 mock_sender.send_message.assert_called_once()
                 call_args = mock_sender.send_message.call_args
                 self.assertEqual(call_args[1]["custom_properties"], None)
+
+    def test_process_message_uses_injected_codec_for_non_hl7_formats(self) -> None:
+        """Proves process_message is wire-format agnostic: a non-HL7 codec (e.g. for
+        JSON/XML/FHIR payloads) is routed through exactly the same pipeline."""
+        mock_sender = MagicMock()
+        mock_event_logger = MagicMock()
+        mock_transform = MagicMock()
+        mock_transform.return_value = {"transformed": True}
+
+        mock_codec = MagicMock(spec=MessageCodec)
+        mock_codec.parse.return_value = {"parsed": True}
+        mock_codec.serialise.return_value = '{"transformed": true}'
+
+        mock_message = MagicMock(spec=ServiceBusMessage)
+        mock_message.body = [b'{"raw": true}']
+        mock_message.application_properties = None
+
+        result = process_message(
+            message=mock_message,
+            sender_client=mock_sender,
+            event_logger=mock_event_logger,
+            transform=mock_transform,
+            transformer_display_name="TestJsonTransformer",
+            received_audit_text="Test received",
+            processed_audit_text_builder=lambda parsed: "Test processed",
+            failed_audit_text="Test failed",
+            codec=mock_codec,
+        )
+
+        self.assertTrue(result)
+        mock_codec.parse.assert_called_once_with('{"raw": true}')
+        mock_transform.assert_called_once_with({"parsed": True})
+        mock_codec.serialise.assert_called_once_with({"transformed": True})
+        mock_sender.send_message.assert_called_once_with(
+            '{"transformed": true}', custom_properties=None
+        )
 
 
 if __name__ == "__main__":
