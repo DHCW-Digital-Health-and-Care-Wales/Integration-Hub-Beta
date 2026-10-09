@@ -372,7 +372,7 @@ stages:
           resourceGroup: 'UK-West-DHCW-IntHub-DR-App-RG'
           poolName: $(POOL_NAME_DR)
           azureServiceConnection: $(azureServiceConnectionDR)
-          dependsOnPrevious: true
+          dependsOnPrevious: false
                     
         - name: 'dte'
           environmentName: 'Integration-Hub-Release-Container-Apps-dte'
