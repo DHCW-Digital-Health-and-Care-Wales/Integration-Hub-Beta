@@ -109,7 +109,7 @@ class ServiceBusReader:
             return self._peek_session_queue(queue_name, max_count)
 
         # Non-session queues can be read with a standard receiver.
-        receiver = self._client.get_queue_receiver(queue_name=queue_name)
+        receiver = self._receiver(queue_name)
         with receiver:
             messages = receiver.peek_messages(max_message_count=max_count)
 
@@ -121,7 +121,7 @@ class ServiceBusReader:
             return self._clear_session_queue(queue_name)
 
         try:
-            receiver = self._client.get_queue_receiver(queue_name=queue_name)
+            receiver = self._receiver(queue_name)
             with receiver:
                 return self._drain_receiver(receiver)
         except Exception as exc:
@@ -129,11 +129,21 @@ class ServiceBusReader:
                 return self._clear_session_queue(queue_name)
             raise
 
+    def _receiver(self, entity_name: str, **kwargs: Any) -> Any:
+        """Open a receiver for a queue, or for a topic subscription named ``topic:subscription``."""
+        parsed = split_subscription_entity(entity_name)
+        if parsed:
+            topic_name, subscription_name = parsed
+            return self._client.get_subscription_receiver(
+                topic_name=topic_name, subscription_name=subscription_name, **kwargs
+            )
+        return self._client.get_queue_receiver(queue_name=entity_name, **kwargs)
+
     def _peek_session_queue(self, queue_name: str, max_count: int) -> list[MessageSummary]:
         """Peek messages from the next available session on a session-enabled queue."""
         try:
-            receiver = self._client.get_queue_receiver(
-                queue_name=queue_name,
+            receiver = self._receiver(
+                queue_name,
                 session_id=NEXT_AVAILABLE_SESSION,
                 max_wait_time=LIST_SESSION_WAIT_SECONDS,
             )
@@ -154,8 +164,8 @@ class ServiceBusReader:
 
         while True:
             try:
-                receiver = self._client.get_queue_receiver(
-                    queue_name=queue_name,
+                receiver = self._receiver(
+                    queue_name,
                     session_id=NEXT_AVAILABLE_SESSION,
                     max_wait_time=CLEAR_SESSION_WAIT_SECONDS,
                 )
@@ -184,7 +194,7 @@ class ServiceBusReader:
                     return self._sequence_to_detail(queue_name, sequence_number, search_limit)
             return None
 
-        receiver = self._client.get_queue_receiver(queue_name=queue_name)
+        receiver = self._receiver(queue_name)
         with receiver:
             messages = receiver.peek_messages(max_message_count=search_limit)
 
@@ -197,8 +207,8 @@ class ServiceBusReader:
     def _sequence_to_detail(self, queue_name: str, sequence_number: int, search_limit: int) -> MessageDetail | None:
         """Fetch a single message detail from the next available session."""
         try:
-            receiver = self._client.get_queue_receiver(
-                queue_name=queue_name,
+            receiver = self._receiver(
+                queue_name,
                 session_id=NEXT_AVAILABLE_SESSION,
                 max_wait_time=DETAIL_SESSION_WAIT_SECONDS,
             )
@@ -346,6 +356,45 @@ def _is_session_required_error(exc: Exception) -> bool:
     return "next_available_session" in message and "max_wait_time" in message
 
 
+def split_subscription_entity(entity_name: str) -> tuple[str, str] | None:
+    """Split a ``topic:subscription`` entity name; return None for plain queue names."""
+    topic_name, separator, subscription_name = entity_name.partition(":")
+    if separator and topic_name and subscription_name:
+        return topic_name, subscription_name
+    return None
+
+
+def _extract_subscription_names(payload: dict[str, object], session_only: bool = False) -> list[str]:
+    """Extract ``topic:subscription`` names from emulator payload, optionally only session-enabled ones."""
+    user_config = payload.get("UserConfig")
+    namespaces = user_config.get("Namespaces") if isinstance(user_config, dict) else None
+    if not isinstance(namespaces, list):
+        return []
+
+    names: list[str] = []
+    for namespace in namespaces:
+        topics = namespace.get("Topics") if isinstance(namespace, dict) else None
+        if not isinstance(topics, list):
+            continue
+
+        for topic in topics:
+            topic_name = topic.get("Name") if isinstance(topic, dict) else None
+            subscriptions = topic.get("Subscriptions") if isinstance(topic, dict) else None
+            if not isinstance(topic_name, str) or not topic_name or not isinstance(subscriptions, list):
+                continue
+
+            for subscription in subscriptions:
+                if not isinstance(subscription, dict):
+                    continue
+                subscription_name = subscription.get("Name")
+                properties = subscription.get("Properties")
+                requires_session = isinstance(properties, dict) and properties.get("RequiresSession") is True
+                if isinstance(subscription_name, str) and subscription_name and (requires_session or not session_only):
+                    names.append(f"{topic_name}:{subscription_name}")
+
+    return names
+
+
 def _load_emulator_session_queues() -> frozenset[str]:
     """Return the names of queues that have RequiresSession enabled in the emulator config."""
     # Multiple candidates are checked so the app works in source, package,
@@ -359,8 +408,11 @@ def _load_emulator_session_queues() -> frozenset[str]:
         except Exception:
             continue
 
-        session_queues = _extract_session_queue_names(payload)
-        if _extract_queue_names(payload):  # Only trust config if it has queues at all.
+        session_queues = _extract_session_queue_names(payload) + _extract_subscription_names(
+            payload, session_only=True
+        )
+        entities_present = _extract_queue_names(payload) or _extract_subscription_names(payload)
+        if entities_present:
             return frozenset(session_queues)
 
     return frozenset()
@@ -412,7 +464,7 @@ def _load_emulator_queue_names() -> list[str]:
 
         queue_names = _extract_queue_names(payload)
         if queue_names:
-            return queue_names
+            return queue_names + _extract_subscription_names(payload)
 
     return []
 
