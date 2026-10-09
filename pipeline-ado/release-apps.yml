@@ -60,7 +60,7 @@ parameters:
       - load
       - prd
 
-  - name: azureLocation
+  - name: azureLocation # Not sure this is the best solution for this, but it'll do for the moment. 
     displayName: 'Select Location'
     type: string
     default: 'uks'
@@ -72,7 +72,7 @@ variables:
   # Shared Configuration
   - name: acrName
     value: 'uksdhcwihsharedcr'
-  - name: azureServiceConnectionDR
+  - name: azureServiceConnectionDR # Actually subscription name in this context. In the terraform repo, service connection means service connection.
     value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
   - name: azureServiceConnectionNonProd
     value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
