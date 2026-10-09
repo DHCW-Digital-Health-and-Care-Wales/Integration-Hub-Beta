@@ -66,6 +66,8 @@ To define host and port the server should bind to use environment variables conf
 - **SERVICE_BUS_CONNECTION_STRING** / **SERVICE_BUS_NAMESPACE** - Service Bus connectivity
   (connection string for local/emulator use, namespace for RBAC/managed identity in cloud
   environments)
+- **HEALTH_CHECK_HOST** - default 127.0.0.1
+- **HEALTH_CHECK_PORT** - default 9000
 
 ### Running directly
 

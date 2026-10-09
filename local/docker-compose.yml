@@ -356,6 +356,7 @@ services:
       - ./env/mock_receivers/mpi-hl7-topic-mock-receiver.env
     ports:
       - "2584:2581"
+    <<: *default-healthcheck
     restart: on-failure
     depends_on:
       - sb-emulator
