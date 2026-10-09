@@ -8,42 +8,42 @@ parameters:
     default: 'all'
     values:
       - all
-      - Dashboard
-      - PHW HL7Server
-      - PIMS HL7Server
-      - Paris HL7Server
-      - Chemocare HL7Server
-      - MPI HL7Server
-      - WDS HL7Server
-      - MPI HL7 Subscription Sender
-      - Mosaiq HL7Server
-      - HL7 REST Server
-      - REST Server
-      - WPAS REST Server
-      - RISP REST Server
-      - HL7 Phw Transformer
-      - HL7 Chemo Transformer
-      - HL7 Pims Transformer
-      - HL7 Core Reference Transformer
-      - RISP Core Reference Transformer
-      - PROMS FHIR Transformer
-      - HL7 Sender
-      - SWW Chemo HL7 Subscription Sender
-      - PHW HL7 Subscription Sender
-      - PHW TO MPI HL7 Sender
       - BCU Chemo HL7 Subscription Sender
-      - PIMS HL7 Sender
       - Chemocare HL7 Sender
+      - Chemocare HL7Server
+      - Dashboard
+      - HL7 Chemo Transformer
+      - HL7 Core Reference Transformer
+      - HL7 Mock Receiver
+      - HL7 Phw Transformer
+      - HL7 Pims Transformer
+      - HL7 REST Server
+      - HL7 Sender
+      - HL7 Topic Mock Receiver
+      - HL7 WDS Transformer
+      - HTTP Mock Receiver
       - LIMS HL7 SOAP Server
+      - Message Store Service
+      - Mosaiq HL7Server
+      - MPI HL7 Subscription Sender
+      - MPI HL7Server
+      - Network Test App
+      - Paris HL7Server
+      - PHW HL7 Subscription Sender
+      - PHW HL7Server
+      - PHW TO MPI HL7 Sender
+      - PIMS HL7 Sender
+      - PIMS HL7Server
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
-      - HL7 WDS Transformer
+      - PROMS FHIR Transformer
+      - REST Server
+      - RISP Core Reference Transformer
+      - RISP REST Server
+      - SWW Chemo HL7 Subscription Sender
+      - WDS HL7Server
       - WIS SOAP Sender
-      - Message Store Service
-      - HL7 Mock Receiver
-      - HTTP Mock Receiver
-      - HL7 Topic Mock Receiver
-      - Network Test App
+      - WPAS REST Server
       
   - name: selectedEnvironment
     displayName: 'Select Environment'
