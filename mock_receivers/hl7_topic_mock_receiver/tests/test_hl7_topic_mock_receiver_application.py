@@ -106,6 +106,7 @@ class TestHl7TopicServerApplication(unittest.TestCase):
 
 
 @patch.dict(os.environ, {"HOST": "127.0.0.1", "PORT": "2576"}, clear=True)
+@patch("hl7_topic_mock_receiver.hl7_topic_mock_receiver_application.TCPHealthCheckServer")
 @patch("hl7_topic_mock_receiver.hl7_topic_mock_receiver_application.MLLPServer")
 @patch("hl7_topic_mock_receiver.hl7_topic_mock_receiver_application.ServiceBusClientFactory")
 @patch("hl7_topic_mock_receiver.hl7_topic_mock_receiver_application.threading.Thread")
@@ -115,12 +116,18 @@ class TestHl7TopicServerApplicationWithoutServiceBus(unittest.TestCase):
 
     def setUp(self) -> None:
         self.app = Hl7TopicMockReceiver()
+        self.addCleanup(self.app.stop_server)
 
     def test_start_server_skips_service_bus_client_factory(
-        self, mock_thread: MagicMock, mock_factory: MagicMock, mock_custom_mllp_server: MagicMock
+        self,
+        mock_thread: MagicMock,
+        mock_factory: MagicMock,
+        mock_custom_mllp_server: MagicMock,
+        mock_health_check: MagicMock,
     ) -> None:
         mock_custom_mllp_server.return_value = MagicMock()
         mock_thread.return_value = MagicMock()
+        mock_health_check.return_value = MagicMock()
 
         self.app.start_server()
 
