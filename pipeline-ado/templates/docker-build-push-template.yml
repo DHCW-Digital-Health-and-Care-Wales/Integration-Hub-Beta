@@ -12,6 +12,13 @@ parameters:
   enableImageSigning: false
   retainImageCount: 50
   SEMANTIC_VERSION: ''
+  # Optional: additional immutable environment tag to push alongside the build tags,
+  # e.g. 'prd'. Leave empty ('') for non-release builds. This tag is never deleted
+  # by the cleanup step below, regardless of retainImageCount.
+  releaseTag: ''
+  # Comma-separated list of tags that must never be deleted by the cleanup step,
+  # even if they fall outside the retained image count (e.g. "prd,dr").
+  protectedTags: 'prd,dr'
 
 jobs:
   - job: ${{ parameters.jobName }}
@@ -40,6 +47,10 @@ jobs:
           fi
           if [[ ! "${{ parameters.acrName }}" =~ ^[a-zA-Z0-9]*$ ]]; then
             echo "##[error]Invalid ACR name format"
+            exit 1
+          fi
+          if [[ -n "${{ parameters.releaseTag }}" && ! "${{ parameters.releaseTag }}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+            echo "##[error]Invalid releaseTag format"
             exit 1
           fi
           echo "##[endgroup]"
@@ -125,6 +136,9 @@ jobs:
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):latest"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)-$(SHORT_SHA)"
           BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(FULL_SEMANTIC_VERSION)"
+          if [ -n "${{ parameters.releaseTag }}" ]; then
+            BUILD_CMD="$BUILD_CMD --tag $(DOCKER_REGISTRY)/$(IMAGE_NAME):${{ parameters.releaseTag }}"
+          fi
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.title=$(IMAGE_NAME)\""
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.description=Built by Azure DevOps\""
           BUILD_CMD="$BUILD_CMD --label \"org.opencontainers.image.version=${SEMANTIC_VERSION:-v1.0.$(Build.BuildId)}\""
@@ -156,6 +170,9 @@ jobs:
           # Execute the build
           eval $BUILD_CMD
 
+          if [ -n "${{ parameters.releaseTag }}" ]; then
+            echo "##[section]Pushed release tag: ${{ parameters.releaseTag }}"
+          fi
           echo "##[section]Image built and pushed successfully"
           echo "##[endgroup]"
         displayName: 'Build and Push Docker Image'
@@ -224,15 +241,36 @@ jobs:
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "##[group]Image Cleanup"
-            
-            # Get list of tags sorted by creation date (newest first)
-            TAGS_TO_DELETE=$(az acr repository show-tags \
+
+            # Tags that must never be auto-deleted, regardless of age/retain count.
+            PROTECTED_TAGS="${{ parameters.protectedTags }}"
+            echo "Protected tags (never deleted): $PROTECTED_TAGS"
+
+            # Get list of tags sorted by creation date (newest first), excluding protected tags
+            ALL_TAGS_SORTED=$(az acr repository show-tags \
               --name ${{ parameters.acrName }} \
               --repository ${{ parameters.appName }} \
               --orderby time_desc \
-              --query "[$(( ${{ parameters.retainImageCount }} )):].name" \
               -o tsv)
-            
+
+            CANDIDATE_TAGS=""
+            while IFS= read -r tag; do
+              [ -z "$tag" ] && continue
+              IS_PROTECTED=false
+              IFS=',' read -ra PTAGS <<< "$PROTECTED_TAGS"
+              for ptag in "${PTAGS[@]}"; do
+                if [ "$tag" == "$ptag" ]; then
+                  IS_PROTECTED=true
+                  break
+                fi
+              done
+              if [ "$IS_PROTECTED" = false ]; then
+                CANDIDATE_TAGS="$CANDIDATE_TAGS$tag"$'\n'
+              fi
+            done <<< "$ALL_TAGS_SORTED"
+
+            TAGS_TO_DELETE=$(echo "$CANDIDATE_TAGS" | sed '/^$/d' | tail -n +$(( ${{ parameters.retainImageCount }} + 1 )))
+
             if [ -n "$TAGS_TO_DELETE" ]; then
               echo "Deleting old image tags to retain only ${{ parameters.retainImageCount }} images..."
               for tag in $TAGS_TO_DELETE; do
