@@ -1,5 +1,6 @@
 # Integration Hub - Beta
 
+
 A cloud-native platform for seamless and secure exchange of clinical information between disparate digital health systems within NHS Wales.
 
 ## Table of Contents
