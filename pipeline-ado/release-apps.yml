@@ -60,6 +60,14 @@ parameters:
       - load
       - prd
 
+  - name: azureLocation
+    displayName: 'Select Location'
+    type: string
+    default: 'uks'
+    values:
+      - uks
+      - ukw
+
 variables:
   # Shared Configuration
   - name: acrName
@@ -70,8 +78,7 @@ variables:
     value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
   - name: azureServiceConnectionProd
     value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
-  - name: azureLocation
-    value: 'uks'
+
     
   # Pool Configuration
   - name: POOL_NAME_DR
@@ -148,7 +155,7 @@ stages:
     parameters:
       selectedApp: ${{ parameters.selectedApp }}
       selectedEnvironment: ${{ parameters.selectedEnvironment }}
-      azureLocation: $(azureLocation)
+      azureLocation: ${{ parameters.azureLocation }}
       acrName: $(acrName)
       
       # Application configurations
@@ -369,7 +376,6 @@ stages:
         - name: 'dr'
           environmentName: 'Integration-Hub-Release-Container-Apps-dr'
           displayName: 'DR'
-          azureLocation: 'ukw'
           resourceGroup: 'UK-West-DHCW-IntHub-DR-App-RG'
           poolName: $(POOL_NAME_DR)
           azureServiceConnection: $(azureServiceConnectionDR)
