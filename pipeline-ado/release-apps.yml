@@ -65,7 +65,7 @@ variables:
   - name: acrName
     value: 'uksdhcwihsharedcr'
   - name: azureServiceConnectionDR
-    value: 'Azure - NHSWales-DHCW-PROD-DR-IntegrationHub-Subscription'
+    value: 'Azure - NHSWales-DHCW-PROD-IntegrationHub-Subscription'
   - name: azureServiceConnectionNonProd
     value: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
   - name: azureServiceConnectionProd
