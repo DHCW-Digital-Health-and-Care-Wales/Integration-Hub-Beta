@@ -604,6 +604,47 @@ class TestProcessMessage(unittest.TestCase):
         self.assertEqual(call_kwargs["source_system"], "PHW")
         self.assertEqual(call_kwargs["session_id"], TEST_SESSION_ID)
 
+    @patch("hl7_sender.application.parse_message")
+    @patch("hl7_sender.application.get_ack_result")
+    @patch("hl7_sender.application.convert_er7_to_xml")
+    def test_message_store_uses_actual_message_session_id_over_fallback(
+        self, mock_convert_xml: Mock, mock_ack_processor: Mock, mock_parse_message: Mock
+    ) -> None:
+        """When the receiver accepts any session (INGRESS_ACCEPT_ANY_SESSION), the consumer may be
+        locked onto a different session per message. The session actually set on the received
+        message (by whichever flow published it) must take priority over the static fallback so
+        replay routing points back to the correct flow."""
+        (
+            service_bus_message,
+            hl7_message,
+            hl7_string,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+        ) = _setup()
+        service_bus_message.session_id = "mosaiq-to-mpi"
+        mock_parse_message.return_value = hl7_message
+        mock_hl7_sender_client.send_message.return_value = "ACK"
+        mock_ack_processor.return_value = AckResult(AckOutcome.SUCCESS, "AA", "MSGID1234", "ACK")
+        mock_convert_xml.return_value = "<xml/>"
+
+        _process_message(
+            service_bus_message,
+            mock_hl7_sender_client,
+            mock_event_logger,
+            mock_metric_sender,
+            mock_throttler,
+            mock_message_store,
+            "fallback-session",
+        )
+
+        mock_message_store.send_to_store.assert_called_once()
+        call_kwargs = mock_message_store.send_to_store.call_args.kwargs
+        self.assertEqual(call_kwargs["session_id"], "mosaiq-to-mpi")
+
+
 class TestBatchSizing(unittest.TestCase):
     def test_uses_max_batch_when_no_throttle(self) -> None:
         throttler = MagicMock(interval_seconds=None)
