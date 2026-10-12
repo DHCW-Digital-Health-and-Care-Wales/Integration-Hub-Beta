@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
-from azure.servicebus import ServiceBusMessage
+from azure.servicebus import NEXT_AVAILABLE_SESSION, ServiceBusMessage
 from hl7apy.core import Message
 from message_bus_lib.dead_letter import DeadLetterMessage
 
@@ -643,6 +643,125 @@ class TestProcessMessage(unittest.TestCase):
         mock_message_store.send_to_store.assert_called_once()
         call_kwargs = mock_message_store.send_to_store.call_args.kwargs
         self.assertEqual(call_kwargs["session_id"], "mosaiq-to-mpi")
+
+
+class TestMainIngressSetup(unittest.TestCase):
+    """Verifies main() wires up the correct Service Bus receiver client and session filter
+    for each ingress mode, in particular that topic-based ingress with
+    INGRESS_ACCEPT_ANY_SESSION=true passes the NEXT_AVAILABLE_SESSION sentinel through to
+    create_subscription_receiver_client rather than a fixed session id.
+    """
+
+    def _make_app_config(self, **overrides: object) -> MagicMock:
+        defaults: dict[str, object] = {
+            "connection_string": "conn-string",
+            "service_bus_namespace": None,
+            "workflow_id": "test-workflow",
+            "microservice_id": "test-microservice",
+            "health_board": "SHARED",
+            "peer_service": "MPI",
+            "max_messages_per_minute": None,
+            "message_store_queue_name": None,
+            "message_store_session_id": None,
+            "health_check_hostname": "localhost",
+            "health_check_port": 8080,
+            "ingress_queue_name": None,
+            "ingress_topic_name": None,
+            "ingress_subscription_name": None,
+            "ingress_session_id": None,
+            "ingress_accept_any_session": False,
+            "receiver_mllp_hostname": "mpi-host",
+            "receiver_mllp_port": 2575,
+            "ack_timeout_seconds": 5,
+        }
+        defaults.update(overrides)
+        return MagicMock(**defaults)
+
+    @patch("hl7_sender.application.HL7SenderClient")
+    @patch("hl7_sender.application.TCPHealthCheckServer")
+    @patch("hl7_sender.application.MessageThrottler")
+    @patch("hl7_sender.application.MetricSender")
+    @patch("hl7_sender.application.EventLogger")
+    @patch("hl7_sender.application.ServiceBusClientFactory")
+    @patch("hl7_sender.application.ConnectionConfig")
+    @patch("hl7_sender.application.AppConfig")
+    @patch("hl7_sender.application.ProcessorManager")
+    @patch("hl7_sender.application.configure_otel")
+    def test_main_topic_ingress_with_accept_any_session_uses_next_available_session(
+        self,
+        _mock_configure_otel: Mock,
+        mock_processor_manager_cls: Mock,
+        mock_app_config_cls: Mock,
+        _mock_connection_config_cls: Mock,
+        mock_factory_cls: Mock,
+        _mock_event_logger_cls: Mock,
+        _mock_metric_sender_cls: Mock,
+        mock_throttler_cls: Mock,
+        _mock_health_check_cls: Mock,
+        _mock_hl7_sender_client_cls: Mock,
+    ) -> None:
+        mock_processor_manager_cls.return_value.is_running = False
+        mock_throttler_cls.return_value.interval_seconds = None
+
+        app_config = self._make_app_config(
+            ingress_topic_name="mpi-sender-ingress",
+            ingress_subscription_name="mpi-sender-sub",
+            ingress_accept_any_session=True,
+            ingress_session_id=None,
+        )
+        mock_app_config_cls.read_env_config.return_value = app_config
+        mock_factory = mock_factory_cls.return_value
+
+        main()
+
+        mock_factory.create_subscription_receiver_client.assert_called_once_with(
+            "mpi-sender-ingress",
+            "mpi-sender-sub",
+            NEXT_AVAILABLE_SESSION,
+        )
+        mock_factory.create_message_receiver_client.assert_not_called()
+
+    @patch("hl7_sender.application.HL7SenderClient")
+    @patch("hl7_sender.application.TCPHealthCheckServer")
+    @patch("hl7_sender.application.MessageThrottler")
+    @patch("hl7_sender.application.MetricSender")
+    @patch("hl7_sender.application.EventLogger")
+    @patch("hl7_sender.application.ServiceBusClientFactory")
+    @patch("hl7_sender.application.ConnectionConfig")
+    @patch("hl7_sender.application.AppConfig")
+    @patch("hl7_sender.application.ProcessorManager")
+    @patch("hl7_sender.application.configure_otel")
+    def test_main_queue_ingress_with_fixed_session_id_does_not_use_next_available_session(
+        self,
+        _mock_configure_otel: Mock,
+        mock_processor_manager_cls: Mock,
+        mock_app_config_cls: Mock,
+        _mock_connection_config_cls: Mock,
+        mock_factory_cls: Mock,
+        _mock_event_logger_cls: Mock,
+        _mock_metric_sender_cls: Mock,
+        mock_throttler_cls: Mock,
+        _mock_health_check_cls: Mock,
+        _mock_hl7_sender_client_cls: Mock,
+    ) -> None:
+        mock_processor_manager_cls.return_value.is_running = False
+        mock_throttler_cls.return_value.interval_seconds = None
+
+        app_config = self._make_app_config(
+            ingress_queue_name="phw-hl7-sender-ingress",
+            ingress_session_id=TEST_SESSION_ID,
+            ingress_accept_any_session=False,
+        )
+        mock_app_config_cls.read_env_config.return_value = app_config
+        mock_factory = mock_factory_cls.return_value
+
+        main()
+
+        mock_factory.create_message_receiver_client.assert_called_once_with(
+            "phw-hl7-sender-ingress",
+            TEST_SESSION_ID,
+        )
+        mock_factory.create_subscription_receiver_client.assert_not_called()
 
 
 class TestBatchSizing(unittest.TestCase):
