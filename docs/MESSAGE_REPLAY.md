@@ -12,10 +12,10 @@ The priority queue (`local-inthub-priority-messagequeue`) is **session-enabled**
 1. **Initialise database**: `just start phw-to-mpi` (starts SQL Server and seeds test messages)
 2. **Create replay batch**: Run `create-replay-batch.sql` in VS Code to get a `ReplayBatchId`
 3. **Configure job**: Set `REPLAY_BATCH_ID` in `env/message_processing/message-replay-job.env`
-4. **Redirect sender**: Update `INGRESS_QUEUE_NAME` in the relevant sender `.env` file to `local-inthub-priority-messagequeue`
+4. **Redirect sender**: In the relevant sender `.env` file, comment out any `INGRESS_TOPIC_NAME`/`INGRESS_SUBSCRIPTION_NAME` (topic-based ingress) and set `INGRESS_QUEUE_NAME` to `local-inthub-priority-messagequeue` — ingress must be configured as either a queue or a topic+subscription, never both
 5. **Run job**: `just run replay` (builds and executes the replay job)
 6. **Verify**: Check logs with `just logs message-replay-job`
-7. **Revert sender**: Restore the original `INGRESS_QUEUE_NAME` in the sender `.env` file
+7. **Revert sender**: Restore the sender `.env` file to its original ingress configuration (queue or topic/subscription)
 
 ## Quick Reference
 
@@ -210,7 +210,12 @@ For more technical details, see [Message Replay Job README](../message_processin
 
 ## Step 3b: Redirect the Consuming Service to the Priority Queue
 
-The priority queue is session-enabled. Before running the job, update **only** `INGRESS_QUEUE_NAME` in the relevant sender env file (e.g. `local/env/senders/mpi-hl7-sender.env`) to point at the priority queue:
+The priority queue is session-enabled. Sender ingress is validated as mutually exclusive — exactly one of `INGRESS_QUEUE_NAME`, or the pair `INGRESS_TOPIC_NAME`/`INGRESS_SUBSCRIPTION_NAME`, can be set at a time. Setting `INGRESS_QUEUE_NAME` while a topic-based sender's `INGRESS_TOPIC_NAME`/`INGRESS_SUBSCRIPTION_NAME` are still present is rejected at startup.
+
+Before running the job, update the relevant sender env file (e.g. `local/env/senders/mpi-hl7-sender.env`):
+
+- If the sender currently uses **topic-based ingress**, comment out `INGRESS_TOPIC_NAME` and `INGRESS_SUBSCRIPTION_NAME` (and `INGRESS_ACCEPT_ANY_SESSION`, if set).
+- Set `INGRESS_QUEUE_NAME` to point at the priority queue:
 
 ```dotenv
 INGRESS_QUEUE_NAME="local-inthub-priority-messagequeue"
@@ -221,7 +226,7 @@ Leave `INGRESS_SESSION_ID` unchanged — each replayed message is automatically 
 > [!IMPORTANT]
 > Restart the profile which contains your desired sender after changing the env file: `just restart <profile>` (e.g. `just restart phw-to-mpi`)
 
-After the replay is complete, revert `INGRESS_QUEUE_NAME` to its original value and restart again.
+After the replay is complete, remove `INGRESS_QUEUE_NAME` and restore the sender's original ingress configuration (re-enable `INGRESS_TOPIC_NAME`/`INGRESS_SUBSCRIPTION_NAME`/`INGRESS_ACCEPT_ANY_SESSION` if it was topic-based) and restart again.
 
 ## Step 4: Run the Replay Job
 
