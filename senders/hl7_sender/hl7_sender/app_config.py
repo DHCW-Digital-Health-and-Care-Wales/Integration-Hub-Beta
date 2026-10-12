@@ -24,6 +24,7 @@ class AppConfig:
     ingress_topic_name: str | None = field(default=None, kw_only=True)
     ingress_subscription_name: str | None = field(default=None, kw_only=True)
     replay_session_id: str | None = field(default=None, kw_only=True)
+    ingress_accept_any_session: bool = field(default=False, kw_only=True)
 
     @property
     def message_store_session_id(self) -> str | None:
@@ -36,14 +37,22 @@ class AppConfig:
         ingress_queue_name = (_read_env("INGRESS_QUEUE_NAME") or "").strip() or None
         ingress_topic_name = (_read_env("INGRESS_TOPIC_NAME") or "").strip() or None
         ingress_subscription_name = (_read_env("INGRESS_SUBSCRIPTION_NAME") or "").strip() or None
+        ingress_session_id = (_read_env("INGRESS_SESSION_ID") or "").strip() or None
         message_store_queue_name = _read_env("MESSAGE_STORE_QUEUE_NAME")
         replay_session_id = (_read_env("REPLAY_SESSION_ID") or "").strip() or None
+        ingress_accept_any_session = _read_bool_env("INGRESS_ACCEPT_ANY_SESSION", default=False)
         validate_ingress_config(ingress_queue_name, ingress_topic_name, ingress_subscription_name)
+
+        if ingress_accept_any_session and ingress_session_id:
+            raise RuntimeError(
+                "Invalid configuration: INGRESS_SESSION_ID cannot be set together with "
+                "INGRESS_ACCEPT_ANY_SESSION=true. Configure only one session-selection mode."
+            )
 
         app_config = AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             ingress_queue_name=ingress_queue_name,
-            ingress_session_id=_read_env("INGRESS_SESSION_ID"),
+            ingress_session_id=ingress_session_id,
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
             receiver_mllp_hostname=_read_required_env("RECEIVER_MLLP_HOST"),
             receiver_mllp_port=_read_required_int_env("RECEIVER_MLLP_PORT"),
@@ -59,11 +68,14 @@ class AppConfig:
             ingress_topic_name=ingress_topic_name,
             ingress_subscription_name=ingress_subscription_name,
             replay_session_id=replay_session_id,
+            ingress_accept_any_session=ingress_accept_any_session,
         )
-        if message_store_queue_name and not app_config.message_store_session_id:
+        if message_store_queue_name and not (
+            app_config.message_store_session_id or app_config.ingress_accept_any_session
+        ):
             raise RuntimeError(
                 "Missing required configuration: set REPLAY_SESSION_ID when MESSAGE_STORE_QUEUE_NAME is "
-                "configured without INGRESS_SESSION_ID."
+                "configured without INGRESS_SESSION_ID (unless INGRESS_ACCEPT_ANY_SESSION=true)."
             )
         return app_config
 
@@ -98,6 +110,19 @@ def validate_ingress_config(
 
 def _read_env(name: str) -> str | None:
     return os.getenv(name)
+
+
+def _read_bool_env(name: str, default: bool) -> bool:
+    """Read an environment variable and interpret it as a boolean.
+
+    - Variable absent: returns `default`.
+    - Variable set to "false" (case-insensitive): returns False.
+    - Variable set to any other value: returns True, regardless of `default`.
+    """
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() != "false"
 
 
 def _read_required_env(name: str) -> str:

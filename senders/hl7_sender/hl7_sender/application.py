@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Callable
 
-from azure.servicebus import ServiceBusMessage
+from azure.servicebus import NEXT_AVAILABLE_SESSION, ServiceBusMessage, ServiceBusSessionFilter
 from event_logger_lib import EventLogger
 from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7_validation import convert_er7_to_xml
@@ -110,15 +110,23 @@ def main() -> None:
             f"{app_config.ingress_topic_name}/{app_config.ingress_subscription_name}"
         )
 
+        # Accepting any available session lets multiple replicas of this consumer compete for
+        # distinct sessions concurrently (e.g. when several flows publish onto a shared sender
+        # topic/subscription under different session IDs), instead of every replica locking the
+        # one hardcoded session and leaving the others idle.
+        ingress_receiver_session_id: str | ServiceBusSessionFilter | None = (
+            NEXT_AVAILABLE_SESSION if app_config.ingress_accept_any_session else app_config.ingress_session_id
+        )
+
         if app_config.ingress_queue_name:
             receiver_client = factory.create_message_receiver_client(
-                app_config.ingress_queue_name, app_config.ingress_session_id
+                app_config.ingress_queue_name, ingress_receiver_session_id
             )
         elif app_config.ingress_topic_name and app_config.ingress_subscription_name:
             receiver_client = factory.create_subscription_receiver_client(
                 app_config.ingress_topic_name,
                 app_config.ingress_subscription_name,
-                app_config.ingress_session_id,
+                ingress_receiver_session_id,
             )
         else:
             raise RuntimeError(
@@ -158,7 +166,7 @@ def _process_message(
     metric_sender: MetricSender,
     throttler: MessageThrottler,
     message_store_client: MessageStoreClient,
-    session_id: str | None,
+    fallback_session_id: str | None,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     metadata: dict[str, str] | None = extract_metadata(message)
@@ -183,7 +191,11 @@ def _process_message(
         logger.info(f"Message ID: {message_id}")
 
         if _is_first_delivery_attempt(message):
-            _send_to_message_store(message_store_client, event_logger, message_body, metadata, session_id)
+            # Prefer the session the message actually arrived on (set by whichever flow published
+            # it) over the static per-deployment fallback, so replay routing stays correct when a
+            # single consumer accepts messages from multiple sessions (INGRESS_ACCEPT_ANY_SESSION).
+            resolved_session_id = message.session_id or fallback_session_id
+            _send_to_message_store(message_store_client, event_logger, message_body, metadata, resolved_session_id)
         else:
             logger.info(
                 "Skipping message store send on retry attempt - CorrelationId: %s, DeliveryCount: %s",
