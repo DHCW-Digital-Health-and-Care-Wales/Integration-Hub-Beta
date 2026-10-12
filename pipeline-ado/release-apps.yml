@@ -308,7 +308,7 @@ stages:
           buildPipeline: 'HL7 Sender - Build'
         - name: 'RISP MPI Priority HL7 Sender'
           appImageName: 'hl7sender'
-          appFunctionMidfix: 'risp-mpi-priority'
+          appFunctionMidfix: 'risp-pri'
           buildPipeline: 'HL7 Sender - Build'
 
         # LIMS SOAP Server (rest_server image, LIMS flow instance; container app uks-<env>-lims-hl7soapserver-ca).
