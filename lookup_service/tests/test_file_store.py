@@ -26,6 +26,15 @@ class RepoSeedTests(unittest.TestCase):
             row = require_row(store, "health_board_mapping", (code,))
             self.assertEqual(row.values["health_board"], board)
 
+    def test_pims_to_mpi_codes_composite_key_and_blank_value(self) -> None:
+        store = FileTableStore.load(REPO_SEED_DIR)
+        self.assertEqual(require_table(store, "pims_to_mpi_codes").definition.key_columns, ("code_type", "pims_code"))
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("gender", "I")).values["mpi_code"], "U")
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("nhs-status", "NN")).values["mpi_code"], "1")
+        # Same pims_code under different code_types must not collide.
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("marital-status", "M")).values["mpi_code"], "M")
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("marital-status", "A")).values["mpi_code"], "")
+
 
 class FileTableStoreLoadTests(SeedDirTestCase):
     def load(self) -> FileTableStore:

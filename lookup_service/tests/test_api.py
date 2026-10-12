@@ -76,7 +76,7 @@ class LookupApiTests(unittest.TestCase):
         response = self.client.get("/api/v1/tables")
         self.assertEqual(response.status_code, 200)
         tables = {t["name"]: t for t in response.json()}
-        self.assertEqual(set(tables), {"health_board_mapping", "ward_map"})
+        self.assertEqual(set(tables), {"health_board_mapping", "pims_to_mpi_codes", "ward_map"})
         self.assertEqual(tables["ward_map"]["row_count"], 3)
         self.assertEqual(tables["ward_map"]["key_columns"], ["sending_facility", "ward_code"])
         self.assertEqual(tables["health_board_mapping"]["cache"]["mode"], "preloaded")
@@ -116,7 +116,7 @@ class UploadApiTests(unittest.TestCase):
                                 data=data)
 
     def test_seed_tables_are_imported_into_writable_store(self) -> None:
-        self.assertEqual(set(self.store.records), {"health_board_mapping", "ward_map"})
+        self.assertEqual(set(self.store.records), {"health_board_mapping", "pims_to_mpi_codes", "ward_map"})
 
     def test_replace_existing_table_is_visible_immediately(self) -> None:
         response = self.upload("health_board_mapping", HEALTH_BOARD_CSV)
@@ -238,7 +238,7 @@ class HealthTests(unittest.TestCase):
         with TestClient(create_app(make_settings(), store)) as client:
             response = client.get("/health/ready")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "ready", "tables": 2, "source": "memory"})
+        self.assertEqual(response.json(), {"status": "ready", "tables": 3, "source": "memory"})
         # An injected store belongs to the caller, so the app opens but doesn't close it.
         self.assertTrue(store.opened)
         self.assertFalse(store.closed)

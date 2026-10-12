@@ -5,6 +5,16 @@
       "key_columns": ["msh3"],
       "preload": true
     },
+    "pims_to_mpi_codes": {
+      "description": "PIMS to eMPI code translation (from 'PIMS to MPI-Table 1.csv'); a blank mpi_code means leave the field unset",
+      "key_columns": ["code_type", "pims_code"],
+      "default_value_column": "mpi_code",
+      "key_normalisation": {
+        "code_type": {"case": "lower"},
+        "pims_code": {"case": "upper"}
+      },
+      "preload": true
+    },
     "ward_map": {
       "description": "Example composite-key table: illustrative data only, not real ward codes",
       "key_columns": ["sending_facility", "ward_code"],

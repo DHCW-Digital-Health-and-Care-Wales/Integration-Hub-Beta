@@ -170,6 +170,8 @@ Errors report line numbers, never data values.
 The shipped tables are:
 
 - `health_board_mapping`: mirrors `HEALTH_BOARD_MAPPING` in `hl7_chemo_transformer`'s `pid_mapper`;
+- `pims_to_mpi_codes`: PIMS to eMPI gender, marital status, ethnic group and NHS status codes, keyed on
+  `(code_type, pims_code)`; a blank `mpi_code` means the transformer leaves the field unset;
 - `ward_map`: illustrative composite-key data only.
 
 ## Configuration

@@ -225,6 +225,24 @@ class TestPIDMapperReferenceLookups(unittest.TestCase):
         self.assertEqual(get_hl7_field_value(new_message.pid, "pid_22"), "")
         self.assertEqual(get_hl7_field_value(new_message.pid, "pid_32"), "")
 
+    def test_blank_target_code_leaves_field_unset(self) -> None:
+        # A mapping with a blank target (e.g. marital status 'U' -> '') must not populate the field.
+        client = StubLookupClient(
+            {
+                (ReferenceDataset.GENDER, "F"): "F",
+                (ReferenceDataset.MARITAL_STATUS, "M"): "",
+                (ReferenceDataset.ETHNIC_GROUP, "1"): "",
+                (ReferenceDataset.NHS_STATUS, "3"): "",
+            }
+        )
+
+        map_pid(self.original_message, self.new_message, client)
+
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_8"), "F")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_16"), "")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_22"), "")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_32"), "")
+
     def test_failed_lookup_raises_value_error(self) -> None:
         # Scenario 2: an unresolvable / invalid code surfaces as a ValueError so the transformer
         # pipeline logs the message content to monitoring and leaves the message queued.
