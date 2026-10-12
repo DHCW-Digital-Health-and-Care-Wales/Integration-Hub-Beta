@@ -34,6 +34,7 @@ class TestRestMessageProcessor(unittest.TestCase):
         extracted.structure_id = "Document"
         extracted.source_identifier = "partner-x"
         extracted.message_control_id = "msg-1"
+        extracted.message_type = None
         for key, value in overrides.items():
             setattr(extracted, key, value)
         return extracted
@@ -49,6 +50,29 @@ class TestRestMessageProcessor(unittest.TestCase):
         self.mock_validator.validate.assert_called_once()
         self.mock_sender.send_text_message.assert_called_once()
         self.mock_message_store.send_to_store.assert_called_once()
+
+    def test_message_type_is_added_to_properties_when_extracted(self) -> None:
+        for trigger in ("A31", "A40"):
+            with self.subTest(trigger=trigger):
+                self.mock_sender.reset_mock()
+                self.mock_adapter.extract.return_value = self._extracted(message_type=trigger)
+
+                status_code, _ = self.processor.process("<Document/>")
+
+                self.assertEqual(status_code, 200)
+                properties = self.mock_sender.send_text_message.call_args.args[1]
+                self.assertEqual(properties["MessageType"], trigger)
+                self.assertEqual(properties["SourceSystem"], "partner-x")
+                self.assertIn("CorrelationId", properties)
+
+    def test_message_type_is_omitted_when_not_extracted(self) -> None:
+        self.mock_adapter.extract.return_value = self._extracted(message_type=None)
+
+        status_code, _ = self.processor.process("<Document/>")
+
+        self.assertEqual(status_code, 200)
+        properties = self.mock_sender.send_text_message.call_args.args[1]
+        self.assertNotIn("MessageType", properties)
 
     def test_disallowed_source_identifier_returns_403_and_does_not_forward(self) -> None:
         self.mock_adapter.extract.return_value = self._extracted(source_identifier="unknown-source")
