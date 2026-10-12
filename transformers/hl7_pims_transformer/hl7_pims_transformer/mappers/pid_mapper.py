@@ -44,7 +44,8 @@ def _apply_reference_lookups(
     number status, resolved via the reference-data lookup API.
 
     Each field is enriched only when a source value is present; empty or HL7-null source values are
-    left unset. A lookup that fails or returns a malformed code raises
+    left unset, as are fields whose mapping has a blank target code. A lookup that fails or returns a
+    malformed code raises
     ``ReferenceDataLookupError`` (a ``ValueError``), which the transformer pipeline logs to the
     monitoring solution and which leaves the message queued. See the SBU PIMS ADT Mapping Document
     for the authoritative rules.
@@ -52,22 +53,30 @@ def _apply_reference_lookups(
     # PID.8 (Gender): source PID.8 -> target PID.8
     gender_source = get_hl7_field_value(original_pid, "pid_8")
     if not _is_empty_or_hl7_null(gender_source):
-        new_message.pid.pid_8 = lookup_client.lookup(ReferenceDataset.GENDER, gender_source)
+        gender = lookup_client.lookup(ReferenceDataset.GENDER, gender_source)
+        if gender:
+            new_message.pid.pid_8 = gender
 
     # PID.16 (Marital status): source PID.16.CE.1 -> target PID.16.CE.1
     marital_source = get_hl7_field_value(original_pid, "pid_16.ce_1")
     if not _is_empty_or_hl7_null(marital_source):
-        new_message.pid.pid_16.ce_1 = lookup_client.lookup(ReferenceDataset.MARITAL_STATUS, marital_source)
+        marital_status = lookup_client.lookup(ReferenceDataset.MARITAL_STATUS, marital_source)
+        if marital_status:
+            new_message.pid.pid_16.ce_1 = marital_status
 
     # PID.22 (Ethnic group): source PID.22.CE.1 -> target PID.22.CE.1
     ethnicity_source = get_hl7_field_value(original_pid, "pid_22.ce_1")
     if not _is_empty_or_hl7_null(ethnicity_source):
-        new_message.pid.pid_22.ce_1 = lookup_client.lookup(ReferenceDataset.ETHNIC_GROUP, ethnicity_source)
+        ethnic_group = lookup_client.lookup(ReferenceDataset.ETHNIC_GROUP, ethnicity_source)
+        if ethnic_group:
+            new_message.pid.pid_22.ce_1 = ethnic_group
 
     # PID.32 (NHS number status): source PID.3 (NI) CX.2 -> target PID.32
     nhs_status_source = _get_nhs_number_status_source(original_pid)
     if not _is_empty_or_hl7_null(nhs_status_source):
-        new_message.pid.pid_32 = lookup_client.lookup(ReferenceDataset.NHS_STATUS, nhs_status_source)
+        nhs_status = lookup_client.lookup(ReferenceDataset.NHS_STATUS, nhs_status_source)
+        if nhs_status:
+            new_message.pid.pid_32 = nhs_status
 
 
 def map_pid(

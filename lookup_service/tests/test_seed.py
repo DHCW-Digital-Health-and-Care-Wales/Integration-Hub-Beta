@@ -12,7 +12,7 @@ class SeedImportTests(unittest.TestCase):
     def test_imports_all_seed_tables_into_empty_store(self) -> None:
         store = MemoryTableStore()
         imported = asyncio.run(import_missing_seed_tables(store, REPO_SEED_DIR))
-        self.assertEqual(sorted(imported), ["health_board_mapping", "ward_map"])
+        self.assertEqual(sorted(imported), ["health_board_mapping", "pims_to_mpi_codes", "ward_map"])
         self.assertEqual(store.records["health_board_mapping"].stats.last_upload_by, "seed")
         self.assertEqual(store.rows["health_board_mapping"][("224",)].values["health_board"], "VCC")
 
@@ -22,7 +22,7 @@ class SeedImportTests(unittest.TestCase):
                                          value_columns=("health_board",), default_value_column="health_board"),
                         [make_row("224", health_board="UPLOADED")])
         imported = asyncio.run(import_missing_seed_tables(store, REPO_SEED_DIR))
-        self.assertEqual(imported, ["ward_map"])
+        self.assertEqual(imported, ["pims_to_mpi_codes", "ward_map"])
         self.assertEqual(store.rows["health_board_mapping"][("224",)].values["health_board"], "UPLOADED")
 
     def test_read_only_store_is_skipped(self) -> None:
