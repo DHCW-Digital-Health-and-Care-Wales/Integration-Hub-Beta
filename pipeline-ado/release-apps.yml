@@ -35,6 +35,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
+      - LIMS HL7 Sender
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
       - HL7 WDS Transformer
