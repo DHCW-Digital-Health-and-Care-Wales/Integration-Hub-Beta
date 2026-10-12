@@ -1,12 +1,13 @@
 import logging
 from contextlib import AbstractContextManager
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from azure.servicebus import (
     AutoLockRenewer,
     ServiceBusClient,
     ServiceBusReceiveMode,
     ServiceBusReceiver,
+    ServiceBusSessionFilter,
 )
 
 from message_bus_lib.message_receiver_client import MessageReceiverClient
@@ -20,7 +21,7 @@ class SubscriptionReceiverClient(MessageReceiverClient):
         sb_client: ServiceBusClient,
         topic_name: str,
         subscription_name: str,
-        session_id: Optional[str] = None,
+        session_id: Optional[Union[str, ServiceBusSessionFilter]] = None,
         recreate_sb_client: Optional[Callable[[], ServiceBusClient]] = None,
     ):
         super().__init__(

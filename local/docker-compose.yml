@@ -329,15 +329,6 @@ services:
     depends_on:
       - sb-emulator
     profiles:
-      - phw-to-mpi
-      - pms-soap-to-mpi
-      - paris-to-mpi
-      - chemo-to-mpi
-      - pims-to-mpi
-      - mosaiq-to-mpi
-      - wds-to-mpi
-      - risp-to-mpi
-      - wpas-to-proms
       - mpi-to-topic
       - everything
     networks:
@@ -361,6 +352,15 @@ services:
     depends_on:
       - sb-emulator
     profiles:
+      - phw-to-mpi
+      - pms-soap-to-mpi
+      - paris-to-mpi
+      - chemo-to-mpi
+      - pims-to-mpi
+      - mosaiq-to-mpi
+      - wds-to-mpi
+      - risp-to-mpi
+      - wpas-to-proms
       - lims-to-mpi
       - topic-mock-receiver
       - everything
