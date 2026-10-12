@@ -32,6 +32,7 @@ parameters:
       - PHW HL7 Subscription Sender
       - PHW TO MPI HL7 Sender
       - Mosaiq TO MPI HL7 Sender
+      - RISP MPI Priority HL7 Sender
       - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
@@ -305,6 +306,18 @@ stages:
           appImageName: 'hl7sender'
           appFunctionMidfix: 'mosaiq'
           buildPipeline: 'HL7 Sender - Build'
+        - name: 'RISP MPI Priority HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'risp-mpi-priority'
+          buildPipeline: 'HL7 Sender - Build'
+
+        # LIMS SOAP Server (rest_server image, LIMS flow instance; container app uks-<env>-lims-hl7soapserver-ca).
+        # Migrated from the legacy hl7_soap_server package (strict XSD-only validation) to rest_server's
+        # generic pipeline with VALIDATOR_TYPE=hl7apy, matching local docker-compose's hl7-soap-server.
+        - name: 'LIMS HL7 SOAP Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'REST Server - Build'
 
         - name: 'LIMS HL7 Sender'
           appImageName: 'hl7sender'
