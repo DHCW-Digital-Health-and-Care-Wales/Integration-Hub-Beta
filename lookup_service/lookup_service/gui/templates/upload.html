@@ -59,8 +59,13 @@
           {% for case in key_cases %}<option value="{{ case }}" {% if fields.get('key_case', 'preserve') == case %}selected{% endif %}>{{ case }}</option>{% endfor %}
         </select>
       </label>
-      <label class="cfg-label">Cache TTL seconds (blank = {{ default_ttl_seconds }})
-        <input class="dash-input" type="number" min="1" name="ttl_seconds" value="{{ fields.get('ttl_seconds', '') }}" />
+      <label class="cfg-label">Cache TTL (blank = {{ default_ttl_seconds | ttl }})
+        <span class="ttl-input">
+          <input class="dash-input" type="number" min="1" name="ttl_value" value="{{ fields.get('ttl_value', '') }}" />
+          <select class="dash-input" name="ttl_unit" aria-label="TTL unit">
+            {% for unit in ttl_units %}<option value="{{ unit }}" {% if fields.get('ttl_unit', 'seconds') == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}
+          </select>
+        </span>
       </label>
       <label class="cfg-check"><input type="checkbox" name="preload" {% if fields.get('preload') %}checked{% endif %} /> Preload whole table into memory</label>
     </div>

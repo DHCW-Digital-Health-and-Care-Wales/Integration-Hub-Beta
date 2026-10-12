@@ -124,6 +124,10 @@ class FileTableStore:
         raise ReadOnlyStoreError("Tables are served from seed files; configure COSMOS_ENDPOINT to enable uploads",
                                  definition.name)
 
+    async def update_definition(self, definition: TableDefinition) -> None:
+        raise ReadOnlyStoreError("Tables are served from seed files; configure COSMOS_ENDPOINT to enable edits",
+                                 definition.name)
+
 
 def _read_manifest(seed_dir: Path) -> dict[str, dict[str, Any]]:
     path = seed_dir / MANIFEST_NAME

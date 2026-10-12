@@ -60,6 +60,15 @@ class TableDefinition(BaseModel):
         return self.key_normalisation.get(key_column, DEFAULT_KEY_PART_RULE)
 
 
+class TableSettingsUpdate(BaseModel):
+    """Partial update: only fields present in the request are changed; `ttl_seconds: null` resets to the default."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ttl_seconds: int | None = Field(default=None, ge=1, le=MAX_TTL_SECONDS)
+    preload: bool = False
+
+
 class TableStats(BaseModel):
     row_count: int = 0
     last_upload_at: datetime | None = None

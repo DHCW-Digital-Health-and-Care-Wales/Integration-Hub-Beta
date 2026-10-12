@@ -198,6 +198,9 @@ details summary { cursor: pointer; color: var(--accent-blue); font-size: 0.9rem;
 .search-form { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
 .pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; }
 a.btn-dash { text-decoration: none; display: inline-block; }
+.ttl-input { display: flex; gap: 8px; }
+.ttl-input input { min-width: 100px; width: 120px; }
+.ttl-input select { min-width: 110px; }
 
 /* ── Alerts ──────────────────────────────────────────────────────────── */
 .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid transparent; }

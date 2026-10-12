@@ -60,6 +60,7 @@ docker compose --profile lookup up -d --build lookup-service      # http://local
 | `GET` | `/api/v1/tables/{table}` | One table, including key normalisation rules |
 | `GET` | `/api/v1/tables/{table}/rows?search=&offset=&limit=` | Rows ordered by key; `search` is a case-insensitive key substring; `limit` ≤ 200 |
 | `POST` | `/api/v1/tables/{table}/uploads` | Replace a table from a CSV (multipart); see below |
+| `PATCH` | `/api/v1/tables/{table}` | Change `ttl_seconds` (whole seconds, 1 to 7 days; `null` = service default) and/or `preload` without re-uploading; same write rules as uploads. The GUI table page offers the same with a seconds/minutes/hours/days unit |
 | `GET` | `/health/live` | Liveness (no dependency checks) |
 | `GET` | `/health/ready` | Readiness: `200` once tables are loaded and preloaded, otherwise `503` |
 

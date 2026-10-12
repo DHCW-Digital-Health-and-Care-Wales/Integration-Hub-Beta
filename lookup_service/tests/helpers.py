@@ -107,6 +107,11 @@ class MemoryTableStore:
         )
         return ReplaceResult(upserted=len(new_rows), removed=len(existing - set(new_rows)))
 
+    async def update_definition(self, definition: TableDefinition) -> None:
+        if not self.writable:
+            raise ReadOnlyStoreError("read-only", definition.name)
+        self.records[definition.name] = self.records[definition.name].model_copy(update={"definition": definition})
+
 
 def codes_definition(**overrides: Any) -> TableDefinition:
     fields: dict[str, Any] = {"name": "codes", "key_columns": ("code",), "value_columns": ("label",),

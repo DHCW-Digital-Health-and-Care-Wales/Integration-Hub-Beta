@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from lookup_service.app import create_app
 from tests.helpers import MemoryTableStore, SeedDirTestCase, codes_definition, make_row, make_settings
@@ -104,8 +105,8 @@ class UploadPageTests(unittest.TestCase):
     def test_create_table_redirects_to_table_page(self) -> None:
         response = self.client.post(
             "/upload",
-            data={"table": "discharge_reason", "key_columns": "code", "key_case": "upper", "ttl_seconds": "120",
-                  "preload": "on", "description": "Discharge reasons"},
+            data={"table": "discharge_reason", "key_columns": "code", "key_case": "upper", "ttl_value": "2",
+                  "ttl_unit": "minutes", "preload": "on", "description": "Discharge reasons"},
             files={"file": ("reasons.csv", b"code,text\na,Home\n", "text/csv")},
             follow_redirects=False,
         )
@@ -140,7 +141,7 @@ class UploadPageTests(unittest.TestCase):
         self.assertIn("Choose a CSV file", response.text)
 
     def test_invalid_ttl(self) -> None:
-        response = self.client.post("/upload", data={"table": "newtable", "ttl_seconds": "soon"},
+        response = self.client.post("/upload", data={"table": "newtable", "ttl_value": "soon"},
                                     files={"file": ("x.csv", b"a,b\n1,2\n", "text/csv")})
         self.assertEqual(response.status_code, 422)
         self.assertIn("TTL must be a whole number", response.text)
@@ -150,6 +151,53 @@ class UploadPageTests(unittest.TestCase):
             response = client.post("/upload", data={"table": "x"}, files={"file": ("x.csv", b"a,b\n1,2\n", "text/csv")})
             self.assertEqual(response.status_code, 403)
             self.assertIn("Uploads are disabled", client.get("/upload").text)
+
+
+class TableSettingsFormTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.store = MemoryTableStore()
+        self.client = self.enterContext(TestClient(create_app(make_settings(), self.store)))
+
+    def save(self, **data: str) -> Response:
+        return self.client.post("/tables/ward_map/settings", data=data, follow_redirects=False)
+
+    def test_form_shown_prefilled_with_split_ttl(self) -> None:
+        self.save(ttl_value="2", ttl_unit="hours")
+        page = self.client.get("/tables/ward_map").text
+        self.assertIn('action="http://testserver/tables/ward_map/settings"', page)
+        self.assertIn('name="ttl_value" value="2"', page)
+        self.assertIn('<option value="hours" selected>', page)
+
+    def test_each_unit_converts_to_seconds(self) -> None:
+        for unit, expected in (("seconds", 5), ("minutes", 300), ("hours", 18000), ("days", 432000)):
+            with self.subTest(unit=unit):
+                response = self.save(ttl_value="5", ttl_unit=unit)
+                self.assertEqual(response.status_code, 303, response.text)
+                self.assertEqual(self.store.records["ward_map"].definition.ttl_seconds, expected)
+        self.assertTrue(response.headers["location"].endswith("/tables/ward_map?saved=1"))
+
+    def test_preload_and_blank_ttl(self) -> None:
+        self.save(ttl_value="", ttl_unit="hours", preload="on")
+        definition = self.store.records["ward_map"].definition
+        self.assertEqual((definition.ttl_seconds, definition.preload), (None, True))
+        self.assertIn("Preloaded", self.client.get("/tables/ward_map?saved=1").text)
+        self.assertIn("Cache settings saved", self.client.get("/tables/ward_map?saved=1").text)
+
+    def test_invalid_values_rerender_with_error(self) -> None:
+        for data in ({"ttl_value": "soon"}, {"ttl_value": "0"}, {"ttl_value": "8", "ttl_unit": "days"},
+                     {"ttl_value": "1", "ttl_unit": "weeks"}):
+            with self.subTest(data=data):
+                response = self.save(**data)
+                self.assertEqual(response.status_code, 422)
+                self.assertIn("invalid_settings", response.text)
+        self.assertIsNone(self.store.records["ward_map"].definition.ttl_seconds)
+
+    def test_hidden_and_rejected_when_read_only(self) -> None:
+        with TestClient(create_app(make_settings())) as client:
+            self.assertNotIn("Cache settings", client.get("/tables/ward_map").text)
+            response = client.post("/tables/ward_map/settings", data={"preload": "on"}, follow_redirects=False)
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(client.post("/tables/nope/settings", data={}).status_code, 404)
 
 
 class EscapingTests(SeedDirTestCase):

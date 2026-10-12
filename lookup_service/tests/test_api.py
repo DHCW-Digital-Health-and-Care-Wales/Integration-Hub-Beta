@@ -182,6 +182,43 @@ class UploadApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 413)
 
 
+class SettingsApiTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.store = MemoryTableStore()
+        self.client = self.enterContext(TestClient(create_app(make_settings(), self.store)))
+
+    def test_patch_changes_ttl_and_preload_and_keeps_rows(self) -> None:
+        response = self.client.patch("/api/v1/tables/ward_map", json={"ttl_seconds": 7200, "preload": True})
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual((body["preload"], body["cache"]["mode"], body["row_count"]), (True, "preloaded", 3))
+        self.assertEqual(self.store.records["ward_map"].definition.ttl_seconds, 7200)
+        self.assertEqual(self.client.get("/api/v1/lookup/ward_map?k=FAC1&k=W1").json()["value"], "7A1-W001")
+
+    def test_patch_only_changes_supplied_fields(self) -> None:
+        self.client.patch("/api/v1/tables/health_board_mapping", json={"ttl_seconds": 60})
+        definition = self.store.records["health_board_mapping"].definition
+        self.assertEqual((definition.ttl_seconds, definition.preload), (60, True))
+        self.client.patch("/api/v1/tables/health_board_mapping", json={"ttl_seconds": None})
+        self.assertIsNone(self.store.records["health_board_mapping"].definition.ttl_seconds)
+
+    def test_patch_validation(self) -> None:
+        for body in ({"ttl_seconds": 0}, {"ttl_seconds": 8 * 86400}, {"key_columns": ["x"]}):
+            with self.subTest(body=body):
+                self.assertEqual(self.client.patch("/api/v1/tables/ward_map", json=body).status_code, 422)
+        self.assertEqual(self.client.patch("/api/v1/tables/nope", json={"preload": True}).status_code, 404)
+
+    def test_patch_rejected_for_read_only_store(self) -> None:
+        with TestClient(create_app(make_settings())) as client:
+            response = client.patch("/api/v1/tables/ward_map", json={"preload": True})
+        self.assertEqual((response.status_code, response.json()["error"]), (409, "read_only"))
+
+    def test_patch_forbidden_outside_local(self) -> None:
+        with TestClient(create_app(make_settings(environment="DEV"), MemoryTableStore())) as client:
+            response = client.patch("/api/v1/tables/ward_map", json={"preload": True})
+        self.assertEqual(response.status_code, 403)
+
+
 class WritesDisabledTests(unittest.TestCase):
     def test_uploads_forbidden_outside_local(self) -> None:
         with TestClient(create_app(make_settings(environment="DEV"), MemoryTableStore())) as client:

@@ -13,14 +13,22 @@ from lookup_service import __version__
 from lookup_service.api.dependencies import get_resolver, get_settings
 from lookup_service.api.tables import read_upload
 from lookup_service.config import Settings
-from lookup_service.errors import InvalidUploadError, LookupServiceError
+from lookup_service.errors import InvalidSettingsError, InvalidUploadError, LookupServiceError
 from lookup_service.models import LookupResult
 from lookup_service.resolver import NAMED_KEY_PREFIX, LookupResolver, named_key_params
-from lookup_service.table_admin import UploadRequest, ensure_writes_allowed, replace_table_from_csv
+from lookup_service.table_admin import (
+    UploadRequest,
+    ensure_writes_allowed,
+    replace_table_from_csv,
+    update_table_settings,
+)
+from lookup_service.ttl import TTL_UNITS, format_ttl, split_ttl, ttl_to_seconds
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent / "templates")
 templates.env.globals["asset_version"] = __version__
+templates.env.globals["split_ttl"] = split_ttl
+templates.env.filters["ttl"] = format_ttl
 
 PAGE_SIZE = 50
 KEY_CASES = ("preserve", "upper", "lower")
@@ -69,6 +77,7 @@ async def table_page(
     search: Annotated[str | None, Query(max_length=200)] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     uploaded: int | None = None,
+    saved: int | None = None,
 ) -> HTMLResponse:
     """Table detail: definition, stats, a lookup tester (plain GET form) and paged, searchable rows."""
     if not resolver.has_table(table):
@@ -84,20 +93,61 @@ async def table_page(
         except LookupServiceError as exc:
             error = exc
 
+    return await _render_table(request, table, resolver, settings, search or "", page, {
+        "result": result, "error": error, "submitted": submitted, "uploaded": uploaded, "saved": saved,
+    })
+
+
+@router.post("/tables/{table}/settings", response_class=HTMLResponse, name="table_settings_submit")
+async def table_settings_submit(
+    request: Request,
+    table: str,
+    resolver: Annotated[LookupResolver, Depends(get_resolver)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    # No CSRF token yet: writes are only enabled for ENVIRONMENT=LOCAL until Phase 2 adds auth + CSRF.
+    if not resolver.has_table(table):
+        return _render(request, "not_found.html", {"table": table}, status_code=404)
+    form = await request.form(max_fields=10)
+    fields = {name: value for name, value in form.items() if isinstance(value, str)}
+    try:
+        await update_table_settings(settings, resolver, table, _settings_from_form(fields, table))
+    except LookupServiceError as exc:
+        return await _render_table(request, table, resolver, settings, "", 1, {
+            "result": None, "error": None, "submitted": {}, "uploaded": None, "saved": None,
+            "settings_error": exc, "settings_fields": fields,
+        }, status_code=exc.status_code)
+    target = request.url_for("table_page", table=table).include_query_params(saved=1)
+    return RedirectResponse(str(target), status_code=303)
+
+
+async def _render_table(
+    request: Request,
+    table: str,
+    resolver: LookupResolver,
+    settings: Settings,
+    search: str,
+    page: int,
+    extra: dict[str, Any],
+    status_code: int = 200,
+) -> HTMLResponse:
     rows, total = await resolver.store.query_rows(table, search or None, (page - 1) * PAGE_SIZE, PAGE_SIZE)
-    return _render(request, "table.html", {
+    context: dict[str, Any] = {
         "table": resolver.detail(table),
+        "configured_ttl": resolver.definition(table).ttl_seconds,
         "rows": rows,
         "total": total,
         "page": page,
         "pages": max(1, math.ceil(total / PAGE_SIZE)),
-        "search": search or "",
-        "result": result,
-        "error": error,
-        "submitted": submitted,
-        "uploaded": uploaded,
+        "search": search,
         "uploads_blocked": _uploads_blocked_reason(settings, resolver),
-    })
+        "settings_error": None,
+        "settings_fields": None,
+        "ttl_units": tuple(reversed(TTL_UNITS)),
+        "default_ttl_seconds": settings.default_ttl_seconds,
+    }
+    context.update(extra)
+    return _render(request, "table.html", context, status_code=status_code)
 
 
 @router.get("/upload", response_class=HTMLResponse, name="upload_page")
@@ -148,6 +198,7 @@ def _upload_context(resolver: LookupResolver, settings: Settings, fields: dict[s
         "tables": resolver.summaries(),
         "fields": fields,
         "key_cases": KEY_CASES,
+        "ttl_units": tuple(reversed(TTL_UNITS)),
         "max_upload_mb": settings.max_upload_mb,
         "default_ttl_seconds": settings.default_ttl_seconds,
         "uploads_blocked": _uploads_blocked_reason(settings, resolver),
@@ -164,11 +215,7 @@ def _definition_from_form(fields: dict[str, str]) -> dict[str, Any]:
     case = fields.get("key_case", "preserve")
     if case not in KEY_CASES:
         raise _form_error("Key case must be one of " + ", ".join(KEY_CASES), fields.get("table"))
-    ttl_raw = fields.get("ttl_seconds", "").strip()
-    try:
-        ttl_seconds = int(ttl_raw) if ttl_raw else None
-    except ValueError as exc:
-        raise _form_error("TTL must be a whole number of seconds", fields.get("table")) from exc
+    ttl_seconds = _ttl_from_form(fields, fields.get("table"))
     return {
         "description": fields.get("description", "").strip(),
         "key_columns": key_columns,
@@ -178,6 +225,22 @@ def _definition_from_form(fields: dict[str, str]) -> dict[str, Any]:
         "ttl_seconds": ttl_seconds,
         "preload": fields.get("preload") == "on",
     }
+
+
+def _ttl_from_form(fields: dict[str, str], table: str | None) -> int | None:
+    """TTL in seconds from `ttl_value` + `ttl_unit`; a blank value means the service default (None)."""
+    raw = fields.get("ttl_value", "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise InvalidSettingsError("TTL must be a whole number", table or None) from exc
+    return ttl_to_seconds(value, fields.get("ttl_unit", "seconds"), table or None)
+
+
+def _settings_from_form(fields: dict[str, str], table: str) -> dict[str, Any]:
+    return {"ttl_seconds": _ttl_from_form(fields, table), "preload": fields.get("preload") == "on"}
 
 
 def _split_columns(raw: str) -> list[str]:

@@ -15,13 +15,14 @@ from pydantic import ValidationError
 from lookup_service.config import Settings
 from lookup_service.csv_import import build_definition, decode_csv_bytes, import_rows, read_csv
 from lookup_service.errors import (
+    InvalidSettingsError,
     InvalidUploadError,
     ReadOnlyStoreError,
     UploadTooLargeError,
     WritesDisabledError,
 )
 from lookup_service.mapping.model import RecordMapping
-from lookup_service.models import TABLE_NAME_PATTERN, UploadInfo, UploadResult
+from lookup_service.models import TABLE_NAME_PATTERN, TableDefinition, UploadInfo, UploadResult
 from lookup_service.resolver import LookupResolver
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Replaced by the authenticated principal in Phase 2.
 ANONYMOUS_ACTOR = "unauthenticated"
 MAX_FILE_NAME_LENGTH = 200
+EDITABLE_SETTINGS = frozenset({"ttl_seconds", "preload"})
 _TABLE_NAME_RE = re.compile(TABLE_NAME_PATTERN)
 
 
@@ -94,6 +96,26 @@ async def replace_table_from_csv(settings: Settings, resolver: LookupResolver, r
                 duration_ms)
     return UploadResult(table=table, row_count=len(result.rows), upserted=replaced.upserted, removed=replaced.removed,
                         duration_ms=duration_ms, created=created)
+
+
+async def update_table_settings(
+    settings: Settings, resolver: LookupResolver, table: str, changes: Mapping[str, Any]
+) -> None:
+    """Change `ttl_seconds` and/or `preload` without touching rows; `ttl_seconds=None` resets to the default."""
+    ensure_writes_allowed(settings, resolver)
+    unknown = set(changes) - EDITABLE_SETTINGS
+    if unknown:
+        raise InvalidSettingsError(f"Cannot change: {sorted(unknown)}", table)
+    async with resolver.upload_lock:
+        current = resolver.definition(table)
+        try:
+            definition = TableDefinition.model_validate({**current.model_dump(), **changes})
+        except ValidationError as exc:
+            raise InvalidSettingsError("The settings are invalid; nothing was changed", table,
+                                       _validation_messages(exc)) from exc
+        await resolver.store.update_definition(definition)
+        await resolver.refresh_table(table)
+    logger.info("Updated settings of table %s: %s", table, sorted(changes))
 
 
 def _safe_file_name(request: UploadRequest) -> str | None:

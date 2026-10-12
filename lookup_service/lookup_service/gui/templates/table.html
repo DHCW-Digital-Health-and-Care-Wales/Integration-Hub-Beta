@@ -15,11 +15,14 @@
 {% if uploaded is not none %}
 <div class="alert alert--ok">Upload complete: {{ uploaded }} row(s) loaded.</div>
 {% endif %}
+{% if saved is not none %}
+<div class="alert alert--ok">Cache settings saved.</div>
+{% endif %}
 
 <section class="kpi-strip">
   <div class="kpi-card"><div class="kpi-card__value">{{ table.row_count }}</div><div class="kpi-card__label">Rows</div></div>
   <div class="kpi-card">
-    <div class="kpi-card__value">{% if table.preload %}Preloaded{% else %}{{ table.ttl_seconds }}s{% endif %}</div>
+    <div class="kpi-card__value">{% if table.preload %}Preloaded{% else %}{{ table.ttl_seconds | ttl }}{% endif %}</div>
     <div class="kpi-card__label">{% if table.preload %}Whole table in memory{% else %}Cache TTL{% endif %}</div>
   </div>
   <div class="kpi-card">
@@ -31,6 +34,42 @@
     <div class="kpi-card__label">Last upload (UTC){% if table.last_upload_by %} · {{ table.last_upload_by }}{% endif %}</div>
   </div>
 </section>
+
+{% if not uploads_blocked %}
+{% if settings_fields is not none %}
+  {% set ttl_value = settings_fields.get('ttl_value', '') %}
+  {% set ttl_unit = settings_fields.get('ttl_unit', 'seconds') %}
+  {% set preload_on = settings_fields.get('preload') == 'on' %}
+{% elif configured_ttl %}
+  {% set ttl_parts = split_ttl(configured_ttl) %}
+  {% set ttl_value = ttl_parts[0] %}
+  {% set ttl_unit = ttl_parts[1] %}
+  {% set preload_on = table.preload %}
+{% else %}
+  {% set ttl_value = '' %}
+  {% set ttl_unit = 'seconds' %}
+  {% set preload_on = table.preload %}
+{% endif %}
+<section id="settings" class="dash-card {{ 'dash-card--error' if settings_error else '' }}">
+  <h2 class="dash-card__title">Cache settings</h2>
+  {% if settings_error %}
+    <p class="result-error"><span class="badge badge--error">{{ settings_error.error_code }}</span> {{ settings_error.detail }}</p>
+    {% if settings_error.errors %}<ul class="error-list">{% for message in settings_error.errors %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
+  <form class="tester-form" method="post" action="{{ url_for('table_settings_submit', table=table.name) }}">
+    <label class="cfg-label">Cache TTL (blank = service default, {{ default_ttl_seconds | ttl }})
+      <span class="ttl-input">
+        <input class="dash-input" type="number" min="1" name="ttl_value" value="{{ ttl_value }}" />
+        <select class="dash-input" name="ttl_unit" aria-label="TTL unit">
+          {% for unit in ttl_units %}<option value="{{ unit }}" {% if unit == ttl_unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}
+        </select>
+      </span>
+    </label>
+    <label class="cfg-check"><input type="checkbox" name="preload" {% if preload_on %}checked{% endif %} /> Preload whole table into memory (TTL is not used while preloaded)</label>
+    <button class="btn-dash btn-dash--primary" type="submit">Save</button>
+  </form>
+</section>
+{% endif %}
 
 <div class="grid-2">
   <section class="dash-card">

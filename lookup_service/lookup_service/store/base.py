@@ -44,3 +44,7 @@ class TableStore(Protocol):
     ) -> ReplaceResult:
         """Replace a table's definition and rows. Raises ReadOnlyStoreError when the store is read-only."""
         ...
+
+    async def update_definition(self, definition: TableDefinition) -> None:
+        """Replace a table's definition only, keeping rows and stats. Raises ReadOnlyStoreError when read-only."""
+        ...

@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any, TypeVar
 
+from azure.core import MatchConditions
 from azure.core.exceptions import AzureError
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import ContainerProxy, CosmosClient
@@ -27,7 +28,7 @@ from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from azure.identity.aio import DefaultAzureCredential
 
 from lookup_service.config import Settings
-from lookup_service.errors import BackendUnavailableError
+from lookup_service.errors import BackendUnavailableError, TableNotFoundError
 from lookup_service.keys import encode_row_id, key_text
 from lookup_service.models import Row, TableDefinition, TableRecord, TableStats, UploadInfo
 from lookup_service.store.base import ReplaceResult
@@ -176,6 +177,18 @@ class CosmosTableStore:
         except AzureError as exc:
             raise _unavailable(exc, table) from exc
         return ReplaceResult(upserted=len(docs), removed=len(stale_ids))
+
+    async def update_definition(self, definition: TableDefinition) -> None:
+        table = definition.name
+        try:
+            doc = await self._config_container.read_item(item=_config_id(table), partition_key=CONFIG_TABLE_PK)
+            doc["definition"] = definition.model_dump(mode="json")
+            await self._config_container.replace_item(item=doc["id"], body=doc, etag=doc.get("_etag"),
+                                                      match_condition=MatchConditions.IfNotModified)
+        except CosmosResourceNotFoundError as exc:
+            raise TableNotFoundError(f"Table {table!r} does not exist", table) from exc
+        except AzureError as exc:
+            raise _unavailable(exc, table) from exc
 
     async def _execute_batch(self, table: str, operations: list[tuple[str, tuple[Any, ...]]]) -> None:
         await self._rows_container.execute_item_batch(batch_operations=operations, partition_key=table)

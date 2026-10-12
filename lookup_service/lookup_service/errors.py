@@ -34,6 +34,11 @@ class InvalidUploadError(LookupServiceError):
     error_code = "invalid_upload"
 
 
+class InvalidSettingsError(LookupServiceError):
+    status_code = 422
+    error_code = "invalid_settings"
+
+
 class UploadTooLargeError(LookupServiceError):
     status_code = 413
     error_code = "upload_too_large"

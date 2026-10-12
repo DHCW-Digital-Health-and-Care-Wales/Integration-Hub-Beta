@@ -11,9 +11,22 @@ from lookup_service.api.dependencies import get_resolver, get_settings
 from lookup_service.config import Settings
 from lookup_service.errors import InvalidUploadError, UploadTooLargeError
 from lookup_service.mapping.model import RecordMapping
-from lookup_service.models import ErrorResponse, RowOut, RowsPage, TableDetail, TableSummary, UploadResult
+from lookup_service.models import (
+    ErrorResponse,
+    RowOut,
+    RowsPage,
+    TableDetail,
+    TableSettingsUpdate,
+    TableSummary,
+    UploadResult,
+)
 from lookup_service.resolver import LookupResolver
-from lookup_service.table_admin import UploadRequest, ensure_writes_allowed, replace_table_from_csv
+from lookup_service.table_admin import (
+    UploadRequest,
+    ensure_writes_allowed,
+    replace_table_from_csv,
+    update_table_settings,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["tables"])
 
@@ -34,6 +47,21 @@ async def list_tables(resolver: Annotated[LookupResolver, Depends(get_resolver)]
 
 @router.get("/tables/{table}", response_model=TableDetail, responses={404: {"model": ErrorResponse}})
 async def get_table(table: str, resolver: Annotated[LookupResolver, Depends(get_resolver)]) -> TableDetail:
+    return resolver.detail(table)
+
+
+@router.patch("/tables/{table}", response_model=TableDetail, responses={404: {"model": ErrorResponse},
+                                                                       **_UPLOAD_ERRORS})
+async def update_table(
+    table: str,
+    body: TableSettingsUpdate,
+    resolver: Annotated[LookupResolver, Depends(get_resolver)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> TableDetail:
+    """Change a table's cache settings (`ttl_seconds`, `preload`) without re-uploading its rows."""
+    resolver.definition(table)
+    changes = body.model_dump(include=body.model_fields_set)
+    await update_table_settings(settings, resolver, table, changes)
     return resolver.detail(table)
 
 
