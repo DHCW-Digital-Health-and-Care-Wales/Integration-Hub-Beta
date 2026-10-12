@@ -620,6 +620,37 @@ services:
         aliases:
           - "buswatch"
 
+  # Lookup service: tables in the Cosmos emulator (seeded from lookup_service/seed on first start),
+  # CSV upload via the GUI at http://localhost:8090/ - see lookup_service/README.md.
+  # Restarts until the emulator is ready (first start takes ~1 minute).
+  lookup-service:
+    container_name: lookup-service
+    build:
+      context: ../lookup_service
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+    env_file:
+      - ./env/lookup/lookup-service.env
+    ports:
+      - "127.0.0.1:8090:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health/ready', timeout=2).status == 200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: on-failure
+    depends_on:
+      - cosmos-emulator
+    profiles:
+      - lookup
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "lookup-service"
+
   # Azure Cosmos DB emulator - persistence backend for the NOC dashboard.
   # First start pulls a ~1GB image and takes ~1 minute to become healthy.
   cosmos-emulator:
@@ -645,6 +676,7 @@ services:
     restart: unless-stopped
     profiles:
       - dashboard
+      - lookup
       - everything
     networks:
       integration-hub:
