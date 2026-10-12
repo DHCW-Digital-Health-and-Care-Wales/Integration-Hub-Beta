@@ -324,7 +324,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/senders/mpi-hl7-sender.env**        | MPI HL7 Sender              | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver`, `MAX_MESSAGES_PER_MINUTE=30` |
 | **env/senders/risp-mpi-hl7-sender.env**   | RISP HL7 Sender             | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver (queue-based; only used by mpi-to-topic now) | `PORT=2576`, `EGRESS_QUEUE_NAME`                             |
-| **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver (destination for mpi-hl7-sender and lims-mpi-hl7-sender) | `PORT=2581`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID` |
+| **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver (destination for mpi-hl7-sender, lims-mpi-hl7-sender and pims-hl7-sender) | `PORT=2581`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID` |
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/transformers/lims-wrrs-hl7-transformer.env** | LIMS WRRS HL7 Transformer | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`, optional `MAPPING_TYPE_NHS_ID_UPDATE`/`MAPPING_TYPE_A40` |
