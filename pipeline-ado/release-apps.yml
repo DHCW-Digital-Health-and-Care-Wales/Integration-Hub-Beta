@@ -35,6 +35,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
+      - LIMS HL7 Sender
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
       - HL7 WDS Transformer
@@ -212,6 +213,16 @@ stages:
           appFunctionMidfix: 'risp'
           buildPipeline: 'REST Server - Build'
 
+        - name: 'LIMS HL7 SOAP Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'REST Server - Build'
+
+        - name: 'PMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 SOAP Server - Build'          
+
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           appImageName: 'phw-hl7transformer'
@@ -289,26 +300,18 @@ stages:
           appFunctionMidfix: 'phw-to-mpi'
           buildPipeline: 'HL7 Sender - Build'
 
-        # LIMS SOAP Server (rest_server image, LIMS flow instance; container app uks-<env>-lims-hl7soapserver-ca).
-        # Migrated from the legacy hl7_soap_server package (strict XSD-only validation) to rest_server's
-        # generic pipeline with VALIDATOR_TYPE=hl7apy, matching local docker-compose's hl7-soap-server.
-        - name: 'LIMS HL7 SOAP Server'
-          appImageName: 'restserver'
+        - name: 'LIMS HL7 Sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'lims'
-          buildPipeline: 'REST Server - Build'
-
-        # PMS SOAP Server
-        - name: 'PMS HL7 SOAP Server'
-          appImageName: 'hl7soapserver'
-          appFunctionMidfix: 'pms'
-          buildPipeline: 'HL7 SOAP Server - Build'
+          buildPipeline: 'HL7 Sender - Build'
 
         # WDS to WIS Flow
         - name: 'WIS SOAP Sender'
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
           buildPipeline: 'SOAP Sender - Build'
-        # Mock Receiver
+
+        # Mock Receivers
         - name: 'HL7 Mock Receiver'
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''

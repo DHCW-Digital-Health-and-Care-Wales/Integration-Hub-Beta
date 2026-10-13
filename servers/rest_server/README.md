@@ -77,7 +77,9 @@ variable blocks for each case.
   identifier is located in the payload via `SOURCE_IDENTIFIER_LOCATOR`.
 - Formats the outbound payload (`OUTPUT_FORMAT`): `er7` (convert HL7 XML to ER7) or `raw` (publish
   the validated payload unchanged).
-- Publishes to the configured Service Bus queue/topic and persists to the message store.
+- Publishes to the configured Service Bus queue/topic and persists to the message store. With the
+  `soap` adapter, the HL7 trigger event (MSH.9.2, e.g. `A31`) is also set as a `MessageType`
+  application property when present, so subscriptions can filter on it.
 - Returns a response built by the same content adapter (SOAP success/fault envelope for `soap`,
   simple XML ack/error for `xml-raw`).
 
