@@ -303,7 +303,7 @@ stages:
 
         - name: 'Mosaiq TO MPI HL7 Sender'
           appImageName: 'hl7sender'
-          appFunctionMidfix: 'mosaiq-to-mpi'
+          appFunctionMidfix: 'mosaiq'
           buildPipeline: 'HL7 Sender - Build'
 
         - name: 'LIMS HL7 Sender'
