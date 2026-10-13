@@ -28,8 +28,12 @@ def is_socket_closed(sock: socket.socket) -> bool:
     except ConnectionResetError:
         return True  # socket was closed for some other reason
     except Exception:
+        # If we can't even determine the socket's state (e.g. a ValueError from select()
+        # on an already-invalid/closed file descriptor), the safe assumption is that it's
+        # unusable - treat it as closed so send_message() reconnects, rather than reusing
+        # a dead socket and failing the send outright.
         logger.exception("unexpected exception when checking if a socket is closed")
-        return False
+        return True
 
 class HL7SenderClient:
 
