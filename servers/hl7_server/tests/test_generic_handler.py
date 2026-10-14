@@ -117,6 +117,36 @@ class TestGenericHandler(unittest.TestCase):
         # MSH-10 control ID is used as Service Bus message_id for broker-level deduplication
         self.assertEqual(call_args.kwargs.get("message_id"), "202505052323364444")
 
+    @patch("hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS", {})
+    @patch("hl7_server.generic_handler.build_routing_properties")
+    def test_routing_properties_attached_for_flow_without_specific_builder(
+        self, mock_build_routing: MagicMock
+    ) -> None:
+        mock_build_routing.return_value = {"RoutingKey": "routing-value"}
+
+        result = self.handler.reply()
+
+        self.assertIsNotNone(result)
+        mock_build_routing.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["RoutingKey"], "routing-value")
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+
+    @patch("hl7_server.generic_handler.logger")
+    @patch("hl7_server.generic_handler.build_routing_properties", side_effect=Exception("routing boom"))
+    def test_routing_properties_failure_still_sends_and_acks(
+        self, mock_build_routing: MagicMock, mock_logger: MagicMock
+    ) -> None:
+        result = self.handler.reply()
+
+        self.assertIsNotNone(result)
+        mock_build_routing.assert_called_once()
+        mock_logger.warning.assert_any_call("Failed to build routing properties: %s", ANY)
+        self.mock_sender.send_text_message.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.mock_event_logger.log_message_processed.assert_called_once()
+
     @patch(
         "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
         {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},

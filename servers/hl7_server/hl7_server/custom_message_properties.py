@@ -59,6 +59,18 @@ def build_mosaiq_properties(msg: Message) -> dict[str, str]:
     }
 
 
+def build_routing_properties(msg: Message) -> dict[str, str]:
+    """Routing properties applied to every flow so Service Bus subscription filters can use them
+    without each flow needing its own builder. Flow-specific builders may add or override values."""
+    return {
+        "SendingApplication": get_hl7_field_value(msg, "msh.msh_3"),
+        "TriggerEvent": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
+        "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
+        "UpdateSources": _pipe_wrap(get_cx_4_hd_1_segment_codes_from_pid_field(msg, "pid_2")),
+        "AssigningAuthorities": _pipe_wrap(get_cx_4_hd_1_segment_codes_from_pid_field(msg, "pid_3")),
+    }
+
+
 FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {
     "mpi": build_mpi_properties,
     "wds": build_wds_properties,
