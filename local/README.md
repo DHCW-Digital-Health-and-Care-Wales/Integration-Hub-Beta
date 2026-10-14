@@ -291,7 +291,7 @@ Each profile starts a complete integration flow with all required services:
 | **paris-to-mpi** | paris-hl7-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator                  | Paris healthcare system to MPI integration flow (no transformation)                               |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PIMS (Patient Information Management System) to MPI integration flow                              |
-| **mosaiq-to-mpi** | mosaiq-hl7-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator                 | Mosaiq oncology system to MPI integration flow (no transformation)                                |
+| **mosaiq-to-mpi** | mosaiq-hl7-server, mosaiq-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator          | Mosaiq oncology system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (mosaiq-mpi-hl7-sender), mirroring LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator                    | WDS to MPI integration flow (no transformation)                                                   |
 | **hl7-rest**     | risp-hl7-rest-server, rest-hl7-server, sb-emulator                                          | Starts the standalone REST-based HL7 servers on their own (no transformer/sender/receiver) for ad-hoc REST ingress testing; **not** a complete integration flow |
 | **risp-to-mpi**  | risp-hl7-rest-server, core-reference-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (WRDS-based PID field translation via core-reference-hl7-transformer, also fans out to WRRS) |
@@ -313,7 +313,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/servers/lims-soap-hl7-server.env**  | HL7 SOAP Server             | `PORT=8080`, `SOAP_ENDPOINT_PATH=/soap`, `ALLOWED_ASSIGNING_AUTHORITIES=328`           |
 | **env/transformers/phw-hl7-transformer.env**   | PHW Transformer             | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=phw-to-mpi`                   |
 | **env/servers/paris-hl7-server.env**      | Paris HL7 Server            | `PORT=2577`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=paris`                         |
-| **env/servers/mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=mosaiq`                        |
+| **env/servers/mosaiq-hl7-server.env**     | Mosaiq HL7 Server           | `PORT=2583`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`, `HL7_VALIDATION_FLOW=mosaiq`    |
 | **env/servers/chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
 | **env/transformers/chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
@@ -326,6 +326,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver (destination for mpi-hl7-sender and lims-mpi-hl7-sender) | `PORT=2581`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID` |
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
+| **env/senders/mosaiq-mpi-hl7-sender.env**  | Mosaiq TO MPI HL7 Sender     | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 
