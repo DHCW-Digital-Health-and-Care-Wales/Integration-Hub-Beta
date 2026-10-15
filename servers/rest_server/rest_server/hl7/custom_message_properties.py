@@ -10,6 +10,7 @@ from message_bus_lib.metadata_utils import (
     SOURCE_SYSTEM_KEY,
     WORKFLOW_ID_KEY,
 )
+from rest_server.hl7.custom_validation.risp_validation import resolve_structure
 
 FlowPropertyBuilder = Callable[[Message], dict[str, str]]
 
@@ -50,7 +51,7 @@ def build_risp_properties(msg: Message) -> dict[str, str]:
     """
     return {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
-        "MessageStructure": get_hl7_field_value(msg, "msh.msh_9.msh_9_3"),
+        "MessageStructure": resolve_structure(msg),
     }
 
 

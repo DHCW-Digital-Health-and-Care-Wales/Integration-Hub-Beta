@@ -82,6 +82,16 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         self.assertEqual(mpi_args[0][1]["MessageType"], "A28")
         self.assertEqual(mpi_args[0][1]["MessageStructure"], "ADT_A05")
 
+    def test_a28_without_message_structure_publishes_resolved_structure(self) -> None:
+        context, sender, _, wrrs = build_test_context(flow_name="risp")
+        assert wrrs is not None
+        message_without_structure = RISP_A28_MESSAGE.replace("^ADT_A05", "")
+
+        context.processor.process(message_without_structure)
+
+        sender.send_text_message.assert_called_once()
+        self.assertEqual(sender.send_text_message.call_args[0][1]["MessageStructure"], "ADT_A28")
+
     def test_a40_sends_to_both_mpi_transformer_and_wrrs(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")
         assert wrrs is not None
