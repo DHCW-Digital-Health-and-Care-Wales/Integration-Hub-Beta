@@ -129,6 +129,15 @@
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
                 }
+              },
+              {
+                "Name": "local-inthub-lims-transformer-ingress-trrr-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
               }
             ]
           },
