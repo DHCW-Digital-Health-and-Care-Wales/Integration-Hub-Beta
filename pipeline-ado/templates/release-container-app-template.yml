@@ -42,13 +42,13 @@ jobs:
             artifact: imageTag
 
           - task: AzureCLI@2
-            displayName: 'Azure CLI Login'
+            displayName: 'Azure CLI Login2'
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                az account list
+                echo "testig"
                 az --version
 
           - task: AzureCLI@2
