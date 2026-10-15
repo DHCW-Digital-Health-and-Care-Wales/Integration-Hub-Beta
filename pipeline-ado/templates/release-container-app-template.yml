@@ -46,8 +46,8 @@ jobs:
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
+              scriptLocation: 'inlineScript2'
+              inlineScript2: |
                 echo "testig"
                 az --version
 
