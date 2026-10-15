@@ -10,6 +10,7 @@ from message_bus_lib.metadata_utils import (
     SOURCE_SYSTEM_KEY,
     WORKFLOW_ID_KEY,
 )
+
 from rest_server.hl7.custom_validation.risp_validation import resolve_structure
 
 FlowPropertyBuilder = Callable[[Message], dict[str, str]]
