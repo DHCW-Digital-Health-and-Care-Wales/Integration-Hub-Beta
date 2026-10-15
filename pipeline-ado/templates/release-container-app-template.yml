@@ -48,6 +48,7 @@ jobs:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                az account list
                 az --version
 
           - task: AzureCLI@2
@@ -57,6 +58,7 @@ jobs:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                az account list
                 set -e
                 # Read the image tag and set it as a pipeline variable
                 IMAGE_TAG=$(cat "$(Pipeline.Workspace)/${{ parameters.resourcePipelineName }}/imageTag/imageTag.txt")
@@ -118,6 +120,7 @@ jobs:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                az account list
                 set -e
                 # Use pre-computed values from template variables
                 appFullName="$(appFullName)"
