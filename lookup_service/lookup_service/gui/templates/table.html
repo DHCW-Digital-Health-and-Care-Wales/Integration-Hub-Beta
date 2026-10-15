@@ -57,6 +57,7 @@
     {% if settings_error.errors %}<ul class="error-list">{% for message in settings_error.errors %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
   {% endif %}
   <form class="tester-form" method="post" action="{{ url_for('table_settings_submit', table=table.name) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <label class="cfg-label">Cache TTL (blank = service default, {{ default_ttl_seconds | ttl }})
       <span class="ttl-input">
         <input class="dash-input" type="number" min="1" name="ttl_value" value="{{ ttl_value }}" />

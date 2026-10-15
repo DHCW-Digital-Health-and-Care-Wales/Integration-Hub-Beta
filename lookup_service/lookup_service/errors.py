@@ -6,6 +6,8 @@ class LookupServiceError(Exception):
 
     status_code = 500
     error_code = "internal_error"
+    # Extra response headers, e.g. WWW-Authenticate on a 401.
+    headers: dict[str, str] | None = None
 
     def __init__(self, detail: str, table: str | None = None, errors: list[str] | None = None) -> None:
         super().__init__(detail)
@@ -44,9 +46,19 @@ class UploadTooLargeError(LookupServiceError):
     error_code = "upload_too_large"
 
 
-class WritesDisabledError(LookupServiceError):
+class UnauthorizedError(LookupServiceError):
+    status_code = 401
+    error_code = "unauthorized"
+
+
+class ForbiddenError(LookupServiceError):
     status_code = 403
-    error_code = "writes_disabled"
+    error_code = "forbidden"
+
+
+class CsrfError(LookupServiceError):
+    status_code = 403
+    error_code = "csrf_failed"
 
 
 class ReadOnlyStoreError(LookupServiceError):

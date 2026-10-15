@@ -776,6 +776,7 @@ services:
     profiles:
       - lookup
       - everything
+      - pims-to-mpi
     networks:
       integration-hub:
         aliases:
@@ -807,6 +808,7 @@ services:
     profiles:
       - dashboard
       - lookup
+      - pims-to-mpi
       - everything
     networks:
       integration-hub:
