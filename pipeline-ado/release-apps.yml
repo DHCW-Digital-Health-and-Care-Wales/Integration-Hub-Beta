@@ -39,6 +39,7 @@ parameters:
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
+      - LIMS TO TRRR HL7 Sender
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
       - HL7 WDS Transformer
@@ -325,6 +326,11 @@ stages:
           appImageName: 'restserver'
           appFunctionMidfix: 'lims'
           buildPipeline: 'REST Server - Build'
+
+        - name: 'LIMS TO TRRR HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'lims-trrr'
+          buildPipeline: 'HL7 Sender - Build'
 
         # WDS to WIS Flow
         - name: 'WIS SOAP Sender'
