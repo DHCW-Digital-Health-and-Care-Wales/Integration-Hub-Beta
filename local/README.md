@@ -265,6 +265,7 @@ Profiles:
 
 - phw-to-mpi
 - lims-to-mpi
+- lims-to-trrr
 - pms-soap-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
@@ -287,6 +288,7 @@ Each profile starts a complete integration flow with all required services:
 | ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PHW (Public Health Wales) to MPI integration flow                                                 |
 | **lims-to-mpi**  | hl7-soap-server, lims-mpi-hl7-sender, lims-wrrs-hl7-transformer, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no MPI transformer); uses the topic-based mock receiver, mirroring DEV. `lims-wrrs-hl7-transformer` also classifies A31/A40 into `local-inthub-lims-wrrs-classified` for the WRRS flow (no consumer yet) |
+| **lims-to-trrr** | hl7-soap-server, lims-trrr-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator              | LIMS SOAP HL7 XML ingress (assigning authority 328) to TRRR integration flow; a second subscription on the same topic the LIMS server publishes to, using a dedicated full-image sender (lims-trrr-hl7-sender), mirroring the DEV hl7_lims_trrr_sender container app |
 | **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator             | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
 | **paris-to-mpi** | cav-paris-hl7-server, paris-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Paris healthcare system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (paris-mpi-hl7-sender), mirroring Mosaiq/LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
@@ -328,6 +330,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/transformers/lims-wrrs-hl7-transformer.env** | LIMS WRRS HL7 Transformer | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`, optional `MAPPING_TYPE_NHS_ID_UPDATE`/`MAPPING_TYPE_A40` |
+| **env/senders/lims-trrr-hl7-sender.env**   | LIMS TO TRRR HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver`, `WORKFLOW_ID=lims-to-trrr`, `PEER_SERVICE=TRRR` |
 | **env/senders/mosaiq-mpi-hl7-sender.env**  | Mosaiq To MPI HL7 Sender     | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/senders/paris-mpi-hl7-sender.env**   | Paris To MPI HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 
