@@ -4,6 +4,7 @@ import signal
 import threading
 from typing import Any
 
+from health_check_lib.health_check_server import TCPHealthCheckServer
 from hl7apy.core import Message
 from hl7apy.mllp import MLLPRequestHandler, MLLPServer
 from message_bus_lib.connection_config import ConnectionConfig
@@ -56,6 +57,7 @@ class Hl7TopicMockReceiver:
     def __init__(self) -> None:
         self.sender_client = None
         self._server_thread: threading.Thread | None = None
+        self.health_check_server: TCPHealthCheckServer | None = None
         self.HOST = os.environ.get("HOST", "127.0.0.1")
         self.PORT = int(os.environ.get("PORT", "2576"))
 
@@ -88,11 +90,14 @@ class Hl7TopicMockReceiver:
             ERROR_HANDLER_KEY: (ErrorHandler,),
         }
 
+        self.health_check_server = TCPHealthCheckServer(app_config.health_check_hostname, app_config.health_check_port)
+
         try:
             self._server = MLLPServer(self.HOST, self.PORT, handlers, request_handler_class=CustomMLLPRequestHandler)
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
             logger.info(f"MLLP Server listening on {self.HOST}:{self.PORT} (accepting all message types)")
+            self.health_check_server.start()
         except Exception as e:
             logger.exception("Server encountered an unexpected error: %s", e)
             self.stop_server()
@@ -104,6 +109,10 @@ class Hl7TopicMockReceiver:
         if self.sender_client:
             self.sender_client.close()
             logger.info("Service Bus sender client shut down.")
+
+        if self.health_check_server:
+            self.health_check_server.stop()
+            logger.info("Health check server shut down.")
 
         server_thread = getattr(self, "_server_thread", None)
         if self._server:

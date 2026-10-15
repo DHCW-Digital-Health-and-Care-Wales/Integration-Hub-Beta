@@ -3,7 +3,7 @@ import os
 import time
 from contextlib import AbstractContextManager
 from types import TracebackType
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import opentelemetry.context as otel_context
 from azure.servicebus import (
@@ -13,6 +13,7 @@ from azure.servicebus import (
     ServiceBusReceivedMessage,
     ServiceBusReceiveMode,
     ServiceBusReceiver,
+    ServiceBusSessionFilter,
 )
 from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
 from metric_sender_lib.metric_sender import MetricSender
@@ -38,7 +39,7 @@ class MessageReceiverClient:
         self,
         sb_client: ServiceBusClient,
         queue_name: str,
-        session_id: Optional[str] = None,
+        session_id: Optional[Union[str, ServiceBusSessionFilter]] = None,
         propagate_trace_context: bool = True,
         workflow_id: Optional[str] = None,
         microservice_id: Optional[str] = None,

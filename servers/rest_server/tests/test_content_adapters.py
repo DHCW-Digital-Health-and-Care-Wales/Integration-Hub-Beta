@@ -34,6 +34,20 @@ class TestSoapContentAdapter(unittest.TestCase):
         self.assertEqual(extracted.message_control_id, "6774333028472727804z213950")
         self.assertIn("<ns0:ADT_A05", extracted.payload_xml)
 
+    def test_extract_message_type_from_msh_9_2(self) -> None:
+        for trigger in ("A31", "A40"):
+            with self.subTest(trigger=trigger):
+                payload = VALID_PAYLOAD_XML.replace(
+                    "<ns0:MSH.10>",
+                    f"<ns0:MSH.9><ns0:MSG.1>ADT</ns0:MSG.1><ns0:MSG.2>{trigger}</ns0:MSG.2></ns0:MSH.9><ns0:MSH.10>",
+                )
+                extracted = self.adapter.extract(_wrap_in_soap(payload))
+                self.assertEqual(extracted.message_type, trigger)
+
+    def test_message_type_is_none_when_msh_9_2_missing(self) -> None:
+        extracted = self.adapter.extract(_wrap_in_soap(VALID_PAYLOAD_XML))
+        self.assertIsNone(extracted.message_type)
+
     def test_malformed_xml_raises_request_error(self) -> None:
         with self.assertRaises(RequestError) as ctx:
             self.adapter.extract("<not-xml")

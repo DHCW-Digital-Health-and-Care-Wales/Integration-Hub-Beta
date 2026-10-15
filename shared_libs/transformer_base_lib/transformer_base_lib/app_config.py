@@ -18,6 +18,8 @@ class AppConfig:
     ingress_subscription_name: str | None = field(default=None, kw_only=True)
     ingress_session_id: str | None
     egress_queue_name: str | None
+    # kw_only + default to allow either queue or topic egress without shifting positional arguments.
+    egress_topic_name: str | None = field(default=None, kw_only=True)
     egress_session_id: str | None
     service_bus_namespace: str | None
     workflow_id: str | None
@@ -27,6 +29,18 @@ class AppConfig:
 
     @staticmethod
     def read_env_config() -> AppConfig:
+        egress_queue_name = (_read_env("EGRESS_QUEUE_NAME", required=False) or "").strip() or None
+        egress_topic_name = (_read_env("EGRESS_TOPIC_NAME", required=False) or "").strip() or None
+
+        if not egress_queue_name and not egress_topic_name:
+            raise RuntimeError("Missing required configuration: set either EGRESS_QUEUE_NAME or EGRESS_TOPIC_NAME.")
+
+        if egress_queue_name and egress_topic_name:
+            raise RuntimeError(
+                "Invalid egress configuration: EGRESS_QUEUE_NAME cannot be set together with "
+                "EGRESS_TOPIC_NAME. Configure only one egress transport."
+            )
+
         return AppConfig(
             connection_string=_read_env(
                 "SERVICE_BUS_CONNECTION_STRING", required=False
@@ -40,7 +54,8 @@ class AppConfig:
             ).strip()
             or None,
             ingress_session_id=_read_env("INGRESS_SESSION_ID", required=False),
-            egress_queue_name=_read_env("EGRESS_QUEUE_NAME", required=True),
+            egress_queue_name=egress_queue_name,
+            egress_topic_name=egress_topic_name,
             egress_session_id=_read_env("EGRESS_SESSION_ID", required=False),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE", required=False),
             workflow_id=_read_env("WORKFLOW_ID", required=True),

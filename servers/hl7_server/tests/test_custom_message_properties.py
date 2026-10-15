@@ -9,7 +9,9 @@ from hl7apy.core import Message
 from hl7_server.custom_message_properties import (
     FLOW_PROPERTY_BUILDERS,
     build_common_properties,
+    build_mosaiq_properties,
     build_mpi_properties,
+    build_routing_properties,
     build_wds_properties,
 )
 
@@ -225,6 +227,56 @@ class TestCustomMessageProperties(unittest.TestCase):
     def test_wds_flow_is_registered_in_property_builders(self) -> None:
         self.assertIn("wds", FLOW_PROPERTY_BUILDERS)
         self.assertIs(FLOW_PROPERTY_BUILDERS["wds"], build_wds_properties)
+
+    def test_build_mosaiq_properties_returns_flow_specific_properties_only(self) -> None:
+        mock_msg = MagicMock(spec=Message)
+
+        with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
+            mock_get_field.side_effect = lambda msg, path: {
+                "msh.msh_3": "285",
+                "msh.msh_9.msh_9_2": "A28",
+            }.get(path, "")
+
+            props = build_mosaiq_properties(mock_msg)
+
+            self.assertEqual(props, {"SendingApplication": "285", "TriggerEvent": "A28"})
+
+            self.assertNotIn("MessageReceivedAt", props)
+            self.assertNotIn("CorrelationId", props)
+            self.assertNotIn("WorkflowID", props)
+            self.assertNotIn("SourceSystem", props)
+
+    def test_mosaiq_flow_is_registered_in_property_builders(self) -> None:
+        self.assertIn("mosaiq", FLOW_PROPERTY_BUILDERS)
+        self.assertIs(FLOW_PROPERTY_BUILDERS["mosaiq"], build_mosaiq_properties)
+
+    def test_build_routing_properties_returns_all_routing_fields(self) -> None:
+        mock_msg = MagicMock(spec=Message)
+
+        with (
+            patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field,
+            patch(
+                "hl7_server.custom_message_properties.get_cx_4_hd_1_segment_codes_from_pid_field"
+            ) as mock_codes,
+        ):
+            mock_get_field.side_effect = lambda msg, path: {
+                "msh.msh_3": "212",
+                "msh.msh_9.msh_9_2": "A31",
+            }.get(path, "")
+            mock_codes.side_effect = lambda msg, field: {"pid_2": ["108"], "pid_3": ["NHS", "PAS"]}[field]
+
+            props = build_routing_properties(mock_msg)
+
+        self.assertEqual(
+            props,
+            {
+                "SendingApplication": "212",
+                "TriggerEvent": "A31",
+                "MessageType": "A31",
+                "UpdateSources": "|108|",
+                "AssigningAuthorities": "|NHS|PAS|",
+            },
+        )
 
 if __name__ == "__main__":
     unittest.main()

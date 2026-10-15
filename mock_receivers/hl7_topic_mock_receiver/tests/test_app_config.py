@@ -12,6 +12,8 @@ class TestAppConfig(unittest.TestCase):
 
         self.assertIsNone(config.egress_topic_name)
         self.assertFalse(config.service_bus_enabled)
+        self.assertIsNone(config.health_check_hostname)
+        self.assertIsNone(config.health_check_port)
 
     @patch.dict(
         os.environ,
@@ -31,6 +33,20 @@ class TestAppConfig(unittest.TestCase):
         config = AppConfig.read_env_config()
 
         self.assertFalse(config.service_bus_enabled)
+
+    @patch.dict(
+        os.environ,
+        {
+            "HEALTH_CHECK_HOST": "127.0.0.1",
+            "HEALTH_CHECK_PORT": "9000",
+        },
+        clear=True,
+    )
+    def test_read_env_config_reads_health_check_settings(self) -> None:
+        config = AppConfig.read_env_config()
+
+        self.assertEqual(config.health_check_hostname, "127.0.0.1")
+        self.assertEqual(config.health_check_port, 9000)
 
 
 if __name__ == "__main__":

@@ -15,8 +15,10 @@ DEFAULT_MAX_REQUEST_SIZE_BYTES = 1048576  # 1MB request size cap
 SERVICE_BUS_LIMIT_BYTES = 104857600  # 100MB Azure Service Bus Premium tier limit
 
 VALID_CONTENT_ADAPTERS = {"soap", "xml-raw"}
-VALID_VALIDATOR_TYPES = {"hl7-xsd", "xsd", "none"}
+VALID_VALIDATOR_TYPES = {"hl7-xsd", "hl7apy", "xsd", "none"}
 VALID_OUTPUT_FORMATS = {"er7", "raw"}
+# "hl7apy" validates against hl7apy's own built-in HL7 v2 reference structures (resolved from the
+# message's own MSH.12/MSH.9), so it needs no VALIDATION_SCHEMA file - unlike "hl7-xsd"/"xsd".
 SCHEMA_REQUIRED_VALIDATOR_TYPES = {"hl7-xsd", "xsd"}
 
 VALID_PIPELINES = {"generic", "hl7"}

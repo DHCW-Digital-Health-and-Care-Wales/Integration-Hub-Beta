@@ -40,6 +40,7 @@ flowchart TD
     Adapter -- soap --> Val1{"VALIDATOR_TYPE"}
     Adapter -- xml-raw --> Val1
     Val1 -- hl7-xsd --> Fmt["OUTPUT_FORMAT: er7 | raw"]
+    Val1 -- hl7apy --> Fmt
     Val1 -- xsd --> Fmt
     Val1 -- none --> Fmt
     Fmt --> SB1[("Service Bus queue/topic")]
@@ -66,13 +67,19 @@ variable blocks for each case.
 - Validates the extracted payload using the configured **validator** (`VALIDATOR_TYPE`):
   - `hl7-xsd` - validate against an HL7 v2.xml structure schema (`VALIDATION_SCHEMA` = schema
     group, e.g. `phw`), same as `hl7_soap_server`.
+  - `hl7apy` - validate against hl7apy's own built-in HL7 v2 reference structures (resolved from
+    the message's own MSH.12/MSH.9), rather than an XSD file - no `VALIDATION_SCHEMA` needed. The
+    message's actual MSH.9 structure (not just the content adapter's declared root element) is
+    checked against `ALLOWED_HL7_STRUCTURES`.
   - `xsd` - validate against an arbitrary XSD file (`VALIDATION_SCHEMA` = file path).
   - `none` - skip schema validation (still subject to size limits and well-formedness checks).
 - Optionally enforces a source allow-list (`ALLOWED_SOURCE_IDENTIFIERS`), where the source
   identifier is located in the payload via `SOURCE_IDENTIFIER_LOCATOR`.
 - Formats the outbound payload (`OUTPUT_FORMAT`): `er7` (convert HL7 XML to ER7) or `raw` (publish
   the validated payload unchanged).
-- Publishes to the configured Service Bus queue/topic and persists to the message store.
+- Publishes to the configured Service Bus queue/topic and persists to the message store. With the
+  `soap` adapter, the HL7 trigger event (MSH.9.2, e.g. `A31`) is also set as a `MessageType`
+  application property when present, so subscriptions can filter on it.
 - Returns a response built by the same content adapter (SOAP success/fault envelope for `soap`,
   simple XML ack/error for `xml-raw`).
 
@@ -297,10 +304,12 @@ Shared with `hl7_soap_server` (unchanged names/behaviour):
 
 - `ENDPOINT_PATH` - request path this instance listens on (default `/ingest`)
 - `CONTENT_ADAPTER` - `soap` | `xml-raw`
-- `VALIDATOR_TYPE` - `hl7-xsd` | `xsd` | `none`
+- `VALIDATOR_TYPE` - `hl7-xsd` | `hl7apy` | `xsd` | `none`
 - `VALIDATION_SCHEMA` - required when `VALIDATOR_TYPE` is `hl7-xsd` (schema group, e.g. `phw`) or
-  `xsd` (XSD file path)
-- `ALLOWED_HL7_STRUCTURES` - only used by the `hl7-xsd` validator (default `ADT_A05,ADT_A39`)
+  `xsd` (XSD file path); not used by `hl7apy`, which resolves its reference structures from the
+  message's own MSH.12/MSH.9 instead
+- `ALLOWED_HL7_STRUCTURES` - used by the `hl7-xsd` and `hl7apy` validators (default
+  `ADT_A05,ADT_A39`)
 - `ALLOWED_SOURCE_IDENTIFIERS` - optional comma-separated allow-list; when unset, no source-based
   allow-list is enforced (compensate with network controls - see Security below)
 - `SOURCE_IDENTIFIER_LOCATOR` - only used by the `xml-raw` adapter; slash-separated path of local

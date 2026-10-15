@@ -29,7 +29,7 @@ def is_socket_closed(sock: socket.socket) -> bool:
         return True  # socket was closed for some other reason
     except Exception:
         logger.exception("unexpected exception when checking if a socket is closed")
-        return False
+        return True
 
 
 class HL7SubscriptionSenderClient:

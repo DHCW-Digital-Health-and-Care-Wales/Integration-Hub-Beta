@@ -4,11 +4,14 @@ from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Message
 from hl7apy.parser import parse_message
 
+from hl7_pims_transformer.clients.reference_data_client import ReferenceDataset
 from hl7_pims_transformer.mappers.pid_mapper import map_pid
+from tests.fakes import IdentityLookupClient, StubLookupClient
 
 
 class TestPIDMapper(unittest.TestCase):
     def setUp(self) -> None:
+        self.lookup_client = IdentityLookupClient()
         self.base_hl7_message = (
             "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
             'PID|||^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
@@ -19,7 +22,7 @@ class TestPIDMapper(unittest.TestCase):
         self.new_message = Message(version="2.5")
 
     def test_map_pid_all_direct_mappings(self) -> None:
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         test_cases = [
             "pid_5.xpn_1.fn_1",
@@ -27,7 +30,6 @@ class TestPIDMapper(unittest.TestCase):
             "pid_5.xpn_3",
             "pid_5.xpn_4",
             "pid_5.xpn_5",
-            "pid_8",
             "pid_11.xad_1",
             "pid_11.xad_2",
             "pid_11.xad_3",
@@ -46,7 +48,7 @@ class TestPIDMapper(unittest.TestCase):
         self.original_message.pid.pid_3[0].value = "1000000001^03^^^NI"
         self.original_message.pid.pid_3[1].value = "N5022039^^^^PI"
 
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         new_pid3_rep1 = self.new_message.pid.pid_3[0]
         self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "1000000001")
@@ -65,7 +67,7 @@ class TestPIDMapper(unittest.TestCase):
         self.original_message.pid.pid_3[0].value = "1000000001^03^^^NH"
         self.original_message.pid.pid_3[1].value = "N5022039^^^^PI"
 
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         new_pid3_rep1 = self.new_message.pid.pid_3[0]
         self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N5022039")
@@ -74,7 +76,7 @@ class TestPIDMapper(unittest.TestCase):
         self.assertIn("|N5022039^^^103^PI|", self.new_message.pid.value)
 
     def test_map_pid_3_with_an_empty_first_repetition(self) -> None:
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         new_pid3_rep1 = self.new_message.pid.pid_3[0]
         self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "N5022039")
@@ -89,7 +91,7 @@ class TestPIDMapper(unittest.TestCase):
         # second rep does not meet the conditions for mapping
         self.original_message.pid.pid_3[1].value = "1000000001^^^^NH"
 
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         new_pid3_rep1 = self.new_message.pid.pid_3[0]
         self.assertEqual(get_hl7_field_value(new_pid3_rep1, "cx_1"), "1000000001")
@@ -102,17 +104,17 @@ class TestPIDMapper(unittest.TestCase):
         self.original_message.pid.pid_3[0].value = ""
         self.original_message.pid.pid_3[1].value = ""
 
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_3"), "")
 
     def test_map_pid_7_datetime(self) -> None:
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_7.ts_1"), "20000101")
 
     def test_map_pid_13_repetitions(self) -> None:
-        map_pid(self.original_message, self.new_message)
+        map_pid(self.original_message, self.new_message, self.lookup_client)
 
         original_pid13_reps = getattr(self.original_message.pid, "pid_13")
         new_pid13_reps = getattr(self.new_message.pid, "pid_13")
@@ -143,7 +145,7 @@ class TestPIDMapper(unittest.TestCase):
 
                 original_message.pid.pid_29.ts_1.value = original_value
 
-                map_pid(original_message, new_message)
+                map_pid(original_message, new_message, self.lookup_client)
 
                 self.assertEqual(get_hl7_field_value(new_message.pid, "pid_29.ts_1"), expected_value)
 
@@ -164,8 +166,70 @@ class TestPIDMapper(unittest.TestCase):
                 original_message.pid.pid_29.ts_1.value = original_value
 
                 with self.assertRaises(ValueError) as context:
-                    map_pid(original_message, new_message)
+                    map_pid(original_message, new_message, self.lookup_client)
 
                 error_message = str(context.exception)
                 self.assertIn("Invalid datetime format after timezone removal", error_message)
                 self.assertIn("Expected format: YYYYMMDD (8 digits) or YYYYMMDDHHMMSS (14 digits)", error_message)
+
+
+class TestPIDMapperReferenceLookups(unittest.TestCase):
+    """Tests for the reference-data enrichment of gender / marital status / ethnic group /
+    NHS number status via the lookup client."""
+
+    def setUp(self) -> None:
+        # Base message: PID.8='F', PID.16='M', PID.22='1', PID.3 NI repetition CX.2='03'.
+        self.base_hl7_message = (
+            "MSH|^~\\&|PIMS|BroMor HL7Sender|EMPI|EMPI|20241231101053+0000||ADT^A08^ADT_A01|48209024|P|2.3.1\r"
+            'PID|||^03^^^NI~N5022039^^^^PI||TESTER^TEST^""^^MRS.||20000101+^D|F|||'
+            "MORRISTON HOSPITAL^HEOL MAES EGLWYS^CWMRHYDYCEIRW^SWANSEASWANSEA^SA6 6NL||"
+            "01234567892^PRN^PH~01234567896^ORN^CP|^WPN^PH||M||||||1|||||||^D||||20241231101035+0000\r"
+        )
+        self.original_message = parse_message(self.base_hl7_message)
+        self.new_message = Message(version="2.5")
+        # Resolved eMPI codes returned for each source value present in the base message.
+        # Note: hl7apy types PID.3 CX.2 (check digit) as numeric, so the source '03' is read as '3'.
+        self.lookup_client = StubLookupClient(
+            {
+                (ReferenceDataset.GENDER, "F"): "2",
+                (ReferenceDataset.MARITAL_STATUS, "M"): "M",
+                (ReferenceDataset.ETHNIC_GROUP, "1"): "A",
+                (ReferenceDataset.NHS_STATUS, "3"): "04",
+            }
+        )
+
+    def test_all_fields_enriched_from_lookup_api(self) -> None:
+        map_pid(self.original_message, self.new_message, self.lookup_client)
+
+        # Each field with a present source value is replaced with the resolved target code.
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_8"), "2")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_16.ce_1"), "M")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_22.ce_1"), "A")
+        self.assertEqual(get_hl7_field_value(self.new_message.pid, "pid_32"), "04")
+
+    def test_empty_source_fields_are_skipped(self) -> None:
+        # No gender, marital, ethnicity or NI repetition present -> no enrichment, no lookups.
+        original_message = parse_message(self.base_hl7_message)
+        original_message.pid.pid_8.value = ""
+        original_message.pid.pid_16.value = ""
+        original_message.pid.pid_22.value = ""
+        # Remove the NI repetition so there is no NHS number status source.
+        original_message.pid.pid_3[0].value = "N5022039^^^^PI"
+        original_message.pid.pid_3[1].value = "1000000001^^^^PI"
+        new_message = Message(version="2.5")
+
+        map_pid(original_message, new_message, IdentityLookupClient())
+
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_8"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_16"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_22"), "")
+        self.assertEqual(get_hl7_field_value(new_message.pid, "pid_32"), "")
+
+    def test_failed_lookup_raises_value_error(self) -> None:
+        # Scenario 2: an unresolvable / invalid code surfaces as a ValueError so the transformer
+        # pipeline logs the message content to monitoring and leaves the message queued.
+        empty_client = StubLookupClient({})
+
+        with self.assertRaises(ValueError):
+            map_pid(self.original_message, self.new_message, empty_client)
+

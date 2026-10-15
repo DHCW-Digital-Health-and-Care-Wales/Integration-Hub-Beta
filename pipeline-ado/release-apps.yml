@@ -30,10 +30,13 @@ parameters:
       - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
+      - PHW TO MPI HL7 Sender
+      - Mosaiq TO MPI HL7 Sender
       - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
       - LIMS HL7 SOAP Server
+      - LIMS HL7 Sender
       - PMS HL7 SOAP Server
       - PMS HL7 Subscription Sender
       - HL7 WDS Transformer
@@ -41,6 +44,7 @@ parameters:
       - Message Store Service
       - HL7 Mock Receiver
       - HTTP Mock Receiver
+      - HL7 Topic Mock Receiver
       - Network Test App
       
   - name: selectedEnvironment
@@ -117,6 +121,9 @@ resources:
       trigger: none
     - pipeline: 'HTTP Mock Receiver - Build'
       source: 'HTTP Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'HL7 Topic Mock Receiver - Build'
+      source: 'HL7 Topic Mock Receiver - Build'
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
@@ -207,6 +214,16 @@ stages:
           appFunctionMidfix: 'risp'
           buildPipeline: 'REST Server - Build'
 
+        - name: 'LIMS HL7 SOAP Server'
+          appImageName: 'restserver'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'REST Server - Build'
+
+        - name: 'PMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 SOAP Server - Build'          
+
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
           appImageName: 'phw-hl7transformer'
@@ -279,24 +296,28 @@ stages:
           appFunctionMidfix: 'chemo'
           buildPipeline: 'HL7 Sender - Build'
 
-        # LIMS SOAP Server
-        - name: 'LIMS HL7 SOAP Server'
-          appImageName: 'hl7soapserver'
-          appFunctionMidfix: 'lims'
-          buildPipeline: 'HL7 SOAP Server - Build'
+        - name: 'PHW TO MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'phw-to-mpi'
+          buildPipeline: 'HL7 Sender - Build'
 
-        # PMS SOAP Server
-        - name: 'PMS HL7 SOAP Server'
-          appImageName: 'hl7soapserver'
-          appFunctionMidfix: 'pms'
-          buildPipeline: 'HL7 SOAP Server - Build'
+        - name: 'Mosaiq TO MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'mosaiq'
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'LIMS HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'HL7 Sender - Build'
 
         # WDS to WIS Flow
         - name: 'WIS SOAP Sender'
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
           buildPipeline: 'SOAP Sender - Build'
-        # Mock Receiver
+
+        # Mock Receivers
         - name: 'HL7 Mock Receiver'
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''
@@ -306,6 +327,11 @@ stages:
           appImageName: 'httpmockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HTTP Mock Receiver - Build'
+
+        - name: 'HL7 Topic Mock Receiver'
+          appImageName: 'hl7topicmockreceiver'
+          appFunctionMidfix: ''
+          buildPipeline: 'HL7 Topic Mock Receiver - Build'
 
         # Network Test App
         - name: 'Network Test App'

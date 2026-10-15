@@ -38,6 +38,25 @@ Timezone information is stripped from all timestamp fields:
 - **PID.13**: Multiple phone number repetitions handled
 - **PID.32**: Moved to PID.31 if present
 
+### Reference-data enrichment (WRDS/WRRS lookups)
+
+Four PID fields carry source codes that the eMPI does not accept directly, so they are translated
+to the eMPI's expected codes via the reference-data lookup REST API (see the SBU PIMS ADT Mapping
+Document). The source code is replaced with the resolved target code:
+
+| eMPI field | Target path | Source path | Dataset |
+|------------|-------------|-------------|---------|
+| Gender | PID.8 | PID.8 | `gender` |
+| Marital status | PID.16.CE.1 | PID.16.CE.1 | `marital-status` |
+| Ethnic group | PID.22.CE.1 | PID.22.CE.1 | `ethnic-group` |
+| NHS number status | PID.32 | PID.3 (NI repetition) CX.2 | `nhs-status` |
+
+Each field is only enriched when a source value is present. If a code cannot be resolved—the API
+is unreachable, returns a non-2xx response or no mapping, or returns a target code in an unexpected
+format—the transformation raises an error. The transformer pipeline then logs the message content
+to the monitoring solution and leaves the message (and every subsequent message on the FIFO
+session) on the queue until the problem is resolved.
+
 ### Segment-Specific Processing
 
 - **EVN**: Event type and timestamps mapped with timezone removal
@@ -84,6 +103,14 @@ uv run python -m unittest discover tests
 - **HEALTH_CHECK_HOST** - Health check hostname (optional, default: 127.0.0.1)
 - **HEALTH_CHECK_PORT** - Health check port (optional, default: 9000)
 - **LOG_LEVEL** - Logging level (optional, default: ERROR)
+
+### Reference-data lookup API
+
+- **REFERENCE_DATA_API_BASE_URL** - Base URL of the reference-data lookup REST API (required for the gender / marital status / ethnic group / NHS status enrichment to succeed)
+- **REFERENCE_DATA_API_TIMEOUT_SECONDS** - Per-request timeout in seconds (optional, default: 5)
+- **REFERENCE_DATA_API_MAX_RETRIES** - Retry attempts for transient failures (optional, default: 3)
+- **REFERENCE_DATA_API_RETRY_BACKOFF_SECONDS** - Backoff factor between retries (optional, default: 0.5)
+- **REFERENCE_DATA_API_KEY** - Optional API key sent as the `X-API-Key` header (optional)
 
 ## Running
 

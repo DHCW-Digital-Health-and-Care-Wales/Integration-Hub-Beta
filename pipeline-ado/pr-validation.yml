@@ -19,6 +19,7 @@ pr:
       - senders/hl7_subscription_sender/**
       - mock_receivers/hl7_mock_receiver/**
       - mock_receivers/http_mock_receiver/**
+      - mock_receivers/hl7_topic_mock_receiver/**
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
       - transformers/hl7_core_reference_transformer/**
@@ -101,6 +102,7 @@ stages:
                 "senders/hl7_subscription_sender|HL7 Subscription Sender||unittest"
                 "mock_receivers/hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "mock_receivers/http_mock_receiver|HTTP Mock Receiver||pytest"
+                "mock_receivers/hl7_topic_mock_receiver|HL7 Topic Mock Receiver||unittest"
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer||unittest"

@@ -1,3 +1,4 @@
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,7 @@ from hl7_validation import convert_er7_to_xml_with_flow_schema
 
 from rest_server.errors import RequestError, ValidationError
 from rest_server.validators.hl7_xsd_validator import Hl7XsdValidator
+from rest_server.validators.hl7apy_validator import Hl7ApyValidator
 from rest_server.validators.no_op_validator import NoOpValidator
 from rest_server.validators.xsd_validator import XsdValidator
 
@@ -15,6 +17,18 @@ VALID_ER7_A05 = "\r".join(
         "EVN|A28|20260729095037|20260729095037|||20260729095037",
         "PID|||B0000010612^^^328^PI||LIMS^TEST",
         "PV1||",
+    ]
+)
+
+# Same as VALID_ER7_A05 but with PV1.2 (Patient Class) populated - it's genuinely Required (R) per
+# the HL7 standard, so hl7apy's reference validation (unlike the XSD, which only cares that the
+# PV1 segment/field is structurally present) correctly rejects it when left blank.
+VALID_ER7_A05_FOR_HL7APY = "\r".join(
+    [
+        "MSH|^~\\&|328|328|100|100|2026-07-29 09:50:37||ADT^A28^ADT_A05|6778031837018553261z82215|P|2.5|||||GBR||EN",
+        "EVN|A28|20260729095037|20260729095037|||20260729095037",
+        "PID|||B0000010612^^^328^PI||LIMS^TEST",
+        "PV1||I",
     ]
 )
 
@@ -68,6 +82,48 @@ class TestHl7XsdValidator(unittest.TestCase):
             validator.validate("<NOT_A_REAL_STRUCTURE/>", "NOT_A_REAL_STRUCTURE")
         self.assertEqual(ctx.exception.http_status, 500)
         self.assertEqual(ctx.exception.code, "Server.Configuration")
+
+
+class TestHl7ApyValidator(unittest.TestCase):
+    def setUp(self) -> None:
+        self.valid_payload_xml = convert_er7_to_xml_with_flow_schema(VALID_ER7_A05_FOR_HL7APY, "phw")
+
+    def test_valid_payload_passes(self) -> None:
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05", "ADT_A39"})
+        validator.validate(self.valid_payload_xml, "ADT_A05")
+
+    def test_disallowed_structure_raises(self) -> None:
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A39"})
+        with self.assertRaises(ValidationError):
+            validator.validate(self.valid_payload_xml, "ADT_A05")
+
+    def test_missing_structure_id_raises(self) -> None:
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
+        with self.assertRaises(ValidationError):
+            validator.validate(self.valid_payload_xml, None)
+
+    def test_missing_required_segment_fails_validation(self) -> None:
+        # EVN is a required segment for ADT_A05 - dropping it should fail even under TOLERANT,
+        # while unpopulated/omitted optional composite sub-components (the XSD-only complaint
+        # Hl7XsdValidator raises on) are not reported here.
+        broken_xml = re.sub(r"<ns0:EVN>.*?</ns0:EVN>", "", self.valid_payload_xml, flags=re.DOTALL)
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
+        with self.assertRaises(ValidationError):
+            validator.validate(broken_xml, "ADT_A05")
+
+    def test_root_tag_structure_mismatch_with_msh9_raises(self) -> None:
+        # The XML root element declares "ADT_A05" (an allowed structure), but MSH.9.3 - what
+        # xml_to_er7()/hl7apy actually use to determine the message's real structure - is
+        # changed to a different, disallowed one (arbitrary choice, unrelated to any real flow's
+        # actual message type - just needs to be a structure hl7apy recognises and that isn't
+        # "ADT_A05"). xml_to_er7() ignores the root tag entirely, so without this check the
+        # allow-list could be bypassed by mismatching the two.
+        smuggled_xml = re.sub(
+            r"<ns0:MSG\.3>[^<]*</ns0:MSG\.3>", "<ns0:MSG.3>ADT_A01</ns0:MSG.3>", self.valid_payload_xml
+        )
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
+        with self.assertRaises(ValidationError):
+            validator.validate(smuggled_xml, "ADT_A05")
 
 
 class TestXsdValidator(unittest.TestCase):

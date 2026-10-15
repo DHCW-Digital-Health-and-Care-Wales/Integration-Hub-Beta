@@ -13,6 +13,7 @@ class ExtractedPayload:
     structure_id: str | None
     source_identifier: str | None
     message_control_id: str | None
+    message_type: str | None = None
 
 
 class ContentAdapter(Protocol):

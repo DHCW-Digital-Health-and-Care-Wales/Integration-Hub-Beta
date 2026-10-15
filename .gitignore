@@ -142,6 +142,10 @@ venv.bak/
 !local/env/
 !local/env/**
 
+# Per-workstation Docker Compose env overrides (e.g. a machine-specific
+# REFERENCE_DATA_API_BASE_URL) — keep these untracked so they are not shared.
+local/env/**/*.local.env
+
 # Local-only WRDS response fixture used for local testing without a real WRDS connection
 # (see transformers/hl7_core_reference_transformer/README.md) — never commit real/production-like data.
 wrds_local_fixture.xml

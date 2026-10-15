@@ -1,11 +1,14 @@
 import unittest
+from unittest.mock import MagicMock
 
 from buswatch.servicebus_reader import (
     ServiceBusReader,
     _extract_queue_names,
     _extract_session_queue_names,
+    _extract_subscription_names,
     _is_session_required_error,
     _serialize_application_properties,
+    split_subscription_entity,
 )
 
 
@@ -58,6 +61,63 @@ class TestEmulatorConfigParsing(unittest.TestCase):
         queue_names = _extract_session_queue_names(payload)
 
         self.assertEqual(queue_names, ["queue-a"])
+
+    def test_extract_subscription_names_returns_topic_subscription_pairs(self) -> None:
+        payload: dict[str, object] = {
+            "UserConfig": {
+                "Namespaces": [
+                    {
+                        "Topics": [
+                            {
+                                "Name": "topic-a",
+                                "Subscriptions": [
+                                    {"Name": "sub-1", "Properties": {"RequiresSession": True}},
+                                    {"Name": "sub-2", "Properties": {}},
+                                ],
+                            },
+                            {"Name": "topic-b"},
+                        ]
+                    }
+                ]
+            }
+        }
+
+        self.assertEqual(_extract_subscription_names(payload), ["topic-a:sub-1", "topic-a:sub-2"])
+        self.assertEqual(_extract_subscription_names(payload, session_only=True), ["topic-a:sub-1"])
+
+    def test_extract_subscription_names_without_topics_returns_empty(self) -> None:
+        self.assertEqual(_extract_subscription_names({"UserConfig": {"Namespaces": [{"Queues": []}]}}), [])
+
+    def test_split_subscription_entity(self) -> None:
+        self.assertEqual(split_subscription_entity("topic-a:sub-1"), ("topic-a", "sub-1"))
+        self.assertIsNone(split_subscription_entity("plain-queue"))
+        self.assertIsNone(split_subscription_entity("topic-only:"))
+
+
+class TestReceiverSelection(unittest.TestCase):
+    def _reader(self) -> tuple[ServiceBusReader, MagicMock]:
+        reader = ServiceBusReader.__new__(ServiceBusReader)
+        client = MagicMock()
+        reader._client = client
+        return reader, client
+
+    def test_receiver_for_queue_uses_queue_receiver(self) -> None:
+        reader, client = self._reader()
+
+        reader._receiver("queue-a", session_id="s")
+
+        client.get_queue_receiver.assert_called_once_with(queue_name="queue-a", session_id="s")
+        client.get_subscription_receiver.assert_not_called()
+
+    def test_receiver_for_subscription_uses_subscription_receiver(self) -> None:
+        reader, client = self._reader()
+
+        reader._receiver("topic-a:sub-1", max_wait_time=1)
+
+        client.get_subscription_receiver.assert_called_once_with(
+            topic_name="topic-a", subscription_name="sub-1", max_wait_time=1
+        )
+        client.get_queue_receiver.assert_not_called()
 
 
 class TestMessageFormatting(unittest.TestCase):
