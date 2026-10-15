@@ -203,6 +203,20 @@
             ]
           },
           {
+            "Name": "local-inthub-risp-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-risp-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
             "Name": "local-inthub-mosaiq-mpi-sender-ingress",
             "Subscriptions": [
               {
