@@ -44,6 +44,7 @@ parameters:
       - HL7 WDS Transformer
       - WIS SOAP Sender
       - Message Store Service
+      - Lookup Service
       - HL7 Mock Receiver
       - HTTP Mock Receiver
       - HL7 Topic Mock Receiver
@@ -132,6 +133,9 @@ resources:
       trigger: none
     - pipeline: 'Dashboard - Build'
       source: 'Dashboard - Build'
+      trigger: none
+    - pipeline: 'Lookup Service - Build'
+      source: 'Lookup Service - Build'
       trigger: none
     - pipeline: 'HL7 WDS Transformer - Build'
       source: 'HL7 WDS Transformer - Build'
@@ -365,6 +369,15 @@ stages:
           appImageName: 'messagestoreservice'
           appFunctionMidfix: ''
           buildPipeline: 'Message Store Service - Build'
+
+        # Lookup Service (DEV/TST only; container app uks-<env>-lookup-service-ca)
+        - name: 'Lookup Service'
+          appImageName: 'lookup-service'
+          appFunctionMidfix: ''
+          buildPipeline: 'Lookup Service - Build'
+          allowedEnvironments:
+            - dev
+            - tst
       
       # Environment configurations
       environments:

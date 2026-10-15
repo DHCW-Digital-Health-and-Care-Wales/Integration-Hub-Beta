@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from lookup_service.app import create_app
-from tests.helpers import MemoryTableStore, SeedDirTestCase, codes_definition, make_row, make_settings
+from tests.helpers import MemoryTableStore, SeedDirTestCase, codes_definition, csrf_headers, make_row, make_settings
 
 
 class OverviewPageTests(unittest.TestCase):
@@ -95,12 +95,14 @@ class UploadPageTests(unittest.TestCase):
     def setUp(self) -> None:
         self.store = MemoryTableStore()
         self.client = self.enterContext(TestClient(create_app(make_settings(), self.store)))
+        self.csrf = csrf_headers(self.client)
 
     def test_form_rendered(self) -> None:
         response = self.client.get("/upload", params={"table": "ward_map"})
         self.assertEqual(response.status_code, 200)
         self.assertIn('enctype="multipart/form-data"', response.text)
         self.assertIn('value="ward_map"', response.text)
+        self.assertIn(f'name="csrf_token" value="{self.csrf["X-CSRF-Token"]}"', response.text)
 
     def test_create_table_redirects_to_table_page(self) -> None:
         response = self.client.post(
@@ -108,6 +110,7 @@ class UploadPageTests(unittest.TestCase):
             data={"table": "discharge_reason", "key_columns": "code", "key_case": "upper", "ttl_value": "2",
                   "ttl_unit": "minutes", "preload": "on", "description": "Discharge reasons"},
             files={"file": ("reasons.csv", b"code,text\na,Home\n", "text/csv")},
+            headers=self.csrf,
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303, response.text)
@@ -121,7 +124,8 @@ class UploadPageTests(unittest.TestCase):
     def test_replace_existing_keeps_definition_unless_redefine(self) -> None:
         response = self.client.post(
             "/upload", data={"table": "health_board_mapping", "key_columns": "ignored"},
-            files={"file": ("hb.csv", b"msh3,health_board\n224,X\n", "text/csv")}, follow_redirects=False,
+            files={"file": ("hb.csv", b"msh3,health_board\n224,X\n", "text/csv")}, headers=self.csrf,
+            follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303, response.text)
         self.assertEqual(self.store.records["health_board_mapping"].definition.key_columns, ("msh3",))
@@ -129,37 +133,46 @@ class UploadPageTests(unittest.TestCase):
     def test_errors_rerender_form_with_values(self) -> None:
         response = self.client.post(
             "/upload", data={"table": "health_board_mapping"},
-            files={"file": ("hb.csv", b"msh3,health_board\n224,X\n224,Y\n", "text/csv")},
+            files={"file": ("hb.csv", b"msh3,health_board\n224,X\n224,Y\n", "text/csv")}, headers=self.csrf,
         )
         self.assertEqual(response.status_code, 422)
         self.assertIn("line 3: duplicate key (first seen on line 2)", response.text)
         self.assertIn('value="health_board_mapping"', response.text)
 
     def test_missing_file(self) -> None:
-        response = self.client.post("/upload", data={"table": "health_board_mapping"})
+        response = self.client.post("/upload", data={"table": "health_board_mapping"}, headers=self.csrf)
         self.assertEqual(response.status_code, 422)
         self.assertIn("Choose a CSV file", response.text)
 
     def test_invalid_ttl(self) -> None:
-        response = self.client.post("/upload", data={"table": "newtable", "ttl_value": "soon"},
+        response = self.client.post("/upload", data={"table": "newtable", "ttl_value": "soon"}, headers=self.csrf,
                                     files={"file": ("x.csv", b"a,b\n1,2\n", "text/csv")})
         self.assertEqual(response.status_code, 422)
         self.assertIn("TTL must be a whole number", response.text)
 
-    def test_blocked_outside_local(self) -> None:
-        with TestClient(create_app(make_settings(environment="DEV"), MemoryTableStore())) as client:
-            response = client.post("/upload", data={"table": "x"}, files={"file": ("x.csv", b"a,b\n1,2\n", "text/csv")})
-            self.assertEqual(response.status_code, 403)
-            self.assertIn("Uploads are disabled", client.get("/upload").text)
+    def test_form_field_token_is_accepted(self) -> None:
+        response = self.client.post(
+            "/upload", data={"table": "health_board_mapping", "csrf_token": self.csrf["X-CSRF-Token"]},
+            files={"file": ("hb.csv", b"msh3,health_board\n224,X\n", "text/csv")}, follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303, response.text)
+
+    def test_missing_token_rerenders_form_with_403(self) -> None:
+        response = self.client.post("/upload", data={"table": "health_board_mapping"},
+                                    files={"file": ("hb.csv", b"msh3,health_board\n224,X\n", "text/csv")})
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("csrf_failed", response.text)
+        self.assertEqual(self.store.rows["health_board_mapping"][("224",)].values["health_board"], "VCC")
 
 
 class TableSettingsFormTests(unittest.TestCase):
     def setUp(self) -> None:
         self.store = MemoryTableStore()
         self.client = self.enterContext(TestClient(create_app(make_settings(), self.store)))
+        self.csrf = csrf_headers(self.client)
 
     def save(self, **data: str) -> Response:
-        return self.client.post("/tables/ward_map/settings", data=data, follow_redirects=False)
+        return self.client.post("/tables/ward_map/settings", data=data, headers=self.csrf, follow_redirects=False)
 
     def test_form_shown_prefilled_with_split_ttl(self) -> None:
         self.save(ttl_value="2", ttl_unit="hours")
@@ -194,10 +207,19 @@ class TableSettingsFormTests(unittest.TestCase):
 
     def test_hidden_and_rejected_when_read_only(self) -> None:
         with TestClient(create_app(make_settings())) as client:
+            headers = csrf_headers(client)
             self.assertNotIn("Cache settings", client.get("/tables/ward_map").text)
-            response = client.post("/tables/ward_map/settings", data={"preload": "on"}, follow_redirects=False)
+            response = client.post("/tables/ward_map/settings", data={"preload": "on"}, headers=headers,
+                                   follow_redirects=False)
             self.assertEqual(response.status_code, 409)
-            self.assertEqual(client.post("/tables/nope/settings", data={}).status_code, 404)
+            self.assertEqual(client.post("/tables/nope/settings", data={}, headers=headers).status_code, 404)
+
+    def test_missing_token_is_rejected_and_changes_nothing(self) -> None:
+        response = self.client.post("/tables/ward_map/settings", data={"ttl_value": "5", "ttl_unit": "minutes"},
+                                    follow_redirects=False)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("csrf_failed", response.text)
+        self.assertIsNone(self.store.records["ward_map"].definition.ttl_seconds)
 
 
 class EscapingTests(SeedDirTestCase):

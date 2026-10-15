@@ -93,6 +93,7 @@ stages:
                 "message_processing/message_store_service|Message Store Service|unittest"
                 "message_processing/message_replay_job|Message Replay Job|unittest"
                 "dashboard|Dashboard|pytest"
+                "lookup_service|Lookup Service|unittest"
                 "shared_libs/message_bus_lib|Message Bus Library|unittest"
                 "shared_libs/event_logger_lib|Event Logger Library|unittest"
                 "shared_libs/health_check_lib|Health Check Library|unittest"

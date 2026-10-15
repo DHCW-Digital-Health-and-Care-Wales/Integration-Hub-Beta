@@ -213,20 +213,6 @@ class SettingsApiTests(unittest.TestCase):
             response = client.patch("/api/v1/tables/ward_map", json={"preload": True})
         self.assertEqual((response.status_code, response.json()["error"]), (409, "read_only"))
 
-    def test_patch_forbidden_outside_local(self) -> None:
-        with TestClient(create_app(make_settings(environment="DEV"), MemoryTableStore())) as client:
-            response = client.patch("/api/v1/tables/ward_map", json={"preload": True})
-        self.assertEqual(response.status_code, 403)
-
-
-class WritesDisabledTests(unittest.TestCase):
-    def test_uploads_forbidden_outside_local(self) -> None:
-        with TestClient(create_app(make_settings(environment="DEV"), MemoryTableStore())) as client:
-            response = client.post("/api/v1/tables/health_board_mapping/uploads",
-                                   files={"file": ("hb.csv", HEALTH_BOARD_CSV, "text/csv")})
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["error"], "writes_disabled")
-
 
 class HealthTests(unittest.TestCase):
     def test_live(self) -> None:

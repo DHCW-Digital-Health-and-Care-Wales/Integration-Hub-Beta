@@ -19,7 +19,6 @@ from lookup_service.errors import (
     InvalidUploadError,
     ReadOnlyStoreError,
     UploadTooLargeError,
-    WritesDisabledError,
 )
 from lookup_service.mapping.model import RecordMapping
 from lookup_service.models import TABLE_NAME_PATTERN, TableDefinition, UploadInfo, UploadResult
@@ -27,8 +26,6 @@ from lookup_service.resolver import LookupResolver
 
 logger = logging.getLogger(__name__)
 
-# Replaced by the authenticated principal in Phase 2.
-ANONYMOUS_ACTOR = "unauthenticated"
 MAX_FILE_NAME_LENGTH = 200
 EDITABLE_SETTINGS = frozenset({"ttl_seconds", "preload"})
 _TABLE_NAME_RE = re.compile(TABLE_NAME_PATTERN)
@@ -39,22 +36,21 @@ class UploadRequest:
     table: str
     data: bytes
     file_name: str | None
+    # The authenticated principal's name; recorded as the uploader.
+    actor: str
     # None means "keep the existing table's definition".
     definition_settings: Mapping[str, Any] | None = None
     mapping: RecordMapping | None = None
-    actor: str = ANONYMOUS_ACTOR
 
 
-def ensure_writes_allowed(settings: Settings, resolver: LookupResolver) -> None:
-    if not settings.writes_enabled:
-        raise WritesDisabledError("Uploads are disabled in this environment until authentication is in place")
+def ensure_store_writable(resolver: LookupResolver) -> None:
     if not resolver.store.writable:
         raise ReadOnlyStoreError("Tables are served from seed files; configure COSMOS_ENDPOINT to enable uploads")
 
 
 async def replace_table_from_csv(settings: Settings, resolver: LookupResolver, request: UploadRequest) -> UploadResult:
     """Validate the whole file first, then replace the table. Nothing is written if any row is invalid."""
-    ensure_writes_allowed(settings, resolver)
+    ensure_store_writable(resolver)
     table = request.table
     if not _TABLE_NAME_RE.fullmatch(table):
         raise InvalidUploadError(f"Invalid table name; must match {TABLE_NAME_PATTERN}")
@@ -92,17 +88,17 @@ async def replace_table_from_csv(settings: Settings, resolver: LookupResolver, r
         )
         await resolver.refresh_table(table)
     duration_ms = round((time.perf_counter() - started) * 1000)
-    logger.info("Replaced table %s: %d row(s), %d removed, %d ms", table, len(result.rows), replaced.removed,
-                duration_ms)
+    logger.info("Replaced table %s: %d row(s), %d removed, %d ms (by %s)", table, len(result.rows),
+                replaced.removed, duration_ms, request.actor)
     return UploadResult(table=table, row_count=len(result.rows), upserted=replaced.upserted, removed=replaced.removed,
                         duration_ms=duration_ms, created=created)
 
 
 async def update_table_settings(
-    settings: Settings, resolver: LookupResolver, table: str, changes: Mapping[str, Any]
+    resolver: LookupResolver, table: str, changes: Mapping[str, Any], actor: str
 ) -> None:
     """Change `ttl_seconds` and/or `preload` without touching rows; `ttl_seconds=None` resets to the default."""
-    ensure_writes_allowed(settings, resolver)
+    ensure_store_writable(resolver)
     unknown = set(changes) - EDITABLE_SETTINGS
     if unknown:
         raise InvalidSettingsError(f"Cannot change: {sorted(unknown)}", table)
@@ -115,7 +111,7 @@ async def update_table_settings(
                                        _validation_messages(exc)) from exc
         await resolver.store.update_definition(definition)
         await resolver.refresh_table(table)
-    logger.info("Updated settings of table %s: %s", table, sorted(changes))
+    logger.info("Updated settings of table %s: %s (by %s)", table, sorted(changes), actor)
 
 
 def _safe_file_name(request: UploadRequest) -> str | None:

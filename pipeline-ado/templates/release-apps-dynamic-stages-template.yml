@@ -21,8 +21,8 @@ stages:
     - ${{ if or(eq(parameters.selectedEnvironment, 'all'), eq(parameters.selectedEnvironment, env.name)) }}:
       # Loop through each application
       - ${{ each app in parameters.appConfig }}:
-        # Check if app is selected
-        - ${{ if or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)) }}:
+        # Check if app is selected and, if the app sets allowedEnvironments, that it targets this environment
+        - ${{ if and(or(eq(parameters.selectedApp, 'all'), eq(parameters.selectedApp, app.name)), or(not(app.allowedEnvironments), containsValue(app.allowedEnvironments, env.name))) }}:
           - stage: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_${{ upper(env.name) }}
             displayName: 'Release ${{ app.name }} - ${{ env.displayName }}'
             
@@ -32,7 +32,11 @@ stages:
               ${{ if eq(env.name, 'dte') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
               ${{ elseif eq(env.name, 'tst') }}:
-                dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DTE
+                # An app restricted to environments without DTE chains TST straight after DEV
+                ${{ if and(app.allowedEnvironments, not(containsValue(app.allowedEnvironments, 'dte'))) }}:
+                  dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DEV
+                ${{ else }}:
+                  dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_DTE
               ${{ elseif eq(env.name, 'uat') }}:
                 dependsOn: Release_${{ replace(replace(app.name, ' ', ''), '-', '') }}_TST
               ${{ elseif eq(env.name, 'ppd') }}:

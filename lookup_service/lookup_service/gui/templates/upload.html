@@ -21,6 +21,7 @@
 {% endif %}
 
 <form class="dash-card upload-form" method="post" action="{{ url_for('upload_submit') }}" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
   <div class="form-row">
     <label class="cfg-label">Table name
       <input class="dash-input" type="text" name="table" required list="existing-tables" value="{{ fields.get('table', '') }}"

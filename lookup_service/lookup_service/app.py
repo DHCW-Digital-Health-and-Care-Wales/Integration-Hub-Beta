@@ -16,6 +16,7 @@ from lookup_service.errors import LookupServiceError
 from lookup_service.gui import pages
 from lookup_service.models import ErrorResponse
 from lookup_service.resolver import LookupResolver
+from lookup_service.security import SigningKeyProvider, TokenVerifier
 from lookup_service.seed import import_missing_seed_tables
 from lookup_service.store.base import TableStore
 from lookup_service.store.cosmos_store import CosmosTableStore
@@ -36,16 +37,23 @@ def build_store(settings: Settings) -> TableStore:
     return FileTableStore.load(settings.seed_dir)
 
 
-def create_app(settings: Settings | None = None, store: TableStore | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    store: TableStore | None = None,
+    signing_keys: SigningKeyProvider | None = None,
+) -> FastAPI:
     """Build the FastAPI application.
 
     Args:
-        settings: Configuration; read from the environment when omitted.
+        settings: Configuration; read from the environment when omitted. Refused (RuntimeError) if the
+            authentication configuration is unsafe.
         store: Pre-built table store (tests). When omitted, one is built from settings during startup.
             Either way, startup seeds a writable store and loads tables; the app reports not-ready
             until that completes.
+        signing_keys: Token signing-key source (tests); defaults to the tenant's cached JWKS endpoint.
     """
     settings = settings or Settings.from_env()
+    settings.validate()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -73,6 +81,11 @@ def create_app(settings: Settings | None = None, store: TableStore | None = None
     )
     app.state.settings = settings
     app.state.resolver = None
+    app.state.token_verifier = (
+        TokenVerifier(settings.auth_tenant_id or "", settings.auth_audience or "", signing_keys)
+        if settings.auth_enabled
+        else None
+    )
 
     @app.exception_handler(LookupServiceError)
     async def handle_lookup_error(request: Request, exc: LookupServiceError) -> JSONResponse:
@@ -80,7 +93,7 @@ def create_app(settings: Settings | None = None, store: TableStore | None = None
         content = body.model_dump()
         if body.errors is None:
             content.pop("errors")
-        return JSONResponse(status_code=exc.status_code, content=content)
+        return JSONResponse(status_code=exc.status_code, content=content, headers=exc.headers)
 
     app.include_router(health.router)
     app.include_router(lookup.router)
