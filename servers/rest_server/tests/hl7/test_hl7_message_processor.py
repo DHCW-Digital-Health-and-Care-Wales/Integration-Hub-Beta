@@ -80,6 +80,17 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         # Service Bus subscriptions can filter on it - see custom_message_properties.build_risp_properties.
         mpi_args = sender.send_text_message.call_args
         self.assertEqual(mpi_args[0][1]["MessageType"], "A28")
+        self.assertEqual(mpi_args[0][1]["MessageStructure"], "ADT_A05")
+
+    def test_a28_without_message_structure_publishes_resolved_structure(self) -> None:
+        context, sender, _, wrrs = build_test_context(flow_name="risp")
+        assert wrrs is not None
+        message_without_structure = RISP_A28_MESSAGE.replace("^ADT_A05", "")
+
+        context.processor.process(message_without_structure)
+
+        sender.send_text_message.assert_called_once()
+        self.assertEqual(sender.send_text_message.call_args[0][1]["MessageStructure"], "ADT_A28")
 
     def test_a40_sends_to_both_mpi_transformer_and_wrrs(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")
@@ -94,6 +105,7 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         mpi_args = sender.send_text_message.call_args
         self.assertEqual(mpi_args[0][0], RISP_A40_MESSAGE)
         self.assertEqual(mpi_args[0][1]["MessageType"], "A40")
+        self.assertEqual(mpi_args[0][1]["MessageStructure"], "ADT_A39")
 
         # The WRRS destination gets an XML payload with the WRRS workflow id, and the same
         # MessageType property (both destination copies share the tracking properties dict).
@@ -101,6 +113,7 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         self.assertIn("<", wrrs_args[0][0])
         self.assertEqual(wrrs_args[0][1]["WorkflowID"], "risp-to-wrrs")
         self.assertEqual(wrrs_args[0][1]["MessageType"], "A40")
+        self.assertEqual(wrrs_args[0][1]["MessageStructure"], "ADT_A39")
 
     def test_oru_r01_sends_only_to_wrrs_after_schema_validation(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")
@@ -120,6 +133,7 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         wrrs.send_text_message.assert_called_once()
         wrrs_args = wrrs.send_text_message.call_args
         self.assertEqual(wrrs_args[0][0], fake_xml)
+        self.assertEqual(wrrs_args[0][1]["MessageStructure"], "ORU_R01")
 
     def test_wrong_sending_facility_rejects_with_no_sends(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")
