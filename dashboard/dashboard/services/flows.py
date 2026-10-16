@@ -235,7 +235,7 @@ def _merge_subscription_records(
 
     A single topic can be shared by more than one flow — e.g. the WDS server
     publishes to ``sbt-wds-hl7-input``, which is consumed independently by the
-    WDS→MPI subscription sender and the WDS→WIS transformer.  Ownership is
+    WDS→MPI sender (subscription-based ingress) and the WDS→WIS transformer.  Ownership is
     therefore taken from ``flow_subscriptions`` (the subscriptions Container App
     discovery attributed to *this* flow).  ``consumer_subscriptions`` and
     ``service_bus_subscriptions`` may list *every* subscription on the shared

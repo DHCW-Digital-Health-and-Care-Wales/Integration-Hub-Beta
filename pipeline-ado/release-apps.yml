@@ -15,7 +15,7 @@ parameters:
       - Chemocare HL7Server
       - MPI HL7Server
       - WDS HL7Server
-      - MPI HL7 Subscription Sender
+      - WDS To MPI HL7 Sender
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -182,10 +182,10 @@ stages:
           appFunctionMidfix: 'wds'
           buildPipeline: 'HL7 Server - Build'
 
-        - name: 'MPI HL7 Subscription Sender'
-          appImageName: 'hl7subsndr'
+        - name: 'WDS To MPI HL7 Sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'wds'
-          buildPipeline: 'HL7 Subscription Sender - Build'
+          buildPipeline: 'HL7 Sender - Build'
 
         - name: 'Mosaiq HL7Server'
           appImageName: 'hl7server'
