@@ -162,9 +162,9 @@ stages:
           appFunctionMidfix: 'pims'
           buildPipeline: 'HL7 Server - Build'
           
-        - name: 'Paris HL7Server'
+        - name: 'CAV Paris HL7Server'
           appImageName: 'hl7server'
-          appFunctionMidfix: 'paris'
+          appFunctionMidfix: 'cav-paris'
           buildPipeline: 'HL7 Server - Build'
           
         - name: 'Chemocare HL7Server'

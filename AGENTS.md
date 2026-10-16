@@ -259,7 +259,7 @@ The app degrades gracefully — all pages return data (or empty state) when Azur
 
 Docker Compose profiles in `local/` map to flows:
 - `phw-to-mpi` — PHW server, transformer, sender
-- `paris-to-mpi` — Paris server, sender (no transformer)
+- `paris-to-mpi` — `cav-paris-hl7-server` server, `paris-mpi-hl7-sender` sender (no transformer)
 - `chemo-to-mpi` — Chemo server, transformer, sender
 - `pims-to-mpi` — PIMS server, transformer, sender
 - `dashboard` — Cosmos DB emulator for the NOC dashboard (run the dashboard itself on the host with `uv run flask`)
