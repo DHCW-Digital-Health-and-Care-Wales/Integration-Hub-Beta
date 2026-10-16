@@ -1,12 +1,13 @@
 import logging
-from typing import Callable
+from typing import Any, Callable, Optional
 
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
-from hl7apy.core import Message
-from hl7apy.parser import parse_message
 from message_bus_lib.message_sender_client import MessageSenderClient
 from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_metadata, get_metadata_log_values
+
+from .codecs.base_codec import MessageCodec
+from .codecs.hl7_er7_codec import Hl7Er7Codec
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,14 @@ def process_message(
     message: ServiceBusMessage,
     sender_client: MessageSenderClient,
     event_logger: EventLogger,
-    transform: Callable[[Message], Message],
+    transform: Callable[[Any], Any],
     transformer_display_name: str,
     received_audit_text: str,
-    processed_audit_text_builder: Callable[[Message], str],
+    processed_audit_text_builder: Callable[[Any], str],
     failed_audit_text: str,
+    codec: Optional[MessageCodec] = None,
 ) -> bool:
+    codec = codec or Hl7Er7Codec()
     message_body = b"".join(message.body).decode("utf-8")
     incoming_props: dict[str, str] | None = extract_metadata(message)
     meta = get_metadata_log_values(incoming_props)
@@ -40,17 +43,17 @@ def process_message(
     try:
         event_logger.log_message_received(message_body, received_audit_text, correlation_id=correlation_id_opt)
 
-        hl7_msg = parse_message(message_body)
-        msh_segment = hl7_msg.msh
-        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
+        parsed_message = codec.parse(message_body)
 
-        transformed_hl7_message = transform(hl7_msg)
+        transformed_message = transform(parsed_message)
 
-        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props)
+        wire_output = codec.serialise(transformed_message)
+
+        sender_client.send_message(wire_output, custom_properties=incoming_props)
 
         event_logger.log_message_processed(
-            transformed_hl7_message.to_er7(),
-            processed_audit_text_builder(hl7_msg),
+            wire_output,
+            processed_audit_text_builder(parsed_message),
             correlation_id=correlation_id_opt,
         )
 

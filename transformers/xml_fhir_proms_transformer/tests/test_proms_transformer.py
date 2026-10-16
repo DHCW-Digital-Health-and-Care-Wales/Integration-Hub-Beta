@@ -10,8 +10,11 @@ import json
 import unittest
 from unittest import mock
 
+from azure.servicebus import ServiceBusMessage
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.resource import Resource
+from transformer_base_lib.codecs import FhirJsonCodec
+from transformer_base_lib.message_processor import process_message
 
 from tests.wpas_messages import (
     CANCELLED_MESSAGE,
@@ -647,15 +650,16 @@ class TestPromsFhirTransformer(unittest.TestCase):
         self.transformer = PromsFhirTransformer()
         self.transformer._resolver = None  # type: ignore[assignment]
         self.transformer.transformer_name = "WPAS_PROMS"
+        self.transformer.codec = FhirJsonCodec(parse_fn=parse_proms_xml)
 
-    def test_parse_input_produces_a_parsed_message(self) -> None:
-        message = self.transformer.parse_input(REFERRAL_MESSAGE)
+    def test_codec_parse_produces_a_parsed_message(self) -> None:
+        message = self.transformer.codec.parse(REFERRAL_MESSAGE)
         self.assertEqual(message.root_tag, "PromsEventRequest")
         self.assertEqual(message.get("nhsNumber"), "9434765919")
 
-    def test_serialise_output_produces_valid_fhir_json(self) -> None:
+    def test_codec_serialise_produces_valid_fhir_json(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
-        payload = json.loads(self.transformer.serialise_output(bundle))
+        payload = json.loads(self.transformer.codec.serialise(bundle))
         self.assertEqual(payload["resourceType"], "Bundle")
         self.assertEqual(payload["type"], "message")
         self.assertEqual(payload["entry"][0]["resource"]["resourceType"], "MessageHeader")
@@ -669,6 +673,41 @@ class TestPromsFhirTransformer(unittest.TestCase):
         queue_bundle = build_fhir_bundle(message, uuid_factory=sequential_uuid_factory())
         standalone_bundle = build(REFERRAL_MESSAGE)
         self.assertEqual(queue_bundle.model_dump_json(), standalone_bundle.model_dump_json())
+
+
+class TestPromsFhirTransformerEndToEndViaProcessMessage(unittest.TestCase):
+    """Regression test for the original bug: process_message() must actually
+    route WPAS XML through PromsFhirTransformer's FhirJsonCodec end-to-end,
+    rather than silently falling back to HL7 ER7 parsing/serialising."""
+
+    def setUp(self) -> None:
+        self.transformer = PromsFhirTransformer()
+
+    def test_process_message_produces_a_fhir_bundle_on_the_egress_queue(self) -> None:
+        mock_message = mock.MagicMock(spec=ServiceBusMessage)
+        mock_message.body = [REFERRAL_MESSAGE.encode("utf-8")]
+        mock_message.application_properties = None
+
+        mock_sender = mock.MagicMock()
+        mock_event_logger = mock.MagicMock()
+
+        result = process_message(
+            message=mock_message,
+            sender_client=mock_sender,
+            event_logger=mock_event_logger,
+            transform=self.transformer.transform_message,
+            transformer_display_name=self.transformer.transformer_name,
+            received_audit_text="WPAS message received",
+            processed_audit_text_builder=self.transformer.get_processed_audit_text,
+            failed_audit_text="WPAS_PROMS transformation failed",
+            codec=self.transformer.codec,
+        )
+
+        self.assertTrue(result)
+        mock_sender.send_message.assert_called_once()
+        sent_payload = json.loads(mock_sender.send_message.call_args[0][0])
+        self.assertEqual(sent_payload["resourceType"], "Bundle")
+        self.assertEqual(sent_payload["type"], "message")
 
 
 if __name__ == "__main__":

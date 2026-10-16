@@ -33,6 +33,7 @@ from typing import Optional
 from fhir.resources.R4B.bundle import Bundle, BundleEntry
 from fhir.resources.R4B.resource import Resource
 from transformer_base_lib import BaseTransformer
+from transformer_base_lib.codecs import FhirJsonCodec
 
 from .mappers.appointment_mapper import map_appointment
 from .mappers.encounter_mapper import map_encounter
@@ -250,26 +251,17 @@ def transform_proms_xml_to_fhir_bundle(
 class PromsFhirTransformer(BaseTransformer):
     """Queue-driven transformer for WPAS XML -> Promptly FHIR message Bundle.
 
-    Overrides the two BaseTransformer wire-format hooks:
-      * parse_input      - WPAS XML -> PromsMessage
-      * serialise_output - FHIR Bundle -> JSON
+    Uses FhirJsonCodec as its wire-format codec: WPAS XML -> PromsMessage on
+    the way in, FHIR Bundle -> JSON on the way out.
     """
 
     def __init__(self, resolver: Optional[ReferenceDataResolver] = None) -> None:
         config_path = os.path.join(os.path.dirname(__file__), "config.ini")
-        super().__init__("WPAS_PROMS", config_path)
+        super().__init__("WPAS_PROMS", config_path, codec=FhirJsonCodec(parse_fn=parse_proms_xml))
         self._resolver = resolver or DEFAULT_REFERENCE_DATA_RESOLVER
-
-    def parse_input(self, message_body: str) -> PromsMessage:
-        """Parse the inbound WPAS XML payload into a flat field view."""
-        return parse_proms_xml(message_body)
 
     def transform_message(self, hl7_msg: PromsMessage) -> Bundle:
         return build_fhir_bundle(hl7_msg, resolver=self._resolver)
-
-    def serialise_output(self, transformed_message: Bundle) -> str:
-        """Serialise the FHIR Bundle to JSON for the egress queue."""
-        return transformed_message.model_dump_json()
 
     def get_processed_audit_text(self, hl7_msg: PromsMessage) -> str:
         """Audit text based on the WPAS message type."""

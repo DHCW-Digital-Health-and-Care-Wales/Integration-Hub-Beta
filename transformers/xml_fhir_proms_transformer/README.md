@@ -161,19 +161,25 @@ build_fhir_bundle(message, resolver=MyLookupServiceResolver())
 
 ## How it plugs into the shared processing loop
 
-`transformer_base_lib` exposes two wire-format hooks on `BaseTransformer`, which
-default to the standard HL7-in/HL7-out behaviour. This service overrides both:
+`transformer_base_lib` uses a pluggable `MessageCodec` (parse/serialise wire
+format adapter) on `BaseTransformer`, defaulting to `Hl7Er7Codec` so existing
+HL7 transformers are unaffected. This service passes a `FhirJsonCodec`:
 
-| Hook | Default (other transformers) | This transformer |
+| Codec step | Default (other transformers) | This transformer |
 |---|---|---|
-| `parse_input(body)` | `parse_message(body)` (ER7) | `parse_proms_xml(body)` -> `PromsMessage` |
+| `codec.parse(body)` | `parse_message(body)` (ER7) | `parse_proms_xml(body)` -> `PromsMessage` |
 | `transform_message(msg)` | `Message` -> `Message` | `PromsMessage` -> FHIR `Bundle` |
-| `serialise_output(result)` | `result.to_er7()` | `result.model_dump_json()` |
+| `codec.serialise(result)` | `result.to_er7()` | `result.model_dump_json()` |
+
+```python
+super().__init__("WPAS_PROMS", config_path, codec=FhirJsonCodec(parse_fn=parse_proms_xml))
+```
 
 Everything else — Service Bus connectivity, health checks, audit logging,
-batching — is inherited unchanged from `BaseTransformer.run()`. The hooks are
-additive and default to the previous behaviour, so `transformers/hl7_phw_transformer`,
-`hl7_chemo_transformer` and `hl7_pims_transformer` are unaffected.
+batching — is inherited unchanged from `BaseTransformer.run()`. The codec is
+injected via the constructor and defaults to the previous HL7 behaviour, so
+`transformers/hl7_phw_transformer`, `hl7_chemo_transformer` and
+`hl7_pims_transformer` are unaffected.
 
 A standalone convenience entry point is also available for ad-hoc use and testing:
 
