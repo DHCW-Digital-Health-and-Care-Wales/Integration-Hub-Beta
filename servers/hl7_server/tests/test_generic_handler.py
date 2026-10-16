@@ -261,6 +261,43 @@ class TestGenericHandler(unittest.TestCase):
 
                 mock_validate_flow_xml.reset_mock()
 
+    @patch("hl7_server.generic_handler.validate_and_convert_parsed_message_with_flow_schema")
+    def test_mosaiq_flow_only_sets_sending_app_and_trigger_event(
+        self, mock_validate_flow_xml: MagicMock
+    ) -> None:
+        validation_result = MagicMock()
+        validation_result.is_valid = True
+        validation_result.error_message = None
+        validation_result.xml_string = "<ADT_A05 xmlns=\"urn:hl7-org:v2xml\" />"
+        mock_validate_flow_xml.return_value = validation_result
+
+        validator = HL7Validator(flow_name="mosaiq")
+        mosaiq_message = (
+            "MSH|^~\\&|285|285|100|100|20250505232332||ADT^A28^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
+            "PID|1||123456^^^Hospital^MR||Doe^John\r"
+        )
+        handler = GenericHandler(
+            mosaiq_message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="285",
+            message_store_client=self.mock_message_store,
+            egress_session_id="mosaiq-to-mpi",
+            flow_name="mosaiq",
+        )
+
+        handler.reply()
+
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["SendingApplication"], "285")
+        self.assertEqual(tracking_metadata_properties["TriggerEvent"], "A28")
+        self.assertNotIn("MessageType", tracking_metadata_properties)
+        self.assertNotIn("UpdateSources", tracking_metadata_properties)
+        self.assertNotIn("AssigningAuthorities", tracking_metadata_properties)
+
     def test_metric_sent_on_message_received(self) -> None:
         self.handler.reply()
 
