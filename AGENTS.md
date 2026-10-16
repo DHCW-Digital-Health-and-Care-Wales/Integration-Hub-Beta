@@ -77,10 +77,10 @@ container, post-transform queue, sender, and destination.
 | Flow | Source Port | Pre-queue | Transformer | Post-queue | Destination |
 |------|-------------|-----------|-------------|------------|-------------|
 | PHW → MPI | 2575 | `pre-phw-transform` | `transformers/hl7_phw_transformer` | `post-phw-transform` | MPI |
-| Paris → MPI | 2577 | `pre-paris-transform` | *(none)* | `post-paris-transform` | MPI |
+| CAV Paris → MPI | 2577 | *(dedicated sender topic)* | *(none)* | *(dedicated sender topic)* | MPI |
 | ChemoCare → MPI | 2578 | `pre-chemo-transform` | `transformers/hl7_chemo_transformer` | `post-chemo-transform` | MPI |
 | PIMS → MPI | 2579 | `pre-pims-transform` | `transformers/hl7_pims_transformer` | `post-pims-transform` | MPI |
-| Mosaiq → MPI | 2583 | *(shared sender queue)* | *(none)* | *(shared sender queue)* | MPI |
+| Mosaiq → MPI | 2583 | *(dedicated sender topic)* | *(none)* | *(dedicated sender topic)* | MPI |
 | MPI Outbound | — | `mpi-outbound` | *(none)* | *(none)* | Downstream systems |
 
 Queue names are overridable via environment variables (e.g. `QUEUE_PHW_PRE`).

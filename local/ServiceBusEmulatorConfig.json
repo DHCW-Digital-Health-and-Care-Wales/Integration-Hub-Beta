@@ -231,6 +231,20 @@
             ]
           },
           {
+            "Name": "local-inthub-cav-paris-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-cav-paris-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
             "Name": "local-inthub-hl7-topic-mock-receiver",
             "Subscriptions": [
               {

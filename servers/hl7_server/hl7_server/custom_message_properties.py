@@ -47,12 +47,8 @@ def build_wds_properties(msg: Message) -> dict[str, str]:
 
 
 def build_mosaiq_properties(msg: Message) -> dict[str, str]:
-    """Mosaiq flow properties: exposes the HL7 fields required for routing/filtering on the
-    dedicated MOSAIQ Service Bus topic - ``SendingApplication`` (MSH.3) and ``TriggerEvent``
-    (MSH.9.2). Mosaiq only sends ADT^A28/A31/A40 from sending application 285 (already enforced
-    by HL7Validator/SENDING_APP and the MLLP server's configured handlers), so these properties
-    are a low-risk mechanical copy of already-validated fields.
-    """
+    """Mosaiq only needs SendingApplication (MSH.3) and TriggerEvent (MSH.9.2);
+    generic_handler skips build_routing_properties for this flow so these aren't merged with it."""
     return {
         "SendingApplication": get_hl7_field_value(msg, "msh.msh_3"),
         "TriggerEvent": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),

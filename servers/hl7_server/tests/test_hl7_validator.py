@@ -31,6 +31,33 @@ VALID_WDS_A28_MESSAGE = (
     "PV1||N"
 )
 
+VALID_PARIS_A28_MESSAGE = (
+    "MSH|^~\\&|169|169|100|100|20250505232328||ADT^A28^ADT_A05|202505052323326666666666|P|2.5|||||GBR||EN\r"
+    "EVN||20250502102000|20250505232328|||20250505232328\r"
+    "PID|||8888888^^^169^PI~6666666666^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19920809|M|^^||"
+    "ADDRESS1^ADDRESS2^ADDRESS3^ADDRESS4^XX99 9XX^^H~^^^^^^||^^^~|||||||||||||||||||01\r"
+    "PD1|||^^W99999^|G7777777\r"
+    "PV1||\r"
+)
+
+VALID_PARIS_A40_MESSAGE = (
+    "MSH|^~\\&|169|169|100|100|20250505232328||ADT^A40^ADT_A39|202505052323326666666667|P|2.5|||||GBR||EN\r"
+    "EVN||20250502102000|20250505232328|||20250505232328\r"
+    "PID|||8888888^^^169^PI~6666666666^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19920809|M|^^||"
+    "ADDRESS1^ADDRESS2^ADDRESS3^ADDRESS4^XX99 9XX^^H~^^^^^^||^^^~|||||||||||||||||||01\r"
+    "MRG|8888889^^^169^PI\r"
+    "PV1||\r"
+)
+
+DISALLOWED_PARIS_A05_MESSAGE = (
+    "MSH|^~\\&|169|169|100|100|20250505232328||ADT^A05^ADT_A05|202505052323326666666668|P|2.5|||||GBR||EN\r"
+    "EVN||20250502102000|20250505232328|||20250505232328\r"
+    "PID|||8888888^^^169^PI~6666666666^^^NHS^NH||MYSURNAME^MYFNAME^MYMNAME^^MR||19920809|M|^^||"
+    "ADDRESS1^ADDRESS2^ADDRESS3^ADDRESS4^XX99 9XX^^H~^^^^^^||^^^~|||||||||||||||||||01\r"
+    "PD1|||^^W99999^|G7777777\r"
+    "PV1||\r"
+)
+
 
 class TestHL7Validator(unittest.TestCase):
     def test_no_flow_name_skips_flow_specific_validation(self) -> None:
@@ -59,6 +86,28 @@ class TestHL7Validator(unittest.TestCase):
         validator = HL7Validator(hl7_version="2.5", sending_app="328", flow_name="wds")
 
         validator.validate(msg)
+
+    def test_paris_flow_accepts_a28_message(self) -> None:
+        msg = parse_message(VALID_PARIS_A28_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="169", flow_name="paris")
+
+        validator.validate(msg)
+
+    def test_paris_flow_accepts_a40_message(self) -> None:
+        msg = parse_message(VALID_PARIS_A40_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="169", flow_name="paris")
+
+        validator.validate(msg)
+
+    def test_paris_flow_rejects_unsupported_a05_message(self) -> None:
+        msg = parse_message(DISALLOWED_PARIS_A05_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="169", flow_name="paris")
+
+        with self.assertRaises(ValidationException):
+            validator.validate(msg)
 
     def test_invalid_hl7version_raises_exception(self) -> None:
         msg = parse_message(VALID_A31_MESSAGE)

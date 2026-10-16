@@ -31,7 +31,8 @@ parameters:
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
       - PHW TO MPI HL7 Sender
-      - Mosaiq TO MPI HL7 Sender
+      - Mosaiq To MPI HL7 Sender
+      - Paris To MPI HL7 Sender
       - RISP MPI HL7 Sender
       - LIMS HL7 Sender
       - BCU Chemo HL7 Subscription Sender
@@ -297,13 +298,19 @@ stages:
           appFunctionMidfix: 'phw-to-mpi'
           buildPipeline: 'HL7 Sender - Build'
 
-        - name: 'Mosaiq TO MPI HL7 Sender'
+        - name: 'Mosaiq To MPI HL7 Sender'
           appImageName: 'hl7sender'
           appFunctionMidfix: 'mosaiq'
           buildPipeline: 'HL7 Sender - Build'
+          
         - name: 'RISP MPI HL7 Sender'
           appImageName: 'hl7sender'
           appFunctionMidfix: 'risp-mpi'
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'Paris To MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'paris'
           buildPipeline: 'HL7 Sender - Build'
 
         - name: 'LIMS HL7 Sender'

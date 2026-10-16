@@ -153,10 +153,13 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
-            try:
-                tracking_metadata_properties.update(build_routing_properties(msg))
-            except Exception as e:
-                logger.warning("Failed to build routing properties: %s", e)
+            # Mosaiq uses its own flow-specific builder for SendingApplication/TriggerEvent only;
+            # skip the generic routing properties so the extra fields aren't added for it.
+            if self.flow_name != "mosaiq":
+                try:
+                    tracking_metadata_properties.update(build_routing_properties(msg))
+                except Exception as e:
+                    logger.warning("Failed to build routing properties: %s", e)
 
             flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if flow_property_builder:
