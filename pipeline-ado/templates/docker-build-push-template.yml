@@ -246,24 +246,51 @@ jobs:
             PROTECTED_TAGS="${{ parameters.protectedTags }}"
             echo "Protected tags (never deleted): $PROTECTED_TAGS"
 
-            # Get list of tags sorted by creation date (newest first), excluding protected tags
+            # Resolve the manifest digests referenced by the protected tags.
+            # Any tag sharing one of these digests must also be preserved,
+            # otherwise deleting it would delete the shared manifest (and
+            # every tag pointing to it, including prd/dr).
+            PROTECTED_DIGESTS=""
+            IFS=',' read -ra PTAGS <<< "$PROTECTED_TAGS"
+            for ptag in "${PTAGS[@]}"; do
+              [ -z "$ptag" ] && continue
+              digest=$(az acr manifest show \
+                --name ${{ parameters.acrName }}/${{ parameters.appName }}:$ptag \
+                --query "digest" -o tsv 2>/dev/null) || digest=""
+              if [ -n "$digest" ]; then
+                PROTECTED_DIGESTS="$PROTECTED_DIGESTS$digest"$'\n'
+              fi
+            done
+            echo "Protected digests:"
+            echo "$PROTECTED_DIGESTS"
+
+            # Get list of tags sorted by creation date (newest first), along with their digests
             ALL_TAGS_SORTED=$(az acr repository show-tags \
               --name ${{ parameters.acrName }} \
               --repository ${{ parameters.appName }} \
               --orderby time_desc \
+              --detail \
+              --query "[].{name:name, digest:digest}" \
               -o tsv)
 
             CANDIDATE_TAGS=""
-            while IFS= read -r tag; do
+            while IFS=$'\t' read -r tag digest; do
               [ -z "$tag" ] && continue
+
               IS_PROTECTED=false
-              IFS=',' read -ra PTAGS <<< "$PROTECTED_TAGS"
               for ptag in "${PTAGS[@]}"; do
                 if [ "$tag" == "$ptag" ]; then
                   IS_PROTECTED=true
                   break
                 fi
               done
+
+              # Also protect any tag that shares a digest with a protected tag,
+              # since deleting it would otherwise remove the shared manifest.
+              if [ "$IS_PROTECTED" = false ] && [ -n "$digest" ] && echo "$PROTECTED_DIGESTS" | grep -qx "$digest"; then
+                IS_PROTECTED=true
+              fi
+
               if [ "$IS_PROTECTED" = false ]; then
                 CANDIDATE_TAGS="$CANDIDATE_TAGS$tag"$'\n'
               fi
@@ -274,11 +301,13 @@ jobs:
             if [ -n "$TAGS_TO_DELETE" ]; then
               echo "Deleting old image tags to retain only ${{ parameters.retainImageCount }} images..."
               for tag in $TAGS_TO_DELETE; do
-                echo "Deleting tag: $tag"
-                az acr repository delete \
+                echo "Untagging: $tag"
+                # Use untag rather than delete so we only remove this tag,
+                # not the underlying manifest (which may be referenced by
+                # other tags, e.g. a protected release alias).
+                az acr repository untag \
                   --name ${{ parameters.acrName }} \
-                  --image ${{ parameters.appName }}:$tag \
-                  --yes || echo "Failed to delete $tag"
+                  --image ${{ parameters.appName }}:$tag || echo "Failed to untag $tag"
               done
             else
               echo "No old images to cleanup"
