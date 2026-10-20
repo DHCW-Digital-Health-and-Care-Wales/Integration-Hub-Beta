@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [manifest]
@@ -519,6 +519,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "python-dotenv" },
     { name = "tzdata" },
+    { name = "werkzeug" },
 ]
 
 [package.dev-dependencies]
@@ -549,6 +550,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "tzdata", specifier = ">=2024.1" },
+    { name = "werkzeug", specifier = ">=3.1.9" },
 ]
 
 [package.metadata.requires-dev]

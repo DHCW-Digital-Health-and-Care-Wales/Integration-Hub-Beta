@@ -16,6 +16,10 @@ parameters:
     displayName: 'Semantic Version'
     type: string
     default: 'v0.1.0'
+  - name: PUSH_PRD_TAG
+    displayName: 'Push :prd tag (promotes this build as the live PRD/DR image)'
+    type: boolean
+    default: false
 
 variables:
   acrName: 'uksdhcwihsharedcr'
@@ -50,3 +54,7 @@ stages:
           azureServiceConnection: $(azureServiceConnection)
           POOL_NAME: ${{ variables.POOL_NAME }}
           SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+          ${{ if eq(parameters.PUSH_PRD_TAG, true) }}:
+            releaseTag: 'prd'
+          ${{ else }}:
+            releaseTag: ''
