@@ -47,20 +47,6 @@
             }
           },
           {
-            "Name": "local-inthub-mpi-sender-ingress",
-            "Properties": {
-              "DeadLetteringOnMessageExpiration": false,
-              "DefaultMessageTimeToLive": "PT1H",
-              "DuplicateDetectionHistoryTimeWindow": "PT20S",
-              "ForwardDeadLetteredMessagesTo": "",
-              "ForwardTo": "",
-              "LockDuration": "PT1M",
-              "MaxDeliveryCount": 10,
-              "RequiresDuplicateDetection": false,
-              "RequiresSession": true
-            }
-          },
-          {
             "Name": "local-inthub-mpi-mock-receiver",
             "Properties": {
               "DeadLetteringOnMessageExpiration": false,
@@ -193,6 +179,62 @@
             "Subscriptions": [
               {
                 "Name": "local-inthub-wrrs-outbound-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-risp-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-risp-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-mosaiq-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-mosaiq-mpi-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-cav-paris-mpi-sender-ingress",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-cav-paris-mpi-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",

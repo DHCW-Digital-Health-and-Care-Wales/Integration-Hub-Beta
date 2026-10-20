@@ -57,12 +57,15 @@ class Hl7ServerApplication:
         client_config = ConnectionConfig(app_config.connection_string, app_config.service_bus_namespace)
         factory = ServiceBusClientFactory(client_config)
 
+        egress_destination = "queue"
         if app_config.egress_topic_name:
+            egress_destination = f"topic '{app_config.egress_topic_name}'"
             self.sender_client = factory.create_topic_sender_client(
                 app_config.egress_topic_name, app_config.egress_session_id
             )
             logger.info(f"Configured to send messages to topic: {app_config.egress_topic_name}")
         elif app_config.egress_queue_name:
+            egress_destination = f"queue '{app_config.egress_queue_name}'"
             self.sender_client = factory.create_queue_sender_client(
                 app_config.egress_queue_name, app_config.egress_session_id
             )
@@ -97,6 +100,7 @@ class Hl7ServerApplication:
             app_config.egress_session_id,
             flow_name,
             standard_version,
+            egress_destination,
         )
 
         handlers = {

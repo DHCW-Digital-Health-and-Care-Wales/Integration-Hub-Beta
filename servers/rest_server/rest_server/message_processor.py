@@ -27,6 +27,8 @@ from rest_server.validators.base import Validator
 
 logger = logging.getLogger(__name__)
 
+MESSAGE_TYPE_KEY = "MessageType"
+
 
 class RestMessageProcessor:
     def __init__(
@@ -84,6 +86,8 @@ class RestMessageProcessor:
             output_payload = self._format_output(extracted.payload_xml)
 
             tracking_metadata_properties = build_common_properties(self.workflow_id, extracted.source_identifier)
+            if extracted.message_type:
+                tracking_metadata_properties[MESSAGE_TYPE_KEY] = extracted.message_type
             correlation_id = tracking_metadata_properties.get(CORRELATION_ID_KEY)
             message_control_id = extracted.message_control_id or ""
 

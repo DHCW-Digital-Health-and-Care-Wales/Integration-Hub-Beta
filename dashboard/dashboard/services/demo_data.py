@@ -321,7 +321,7 @@ DEMO_EXCEPTIONS: list[dict] = [
         "type": "KeyError",
         "message": "'PV1' segment not found in parsed HL7 message",
         "severity": 3,
-        "app": "paris-hl7-server",
+        "app": "cav-paris-hl7-server",
         "operation_id": "f6a7b8c9d0e1f6a7b8c9d0e1f6a7b8c9",
     },
     {

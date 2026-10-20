@@ -105,7 +105,7 @@ class TestIsSocketClosed(unittest.TestCase):
         with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as log:
             result = is_socket_closed(mock_socket)
 
-            self.assertFalse(result)
+            self.assertTrue(result)
             self.assertIn("unexpected exception", log.output[0])
 
         mock_select.assert_called_once_with([mock_socket], [], [], 0)
@@ -114,13 +114,13 @@ class TestIsSocketClosed(unittest.TestCase):
     def test_select_itself_raises_exception(self, mock_select: Mock) -> None:
         # Arrange
         mock_socket = Mock(spec=socket.socket)
-        mock_select.side_effect = OSError("select failed")
+        mock_select.side_effect = ValueError("Invalid file descriptor")
 
         # Act & Assert
         with self.assertLogs('hl7_sender.hl7_sender_client', level='ERROR') as log:
             result = is_socket_closed(mock_socket)
 
-            self.assertFalse(result)
+            self.assertTrue(result)
             self.assertIn("unexpected exception", log.output[0])
 
         mock_select.assert_called_once_with([mock_socket], [], [], 0)

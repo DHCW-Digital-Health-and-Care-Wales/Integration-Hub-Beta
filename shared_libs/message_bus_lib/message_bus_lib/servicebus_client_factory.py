@@ -1,12 +1,13 @@
 import logging
 import os
 from types import TracebackType
-from typing import Optional
+from typing import Optional, Union
 
 from azure.identity import DefaultAzureCredential
 from azure.servicebus import (
     ServiceBusClient,
     ServiceBusSender,
+    ServiceBusSessionFilter,
 )
 
 from message_bus_lib.connection_config import ConnectionConfig
@@ -80,7 +81,7 @@ class ServiceBusClientFactory:
         return self.servicebus_client.get_topic_sender(topic_name=topic_name)
 
     def create_message_receiver_client(
-        self, queue_name: str, session_id: Optional[str] = None
+        self, queue_name: str, session_id: Optional[Union[str, ServiceBusSessionFilter]] = None
     ) -> MessageReceiverClient:
         self.logger.debug(
             "Creating message receiver client for queue '%s' with session_id '%s'", queue_name, session_id
@@ -93,7 +94,7 @@ class ServiceBusClientFactory:
         )
 
     def create_subscription_receiver_client(
-        self, topic_name: str, subscription_name: str, session_id: Optional[str] = None
+        self, topic_name: str, subscription_name: str, session_id: Optional[Union[str, ServiceBusSessionFilter]] = None
     ) -> SubscriptionReceiverClient:
         self.logger.debug(
             "Creating message receiver client for topic '%s', subscription '%s' with session_id '%s'",

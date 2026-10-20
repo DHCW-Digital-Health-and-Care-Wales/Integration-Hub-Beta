@@ -22,7 +22,11 @@ from message_bus_lib.metadata_utils import (
 )
 from metric_sender_lib.metric_sender import MetricSender
 
-from hl7_server.custom_message_properties import FLOW_PROPERTY_BUILDERS, build_common_properties
+from hl7_server.custom_message_properties import (
+    FLOW_PROPERTY_BUILDERS,
+    build_common_properties,
+    build_routing_properties,
+)
 
 from .hl7_ack_builder import HL7AckBuilder
 from .hl7_validator import HL7Validator, ValidationException
@@ -44,8 +48,10 @@ class GenericHandler(AbstractHandler):
         egress_session_id: str,
         flow_name: str | None = None,
         standard_version: str | None = None,
+        egress_destination: str = "queue",
     ):
         super(GenericHandler, self).__init__(msg)
+        self.egress_destination = egress_destination
         self.sender_client = sender_client
         self.event_logger = event_logger
         self.metric_sender = metric_sender
@@ -147,6 +153,14 @@ class GenericHandler(AbstractHandler):
                     )
                     raise
 
+            # Mosaiq uses its own flow-specific builder for SendingApplication/TriggerEvent only;
+            # skip the generic routing properties so the extra fields aren't added for it.
+            if self.flow_name != "mosaiq":
+                try:
+                    tracking_metadata_properties.update(build_routing_properties(msg))
+                except Exception as e:
+                    logger.warning("Failed to build routing properties: %s", e)
+
             flow_property_builder = FLOW_PROPERTY_BUILDERS.get(self.flow_name or "")
             if flow_property_builder:
                 try:
@@ -214,7 +228,9 @@ class GenericHandler(AbstractHandler):
             self.sender_client.send_text_message(
                 self.incoming_message, tracking_metadata_properties, message_id=message_control_id
             )
-            logger.info("Message %s sent to Service Bus queue successfully", message_control_id)
+            logger.info(
+                "Message %s sent to Service Bus %s successfully", message_control_id, self.egress_destination
+            )
             meta = get_metadata_log_values(tracking_metadata_properties)
             logger.info(
                 "Message metadata attached - CorrelationId: %s, WorkflowID: %s, "

@@ -43,8 +43,10 @@ Destination host and port should be configured using environment variables confi
 - **SERVICE_BUS_CONNECTION_STRING** - service bus connection string (optional, required when SERVICE_BUS_NAMESPACE is empty)
 - **SERVICE_BUS_NAMESPACE** - service bus namespace (recommended, required when SERVICE_BUS_CONNECTION_STRING is empty)
 - **INGRESS_QUEUE_NAME** - service bus queue name to read messages from
-- **INGRESS_SESSION_ID** - service bus queue FIFO session name (required — stored alongside each persisted message so the replay job can route replayed messages back through this sender)
-- **REPLAY_SESSION_ID** - Service Bus session ID stored for replay when ingress has no session ID; required when `MESSAGE_STORE_QUEUE_NAME` is set and `INGRESS_SESSION_ID` is unset
+- **INGRESS_TOPIC_NAME** / **INGRESS_SUBSCRIPTION_NAME** - service bus topic/subscription to read messages from (alternative to `INGRESS_QUEUE_NAME`; mutually exclusive with it)
+- **INGRESS_SESSION_ID** - service bus queue FIFO session name (stored alongside each persisted message so the replay job can route replayed messages back through this sender). Mutually exclusive with `INGRESS_ACCEPT_ANY_SESSION`.
+- **INGRESS_ACCEPT_ANY_SESSION** - set to `true` to accept messages from *any* session instead of a single fixed one (uses the Service Bus `NEXT_AVAILABLE_SESSION` filter). Use this when this sender's ingress is shared by multiple flows publishing under different session IDs, so multiple replicas can each lock a different flow's session concurrently instead of contending for one hardcoded session. The session actually set on each received message is used for message-store/replay routing in this mode, so `REPLAY_SESSION_ID` is not required. Mutually exclusive with `INGRESS_SESSION_ID`.
+- **REPLAY_SESSION_ID** - Service Bus session ID stored for replay when ingress has no session ID; required when `MESSAGE_STORE_QUEUE_NAME` is set and neither `INGRESS_SESSION_ID` nor `INGRESS_ACCEPT_ANY_SESSION` is set
 - **RECEIVER_MLLP_HOST** - HL7/mllp destination server host
 - **RECEIVER_MLLP_PORT** - HL7/mllp destination server port
 - **ACK_TIMEOUT_SECONDS** - time for message acklowledgement

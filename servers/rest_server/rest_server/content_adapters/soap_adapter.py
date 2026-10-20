@@ -44,6 +44,8 @@ class SoapContentAdapter:
             structure_id=local_name(payload_element.tag),
             source_identifier=self._require_assigning_authority(payload_element),
             message_control_id=find_first_text(payload_element, ["MSH", "MSH.10"]),
+            # MSH.9.2 trigger event (e.g. A31); used for Service Bus subscription filtering.
+            message_type=find_first_text(payload_element, ["MSH", "MSH.9", "MSG.2"]),
         )
 
     def _require_assigning_authority(self, payload_element: XmlElement) -> str:

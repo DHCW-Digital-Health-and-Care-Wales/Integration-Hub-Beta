@@ -15,7 +15,7 @@ parameters:
       - Chemocare HL7Server
       - MPI HL7Server
       - WDS HL7Server
-      - MPI HL7 Subscription Sender
+      - WDS To MPI HL7 Sender
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -31,6 +31,10 @@ parameters:
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
       - PHW TO MPI HL7 Sender
+      - Mosaiq To MPI HL7 Sender
+      - Paris To MPI HL7 Sender
+      - RISP MPI HL7 Sender
+      - LIMS HL7 Sender
       - BCU Chemo HL7 Subscription Sender
       - PIMS HL7 Sender
       - Chemocare HL7 Sender
@@ -178,10 +182,10 @@ stages:
           appFunctionMidfix: 'wds'
           buildPipeline: 'HL7 Server - Build'
 
-        - name: 'MPI HL7 Subscription Sender'
-          appImageName: 'hl7subsndr'
+        - name: 'WDS To MPI HL7 Sender'
+          appImageName: 'hl7sender'
           appFunctionMidfix: 'wds'
-          buildPipeline: 'HL7 Subscription Sender - Build'
+          buildPipeline: 'HL7 Sender - Build'
 
         - name: 'Mosaiq HL7Server'
           appImageName: 'hl7server'
@@ -211,6 +215,11 @@ stages:
           appImageName: 'restserver'
           appFunctionMidfix: 'risp'
           buildPipeline: 'REST Server - Build'
+
+        - name: 'PMS HL7 SOAP Server'
+          appImageName: 'hl7soapserver'
+          appFunctionMidfix: 'pms'
+          buildPipeline: 'HL7 SOAP Server - Build'          
 
         # HL7 Transformer Variants
         - name: 'HL7 Phw Transformer'
@@ -289,6 +298,26 @@ stages:
           appFunctionMidfix: 'phw-to-mpi'
           buildPipeline: 'HL7 Sender - Build'
 
+        - name: 'Mosaiq To MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'mosaiq'
+          buildPipeline: 'HL7 Sender - Build'
+          
+        - name: 'RISP MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'risp-mpi'
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'Paris To MPI HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'paris'
+          buildPipeline: 'HL7 Sender - Build'
+
+        - name: 'LIMS HL7 Sender'
+          appImageName: 'hl7sender'
+          appFunctionMidfix: 'lims'
+          buildPipeline: 'HL7 Sender - Build'
+
         # LIMS SOAP Server (rest_server image, LIMS flow instance; container app uks-<env>-lims-hl7soapserver-ca).
         # Migrated from the legacy hl7_soap_server package (strict XSD-only validation) to rest_server's
         # generic pipeline with VALIDATOR_TYPE=hl7apy, matching local docker-compose's hl7-soap-server.
@@ -297,18 +326,13 @@ stages:
           appFunctionMidfix: 'lims'
           buildPipeline: 'REST Server - Build'
 
-        # PMS SOAP Server
-        - name: 'PMS HL7 SOAP Server'
-          appImageName: 'hl7soapserver'
-          appFunctionMidfix: 'pms'
-          buildPipeline: 'HL7 SOAP Server - Build'
-
         # WDS to WIS Flow
         - name: 'WIS SOAP Sender'
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
           buildPipeline: 'SOAP Sender - Build'
-        # Mock Receiver
+
+        # Mock Receivers
         - name: 'HL7 Mock Receiver'
           appImageName: 'hl7mockreceiver'
           appFunctionMidfix: ''

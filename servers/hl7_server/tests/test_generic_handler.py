@@ -117,6 +117,36 @@ class TestGenericHandler(unittest.TestCase):
         # MSH-10 control ID is used as Service Bus message_id for broker-level deduplication
         self.assertEqual(call_args.kwargs.get("message_id"), "202505052323364444")
 
+    @patch("hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS", {})
+    @patch("hl7_server.generic_handler.build_routing_properties")
+    def test_routing_properties_attached_for_flow_without_specific_builder(
+        self, mock_build_routing: MagicMock
+    ) -> None:
+        mock_build_routing.return_value = {"RoutingKey": "routing-value"}
+
+        result = self.handler.reply()
+
+        self.assertIsNotNone(result)
+        mock_build_routing.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["RoutingKey"], "routing-value")
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+
+    @patch("hl7_server.generic_handler.logger")
+    @patch("hl7_server.generic_handler.build_routing_properties", side_effect=Exception("routing boom"))
+    def test_routing_properties_failure_still_sends_and_acks(
+        self, mock_build_routing: MagicMock, mock_logger: MagicMock
+    ) -> None:
+        result = self.handler.reply()
+
+        self.assertIsNotNone(result)
+        mock_build_routing.assert_called_once()
+        mock_logger.warning.assert_any_call("Failed to build routing properties: %s", ANY)
+        self.mock_sender.send_text_message.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["WorkflowID"], "test-workflow")
+        self.mock_event_logger.log_message_processed.assert_called_once()
+
     @patch(
         "hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS",
         {"mpi": lambda msg: (_ for _ in ()).throw(Exception("boom"))},
@@ -230,6 +260,43 @@ class TestGenericHandler(unittest.TestCase):
                 self.mock_sender.send_text_message.assert_not_called()
 
                 mock_validate_flow_xml.reset_mock()
+
+    @patch("hl7_server.generic_handler.validate_and_convert_parsed_message_with_flow_schema")
+    def test_mosaiq_flow_only_sets_sending_app_and_trigger_event(
+        self, mock_validate_flow_xml: MagicMock
+    ) -> None:
+        validation_result = MagicMock()
+        validation_result.is_valid = True
+        validation_result.error_message = None
+        validation_result.xml_string = "<ADT_A05 xmlns=\"urn:hl7-org:v2xml\" />"
+        mock_validate_flow_xml.return_value = validation_result
+
+        validator = HL7Validator(flow_name="mosaiq")
+        mosaiq_message = (
+            "MSH|^~\\&|285|285|100|100|20250505232332||ADT^A28^ADT_A05|202505052323364444|P|2.5|||||GBR||EN\r"
+            "PID|1||123456^^^Hospital^MR||Doe^John\r"
+        )
+        handler = GenericHandler(
+            mosaiq_message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            validator,
+            workflow_id="test-workflow",
+            sending_app="285",
+            message_store_client=self.mock_message_store,
+            egress_session_id="mosaiq-to-mpi",
+            flow_name="mosaiq",
+        )
+
+        handler.reply()
+
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["SendingApplication"], "285")
+        self.assertEqual(tracking_metadata_properties["TriggerEvent"], "A28")
+        self.assertNotIn("MessageType", tracking_metadata_properties)
+        self.assertNotIn("UpdateSources", tracking_metadata_properties)
+        self.assertNotIn("AssigningAuthorities", tracking_metadata_properties)
 
     def test_metric_sent_on_message_received(self) -> None:
         self.handler.reply()

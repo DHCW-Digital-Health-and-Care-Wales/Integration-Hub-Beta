@@ -11,6 +11,8 @@ from message_bus_lib.metadata_utils import (
     WORKFLOW_ID_KEY,
 )
 
+from rest_server.hl7.custom_validation.risp_validation import resolve_structure
+
 FlowPropertyBuilder = Callable[[Message], dict[str, str]]
 
 
@@ -40,7 +42,7 @@ def build_mpi_properties(msg: Message) -> dict[str, str]:
 
 
 def build_risp_properties(msg: Message) -> dict[str, str]:
-    """RISP flow properties: exposes the HL7 trigger event (MSH.9.2) as ``MessageType``.
+    """RISP flow properties: exposes the HL7 trigger event and structure.
 
     Every RISP-sourced message always carries a value in MSH.9.2 (validated up-front by
     ``risp_validation.validate_risp_message``/``resolve_trigger`` before routing), so this is a
@@ -50,6 +52,7 @@ def build_risp_properties(msg: Message) -> dict[str, str]:
     """
     return {
         "MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2"),
+        "MessageStructure": resolve_structure(msg),
     }
 
 

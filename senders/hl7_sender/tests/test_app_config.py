@@ -145,6 +145,79 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate_ingress_config("queue-a", "topic-a", "sub-a")
 
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_accept_any_session_enabled(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_TOPIC_NAME": "ingress-topic",
+                "INGRESS_SUBSCRIPTION_NAME": "ingress-subscription",
+                "INGRESS_ACCEPT_ANY_SESSION": "true",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+
+        self.assertTrue(config.ingress_accept_any_session)
+        self.assertIsNone(config.ingress_session_id)
+
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_rejects_accept_any_session_with_explicit_session_id(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_TOPIC_NAME": "ingress-topic",
+                "INGRESS_SUBSCRIPTION_NAME": "ingress-subscription",
+                "INGRESS_SESSION_ID": "mpi",
+                "INGRESS_ACCEPT_ANY_SESSION": "true",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        with self.assertRaisesRegex(RuntimeError, "INGRESS_ACCEPT_ANY_SESSION"):
+            AppConfig.read_env_config()
+
+    @patch("hl7_sender.app_config.os.getenv")
+    def test_read_env_config_accept_any_session_satisfies_message_store_requirement(
+        self, mock_getenv: Mock
+    ) -> None:
+        """REPLAY_SESSION_ID is not required when INGRESS_ACCEPT_ANY_SESSION is set, since the
+        session actually set on each received message is used for message-store routing instead."""
+
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values = {
+                "INGRESS_TOPIC_NAME": "ingress-topic",
+                "INGRESS_SUBSCRIPTION_NAME": "ingress-subscription",
+                "INGRESS_ACCEPT_ANY_SESSION": "true",
+                "MESSAGE_STORE_QUEUE_NAME": "messagestore-queue",
+                "RECEIVER_MLLP_HOST": "localhost",
+                "RECEIVER_MLLP_PORT": "1234",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test health board",
+                "PEER_SERVICE": "test-service",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+        self.assertTrue(config.ingress_accept_any_session)
+
 
 if __name__ == "__main__":
     unittest.main()
