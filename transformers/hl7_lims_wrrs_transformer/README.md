@@ -19,7 +19,7 @@ Classification keys on the trigger event (`MSH-9.2`), not the message structure.
 
 | MappingType | Rule |
 |---|---|
-| `LIMS_NHS_ID_UPDATE` | `MSH-9.2` is `A31` or `A40` **and** `PID-3` (any `PID`, including inside the `ADT_A39` patient group) has identifiers with assigning authority (`CX.4`/`HD.1`) `NHS` **and** `328` |
+| `LIMS_NHS_ID_UPDATE` | `MSH-9.2` is `A31` or `A40` **and** `PID-3` (any `PID`, including inside the `ADT_A39` patient group) has identifiers with assigning authority (`CX.4`/`HD.1`, or the equivalent component when empty components have been dropped by the REST server's ER7 conversion) `NHS` **and** `328` within the same `PID` |
 | `ADT_A40` | `MSH-9.2 = 'A40'` (MRG is not required by the rule; a missing MRG is left for the mapping stage) |
 
 A message can match both rules (e.g. an A40 with NHS and 328 identifiers) and is then published once per rule.

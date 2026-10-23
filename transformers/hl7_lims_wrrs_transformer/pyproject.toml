@@ -28,6 +28,8 @@ dev = [
   "bandit==1.9.2",
   "mypy==1.18.2",
   "coverage>=7.6.0",
+  # Tests build ER7 via the real REST-server converter (xml_to_er7) to mirror what is published.
+  "hl7_validation_lib",
 ]
 
 [tool.coverage.run]
@@ -44,6 +46,7 @@ message-bus-lib = { path = "../../shared_libs/message_bus_lib" }
 health-check-lib = { path = "../../shared_libs/health_check_lib" }
 processor-manager-lib = { path = "../../shared_libs/processor_manager_lib" }
 event-logger-lib = { path = "../../shared_libs/event_logger_lib" }
+hl7_validation_lib = { path = "../../shared_libs/hl7_validation" }
 
 [tool.mypy]
 python_version = "3.13"

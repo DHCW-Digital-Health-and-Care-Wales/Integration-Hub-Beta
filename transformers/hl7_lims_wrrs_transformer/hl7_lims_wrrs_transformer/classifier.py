@@ -1,9 +1,10 @@
 """Rule-based classification of LIMS ADT messages into WRRS mapping types."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from field_utils_lib import get_cx_4_hd_1_segment_codes_from_pid_field, get_hl7_field_value
+from field_utils_lib import get_hl7_field_value
 from hl7apy.core import Group, Message
 
 from .app_config import MappingTypeConfig
@@ -25,7 +26,7 @@ def classify_message(hl7_msg: Message, mapping_types: MappingTypeConfig) -> list
     """Return every MappingType whose rule the message satisfies, in a stable order.
 
     - LIMS/NHS ID Update: A31 or A40 whose PID-3 carries identifiers with assigning authority
-      (CX.4/HD.1) of both ``NHS`` and ``328``.
+      (CX.4/HD.1, or the equivalent component in compacted ER7) of both ``NHS`` and ``328``.
     - ADT_A40: any A40 (the approved rule is MSH.9.2 = 'A40'; MRG is not required here).
 
     An empty list means the message is unsupported. A message may match several rules, in which
@@ -47,17 +48,32 @@ def _has_nhs_and_lims_identifiers(hl7_msg: Message) -> bool:
     # Both authorities must appear within the same PID: identifiers split across patient groups
     # (e.g. an A40 with one NHS-only and one 328-only patient) do not satisfy the rule.
     for pid in _find_pid_segments(hl7_msg):
-        authorities = set(get_cx_4_hd_1_segment_codes_from_pid_field(_PidHolder(pid), "pid_3"))
+        authorities = _pid3_authority_codes(pid)
         if NHS_ASSIGNING_AUTHORITY in authorities and LIMS_ASSIGNING_AUTHORITY in authorities:
             return True
     return False
 
 
-class _PidHolder:
-    """Adapts a PID segment to the ``msg.pid`` access used by field_utils_lib."""
+def _pid3_authority_codes(pid: Any) -> set[str]:
+    """Collect the assigning-authority codes of a PID's PID-3 repetitions, for both ER7 layouts.
 
-    def __init__(self, pid: Any) -> None:
-        self.pid = pid
+    The REST server publishes ``xml_to_er7`` output, which drops empty components, so the authority is not
+    reliably in CX.4: ``1^^^NHS^NH`` (positioned) arrives as ``1^NHS^NH`` (compacted). We therefore accept an
+    exact code as a whole component of a single repetition, at any position after CX.1, and take only the
+    first sub-component (HD.1) so ``NHS&x&ISO`` yields ``NHS``.
+
+    False-positive risk: CX.1 is the ID value and is always skipped, so an ID of ``328`` does not count. A
+    code that sits in some other CX component (e.g. CX.5 ID type or CX.6 facility) would be accepted; that is
+    the accepted trade-off of the compacted layout, and is why matching is exact and confined to one
+    repetition rather than a substring search over the whole field.
+    """
+    codes: set[str] = set()
+    for repetition in pid.children:
+        if repetition.name != "PID_3":
+            continue
+        components = repetition.to_er7().split("^")[1:]
+        codes.update(component.split("&")[0] for component in components)
+    return codes
 
 
 def _find_pid_segments(element: Any) -> list[Any]:
