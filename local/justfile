@@ -58,7 +58,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile mpi-to-topic --profile topic-mock-receiver --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile mpi-to-topic --profile topic-mock-receiver --profile replay --profile risp-to-mpi --profile risp-to-wrrs"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -94,6 +94,8 @@ python := "python3"
     echo "  - mosaiq-to-mpi  : Mosaiq to MPI integration"
     echo "  - wds-to-mpi     : WDS to MPI integration"
     echo "  - wpas-to-proms  : PROMS REST ingress to MPI integration"
+    echo "  - risp-to-mpi    : RISP to MPI integration"
+    echo "  - risp-to-wrrs   : RISP to WRRS database integration"
     echo "  - mpi-to-topic   : MPI Outbound integration"
     echo "  - replay         : Message Replay Job"
     echo ""
