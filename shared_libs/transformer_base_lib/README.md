@@ -1,10 +1,10 @@
 # Transformer Base Library
 
-Standardized framework for building HL7 message transformation services, providing configuration management, Service Bus integration, health checks, and audit logging infrastructure.
+Standardized framework for building message transformation services, providing configuration management, Service Bus integration, health checks, and audit logging infrastructure. Supports any wire format (HL7 ER7, FHIR JSON, etc.) via a pluggable `MessageCodec`.
 
 ## Overview
 
-All Integration Hub transformers (PHW, Chemo, PIMS) inherit from this base library to ensure consistent behavior across services. Instead of each transformer implementing its own Service Bus connectivity, health check endpoints, and audit logging, they extend `BaseTransformer` and implement only their specific transformation logic.
+All Integration Hub transformers (PHW, Chemo, PIMS, WDS, Core Reference, PROMS FHIR) inherit from this base library to ensure consistent behavior across services. Instead of each transformer implementing its own Service Bus connectivity, health check endpoints, and audit logging, they extend `BaseTransformer` and implement only their specific transformation logic.
 
 This design promotes:
 
@@ -16,6 +16,7 @@ This design promotes:
 ## Features
 
 - **Standardized interface**: Abstract base class ensures all transformers implement required methods
+- **Pluggable wire format**: `MessageCodec` decouples parsing/serialising the raw message body from the transformation logic, so any format (HL7 ER7, FHIR JSON, etc.) can be supported without changing the shared processing pipeline
 - **Lifecycle management**: Service Bus connection handling
 - **Health check integration**: Built-in TCP health check server for monitoring
 - **Audit logging**: Hooks for customizing received/processed/failed event messages
@@ -23,7 +24,9 @@ This design promotes:
 
 ## Usage
 
-### Creating a New Transformer
+### Creating a New HL7 Transformer
+
+HL7 transformers need no codec configuration — `BaseTransformer` defaults to `Hl7Er7Codec`:
 
 ```python
 from hl7apy.core import Message
@@ -43,6 +46,32 @@ class MyTransformer(BaseTransformer):
 
         return new_message
 ```
+
+### Creating a New Transformer for a Different Wire Format
+
+Pass a `codec` (an implementation of `MessageCodec`) to `super().__init__()` to
+support a different inbound/outbound format. For example, a transformer that
+parses some source format and emits a FHIR `Bundle` as JSON:
+
+```python
+from transformer_base_lib import BaseTransformer
+from transformer_base_lib.codecs import FhirJsonCodec
+
+class MyFhirTransformer(BaseTransformer):
+    def __init__(self) -> None:
+        config_path = os.path.join(os.path.dirname(__file__), "config.ini")
+        super().__init__("MyFhirTransformer", config_path, codec=FhirJsonCodec(parse_fn=parse_my_source_format))
+
+    def transform_message(self, parsed_message):
+        """parsed_message is whatever parse_my_source_format() returns; must return a FHIR resource."""
+        return build_fhir_bundle(parsed_message)
+```
+
+To support an entirely new wire format (e.g. plain JSON, a different XML
+schema), implement `MessageCodec` (`parse()`/`serialise()`) in
+`transformer_base_lib/codecs/` and inject it the same way — no changes to
+`BaseTransformer`, `process_message()`, or any existing transformer are
+required.
 
 ### Running a Transformer
 

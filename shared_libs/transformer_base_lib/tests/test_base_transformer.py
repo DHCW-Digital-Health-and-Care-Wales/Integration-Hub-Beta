@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from transformer_base_lib.base_transformer import BaseTransformer
+from transformer_base_lib.codecs import Hl7Er7Codec, MessageCodec
 
 
 class TestTransformer(BaseTransformer):
@@ -21,6 +22,18 @@ class TestBaseTransformer(unittest.TestCase):
 
         self.assertEqual(transformer.transformer_name, "test_transformer")
         self.assertTrue(transformer.config_path.endswith("config.ini"))
+
+    def test_base_transformer_defaults_to_hl7_er7_codec(self):
+        """Existing HL7 transformers get the HL7 ER7 codec with no changes required."""
+        transformer = TestTransformer("test_transformer")
+
+        self.assertIsInstance(transformer.codec, Hl7Er7Codec)
+
+    def test_base_transformer_accepts_custom_codec(self):
+        custom_codec = MagicMock(spec=MessageCodec)
+        transformer = TestTransformer("test_transformer", codec=custom_codec)
+
+        self.assertIs(transformer.codec, custom_codec)
 
     def test_get_sending_app_with_unknown_app(self):
         transformer = TestTransformer("test_transformer")
