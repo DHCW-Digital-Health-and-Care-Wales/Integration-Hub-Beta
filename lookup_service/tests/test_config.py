@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from lookup_service.config import DEFAULT_SEED_DIR, Settings
+from lookup_service.config import AUTH_DISABLED_ACK_VALUE, Settings
 
 AUTH_ENV = {"LOOKUP_AUTH_TENANT_ID": "tenant", "LOOKUP_AUTH_AUDIENCE": "api://lookup"}
 
@@ -13,7 +13,7 @@ class SettingsTests(unittest.TestCase):
     def test_defaults(self) -> None:
         with mock.patch.dict("os.environ", AUTH_ENV, clear=True):
             settings = Settings.from_env()
-        self.assertEqual(settings.seed_dir, DEFAULT_SEED_DIR)
+        self.assertIsNone(settings.seed_dir)
         self.assertEqual(settings.environment, "DEV")
         self.assertEqual(settings.port, 8080)
         self.assertTrue(settings.swagger_enabled)
@@ -81,17 +81,46 @@ class AuthSettingsTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Authentication is not configured"):
                     Settings.from_env()
 
-    def test_auth_cannot_be_disabled_outside_local(self) -> None:
-        for environment in ("DEV", "TST", "PRD"):
-            env = {**AUTH_ENV, "ENVIRONMENT": environment, "LOOKUP_AUTH_DISABLED": "true"}
+    def test_auth_cannot_be_disabled_outside_local_dev_and_tst(self) -> None:
+        for environment in ("PRD", "SIT", "PREPROD"):
+            env = {**AUTH_ENV, "ENVIRONMENT": environment, "LOOKUP_AUTH_DISABLED": "true",
+                   "LOOKUP_AUTH_DISABLED_ACK": AUTH_DISABLED_ACK_VALUE}
             with self.subTest(environment=environment), mock.patch.dict("os.environ", env, clear=True):
-                with self.assertRaisesRegex(RuntimeError, "only allowed when ENVIRONMENT=LOCAL"):
+                with self.assertRaisesRegex(RuntimeError, "only allowed when ENVIRONMENT is one of LOCAL, DEV, TST"):
                     Settings.from_env()
+
+    def test_dev_and_tst_need_the_acknowledgement_to_disable_auth(self) -> None:
+        # A missing or mistyped acknowledgement must refuse to start, never fall back to open access.
+        for environment in ("DEV", "TST"):
+            for ack in (None, "", "true", AUTH_DISABLED_ACK_VALUE.lower()):
+                env = {"ENVIRONMENT": environment, "LOOKUP_AUTH_DISABLED": "true"}
+                if ack is not None:
+                    env["LOOKUP_AUTH_DISABLED_ACK"] = ack
+                with self.subTest(environment=environment, ack=ack), mock.patch.dict("os.environ", env, clear=True):
+                    with self.assertRaisesRegex(RuntimeError, "also needs LOOKUP_AUTH_DISABLED_ACK="):
+                        Settings.from_env()
+
+    def test_dev_and_tst_can_disable_auth_with_the_acknowledgement(self) -> None:
+        for environment in ("dev", "TST"):
+            env = {"ENVIRONMENT": environment, "LOOKUP_AUTH_DISABLED": "true",
+                   "LOOKUP_AUTH_DISABLED_ACK": AUTH_DISABLED_ACK_VALUE}
+            with self.subTest(environment=environment), mock.patch.dict("os.environ", env, clear=True):
+                settings = Settings.from_env()
+            self.assertFalse(settings.auth_enabled)
+            self.assertTrue(settings.unauthenticated_deployment)
+
+    def test_acknowledgement_alone_does_not_disable_auth(self) -> None:
+        env = {**AUTH_ENV, "ENVIRONMENT": "DEV", "LOOKUP_AUTH_DISABLED_ACK": AUTH_DISABLED_ACK_VALUE}
+        with mock.patch.dict("os.environ", env, clear=True):
+            settings = Settings.from_env()
+        self.assertTrue(settings.auth_enabled)
+        self.assertFalse(settings.unauthenticated_deployment)
 
     def test_disabled_auth_is_accepted_locally_without_configuration(self) -> None:
         with mock.patch.dict("os.environ", {"ENVIRONMENT": "local", "LOOKUP_AUTH_DISABLED": "true"}, clear=True):
             settings = Settings.from_env()
         self.assertFalse(settings.auth_enabled)
+        self.assertFalse(settings.unauthenticated_deployment)
 
     def test_auth_disabled_must_be_a_boolean(self) -> None:
         env = {"ENVIRONMENT": "LOCAL", "LOOKUP_AUTH_DISABLED": "maybe"}

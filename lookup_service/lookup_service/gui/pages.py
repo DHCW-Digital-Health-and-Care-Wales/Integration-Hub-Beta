@@ -53,8 +53,14 @@ SECURITY_HEADERS = {
 def _render(request: Request, template: str, context: dict[str, Any], status_code: int = 200) -> HTMLResponse:
     # Every page can embed a form, so every page carries the CSRF token (issued once per browser session).
     token, is_new = current_csrf_token(request)
+    settings: Settings = request.app.state.settings
+    page_context = {
+        **context,
+        "csrf_token": token,
+        "unauthenticated_environment": settings.environment if settings.unauthenticated_deployment else None,
+    }
     response = templates.TemplateResponse(
-        request, template, {**context, "csrf_token": token}, status_code=status_code, headers=SECURITY_HEADERS
+        request, template, page_context, status_code=status_code, headers=SECURITY_HEADERS
     )
     if is_new:
         set_csrf_cookie(response, request, token)

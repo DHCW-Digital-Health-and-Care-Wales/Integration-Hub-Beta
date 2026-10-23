@@ -17,7 +17,7 @@ class LookupApiTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        # No COSMOS_ENDPOINT: tables come read-only from the repo seed files.
+        # No COSMOS_ENDPOINT: tables come read-only from the test fixture seed files.
         cls.client = cls.enterClassContext(TestClient(create_app(make_settings())))
 
     def test_single_key_lookup(self) -> None:
@@ -258,6 +258,14 @@ class SwaggerGatingTests(unittest.TestCase):
         with TestClient(create_app(make_settings(environment="PRD"))) as client:
             self.assertEqual(client.get("/openapi.json").status_code, 404)
             self.assertEqual(client.get("/docs").status_code, 404)
+
+
+class NoSeedDirTests(unittest.TestCase):
+    def test_starts_ready_with_no_tables_when_nothing_is_configured(self) -> None:
+        # The deployed default without Cosmos: LOOKUP_SEED_DIR unset, so no data at all, and no crash.
+        with TestClient(create_app(make_settings(seed_dir=None))) as client:
+            self.assertEqual(client.get("/health/ready").status_code, 200)
+            self.assertEqual(client.get("/api/v1/tables").json(), [])
 
 
 if __name__ == "__main__":

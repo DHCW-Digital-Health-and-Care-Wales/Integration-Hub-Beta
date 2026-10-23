@@ -3,7 +3,8 @@
 Sends sequential GETs over one keep-alive connection and reports percentiles. The timings are as seen
 by this client, so they include client overhead and are an upper bound on service-side latency.
 
-Usage (from lookup_service/, with the service running, e.g. via `docker compose --profile lookup up`):
+Usage (from lookup_service/, with the service running, e.g. via `docker compose --profile lookup up`, which
+seeds pims_to_mpi_codes locally):
     uv run python scripts/latency_check.py --url http://localhost:8090 --requests 5000
 """
 
@@ -17,8 +18,8 @@ import time
 import urllib.parse
 
 DEFAULT_PATHS = [
-    "/api/v1/lookup/health_board_mapping?k=224",
-    "/api/v1/lookup/ward_map?k=FAC1&k=W2",
+    "/api/v1/lookup/pims_to_mpi_codes?key.code_type=gender&key.pims_code=M",
+    "/api/v1/lookup/pims_to_mpi_codes?key.code_type=marital-status&key.pims_code=D",
 ]
 WARMUP_REQUESTS = 200
 

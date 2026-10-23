@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 from lookup_service.app import create_app
+from lookup_service.config import AUTH_DISABLED_ACK_VALUE, Settings
 from lookup_service.errors import UnauthorizedError
 from lookup_service.security import (
     CSRF_HEADER_NAME,
@@ -416,11 +417,17 @@ class StartupGuardTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Authentication is not configured"):
                     create_app(settings)
 
-    def test_auth_cannot_be_disabled_outside_local(self) -> None:
-        for environment in ("DEV", "TST", "PRD"):
+    def test_auth_cannot_be_disabled_outside_local_dev_and_tst(self) -> None:
+        settings = dataclasses.replace(make_settings(environment="PRD"), auth_disabled=True,
+                                       auth_disabled_ack=AUTH_DISABLED_ACK_VALUE)
+        with self.assertRaisesRegex(RuntimeError, "only allowed when ENVIRONMENT is one of"):
+            create_app(settings)
+
+    def test_dev_and_tst_refuse_to_disable_auth_without_the_acknowledgement(self) -> None:
+        for environment in ("DEV", "TST"):
             with self.subTest(environment=environment):
                 settings = dataclasses.replace(make_settings(environment=environment), auth_disabled=True)
-                with self.assertRaisesRegex(RuntimeError, "only allowed when ENVIRONMENT=LOCAL"):
+                with self.assertRaisesRegex(RuntimeError, "also needs LOOKUP_AUTH_DISABLED_ACK="):
                     create_app(settings)
 
     def test_local_must_explicitly_disable_auth_or_configure_it(self) -> None:
@@ -450,6 +457,44 @@ class LocalAuthDisabledTests(unittest.TestCase):
                                  files={"file": ("hb.csv", HEALTH_BOARD_CSV, "text/csv")})
         self.assertEqual(upload.status_code, 201, upload.text)
         self.assertEqual(store.records["health_board_mapping"].stats.last_upload_by, "local-dev")
+
+    def test_no_unauthenticated_banner_locally(self) -> None:
+        with TestClient(create_app(make_settings(), MemoryTableStore())) as client:
+            self.assertNotIn("auth-disabled-banner", client.get("/").text)
+
+
+class UnauthenticatedTrialTests(unittest.TestCase):
+    """DEV/TST with LOOKUP_AUTH_DISABLED plus the acknowledgement (plan Phase 1.25)."""
+
+    def _settings(self, environment: str = "DEV") -> Settings:
+        return dataclasses.replace(make_settings(environment=environment), auth_disabled=True,
+                                   auth_disabled_ack=AUTH_DISABLED_ACK_VALUE)
+
+    def test_everything_is_open_and_recorded_as_unauthenticated(self) -> None:
+        store = MemoryTableStore()
+        with TestClient(create_app(self._settings(), store)) as client:
+            self.assertEqual(client.get(LOOKUP_URL).status_code, 200)
+            # Header-supplied principals are ignored when auth is disabled.
+            response = client.patch("/api/v1/tables/ward_map", json={"preload": True},
+                                    headers=easy_auth_headers("Some.Other.Role"))
+            self.assertEqual(response.status_code, 200, response.text)
+            upload = client.post("/api/v1/tables/health_board_mapping/uploads",
+                                 files={"file": ("hb.csv", HEALTH_BOARD_CSV, "text/csv")})
+        self.assertEqual(upload.status_code, 201, upload.text)
+        self.assertEqual(store.records["health_board_mapping"].stats.last_upload_by, "unauthenticated")
+
+    def test_every_gui_page_shows_the_warning_banner(self) -> None:
+        with TestClient(create_app(self._settings("TST"), MemoryTableStore())) as client:
+            for path in ("/", "/tables/ward_map", "/upload", "/tables/no_such_table"):
+                with self.subTest(path=path):
+                    page = client.get(path).text
+                    self.assertIn("auth-disabled-banner", page)
+                    self.assertIn("Authentication is disabled in TST", page)
+
+    def test_startup_logs_a_warning(self) -> None:
+        with self.assertLogs("lookup_service.app", level="WARNING") as logs:
+            create_app(self._settings())
+        self.assertIn("AUTHENTICATION IS DISABLED in DEV", logs.output[0])
 
 
 class UnauthenticatedEndpointTests(unittest.TestCase):

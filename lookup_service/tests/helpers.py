@@ -19,12 +19,16 @@ from lookup_service.keys import key_text
 from lookup_service.models import Row, TableDefinition, TableRecord, TableStats, UploadInfo
 from lookup_service.store.base import ReplaceResult, TableStore
 
-REPO_SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
+FIXTURE_SEED_DIR = Path(__file__).resolve().parent / "fixtures" / "seed"
+# Mounted by local Compose only; never baked into the image.
+LOCAL_SEED_DIR = Path(__file__).resolve().parent.parent.parent / "local" / "lookup-seed"
 TEST_TENANT_ID = "11111111-2222-3333-4444-555555555555"
 TEST_AUDIENCE = "api://lookup-service-test"
 
 
-def make_settings(seed_dir: Path = REPO_SEED_DIR, environment: str = "LOCAL", **overrides: Any) -> Settings:
+def make_settings(
+    seed_dir: Path | None = FIXTURE_SEED_DIR, environment: str = "LOCAL", **overrides: Any
+) -> Settings:
     """Settings that pass validation: LOCAL runs with auth disabled; other environments get auth configured."""
     auth: dict[str, Any] = (
         {"auth_disabled": True} if environment == "LOCAL"
