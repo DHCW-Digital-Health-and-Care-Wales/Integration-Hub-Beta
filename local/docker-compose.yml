@@ -698,8 +698,9 @@ services:
         aliases:
           - "buswatch"
 
-  # Lookup service: tables in the Cosmos emulator (seeded from lookup_service/seed on first start),
-  # CSV upload via the GUI at http://localhost:8090/ - see lookup_service/README.md.
+  # Lookup service: tables in the Cosmos emulator, CSV upload via the GUI at http://localhost:8090/ -
+  # see lookup_service/README.md. Local only: local/lookup-seed (pims_to_mpi_codes) is mounted and imported
+  # on first start; the image itself carries no seed data.
   # Restarts until the emulator is ready (first start takes ~1 minute).
   lookup-service:
     container_name: lookup-service
@@ -710,6 +711,8 @@ services:
         - ca-certs=../ca-certs
     env_file:
       - ./env/lookup/lookup-service.env
+    volumes:
+      - "${HOST_WORKSPACE_PATH:-..}/local/lookup-seed:/seed:ro"
     ports:
       - "127.0.0.1:8090:8080"
     healthcheck:

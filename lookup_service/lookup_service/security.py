@@ -68,8 +68,10 @@ class Principal:
     roles: frozenset[str]
 
 
-# Used only when auth is disabled, which Settings.validate() restricts to ENVIRONMENT=LOCAL.
+# Every caller's identity when auth is disabled (see Settings.validate()). Outside LOCAL the name says plainly
+# that nobody signed in, because it is recorded against uploads and settings changes.
 LOCAL_PRINCIPAL = Principal(name="local-dev", roles=frozenset({ROLE_ADMIN}))
+UNAUTHENTICATED_PRINCIPAL = Principal(name="unauthenticated", roles=frozenset({ROLE_ADMIN}))
 
 
 class SigningKey(Protocol):
@@ -194,9 +196,14 @@ def _has_bearer_header(request: Request) -> bool:
     return request.headers.get("Authorization", "").partition(" ")[0].lower() == "bearer"
 
 
+def _auth_disabled_principal(settings: Settings) -> Principal:
+    return LOCAL_PRINCIPAL if settings.is_local else UNAUTHENTICATED_PRINCIPAL
+
+
 def _easy_auth_principal(request: Request, allowed: frozenset[str]) -> Principal:
-    if not _settings(request).auth_enabled:
-        return LOCAL_PRINCIPAL
+    settings = _settings(request)
+    if not settings.auth_enabled:
+        return _auth_disabled_principal(settings)
     principal = parse_easy_auth_principal(
         request.headers.get(EASY_AUTH_PRINCIPAL_HEADER), request.headers.get(EASY_AUTH_NAME_HEADER)
     )
@@ -205,8 +212,9 @@ def _easy_auth_principal(request: Request, allowed: frozenset[str]) -> Principal
 
 def require_api_reader(request: Request) -> Principal:
     """Lookup API: a valid Entra bearer token carrying a reader role. Sync, because a JWKS refresh does I/O."""
-    if not _settings(request).auth_enabled:
-        return LOCAL_PRINCIPAL
+    settings = _settings(request)
+    if not settings.auth_enabled:
+        return _auth_disabled_principal(settings)
     verifier: TokenVerifier = request.app.state.token_verifier
     return _require_role(verifier.verify(_bearer_token(request)), READER_ROLES)
 

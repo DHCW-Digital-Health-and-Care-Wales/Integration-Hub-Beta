@@ -30,9 +30,12 @@ STATIC_DIR = Path(__file__).resolve().parent / "gui" / "static"
 
 
 def build_store(settings: Settings) -> TableStore:
-    """Cosmos when COSMOS_ENDPOINT is set; otherwise read-only tables from the seed files."""
+    """Cosmos when COSMOS_ENDPOINT is set; otherwise read-only tables from the seed files (none if unset)."""
     if settings.cosmos_endpoint:
         return CosmosTableStore(settings)
+    if settings.seed_dir is None:
+        logger.warning("Neither COSMOS_ENDPOINT nor LOOKUP_SEED_DIR is set; serving no tables")
+        return FileTableStore({})
     logger.info("COSMOS_ENDPOINT not set; serving read-only tables from %s", settings.seed_dir)
     return FileTableStore.load(settings.seed_dir)
 
@@ -54,6 +57,12 @@ def create_app(
     """
     settings = settings or Settings.from_env()
     settings.validate()
+    if settings.unauthenticated_deployment:
+        logger.warning(
+            "AUTHENTICATION IS DISABLED in %s (LOOKUP_AUTH_DISABLED): every caller can read, upload and change "
+            "tables as Lookup.Admin. For the unauthenticated trial only; never use with real data.",
+            settings.environment,
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

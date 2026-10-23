@@ -81,7 +81,7 @@ class TablePagingTests(unittest.TestCase):
     def test_pages_through_rows(self) -> None:
         store = MemoryTableStore()
         store.put_table(codes_definition(), [make_row(f"K{i:03d}", label=f"v{i}") for i in range(120)])
-        with TestClient(create_app(make_settings(seed_dir=make_settings().seed_dir / "missing"), store)) as client:
+        with TestClient(create_app(make_settings(seed_dir=None), store)) as client:
             first = client.get("/tables/codes").text
             last = client.get("/tables/codes", params={"page": 3}).text
         self.assertIn("page 1 of 3", first)
