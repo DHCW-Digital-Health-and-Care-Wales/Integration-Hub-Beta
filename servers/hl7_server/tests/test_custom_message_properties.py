@@ -11,6 +11,7 @@ from hl7_server.custom_message_properties import (
     build_common_properties,
     build_mosaiq_properties,
     build_mpi_properties,
+    build_pims_properties,
     build_routing_properties,
     build_wds_properties,
 )
@@ -277,6 +278,18 @@ class TestCustomMessageProperties(unittest.TestCase):
                 "AssigningAuthorities": "|NHS|PAS|",
             },
         )
+    def test_pims_flow_is_registered_in_property_builders(self) -> None:
+        self.assertIs(FLOW_PROPERTY_BUILDERS["pims"], build_pims_properties)
+
+    def test_build_pims_properties_returns_only_message_type(self) -> None:
+        mock_msg = MagicMock(spec=Message)
+
+        with patch("hl7_server.custom_message_properties.get_hl7_field_value") as mock_get_field:
+            mock_get_field.side_effect = lambda msg, path: {"msh.msh_9.msh_9_2": "A04"}.get(path, "")
+
+            props = build_pims_properties(mock_msg)
+
+        self.assertEqual(props, {"MessageType": "A04"})
 
 if __name__ == "__main__":
     unittest.main()
