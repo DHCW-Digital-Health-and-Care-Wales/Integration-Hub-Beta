@@ -44,10 +44,13 @@ def classify_message(hl7_msg: Message, mapping_types: MappingTypeConfig) -> list
 
 
 def _has_nhs_and_lims_identifiers(hl7_msg: Message) -> bool:
-    authorities: set[str] = set()
+    # Both authorities must appear within the same PID: identifiers split across patient groups
+    # (e.g. an A40 with one NHS-only and one 328-only patient) do not satisfy the rule.
     for pid in _find_pid_segments(hl7_msg):
-        authorities.update(get_cx_4_hd_1_segment_codes_from_pid_field(_PidHolder(pid), "pid_3"))
-    return NHS_ASSIGNING_AUTHORITY in authorities and LIMS_ASSIGNING_AUTHORITY in authorities
+        authorities = set(get_cx_4_hd_1_segment_codes_from_pid_field(_PidHolder(pid), "pid_3"))
+        if NHS_ASSIGNING_AUTHORITY in authorities and LIMS_ASSIGNING_AUTHORITY in authorities:
+            return True
+    return False
 
 
 class _PidHolder:

@@ -475,7 +475,7 @@ stages:
     - stage: Build_hl7limswrrstransformer
       displayName: 'Build — LIMS WRRS HL7 Transformer'
       dependsOn: CodeQuality_hl7limswrrstransformer
-      condition: eq(dependencies.CodeQuality_hl7limswrrstransformer.result, 'Succeeded', 'SucceededWithIssues')
+      condition: in(dependencies.CodeQuality_hl7limswrrstransformer.result, 'Succeeded', 'SucceededWithIssues')
       jobs:
         - template: templates/docker-build-push-template.yml
           parameters:

@@ -137,6 +137,9 @@ resources:
     - pipeline: 'HL7 WDS Transformer - Build'
       source: 'HL7 WDS Transformer - Build'
       trigger: none
+    - pipeline: 'HL7 LIMS WRRS Transformer - Build'
+      source: 'HL7 LIMS WRRS Transformer - Build'
+      trigger: none
     - pipeline: 'SOAP Sender - Build'
       source: 'SOAP Sender - Build'
       trigger: none

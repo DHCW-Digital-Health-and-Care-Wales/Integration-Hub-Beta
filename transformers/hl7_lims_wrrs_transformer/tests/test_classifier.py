@@ -14,6 +14,7 @@ from tests.messages import (
     A40_LIMS_ONLY,
     A40_NHS_AND_LIMS,
     A40_NHS_ONLY_NO_MRG,
+    A40_SPLIT_ACROSS_PATIENT_GROUPS,
 )
 
 _TYPES = MappingTypeConfig(nhs_id_update="LIMS_NHS_ID_UPDATE", a40="ADT_A40")
@@ -47,6 +48,10 @@ class TestClassifier(unittest.TestCase):
         message = parse_message(A31_NHS_AND_LIMS)
         with patch("hl7_lims_wrrs_transformer.classifier.get_cx_4_hd_1_segment_codes_from_pid_field", return_value=[]):
             self.assertEqual(classify_message(message, _TYPES), [])
+
+    def test_identifiers_split_across_patient_groups_do_not_satisfy_nhs_rule(self) -> None:
+        # NHS in one PID and 328 in another: neither PID-3 meets the rule on its own.
+        self.assertEqual(_classify(A40_SPLIT_ACROSS_PATIENT_GROUPS), ["ADT_A40"])
 
     def test_custom_mapping_type_values_are_returned(self) -> None:
         custom = MappingTypeConfig(nhs_id_update="X_NHS", a40="X_A40")

@@ -97,6 +97,19 @@ class TestLimsWrrsMessageProcessor(unittest.TestCase):
         self.assertEqual(ctx.exception.reason, INVALID_MESSAGE_REASON)
         self.sender.send_message.assert_not_called()
 
+    def test_invalid_utf8_is_dead_lettered_as_invalid_message(self) -> None:
+        message = _inbound(A31_NHS_AND_LIMS)
+        message.body = [b"MSH|^~\\&|\xff\xfe"]
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            self.processor.process(message)
+
+        self.assertEqual(ctx.exception.reason, INVALID_MESSAGE_REASON)
+        self.assertIn("orig-1", ctx.exception.description)
+        self.assertIn("corr-1", ctx.exception.description)
+        self.sender.send_message.assert_not_called()
+        self.assertEqual(self.event_logger.log_message_failed.call_args.kwargs["correlation_id"], "corr-1")
+
     def test_one_path_failing_does_not_stop_the_other_and_message_is_retried(self) -> None:
         self.sender.send_message.side_effect = [RuntimeError("boom"), None]
 

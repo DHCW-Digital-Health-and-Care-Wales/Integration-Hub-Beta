@@ -51,10 +51,10 @@ class LimsWrrsMessageProcessor:
         self._mapping_types = mapping_types
 
     def process(self, message: ServiceBusMessage) -> bool:
-        message_body = b"".join(message.body).decode("utf-8")
         incoming_props: dict[str, str] = extract_metadata(message) or {}
         meta = get_metadata_log_values(incoming_props)
         correlation_id = correlation_id_for_logger(meta)
+        message_body = self._decode_or_dead_letter(message, correlation_id)
 
         self._event_logger.log_message_received(
             message_body, "LIMS WRRS message received", correlation_id=correlation_id
@@ -91,6 +91,22 @@ class LimsWrrsMessageProcessor:
             )
         ]
         return not failed_paths
+
+    def _decode_or_dead_letter(self, message: ServiceBusMessage, correlation_id: str | None) -> str:
+        raw_body = b"".join(message.body)
+        try:
+            return raw_body.decode("utf-8")
+        except UnicodeDecodeError as e:
+            # Undecodable bytes can never be parsed, so dead-letter instead of burning delivery attempts.
+            error_msg = f"Invalid HL7 message - MessageId: {message.message_id}, CorrelationId: {correlation_id}: {e}"
+            logger.error(error_msg)
+            self._event_logger.log_message_failed(
+                raw_body.decode("utf-8", errors="replace"),
+                error_msg,
+                INVALID_MESSAGE_REASON,
+                correlation_id=correlation_id,
+            )
+            raise DeadLetterMessage(INVALID_MESSAGE_REASON, error_msg) from e
 
     def _parse_or_dead_letter(
         self, message: ServiceBusMessage, message_body: str, correlation_id: str | None
