@@ -615,7 +615,7 @@ requires-dist = [
     { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
     { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "requests", specifier = ">=2.32.0" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "transformer-base-lib", directory = "../../shared_libs/transformer_base_lib" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
