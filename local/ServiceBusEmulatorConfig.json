@@ -129,6 +129,75 @@
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
                 }
+              },
+              {
+                "Name": "local-inthub-lims-wrrs-transformer-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_WRRS_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-lims-wrrs-classified",
+            "Properties": {
+              "RequiresDuplicateDetection": true,
+              "DuplicateDetectionHistoryTimeWindow": "PT1H"
+            },
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-lims-wrrs-nhs-id-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_WRRS_NHS_ID_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MappingType = 'LIMS_NHS_ID_UPDATE'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-wrrs-a40-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_WRRS_A40_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MappingType = 'ADT_A40'"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },
