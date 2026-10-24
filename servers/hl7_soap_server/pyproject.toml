@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=83.0.0"]
+requires = ["setuptools>=84.1.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -27,7 +27,7 @@ dependencies = [
     "hl7_validation_lib",
     "event-logger-lib",
     "metric-sender-lib",
-    "setuptools>=83.0.0",
+    "setuptools>=84.1.0",
 ]
 
 [dependency-groups]
