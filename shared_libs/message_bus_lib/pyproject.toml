@@ -1,5 +1,5 @@
 [build-system]  
-requires = ["setuptools>=83.0.0"]  
+requires = ["setuptools>=84.1.0"]  
 build-backend = "setuptools.build_meta"  
 
 [project]  
@@ -21,7 +21,7 @@ dependencies = [
     "cryptography>=50.0.0",
     "pyjwt>=2.15.1",
     "urllib3>=2.8.0",
-    "setuptools>=83.0.0",
+    "setuptools>=84.1.0",
     "metric-sender-lib",
     "otel-lib",
 ]  
