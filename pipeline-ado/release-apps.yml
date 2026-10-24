@@ -254,6 +254,7 @@ stages:
         - name: 'LIMS WRRS HL7 Transformer'
           appImageName: 'lims-wrrs-hl7transformer'
           appFunctionMidfix: 'lims'
+          containerAppNameSuffix: 'lims-wrrs-tfmr'
           buildPipeline: 'HL7 LIMS WRRS Transformer - Build'
 
         - name: 'PROMS FHIR Transformer'

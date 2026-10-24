@@ -2,6 +2,7 @@ parameters:
   azureServiceConnection: '' # Azure Service Connection name
   appImageName: ''
   appFunctionMidfix: '' # Name of the app function midfix to be used in the app
+  containerAppNameSuffix: '' # Optional. Overrides the <midfix>-<image> part of the container app name (Azure 32 char limit)
   resourceGroupName: ''
   azureLocation: ''
   environment: ''
@@ -25,11 +26,15 @@ jobs:
       ${{ else }}:
         vmImage: 'ubuntu-latest'
   variables:
-    ${{ if ne(parameters.appFunctionMidfix, '') }}:
+    ${{ if ne(parameters.containerAppNameSuffix, '') }}:
+      appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.containerAppNameSuffix }}-ca'
+    ${{ elseif ne(parameters.appFunctionMidfix, '') }}:
       appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appFunctionMidfix }}-${{ parameters.appImageName }}-ca'
-      imageTagWithFlow: '${{ parameters.appImageName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
     ${{ else }}:
       appFullName: '${{ parameters.azureLocation }}-${{ parameters.environment }}-${{ parameters.appImageName }}-ca'
+    ${{ if ne(parameters.appFunctionMidfix, '') }}:
+      imageTagWithFlow: '${{ parameters.appImageName }}:${{ parameters.appFunctionMidfix }}-${{ parameters.environment }}'
+    ${{ else }}:
       imageTagWithFlow: '${{ parameters.appImageName }}:${{ parameters.environment }}'
   strategy:
     runOnce:
