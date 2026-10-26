@@ -494,7 +494,7 @@ requires-dist = [
     { name = "azure-monitor-opentelemetry", specifier = "==1.8.11" },
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "pyjwt", specifier = ">=2.15.1" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -538,7 +538,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -593,7 +593,7 @@ requires-dist = [
     { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
     { name = "pyjwt", specifier = ">=2.15.1" },
     { name = "requests", specifier = ">=2.32.0" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "transformer-base-lib", directory = "../../shared_libs/transformer_base_lib" },
     { name = "urllib3", specifier = ">=2.8.0" },
     { name = "wrds-service", directory = "../../shared_libs/wrds_service" },
@@ -680,7 +680,7 @@ requires-dist = [
     { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
     { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
     { name = "pyjwt", specifier = ">=2.15.1" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -715,7 +715,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "idna", specifier = ">=3.15" },
     { name = "pyjwt", specifier = ">=2.15.1" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -1099,7 +1099,7 @@ requires-dist = [
     { name = "opentelemetry-api", specifier = ">=1.45.1" },
     { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
     { name = "pyjwt", specifier = ">=2.15.1" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -1144,7 +1144,7 @@ dependencies = [
 requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "opentelemetry-api", specifier = ">=1.45.1" },
-    { name = "setuptools", specifier = ">=83.0.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
     { name = "urllib3", specifier = ">=2.8.0" },
 ]
 
@@ -1320,11 +1320,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "84.0.0"
+version = "84.2.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6d/44/f5da03a8ef95d369145c5bb53050e7877c9f3d312e128605fd9504829143/setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73", size = 1168449, upload-time = "2026-08-08T18:27:58.365Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/b3/c19426f783614d625699a4b247faf628ea9ab1db228674491767b417f9e1/setuptools-84.2.1.tar.gz", hash = "sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc", size = 1230289, upload-time = "2026-10-20T19:01:37.742Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670", size = 818216, upload-time = "2026-08-08T18:27:56.719Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/55/6dc6d6bb953bdfc52519a0059592c52b6e3b8ad51cf8256dffceb55b0610/setuptools-84.2.1-py3-none-any.whl", hash = "sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2", size = 876263, upload-time = "2026-10-20T19:01:35.678Z" },
 ]
 
 [[package]]
