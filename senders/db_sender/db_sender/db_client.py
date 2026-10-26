@@ -120,8 +120,8 @@ class DatabaseClient:
 
         try:
             conn = self._get_connection()
+            conn.timeout = self.config.db_command_timeout
             with conn.cursor() as cursor:
-                cursor.timeout = self.config.db_command_timeout
                 cursor.execute(call_sql, (message_payload, priority_val))
                 conn.commit()
         except pyodbc.Error as err:

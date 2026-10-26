@@ -85,7 +85,7 @@ class TestDatabaseClient(unittest.TestCase):
 
         mock_cursor.execute.assert_called_once_with("{CALL dbo.prQueueMessage (?, ?)}", ("<XML>payload</XML>", 0))
         mock_conn.commit.assert_called_once()
-        self.assertEqual(mock_cursor.timeout, 60)
+        self.assertEqual(mock_conn.timeout, 60)
 
     @patch("pyodbc.connect")
     def test_execute_stored_procedure_priority_true(self, mock_connect: MagicMock) -> None:
