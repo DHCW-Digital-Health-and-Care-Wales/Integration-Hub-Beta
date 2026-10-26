@@ -11,7 +11,7 @@ dependencies = [
   "cryptography>=50.0.0",
   "message-bus-lib",
   "event-logger-lib",
-  "setuptools>=83.0.0",
+  "setuptools>=84.1.0",
   "pyjwt>=2.15.1",
 ]
 
