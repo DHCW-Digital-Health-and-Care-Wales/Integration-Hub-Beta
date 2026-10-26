@@ -34,14 +34,54 @@ TRANSIENT_ERROR_CODES = frozenset({
 })
 
 
+def sanitize_error_message(message: str) -> str:
+    """Sanitize SQL Server diagnostic messages to prevent echoing clinical payloads or patient identifiers.
+
+    In accordance with NHS Information Governance and Caldicott Principle 3,
+    SQL Server diagnostic messages that echo parameter values (e.g. conversion error 245,
+    duplicate key 2627/2601, string truncation 2628) must have echoed payload data redacted.
+    """
+    if not message:
+        return ""
+
+    sanitized = str(message)
+
+    # Duplicate key value: "The duplicate key value is (9999999999, DOE)." -> "The duplicate key value is (***)."
+    sanitized = re.sub(
+        r"(The duplicate key value is\s*\()[^)]*(\))",
+        r"\1***\2",
+        sanitized,
+        flags=re.IGNORECASE,
+    )
+
+    # Truncated value: "Truncated value: 'patient payload...'" -> "Truncated value: '***'"
+    sanitized = re.sub(
+        r"(Truncated value:\s*)'(?:''|[^'])*'",
+        r"\1'***'",
+        sanitized,
+        flags=re.IGNORECASE,
+    )
+
+    # Conversion failed: "converting [the] [varchar] value '9999999999' to data type..." -> "...value '***' to..."
+    sanitized = re.sub(
+        r"(converting(?:\s+the)?(?:\s+\w+)?\s+value\s+)'(?:''|[^'])*'",
+        r"\1'***'",
+        sanitized,
+        flags=re.IGNORECASE,
+    )
+
+    return sanitized
+
+
 class DatabaseSenderError(Exception):
     """Base exception for database sender operations."""
 
     def __init__(self, message: str, sql_state: str = "UNKNOWN", error_code: int = 0) -> None:
-        super().__init__(message)
+        sanitized_message = sanitize_error_message(message)
+        super().__init__(sanitized_message)
         self.sql_state = sql_state
         self.error_code = error_code
-        self.error_message = message
+        self.error_message = sanitized_message
 
 
 class TransientDatabaseError(DatabaseSenderError):
@@ -59,6 +99,11 @@ class DatabaseClient:
         self.config = config
         self._connection: pyodbc.Connection | None = None
 
+    @staticmethod
+    def _escape_credential(value: str) -> str:
+        """Escape credential value for ODBC connection strings by brace-quoting and doubling closing braces."""
+        return "{" + value.replace("}", "}}") + "}"
+
     def _build_connection_string(self) -> str:
         parts = [
             f"DRIVER={ODBC_DRIVER}",
@@ -66,14 +111,13 @@ class DatabaseClient:
             f"DATABASE={self.config.db_name}",
             f"Encrypt={self.config.db_encrypt}",
             f"TrustServerCertificate={self.config.db_trust_server_certificate}",
-            f"Timeout={self.config.db_connection_timeout}",
         ]
 
         if self.config.db_username and self.config.db_password:
             # SQL Authentication (Local Dev / Test)
             parts.extend([
-                f"UID={self.config.db_username}",
-                f"PWD={self.config.db_password}",
+                f"UID={self._escape_credential(self.config.db_username)}",
+                f"PWD={self._escape_credential(self.config.db_password)}",
             ])
         else:
             # Azure Active Directory / Managed Identity Authentication (Production Cloud)
@@ -91,7 +135,11 @@ class DatabaseClient:
                 self.config.db_name,
                 self.config.db_server,
             )
-            self._connection = pyodbc.connect(conn_str, autocommit=False)
+            self._connection = pyodbc.connect(
+                conn_str,
+                autocommit=False,
+                timeout=self.config.db_connection_timeout,
+            )
         return self._connection
 
     def close(self) -> None:
@@ -132,7 +180,8 @@ class DatabaseClient:
             raise FatalDatabaseError(err_msg, sql_state=sql_state, error_code=err_code) from err
         except Exception as err:
             self.close()
-            raise TransientDatabaseError(str(err), sql_state="UNKNOWN", error_code=0) from err
+            sanitized = sanitize_error_message(str(err))
+            raise TransientDatabaseError(sanitized, sql_state="UNKNOWN", error_code=0) from err
 
     @staticmethod
     def _parse_odbc_error(err: pyodbc.Error) -> tuple[str, int, str]:
@@ -157,7 +206,7 @@ class DatabaseClient:
                 except ValueError:
                     pass
 
-        return sql_state, error_code, error_message
+        return sql_state, error_code, sanitize_error_message(error_message)
 
     @staticmethod
     def _is_transient(sql_state: str, error_code: int, error_message: str) -> bool:

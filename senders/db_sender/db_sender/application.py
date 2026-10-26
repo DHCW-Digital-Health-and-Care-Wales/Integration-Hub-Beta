@@ -80,11 +80,20 @@ def process_message(
             "messages_sent",
         )
 
-        event_logger.log_message_processed(
-            msh_info.msh_text,
-            f"Stored procedure {app_config.db_stored_procedure} executed successfully",
-            correlation_id=correlation_id_opt,
-        )
+        # Post-commit logging is best effort: the stored procedure has already committed,
+        # so any logging failure must not cause redelivery of an already-written message.
+        try:
+            event_logger.log_message_processed(
+                msh_info.msh_text,
+                f"Stored procedure {app_config.db_stored_procedure} executed successfully",
+                correlation_id=correlation_id_opt,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to log message processed event for stored procedure %s - "
+                "continuing delivery success as database execution has already committed",
+                app_config.db_stored_procedure,
+            )
 
         logger.info(
             "Stored procedure %s executed successfully. MessageControlId: %s, MSH: %s",

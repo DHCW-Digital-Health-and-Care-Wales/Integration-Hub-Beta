@@ -37,6 +37,11 @@ fi
 echo "Running database initialization script..."
 /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-db.sql
 
+if [ -f /var/opt/mssql/scripts/init-drs-db.sql ]; then
+    echo "Running DRS database initialization script..."
+    /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-drs-db.sql
+fi
+
 echo "Running seed data script..."
 /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d IntegrationHub -i /var/opt/mssql/scripts/seed-messages.sql
 

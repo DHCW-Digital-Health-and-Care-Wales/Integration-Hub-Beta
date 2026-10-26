@@ -130,6 +130,55 @@ class TestApplication(unittest.TestCase):
 
         self.assertFalse(result)
 
+    def test_process_message_logging_failure_after_commit_returns_success(self) -> None:
+        msg_body = (
+            "<ADT_A39><MSH><MSH.9><MSG.1>ADT</MSG.1><MSG.2>A40</MSG.2><MSG.3>ADT_A39</MSG.3></MSH.9>"
+            "<MSH.10><MSH.10.1>MSG-123</MSH.10.1></MSH.10></MSH>"
+            "<PID><PID.5><XPN.1><FN.1>PATIENT_X</FN.1></XPN.1></PID.5></PID></ADT_A39>"
+        )
+        mock_message = self._create_mock_message(msg_body)
+        self.mock_event_logger.log_message_processed.side_effect = RuntimeError("EventLogger backend failure")
+
+        result = process_message(
+            mock_message,
+            self.mock_db_client,
+            self.config,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+        )
+
+        self.assertTrue(result)
+        self.mock_db_client.execute_stored_procedure.assert_called_once_with(msg_body, is_priority=False)
+        self.mock_event_logger.log_message_processed.assert_called_once()
+
+    def test_process_message_fatal_error_redacts_patient_data_in_dead_letter_and_logs(self) -> None:
+        sentinel_patient_data = "9999999999"
+        mock_message = self._create_mock_message("MSH|^~\\&|349|349|||20261022||ADT^A40|CTRL1|P|2.5\rPID|1||999")
+        self.mock_db_client.execute_stored_procedure.side_effect = FatalDatabaseError(
+            f"Conversion failed when converting the varchar value '{sentinel_patient_data}' to data type int.",
+            sql_state="22018",
+            error_code=245,
+        )
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            process_message(
+                mock_message,
+                self.mock_db_client,
+                self.config,
+                self.mock_event_logger,
+                self.mock_metric_sender,
+            )
+
+        self.assertEqual(ctx.exception.reason, "StoredProcedureExecutionFailed")
+        # Assert sentinel patient data is NOT present in dead-letter description
+        self.assertNotIn(sentinel_patient_data, ctx.exception.description)
+        self.assertIn("converting the varchar value '***' to data type int", ctx.exception.description)
+
+        # Assert sentinel patient data is NOT present in failure log
+        failed_call_args = self.mock_event_logger.log_message_failed.call_args[0]
+        self.assertNotIn(sentinel_patient_data, failed_call_args[1])
+        self.assertIn("converting the varchar value '***' to data type int", failed_call_args[1])
+
 
 if __name__ == "__main__":
     unittest.main()
