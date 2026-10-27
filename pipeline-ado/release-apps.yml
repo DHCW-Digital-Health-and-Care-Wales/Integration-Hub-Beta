@@ -144,9 +144,9 @@ resources:
     - pipeline: 'SOAP Sender - Build'
       source: 'SOAP Sender - Build'
       trigger: none
-    - pipeline: 'Database Sender - Build'
-      source: 'Database Sender - Build'
-      trigger: none
+    # - pipeline: 'Database Sender - Build'
+    #   source: 'Database Sender - Build'
+    #   trigger: none
 
 stages:
   # Define applications metadata inline
