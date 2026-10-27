@@ -12,7 +12,7 @@ _PROMS_REFERRAL = """\
 <?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
-  <hbCode>X98</hbCode>
+  <hbCode>7A1</hbCode>
   <eventCode>REFERRAL</eventCode>
   <eventDate>2024-06-12</eventDate>
   <eventPathway>ORTHO</eventPathway>
@@ -31,8 +31,15 @@ _PROMS_REFERRAL = """\
   <postTown>Tredegar</postTown>
   <postalCounty>Gwent</postalCounty>
   <postCode>NP22 3AA</postCode>
+  <home_phone>07555566771-2</home_phone>
+  <work_phone>07555566771-1</work_phone>
+  <mobile_phone>07555566771-3</mobile_phone>
+  <email>simphel@aol.com</email>
+  <ethnic_origin_code>A</ethnic_origin_code>
+  <ethnic_origin>White - British</ethnic_origin>
   <preferred_spoken_language_code>CY</preferred_spoken_language_code>
   <spoken_language>Welsh</spoken_language>
+  <referrer_prac>W95001</referrer_prac>
   <referrer_code>G7654321</referrer_code>
   <referrer_name>ARDERN-JONES L</referrer_name>
   <referrer_location>YSBYTY GWYNEDD, PENRHOSGARNEDD, BANGOR, GWYNEDD, LL57 2PW</referrer_location>

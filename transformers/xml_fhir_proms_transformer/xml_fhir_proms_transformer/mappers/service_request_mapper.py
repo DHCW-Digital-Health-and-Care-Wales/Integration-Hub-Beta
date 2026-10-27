@@ -14,9 +14,12 @@ from fhir.resources.R4B.reference import Reference
 from fhir.resources.R4B.servicerequest import ServiceRequest
 
 from ..fhir_constants import (
+    SERVICE_REQUEST_CODE_DISPLAY,
+    SERVICE_REQUEST_CODE_SYSTEM,
     SERVICE_REQUEST_IDENTIFIER_SYSTEM,
     SERVICE_REQUEST_INTENT,
     SERVICE_REQUEST_PROFILE,
+    SERVICE_REQUEST_REASON_SYSTEM,
     SERVICE_REQUEST_STATUS,
 )
 from ..proms_parser import PromsMessage
@@ -43,6 +46,7 @@ def map_service_request(
         meta=profile_meta(SERVICE_REQUEST_PROFILE),
         status=SERVICE_REQUEST_STATUS,
         intent=SERVICE_REQUEST_INTENT,
+        doNotPerform=False,
         subject=Reference(reference=f"urn:uuid:{patient_uuid}", type="Patient"),
     )
 
@@ -54,17 +58,25 @@ def map_service_request(
             )
         ]
 
-    # code — from eventPathway
-    event_pathway = message.get("eventPathway", "event_pathway")
-    if event_pathway:
+    # code — the WPAS event code (REFERRAL) under the PROMS event code system
+    event_code = message.get("eventCode", "event_code")
+    if event_code:
         service_request.code = CodeableConcept(
             coding=[
                 Coding(
-                    code=event_pathway,
-                    display="Referral",
+                    system=SERVICE_REQUEST_CODE_SYSTEM,
+                    code=event_code,
+                    display=SERVICE_REQUEST_CODE_DISPLAY,
                 )
             ]
         )
+
+    # reasonCode — the WPAS event pathway (display pending WPAS ServicePoint call)
+    event_pathway = message.get("eventPathway", "event_pathway")
+    if event_pathway:
+        service_request.reasonCode = [
+            CodeableConcept(coding=[Coding(system=SERVICE_REQUEST_REASON_SYSTEM, code=event_pathway)])
+        ]
 
     # occurrenceDateTime — from eventDate
     event_date_raw = message.get("eventDate", "event_date")

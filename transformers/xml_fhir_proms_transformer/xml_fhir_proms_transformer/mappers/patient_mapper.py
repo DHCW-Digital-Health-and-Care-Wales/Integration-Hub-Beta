@@ -16,18 +16,20 @@ from typing import Optional, Union
 from fhir.resources.R4B.address import Address
 from fhir.resources.R4B.codeableconcept import CodeableConcept
 from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.contactpoint import ContactPoint
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.humanname import HumanName
 from fhir.resources.R4B.identifier import Identifier
 from fhir.resources.R4B.patient import Patient, PatientCommunication
 
 from ..fhir_constants import (
-    CONTACT_PREFERENCE_EXTENSION,
-    HUMAN_LANGUAGE_SYSTEM,
+    ETHNIC_CATEGORY_EXTENSION,
+    ETHNICITY_SYSTEM,
     NHS_NUMBER_SYSTEM,
     NHS_NUMBER_VERIFICATION_EXTENSION,
     NHS_NUMBER_VERIFICATION_SYSTEM,
     PATIENT_PROFILE,
+    SPOKEN_LANGUAGE_SYSTEM,
 )
 from ..proms_parser import PromsMessage
 from ..reference_data import (
@@ -83,26 +85,14 @@ def _build_name(message: PromsMessage) -> Optional[HumanName]:
     family = message.get("patientSurname", "SURNAME", "surname")
     given_first = message.get("patientFirstname", "FORENAME", "forename")
     given_middle = message.get("patientMiddlename", "patientMiddleName")
-    prefix_raw = message.get("patientTitle", "TITLE", "title")
 
     if not family and not given_first:
         return None
 
-    given_parts: list[Optional[str]] = []
-    if given_first:
-        given_parts.append(given_first)
-    if given_middle:
-        given_parts.append(given_middle)
+    # Per the mapping, first and middle names are a single space-joined given value.
+    given = " ".join(p for p in (given_first, given_middle) if p)
 
-    name = HumanName(
-        use="official",
-        family=family or None,
-        given=given_parts if given_parts else None,
-    )
-    if prefix_raw:
-        name.prefix = [prefix_raw]
-
-    return name
+    return HumanName(use="official", family=family or None, given=[given] if given else None)
 
 
 def _build_address(message: PromsMessage) -> Optional[Address]:
@@ -133,100 +123,67 @@ def _build_address(message: PromsMessage) -> Optional[Address]:
     return address
 
 
-def _language_coding(
-    resolver: ReferenceDataResolver,
-    lang_code: str,
-    lang_display: str,
-    system_id: str,
-) -> Optional[Coding]:
-    """Build a HumanLanguage Coding, resolving the code where possible.
+def _communication(message: PromsMessage) -> Optional[list[PatientCommunication]]:
+    """Build Patient.communication from the WPAS spoken-language fields.
 
-    Falls back to a display-only coding when the resolver cannot map the code,
-    so language is not silently lost. Returns None (rather than an empty
-    Coding) when neither a resolved code nor a display string is available.
+    Code and display are taken as sent (no reference-data resolution) under the
+    WPAS spoken-language code system.
     """
+    lang_code = message.get("preferred_spoken_language_code", "preferredSpokenLanguageCode")
+    lang_display = message.get("spoken_language", "spokenLanguage")
     if not lang_code and not lang_display:
         return None
 
-    resolved = resolver.resolve_language(lang_code, system_id)
-    if not resolved and not lang_display:
-        return None
-
-    coding = Coding(system=HUMAN_LANGUAGE_SYSTEM)
-    if resolved:
-        coding.code = resolved
-    if lang_display:
-        coding.display = lang_display
-    return coding
+    coding = Coding(system=SPOKEN_LANGUAGE_SYSTEM, code=lang_code or None, display=lang_display or None)
+    return [PatientCommunication(language=CodeableConcept(coding=[coding]))]
 
 
-def _contact_preference_extension(
-    message: PromsMessage,
-    resolver: ReferenceDataResolver,
-) -> Optional[Extension]:
-    """Build Patient.extension:contactPreference from the WPAS spoken-language fields.
-
-    Confirmed in the v2 WelshPAS mapping spreadsheet: spoken language maps to a
-    dedicated contactPreference extension, separate from communication.language
-    (which carries written language only).
-    """
-    lang_code = message.get(
-        "preferred_spoken_language_code",
-        "preferredSpokenLanguageCode",
-        "PREFERRED_LANGUAGE",
-        "preferredLanguage",
-    )
-    lang_display = message.get("spoken_language", "spokenLanguage")
-    system_id = message.get("system_id", "SYSTEM_ID", "systemId")
-
-    coding = _language_coding(resolver, lang_code, lang_display, system_id)
-    if coding is None:
+def _ethnic_category_extension(message: PromsMessage) -> Optional[Extension]:
+    """Build Patient.extension:ethnicCategory from ethnic_origin_code / ethnic_origin."""
+    code = message.get("ethnic_origin_code", "ethnicOriginCode")
+    display = message.get("ethnic_origin", "ethnicOrigin")
+    if not code and not display:
         return None
 
     return Extension(
-        url=CONTACT_PREFERENCE_EXTENSION,
-        valueCodeableConcept=CodeableConcept(coding=[coding]),
+        url=ETHNIC_CATEGORY_EXTENSION,
+        valueCodeableConcept=CodeableConcept(
+            coding=[Coding(system=ETHNICITY_SYSTEM, code=code or None, display=display or None)],
+            text=display or None,
+        ),
     )
 
 
-def _communication(
-    message: PromsMessage,
-    resolver: ReferenceDataResolver,
-) -> Optional[list[PatientCommunication]]:
-    """Build Patient.communication from the WPAS written-language fields.
+# (WPAS field names, ContactPoint.system, ContactPoint.use)
+_TELECOM_FIELDS: tuple[tuple[tuple[str, ...], str, Optional[str]], ...] = (
+    (("home_phone", "homePhone", "TELEPHONE_DAY"), "phone", "home"),
+    (("work_phone", "workPhone"), "phone", "work"),
+    (("mobile_phone", "mobilePhone"), "phone", "mobile"),
+    (("email", "EMAIL"), "email", None),
+)
 
-    SPEC GAP: the exact WPAS field names for written language are not yet
-    confirmed in real payloads (the spreadsheet lists only the descriptive
-    label "preferred written language"). preferred_written_language_code /
-    written_language are used as the best-guess field names pending
-    confirmation with the spec owner - and pending Core Reference Data
-    service integration for code resolution.
-    """
-    lang_code = message.get("preferred_written_language_code", "preferredWrittenLanguageCode")
-    lang_display = message.get("written_language", "writtenLanguage")
-    system_id = message.get("system_id", "SYSTEM_ID", "systemId")
 
-    coding = _language_coding(resolver, lang_code, lang_display, system_id)
-    if coding is None:
-        return None
-
-    return [
-        PatientCommunication(
-            language=CodeableConcept(coding=[coding]),
-            preferred=True,
-        )
-    ]
+def _build_telecom(message: PromsMessage) -> list[ContactPoint]:
+    """Build one ContactPoint per populated WPAS telephone/email field."""
+    telecom: list[ContactPoint] = []
+    for field_names, system, use in _TELECOM_FIELDS:
+        value = message.get(*field_names)
+        if value:
+            contact_point = ContactPoint(system=system, value=value)
+            if use:
+                contact_point.use = use
+            telecom.append(contact_point)
+    return telecom
 
 
 def _deceased(message: PromsMessage) -> Optional[Union[bool, datetime]]:
-    """Build Patient.deceasedDateTime from DEATHDATE when present.
+    """Build Patient.deceasedDateTime from DOD (or legacy DEATHDATE) when present.
 
-    The new mapping uses deceasedDateTime (actual date) rather than
-    deceasedBoolean. Falls back to boolean True if the date cannot be parsed,
-    so the patient is not incorrectly marked as alive.
+    Falls back to boolean True if the date cannot be parsed, so the patient is
+    not incorrectly marked as alive.
     """
-    raw = message.get("DEATHDATE", "deathDate")
-    if not message.has("DEATHDATE", "deathDate"):
+    raw = message.get("DOD", "dod", "DEATHDATE", "deathDate")
+    if not message.has("DOD", "dod", "DEATHDATE", "deathDate"):
         return None
     if not raw or not raw.strip():
         return False  # empty = not deceased
@@ -253,7 +210,7 @@ def map_patient(
     include_deceased: bool = False,
 ) -> Patient:
     """Build the Patient resource from the actual WPAS PromsEventRequest fields."""
-    patient = Patient(id=patient_uuid, meta=profile_meta(PATIENT_PROFILE))
+    patient = Patient(id=patient_uuid, meta=profile_meta(PATIENT_PROFILE), active=True)
 
     identifiers = [
         i for i in (_nhs_number_identifier(message), _pas_identifier(message)) if i is not None
@@ -288,11 +245,15 @@ def map_patient(
     if address:
         patient.address = [address]
 
-    contact_preference = _contact_preference_extension(message, resolver)
-    if contact_preference:
-        patient.extension = [contact_preference]
+    telecom = _build_telecom(message)
+    if telecom:
+        patient.telecom = telecom
 
-    communication = _communication(message, resolver)
+    ethnic_category = _ethnic_category_extension(message)
+    if ethnic_category:
+        patient.extension = [ethnic_category]
+
+    communication = _communication(message)
     if communication:
         patient.communication = communication
 

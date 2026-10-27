@@ -16,6 +16,7 @@ from fhir.resources.R4B.reference import Reference
 from ..fhir_constants import (
     PRACTITIONER_ROLE_IDENTIFIER_SYSTEM,
     PRACTITIONER_ROLE_PROFILE,
+    PRACTITIONER_ROLE_REFERRAL_IDENTIFIER_SYSTEM,
 )
 from ..proms_parser import PromsMessage
 from .mapping_utils import profile_meta
@@ -27,14 +28,19 @@ def map_practitioner_role(
     practitioner_uuid: Optional[str] = None,
     organization_uuid: Optional[str] = None,
     location_uuid: Optional[str] = None,
+    is_referral: bool = True,
 ) -> PractitionerRole:
     """Build the PractitionerRole resource.
 
-    identifier.value maps to specialty_name — confirmed in the v2 WelshPAS
-    mapping spreadsheet (previously a SPEC GAP; activityNotekey is now known
-    to belong to Encounter/Appointment identifiers instead).
+    Referral: identifier is the referrer_code under the GMC system.
+    Otherwise: consultant_code under the WPAS practitioner-role system.
     """
-    identifier_value = message.get("specialty_name", "specialtyName", "main_specialty_name")
+    if is_referral:
+        identifier_system = PRACTITIONER_ROLE_REFERRAL_IDENTIFIER_SYSTEM
+        identifier_value = message.get("referrer_code", "referrerCode")
+    else:
+        identifier_system = PRACTITIONER_ROLE_IDENTIFIER_SYSTEM
+        identifier_value = message.get("consultant_code", "consultantCode")
 
     practitioner_role = PractitionerRole(
         id=practitioner_role_uuid,
@@ -42,12 +48,7 @@ def map_practitioner_role(
     )
 
     if identifier_value:
-        practitioner_role.identifier = [
-            Identifier(
-                system=PRACTITIONER_ROLE_IDENTIFIER_SYSTEM,
-                value=identifier_value,
-            )
-        ]
+        practitioner_role.identifier = [Identifier(system=identifier_system, value=identifier_value)]
 
     if practitioner_uuid:
         practitioner_role.practitioner = Reference(
@@ -61,8 +62,8 @@ def map_practitioner_role(
             type="Organization",
         )
 
-    # speciality — from consultant_specialty (must match UKCorePracticeSettingCode)
-    specialty_code = message.get("consultant_specialty", "consultantSpecialty")
+    # specialty — the first 3 characters of consultant_specialty are the specialty code
+    specialty_code = (message.get("consultant_specialty", "consultantSpecialty") or "")[:3]
     specialty_name = message.get("specialty_name", "specialtyName", "main_specialty_name")
     if specialty_code or specialty_name:
         practitioner_role.specialty = [

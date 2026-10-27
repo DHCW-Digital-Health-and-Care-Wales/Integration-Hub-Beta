@@ -16,10 +16,9 @@ service:
 - `PROMS Scenarios.xlsx` — the ten supported WPAS event scenarios, one row per
   scenario, including the `PROMS Message-TEMP` column that supplies the
   (currently placeholder) `eventCode` value routed on for each scenario.
-- `WPAS PROMS Mapping - FHIR Review - By Profile-v1-0 - Final.xlsx` — the
-  field-by-field mapping from WPAS payload fields to FHIR resource
-  elements, one sheet per FHIR resource (MessageHeader, Patient, Encounter,
-  Procedure, Appointment, Practitioner, Organization, Location).
+- `WPAS PROMS Mapping - Amy_Questions.xlsx` — the **current** field-by-field
+  mapping (story 594635, Referral). It supersedes
+  `WPAS PROMS Mapping - FHIR Review - By Profile-v1-0 - Final.xlsx` where they differ.
 
 An earlier version of this README described a different, wiki-based routing
 model (`OPI`/`RFI`/`MPA` message types, a `CarePlan`/`Task` bundle shape driven
@@ -148,9 +147,8 @@ Integration Hub for resolving gender/language codes from WPAS.
 This is modelled as a `ReferenceDataResolver` Protocol so the seam is explicit and
 replaceable. The shipped `StaticReferenceDataResolver`:
 
-- maps `gender` to a FHIR `administrative-gender` code locally, and
-- always returns `None` for language codes; `Patient.communication` is only emitted when a display
-  value (e.g. `spoken_language`) is present in the payload.
+- maps `gender` to a FHIR `administrative-gender` code locally. Language codes are no longer
+  resolved: `Patient.communication` takes the WPAS spoken-language code and display as sent.
 
 A real resolver can be injected without touching any mapper:
 
@@ -213,7 +211,8 @@ produce deterministic bundles.
 
 | Variable | Purpose |
 |---|---|
-| `WPAS_SOURCE_ENDPOINT_<SYSTEM_ID>` | Overrides that health board's `MessageHeader.source.endpoint` (e.g. `WPAS_SOURCE_ENDPOINT_108`) |
+| `WPAS_SOURCE_ENDPOINT_<SYSTEM_ID>` | Overrides that health board's `MessageHeader.source.endpoint` (default `https://fhir.nhs.uk/source-system/wpas/<SYSTEM_ID>`) |
+| `PROMPTLY_DESTINATION_ENDPOINT` | Overrides `MessageHeader.destination.endpoint` (default: the Promptly staging `$process-message` URL in `fhir_constants.py`) |
 
 Service Bus, health check and logging configuration is inherited from
 `transformer_base_lib` / `config.ini` in the usual way.
@@ -243,31 +242,28 @@ from the specification owner:
   changed", which implies comparing against a prior message; this service is
   stateless, so `PREOP-AR` is currently routed purely on `eventCode`.
 - **No documented destination** in the WPAS mapping spreadsheets for where
-  these bundles are delivered outside of the fixed Promptly Collect endpoint
-  hardcoded in `fhir_constants.py`.
+  these bundles are delivered outside of the Promptly endpoint (configurable via
+  `PROMPTLY_DESTINATION_ENDPOINT`).
 - `MessageHeader.meta.profile` value was flagged by a reviewer as likely
   incorrect; awaiting a confirmed NHS Wales URL.
 - **No Core Reference Data Lookup service** exists in the Integration Hub —
-  `Patient.gender` uses a local table and `Patient.communication` is only
-  emitted when a display value is present in the payload.
-- Only a subset of health boards have a documented source name and endpoint
-  in `source_systems.py`. FHIR requires `MessageHeader.source.endpoint`, so
-  unknown/missing `system_id`/`hbCode` values fall back to a placeholder
-  `https://wpas-source.invalid/system-id/<value>` URL rather than a fabricated
-  real one.
-- `ServiceRequest.identifier.value` — no WPAS source field is specified in the
-  mapping spreadsheet for the Referral scenario; `pathway` is used as the best
-  available unique identifier pending confirmation.
+  `Patient.gender` uses a local table.
+- Only the seven WPAS health boards are mapped in `source_systems.py` (126, 149,
+  139, 170, 109, 310, 108). 103 (Princess of Wales, PIMS) and 140 (Cardiff and
+  Vale) do not use WPAS. Unknown `system_id`/`hbCode` values still get
+  `MessageHeader.source.endpoint` =
+  `https://fhir.nhs.uk/source-system/wpas/<value>` but no `source.name`.
+- `Organization` is the health board: `hb_code` (ODS code) and the health
+  board name. `referrer_org` and `dhaCode` are not used; no `hb_code` means no
+  Organization entry.
+- `ServiceRequest.reasonCode` has no `display` yet (pending a WPAS ServicePoint
+  lookup).
+- `ServiceRequest.identifier.value` uses `pathway`.
 - `Appointment`/`AppointmentParticipant.status` for the practitioner
   participant has no confirmed business rule (only the patient participant's
   `CONFIRM_APPT` rule is documented); defaults to `"accepted"`.
 - WPAS supplies a single appointment date/time with no duration or end time,
   so `Appointment.end` is set equal to `Appointment.start` as a placeholder.
-- `Location.name` is derived from the first line of the free-text
-  `referrer_location` field; the mapping spreadsheet does not specify a
-  dedicated name field.
-- `Patient.communication` (written language) field names (`preferred_written_language_code` etc.)
-  are not yet confirmed against a real WPAS payload.
 - Date/time formats are unconfirmed, so parsing is tolerant of several
   formats. FHIR requires timezone-aware datetimes, so UTC is assumed.
 

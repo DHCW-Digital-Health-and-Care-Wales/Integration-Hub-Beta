@@ -25,33 +25,18 @@ def map_location(
 ) -> Location:
     """Build the Location resource.
 
-    SPEC GAP: Location.name — the mapping spreadsheet marks the source as
-    "??". The referrer_location field holds a full free-text address string
-    (e.g. "YSBYTY GWYNEDD, PENRHOSGARNEDD, BANGOR, GWYNEDD, LL57 2PW").
-    The first comma-delimited segment is used as the name until the spec
-    owner provides a dedicated name field.
-
-    identifier.value — using referrer_location as-is for uniqueness until a
-    dedicated code/id field is specified.
+    identifier.value is referrer_prac; there is no Location.name in the mapping.
+    address.text is referrer_location + referrer_postcode.
     """
     location = Location(
         id=location_uuid,
         meta=profile_meta(LOCATION_PROFILE),
+        status="active",
     )
 
-    referrer_location = message.get("referrer_location", "referrerLocation")
-    if referrer_location:
-        location.identifier = [
-            Identifier(
-                system=LOCATION_IDENTIFIER_SYSTEM,
-                value=referrer_location,
-            )
-        ]
-
-        # SPEC GAP: use first line of the free-text location as the name
-        first_segment = referrer_location.split(",")[0].strip()
-        if first_segment:
-            location.name = first_segment
+    referrer_prac = message.get("referrer_prac", "referrerPrac")
+    if referrer_prac:
+        location.identifier = [Identifier(system=LOCATION_IDENTIFIER_SYSTEM, value=referrer_prac)]
 
     address = _build_address(message)
     if address:
@@ -61,8 +46,14 @@ def map_location(
 
 
 def _build_address(message: PromsMessage) -> Optional[Address]:
-    """Build Location.address from referrer_postcode."""
+    """Build Location.address from referrer_location and referrer_postcode."""
+    location_text = message.get("referrer_location", "referrerLocation")
     postcode = message.get("referrer_postcode", "referrerPostcode")
-    if not postcode:
+    text = " ".join(p for p in (location_text, postcode) if p)
+    if not text:
         return None
-    return Address(postalCode=postcode)
+
+    address = Address(text=text)
+    if postcode:
+        address.postalCode = postcode
+    return address

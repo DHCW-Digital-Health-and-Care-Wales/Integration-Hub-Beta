@@ -36,6 +36,7 @@ from tests.wpas_messages import (
 )
 from xml_fhir_proms_transformer import fhir_constants as fc
 from xml_fhir_proms_transformer.mappers.mapping_utils import UuidFactory
+from xml_fhir_proms_transformer.mappers.practitioner_role_mapper import map_practitioner_role
 from xml_fhir_proms_transformer.message_types import resolve_message_type
 from xml_fhir_proms_transformer.proms_parser import parse_proms_xml
 from xml_fhir_proms_transformer.proms_transformer import (
@@ -276,6 +277,16 @@ class TestMessageHeader(unittest.TestCase):
         self.assertEqual(header.destination[0].name, fc.PROMPTLY_COLLECT_DESTINATION_NAME)
         self.assertEqual(header.destination[0].endpoint, fc.PROMPTLY_COLLECT_ENDPOINT)
 
+    def test_destination_endpoint_can_be_overridden_by_environment(self) -> None:
+        with mock.patch.dict("os.environ", {fc.PROMPTLY_DESTINATION_ENDPOINT_ENV_VAR: "https://promptly.example/fhir"}):
+            header = resource_at(build(REFERRAL_MESSAGE), 0)
+        self.assertEqual(header.destination[0].endpoint, "https://promptly.example/fhir")
+
+    def test_source_has_name_and_endpoint_for_known_health_board(self) -> None:
+        header = resource_at(build(REFERRAL_MESSAGE), 0)
+        self.assertEqual(header.source.name, "Hywel Dda University Health Board")
+        self.assertEqual(header.source.endpoint, f"{fc.WPAS_SOURCE_ENDPOINT_BASE}/149")
+
     def test_sender_references_organization_entry(self) -> None:
         bundle = build(REFERRAL_MESSAGE)
         header = resource_at(bundle, 0)
@@ -343,14 +354,39 @@ class TestPatient(unittest.TestCase):
     def test_profile(self) -> None:
         self.assertEqual(self.patient.meta.profile, [fc.PATIENT_PROFILE])
 
-    def test_name_includes_title_given_middle_and_family(self) -> None:
+    def test_active(self) -> None:
+        self.assertIs(self.patient.active, True)
+
+    def test_name_joins_first_and_middle_name_and_has_no_prefix(self) -> None:
         name = self.patient.name[0]
         self.assertEqual(name.use, "official")
         self.assertEqual(name.family, "Bevan")
-        # Given names should contain firstname and middlename
-        self.assertIn("Aneurin", name.given)
-        # Title/prefix
-        self.assertIn("Mr", name.prefix)
+        self.assertEqual(name.given, ["Aneurin Nye"])
+        self.assertIsNone(name.prefix)
+
+    def test_telecom_maps_phone_numbers_and_email(self) -> None:
+        telecom = {(t.system, t.use): t.value for t in self.patient.telecom}
+        self.assertEqual(
+            telecom,
+            {
+                ("phone", "home"): "07555566771-2",
+                ("phone", "work"): "07555566771-1",
+                ("phone", "mobile"): "07555566771-3",
+                ("email", None): "simphel@aol.com",
+            },
+        )
+
+    def test_telecom_omitted_when_no_contact_fields(self) -> None:
+        patient = resource_at(build(MINIMAL_REFERRAL_MESSAGE), 1)
+        self.assertIsNone(patient.telecom)
+
+    def test_ethnic_category_extension(self) -> None:
+        ext = next(e for e in self.patient.extension if e.url == fc.ETHNIC_CATEGORY_EXTENSION)
+        coding = ext.valueCodeableConcept.coding[0]
+        self.assertEqual(coding.system, fc.ETHNICITY_SYSTEM)
+        self.assertEqual(coding.code, "A")
+        self.assertEqual(coding.display, "White - British")
+        self.assertEqual(ext.valueCodeableConcept.text, "White - British")
 
     def test_gender_male(self) -> None:
         # resolver returns None by default (no external lookup)
@@ -377,49 +413,16 @@ class TestPatient(unittest.TestCase):
     def test_district_uses_postal_county(self) -> None:
         self.assertEqual(self.patient.address[0].district, "Gwent")
 
-    def test_contact_preference_extension_uses_spoken_language(self) -> None:
+    def test_communication_uses_spoken_language_code_display_and_system(self) -> None:
         # REFERRAL_MESSAGE carries preferred_spoken_language_code=CY / spoken_language=Welsh
-        extensions = self.patient.extension or []
-        contact_pref = next(e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION)
-        self.assertEqual(contact_pref.valueCodeableConcept.coding[0].display, "Welsh")
+        coding = self.patient.communication[0].language.coding[0]
+        self.assertEqual(coding.system, fc.SPOKEN_LANGUAGE_SYSTEM)
+        self.assertEqual(coding.code, "CY")
+        self.assertEqual(coding.display, "Welsh")
 
-    def test_contact_preference_extension_uses_legacy_preferred_language_alias(self) -> None:
-        # Legacy WPAS dialects use PREFERRED_LANGUAGE instead of preferred_spoken_language_code
-        message = REFERRAL_MESSAGE.replace(
-            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>", ""
-        ).replace(
-            "</PromsEventRequest>",
-            "<PREFERRED_LANGUAGE>CY</PREFERRED_LANGUAGE></PromsEventRequest>",
-        )
-        patient = resource_at(build(message), 1)
-        extensions = patient.extension or []
-        contact_pref = next(e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION)
-        self.assertEqual(contact_pref.valueCodeableConcept.coding[0].display, "Welsh")
-
-    def test_contact_preference_extension_omitted_when_code_unresolvable_and_no_display(self) -> None:
-        # Code-only, no display text, and the static resolver cannot resolve any code -
-        # must not produce an extension with an empty (code-less, display-less) Coding.
-        message = REFERRAL_MESSAGE.replace(
-            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>\n"
-            "  <spoken_language>Welsh</spoken_language>",
-            "<preferred_spoken_language_code>CY</preferred_spoken_language_code>",
-        )
-        patient = resource_at(build(message), 1)
-        extensions = patient.extension or []
-        contact_prefs = [e for e in extensions if e.url == fc.CONTACT_PREFERENCE_EXTENSION]
-        self.assertEqual(contact_prefs, [])
-
-    def test_communication_omitted_when_no_written_language(self) -> None:
-        # REFERRAL_MESSAGE has no written-language fields, only spoken
-        self.assertIsNone(self.patient.communication)
-
-    def test_communication_uses_written_language_when_present(self) -> None:
-        message = REFERRAL_MESSAGE.replace(
-            "</PromsEventRequest>",
-            "<written_language>English</written_language></PromsEventRequest>",
-        )
-        patient = resource_at(build(message), 1)
-        self.assertEqual(patient.communication[0].language.coding[0].display, "English")
+    def test_communication_omitted_when_no_spoken_language(self) -> None:
+        patient = resource_at(build(MINIMAL_REFERRAL_MESSAGE), 1)
+        self.assertIsNone(patient.communication)
 
     def test_deceased_absent_for_non_patient_update_bundles(self) -> None:
         self.assertIsNone(self.patient.deceasedBoolean)
@@ -434,7 +437,23 @@ class TestServiceRequest(unittest.TestCase):
     def test_profile_status_and_intent(self) -> None:
         self.assertEqual(self.sr.meta.profile, [fc.SERVICE_REQUEST_PROFILE])
         self.assertEqual(self.sr.status, fc.SERVICE_REQUEST_STATUS)
-        self.assertEqual(self.sr.intent, fc.SERVICE_REQUEST_INTENT)
+        self.assertEqual(self.sr.intent, "order")
+        self.assertIs(self.sr.doNotPerform, False)
+
+    def test_identifier(self) -> None:
+        self.assertEqual(self.sr.identifier[0].system, fc.SERVICE_REQUEST_IDENTIFIER_SYSTEM)
+        self.assertEqual(self.sr.identifier[0].value, "7A22867970")
+
+    def test_code_is_referral_event(self) -> None:
+        coding = self.sr.code.coding[0]
+        self.assertEqual(coding.system, fc.SERVICE_REQUEST_CODE_SYSTEM)
+        self.assertEqual(coding.code, "REFERRAL")
+        self.assertEqual(coding.display, "Referral")
+
+    def test_reason_code_is_event_pathway(self) -> None:
+        coding = self.sr.reasonCode[0].coding[0]
+        self.assertEqual(coding.system, fc.SERVICE_REQUEST_REASON_SYSTEM)
+        self.assertEqual(coding.code, "ORTHO")
 
     def test_subject_references_patient(self) -> None:
         patient = resource_at(self.bundle, 1)
@@ -454,9 +473,20 @@ class TestPractitionerRole(unittest.TestCase):
     def test_profile(self) -> None:
         self.assertEqual(self.pr.meta.profile, [fc.PRACTITIONER_ROLE_PROFILE])
 
-    def test_identifier_from_specialty_name(self) -> None:
-        self.assertEqual(self.pr.identifier[0].system, fc.PRACTITIONER_ROLE_IDENTIFIER_SYSTEM)
-        self.assertEqual(self.pr.identifier[0].value, "Trauma and Orthopaedics")
+    def test_referral_identifier_is_referrer_code_under_gmc_system(self) -> None:
+        self.assertEqual(self.pr.identifier[0].system, fc.GMC_NUMBER_SYSTEM)
+        self.assertEqual(self.pr.identifier[0].value, "G7654321")
+
+    def test_non_referral_identifier_is_consultant_code(self) -> None:
+        message = parse_proms_xml(REFERRAL_MESSAGE)
+        role = map_practitioner_role(message, "role-id", is_referral=False)
+        self.assertEqual(role.identifier[0].system, fc.PRACTITIONER_ROLE_IDENTIFIER_SYSTEM)
+        self.assertEqual(role.identifier[0].value, "HANJO")
+
+    def test_specialty_code_is_first_three_characters(self) -> None:
+        message = parse_proms_xml(REFERRAL_MESSAGE.replace(">110<", ">110A<"))
+        role = map_practitioner_role(message, "role-id")
+        self.assertEqual(role.specialty[0].coding[0].code, "110")
 
     def test_practitioner_reference(self) -> None:
         practitioner = resource_at(self.bundle, 4)
@@ -474,17 +504,21 @@ class TestPractitionerRole(unittest.TestCase):
 class TestPractitioner(unittest.TestCase):
     def test_referral_uses_referrer_code_and_name(self) -> None:
         practitioner = resource_at(build(REFERRAL_MESSAGE), 4)
-        self.assertEqual(practitioner.identifier[0].value, "G7654321")
-        # referrer_name: "ARDERN-JONES L" — family=ARDERN-JONES or similar
-        self.assertIsNotNone(practitioner.name)
+        identifiers = {i.system: i.value for i in practitioner.identifier}
+        self.assertEqual(
+            identifiers,
+            {fc.WPAS_PRACTITIONER_SYSTEM: "HANJO", fc.GMC_NUMBER_SYSTEM: "G7654321"},
+        )
+        # The name is kept as free text, not parsed into parts
+        self.assertEqual(practitioner.name[0].text, "ARDERN-JONES L")
+        self.assertIsNone(practitioner.name[0].family)
 
     def test_surgery_uses_consultant_code_and_clinician_name(self) -> None:
         practitioner = resource_at(build(SURGERY_MESSAGE), 3)
+        self.assertEqual(len(practitioner.identifier), 1)
+        self.assertEqual(practitioner.identifier[0].system, fc.WPAS_PRACTITIONER_SYSTEM)
         self.assertEqual(practitioner.identifier[0].value, "JONMG")
-        # clinicianName: "Morgan, James" -> family=Morgan, given=James
-        name = practitioner.name[0]
-        self.assertEqual(name.family, "Morgan")
-        self.assertIn("James", name.given)
+        self.assertEqual(practitioner.name[0].text, "Morgan, James")
 
     def test_minimal_message_omits_practitioner_entry_when_no_identifier(self) -> None:
         bundle = build(MINIMAL_REFERRAL_MESSAGE)
@@ -493,19 +527,30 @@ class TestPractitioner(unittest.TestCase):
 
 
 class TestOrganization(unittest.TestCase):
-    def test_carries_ods_code_from_dha_code(self) -> None:
+    def test_identifier_is_hb_code_and_active(self) -> None:
         org = resource_at(build(REFERRAL_MESSAGE), 5)
         self.assertEqual(org.meta.profile, [fc.ORGANIZATION_PROFILE])
+        self.assertIs(org.active, True)
         identifier = org.identifier[0]
         self.assertEqual(identifier.system, fc.ODS_ORGANISATION_CODE_SYSTEM)
-        self.assertEqual(identifier.value, "7A1")
+        self.assertEqual(identifier.value, "X98")
 
-    def test_name_uses_lookup_when_referrer_org_is_empty(self) -> None:
-        # referrer_org is empty in REFERRAL_MESSAGE — should fall back to DHA lookup
+    def test_name_is_health_board_name_from_system_id(self) -> None:
         org = resource_at(build(REFERRAL_MESSAGE), 5)
-        # If dha_code_name("7A1") returns something, it should be set
-        # If it returns None that's also acceptable; just check it doesn't crash
-        self.assertIsNotNone(org)
+        self.assertEqual(org.name, "Hywel Dda University Health Board")
+
+    def test_name_falls_back_to_ods_code_lookup(self) -> None:
+        message = REFERRAL_MESSAGE.replace("<system_id>149</system_id>", "").replace("X98", "7A2")
+        org = resource_at(build(message), 5)
+        self.assertEqual(org.identifier[0].value, "7A2")
+        self.assertEqual(org.name, "HYWEL DDA UNIVERSITY LHB")
+
+    def test_dha_code_and_referrer_org_are_ignored(self) -> None:
+        message = REFERRAL_MESSAGE.replace("<hbCode>X98</hbCode>", "").replace(
+            "<referrer_org></referrer_org>", "<referrer_org>Some Practice</referrer_org>"
+        )
+        types = [e.resource.get_resource_type() for e in build(message).entry]
+        self.assertNotIn("Organization", types)
 
 
 class TestLocation(unittest.TestCase):
@@ -514,13 +559,22 @@ class TestLocation(unittest.TestCase):
         self.assertEqual(location.meta.profile, [fc.LOCATION_PROFILE])
         self.assertEqual(location.address.postalCode, "LL57 2PW")
 
-    def test_location_name_uses_first_segment_of_referrer_location(self) -> None:
+    def test_location_has_no_name_and_is_active(self) -> None:
         location = resource_at(build(REFERRAL_MESSAGE), 6)
-        self.assertEqual(location.name, "YSBYTY GWYNEDD")
+        self.assertIsNone(location.name)
+        self.assertEqual(location.status, "active")
 
-    def test_location_identifier_uses_referrer_location_as_value(self) -> None:
+    def test_location_address_text_is_location_plus_postcode(self) -> None:
+        location = resource_at(build(REFERRAL_MESSAGE), 6)
+        self.assertEqual(
+            location.address.text,
+            "YSBYTY GWYNEDD, PENRHOSGARNEDD, BANGOR, GWYNEDD, LL57 2PW LL57 2PW",
+        )
+
+    def test_location_identifier_uses_referrer_prac_as_value(self) -> None:
         location = resource_at(build(REFERRAL_MESSAGE), 6)
         self.assertEqual(location.identifier[0].system, fc.LOCATION_IDENTIFIER_SYSTEM)
+        self.assertEqual(location.identifier[0].value, "W95001")
 
 
 class TestProcedure(unittest.TestCase):

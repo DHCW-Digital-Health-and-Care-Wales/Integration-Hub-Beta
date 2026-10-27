@@ -84,25 +84,34 @@ class TestSourceSystems(unittest.TestCase):
             "170": "https://fhir.pthb.nhs.wales/Id/pas-identifier",
             "126": "https://fhir.ctmuhb.nhs.wales/Id/pas-identifier",
             "310": "https://fhir.vunhst.nhs.wales/Id/pas-identifier",
-            "140": "https://fhir.cavuhb.nhs.wales/Id/pas-identifier",
         }
         for system_id, url in expected.items():
             with self.subTest(system_id=system_id):
                 self.assertEqual(get_pas_identifier_system(system_id), url)
 
-    def test_swansea_bay_carries_the_documented_name_and_endpoint(self) -> None:
-        source_system = get_source_system("108")
-        assert source_system is not None
-        self.assertEqual(source_system.name, "Swansea Bay Health Board")
-        self.assertEqual(source_system.endpoint, "https://nhspsom.swanseabayhealthboard.com")
+    def test_non_wpas_health_boards_are_not_sources(self) -> None:
+        # 103 is Princess of Wales (PIMS) and 140 is Cardiff and Vale; neither uses WPAS.
+        # 131 was a spreadsheet error for Velindre (310).
+        for system_id in ("103", "131", "140"):
+            with self.subTest(system_id=system_id):
+                self.assertIsNone(get_source_system(system_id))
 
-    def test_other_health_boards_have_no_documented_endpoint(self) -> None:
-        # The wiki only states the source name/endpoint for Swansea Bay, so the
-        # rest are deliberately left unset rather than guessed.
-        source_system = get_source_system("109")
-        assert source_system is not None
-        self.assertIsNone(source_system.name)
-        self.assertIsNone(source_system.endpoint)
+    def test_source_name_and_endpoint_per_health_board(self) -> None:
+        expected = {
+            "108": "Swansea Bay Health Board",
+            "109": "Betsi Cadwaladr University Health Board",
+            "126": "Cwm Taf Morgannwg University Health Board",
+            "139": "Aneurin Bevan University Health Board",
+            "149": "Hywel Dda University Health Board",
+            "170": "Powys Teaching Health Board",
+            "310": "Velindre University NHS Trust",
+        }
+        for system_id, name in expected.items():
+            with self.subTest(system_id=system_id):
+                source_system = get_source_system(system_id)
+                assert source_system is not None
+                self.assertEqual(source_system.name, name)
+                self.assertEqual(source_system.endpoint, f"https://fhir.nhs.uk/source-system/wpas/{system_id}")
 
     def test_endpoint_can_be_overridden_by_environment(self) -> None:
         with mock.patch.dict(os.environ, {"WPAS_SOURCE_ENDPOINT_109": "https://psom.bcuhb.example"}):

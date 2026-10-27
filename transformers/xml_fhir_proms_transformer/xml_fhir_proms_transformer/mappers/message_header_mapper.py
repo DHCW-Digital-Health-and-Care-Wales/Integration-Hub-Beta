@@ -11,6 +11,7 @@ Key changes from previous PSOM model:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 from fhir.resources.R4B.coding import Coding
@@ -21,7 +22,9 @@ from ..fhir_constants import (
     MESSAGE_HEADER_PROFILE,
     PROMPTLY_COLLECT_DESTINATION_NAME,
     PROMPTLY_COLLECT_ENDPOINT,
+    PROMPTLY_DESTINATION_ENDPOINT_ENV_VAR,
     WPAS_EVENT_SYSTEM,
+    WPAS_SOURCE_ENDPOINT_BASE,
 )
 from ..message_types import MessageType
 from ..proms_parser import PromsMessage
@@ -30,14 +33,13 @@ from .mapping_utils import join_display, profile_meta, urn_uuid
 
 logger = logging.getLogger(__name__)
 
-UNKNOWN_SOURCE_ENDPOINT_PREFIX = "https://wpas-source.invalid/system-id/"
-
 
 def _map_source(message: PromsMessage) -> MessageHeaderSource:
     """Build MessageHeader.source from the sending health board.
 
     Both system_id and hbCode identify the health board; system_id is tried
-    first, then hbCode as a fallback.
+    first, then hbCode as a fallback. The endpoint is always the WPAS source
+    base URL plus the system_id, even for a health board without a known name.
     """
     system_id = message.get("system_id", "SYSTEM_ID", "systemId")
     if not system_id:
@@ -45,28 +47,21 @@ def _map_source(message: PromsMessage) -> MessageHeaderSource:
 
     source_system = get_source_system(system_id)
 
-    if source_system is None or not source_system.endpoint:
-        endpoint = f"{UNKNOWN_SOURCE_ENDPOINT_PREFIX}{system_id or 'unknown'}"
-        logger.warning(
-            "No documented PROMS endpoint for system_id/hbCode %r - using placeholder %r",
-            system_id,
-            endpoint,
-        )
-        source = MessageHeaderSource(endpoint=endpoint)
-    else:
+    if source_system is not None and source_system.endpoint:
         source = MessageHeaderSource(endpoint=source_system.endpoint)
-
-    if source_system and source_system.name:
         source.name = source_system.name
+        return source
 
-    return source
+    endpoint = f"{WPAS_SOURCE_ENDPOINT_BASE}/{(system_id or 'unknown').strip()}"
+    logger.warning("No known health board for system_id/hbCode %r - using endpoint %r", system_id, endpoint)
+    return MessageHeaderSource(endpoint=endpoint)
 
 
 def _map_destination() -> MessageHeaderDestination:
-    """Build the fixed Promptly Collect destination block."""
+    """Build the fixed Promptly destination block; the endpoint varies by environment."""
     return MessageHeaderDestination(
         name=PROMPTLY_COLLECT_DESTINATION_NAME,
-        endpoint=PROMPTLY_COLLECT_ENDPOINT,
+        endpoint=os.getenv(PROMPTLY_DESTINATION_ENDPOINT_ENV_VAR) or PROMPTLY_COLLECT_ENDPOINT,
     )
 
 
