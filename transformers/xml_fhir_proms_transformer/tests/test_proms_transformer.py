@@ -292,7 +292,8 @@ class TestMessageHeader(unittest.TestCase):
         header = resource_at(bundle, 0)
         org = resource_at(bundle, 5)
         self.assertEqual(header.sender.reference, f"urn:uuid:{org.id}")
-
+        self.assertEqual(header.sender.display, org.name)
+        self.assertEqual(header.sender.display, "Hywel Dda University Health Board")
     def test_source_resolved_from_system_id(self) -> None:
         header = resource_at(build(REFERRAL_MESSAGE), 0)
         # system_id=149 should resolve to a known SourceSystem (see source_systems.py)
@@ -424,9 +425,21 @@ class TestPatient(unittest.TestCase):
         patient = resource_at(build(MINIMAL_REFERRAL_MESSAGE), 1)
         self.assertIsNone(patient.communication)
 
-    def test_deceased_absent_for_non_patient_update_bundles(self) -> None:
+    def test_deceased_absent_when_no_dod(self) -> None:
         self.assertIsNone(self.patient.deceasedBoolean)
         self.assertIsNone(self.patient.deceasedDateTime)
+
+    def test_deceased_date_time_from_dod(self) -> None:
+        message = REFERRAL_MESSAGE.replace("</PromsEventRequest>", "<DOD>2024-05-01</DOD></PromsEventRequest>")
+        patient = resource_at(build(message), 1)
+        self.assertEqual(patient.deceasedDateTime.date().isoformat(), "2024-05-01")
+        self.assertIsNone(patient.deceasedBoolean)
+
+    def test_empty_dod_is_not_emitted(self) -> None:
+        message = REFERRAL_MESSAGE.replace("</PromsEventRequest>", "<DOD></DOD></PromsEventRequest>")
+        patient = resource_at(build(message), 1)
+        self.assertIsNone(patient.deceasedBoolean)
+        self.assertIsNone(patient.deceasedDateTime)
 
 
 class TestServiceRequest(unittest.TestCase):
@@ -449,6 +462,12 @@ class TestServiceRequest(unittest.TestCase):
         self.assertEqual(coding.system, fc.SERVICE_REQUEST_CODE_SYSTEM)
         self.assertEqual(coding.code, "REFERRAL")
         self.assertEqual(coding.display, "Referral")
+
+    def test_code_present_when_routed_by_message_type_alias(self) -> None:
+        message = REFERRAL_MESSAGE.replace("<eventCode>REFERRAL</eventCode>", "<MESSAGE_TYPE>REFERRAL</MESSAGE_TYPE>")
+        self.assertNotEqual(message, REFERRAL_MESSAGE)
+        sr = resource_at(build(message), 2)
+        self.assertEqual(sr.code.coding[0].code, "REFERRAL")
 
     def test_reason_code_is_event_pathway(self) -> None:
         coding = self.sr.reasonCode[0].coding[0]

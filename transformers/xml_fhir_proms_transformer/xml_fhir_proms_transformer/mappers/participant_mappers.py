@@ -92,9 +92,18 @@ def map_organization(message: PromsMessage, organization_uuid: str) -> Optional[
         identifier=[Identifier(system=ODS_ORGANISATION_CODE_SYSTEM, value=hb_code)],
     )
 
-    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
-    name = source_system.name if source_system else dha_code_name(hb_code)
-    if name and name != hb_code:
+    name = health_board_name(message)
+    if name:
         organization.name = name
 
     return organization
+
+
+def health_board_name(message: PromsMessage) -> Optional[str]:
+    """Return the sending health board's name, or None when it can't be resolved."""
+    hb_code = message.get("hb_code", "hbCode", "HB_CODE")
+    if not hb_code:
+        return None
+    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    name = source_system.name if source_system else dha_code_name(hb_code)
+    return name if name and name != hb_code else None

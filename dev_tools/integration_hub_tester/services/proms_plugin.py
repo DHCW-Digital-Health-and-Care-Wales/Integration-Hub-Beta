@@ -12,7 +12,7 @@ _PROMS_REFERRAL = """\
 <?xml version="1.0" encoding="UTF-8"?>
 <PromsEventRequest>
   <system_id>149</system_id>
-  <hbCode>7A1</hbCode>
+  <hbCode>7A2</hbCode>
   <eventCode>REFERRAL</eventCode>
   <eventDate>2024-06-12</eventDate>
   <eventPathway>ORTHO</eventPathway>

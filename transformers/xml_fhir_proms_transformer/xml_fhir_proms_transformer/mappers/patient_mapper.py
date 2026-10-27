@@ -186,7 +186,7 @@ def _deceased(message: PromsMessage) -> Optional[Union[bool, datetime]]:
     if not message.has("DOD", "dod", "DEATHDATE", "deathDate"):
         return None
     if not raw or not raw.strip():
-        return False  # empty = not deceased
+        return None  # empty DOD: nothing to report
 
     # Try to parse as a dateTime for the preferred representation.
     parsed_dt = to_fhir_datetime(raw, warn=False)
@@ -207,7 +207,6 @@ def map_patient(
     message: PromsMessage,
     patient_uuid: str,
     resolver: ReferenceDataResolver = DEFAULT_REFERENCE_DATA_RESOLVER,
-    include_deceased: bool = False,
 ) -> Patient:
     """Build the Patient resource from the actual WPAS PromsEventRequest fields."""
     patient = Patient(id=patient_uuid, meta=profile_meta(PATIENT_PROFILE), active=True)
@@ -233,13 +232,12 @@ def map_patient(
     if birth_date:
         patient.birthDate = birth_date
 
-    if include_deceased:
-        deceased = _deceased(message)
-        if deceased is not None:
-            if isinstance(deceased, bool):
-                patient.deceasedBoolean = deceased
-            else:
-                patient.deceasedDateTime = deceased
+    deceased = _deceased(message)
+    if deceased is not None:
+        if isinstance(deceased, bool):
+            patient.deceasedBoolean = deceased
+        else:
+            patient.deceasedDateTime = deceased
 
     address = _build_address(message)
     if address:

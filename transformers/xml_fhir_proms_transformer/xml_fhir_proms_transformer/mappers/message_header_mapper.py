@@ -30,6 +30,7 @@ from ..message_types import MessageType
 from ..proms_parser import PromsMessage
 from ..source_systems import get_source_system
 from .mapping_utils import join_display, profile_meta, urn_uuid
+from .participant_mappers import health_board_name
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ def map_message_header(
         message_header.sender = Reference(
             reference=urn_uuid(organization_uuid),
             type="Organization",
-            display=message.get("referrer_org", "referrerOrg") or None,
+            display=health_board_name(message),
         )
 
     # focus — contents depend on bundle type

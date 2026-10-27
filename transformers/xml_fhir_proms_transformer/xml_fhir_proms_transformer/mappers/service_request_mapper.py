@@ -59,7 +59,12 @@ def map_service_request(
         ]
 
     # code — the WPAS event code (REFERRAL) under the PROMS event code system
-    event_code = message.get("eventCode", "event_code")
+    # Same routing aliases as get_message_type(); this mapper only runs for referral bundles,
+    # so fall back to REFERRAL when the code was supplied via the root tag instead.
+    event_code = (
+        message.get("eventCode", "event_code", "EVENT_CODE", "MESSAGE_TYPE", "messageType", "MSG_TYPE", "msgType")
+        or ""
+    ).strip().upper() or "REFERRAL"
     if event_code:
         service_request.code = CodeableConcept(
             coding=[
