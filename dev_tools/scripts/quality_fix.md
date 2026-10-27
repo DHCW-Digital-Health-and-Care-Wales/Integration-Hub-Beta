@@ -284,7 +284,7 @@ comes in through another package.
 |---|---|---|
 | Adds | `pkg>=fixed` to `[project] dependencies` (via `uv add --frozen`) | `pkg>=fixed` to `[tool.uv] override-dependencies` |
 | Effect | Normal requirement, combined with the other packages' own requirements | **Replaces** every other requirement on that package, including upper bounds set by other packages |
-| Existing examples in this repo | `urllib3>=2.8.0`, `setuptools>=83.0.0` in shared libs | `dashboard` (`setuptools`), `dev_tools/buswatch` (`anyio`) |
+| Existing examples in this repo | `urllib3>=2.8.0`, `setuptools>=84.1.0` in shared libs | `dashboard` (`setuptools`), `dev_tools/buswatch` (`anyio`) |
 | Use when | Default choice | A dependency's own upper bound blocks the fix and you accept the risk |
 
 The requirement is added to the component where the advisory was reported. If

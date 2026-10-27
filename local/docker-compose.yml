@@ -33,6 +33,8 @@ services:
     container_name: "sqledge"
     image: "mcr.microsoft.com/azure-sql-edge:latest"
     restart: on-failure
+    ports:
+      - "14333:1433"
     networks:
       integration-hub:
         aliases:
@@ -94,6 +96,7 @@ services:
     profiles:
       - hl7-rest
       - risp-to-mpi
+      - risp-to-wrrs
       - everything
     networks:
       integration-hub:
@@ -309,6 +312,31 @@ services:
       integration-hub:
         aliases:
           - "risp-mpi-hl7-sender"
+
+  # Generic db_sender instance configured for the RISP -> WRRS flow
+  wrrs-db-sender:
+    container_name: wrrs-db-sender
+    build:
+      context: ../senders/db_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/wrrs-db-sender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+      - sqledge
+    profiles:
+      - risp-to-wrrs
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "wrrs-db-sender"
 
   # Dedicated Mosaiq -> MPI sender. Unlike the shared mpi-hl7-sender (queue-based ingress), this
   # mirrors the DEV hl7_mpi_sender container app for Mosaiq: subscription-based ingress from the

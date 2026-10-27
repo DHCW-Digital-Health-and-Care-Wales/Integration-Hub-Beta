@@ -87,6 +87,7 @@ stages:
                 "transformers/hl7_wds_transformer|WDS HL7 Transformer|pytest"
                 "senders/hl7_sender|HL7 Sender|unittest"
                 "senders/hl7_subscription_sender|HL7 Subscription Sender|unittest"
+                "senders/db_sender|Database Sender|unittest"
                 "senders/soap_sender|SOAP Sender|pytest"
                 "senders/soap_subscription_sender|SOAP Subscription Sender|pytest"
                 "mock_receivers/hl7_mock_receiver|HL7 Mock Receiver|unittest"

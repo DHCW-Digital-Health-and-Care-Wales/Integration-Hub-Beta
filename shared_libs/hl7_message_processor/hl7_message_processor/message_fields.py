@@ -24,6 +24,17 @@ def get_version(msg: Any) -> str:
     """MSH-12.1 - the HL7 version, e.g. "2.5.1"."""
     return get_hl7_field_value(msg.msh, "msh_12.msh_12_1")
 
+def get_sendingapp(msg: Any) -> str:
+    """MSH-3-1 - the sending application."""
+    return get_hl7_field_value(msg.msh, "msh_3.msh_3_1")
+
+def get_receivingapp(msg: Any) -> str:
+    """MSH-5-1 - the receiving application."""
+    return get_hl7_field_value(msg.msh, "msh_5.msh_5_1")
+
+def get_controll_id(msg: Any) -> str:
+    """MSH-10 - the message control ID."""
+    return get_hl7_field_value(msg.msh, "msh_10")
 
 def get_message_code(msg: Any) -> str:
     """MSH-9.1 - the message code, e.g. "ADT"."""
