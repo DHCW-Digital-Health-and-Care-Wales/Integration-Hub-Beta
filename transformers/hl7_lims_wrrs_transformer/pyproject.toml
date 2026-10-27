@@ -1,0 +1,71 @@
+[project]
+name = "hl7-lims-wrrs-transformer"
+version = "0.1.0"
+description = "LIMS to WRRS classifier - tags ADT A31/A40 messages with a MappingType and fans out one message per matching rule"
+requires-python = ">=3.13"
+
+dependencies = [
+  "azure-core>=1.38.0",
+  "azure-servicebus==7.14.3",
+  "azure-identity==1.23.0",
+  "cryptography>=50.0.0",
+  "pyjwt>=2.15.1",
+  "hl7apy==1.3.5",
+  "urllib3>=2.8.0",
+  "requests>=2.32.0",
+  "field-utils-lib",
+  "transformer-base-lib",
+  "message-bus-lib",
+  "health-check-lib",
+  "processor-manager-lib",
+  "event-logger-lib",
+  "setuptools>=84.1.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff==0.14.9",
+  "bandit==1.9.2",
+  "mypy==1.18.2",
+  "coverage>=7.6.0",
+  # Tests build ER7 via the real REST-server converter (xml_to_er7) to mirror what is published.
+  "hl7_validation_lib",
+]
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.uv.sources]
+field-utils-lib = { path = "../../shared_libs/field_utils_lib" }
+transformer-base-lib = { path = "../../shared_libs/transformer_base_lib" }
+message-bus-lib = { path = "../../shared_libs/message_bus_lib" }
+health-check-lib = { path = "../../shared_libs/health_check_lib" }
+processor-manager-lib = { path = "../../shared_libs/processor_manager_lib" }
+event-logger-lib = { path = "../../shared_libs/event_logger_lib" }
+hl7_validation_lib = { path = "../../shared_libs/hl7_validation" }
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",  # Enforces style guide rules (Pycodestyle errors).
+  "F",  # Detects various errors in Python code (Pyflakes errors).
+  "W",  # Enforces style guide warnings (Pycodestyle warnings).
+  "A",  # Detects shadowing of Python built-in functions (Flake8-builtins).
+  "PLC",  # Enforces coding conventions (Pylint convention messages).
+  "PLE",  # Detects errors in Python code (Pylint error messages).
+  "PLW",  # Detects potential issues in Python code (Pylint warning messages).
+  "I"  # Sorts and organizes imports (Import-related rules).
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]  # Stops asserts in tests being flagged.

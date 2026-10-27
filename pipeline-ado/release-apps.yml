@@ -26,6 +26,7 @@ parameters:
       - HL7 Pims Transformer
       - HL7 Core Reference Transformer
       - RISP Core Reference Transformer
+      - LIMS WRRS HL7 Transformer
       - PROMS FHIR Transformer
       - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
@@ -136,6 +137,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 WDS Transformer - Build'
       source: 'HL7 WDS Transformer - Build'
+      trigger: none
+    - pipeline: 'HL7 LIMS WRRS Transformer - Build'
+      source: 'HL7 LIMS WRRS Transformer - Build'
       trigger: none
     - pipeline: 'SOAP Sender - Build'
       source: 'SOAP Sender - Build'
@@ -250,6 +254,12 @@ stages:
           appImageName: 'core-reference-hl7transformer'
           appFunctionMidfix: 'risp'
           buildPipeline: 'HL7 Core Reference Transformer - Build'
+
+        - name: 'LIMS WRRS HL7 Transformer'
+          appImageName: 'lims-wrrs-hl7transformer'
+          appFunctionMidfix: 'lims'
+          containerAppNameSuffix: 'lims-wrrs-tfmr'
+          buildPipeline: 'HL7 LIMS WRRS Transformer - Build'
 
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'

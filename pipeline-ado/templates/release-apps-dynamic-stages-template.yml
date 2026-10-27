@@ -47,6 +47,7 @@ stages:
                   displayName: Release ${{ app.name }} - ${{ env.displayName }}
                   appImageName: ${{ app.appImageName }}
                   appFunctionMidfix: ${{ app.appFunctionMidfix }}
+                  containerAppNameSuffix: ${{ app.containerAppNameSuffix }}
                   resourceGroupName: ${{ env.resourceGroup }}
                   environmentName: ${{ env.environmentName }}
                   azureLocation: ${{ parameters.azureLocation }}
