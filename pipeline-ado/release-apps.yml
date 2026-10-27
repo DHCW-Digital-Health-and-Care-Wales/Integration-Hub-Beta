@@ -44,7 +44,6 @@ parameters:
       - PMS HL7 Subscription Sender
       - HL7 WDS Transformer
       - WIS SOAP Sender
-      - WRRS DB Sender
       - Message Store Service
       - HL7 Mock Receiver
       - HTTP Mock Receiver
@@ -143,9 +142,6 @@ resources:
       trigger: none
     - pipeline: 'SOAP Sender - Build'
       source: 'SOAP Sender - Build'
-      trigger: none
-    - pipeline: 'Database Sender - Build'
-      source: 'Database Sender - Build'
       trigger: none
 
 stages:
@@ -345,12 +341,6 @@ stages:
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
           buildPipeline: 'SOAP Sender - Build'
-
-        # RISP to WRRS Flow
-        - name: 'WRRS DB Sender'
-          appImageName: 'dbsender'
-          appFunctionMidfix: 'wrrs'
-          buildPipeline: 'Database Sender - Build'
 
         # Mock Receivers
         - name: 'HL7 Mock Receiver'
