@@ -129,7 +129,13 @@ def _communication(message: PromsMessage) -> Optional[list[PatientCommunication]
     Code and display are taken as sent (no reference-data resolution) under the
     WPAS spoken-language code system.
     """
-    lang_code = message.get("preferred_spoken_language_code", "preferredSpokenLanguageCode")
+    # PREFERRED_LANGUAGE / preferredLanguage are legacy aliases kept for older payloads
+    lang_code = message.get(
+        "preferred_spoken_language_code",
+        "preferredSpokenLanguageCode",
+        "PREFERRED_LANGUAGE",
+        "preferredLanguage",
+    )
     lang_display = message.get("spoken_language", "spokenLanguage")
     if not lang_code and not lang_display:
         return None
