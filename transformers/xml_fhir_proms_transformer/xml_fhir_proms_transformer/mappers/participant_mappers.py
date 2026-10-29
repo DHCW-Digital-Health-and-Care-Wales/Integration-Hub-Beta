@@ -22,11 +22,13 @@ from ..fhir_constants import (
     ODS_ORGANISATION_CODE_SYSTEM,
     ORGANIZATION_PROFILE,
     PRACTITIONER_PROFILE,
+    WPAS_PRACTITIONER_SYSTEM,
 )
 from ..message_types import MessageType
 from ..proms_parser import PromsMessage
 from ..reference_data import dha_code_name
-from .mapping_utils import profile_meta, split_person_name
+from ..source_systems import get_source_system
+from .mapping_utils import profile_meta
 
 
 def map_practitioner(
@@ -36,81 +38,72 @@ def map_practitioner(
 ) -> Optional[Practitioner]:
     """Build the Practitioner resource for the bundle type.
 
-    For Referral bundles: identifies the referring clinician via referrer_code
-    and referrer_name (format: "ARDERN-JONES L").
+    Base identifier is consultant_code under the WPAS practitioner system. Referral
+    bundles add a second GMC-system identifier from referrer_code, and take the
+    name from referrer_name; other bundles use clinicianName. The name is kept as
+    free text (HumanName.text) rather than parsed.
 
-    For all other bundle types: identifies the consultant via consultant_code
-    and clinicianName (format: "Jones, Hannah" — comma-separated surname, given).
-
-    Returns None when neither an identifier nor a name is available, so the
-    bundle omits the entry rather than carrying an empty resource.
-
-    Note: consultant_code values (e.g. "HANJO") may not be GMC numbers; the
-    GMC system URL is used as the best available option pending spec clarification.
+    Returns None when no identifier or name is available.
     """
     is_referral = message_type.name == "REFERRAL"
 
+    consultant_code = message.get("consultant_code", "consultantCode")
     if is_referral:
-        identifier_value = message.get("referrer_code", "referrerCode")
         name_source = message.get("referrer_name", "referrerName")
     else:
-        identifier_value = message.get("consultant_code", "consultantCode")
         name_source = message.get("clinicianName", "clinician_name", "CONS_NAME")
 
-    if not identifier_value and not name_source:
+    identifiers: List[Identifier] = []
+    if consultant_code:
+        identifiers.append(Identifier(system=WPAS_PRACTITIONER_SYSTEM, value=consultant_code))
+    if is_referral:
+        referrer_code = message.get("referrer_code", "referrerCode")
+        if referrer_code:
+            identifiers.append(Identifier(system=GMC_NUMBER_SYSTEM, value=referrer_code))
+
+    if not identifiers and not name_source:
         return None
 
     practitioner = Practitioner(id=practitioner_uuid, meta=profile_meta(PRACTITIONER_PROFILE))
-
-    if identifier_value:
-        practitioner.identifier = [Identifier(system=GMC_NUMBER_SYSTEM, value=identifier_value)]
-
+    if identifiers:
+        practitioner.identifier = identifiers
     if name_source:
-        prefixes, given, family = split_person_name(name_source)
-        if family or given or prefixes:
-            given_parts: Optional[List[Optional[str]]] = list(given) or None
-            prefix_parts: Optional[List[Optional[str]]] = list(prefixes) or None
-            practitioner.name = [
-                HumanName(
-                    family=family or None,
-                    given=given_parts,
-                    prefix=prefix_parts,
-                )
-            ]
+        practitioner.name = [HumanName(text=name_source)]
 
     return practitioner
 
 
 def map_organization(message: PromsMessage, organization_uuid: str) -> Optional[Organization]:
-    """Build the Organization resource for the sending health board.
+    """Build the Organization resource as the sending health board.
 
-    Prefers the referrer_org field from the WPAS payload. Falls back to the
-    DHA code lookup table when referrer_org is empty (as seen in real SIT payloads).
-
-    Returns None when neither source yields a usable value.
+    Promptly asked for the health board (not the practice): identifier.value is
+    the ODS code from hb_code and the name is the health board's name, taken from
+    the system_id lookup and falling back to the ODS code lookup. Returns None
+    when hb_code is absent.
     """
-    # Try referrer_org from payload first — present but often empty in real messages
-    referrer_org = message.get("referrer_org", "referrerOrg")
-    # Fallback: ODS code from dhaCode / DHA_CODE with lookup table
-    dha_code = message.get("dhaCode", "DHA_CODE", "dha_code")
-
-    if not referrer_org and not dha_code:
+    hb_code = message.get("hb_code", "hbCode", "HB_CODE")
+    if not hb_code:
         return None
 
     organization = Organization(
         id=organization_uuid,
         meta=profile_meta(ORGANIZATION_PROFILE),
+        active=True,
+        identifier=[Identifier(system=ODS_ORGANISATION_CODE_SYSTEM, value=hb_code)],
     )
 
-    if dha_code:
-        organization.identifier = [Identifier(system=ODS_ORGANISATION_CODE_SYSTEM, value=dha_code)]
-
-    if referrer_org:
-        organization.name = referrer_org
-    else:
-        # Fallback to lookup table for health board name
-        name = dha_code_name(dha_code) if dha_code else None
-        if name:
-            organization.name = name
+    name = health_board_name(message)
+    if name:
+        organization.name = name
 
     return organization
+
+
+def health_board_name(message: PromsMessage) -> Optional[str]:
+    """Return the sending health board's name, or None when it can't be resolved."""
+    hb_code = message.get("hb_code", "hbCode", "HB_CODE")
+    if not hb_code:
+        return None
+    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    name = source_system.name if source_system else dha_code_name(hb_code)
+    return name if name and name != hb_code else None

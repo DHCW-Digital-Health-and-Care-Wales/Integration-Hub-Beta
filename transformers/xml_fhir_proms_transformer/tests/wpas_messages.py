@@ -32,8 +32,15 @@ REFERRAL_MESSAGE = """<?xml version="1.0" encoding="UTF-8"?>
   <postTown>Tredegar</postTown>
   <postCode>NP22 3AA</postCode>
   <postalCounty>Gwent</postalCounty>
+  <home_phone>07555566771-2</home_phone>
+  <work_phone>07555566771-1</work_phone>
+  <mobile_phone>07555566771-3</mobile_phone>
+  <email>simphel@aol.com</email>
+  <ethnic_origin_code>A</ethnic_origin_code>
+  <ethnic_origin>White - British</ethnic_origin>
   <preferred_spoken_language_code>CY</preferred_spoken_language_code>
   <spoken_language>Welsh</spoken_language>
+  <referrer_prac>W95001</referrer_prac>
   <referrer_code>G7654321</referrer_code>
   <referrer_name>ARDERN-JONES L</referrer_name>
   <referrer_location>YSBYTY GWYNEDD, PENRHOSGARNEDD, BANGOR, GWYNEDD, LL57 2PW</referrer_location>

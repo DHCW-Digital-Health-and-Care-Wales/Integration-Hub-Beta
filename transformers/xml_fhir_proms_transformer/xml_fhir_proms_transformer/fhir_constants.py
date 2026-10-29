@@ -13,7 +13,7 @@ from __future__ import annotations
 # --- Profiles ---------------------------------------------------------------
 MESSAGE_HEADER_PROFILE = "https://fhir.promptly.health/wpas/StructureDefinition/wpas-messageheader"
 # SPEC GAP: reviewer flagged the above as incorrect — awaiting confirmed NHS Wales URL
-PATIENT_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Patient"
+PATIENT_PROFILE = "https://fhir.nhs.wales/StructureDefinition/wpas-patient"
 PRACTITIONER_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Practitioner"
 PRACTITIONER_ROLE_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-PractitionerRole"
 ORGANIZATION_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Organization"
@@ -64,19 +64,25 @@ PREADMISSION_DISPLAY = "Pre-admission Notification"
 
 # --- MessageHeader destination (Promptly Collect) ---------------------------
 PROMPTLY_COLLECT_DESTINATION_NAME = "FHIR Promptly Collect"
-PROMPTLY_COLLECT_ENDPOINT = "https://collect.promptlyhealth.com/fhir"
+# The destination endpoint differs per environment, so it is overridable via the
+# PROMPTLY_DESTINATION_ENDPOINT env var; this default is the Promptly staging endpoint.
+PROMPTLY_DESTINATION_ENDPOINT_ENV_VAR = "PROMPTLY_DESTINATION_ENDPOINT"
+PROMPTLY_COLLECT_ENDPOINT = "https://wpas-fhir.stg.labs.promptly.health/fhir/r4/$process-message"
+
+# MessageHeader.source.endpoint = base + "/" + WPAS system_id
+WPAS_SOURCE_ENDPOINT_BASE = "https://fhir.nhs.uk/source-system/wpas"
 
 # --- Identifier systems -----------------------------------------------------
 NHS_NUMBER_SYSTEM = "https://fhir.nhs.uk/Id/nhs-number"
 ODS_ORGANISATION_CODE_SYSTEM = "https://fhir.nhs.uk/Id/ods-organization-code"
 GMC_NUMBER_SYSTEM = "https://fhir.hl7.org.uk/Id/gmc-number"
+WPAS_PRACTITIONER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-practitioner"
 LOCATION_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wrts-location-identifier"
-SERVICE_REQUEST_IDENTIFIER_SYSTEM = (
-    "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-servicerequest"
-)
-PRACTITIONER_ROLE_IDENTIFIER_SYSTEM = (
-    "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-practitionerrole"
-)
+SERVICE_REQUEST_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-servicerequest"
+# Referral PractitionerRoles are identified by the referrer's GMC number; every
+# other bundle uses the WPAS practitioner-role system.
+PRACTITIONER_ROLE_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-practitioner-role"
+PRACTITIONER_ROLE_REFERRAL_IDENTIFIER_SYSTEM = GMC_NUMBER_SYSTEM
 ENCOUNTER_IDENTIFIER_SYSTEM = (
     "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-encounter"
 )
@@ -92,18 +98,11 @@ NHS_NUMBER_VERIFICATION_SYSTEM = (
     "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales"
 )
 
-# --- Patient contact preference (spoken language) ----------------------------
-# Local WPAS extension — the v2 mapping spreadsheet splits language into two
-# elements: extension:contactPreference (spoken) and communication.language
-# (written). No official UK Core extension exists for this, so a WPAS-specific
-# one is used, following the same naming convention as the other WPAS
-# identifier systems.
-CONTACT_PREFERENCE_EXTENSION = (
-    "https://wpas-integration-ig.tools.labs.promptly.health/StructureDefinition/wpas-contact-preference"
-)
-
-# --- Patient language -------------------------------------------------------
-HUMAN_LANGUAGE_SYSTEM = "https://fhir.hl7.org.uk/CodeSystem/UKCore-HumanLanguage"
+# --- Patient language / ethnicity / telecom ----------------------------------
+# Spoken language maps to Patient.communication.language (Amy_Questions mapping).
+SPOKEN_LANGUAGE_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-spoken-language"
+ETHNIC_CATEGORY_EXTENSION = "https://fhir.hl7.org.uk/StructureDefinition/Extension-UKCore-EthnicCategory"
+ETHNICITY_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-ethnicity"
 
 # --- Encounter class coding (v3 ActCode) ------------------------------------
 ENCOUNTER_CLASS_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
@@ -139,7 +138,11 @@ APPOINTMENT_PARTICIPANT_STATUS_DEFAULT = "accepted"
 
 # --- ServiceRequest ---------------------------------------------------------
 SERVICE_REQUEST_STATUS = "active"
-SERVICE_REQUEST_INTENT = "plan"
+SERVICE_REQUEST_INTENT = "order"
+# code = the WPAS event code (REFERRAL); reasonCode = the clinical pathway (eventPathway).
+SERVICE_REQUEST_CODE_SYSTEM = "https://fhir.nhs.wales/CodeSystem/proms-event"
+SERVICE_REQUEST_CODE_DISPLAY = "Referral"
+SERVICE_REQUEST_REASON_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-event-pathway"
 
 # --- Legacy PSOM constants kept to avoid breaking any surviving references ---
 # These are no longer emitted in any bundle but are retained until all
