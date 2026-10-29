@@ -336,18 +336,16 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 #### PIMS reference-data lookup service
 
 The PIMS transformer enriches four PID fields (gender, marital status, ethnic group and NHS number
-status) by resolving each source code against a **reference-data lookup REST API**. That service is
-supplied and run separately — it is not part of this Compose stack — so the `pims-to-mpi` flow needs
-it reachable before PIMS messages can be transformed.
+status) by resolving each source code against the `pims_to_mpi_codes` table of the `lookup_service`
+(composite key `code_type` + `pims_code`, seeded from `lookup_service/seed`). The `pims-to-mpi` flow
+needs it reachable before PIMS messages can be transformed.
 
-1. Start the reference-data lookup service on your host, bound to `0.0.0.0:8085` (follow that
-   service's own README).
+1. Start the `lookup` profile alongside the flow:
+   `docker compose --profile pims-to-mpi --profile lookup up -d`.
 2. The PIMS transformer reaches it via `REFERENCE_DATA_API_BASE_URL` in
-   `env/transformers/pims-hl7-transformer.env`, which defaults to `http://host.docker.internal:8085`.
-   This works on Docker Desktop (macOS/Windows/WSL) and on Linux (the Compose file maps
-   `host.docker.internal` to the host gateway).
-3. If your host cannot route to `host.docker.internal` (for example Podman on Windows, which reaches
-   the host via the gvproxy address `192.168.127.254`), create an untracked
+   `env/transformers/pims-hl7-transformer.env`, which defaults to `http://lookup-service:8080`.
+3. To use a lookup service running elsewhere (for example on your host via `host.docker.internal`, which
+   the Compose file maps on Linux), create an untracked
    `env/transformers/pims-hl7-transformer.local.env` to override the URL without changing the shared
    config. It is loaded automatically when present and ignored by git:
 
