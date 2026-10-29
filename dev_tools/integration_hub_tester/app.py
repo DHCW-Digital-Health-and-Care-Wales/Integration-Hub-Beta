@@ -141,12 +141,12 @@ class _AutoHideScrollbar(ttk.Scrollbar):
     widget reports through the standard scrollcommand protocol.
     """
 
-    def set(self, lo: str, hi: str) -> None:
-        if float(lo) <= 0.0 and float(hi) >= 1.0:
+    def set(self, first: float | str, last: float | str) -> None:
+        if float(first) <= 0.0 and float(last) >= 1.0:
             self.grid_remove()
         else:
             self.grid()
-        super().set(lo, hi)
+        super().set(first, last)
 
 
 class ServicePage(tk.Frame):
@@ -416,9 +416,8 @@ class IntegrationHubTesterApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _run_active_page(self, _event: object = None) -> None:
-        page = self._service_pages.get(self._selected_category, {}).get(
-            self._selected_service.get(self._selected_category)
-        )
+        selected_service = self._selected_service.get(self._selected_category)
+        page = self._service_pages.get(self._selected_category, {}).get(selected_service) if selected_service else None
         if page is not None:
             page.trigger_action()
 
@@ -432,9 +431,9 @@ class IntegrationHubTesterApp(tk.Tk):
         # destroy-and-rebuild in _toggle_theme without needing to be
         # captured/restored explicitly.
         if not hasattr(self, "_selected_category"):
-            self._selected_category = PLUGIN_CATEGORIES[0][0]
+            self._selected_category: str = PLUGIN_CATEGORIES[0][0]
         if not hasattr(self, "_selected_service"):
-            self._selected_service = {cat: plugins[0].tab_label for cat, plugins in PLUGIN_CATEGORIES}
+            self._selected_service: dict[str, str] = {cat: plugins[0].tab_label for cat, plugins in PLUGIN_CATEGORIES}
 
         # ── Header ────────────────────────────────────────────────────
         # Two rows: title / theme toggle on row 1, Mock Receiver controls
@@ -508,7 +507,7 @@ class IntegrationHubTesterApp(tk.Tk):
                 font=sidebar_font, anchor="w", padx=6, pady=10, cursor="hand2",
             )
             item.pack(fill=tk.X, padx=8, pady=1)
-            item.bind("<Button-1>", lambda _e, cat=category_label: self._select_category(cat))
+            item.bind("<Button-1>", lambda _e, cat=category_label: self._select_category(cat))  # type: ignore[misc]
             self._sidebar_items[category_label] = item
 
             # Category content: underline tab strip + a stack of ServicePages
@@ -545,7 +544,7 @@ class IntegrationHubTesterApp(tk.Tk):
                 for widget in (tab_cell, tab_lbl):
                     widget.bind(
                         "<Button-1>",
-                        lambda _e, cat=category_label, svc=plugin.tab_label: self._select_service(cat, svc),
+                        lambda _e, cat=category_label, svc=plugin.tab_label: self._select_service(cat, svc),  # type: ignore[misc]
                     )
                 self._service_tabs[category_label][plugin.tab_label] = (tab_lbl, underline)
 

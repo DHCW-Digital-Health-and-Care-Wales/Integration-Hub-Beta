@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from .base import ServicePlugin
@@ -157,6 +158,8 @@ def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
     Returns (status_code, response_body, error_message).
     error_message is None on success.
     """
+    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+        return 0, "", f"Unsupported URL scheme (only http/https allowed): {url}"
     try:
         data = envelope.encode("utf-8")
         req = urllib.request.Request(
@@ -165,7 +168,7 @@ def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
             headers={"Content-Type": "text/xml; charset=utf-8"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:  # nosec B310 - scheme validated above
             return resp.status, resp.read().decode("utf-8", errors="replace"), None
 
     except urllib.error.HTTPError as exc:
