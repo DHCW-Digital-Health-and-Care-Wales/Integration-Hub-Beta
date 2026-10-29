@@ -10,12 +10,16 @@ from lookup_service.store.file_store import SEED_ACTOR, FileTableStore
 logger = logging.getLogger(__name__)
 
 
-async def import_missing_seed_tables(store: TableStore, seed_dir: Path) -> list[str]:
+async def import_missing_seed_tables(store: TableStore, seed_dir: Path | None) -> list[str]:
     """Import seed CSVs into a writable store for tables that don't exist there yet.
 
-    Existing tables are never overwritten, so uploads made through the GUI survive restarts and
-    redeploys. Seed files are fully validated first; a bad seed file stops startup.
+    Only local development sets a seed directory; deployed environments pass None and import nothing,
+    so their tables come only from GUI/API uploads. Existing tables are never overwritten, so uploads
+    survive restarts. Seed files are fully validated first; a bad seed file stops startup.
     """
+    if seed_dir is None:
+        logger.info("LOOKUP_SEED_DIR not set; no seed tables imported")
+        return []
     if not store.writable:
         return []
     if not seed_dir.is_dir():

@@ -5,11 +5,13 @@ import dataclasses
 import json
 import tempfile
 import unittest
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
+
+from fastapi.testclient import TestClient
 
 from lookup_service.config import Settings
 from lookup_service.errors import BackendUnavailableError, ReadOnlyStoreError
@@ -17,12 +19,35 @@ from lookup_service.keys import key_text
 from lookup_service.models import Row, TableDefinition, TableRecord, TableStats, UploadInfo
 from lookup_service.store.base import ReplaceResult, TableStore
 
-REPO_SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
+FIXTURE_SEED_DIR = Path(__file__).resolve().parent / "fixtures" / "seed"
+# Mounted by local Compose only; never baked into the image.
+LOCAL_SEED_DIR = Path(__file__).resolve().parent.parent.parent / "local" / "lookup-seed"
+TEST_TENANT_ID = "11111111-2222-3333-4444-555555555555"
+TEST_AUDIENCE = "api://lookup-service-test"
 
 
-def make_settings(seed_dir: Path = REPO_SEED_DIR, environment: str = "LOCAL", **overrides: Any) -> Settings:
-    settings = Settings(seed_dir=seed_dir, environment=environment, host="127.0.0.1", port=8080, log_level="INFO")
+def make_settings(
+    seed_dir: Path | None = FIXTURE_SEED_DIR, environment: str = "LOCAL", **overrides: Any
+) -> Settings:
+    """Settings that pass validation: LOCAL runs with auth disabled; other environments get auth configured."""
+    auth: dict[str, Any] = (
+        {"auth_disabled": True} if environment == "LOCAL"
+        else {"auth_tenant_id": TEST_TENANT_ID, "auth_audience": TEST_AUDIENCE}
+    )
+    settings = Settings(seed_dir=seed_dir, environment=environment, host="127.0.0.1", port=8080, log_level="INFO",
+                        **auth)
     return dataclasses.replace(settings, **overrides)
+
+
+def csrf_headers(
+    client: TestClient, cookie_name: str = "lookup_csrf", auth: Mapping[str, str] | None = None
+) -> dict[str, str]:
+    """Load a page (as `auth`) so the client holds a CSRF cookie, then return the matching `X-CSRF-Token` header."""
+    client.get("/upload", headers=dict(auth or {}))
+    token = client.cookies.get(cookie_name)
+    if token is None:
+        raise AssertionError("expected the CSRF cookie to be set")
+    return {"X-CSRF-Token": token}
 
 
 def make_row(*key: str, **values: str) -> Row:

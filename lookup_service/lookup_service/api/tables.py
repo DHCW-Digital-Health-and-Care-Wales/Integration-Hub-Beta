@@ -21,9 +21,10 @@ from lookup_service.models import (
     UploadResult,
 )
 from lookup_service.resolver import LookupResolver
+from lookup_service.security import Principal, require_api_editor, require_reader
 from lookup_service.table_admin import (
     UploadRequest,
-    ensure_writes_allowed,
+    ensure_store_writable,
     replace_table_from_csv,
     update_table_settings,
 )
@@ -31,8 +32,12 @@ from lookup_service.table_admin import (
 router = APIRouter(prefix="/api/v1", tags=["tables"])
 
 MAX_PAGE_SIZE = 200
+_AUTH_ERRORS: dict[int | str, dict[str, Any]] = {
+    401: {"model": ErrorResponse, "description": "unauthorized"},
+    403: {"model": ErrorResponse, "description": "forbidden (needs Lookup.Editor) or csrf_failed"},
+}
 _UPLOAD_ERRORS: dict[int | str, dict[str, Any]] = {
-    403: {"model": ErrorResponse, "description": "writes_disabled"},
+    **_AUTH_ERRORS,
     409: {"model": ErrorResponse, "description": "read_only (file-backed store)"},
     413: {"model": ErrorResponse, "description": "upload_too_large"},
     422: {"model": ErrorResponse, "description": "invalid_upload, with per-line `errors`"},
@@ -40,12 +45,14 @@ _UPLOAD_ERRORS: dict[int | str, dict[str, Any]] = {
 }
 
 
-@router.get("/tables", response_model=list[TableSummary])
+@router.get("/tables", response_model=list[TableSummary], responses=_AUTH_ERRORS,
+            dependencies=[Depends(require_reader)])
 async def list_tables(resolver: Annotated[LookupResolver, Depends(get_resolver)]) -> list[TableSummary]:
     return resolver.summaries()
 
 
-@router.get("/tables/{table}", response_model=TableDetail, responses={404: {"model": ErrorResponse}})
+@router.get("/tables/{table}", response_model=TableDetail, dependencies=[Depends(require_reader)],
+            responses={404: {"model": ErrorResponse}, **_AUTH_ERRORS})
 async def get_table(table: str, resolver: Annotated[LookupResolver, Depends(get_resolver)]) -> TableDetail:
     return resolver.detail(table)
 
@@ -55,17 +62,18 @@ async def get_table(table: str, resolver: Annotated[LookupResolver, Depends(get_
 async def update_table(
     table: str,
     body: TableSettingsUpdate,
+    principal: Annotated[Principal, Depends(require_api_editor)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
-    settings: Annotated[Settings, Depends(get_settings)],
 ) -> TableDetail:
     """Change a table's cache settings (`ttl_seconds`, `preload`) without re-uploading its rows."""
     resolver.definition(table)
     changes = body.model_dump(include=body.model_fields_set)
-    await update_table_settings(settings, resolver, table, changes)
+    await update_table_settings(resolver, table, changes, principal.name)
     return resolver.detail(table)
 
 
-@router.get("/tables/{table}/rows", response_model=RowsPage, responses={404: {"model": ErrorResponse}})
+@router.get("/tables/{table}/rows", response_model=RowsPage, dependencies=[Depends(require_reader)],
+            responses={404: {"model": ErrorResponse}, **_AUTH_ERRORS})
 async def list_rows(
     table: str,
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
@@ -82,6 +90,7 @@ async def list_rows(
 @router.post("/tables/{table}/uploads", response_model=UploadResult, status_code=201, responses=_UPLOAD_ERRORS)
 async def upload_table(
     table: str,
+    principal: Annotated[Principal, Depends(require_api_editor)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
     settings: Annotated[Settings, Depends(get_settings)],
     file: Annotated[UploadFile, File(description="CSV file with a header row (UTF-8)")],
@@ -96,12 +105,13 @@ async def upload_table(
     ] = None,
 ) -> UploadResult:
     """Replace a table's rows (and optionally its definition) from a CSV file. Replace mode only."""
-    ensure_writes_allowed(settings, resolver)
+    ensure_store_writable(resolver)
     data = await read_upload(file, settings)
     request = UploadRequest(
         table=table,
         data=data,
         file_name=file.filename,
+        actor=principal.name,
         definition_settings=_parse_json_object(definition, "definition", table),
         mapping=_parse_mapping(mapping, table),
     )

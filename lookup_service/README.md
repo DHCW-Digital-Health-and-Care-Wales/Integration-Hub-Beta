@@ -3,23 +3,27 @@
 Reference-data lookup service for Integration Hub transformers. Transformers ask it for substitution
 values (e.g. MSH-3 code → health board) instead of hardcoding mapping dicts in mapper code.
 
-**Status: Phase 1 (persistence + upload).**
+**Status: Phase 1.5 (persistence, upload, auth).**
 
 - **Storage:** tables live in Cosmos DB. Without `COSMOS_ENDPOINT`, they're served read-only from the
-  seed CSVs in the image.
-- **Writes:** CSV uploads replace a table, from the GUI or the API.
+  seed CSVs in `LOOKUP_SEED_DIR` (none if it's unset).
+- **No startup data in deployed environments:** the image carries no seed data, and DEV/TST/PRD leave
+  `LOOKUP_SEED_DIR` unset, so they start empty and every table is uploaded through the GUI or API. Only
+  local Compose seeds `pims_to_mpi_codes`, from `local/lookup-seed/`. See [Seed data](#seed-data).
+- **Writes:** CSV uploads replace a table, from the GUI or the API. They need the `Lookup.Editor` role.
 - **Caching:** lookups go through a per-table TTL cache, or an in-memory snapshot for preloaded tables.
-- **Not yet built:** auth, the client library and deployment arrive in Phase 2. Until then, **uploads
-  are only allowed when `ENVIRONMENT=LOCAL`**.
+- **Auth:** the lookup API needs an Entra bearer token; the GUI and admin API sit behind Container Apps
+  Easy Auth. See [Authentication](#authentication).
+- **Not yet built:** the client library and the App Gateway route arrive in Phase 2.
 
 ## How lookups are served
 
 - **Startup:** every table definition is loaded into memory, so a lookup never reads a definition.
   `/health/ready` passes only after this completes.
-- **Seeding:** with Cosmos, any `seed/*.csv` table that doesn't exist there yet is imported first.
-  Existing tables are never overwritten.
+- **Seeding (local only):** if `LOOKUP_SEED_DIR` is set, any table in it that doesn't exist in Cosmos
+  yet is imported first. Existing tables are never overwritten. With it unset, nothing is imported.
 - **`preload: true` tables:** the whole table is held in memory and served without per-key I/O. Use
-  this for small, hot tables such as `health_board_mapping`.
+  this for small, hot tables such as `pims_to_mpi_codes`.
 - **Other tables:** each lookup goes cache → Cosmos point read → cache. The TTL is the table's
   `ttl_seconds`, or `LOOKUP_DEFAULT_TTL_SECONDS` if not set.
   - Misses aren't cached yet; negative caching arrives in Phase 4.
@@ -33,7 +37,8 @@ With uv (from this directory):
 
 ```bash
 uv sync
-ENVIRONMENT=LOCAL uv run python -m lookup_service.application   # http://localhost:8080
+ENVIRONMENT=LOCAL LOOKUP_AUTH_DISABLED=true LOOKUP_SEED_DIR=../local/lookup-seed \
+  uv run python -m lookup_service.application   # http://localhost:8080, read-only seed tables
 ```
 
 With Docker Compose (from `local/`). This also starts the Cosmos emulator; the service restarts until
@@ -50,30 +55,95 @@ docker compose --profile lookup up -d --build lookup-service      # http://local
     browser so you can click to pick key columns.
 - Swagger: `/docs`, served only when `ENVIRONMENT` is `LOCAL`, `DEV` or `SIT`.
 
+## Authentication
+
+Two mechanisms, split by path. `/health/live`, `/health/ready` and `/static/*` need no credentials.
+
+| Callers | Paths | Mechanism |
+|---------|-------|-----------|
+| Transformers and other services | `/api/v1/lookup*` | Entra **bearer token** (`Authorization: Bearer ...`), validated by the service |
+| People using the GUI, and the admin API | everything else (`/`, `/tables/*`, `/upload`, `/api/v1/tables*`) | **Container Apps Easy Auth** (Entra sign-in) in front of the app |
+
+**Bearer tokens (lookup API).** The signature is checked against the tenant's JWKS
+(`https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys`, cached, refreshed on an unknown
+`kid`), plus the issuer (this tenant, v1 or v2.0 form), the audience (`LOOKUP_AUTH_AUDIENCE`) and the
+expiry (60 s clock skew). Only `RS256` is accepted. Failures return `401` with a `WWW-Authenticate:
+Bearer` header; a token with no `Lookup.*` role returns `403`. If the JWKS endpoint can't be reached,
+the response is `503`, not `401`.
+
+**Easy Auth (GUI and admin API).** Easy Auth overwrites `X-MS-CLIENT-PRINCIPAL` (base64 JSON claims)
+and `X-MS-CLIENT-PRINCIPAL-NAME` on every request, so the service trusts them. That is only safe
+because **the service is reachable only through Easy Auth**; never expose its port directly with auth
+enabled. A missing or malformed principal returns `401`.
+
+**Roles** come from the token's or principal's `roles` claim, as Entra app roles. Each role includes
+the ones above it:
+
+| Role | Grants |
+|------|--------|
+| `Lookup.Reader` | Lookup API; GUI and admin API reads |
+| `Lookup.Editor` | Reader, plus CSV upload and `PATCH` table settings (GUI and API) |
+| `Lookup.Admin` | Everything `Lookup.Editor` can; reserved for admin-only functions as they arrive |
+
+The user recorded as a table's last uploader is the authenticated principal's name (the Easy Auth
+principal name or the token's `preferred_username`/`azp`), never a token.
+
+**CSRF.** Every state-changing GUI form carries a double-submit token: a random `lookup_csrf` cookie
+(`SameSite=Lax`, `HttpOnly`; `Secure` and `__Host-` prefixed outside `LOCAL`) must match the hidden
+`csrf_token` form field or an `X-CSRF-Token` header, or the request gets `403 csrf_failed`. The admin
+API's `POST`/`PATCH` need the same header when called with a session (browser) and are exempt when the
+request carries an `Authorization: Bearer` header, because a cross-site request can't set one. The
+lookup API is read-only and not subject to CSRF.
+
+**Fail closed.** The service refuses to start (`RuntimeError`) if:
+
+- auth is enabled but `LOOKUP_AUTH_TENANT_ID` or `LOOKUP_AUTH_AUDIENCE` is missing. Until the Entra app
+  registration exists, a deployment either runs the unauthenticated trial (below) or crash-loops on
+  purpose;
+- `LOOKUP_AUTH_DISABLED=true` is set while `ENVIRONMENT` isn't `LOCAL`, `DEV` or `TST`;
+- `LOOKUP_AUTH_DISABLED=true` is set in `DEV` or `TST` without
+  `LOOKUP_AUTH_DISABLED_ACK=I_UNDERSTAND_LOOKUP_IS_UNAUTHENTICATED` (exact value).
+
+**Local development:** set `LOOKUP_AUTH_DISABLED=true` with `ENVIRONMENT=LOCAL`. No token or Easy
+Auth header is needed, every caller is a synthetic `local-dev` principal with `Lookup.Admin`, and the
+Compose env file `local/env/lookup/lookup-service.env` already sets it. To exercise auth locally,
+leave the flag unset and configure the tenant and audience instead.
+
+**Unauthenticated trial in DEV/TST (plan Phase 1.25):** to test the deployed service before the Entra
+app registration and Easy Auth exist, set both `LOOKUP_AUTH_DISABLED=true` and
+`LOOKUP_AUTH_DISABLED_ACK=I_UNDERSTAND_LOOKUP_IS_UNAUTHENTICATED`. Anyone who can reach the service
+(internal ingress only, so the DHCW VNet) can then read, upload and change tables as `Lookup.Admin`, and
+changes are recorded as `unauthenticated`. The service logs a warning at startup and every GUI page shows
+a yellow "Authentication is disabled" banner. Use test data only, and remove both variables when Phase
+1.5 turns auth on. `PRD` (and any other environment) refuses to start with auth disabled.
+
+Tokens, signing keys and header contents are never logged.
+
 ## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/lookup/{table}?k=<part>[&k=<part>...]` | Lookup with positional key parts, in `key_columns` order |
-| `GET` | `/api/v1/lookup/{table}?key.<column>=<part>...` | Lookup with named key parts (preferred for composite keys) |
+| `GET` | `/api/v1/lookup/{table}?k=<part>[&k=<part>...]` | Lookup with positional key parts, in `key_columns` order. Needs a bearer token |
+| `GET` | `/api/v1/lookup/{table}?key.<column>=<part>...` | Lookup with named key parts (preferred for composite keys). Needs a bearer token |
 | `GET` | `/api/v1/tables` | Tables with columns, row counts, caching mode, cache stats and last upload |
 | `GET` | `/api/v1/tables/{table}` | One table, including key normalisation rules |
 | `GET` | `/api/v1/tables/{table}/rows?search=&offset=&limit=` | Rows ordered by key; `search` is a case-insensitive key substring; `limit` ≤ 200 |
 | `POST` | `/api/v1/tables/{table}/uploads` | Replace a table from a CSV (multipart); see below |
-| `PATCH` | `/api/v1/tables/{table}` | Change `ttl_seconds` (whole seconds, 1 to 7 days; `null` = service default) and/or `preload` without re-uploading; same write rules as uploads. The GUI table page offers the same with a seconds/minutes/hours/days unit |
+| `PATCH` | `/api/v1/tables/{table}` | Change `ttl_seconds` (whole seconds, 1 to 7 days; `null` = service default) and/or `preload` without re-uploading; same role and CSRF rules as uploads. The GUI table page offers the same with a seconds/minutes/hours/days unit |
 | `GET` | `/health/live` | Liveness (no dependency checks) |
 | `GET` | `/health/ready` | Readiness: `200` once tables are loaded and preloaded, otherwise `503` |
 
 ```bash
-curl 'http://localhost:8090/api/v1/lookup/health_board_mapping?k=224'
-# {"table":"health_board_mapping","key":["224"],"value":"VCC","values":{"health_board":"VCC"},"source":"file","cached":true}
+curl 'http://localhost:8090/api/v1/lookup/pims_to_mpi_codes?key.code_type=GENDER&key.pims_code=i'
+# key is normalised to ["gender","I"] per the table's key_normalisation rules
+# {"table":"pims_to_mpi_codes","key":["gender","I"],"value":"U","values":{"mpi_code":"U"},...}
 
-curl 'http://localhost:8090/api/v1/lookup/ward_map?key.sending_facility=fac1&key.ward_code=w2'
-# key is normalised to ["FAC1","W2"] per the table's key_normalisation rules
+curl 'http://localhost:8090/api/v1/lookup/pims_to_mpi_codes?k=gender&k=I'   # the same key, positional
 ```
 
 `value` is the table's `default_value_column`, and `values` holds every value column. `cached` is
-`false` only when the row was read from Cosmos for this request.
+`false` only when the row was read from Cosmos for this request. These examples run against the local
+Compose service (auth disabled); in a deployed environment add `-H "Authorization: Bearer $TOKEN"`.
 
 Errors use one JSON shape, `{"error": "...", "detail": "...", "table": "..."}`. Upload validation
 failures add an `errors` list:
@@ -85,7 +155,9 @@ failures add an `errors` list:
 | Missing key, mixed `k=`/`key.` styles, wrong part count, unknown or duplicate part name, empty part | `422` | `invalid_key` |
 | Invalid CSV, rows, definition or mapping (nothing is changed) | `422` | `invalid_upload` |
 | File over `LOOKUP_MAX_UPLOAD_MB` | `413` | `upload_too_large` |
-| Uploads when `ENVIRONMENT` isn't `LOCAL` | `403` | `writes_disabled` |
+| Uploads and `PATCH` without `Lookup.Editor` (or a lookup without a `Lookup.*` role) | `403` | `forbidden` |
+| Missing or invalid CSRF token | `403` | `csrf_failed` |
+| Missing, invalid, expired or wrong-audience token; missing Easy Auth principal | `401` | `unauthorized` |
 | Uploads to the read-only seed-file store | `409` | `read_only` |
 | Tables not loaded yet | `503` | `not_ready` |
 | Cosmos unavailable | `503` | `backend_unavailable` |
@@ -122,14 +194,31 @@ curl -F file=@reasons.csv \
 
 ## Seed data
 
-Each `seed/<table>.csv` becomes a table:
+Seed data is **for local development only**. The image contains none, and deployed environments leave
+`LOOKUP_SEED_DIR` unset, so nothing is written to Cosmos at startup; tables there are created by
+uploading a CSV through the GUI or API.
+
+Locally, `local/docker-compose.yml` mounts `local/lookup-seed/` at `/seed` and
+`local/env/lookup/lookup-service.env` sets `LOOKUP_SEED_DIR=/seed`. It holds one table:
+
+- `pims_to_mpi_codes`: PIMS to eMPI gender, marital status, ethnic group and NHS status codes, keyed on
+  `(code_type, pims_code)`; a blank `mpi_code` means the consumer leaves the field unset. It is the
+  reference data for the PIMS flow's code translations.
+
+Tables are imported on first start only, so editing a seed CSV doesn't change a table that already
+exists in the emulator; upload the file through the GUI instead.
+
+The unit tests use their own fixture tables in `tests/fixtures/seed/` (`health_board_mapping` and an
+illustrative composite-key `ward_map`); these are never loaded by a running service.
+
+Each `<seed dir>/<table>.csv` becomes a table:
 
 - the header row is required;
 - the file is UTF-8, and a BOM is tolerated;
 - blank lines are skipped;
 - quoting follows standard CSV rules.
 
-By default, the first column is the key and the rest are values. `seed/tables.json` can override this
+By default, the first column is the key and the rest are values. `<seed dir>/tables.json` can override this
 per table:
 
 ```json
@@ -167,21 +256,20 @@ Seed data is validated at startup, and **any problem stops the service starting*
 
 Errors report line numbers, never data values.
 
-The shipped tables are:
-
-- `health_board_mapping`: mirrors `HEALTH_BOARD_MAPPING` in `hl7_chemo_transformer`'s `pid_mapper`;
-- `ward_map`: illustrative composite-key data only.
-
 ## Configuration
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
-| `LOOKUP_SEED_DIR` | `./seed` (image: `/app/lookup_service/seed`) | Directory of seed CSVs and `tables.json` |
-| `ENVIRONMENT` | `DEV` | Swagger exposure; uploads are only allowed in `LOCAL` until Phase 2 auth |
+| `LOOKUP_SEED_DIR` | *(empty)* | Local only: directory of seed CSVs and `tables.json` (Compose: `/seed`, mounted from `local/lookup-seed`). Empty = nothing imported at startup and, without Cosmos, no tables served. Leave unset in deployed environments |
+| `ENVIRONMENT` | `DEV` | Swagger exposure (`LOCAL`, `DEV`, `SIT` only); `LOOKUP_AUTH_DISABLED` is accepted only in `LOCAL`, `DEV` and `TST` |
+| `LOOKUP_AUTH_TENANT_ID` | *(empty)* | Entra tenant whose tokens are accepted; required unless auth is disabled |
+| `LOOKUP_AUTH_AUDIENCE` | *(empty)* | Expected token audience, e.g. `api://lookup-service`; required unless auth is disabled |
+| `LOOKUP_AUTH_DISABLED` | `false` | `true` turns off bearer-token and Easy Auth checks. Accepted in `LOCAL`; in `DEV`/`TST` only together with `LOOKUP_AUTH_DISABLED_ACK`; anywhere else the service refuses to start |
+| `LOOKUP_AUTH_DISABLED_ACK` | *(empty)* | Must be exactly `I_UNDERSTAND_LOOKUP_IS_UNAUTHENTICATED` to disable auth in `DEV`/`TST` (the unauthenticated trial); ignored otherwise |
 | `HOST` / `PORT` | `0.0.0.0` / `8080` | Bind address |
 | `LOG_LEVEL` | `INFO` | Log level |
 | `AZURE_LOG_LEVEL` | `WARNING` | Azure SDK log level; keep at WARNING or above, because SDK HTTP logs include Cosmos URLs that contain lookup keys |
-| `COSMOS_ENDPOINT` | *(empty)* | Cosmos account URI; empty = read-only seed-file store |
+| `COSMOS_ENDPOINT` | *(empty)* | Cosmos account URI; empty = read-only seed-file store (from `LOOKUP_SEED_DIR`) |
 | `COSMOS_KEY` | *(empty)* | Set for the emulator (key auth, auto-creates database and containers); empty = `DefaultAzureCredential`, with Terraform-provisioned containers |
 | `COSMOS_DATABASE` | `integration-hub` | Database (shared with the dashboard) |
 | `COSMOS_DISABLE_SSL_VERIFY` | `false` | `true` only for the emulator; refused at startup for any other endpoint |

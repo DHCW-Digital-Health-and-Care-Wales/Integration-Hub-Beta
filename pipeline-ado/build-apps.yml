@@ -32,6 +32,7 @@ parameters:
       - messagereplayjob
       - dashboard
       - networktestapp
+      - lookupservice
 
 variables:
   acrName: 'uksdhcwihsharedcr'
@@ -241,6 +242,17 @@ stages:
             poolName: ${{ variables.POOL_NAME }}
             banditSourceDir: 'dashboard'
             usePytest: true
+
+  - ${{ if containsValue(parameters.buildApps, 'lookupservice') }}:
+    - stage: CodeQuality_lookupservice
+      displayName: 'Code Quality — Lookup Service'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'lookup_service'
+            appDisplayName: 'Lookup Service'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
 
   # ── Build & Push ─────────────────────────────────────────────────────────
   - ${{ if containsValue(parameters.buildApps, 'hl7server') }}:
@@ -582,6 +594,25 @@ stages:
             buildContext: 'dashboard'
             acrName: $(acrName)
             azureServiceConnection: 'DEV-MonitoringDashboard'
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'lookupservice') }}:
+    - stage: Build_lookupservice
+      displayName: 'Build — Lookup Service'
+      dependsOn: CodeQuality_lookupservice
+      condition: in(dependencies.CodeQuality_lookupservice.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushLookupService'
+            displayName: 'Build and Push Lookup Service'
+            appName: 'lookup-service'
+            dockerfilePath: 'lookup_service/Dockerfile'
+            buildContext: 'lookup_service'
+            additionalContexts: 'ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
             POOL_NAME: ${{ variables.POOL_NAME }}
             SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
 

@@ -6,25 +6,43 @@ import unittest
 from lookup_service.errors import ReadOnlyStoreError, SeedDataError
 from lookup_service.models import UploadInfo
 from lookup_service.store.file_store import MAX_SEED_FILE_BYTES, FileTableStore
-from tests.helpers import REPO_SEED_DIR, SeedDirTestCase, require_row, require_table
+from tests.helpers import FIXTURE_SEED_DIR, LOCAL_SEED_DIR, SeedDirTestCase, require_row, require_table
 
 
-class RepoSeedTests(unittest.TestCase):
-    """The seed data shipped in the image must always load."""
+class FixtureSeedTests(unittest.TestCase):
+    """The test fixture tables that the API and GUI tests rely on."""
 
-    def test_repo_seed_loads(self) -> None:
-        store = FileTableStore.load(REPO_SEED_DIR)
+    def test_fixture_seed_loads(self) -> None:
+        store = FileTableStore.load(FIXTURE_SEED_DIR)
         records = {r.definition.name: r for r in asyncio.run(store.list_tables())}
         self.assertEqual(records["health_board_mapping"].stats.row_count, 4)
         self.assertTrue(records["health_board_mapping"].definition.preload)
         self.assertEqual(records["ward_map"].definition.key_columns, ("sending_facility", "ward_code"))
 
     def test_health_board_mapping_matches_chemo_pid_mapper(self) -> None:
-        store = FileTableStore.load(REPO_SEED_DIR)
+        store = FileTableStore.load(FIXTURE_SEED_DIR)
         expected = {"224": "VCC", "212": "BCUCC", "192": "SWWCC", "245": "SEWCC"}
         for code, board in expected.items():
             row = require_row(store, "health_board_mapping", (code,))
             self.assertEqual(row.values["health_board"], board)
+
+
+
+class LocalSeedTests(unittest.TestCase):
+    """local/lookup-seed, mounted by local Compose: a bad file would stop the local stack starting."""
+
+    def test_local_seed_holds_only_pims_to_mpi_codes(self) -> None:
+        store = FileTableStore.load(LOCAL_SEED_DIR)
+        self.assertEqual([t.definition.name for t in store.loaded_tables], ["pims_to_mpi_codes"])
+
+    def test_pims_to_mpi_codes_composite_key_and_blank_value(self) -> None:
+        store = FileTableStore.load(LOCAL_SEED_DIR)
+        self.assertEqual(require_table(store, "pims_to_mpi_codes").definition.key_columns, ("code_type", "pims_code"))
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("gender", "I")).values["mpi_code"], "U")
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("nhs-status", "NN")).values["mpi_code"], "1")
+        # Same pims_code under different code_types must not collide.
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("marital-status", "M")).values["mpi_code"], "M")
+        self.assertEqual(require_row(store, "pims_to_mpi_codes", ("marital-status", "A")).values["mpi_code"], "")
 
 
 class FileTableStoreLoadTests(SeedDirTestCase):
