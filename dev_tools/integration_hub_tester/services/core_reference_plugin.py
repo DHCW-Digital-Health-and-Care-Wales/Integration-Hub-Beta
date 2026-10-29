@@ -73,7 +73,7 @@ def _demo_fixture_path() -> str:
     fd, path = tempfile.mkstemp(prefix="wrds_demo_fixture_", suffix=".xml")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(_build_demo_fixture_xml())
-    atexit.register(lambda: os.path.exists(path) and os.remove(path))
+    atexit.register(lambda: os.remove(path) if os.path.exists(path) else None)
     return path
 
 
