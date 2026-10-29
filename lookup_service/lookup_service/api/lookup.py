@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Security
+from fastapi.security import HTTPBearer
 
 from lookup_service.api.dependencies import get_resolver
 from lookup_service.models import ErrorResponse, LookupResult
@@ -21,7 +22,7 @@ _ERRORS: dict[int | str, dict[str, object]] = {
 
 
 @router.get("/lookup/{table}", response_model=LookupResult, responses=_ERRORS,
-            dependencies=[Depends(require_api_reader)])
+            dependencies=[Security(HTTPBearer(auto_error=False)), Depends(require_api_reader)])
 async def lookup(
     table: str,
     request: Request,

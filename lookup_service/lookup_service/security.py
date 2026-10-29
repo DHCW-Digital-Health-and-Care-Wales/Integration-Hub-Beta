@@ -93,7 +93,7 @@ class TokenVerifier:
         # v1 tokens (the app registration default) use the sts.windows.net issuer; both are this tenant's.
         self._issuers = [f"https://login.microsoftonline.com/{tenant_id}/v2.0", f"https://sts.windows.net/{tenant_id}/"]
         self._signing_keys: SigningKeyProvider = signing_keys or jwt.PyJWKClient(
-            JWKS_URL.format(tenant=tenant_id), cache_keys=True, timeout=JWKS_TIMEOUT_SECONDS
+            JWKS_URL.format(tenant=tenant_id), timeout=JWKS_TIMEOUT_SECONDS
         )
 
     def verify(self, token: str) -> Principal:

@@ -251,8 +251,18 @@ class BackendFailureTests(unittest.TestCase):
 class SwaggerGatingTests(unittest.TestCase):
     def test_docs_available_locally(self) -> None:
         with TestClient(create_app(make_settings(environment="LOCAL"))) as client:
-            self.assertEqual(client.get("/openapi.json").status_code, 200)
+            response = client.get("/openapi.json")
+            self.assertEqual(response.status_code, 200)
             self.assertEqual(client.get("/docs").status_code, 200)
+            schema = response.json()
+            self.assertEqual(
+                schema["paths"]["/api/v1/lookup/{table}"]["get"]["security"],
+                [{"HTTPBearer": []}],
+            )
+            self.assertEqual(
+                schema["components"]["securitySchemes"]["HTTPBearer"],
+                {"type": "http", "scheme": "bearer"},
+            )
 
     def test_docs_absent_in_production(self) -> None:
         with TestClient(create_app(make_settings(environment="PRD"))) as client:

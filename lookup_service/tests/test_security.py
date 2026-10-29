@@ -7,6 +7,7 @@ import time
 import unittest
 from dataclasses import dataclass
 from typing import Any
+from unittest.mock import patch
 
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -23,6 +24,7 @@ from lookup_service.security import (
     ROLE_ADMIN,
     ROLE_EDITOR,
     ROLE_READER,
+    TokenVerifier,
     parse_easy_auth_principal,
 )
 from tests.helpers import TEST_AUDIENCE, TEST_TENANT_ID, MemoryTableStore, csrf_headers, make_settings
@@ -108,6 +110,14 @@ class BearerTokenTests(unittest.TestCase):
 
     def test_missing_token(self) -> None:
         self.assert_unauthorized(self.get_lookup())
+
+    def test_jwks_client_does_not_enable_per_key_cache(self) -> None:
+        with patch("lookup_service.security.jwt.PyJWKClient") as jwks_client:
+            TokenVerifier(TEST_TENANT_ID, TEST_AUDIENCE)
+        jwks_client.assert_called_once_with(
+            f"https://login.microsoftonline.com/{TEST_TENANT_ID}/discovery/v2.0/keys",
+            timeout=5,
+        )
 
     def test_other_scheme_or_empty_token(self) -> None:
         for header in ("Basic dXNlcjpwYXNz", "Bearer", "Bearer   ", "token-without-scheme"):
