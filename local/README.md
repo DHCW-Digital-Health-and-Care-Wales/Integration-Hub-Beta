@@ -337,7 +337,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 
 The PIMS transformer enriches four PID fields (gender, marital status, ethnic group and NHS number
 status) by resolving each source code against the `pims_to_mpi_codes` table of the `lookup_service`
-(composite key `code_type` + `pims_code`, seeded from `lookup_service/seed`). The `pims-to-mpi` flow
+(composite key `code_type` + `pims_code`, seeded from `local/lookup-seed`). The `pims-to-mpi` flow
 needs it reachable before PIMS messages can be transformed.
 
 1. Start the `lookup` profile alongside the flow:
