@@ -158,9 +158,9 @@ def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
     Returns (status_code, response_body, error_message).
     error_message is None on success.
     """
-    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
-        return 0, "", f"Unsupported URL scheme (only http/https allowed): {url}"
     try:
+        if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+            return 0, "", f"Unsupported URL scheme (only http/https allowed): {url}"
         data = envelope.encode("utf-8")
         req = urllib.request.Request(
             url,

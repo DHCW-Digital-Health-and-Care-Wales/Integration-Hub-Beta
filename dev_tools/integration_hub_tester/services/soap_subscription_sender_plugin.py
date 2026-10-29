@@ -144,9 +144,9 @@ def _build_soap_envelope(er7: str) -> str:
 
 
 def _post_to_mock(envelope: str, url: str) -> tuple[int, str, str | None]:
-    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
-        return 0, "", f"Unsupported URL scheme (only http/https allowed): {url}"
     try:
+        if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+            return 0, "", f"Unsupported URL scheme (only http/https allowed): {url}"
         data = envelope.encode("utf-8")
         req = urllib.request.Request(
             url,
