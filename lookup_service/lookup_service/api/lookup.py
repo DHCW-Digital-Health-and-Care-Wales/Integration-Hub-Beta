@@ -2,22 +2,27 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Security
+from fastapi.security import HTTPBearer
 
 from lookup_service.api.dependencies import get_resolver
 from lookup_service.models import ErrorResponse, LookupResult
 from lookup_service.resolver import LookupResolver, named_key_params
+from lookup_service.security import require_api_reader
 
 router = APIRouter(prefix="/api/v1", tags=["lookup"])
 
 _ERRORS: dict[int | str, dict[str, object]] = {
+    401: {"model": ErrorResponse, "description": "unauthorized (missing, invalid or expired bearer token)"},
+    403: {"model": ErrorResponse, "description": "forbidden (token lacks a Lookup.* role)"},
     404: {"model": ErrorResponse, "description": "table_not_found or key_not_found"},
     422: {"model": ErrorResponse, "description": "invalid_key (missing, mixed, wrong arity or empty parts)"},
     503: {"model": ErrorResponse, "description": "not_ready or backend_unavailable"},
 }
 
 
-@router.get("/lookup/{table}", response_model=LookupResult, responses=_ERRORS)
+@router.get("/lookup/{table}", response_model=LookupResult, responses=_ERRORS,
+            dependencies=[Security(HTTPBearer(auto_error=False)), Depends(require_api_reader)])
 async def lookup(
     table: str,
     request: Request,

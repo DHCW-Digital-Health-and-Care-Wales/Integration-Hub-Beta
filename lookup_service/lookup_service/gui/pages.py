@@ -16,9 +16,20 @@ from lookup_service.config import Settings
 from lookup_service.errors import InvalidSettingsError, InvalidUploadError, LookupServiceError
 from lookup_service.models import LookupResult
 from lookup_service.resolver import NAMED_KEY_PREFIX, LookupResolver, named_key_params
+from lookup_service.security import (
+    CSRF_FIELD_NAME,
+    EDITOR_ROLES,
+    ROLE_EDITOR,
+    Principal,
+    current_csrf_token,
+    require_editor,
+    require_reader,
+    set_csrf_cookie,
+    verify_csrf,
+)
 from lookup_service.table_admin import (
     UploadRequest,
-    ensure_writes_allowed,
+    ensure_store_writable,
     replace_table_from_csv,
     update_table_settings,
 )
@@ -40,12 +51,27 @@ SECURITY_HEADERS = {
 
 
 def _render(request: Request, template: str, context: dict[str, Any], status_code: int = 200) -> HTMLResponse:
-    return templates.TemplateResponse(request, template, context, status_code=status_code, headers=SECURITY_HEADERS)
+    # Every page can embed a form, so every page carries the CSRF token (issued once per browser session).
+    token, is_new = current_csrf_token(request)
+    settings: Settings = request.app.state.settings
+    page_context = {
+        **context,
+        "csrf_token": token,
+        "unauthenticated_environment": settings.environment if settings.unauthenticated_deployment else None,
+    }
+    response = templates.TemplateResponse(
+        request, template, page_context, status_code=status_code, headers=SECURITY_HEADERS
+    )
+    if is_new:
+        set_csrf_cookie(response, request, token)
+    return response
 
 
-def _uploads_blocked_reason(settings: Settings, resolver: LookupResolver) -> str | None:
+def _uploads_blocked_reason(principal: Principal, resolver: LookupResolver) -> str | None:
+    if principal.roles.isdisjoint(EDITOR_ROLES):
+        return f"Changing tables needs the {ROLE_EDITOR} role"
     try:
-        ensure_writes_allowed(settings, resolver)
+        ensure_store_writable(resolver)
     except LookupServiceError as exc:
         return exc.detail
     return None
@@ -54,8 +80,8 @@ def _uploads_blocked_reason(settings: Settings, resolver: LookupResolver) -> str
 @router.get("/", response_class=HTMLResponse, name="overview")
 async def overview(
     request: Request,
+    principal: Annotated[Principal, Depends(require_reader)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
-    settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     tables = resolver.summaries()
     return _render(request, "overview.html", {
@@ -64,7 +90,7 @@ async def overview(
         "composite_count": sum(1 for t in tables if len(t.key_columns) > 1),
         "cached_entries": sum(t.cache.entries for t in tables if t.cache.mode == "ttl"),
         "source": resolver.store.source,
-        "uploads_blocked": _uploads_blocked_reason(settings, resolver),
+        "uploads_blocked": _uploads_blocked_reason(principal, resolver),
     })
 
 
@@ -72,6 +98,7 @@ async def overview(
 async def table_page(
     request: Request,
     table: str,
+    principal: Annotated[Principal, Depends(require_reader)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
     settings: Annotated[Settings, Depends(get_settings)],
     search: Annotated[str | None, Query(max_length=200)] = None,
@@ -93,7 +120,7 @@ async def table_page(
         except LookupServiceError as exc:
             error = exc
 
-    return await _render_table(request, table, resolver, settings, search or "", page, {
+    return await _render_table(request, table, resolver, principal, settings, search or "", page, {
         "result": result, "error": error, "submitted": submitted, "uploaded": uploaded, "saved": saved,
     })
 
@@ -102,18 +129,19 @@ async def table_page(
 async def table_settings_submit(
     request: Request,
     table: str,
+    principal: Annotated[Principal, Depends(require_editor)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
-    # No CSRF token yet: writes are only enabled for ENVIRONMENT=LOCAL until Phase 2 adds auth + CSRF.
     if not resolver.has_table(table):
         return _render(request, "not_found.html", {"table": table}, status_code=404)
     form = await request.form(max_fields=10)
     fields = {name: value for name, value in form.items() if isinstance(value, str)}
     try:
-        await update_table_settings(settings, resolver, table, _settings_from_form(fields, table))
+        verify_csrf(request, fields.get(CSRF_FIELD_NAME))
+        await update_table_settings(resolver, table, _settings_from_form(fields, table), principal.name)
     except LookupServiceError as exc:
-        return await _render_table(request, table, resolver, settings, "", 1, {
+        return await _render_table(request, table, resolver, principal, settings, "", 1, {
             "result": None, "error": None, "submitted": {}, "uploaded": None, "saved": None,
             "settings_error": exc, "settings_fields": fields,
         }, status_code=exc.status_code)
@@ -125,6 +153,7 @@ async def _render_table(
     request: Request,
     table: str,
     resolver: LookupResolver,
+    principal: Principal,
     settings: Settings,
     search: str,
     page: int,
@@ -140,7 +169,7 @@ async def _render_table(
         "page": page,
         "pages": max(1, math.ceil(total / PAGE_SIZE)),
         "search": search,
-        "uploads_blocked": _uploads_blocked_reason(settings, resolver),
+        "uploads_blocked": _uploads_blocked_reason(principal, resolver),
         "settings_error": None,
         "settings_fields": None,
         "ttl_units": tuple(reversed(TTL_UNITS)),
@@ -153,25 +182,27 @@ async def _render_table(
 @router.get("/upload", response_class=HTMLResponse, name="upload_page")
 async def upload_page(
     request: Request,
+    principal: Annotated[Principal, Depends(require_reader)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
     settings: Annotated[Settings, Depends(get_settings)],
     table: str | None = None,
 ) -> HTMLResponse:
-    return _render(request, "upload.html", _upload_context(resolver, settings, {"table": table or ""}))
+    return _render(request, "upload.html", _upload_context(principal, resolver, settings, {"table": table or ""}))
 
 
 @router.post("/upload", response_class=HTMLResponse, name="upload_submit")
 async def upload_submit(
     request: Request,
+    principal: Annotated[Principal, Depends(require_editor)],
     resolver: Annotated[LookupResolver, Depends(get_resolver)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
-    # No CSRF token yet: writes are only enabled for ENVIRONMENT=LOCAL until Phase 2 adds auth + CSRF.
     form = await request.form(max_files=1, max_fields=20)
     fields = {name: value for name, value in form.items() if isinstance(value, str)}
     table = fields.get("table", "").strip()
     try:
-        ensure_writes_allowed(settings, resolver)
+        verify_csrf(request, fields.get(CSRF_FIELD_NAME))
+        ensure_store_writable(resolver)
         upload = form.get("file")
         if not isinstance(upload, UploadFile) or not upload.filename:
             raise _form_error("Choose a CSV file to upload", table)
@@ -180,10 +211,11 @@ async def upload_submit(
             table=table,
             data=await read_upload(upload, settings),
             file_name=upload.filename,
+            actor=principal.name,
             definition_settings=definition_settings,
         ))
     except LookupServiceError as exc:
-        context = _upload_context(resolver, settings, fields)
+        context = _upload_context(principal, resolver, settings, fields)
         context["error"] = exc
         return _render(request, "upload.html", context, status_code=exc.status_code)
     finally:
@@ -193,7 +225,9 @@ async def upload_submit(
     return RedirectResponse(str(target), status_code=303)
 
 
-def _upload_context(resolver: LookupResolver, settings: Settings, fields: dict[str, Any]) -> dict[str, Any]:
+def _upload_context(
+    principal: Principal, resolver: LookupResolver, settings: Settings, fields: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "tables": resolver.summaries(),
         "fields": fields,
@@ -201,7 +235,7 @@ def _upload_context(resolver: LookupResolver, settings: Settings, fields: dict[s
         "ttl_units": tuple(reversed(TTL_UNITS)),
         "max_upload_mb": settings.max_upload_mb,
         "default_ttl_seconds": settings.default_ttl_seconds,
-        "uploads_blocked": _uploads_blocked_reason(settings, resolver),
+        "uploads_blocked": _uploads_blocked_reason(principal, resolver),
         "error": None,
     }
 

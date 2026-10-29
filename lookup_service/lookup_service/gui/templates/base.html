@@ -30,6 +30,13 @@
       </div>
     </div>
   </header>
+  {% if unauthenticated_environment %}
+  <div class="auth-disabled-banner" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    Authentication is disabled in {{ unauthenticated_environment }}: anyone who can reach this service can view and
+    change tables. Use test data only.
+  </div>
+  {% endif %}
   <main class="page-wrapper">
     {% block content %}{% endblock %}
   </main>

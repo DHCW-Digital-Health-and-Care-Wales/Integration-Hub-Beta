@@ -5,13 +5,13 @@ import unittest
 
 from lookup_service.errors import SeedDataError
 from lookup_service.seed import import_missing_seed_tables
-from tests.helpers import REPO_SEED_DIR, MemoryTableStore, SeedDirTestCase, codes_definition, make_row
+from tests.helpers import FIXTURE_SEED_DIR, MemoryTableStore, SeedDirTestCase, codes_definition, make_row
 
 
 class SeedImportTests(unittest.TestCase):
     def test_imports_all_seed_tables_into_empty_store(self) -> None:
         store = MemoryTableStore()
-        imported = asyncio.run(import_missing_seed_tables(store, REPO_SEED_DIR))
+        imported = asyncio.run(import_missing_seed_tables(store, FIXTURE_SEED_DIR))
         self.assertEqual(sorted(imported), ["health_board_mapping", "ward_map"])
         self.assertEqual(store.records["health_board_mapping"].stats.last_upload_by, "seed")
         self.assertEqual(store.rows["health_board_mapping"][("224",)].values["health_board"], "VCC")
@@ -21,12 +21,18 @@ class SeedImportTests(unittest.TestCase):
         store.put_table(codes_definition(name="health_board_mapping", key_columns=("msh3",),
                                          value_columns=("health_board",), default_value_column="health_board"),
                         [make_row("224", health_board="UPLOADED")])
-        imported = asyncio.run(import_missing_seed_tables(store, REPO_SEED_DIR))
+        imported = asyncio.run(import_missing_seed_tables(store, FIXTURE_SEED_DIR))
         self.assertEqual(imported, ["ward_map"])
         self.assertEqual(store.rows["health_board_mapping"][("224",)].values["health_board"], "UPLOADED")
 
+    def test_no_seed_dir_imports_nothing(self) -> None:
+        # Deployed environments leave LOOKUP_SEED_DIR unset: no data is written at startup.
+        store = MemoryTableStore()
+        self.assertEqual(asyncio.run(import_missing_seed_tables(store, None)), [])
+        self.assertEqual(store.records, {})
+
     def test_read_only_store_is_skipped(self) -> None:
-        self.assertEqual(asyncio.run(import_missing_seed_tables(MemoryTableStore(writable=False), REPO_SEED_DIR)),
+        self.assertEqual(asyncio.run(import_missing_seed_tables(MemoryTableStore(writable=False), FIXTURE_SEED_DIR)),
                          [])
 
 
