@@ -53,9 +53,9 @@ def _apply_reference_lookups(
     # PID.8 (Gender): source PID.8 -> target PID.8
     gender_source = get_hl7_field_value(original_pid, "pid_8")
     if not _is_empty_or_hl7_null(gender_source):
-        gender = lookup_client.lookup(ReferenceDataset.GENDER, gender_source)
-        if gender:
-            new_message.pid.pid_8 = gender
+        # Assigned even when blank: map_pid has already copied the source PID.8, so skipping a blank
+        # target would leak the untranslated source code into the outgoing message.
+        new_message.pid.pid_8 = lookup_client.lookup(ReferenceDataset.GENDER, gender_source)
 
     # PID.16 (Marital status): source PID.16.CE.1 -> target PID.16.CE.1
     marital_source = get_hl7_field_value(original_pid, "pid_16.ce_1")
