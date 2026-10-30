@@ -20,6 +20,7 @@ def process_message(
     received_audit_text: str,
     processed_audit_text_builder: Callable[[Message], str],
     failed_audit_text: str,
+    egress_properties_builder: Callable[[dict[str, str] | None, Message], dict[str, str] | None] | None = None,
 ) -> bool:
     message_body = b"".join(message.body).decode("utf-8")
     incoming_props: dict[str, str] | None = extract_metadata(message)
@@ -46,7 +47,12 @@ def process_message(
 
         transformed_hl7_message = transform(hl7_msg)
 
-        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=incoming_props)
+        egress_props = (
+            egress_properties_builder(incoming_props, transformed_hl7_message)
+            if egress_properties_builder
+            else incoming_props
+        )
+        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=egress_props)
 
         event_logger.log_message_processed(
             transformed_hl7_message.to_er7(),
