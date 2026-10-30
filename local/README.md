@@ -297,6 +297,7 @@ Each profile starts a complete integration flow with all required services:
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator                    | WDS to MPI integration flow (no transformation)                                                   |
 | **hl7-rest**     | risp-hl7-rest-server, rest-hl7-server, sb-emulator                                          | Starts the standalone REST-based HL7 servers on their own (no transformer/sender/receiver) for ad-hoc REST ingress testing; **not** a complete integration flow |
 | **risp-to-mpi**  | risp-hl7-rest-server, core-reference-hl7-transformer, risp-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (WRDS-based PID field translation via core-reference-hl7-transformer, also fans out to WRRS) |
+| **risp-to-wrrs** | risp-hl7-rest-server, wrrs-stmsg-dbsender, sqledge, sb-emulator | RISP HL7-over-REST ingress to WRRS SQL database delivery (stored procedure `dbo.prQueueMessage` in `DRS`) |
 | **wpas-to-proms** | wpas-rest-server, sb-emulator                                                              | WPAS XML ingress flow to PROMS (destination transformer still in development)                     |
 | **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
@@ -327,12 +328,13 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/senders/risp-mpi-hl7-sender.env**   | RISP HL7 Sender             | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/mock_receivers/mpi-hl7-mock-receiver.env** | MPI Mock Receiver (queue-based; only used by mpi-to-topic now) | `PORT=2576`, `EGRESS_QUEUE_NAME`                             |
 | **env/mock_receivers/mpi-hl7-topic-mock-receiver.env** | MPI Topic Mock Receiver (destination for mpi-hl7-sender and lims-mpi-hl7-sender) | `PORT=2581`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID` |
-| **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2581`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`  |
+| **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `PORT=2584`, `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-mock-receiver` |
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/transformers/lims-wrrs-hl7-transformer.env** | LIMS WRRS HL7 Transformer | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `EGRESS_TOPIC_NAME`, `EGRESS_SESSION_ID`, optional `MAPPING_TYPE_NHS_ID_UPDATE`/`MAPPING_TYPE_A40` |
 | **env/senders/lims-trrr-hl7-sender.env**   | LIMS TO TRRR HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver`, `WORKFLOW_ID=lims-to-trrr`, `PEER_SERVICE=TRRR` |
 | **env/senders/mosaiq-mpi-hl7-sender.env**  | Mosaiq To MPI HL7 Sender     | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/senders/paris-mpi-hl7-sender.env**   | Paris To MPI HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
+| **env/senders/wrrs-stmsg-dbsender.env**    | WRRS STMSG DB Sender         | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `DB_SERVER`, `DB_NAME`, `DB_STORED_PROCEDURE` |
 
 > **Note**: All services share the same Service Bus connection string which is configured to use the local emulator.
 

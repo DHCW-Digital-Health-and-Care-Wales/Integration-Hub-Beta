@@ -315,8 +315,8 @@ services:
           - "risp-mpi-hl7-sender"
 
   # Generic db_sender instance configured for the RISP -> WRRS flow
-  wrrs-db-sender:
-    container_name: wrrs-db-sender
+  wrrs-stmsg-dbsender:
+    container_name: wrrs-stmsg-dbsender
     build:
       context: ../senders/db_sender
       dockerfile: ./Dockerfile
@@ -324,7 +324,7 @@ services:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./env/senders/wrrs-db-sender.env
+      - ./env/senders/wrrs-stmsg-dbsender.env
       - ./.secrets
     <<: *default-healthcheck
     restart: on-failure
@@ -337,7 +337,7 @@ services:
     networks:
       integration-hub:
         aliases:
-          - "wrrs-db-sender"
+          - "wrrs-stmsg-dbsender"
 
   # Dedicated Mosaiq -> MPI sender. Unlike the shared mpi-hl7-sender (queue-based ingress), this
   # mirrors the DEV hl7_mpi_sender container app for Mosaiq: subscription-based ingress from the
@@ -505,7 +505,7 @@ services:
     env_file:
       - ./env/mock_receivers/mpi-hl7-topic-mock-receiver.env
     ports:
-      - "2584:2581"
+      - "2581:2581"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
@@ -733,7 +733,7 @@ services:
     env_file:
       - ./env/senders/mpi-hl7-chemo-sender.env
     ports:
-      - "2581:2581"
+      - "2584:2584"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
