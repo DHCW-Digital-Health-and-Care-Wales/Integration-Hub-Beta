@@ -21,6 +21,7 @@ dependencies = [
   "metric-sender-lib",
   "hl7_validation_lib",
   "setuptools>=84.1.0",
+  "certifi>=2026.10.19",
 ]
 
 [dependency-groups]
