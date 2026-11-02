@@ -19,6 +19,9 @@ parameters:
   # Comma-separated list of tags that must never be deleted by the cleanup step,
   # even if they fall outside the retained image count (e.g. "prd,dr").
   protectedTags: 'prd,dr'
+  # Extended regex (grep -E). Any tag matching it is also never deleted. The default covers
+  # environment tags, both bare (e.g. "prd") and flow-prefixed (e.g. "mpi-dev", "phw-tst").
+  protectedTagPattern: '(^|-)(dev|tst|uat|ppd|prd|dr)$'
 
 jobs:
   - job: ${{ parameters.jobName }}
@@ -244,25 +247,23 @@ jobs:
 
             # Tags that must never be auto-deleted, regardless of age/retain count.
             PROTECTED_TAGS="${{ parameters.protectedTags }}"
+            PROTECTED_TAG_PATTERN='${{ parameters.protectedTagPattern }}'
             echo "Protected tags (never deleted): $PROTECTED_TAGS"
+            echo "Protected tag pattern (never deleted): $PROTECTED_TAG_PATTERN"
 
-            # Resolve the manifest digests referenced by the protected tags.
-            # Any tag sharing one of these digests must also be preserved,
-            # otherwise deleting it would delete the shared manifest (and
-            # every tag pointing to it, including prd/dr).
-            PROTECTED_DIGESTS=""
             IFS=',' read -ra PTAGS <<< "$PROTECTED_TAGS"
-            for ptag in "${PTAGS[@]}"; do
-              [ -z "$ptag" ] && continue
-              digest=$(az acr manifest show \
-                --name ${{ parameters.acrName }}/${{ parameters.appName }}:$ptag \
-                --query "digest" -o tsv 2>/dev/null) || digest=""
-              if [ -n "$digest" ]; then
-                PROTECTED_DIGESTS="$PROTECTED_DIGESTS$digest"$'\n'
+
+            # True if the tag is protected by exact name or by the environment tag pattern.
+            is_protected_tag() {
+              local candidate="$1" ptag
+              for ptag in "${PTAGS[@]}"; do
+                [ -n "$ptag" ] && [ "$candidate" == "$ptag" ] && return 0
+              done
+              if [ -n "$PROTECTED_TAG_PATTERN" ] && echo "$candidate" | grep -Eq -- "$PROTECTED_TAG_PATTERN"; then
+                return 0
               fi
-            done
-            echo "Protected digests:"
-            echo "$PROTECTED_DIGESTS"
+              return 1
+            }
 
             # Get list of tags sorted by creation date (newest first), along with their digests
             ALL_TAGS_SORTED=$(az acr repository show-tags \
@@ -273,17 +274,26 @@ jobs:
               --query "[].{name:name, digest:digest}" \
               -o tsv)
 
+            # Collect the manifest digests referenced by the protected tags.
+            # Any tag sharing one of these digests must also be preserved,
+            # otherwise removing it could remove the image an environment is running.
+            PROTECTED_DIGESTS=""
+            while IFS=$'\t' read -r tag digest; do
+              [ -z "$tag" ] && continue
+              if is_protected_tag "$tag" && [ -n "$digest" ]; then
+                echo "Protected: $tag ($digest)"
+                PROTECTED_DIGESTS="$PROTECTED_DIGESTS$digest"$'\n'
+              fi
+            done <<< "$ALL_TAGS_SORTED"
+
             CANDIDATE_TAGS=""
             while IFS=$'\t' read -r tag digest; do
               [ -z "$tag" ] && continue
 
               IS_PROTECTED=false
-              for ptag in "${PTAGS[@]}"; do
-                if [ "$tag" == "$ptag" ]; then
-                  IS_PROTECTED=true
-                  break
-                fi
-              done
+              if is_protected_tag "$tag"; then
+                IS_PROTECTED=true
+              fi
 
               # Also protect any tag that shares a digest with a protected tag,
               # since deleting it would otherwise remove the shared manifest.
