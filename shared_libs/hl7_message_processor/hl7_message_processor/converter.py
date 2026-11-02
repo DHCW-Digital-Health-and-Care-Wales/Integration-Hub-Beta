@@ -104,20 +104,13 @@ def _emit_element(
                 elem.text = decode_hl7_escapes(raw_value)
         return
 
-    # HL7 encoding rule: trailing components that were never provided may be OMITTED entirely (not
-    # sent as empty) *if* the schema marks them optional (minOccurs=0). Padding every remaining type
-    # child with an empty element regardless of that breaks XSD types that don't accept an empty
-    # string (e.g. XTN.5-8, numeric country/area/local/extension codes: "invalid value '' for
-    # xs:decimal" when a phone number field only supplies its first few components). But some
-    # schemas mark composite children as mandatory (minOccurs=1, e.g. HD.1/HD.2) even though HL7's
-    # wire format lets them be blank/absent - those must still be emitted (empty) to satisfy the
-    # schema's structure, so only skip a missing trailing component when it's genuinely optional.
+    # HL7 v2 XML encoding rule: only components that were actually provided in the message are
+    # emitted. Unsupplied trailing components (or empty components) are omitted rather than padded
+    # with empty elements, avoiding schema-bloat and semantic confusion with explicit nulls ("").
     components = raw_value.split(separator) if raw_value else []
-    for idx, child_name in enumerate(children):
-        if idx < len(components):
-            _emit_element(elem, child_name, components[idx], type_maps, separator="&")
-        elif type_maps.element_min_occurs.get(child_name, 1) >= 1:
-            _emit_element(elem, child_name, "", type_maps, separator="&")
+    for idx, comp in enumerate(components):
+        if idx < len(children) and comp:
+            _emit_element(elem, children[idx], comp, type_maps, separator="&")
 
 
 def _emit_field(

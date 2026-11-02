@@ -57,7 +57,7 @@ class AppConfig:
             db_command_timeout=_read_int_env("DB_COMMAND_TIMEOUT") or 60,
             managed_identity_client_id=_read_env("MANAGED_IDENTITY_CLIENT_ID"),
             workflow_id=_read_env("WORKFLOW_ID") or "risp-to-wrrs",
-            microservice_id=_read_env("MICROSERVICE_ID") or "wrrs_db_sender",
+            microservice_id=_read_env("MICROSERVICE_ID") or "wrrs_stmsg_dbsender",
             health_board=_read_env("HEALTH_BOARD") or "SHARED",
             peer_service=_read_env("PEER_SERVICE") or "WRRS",
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),

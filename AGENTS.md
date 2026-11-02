@@ -262,6 +262,7 @@ Docker Compose profiles in `local/` map to flows:
 - `paris-to-mpi` — Paris server, sender (no transformer)
 - `chemo-to-mpi` — Chemo server, transformer, sender
 - `pims-to-mpi` — PIMS server, transformer, sender
+- `risp-to-wrrs` — RISP REST server, WRRS STMSG db sender, sqledge, sb-emulator
 - `dashboard` — Cosmos DB emulator for the NOC dashboard (run the dashboard itself on the host with `uv run flask`)
 
 Start a profile: `docker compose --profile phw-to-mpi up`

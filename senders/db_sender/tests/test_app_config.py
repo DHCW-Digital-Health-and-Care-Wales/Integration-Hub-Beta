@@ -18,7 +18,7 @@ class TestAppConfig(unittest.TestCase):
             "DB_USERNAME": "sa",
             "DB_PASSWORD": "Password123!",  # nosec B106
             "WORKFLOW_ID": "risp-to-wrrs",
-            "MICROSERVICE_ID": "wrrs_db_sender",
+            "MICROSERVICE_ID": "wrrs_stmsg_dbsender",
         }
 
     def test_read_env_config_success(self) -> None:

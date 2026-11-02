@@ -37,7 +37,7 @@ It serves as the generic delivery engine for database integration flows in NHS W
 | `MANAGED_IDENTITY_CLIENT_ID` | Optional user-assigned MI client ID | None |
 | `DEFAULT_IS_PRIORITY` | Default priority bit value | `0` |
 | `WORKFLOW_ID` | Tracing workflow identifier | `risp-to-wrrs` |
-| `MICROSERVICE_ID` | Microservice instance identifier | `wrrs_db_sender` |
+| `MICROSERVICE_ID` | Microservice instance identifier | `wrrs_stmsg_dbsender` |
 | `HEALTH_CHECK_HOST` | TCP health check bind host | `0.0.0.0` |
 | `HEALTH_CHECK_PORT` | TCP health check port | `9000` |
 | `LOG_LEVEL` | Python logging level | `INFO` |

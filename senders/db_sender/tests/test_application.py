@@ -28,7 +28,7 @@ class TestApplication(unittest.TestCase):
             db_command_timeout=60,
             managed_identity_client_id=None,
             workflow_id="risp-to-wrrs",
-            microservice_id="wrrs_db_sender",
+            microservice_id="wrrs_stmsg_dbsender",
             health_board="SHARED",
             peer_service="WRRS",
             health_check_hostname="127.0.0.1",
