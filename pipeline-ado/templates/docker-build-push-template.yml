@@ -259,7 +259,7 @@ jobs:
               for ptag in "${PTAGS[@]}"; do
                 [ -n "$ptag" ] && [ "$candidate" == "$ptag" ] && return 0
               done
-              if [ -n "$PROTECTED_TAG_PATTERN" ] && echo "$candidate" | grep -Eq "$PROTECTED_TAG_PATTERN"; then
+              if [ -n "$PROTECTED_TAG_PATTERN" ] && echo "$candidate" | grep -Eq -- "$PROTECTED_TAG_PATTERN"; then
                 return 0
               fi
               return 1
