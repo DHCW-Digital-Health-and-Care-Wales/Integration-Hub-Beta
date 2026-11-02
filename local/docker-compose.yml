@@ -753,8 +753,6 @@ services:
         - shared_libs=../shared_libs
     env_file:
       - ./env/senders/mpi-hl7-chemo-sender.env
-    ports:
-      - "2584:2584"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
