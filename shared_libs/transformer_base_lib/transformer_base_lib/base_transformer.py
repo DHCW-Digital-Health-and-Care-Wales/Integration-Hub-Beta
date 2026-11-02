@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Dict, Optional
 
 from hl7apy.core import Message
 
@@ -20,6 +20,12 @@ class BaseTransformer(ABC):
     @abstractmethod
     def transform_message(self, hl7_msg: Message) -> Message:
         pass
+
+    def get_egress_properties(
+        self, incoming_props: Optional[Dict[str, str]], transformed_msg: Message
+    ) -> Optional[Dict[str, str]]:
+        """Service Bus application properties for the outgoing message. Defaults to passing them through unchanged."""
+        return incoming_props
 
     def get_received_audit_text(self) -> str:
         return f"Message received for {self.transformer_name} transformation"

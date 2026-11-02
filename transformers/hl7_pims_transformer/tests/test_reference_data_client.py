@@ -39,7 +39,10 @@ class _FakeHttp:
 
 
 def _ok_body(target_code: str) -> bytes:
-    return json.dumps({"dataset": "gender", "sourceCode": "F", "targetCode": target_code}).encode("utf-8")
+    return json.dumps({"table": "pims_to_mpi_codes", "key": ["gender", "F"], "value": target_code}).encode("utf-8")
+
+
+_GENDER_F_URL = "/api/v1/lookup/pims_to_mpi_codes?key.code_type=gender&key.pims_code=F"
 
 
 class TestReferenceDataLookupClient(unittest.TestCase):
@@ -50,7 +53,7 @@ class TestReferenceDataLookupClient(unittest.TestCase):
         result = client.lookup(ReferenceDataset.GENDER, "F")
 
         self.assertEqual(result, "2")
-        self.assertEqual(http.last_url, "http://ref-api:8080/lookup/gender/F")
+        self.assertEqual(http.last_url, "http://ref-api:8080" + _GENDER_F_URL)
 
     def test_base_url_trailing_slash_is_normalised(self) -> None:
         http = _FakeHttp(_FakeResponse(200, _ok_body("2")))
@@ -58,7 +61,7 @@ class TestReferenceDataLookupClient(unittest.TestCase):
 
         client.lookup(ReferenceDataset.GENDER, "F")
 
-        self.assertEqual(http.last_url, "http://ref-api:8080/lookup/gender/F")
+        self.assertEqual(http.last_url, "http://ref-api:8080" + _GENDER_F_URL)
 
     def test_source_code_is_url_encoded(self) -> None:
         http = _FakeHttp(_FakeResponse(200, _ok_body("2")))
@@ -66,7 +69,26 @@ class TestReferenceDataLookupClient(unittest.TestCase):
 
         client.lookup(ReferenceDataset.GENDER, "a/b")
 
-        self.assertEqual(http.last_url, "http://ref-api:8080/lookup/gender/a%2Fb")
+        self.assertEqual(
+            http.last_url,
+            "http://ref-api:8080/api/v1/lookup/pims_to_mpi_codes?key.code_type=gender&key.pims_code=a%2Fb",
+        )
+
+    def test_code_type_is_the_dataset_path(self) -> None:
+        http = _FakeHttp(_FakeResponse(200, _ok_body("1")))
+        client = ReferenceDataLookupClient("http://ref-api:8080", http=http)
+
+        client.lookup(ReferenceDataset.NHS_STATUS, "NN")
+
+        self.assertEqual(
+            http.last_url,
+            "http://ref-api:8080/api/v1/lookup/pims_to_mpi_codes?key.code_type=nhs-status&key.pims_code=NN",
+        )
+
+    def test_blank_target_code_resolves_to_empty_string(self) -> None:
+        client = ReferenceDataLookupClient("http://ref-api:8080", http=_FakeHttp(_FakeResponse(200, _ok_body(""))))
+
+        self.assertEqual(client.lookup(ReferenceDataset.MARITAL_STATUS, "U"), "")
 
     def test_api_key_is_sent_as_header(self) -> None:
         http = _FakeHttp(_FakeResponse(200, _ok_body("2")))
@@ -115,7 +137,7 @@ class TestReferenceDataLookupClient(unittest.TestCase):
             client.lookup(ReferenceDataset.GENDER, "F")
 
     def test_missing_target_code_raises(self) -> None:
-        body = json.dumps({"dataset": "gender", "sourceCode": "F"}).encode("utf-8")
+        body = json.dumps({"table": "pims_to_mpi_codes"}).encode("utf-8")
         client = ReferenceDataLookupClient("http://ref-api:8080", http=_FakeHttp(_FakeResponse(200, body)))
 
         with self.assertRaises(ReferenceDataLookupError):

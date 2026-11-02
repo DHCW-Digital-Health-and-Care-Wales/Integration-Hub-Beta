@@ -44,6 +44,33 @@ class TestMessageProcessor(unittest.TestCase):
         self.assertEqual(call_args[0][0], mock_transformed_msg.to_er7.return_value)
         self.assertEqual(call_args[1]["custom_properties"], test_properties)
 
+    def test_process_message_uses_egress_properties_builder(self) -> None:
+        mock_sender = MagicMock()
+        mock_transformed_msg = MagicMock()
+        mock_transformed_msg.to_er7.return_value = b"MSH|^~\\&|...\r"
+        mock_transform = MagicMock(return_value=mock_transformed_msg)
+        builder = MagicMock(return_value={"MessageType": "A28"})
+
+        mock_message = MagicMock(spec=ServiceBusMessage)
+        mock_message.body = [b"MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A04|1|P|2.5\r"]
+        mock_message.application_properties = {"SourceSystem": "PIMS", "MessageType": "A04"}
+
+        result = process_message(
+            message=mock_message,
+            sender_client=mock_sender,
+            event_logger=MagicMock(),
+            transform=mock_transform,
+            transformer_display_name="TestTransformer",
+            received_audit_text="Test received",
+            processed_audit_text_builder=lambda msg: "Test processed",
+            failed_audit_text="Test failed",
+            egress_properties_builder=builder,
+        )
+
+        self.assertTrue(result)
+        builder.assert_called_once_with({"SourceSystem": "PIMS", "MessageType": "A04"}, mock_transformed_msg)
+        self.assertEqual(mock_sender.send_message.call_args[1]["custom_properties"], {"MessageType": "A28"})
+
     def test_process_message_handles_empty_properties(self) -> None:
         test_message_body = "MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|202505052323364444|P|2.5\r"
         empty_property_cases: list[dict[str, str] | None] = [None, {}]

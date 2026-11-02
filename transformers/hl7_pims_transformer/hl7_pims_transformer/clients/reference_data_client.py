@@ -1,4 +1,4 @@
-"""HTTP client for the PIMS -> MPI reference-data (WRDS/WRRS-style) lookup REST API.
+"""HTTP client for the PIMS -> MPI code translation served by ``lookup_service``.
 
 The SBU PIMS ADT Mapping Document requires that certain PID fields are *enriched* before the
 message is forwarded to the eMPI - the source code carried by PIMS (HL7 v2.3.1) is replaced with
@@ -11,8 +11,9 @@ the code the eMPI expects:
     | Ethnicity  | PID.22.CE.1    | ethnic-group  |
     | NHS status | PID.32         | nhs-status    |
 
-The authoritative mapping data lives behind a dedicated reference-data REST API (built separately).
-This module is the client the transformer uses to resolve each source code to its target code.
+The mapping data lives in the ``pims_to_mpi_codes`` table of ``lookup_service``, keyed on
+(``code_type``, ``pims_code``). This module is the client the transformer uses to resolve each source
+code to its target code. A mapping whose target is blank resolves to ``""`` (leave the field unset).
 
 Failure handling (see the user story's "Scenario 2 - Format unexpected and invalid"): any failure
 to resolve a code - the API being unreachable, a non-2xx response, a missing mapping, or a target
@@ -31,7 +32,7 @@ import os
 import re
 from enum import Enum
 from typing import Mapping, Optional, Protocol, cast, runtime_checkable
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 import urllib3
 from urllib3.util.retry import Retry
@@ -48,6 +49,9 @@ _DEFAULT_RETRY_BACKOFF_SECONDS = 0.5
 # Transient HTTP statuses worth retrying (the API is briefly unavailable / rate limited).
 _RETRYABLE_STATUSES = frozenset({429, 502, 503, 504})
 
+# lookup_service table holding every PIMS -> eMPI translation, keyed on (code_type, pims_code).
+_LOOKUP_TABLE = "pims_to_mpi_codes"
+
 
 class ReferenceDataLookupError(ValueError):
     """Raised when a reference-data code cannot be resolved to a valid target code.
@@ -63,7 +67,7 @@ class ReferenceDataset(Enum):
 
     Each member carries:
 
-    * ``path`` - the URL path segment identifying the dataset in the REST API.
+    * ``path`` - the ``code_type`` key part identifying the dataset in the lookup table.
     * ``pattern`` - the format the resolved *target* code must match. The eMPI rejects malformed
       codes, so a value that does not match is treated as "returned in the incorrect format"
       (user story Scenario 2) and raises :class:`ReferenceDataLookupError`.
@@ -121,10 +125,10 @@ class ReferenceDataLookupClient:
     The client is thread-safe (``urllib3.PoolManager`` is thread-safe) and is intended to be
     created once per process and reused for every message.
 
-    REST contract (served by the separately-built reference-data API):
+    REST contract (``lookup_service`` composite-key lookup):
 
-        GET {base_url}/lookup/{dataset}/{source_code}
-            200 -> {"dataset": "...", "sourceCode": "...", "targetCode": "..."}
+        GET {base_url}/api/v1/lookup/pims_to_mpi_codes?key.code_type={dataset}&key.pims_code={source_code}
+            200 -> {"value": "<target code, may be blank>", ...}
             404 -> mapping not found
             5xx -> transient server error (retried)
     """
@@ -188,9 +192,9 @@ class ReferenceDataLookupClient:
     def lookup(self, dataset: ReferenceDataset, source_code: str) -> str:
         """Resolve ``source_code`` within ``dataset`` to the eMPI target code.
 
-        Raises :class:`ReferenceDataLookupError` if the client is not configured, the source code
-        is blank, the API call fails, no mapping exists, or the returned target code is empty or in
-        an unexpected format.
+        Returns ``""`` when the mapping deliberately has no target code. Raises
+        :class:`ReferenceDataLookupError` if the client is not configured, the source code is blank,
+        the API call fails, no mapping exists, or the returned target code is in an unexpected format.
         """
         code = (source_code or "").strip()
         if not code:
@@ -205,10 +209,11 @@ class ReferenceDataLookupClient:
                 f"cannot resolve '{code}' for dataset '{dataset.path}'."
             )
 
-        url = f"{self._base_url}/lookup/{dataset.path}/{quote(code, safe='')}"
+        query = urlencode({"key.code_type": dataset.path, "key.pims_code": code})
+        url = f"{self._base_url}/api/v1/lookup/{_LOOKUP_TABLE}?{query}"
         target_code = self._request_target_code(dataset, code, url)
 
-        if not dataset.pattern.match(target_code):
+        if target_code and not dataset.pattern.match(target_code):
             raise ReferenceDataLookupError(
                 f"Reference-data API returned target code '{target_code}' for dataset "
                 f"'{dataset.path}' (source '{code}') in an unexpected format."
@@ -249,8 +254,8 @@ class ReferenceDataLookupClient:
                 f"'{dataset.path}' (source '{code}'): {exc}"
             ) from exc
 
-        target_code = payload.get("targetCode") if isinstance(payload, dict) else None
-        if not isinstance(target_code, str) or not target_code.strip():
+        target_code = payload.get("value") if isinstance(payload, dict) else None
+        if not isinstance(target_code, str):
             raise ReferenceDataLookupError(
                 f"Reference-data API returned no target code for dataset "
                 f"'{dataset.path}' (source '{code}')."

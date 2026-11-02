@@ -268,6 +268,7 @@ Errors report line numbers, never data values.
 | `LOOKUP_AUTH_DISABLED_ACK` | *(empty)* | Must be exactly `I_UNDERSTAND_LOOKUP_IS_UNAUTHENTICATED` to disable auth in `DEV`/`TST` (the unauthenticated trial); ignored otherwise |
 | `HOST` / `PORT` | `0.0.0.0` / `8080` | Bind address |
 | `LOG_LEVEL` | `INFO` | Log level |
+| `FORWARDED_ALLOW_IPS` | `*` | Peers whose `X-Forwarded-Proto`/`-For` headers are trusted. Needed behind the TLS-terminating ingress so page and asset URLs are `https://` |
 | `AZURE_LOG_LEVEL` | `WARNING` | Azure SDK log level; keep at WARNING or above, because SDK HTTP logs include Cosmos URLs that contain lookup keys |
 | `COSMOS_ENDPOINT` | *(empty)* | Cosmos account URI; empty = read-only seed-file store (from `LOOKUP_SEED_DIR`) |
 | `COSMOS_KEY` | *(empty)* | Set for the emulator (key auth, auto-creates database and containers); empty = `DefaultAzureCredential`, with Terraform-provisioned containers |

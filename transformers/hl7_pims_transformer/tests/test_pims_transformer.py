@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from field_utils_lib import get_hl7_field_value
 from hl7apy.parser import parse_message
 
-from hl7_pims_transformer.pims_transformer import transform_pims_message
+from hl7_pims_transformer.pims_transformer import PimsTransformer, transform_pims_message
 from tests.fakes import IdentityLookupClient
 from tests.pims_messages import pims_messages
 
@@ -159,6 +159,30 @@ class TestPimsTransformer(unittest.TestCase):
         self.assertEqual(transformed_message.mrg.mrg_1.cx_1.value, "1234")
         self.assertEqual(get_hl7_field_value(transformed_message.mrg, "mrg_1.cx_4.hd_1"), "103")
         self.assertEqual(transformed_message.mrg.mrg_1.cx_5.value, "PI")
+
+    @patch("hl7_pims_transformer.pims_transformer.ReferenceDataLookupClient.from_env")
+    def test_get_egress_properties_sets_message_type_from_transformed_message(self, _from_env: Mock) -> None:
+        transformer = PimsTransformer()
+        incoming_props = {"SourceSystem": "PIMS", "CorrelationId": "abc", "MessageType": "ORIGINAL"}
+
+        for key, expected in (("a04", "A28"), ("a08", "A31"), ("a40", "A40")):
+            with self.subTest(message=key):
+                transformed = transform_pims_message(parse_message(pims_messages[key]), self.lookup_client)
+
+                props = transformer.get_egress_properties(incoming_props, transformed)
+
+                self.assertEqual(props, {"SourceSystem": "PIMS", "CorrelationId": "abc", "MessageType": expected})
+
+        # The incoming properties must not be mutated.
+        self.assertEqual(incoming_props["MessageType"], "ORIGINAL")
+
+    @patch("hl7_pims_transformer.pims_transformer.ReferenceDataLookupClient.from_env")
+    def test_get_egress_properties_without_incoming_properties(self, _from_env: Mock) -> None:
+        transformed = transform_pims_message(parse_message(pims_messages["a04"]), self.lookup_client)
+
+        props = PimsTransformer().get_egress_properties(None, transformed)
+
+        self.assertEqual(props, {"MessageType": "A28"})
 
     @patch("hl7_pims_transformer.pims_transformer.map_msh")
     @patch("hl7_pims_transformer.pims_transformer.map_pid")

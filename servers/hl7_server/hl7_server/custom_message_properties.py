@@ -55,6 +55,11 @@ def build_mosaiq_properties(msg: Message) -> dict[str, str]:
     }
 
 
+def build_pims_properties(msg: Message) -> dict[str, str]:
+    # The PIMS topic subscriptions filter on SourceSystem (set for all flows) and MessageType only.
+    return {"MessageType": get_hl7_field_value(msg, "msh.msh_9.msh_9_2")}
+
+
 def build_routing_properties(msg: Message) -> dict[str, str]:
     """Routing properties applied to every flow so Service Bus subscription filters can use them
     without each flow needing its own builder. Flow-specific builders may add or override values."""
@@ -71,6 +76,7 @@ FLOW_PROPERTY_BUILDERS: dict[str, FlowPropertyBuilder] = {
     "mpi": build_mpi_properties,
     "wds": build_wds_properties,
     "mosaiq": build_mosaiq_properties,
+    "pims": build_pims_properties,
 }
 
 def _pipe_wrap(values: list[str]) -> str:
