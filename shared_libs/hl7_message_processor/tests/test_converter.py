@@ -314,5 +314,45 @@ class ObxVariableValueTypeTests(unittest.TestCase):
         self.assertEqual(len(list(obx_5)), 0)
 
 
+class UnsuppliedComponentsOmittedTests(unittest.TestCase):
+    """Trailing or unsupplied components/subcomponents must not be padded with empty XML elements
+    (e.g. CX.8, CX.9, FN.2-5)."""
+
+    def setUp(self) -> None:
+        self.xsd_path = str(_SCHEMAS_DIR / "2_5_1_ADT_A39.xsd")
+        self.er7 = (
+            "MSH|^~\\&|SENDAPP|SENDFAC|RECAPP|RECFAC|20241230133601||ADT^A40^ADT_A39|MSG00001|P|2.5.1\r"
+            "EVN|A40|20241230133601\r"
+            "PID|1||123456^^^MRN^MR||Regis\r"
+            "MRG|987654^^^MRN^MR"
+        )
+
+    def test_unsupplied_components_are_not_emitted_as_empty_tags(self) -> None:
+        xml = er7_to_xml(self.er7, self.xsd_path, structure_id="ADT_A39")
+        root = fromstring(xml)
+
+        pid = root.find(_tag("ADT_A39.PATIENT")).find(_tag("PID"))
+
+        # PID.5 was given only family name "Regis" (FN.1) - FN.2 through FN.5 must not be emitted
+        pid_5 = pid.find(_tag("PID.5"))
+        self.assertIsNotNone(pid_5)
+        xpn_1 = pid_5.find(_tag("XPN.1"))
+        self.assertIsNotNone(xpn_1)
+        self.assertEqual(xpn_1.find(_tag("FN.1")).text, "Regis")
+        self.assertIsNone(xpn_1.find(_tag("FN.2")), "FN.2 must not be emitted when unsupplied")
+        self.assertIsNone(xpn_1.find(_tag("FN.3")), "FN.3 must not be emitted when unsupplied")
+        self.assertIsNone(pid_5.find(_tag("XPN.2")), "XPN.2 must not be emitted when unsupplied")
+        self.assertIsNone(pid_5.find(_tag("XPN.9")), "XPN.9 must not be emitted when unsupplied")
+
+        # PID.3 was given only 5 components - CX.6 through CX.10 must not be emitted
+        pid_3 = pid.find(_tag("PID.3"))
+        self.assertIsNotNone(pid_3)
+        self.assertEqual(pid_3.find(_tag("CX.1")).text, "123456")
+        self.assertIsNone(pid_3.find(_tag("CX.6")), "CX.6 must not be emitted when unsupplied")
+        self.assertIsNone(pid_3.find(_tag("CX.8")), "CX.8 must not be emitted when unsupplied")
+        self.assertIsNone(pid_3.find(_tag("CX.9")), "CX.9 must not be emitted when unsupplied")
+        self.assertIsNone(pid_3.find(_tag("CX.10")), "CX.10 must not be emitted when unsupplied")
+
+
 if __name__ == "__main__":
     unittest.main()

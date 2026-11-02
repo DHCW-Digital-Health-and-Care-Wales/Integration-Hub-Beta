@@ -165,7 +165,7 @@
             "Name": "local-inthub-lims-wrrs-classified",
             "Properties": {
               "RequiresDuplicateDetection": true,
-              "DuplicateDetectionHistoryTimeWindow": "PT1H"
+              "DuplicateDetectionHistoryTimeWindow": "PT5M"
             },
             "Subscriptions": [
               {
