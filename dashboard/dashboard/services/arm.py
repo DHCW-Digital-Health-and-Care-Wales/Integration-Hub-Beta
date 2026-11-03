@@ -94,6 +94,13 @@ _DISPLAY_META: dict[str, dict] = {
         "icon": "bi-clipboard2-pulse",
         "transformer": "PIMS Transformer",
     },
+    "lims-to-hub": {
+        "label": "LIMS → Hub",
+        "source": "LIMS",
+        "destination": "MPI / TRRR / WRRS",
+        "colour": "#14b8a6",
+        "icon": "bi-hospital",
+    },
     "wds-to-mpi": {
         "label": "WDS → MPI",
         "source": "WDS",
