@@ -249,6 +249,87 @@ class TestBuildFlow:
         assert flow["post_queue"] == "local-inthub-wis-soap-sender-ingress"
         assert flow["transformer"] == "WDS Transformer"
 
+    def test_lims_to_hub_flow_uses_explicit_display_metadata(self) -> None:
+        apps: list[dict[str, Any]] = [
+            {
+                "name": "lims-restserver-ca",
+                "env": {
+                    "WORKFLOW_ID": "lims-to-hub",
+                    "EGRESS_TOPIC_NAME": "local-inthub-lims-hl7-input",
+                    "MICROSERVICE_ID": "lims_rest_server",
+                },
+                "target_port": 10802,
+            },
+            {
+                "name": "lims-mpi-sender-ca",
+                "env": {
+                    "WORKFLOW_ID": "lims-to-hub",
+                    "INGRESS_TOPIC_NAME": "local-inthub-lims-hl7-input",
+                    "INGRESS_SUBSCRIPTION_NAME": "local-inthub-lims-mpi-sender",
+                    "MICROSERVICE_ID": "hl7_lims_mpi_sender",
+                },
+                "target_port": None,
+            },
+            {
+                "name": "lims-trrr-sender-ca",
+                "env": {
+                    "WORKFLOW_ID": "lims-to-hub",
+                    "INGRESS_TOPIC_NAME": "local-inthub-lims-hl7-input",
+                    "INGRESS_SUBSCRIPTION_NAME": "local-inthub-lims-trrr-sender",
+                    "MICROSERVICE_ID": "hl7_lims_trrr_sender",
+                },
+                "target_port": None,
+            },
+        ]
+
+        flow = _build_flow("lims-to-hub", apps)
+
+        assert flow["label"] == "LIMS → Hub"
+        assert flow["source"] == "LIMS"
+        assert flow["destination"] == "MPI / TRRR / WRRS"
+        assert flow["transformer"] is None
+        assert flow["source_port"] == 10802
+        assert flow["topic"] == "local-inthub-lims-hl7-input"
+        assert {sub["name"] for sub in flow["subscriptions"]} == {
+            "local-inthub-lims-mpi-sender",
+            "local-inthub-lims-trrr-sender",
+        }
+
+    def test_lims_topic_owner_is_recognised_for_flow_merge(self) -> None:
+        flows: dict[str, dict[str, Any]] = {
+            "lims-to-hub": {
+                "topic": "local-inthub-lims-hl7-input",
+                "source_port": 10802,
+                "pre_queue": None,
+                "post_queue": None,
+                "subscriptions": [],
+            },
+            "lims-trrr-sender": {
+                "topic": "local-inthub-lims-hl7-input",
+                "source_port": None,
+                "pre_queue": None,
+                "post_queue": None,
+                "subscriptions": [
+                    {
+                        "name": "local-inthub-lims-trrr-sender",
+                        "topic": "local-inthub-lims-hl7-input",
+                        "consumer_apps": [
+                            {
+                                "app_name": "lims-trrr-sender-ca",
+                                "microservice_id": "hl7_lims_trrr_sender",
+                                "workflow_id": "lims-to-hub",
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+
+        _merge_subscription_sender_flows(flows)
+
+        assert "lims-trrr-sender" not in flows
+        assert flows["lims-to-hub"]["subscriptions"][0]["name"] == "local-inthub-lims-trrr-sender"
+
     def test_unknown_flow_gets_generated_metadata(self) -> None:
         apps: list[dict[str, Any]] = [
             {
