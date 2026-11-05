@@ -219,6 +219,24 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         handler.request.close.assert_called_once()
 
     @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_with_leading_empty_segment_and_original_control_id(self, mock_logger: Mock) -> None:
+        payload = "\rMSH|^~\\&|129|129|100|100|20261104154202||ADT^A28^ADT_A05|CTRL-LEADING|P|2.5"
+
+        handler = self._handle_raw_payload(payload)
+
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|CTRL-LEADING|", response)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_with_non_pipe_msh_separator_and_original_control_id(self, mock_logger: Mock) -> None:
+        payload = "MSH*^~\\&*129*129*100*100*20261104154202**ADT^A28^ADT_A05*CTRL-ALT*P*2.5\r\rEVN**20190202063500"
+
+        handler = self._handle_raw_payload(payload)
+
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|CTRL-ALT|", response)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
     def test_ae_nack_generic_framing_reason_when_no_blank_segments(self, mock_logger: Mock) -> None:
         # Edge case: empty payload fails the regex without containing blank segments (no MSH either).
         handler = self._handle_raw_payload("")
