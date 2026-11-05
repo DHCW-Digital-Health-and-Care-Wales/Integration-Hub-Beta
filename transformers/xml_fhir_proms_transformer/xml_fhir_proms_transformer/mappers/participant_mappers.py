@@ -26,8 +26,19 @@ from ..fhir_constants import (
 )
 from ..proms_parser import PromsMessage
 from ..reference_data import dha_code_name
-from ..source_systems import get_source_system
+from ..source_systems import SourceSystem, get_source_system
 from .mapping_utils import profile_meta
+
+
+def _resolve_source_system(message: PromsMessage) -> Optional[SourceSystem]:
+    """Resolve the sending health board from system_id, falling back to hbCode.
+
+    Matches the lookup in the Patient and MessageHeader mappers, so every resource
+    agrees on the board when a payload carries only hbCode.
+    """
+    return get_source_system(
+        message.get("system_id", "SYSTEM_ID", "systemId") or message.get("hbCode", "hb_code", "HB_CODE")
+    )
 
 
 def map_practitioner(message: PromsMessage, practitioner_uuid: str) -> Optional[Practitioner]:
@@ -66,7 +77,7 @@ def map_referrer_practitioner(message: PromsMessage, practitioner_uuid: str) -> 
     """
     code = message.get("referrer_code", "referrerCode")
     name = message.get("referrer_name", "referrerName")
-    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    source_system = _resolve_source_system(message)
     has_identifier = bool(code and source_system)
     if not has_identifier and not name:
         return None
@@ -87,7 +98,7 @@ def map_consultant_practitioner(message: PromsMessage, practitioner_uuid: str) -
     """
     code = message.get("consultant_code", "consultantCode")
     name = message.get("clinicianName", "clinician_name", "CONS_NAME")
-    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    source_system = _resolve_source_system(message)
     has_identifier = bool(code and source_system)
     if not has_identifier and not name:
         return None
@@ -110,7 +121,7 @@ def map_organization(
     placeholders such as X98) and falling back to hb_code. The name is the health
     board's name. Returns None when neither yields an ODS code.
     """
-    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    source_system = _resolve_source_system(message)
     hb_code = message.get("hb_code", "hbCode", "HB_CODE")
     ods_code = source_system.ods_code if source_system else hb_code
     if not ods_code:
@@ -132,7 +143,7 @@ def map_organization(
 
 def health_board_name(message: PromsMessage) -> Optional[str]:
     """Return the sending health board's name, or None when it can't be resolved."""
-    source_system = get_source_system(message.get("system_id", "SYSTEM_ID", "systemId"))
+    source_system = _resolve_source_system(message)
     if source_system:
         return source_system.name
     hb_code = message.get("hb_code", "hbCode", "HB_CODE")

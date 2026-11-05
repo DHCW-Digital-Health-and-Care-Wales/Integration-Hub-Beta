@@ -593,6 +593,18 @@ class TestPractitioner(unittest.TestCase):
         self.assertIsNone(practitioner.identifier)
         self.assertEqual(practitioner.name[0].text, "Jones, Hannah")
 
+    def test_practitioners_resolve_board_from_hbcode_when_system_id_absent(self) -> None:
+        message = REFERRAL_MESSAGE.replace("<system_id>149</system_id>", "").replace(
+            "<hbCode>X98</hbCode>", "<hbCode>149</hbCode>"
+        )
+        bundle = build(message)
+        self.assertEqual(
+            resource_at(bundle, 3).identifier[0].system, "https://fhir.hduhb.nhs.wales/Id/wpas-referrer-code"
+        )
+        self.assertEqual(
+            resource_at(bundle, 5).identifier[0].system, "https://fhir.hduhb.nhs.wales/Id/wpas-consultant-code"
+        )
+
     def test_surgery_uses_consultant_code_and_clinician_name(self) -> None:
         practitioner = resource_at(build(SURGERY_MESSAGE), 3)
         self.assertEqual(len(practitioner.identifier), 1)
@@ -638,13 +650,17 @@ class TestProfileDefaults(unittest.TestCase):
 
     def test_patient_and_organization_default_to_dsw_profiles(self) -> None:
         message = parse_proms_xml(REFERRAL_MESSAGE)
-        self.assertEqual(map_patient(message, "p-id").meta.profile, [fc.PATIENT_PROFILE])
-        self.assertEqual(map_organization(message, "o-id").meta.profile, [fc.ORGANIZATION_PROFILE])
+        patient = map_patient(message, "p-id")
+        org = map_organization(message, "o-id")
+        assert patient is not None and org is not None
+        self.assertEqual(patient.meta.profile, [fc.PATIENT_PROFILE])
+        self.assertEqual(org.meta.profile, [fc.ORGANIZATION_PROFILE])
 
     def test_profile_argument_overrides_the_default(self) -> None:
         message = parse_proms_xml(REFERRAL_MESSAGE)
         patient = map_patient(message, "p-id", profile=fc.WPAS_IG_PATIENT_PROFILE)
         org = map_organization(message, "o-id", profile=fc.WPAS_IG_ORGANIZATION_PROFILE)
+        assert patient is not None and org is not None
         self.assertEqual(patient.meta.profile, [fc.WPAS_IG_PATIENT_PROFILE])
         self.assertEqual(org.meta.profile, [fc.WPAS_IG_ORGANIZATION_PROFILE])
 
