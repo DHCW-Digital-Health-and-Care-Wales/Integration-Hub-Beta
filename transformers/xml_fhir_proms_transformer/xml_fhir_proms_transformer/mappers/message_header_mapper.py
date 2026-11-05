@@ -24,6 +24,8 @@ from ..fhir_constants import (
     PROMPTLY_COLLECT_ENDPOINT,
     PROMPTLY_DESTINATION_ENDPOINT_ENV_VAR,
     WPAS_EVENT_SYSTEM,
+    WPAS_IG_EVENT_SYSTEM,
+    WPAS_IG_MESSAGE_HEADER_PROFILE,
     WPAS_SOURCE_ENDPOINT_BASE,
 )
 from ..message_types import MessageType
@@ -73,13 +75,15 @@ def map_message_header(
     patient_uuid: str,
     organization_uuid: Optional[str] = None,
     service_request_uuid: Optional[str] = None,
-    practitioner_role_uuid: Optional[str] = None,
+    practitioner_uuids: Optional[list[str]] = None,
+    practitioner_role_uuids: Optional[list[str]] = None,
     procedure_uuid: Optional[str] = None,
     encounter_uuid: Optional[str] = None,
     appointment_uuid: Optional[str] = None,
     practitioner_uuid: Optional[str] = None,
 ) -> MessageHeader:
     """Build the MessageHeader for the given message type."""
+    is_referral = message_type.name == "REFERRAL"
     # Same field-name aliases as proms_parser.get_message_type() (the routing
     # lookup), so eventCoding.code preserves whichever raw routing field the
     # payload actually supplied - including the legacy MESSAGE_TYPE/messageType
@@ -90,19 +94,20 @@ def map_message_header(
         "MESSAGE_TYPE", "messageType", "MSG_TYPE", "msgType",
     ) or message_type.event_code
 
+    # The WPAS IG defines lowercase event codes and has no MessageDefinition.
     message_header = MessageHeader(
         id=message_header_uuid,
-        meta=profile_meta(MESSAGE_HEADER_PROFILE),
+        meta=profile_meta(WPAS_IG_MESSAGE_HEADER_PROFILE if is_referral else MESSAGE_HEADER_PROFILE),
         eventCoding=Coding(
-            system=WPAS_EVENT_SYSTEM,
-            code=event_code,
+            system=WPAS_IG_EVENT_SYSTEM if is_referral else WPAS_EVENT_SYSTEM,
+            code=message_type.event_code.lower() if is_referral else event_code,
             display=message_type.event_display,
         ),
         source=_map_source(message),
         destination=[_map_destination()],
     )
 
-    if message_type.definition:
+    if message_type.definition and not is_referral:
         message_header.definition = message_type.definition
 
     # sender — references the Organization entry to identify the sending HB.
@@ -125,8 +130,10 @@ def map_message_header(
 
     if service_request_uuid:
         focus.append(Reference(reference=urn_uuid(service_request_uuid), type="ServiceRequest"))
-    if practitioner_role_uuid:
-        focus.append(Reference(reference=urn_uuid(practitioner_role_uuid), type="PractitionerRole"))
+    for referrer_uuid in practitioner_uuids or []:
+        focus.append(Reference(reference=urn_uuid(referrer_uuid), type="Practitioner"))
+    for role_uuid in practitioner_role_uuids or []:
+        focus.append(Reference(reference=urn_uuid(role_uuid), type="PractitionerRole"))
     if procedure_uuid:
         focus.append(Reference(reference=urn_uuid(procedure_uuid), type="Procedure"))
     if encounter_uuid:

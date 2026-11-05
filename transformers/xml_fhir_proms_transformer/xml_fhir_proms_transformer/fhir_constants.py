@@ -15,13 +15,40 @@ MESSAGE_HEADER_PROFILE = "https://fhir.promptly.health/wpas/StructureDefinition/
 # SPEC GAP: reviewer flagged the above as incorrect — awaiting confirmed NHS Wales URL
 PATIENT_PROFILE = "https://fhir.nhs.wales/StructureDefinition/wpas-patient"
 PRACTITIONER_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Practitioner"
-PRACTITIONER_ROLE_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-PractitionerRole"
 ORGANIZATION_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Organization"
 LOCATION_PROFILE = "https://fhir.nhs.wales/StructureDefinition/DataStandardsWales-Location"
-SERVICE_REQUEST_PROFILE = "https://fhir.hl7.org.uk/StructureDefinition/UKCore-ServiceRequest"
 ENCOUNTER_PROFILE = "https://fhir.hl7.org.uk/StructureDefinition/UKCore-Encounter"
 PROCEDURE_PROFILE = "https://fhir.hl7.org.uk/StructureDefinition/UKCore-Procedure"
 APPOINTMENT_PROFILE = "https://fhir.hl7.org.uk/StructureDefinition/UKCore-Appointment"
+
+# --- Promptly WPAS Integration IG (REFERRAL bundles) ------------------------
+WPAS_IG_BASE = "https://wpas-integration-ig.tools.labs.promptly.health"
+WPAS_IG_MESSAGE_BUNDLE_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-messagebundle"
+WPAS_IG_MESSAGE_HEADER_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-messageheader"
+WPAS_IG_PATIENT_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-patient"
+WPAS_IG_SERVICE_REQUEST_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-servicerequest"
+WPAS_IG_PRACTITIONER_ROLE_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-practitionerrole"
+WPAS_IG_PRACTITIONER_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-practitioner"
+WPAS_IG_ORGANIZATION_PROFILE = f"{WPAS_IG_BASE}/StructureDefinition/wpas-organization"
+# Code system / identifier URLs follow the user story (path includes /StructureDefinition/), which
+# differs from the published IG paths (/CodeSystem/..., /id/...).
+WPAS_IG_EVENT_SYSTEM = f"{WPAS_IG_BASE}/CodeSystem/wpas-event-codes"
+# Pathway, ethnicity and spoken-language URLs are the published paths confirmed by Promptly (28 Oct 2026).
+WPAS_IG_PATHWAY_SYSTEM = f"{WPAS_IG_BASE}/CodeSystem/wpas-proms-pathway"
+WPAS_IG_SERVICE_REQUEST_IDENTIFIER_SYSTEM = f"{WPAS_IG_BASE}/id/wpas-servicerequest"
+WPAS_IG_PRACTITIONER_ROLE_IDENTIFIER_SYSTEM = f"{WPAS_IG_BASE}/id/wpas-practitionerrole"
+# From the WPAS PROMS mapping spreadsheet (ServiceRequest.code).
+PROMS_EVENT_SYSTEM = "https://fhir.nhs.wales/CodeSystem/proms-event"
+REFERRAL_CODE_DISPLAY = "Referral"
+
+# National specialty list; PractitionerRole.specialty is sent only for codes in it.
+PRACTICE_SETTING_SYSTEM = "https://fhir.hl7.org.uk/CodeSystem/UKCore-PracticeSettingCode"
+PRACTICE_SETTING_CODES = frozenset(
+    "100 101 107 110 120 130 140 141 142 143 145 146 147 148 149 150 160 170 171 180 190 192 200 "
+    "300 301 302 303 304 305 310 311 313 314 315 317 320 321 325 326 330 340 350 352 360 361 370 371 "
+    "400 401 410 420 421 430 450 451 460 500 501 502 504 560 600 601 700 710 711 712 713 715 "
+    "800 810 820 821 822 823 824 830 831 833 834 900 901 902 903 904 950 960".split()
+)
 
 # --- MessageHeader event coding ---------------------------------------------
 WPAS_EVENT_SYSTEM = "https://fhir.promptly.health/wpas/CodeSystem/wpas-event-codes"
@@ -78,11 +105,6 @@ ODS_ORGANISATION_CODE_SYSTEM = "https://fhir.nhs.uk/Id/ods-organization-code"
 GMC_NUMBER_SYSTEM = "https://fhir.hl7.org.uk/Id/gmc-number"
 WPAS_PRACTITIONER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-practitioner"
 LOCATION_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wrts-location-identifier"
-SERVICE_REQUEST_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-servicerequest"
-# Referral PractitionerRoles are identified by the referrer's GMC number; every
-# other bundle uses the WPAS practitioner-role system.
-PRACTITIONER_ROLE_IDENTIFIER_SYSTEM = "https://fhir.nhs.wales/Id/wpas-practitioner-role"
-PRACTITIONER_ROLE_REFERRAL_IDENTIFIER_SYSTEM = GMC_NUMBER_SYSTEM
 ENCOUNTER_IDENTIFIER_SYSTEM = (
     "https://wpas-integration-ig.tools.labs.promptly.health/id/wpas-encounter"
 )
@@ -100,9 +122,11 @@ NHS_NUMBER_VERIFICATION_SYSTEM = (
 
 # --- Patient language / ethnicity / telecom ----------------------------------
 # Spoken language maps to Patient.communication.language (Amy_Questions mapping).
-SPOKEN_LANGUAGE_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-spoken-language"
+SPOKEN_LANGUAGE_SYSTEM = f"{WPAS_IG_BASE}/CodeSystem/wpas-spoken-language"
+# WPAS spoken-language code "9" means Unknown; the communication entry is omitted.
+SPOKEN_LANGUAGE_UNKNOWN_CODE = "9"
 ETHNIC_CATEGORY_EXTENSION = "https://fhir.hl7.org.uk/StructureDefinition/Extension-UKCore-EthnicCategory"
-ETHNICITY_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-ethnicity"
+ETHNICITY_SYSTEM = f"{WPAS_IG_BASE}/CodeSystem/wpas-ethnicity"
 
 # --- Encounter class coding (v3 ActCode) ------------------------------------
 ENCOUNTER_CLASS_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
@@ -139,10 +163,6 @@ APPOINTMENT_PARTICIPANT_STATUS_DEFAULT = "accepted"
 # --- ServiceRequest ---------------------------------------------------------
 SERVICE_REQUEST_STATUS = "active"
 SERVICE_REQUEST_INTENT = "order"
-# code = the WPAS event code (REFERRAL); reasonCode = the clinical pathway (eventPathway).
-SERVICE_REQUEST_CODE_SYSTEM = "https://fhir.nhs.wales/CodeSystem/proms-event"
-SERVICE_REQUEST_CODE_DISPLAY = "Referral"
-SERVICE_REQUEST_REASON_SYSTEM = "https://fhir.nhs.wales/CodeSystem/wpas-event-pathway"
 
 # --- Legacy PSOM constants kept to avoid breaking any surviving references ---
 # These are no longer emitted in any bundle but are retained until all
