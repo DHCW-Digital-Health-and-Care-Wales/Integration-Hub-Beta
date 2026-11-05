@@ -45,7 +45,7 @@ class AppConfig:
             db_server=_read_required_env("DB_SERVER", default="TES06SRVSQLNOD1"),
             db_port=_read_int_env("DB_PORT") or 1433,
             db_name=_read_required_env("DB_NAME", default="Clinical_Results"),
-            db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default="dbo.prQueueMessage"),
+            db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default="dbo.TRRRIDUpdate"),
             db_username=_read_env("DB_USERNAME") or "TRRR",
             db_password=_read_env("DB_PASSWORD") or "trrr",
             db_encrypt=_read_env("DB_ENCRYPT") or "Yes",
