@@ -139,10 +139,10 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
     def _extract_control_id(self, payload: str) -> Optional[str]:
         """Best-effort MSH-10 extraction so the NACK echoes the sender's control ID; None if unavailable."""
-        msh_segment = payload.split(self.cr.decode(self.encoding), 1)[0]
-        if not msh_segment.startswith("MSH|"):
+        msh_segment = payload.lstrip(self.cr.decode(self.encoding)).split(self.cr.decode(self.encoding), 1)[0]
+        if len(msh_segment) < 4 or not msh_segment.startswith("MSH"):
             return None
-        fields = msh_segment.split("|")
+        fields = msh_segment.split(msh_segment[3])
         # fields[0] is "MSH", so MSH-10 sits at index 9 (MSH-1 is the separator itself).
         control_id = fields[9].strip() if len(fields) > 9 else ""
         return control_id[:MAX_CONTROL_ID_LENGTH] or None
