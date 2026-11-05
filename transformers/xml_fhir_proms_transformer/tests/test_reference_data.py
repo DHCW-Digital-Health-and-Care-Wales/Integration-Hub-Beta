@@ -98,7 +98,7 @@ class TestSourceSystems(unittest.TestCase):
 
     def test_source_name_and_endpoint_per_health_board(self) -> None:
         expected = {
-            "108": "Swansea Bay Health Board",
+            "108": "Swansea Bay University Health Board",
             "109": "Betsi Cadwaladr University Health Board",
             "126": "Cwm Taf Morgannwg University Health Board",
             "139": "Aneurin Bevan University Health Board",
