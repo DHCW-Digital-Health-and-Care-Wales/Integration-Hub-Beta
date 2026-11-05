@@ -383,7 +383,7 @@ class TestPatient(unittest.TestCase):
 
     def test_name_joins_first_and_middle_name_and_maps_title_to_prefix(self) -> None:
         name = self.patient.name[0]
-        self.assertEqual(name.use, "official")
+        self.assertIsNone(name.use)
         self.assertEqual(name.family, "Bevan")
         self.assertEqual(name.given, ["Aneurin Nye"])
         self.assertEqual(name.prefix, ["Mr"])

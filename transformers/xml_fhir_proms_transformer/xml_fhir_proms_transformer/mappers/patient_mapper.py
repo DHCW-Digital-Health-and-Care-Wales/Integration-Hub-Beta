@@ -96,7 +96,6 @@ def _build_name(message: PromsMessage) -> Optional[HumanName]:
     title = (message.get("patientTitle") or "").strip()
 
     return HumanName(
-        use="official",
         family=family or None,
         given=[given] if given else None,
         prefix=[title] if title else None,

@@ -92,6 +92,7 @@ _GENDER_CODES: dict[str, str] = {
     "F": "female",
     "2": "female",
     "O": "other",
+    "I": "other",
     "9": "other",
     "U": "unknown",
     "0": "unknown",
