@@ -133,7 +133,7 @@ class TestStaticReferenceDataResolver(unittest.TestCase):
         self.resolver = StaticReferenceDataResolver()
 
     def test_gender_codes_map_to_administrative_gender(self) -> None:
-        for code, expected in (("M", "male"), ("F", "female"), ("O", "other"), ("U", "unknown")):
+        for code, expected in (("M", "male"), ("F", "female"), ("O", "other"), ("I", "other"), ("U", "unknown")):
             with self.subTest(code=code):
                 self.assertEqual(self.resolver.resolve_gender(code), expected)
 
