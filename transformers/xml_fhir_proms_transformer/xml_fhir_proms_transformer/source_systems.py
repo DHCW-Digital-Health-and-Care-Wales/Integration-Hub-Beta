@@ -40,21 +40,36 @@ class SourceSystem:
     endpoint: Optional[str] = None
 
 
-def _board(system_id: str, name: str, domain: str, ods_code: str, pas_path: str = "pas-identifier") -> SourceSystem:
+def _board(
+    system_id: str,
+    name: str,
+    domain: str,
+    ods_code: str,
+    pas_path: str = "pas-identifier",
+    code_path: Optional[str] = None,
+) -> SourceSystem:
+    """Build a board entry; code_path, when set, replaces the wpas-*-code identifier paths (Betsi exception)."""
     base = f"https://fhir.{domain}.nhs.wales/Id"
     return SourceSystem(
         system_id=system_id,
         name=name,
         pas_identifier_system=f"{base}/{pas_path}",
         ods_code=ods_code,
-        consultant_code_system=f"{base}/wpas-consultant-code",
-        referrer_code_system=f"{base}/wpas-referrer-code",
+        consultant_code_system=f"{base}/{code_path or 'wpas-consultant-code'}",
+        referrer_code_system=f"{base}/{code_path or 'wpas-referrer-code'}",
     )
 
 
 _SOURCE_SYSTEMS: dict[str, SourceSystem] = {
-    "108": _board("108", "Swansea Bay Health Board", "sbuhb", "7A3"),
-    "109": _board("109", "Betsi Cadwaladr University Health Board", "bcuhb", "7A1", "central-pas-identifier"),
+    "108": _board("108", "Swansea Bay University Health Board", "sbuhb", "7A3"),
+    "109": _board(
+        "109",
+        "Betsi Cadwaladr University Health Board",
+        "bcuhb",
+        "7A1",
+        "central-pas-identifier",
+        "central-pas-identifier",
+    ),
     "139": _board("139", "Aneurin Bevan University Health Board", "abuhb", "7A6"),
     "149": _board("149", "Hywel Dda University Health Board", "hduhb", "7A2"),
     "170": _board("170", "Powys Teaching Health Board", "pthb", "7A7"),

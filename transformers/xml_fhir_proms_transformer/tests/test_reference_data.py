@@ -98,7 +98,7 @@ class TestSourceSystems(unittest.TestCase):
 
     def test_source_name_and_endpoint_per_health_board(self) -> None:
         expected = {
-            "108": "Swansea Bay Health Board",
+            "108": "Swansea Bay University Health Board",
             "109": "Betsi Cadwaladr University Health Board",
             "126": "Cwm Taf Morgannwg University Health Board",
             "139": "Aneurin Bevan University Health Board",
@@ -133,7 +133,7 @@ class TestStaticReferenceDataResolver(unittest.TestCase):
         self.resolver = StaticReferenceDataResolver()
 
     def test_gender_codes_map_to_administrative_gender(self) -> None:
-        for code, expected in (("M", "male"), ("F", "female"), ("O", "other"), ("U", "unknown")):
+        for code, expected in (("M", "male"), ("F", "female"), ("O", "other"), ("I", "other"), ("U", "unknown")):
             with self.subTest(code=code):
                 self.assertEqual(self.resolver.resolve_gender(code), expected)
 
