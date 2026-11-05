@@ -53,7 +53,7 @@ def _board(system_id: str, name: str, domain: str, ods_code: str, pas_path: str 
 
 
 _SOURCE_SYSTEMS: dict[str, SourceSystem] = {
-    "108": _board("108", "Swansea Bay Health Board", "sbuhb", "7A3"),
+    "108": _board("108", "Swansea Bay University Health Board", "sbuhb", "7A3"),
     "109": _board("109", "Betsi Cadwaladr University Health Board", "bcuhb", "7A1", "central-pas-identifier"),
     "139": _board("139", "Aneurin Bevan University Health Board", "abuhb", "7A6"),
     "149": _board("149", "Hywel Dda University Health Board", "hduhb", "7A2"),
