@@ -10,6 +10,7 @@ from hl7_server.hl7_ack_builder import HL7AckBuilder
 logger = logging.getLogger(__name__)
 
 MAX_PARTIAL_MESSAGE_LOG_SIZE = 1000
+MAX_CONTROL_ID_LENGTH = 199  # MSH-10 length limit
 
 
 class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
@@ -62,7 +63,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 self.request.close()
                 return
 
-        self._process_complete_message(accumulated_data, max_message_size, ack_builder)
+        self._process_complete_message(accumulated_data, max_message_size, ack_builder, event_logger)
 
     def _validate_start_block(self, data: bytes) -> bool:
         return len(data) > 0 and data[:1] == self.sb
@@ -74,11 +75,18 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         return data[-len(end_seq):] == end_seq
 
     def _process_complete_message(
-        self, accumulated_data: bytes, max_message_size: int, ack_builder: Optional[HL7AckBuilder] = None
+        self,
+        accumulated_data: bytes,
+        max_message_size: int,
+        ack_builder: Optional[HL7AckBuilder] = None,
+        event_logger: Optional[EventLogger] = None,
     ) -> None:
         try:
-            message_content = self._extract_hl7_message(accumulated_data.decode(self.encoding))
-            if message_content is not None:
+            raw_message = accumulated_data.decode(self.encoding)
+            message_content = self._extract_hl7_message(raw_message)
+            if message_content is None:
+                self._handle_malformed_message(raw_message, event_logger, ack_builder)
+            else:
                 logger.info(
                     f"Received message of size {len(accumulated_data)} bytes "
                     f"(within limit of {max_message_size} bytes)"
@@ -101,10 +109,50 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         finally:
             self.request.close()
 
-    def _send_fallback_nack(self, reason: str, ack_builder: Optional[HL7AckBuilder]) -> None:
+    def _handle_malformed_message(
+        self, raw_message: str, event_logger: Optional[EventLogger], ack_builder: Optional[HL7AckBuilder]
+    ) -> None:
+        # hl7apy's framing regex rejects the payload without raising, which would otherwise close the
+        # connection with no log and no NACK. Report the cause so the sender isn't left guessing.
+        payload = raw_message[len(self.sb):] if raw_message.startswith(self.sb.decode(self.encoding)) else raw_message
+        payload = payload.removesuffix(self.eb.decode(self.encoding) + self.cr.decode(self.encoding))
+
+        if self.cr.decode(self.encoding) * 2 in payload or payload.startswith(self.cr.decode(self.encoding)):
+            reason = (
+                "Malformed HL7 message: empty segment(s) found (consecutive or leading segment terminators). "
+                "Each segment must be non-empty and separated by a single <CR>."
+            )
+        else:
+            reason = "Malformed HL7 message: payload does not conform to MLLP/HL7 segment framing."
+
+        logger.error(f"{reason} Received {len(raw_message)} bytes; returning AE NACK.")
+
+        if event_logger:
+            try:
+                event_logger.log_message_failed(
+                    payload[:MAX_PARTIAL_MESSAGE_LOG_SIZE], reason, "Malformed HL7 message framing"
+                )
+            except Exception as e:
+                logger.error(f"Failed to log malformed message event: {e}")
+
+        self._send_fallback_nack(reason, ack_builder, self._extract_control_id(payload))
+
+    def _extract_control_id(self, payload: str) -> Optional[str]:
+        """Best-effort MSH-10 extraction so the NACK echoes the sender's control ID; None if unavailable."""
+        msh_segment = payload.split(self.cr.decode(self.encoding), 1)[0]
+        if not msh_segment.startswith("MSH|"):
+            return None
+        fields = msh_segment.split("|")
+        # fields[0] is "MSH", so MSH-10 sits at index 9 (MSH-1 is the separator itself).
+        control_id = fields[9].strip() if len(fields) > 9 else ""
+        return control_id[:MAX_CONTROL_ID_LENGTH] or None
+
+    def _send_fallback_nack(
+        self, reason: str, ack_builder: Optional[HL7AckBuilder], control_id: Optional[str] = None
+    ) -> None:
         try:
             builder = ack_builder or HL7AckBuilder()
-            nack = builder.build_generic_nack(reason)
+            nack = builder.build_generic_nack(reason, control_id)
             framed_nack = nack.to_mllp()
             self.wfile.write(framed_nack.encode(self.encoding))
             logger.info(f"Fallback AE NACK ({len(framed_nack)} chars) written to client")
