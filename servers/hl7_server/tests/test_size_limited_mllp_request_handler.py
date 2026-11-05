@@ -1,3 +1,4 @@
+import re
 import unittest
 from typing import List
 from unittest.mock import Mock, patch
@@ -190,6 +191,69 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
 
         handler.wfile.write.assert_not_called()
         handler.request.close.assert_called_once()
+
+    def _handle_raw_payload(self, payload: str) -> SizeLimitedMLLPRequestHandler:
+        # Uses the real hl7apy framing regex (no mocked _extract_hl7_message).
+        handler = self._create_handler_instance(max_size=1000)
+        handler.validator = re.compile(
+            "".join(["\x0b", r"(([^\r]+\r)*([^\r]+\r?))", "\x1c", "\r"])
+        )
+        handler.request.recv.side_effect = [b"\x0b", payload.encode("utf-8") + b"\x1c\r", b""]
+        handler.handle()
+        return handler
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_with_empty_segment_reason_and_original_control_id(self, mock_logger: Mock) -> None:
+        # Edge case: blank lines between segments produce "\r\r", which the framing regex rejects.
+        payload = "MSH|^~\\&|129|129|100|100|20261104154202||ADT^A28^ADT_A05|CTRL-1|P|2.5\r\rEVN||20190202063500"
+
+        handler = self._handle_raw_payload(payload)
+
+        handler.wfile.write.assert_called_once()
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|CTRL-1|", response)
+        self.assertIn("empty segment", response)
+        mock_logger.error.assert_called()
+        self.mock_event_logger.log_message_failed.assert_called_once()
+        self.assertEqual("Malformed HL7 message framing", self.mock_event_logger.log_message_failed.call_args[0][2])
+        handler.request.close.assert_called_once()
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_with_leading_empty_segment_and_original_control_id(self, mock_logger: Mock) -> None:
+        payload = "\rMSH|^~\\&|129|129|100|100|20261104154202||ADT^A28^ADT_A05|CTRL-LEADING|P|2.5"
+
+        handler = self._handle_raw_payload(payload)
+
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|CTRL-LEADING|", response)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_with_non_pipe_msh_separator_and_original_control_id(self, mock_logger: Mock) -> None:
+        payload = "MSH*^~\\&*129*129*100*100*20261104154202**ADT^A28^ADT_A05*CTRL-ALT*P*2.5\r\rEVN**20190202063500"
+
+        handler = self._handle_raw_payload(payload)
+
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|CTRL-ALT|", response)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_ae_nack_generic_framing_reason_when_no_blank_segments(self, mock_logger: Mock) -> None:
+        # Edge case: empty payload fails the regex without containing blank segments (no MSH either).
+        handler = self._handle_raw_payload("")
+
+        handler.wfile.write.assert_called_once()
+        response = handler.wfile.write.call_args[0][0].decode("utf-8")
+        self.assertIn("MSA|AE|", response)
+        self.assertNotIn("empty segment", response)
+        self.assertIn("segment framing", response)
+
+    def test_extract_control_id(self) -> None:
+        handler = self._create_handler_instance(max_size=1000)
+
+        self.assertEqual("ABC", handler._extract_control_id("MSH|^~\\&|A|B|C|D|2026||ADT^A01|ABC|P|2.5\r\rPID|1"))
+        self.assertIsNone(handler._extract_control_id("MSH|^~\\&|A|B"))  # too few fields
+        self.assertIsNone(handler._extract_control_id("PID|1|2"))  # not an MSH segment
+        self.assertIsNone(handler._extract_control_id(""))
 
 
 if __name__ == '__main__':
