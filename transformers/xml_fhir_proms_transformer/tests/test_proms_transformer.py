@@ -587,6 +587,13 @@ class TestPractitioner(unittest.TestCase):
             practitioner.identifier[0].system, "https://fhir.abuhb.nhs.wales/Id/wpas-consultant-code"
         )
 
+    def test_betsi_uses_central_pas_identifier_for_referrer_and_consultant(self) -> None:
+        message = REFERRAL_MESSAGE.replace("<system_id>149</system_id>", "<system_id>109</system_id>")
+        bundle = build(message)
+        expected = "https://fhir.bcuhb.nhs.wales/Id/central-pas-identifier"
+        self.assertEqual(resource_at(bundle, 3).identifier[0].system, expected)
+        self.assertEqual(resource_at(bundle, 5).identifier[0].system, expected)
+
     def test_consultant_identifier_omitted_for_unknown_board_but_name_kept(self) -> None:
         message = REFERRAL_MESSAGE.replace("<system_id>149</system_id>", "<system_id>999</system_id>")
         practitioner = resource_at(build(message), 5)
