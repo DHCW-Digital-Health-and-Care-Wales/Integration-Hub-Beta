@@ -30,6 +30,7 @@ from ..fhir_constants import (
     NHS_NUMBER_VERIFICATION_SYSTEM,
     PATIENT_PROFILE,
     SPOKEN_LANGUAGE_SYSTEM,
+    SPOKEN_LANGUAGE_UNKNOWN_CODE,
 )
 from ..proms_parser import PromsMessage
 from ..reference_data import (
@@ -92,7 +93,14 @@ def _build_name(message: PromsMessage) -> Optional[HumanName]:
     # Per the mapping, first and middle names are a single space-joined given value.
     given = " ".join(p for p in (given_first, given_middle) if p)
 
-    return HumanName(use="official", family=family or None, given=[given] if given else None)
+    title = (message.get("patientTitle") or "").strip()
+
+    return HumanName(
+        use="official",
+        family=family or None,
+        given=[given] if given else None,
+        prefix=[title] if title else None,
+    )
 
 
 def _build_address(message: PromsMessage) -> Optional[Address]:
@@ -138,6 +146,8 @@ def _communication(message: PromsMessage) -> Optional[list[PatientCommunication]
     )
     lang_display = message.get("spoken_language", "spokenLanguage")
     if not lang_code and not lang_display:
+        return None
+    if lang_code and lang_code.strip() == SPOKEN_LANGUAGE_UNKNOWN_CODE:
         return None
 
     coding = Coding(system=SPOKEN_LANGUAGE_SYSTEM, code=lang_code or None, display=lang_display or None)
@@ -213,9 +223,10 @@ def map_patient(
     message: PromsMessage,
     patient_uuid: str,
     resolver: ReferenceDataResolver = DEFAULT_REFERENCE_DATA_RESOLVER,
+    profile: str = PATIENT_PROFILE,
 ) -> Patient:
     """Build the Patient resource from the actual WPAS PromsEventRequest fields."""
-    patient = Patient(id=patient_uuid, meta=profile_meta(PATIENT_PROFILE), active=True)
+    patient = Patient(id=patient_uuid, meta=profile_meta(profile), active=True)
 
     identifiers = [
         i for i in (_nhs_number_identifier(message), _pas_identifier(message)) if i is not None

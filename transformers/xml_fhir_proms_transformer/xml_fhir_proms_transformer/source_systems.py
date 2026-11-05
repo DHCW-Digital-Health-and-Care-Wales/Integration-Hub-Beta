@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 
 from .fhir_constants import WPAS_SOURCE_ENDPOINT_BASE
@@ -30,46 +30,36 @@ class SourceSystem:
     name: str
     # Patient.identifier[1].system - the health board's local PAS identifier URL.
     pas_identifier_system: str
+    # ODS code of the health board (Organization.identifier).
+    ods_code: str
+    # Board-specific identifier system for the WPAS consultant code.
+    consultant_code_system: str
+    # Board-specific identifier system for the WPAS referrer code.
+    referrer_code_system: str
     # MessageHeader.source.endpoint; derived from the system_id unless overridden.
     endpoint: Optional[str] = None
 
 
+def _board(system_id: str, name: str, domain: str, ods_code: str, pas_path: str = "pas-identifier") -> SourceSystem:
+    base = f"https://fhir.{domain}.nhs.wales/Id"
+    return SourceSystem(
+        system_id=system_id,
+        name=name,
+        pas_identifier_system=f"{base}/{pas_path}",
+        ods_code=ods_code,
+        consultant_code_system=f"{base}/wpas-consultant-code",
+        referrer_code_system=f"{base}/wpas-referrer-code",
+    )
+
+
 _SOURCE_SYSTEMS: dict[str, SourceSystem] = {
-    "108": SourceSystem(
-        system_id="108",
-        name="Swansea Bay Health Board",
-        pas_identifier_system="https://fhir.sbuhb.nhs.wales/Id/pas-identifier",
-    ),
-    "109": SourceSystem(
-        system_id="109",
-        name="Betsi Cadwaladr University Health Board",
-        pas_identifier_system="https://fhir.bcuhb.nhs.wales/Id/central-pas-identifier",
-    ),
-    "139": SourceSystem(
-        system_id="139",
-        name="Aneurin Bevan University Health Board",
-        pas_identifier_system="https://fhir.abuhb.nhs.wales/Id/pas-identifier",
-    ),
-    "149": SourceSystem(
-        system_id="149",
-        name="Hywel Dda University Health Board",
-        pas_identifier_system="https://fhir.hduhb.nhs.wales/Id/pas-identifier",
-    ),
-    "170": SourceSystem(
-        system_id="170",
-        name="Powys Teaching Health Board",
-        pas_identifier_system="https://fhir.pthb.nhs.wales/Id/pas-identifier",
-    ),
-    "126": SourceSystem(
-        system_id="126",
-        name="Cwm Taf Morgannwg University Health Board",
-        pas_identifier_system="https://fhir.ctmuhb.nhs.wales/Id/pas-identifier",
-    ),
-    "310": SourceSystem(
-        system_id="310",
-        name="Velindre University NHS Trust",
-        pas_identifier_system="https://fhir.vunhst.nhs.wales/Id/pas-identifier",
-    ),
+    "108": _board("108", "Swansea Bay Health Board", "sbuhb", "7A3"),
+    "109": _board("109", "Betsi Cadwaladr University Health Board", "bcuhb", "7A1", "central-pas-identifier"),
+    "139": _board("139", "Aneurin Bevan University Health Board", "abuhb", "7A6"),
+    "149": _board("149", "Hywel Dda University Health Board", "hduhb", "7A2"),
+    "170": _board("170", "Powys Teaching Health Board", "pthb", "7A7"),
+    "126": _board("126", "Cwm Taf Morgannwg University Health Board", "ctmuhb", "7A5"),
+    "310": _board("310", "Velindre University NHS Trust", "vunhst", "RQF"),
 }
 
 
@@ -96,12 +86,7 @@ def get_source_system(system_id: Optional[str]) -> Optional[SourceSystem]:
     # The endpoint is derived from the system_id; deployments can still override it.
     override = os.getenv(f"WPAS_SOURCE_ENDPOINT_{key}")
     endpoint = override or f"{WPAS_SOURCE_ENDPOINT_BASE}/{key}"
-    return SourceSystem(
-        system_id=source_system.system_id,
-        name=source_system.name,
-        pas_identifier_system=source_system.pas_identifier_system,
-        endpoint=endpoint,
-    )
+    return replace(source_system, endpoint=endpoint)
 
 
 def get_pas_identifier_system(system_id: Optional[str]) -> Optional[str]:
