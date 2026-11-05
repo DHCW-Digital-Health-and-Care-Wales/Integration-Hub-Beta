@@ -4,8 +4,8 @@ Assembles the FHIR R4B message bundles defined by the WPAS PROMS Mapping
 spreadsheet (By Profile v1-0 - Final) and the PROMS Scenarios spreadsheet. The
 entry order is positional:
 
-    REFERRAL:     MessageHeader, Patient, ServiceRequest, PractitionerRole,
-                  Practitioner, Organization, Location
+    REFERRAL:     MessageHeader, Patient, ServiceRequest, Practitioner(referrer),
+                  PractitionerRole(consultant), Practitioner(consultant), Organization
     SURGERY-PROC: MessageHeader, Patient, Procedure, Practitioner, Organization, Location
     SURGERY-PERF: MessageHeader, Patient, Procedure, Practitioner, Organization, Location
     SURGERY-DN:   MessageHeader, Patient, Encounter(discharge), Practitioner, Organization, Location
@@ -34,14 +34,20 @@ from fhir.resources.R4B.bundle import Bundle, BundleEntry
 from fhir.resources.R4B.resource import Resource
 from transformer_base_lib import BaseTransformer
 
+from .fhir_constants import WPAS_IG_MESSAGE_BUNDLE_PROFILE, WPAS_IG_ORGANIZATION_PROFILE, WPAS_IG_PATIENT_PROFILE
 from .mappers.appointment_mapper import map_appointment
 from .mappers.encounter_mapper import map_encounter
 from .mappers.location_mapper import map_location
-from .mappers.mapping_utils import UuidFactory, new_uuid, urn_uuid
+from .mappers.mapping_utils import UuidFactory, new_uuid, profile_meta, urn_uuid
 from .mappers.message_header_mapper import map_message_header
-from .mappers.participant_mappers import map_organization, map_practitioner
+from .mappers.participant_mappers import (
+    map_consultant_practitioner,
+    map_organization,
+    map_practitioner,
+    map_referrer_practitioner,
+)
 from .mappers.patient_mapper import map_patient
-from .mappers.practitioner_role_mapper import map_practitioner_role
+from .mappers.practitioner_role_mapper import map_consultant_role
 from .mappers.procedure_mapper import map_procedure
 from .mappers.service_request_mapper import map_service_request
 from .message_types import MessageType, resolve_message_type
@@ -70,24 +76,34 @@ def _build_referral_bundle(
 ) -> Bundle:
     """Assemble the Referral bundle.
 
-    Entry order: MessageHeader, Patient, ServiceRequest, PractitionerRole,
-                 Practitioner, Organization, Location
+    Entry order: MessageHeader, Patient, ServiceRequest, Practitioner (referrer),
+                 PractitionerRole (consultant), Practitioner (consultant), Organization
+    The referrer is a bare Practitioner (no PractitionerRole); the consultant Practitioner/
+    PractitionerRole pair is omitted when there is nothing to put in them.
     """
     mh_uuid = uuid_factory()
     patient_uuid = uuid_factory()
     sr_uuid = uuid_factory()
-    pr_uuid = uuid_factory()
-    practitioner_uuid = uuid_factory()
+    referrer_uuid = uuid_factory()
+    consultant_role_uuid = uuid_factory()
+    consultant_uuid = uuid_factory()
     org_uuid = uuid_factory()
-    location_uuid = uuid_factory()
 
-    practitioner = map_practitioner(message, practitioner_uuid, message_type)
-    organization = map_organization(message, org_uuid)
-    location = map_location(message, location_uuid)
-
-    linked_practitioner_uuid = practitioner_uuid if practitioner is not None else None
+    referrer = map_referrer_practitioner(message, referrer_uuid)
+    consultant = map_consultant_practitioner(message, consultant_uuid)
+    organization = map_organization(message, org_uuid, profile=WPAS_IG_ORGANIZATION_PROFILE)
     linked_org_uuid = org_uuid if organization is not None else None
-    linked_location_uuid = location_uuid if location is not None else None
+
+    patient = map_patient(message, patient_uuid, resolver=resolver, profile=WPAS_IG_PATIENT_PROFILE)
+
+    consultant_role = (
+        map_consultant_role(message, consultant_role_uuid, consultant_uuid, linked_org_uuid)
+        if consultant is not None
+        else None
+    )
+
+    role_uuids = [consultant_role_uuid] if consultant_role is not None else []
+    practitioner_uuids = [referrer_uuid] if referrer is not None else []
 
     entries = [
         _entry(
@@ -99,42 +115,40 @@ def _build_referral_bundle(
                 patient_uuid=patient_uuid,
                 organization_uuid=linked_org_uuid,
                 service_request_uuid=sr_uuid,
-                practitioner_role_uuid=pr_uuid,
+                practitioner_uuids=practitioner_uuids,
+                practitioner_role_uuids=role_uuids,
             ),
         ),
-        _entry(patient_uuid, map_patient(message, patient_uuid, resolver=resolver)),
+        _entry(patient_uuid, patient),
         _entry(
             sr_uuid,
-            map_service_request(message, sr_uuid, patient_uuid, practitioner_role_uuid=pr_uuid),
-        ),
-        _entry(
-            pr_uuid,
-            map_practitioner_role(
+            map_service_request(
                 message,
-                pr_uuid,
-                practitioner_uuid=linked_practitioner_uuid,
-                organization_uuid=linked_org_uuid,
-                location_uuid=linked_location_uuid,
+                sr_uuid,
+                patient_uuid,
+                requester_uuid=referrer_uuid if referrer is not None else None,
+                performer_uuid=consultant_uuid if consultant is not None else None,
             ),
         ),
     ]
 
-    if practitioner is not None:
-        entries.append(_entry(practitioner_uuid, practitioner))
+    if referrer is not None:
+        entries.append(_entry(referrer_uuid, referrer))
     else:
-        logger.info("REFERRAL message has no practitioner identifier — Practitioner entry omitted")
+        logger.info("REFERRAL message has no referrer details — referrer entry omitted")
+
+    if consultant_role is not None and consultant is not None:
+        entries.append(_entry(consultant_role_uuid, consultant_role))
+        entries.append(_entry(consultant_uuid, consultant))
+    else:
+        logger.info("REFERRAL message has no consultant details — consultant entries omitted")
 
     if organization is not None:
         entries.append(_entry(org_uuid, organization))
     else:
         logger.info("REFERRAL message has no organization — Organization entry omitted")
 
-    if location is not None:
-        entries.append(_entry(location_uuid, location))
-    else:
-        logger.info("REFERRAL message has no referrer_location — Location entry omitted")
-
-    return Bundle(type="message", entry=entries)
+    return Bundle(meta=profile_meta(WPAS_IG_MESSAGE_BUNDLE_PROFILE), type="message", entry=entries)
 
 
 def _build_standard_bundle(
@@ -158,7 +172,7 @@ def _build_standard_bundle(
     org_uuid = uuid_factory()
     location_uuid = uuid_factory()
 
-    practitioner = map_practitioner(message, practitioner_uuid, message_type)
+    practitioner = map_practitioner(message, practitioner_uuid)
     organization = map_organization(message, org_uuid)
     location = map_location(message, location_uuid)
 
