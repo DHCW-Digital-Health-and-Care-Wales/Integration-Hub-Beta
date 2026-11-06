@@ -11,20 +11,23 @@ Behaviour is driven by ``Bundle.id`` so a tester can trigger each scenario from 
   mock-429-once / mock-500-once
                     the first POST for that id fails, the retry is accepted
 
+Terminal status responses are kept for 5 minutes so repeated status GETs return the same outcome.
 State is held in memory and is lost when the mock restarts.
 """
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 STATUS_PATH = "/fhir/r4/status"
 SCENARIO_PREFIX = "mock-"
 DEFAULT_POLLS = 2
 SLOW_POLLS = 6
 RETRY_AFTER_SECONDS = "1"
+TERMINAL_RETENTION_SECONDS = 300
 
 IMMEDIATE_FAILURES = {"400", "401", "403", "404", "409", "429", "500"}
 FAIL_ONCE = {"429-once": 429, "500-once": 500}
@@ -41,6 +44,7 @@ class MockResponse:
 class _Job:
     polls_remaining: int
     final: MockResponse
+    completed_at: float | None = None
 
 
 def operation_outcome(severity: str, code: str, text: str) -> dict[str, Any]:
@@ -51,11 +55,13 @@ def operation_outcome(severity: str, code: str, text: str) -> dict[str, Any]:
 
 
 class FhirMockState:
-    def __init__(self) -> None:
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self._jobs: dict[str, _Job] = {}
         self._failed_once: set[str] = set()
+        self._clock = clock
 
     def submit(self, raw_body: str, base_url: str) -> MockResponse:
+        self._purge_expired()
         try:
             bundle = json.loads(raw_body)
         except ValueError:
@@ -75,14 +81,26 @@ class FhirMockState:
         return MockResponse(202, headers={"Content-Location": f"{base_url.rstrip('/')}{STATUS_PATH}/{job_id}"})
 
     def status(self, job_id: str) -> MockResponse:
+        self._purge_expired()
         job = self._jobs.get(job_id)
         if job is None:
             return MockResponse(404, operation_outcome("error", "not-found", "Unknown status id"))
         if job.polls_remaining > 0:
             job.polls_remaining -= 1
             return MockResponse(202, headers={"X-Progress": "Processing", "Retry-After": RETRY_AFTER_SECONDS})
-        del self._jobs[job_id]
+        # Keep the terminal response so a sender retrying a GET after a dropped connection sees the same outcome.
+        if job.completed_at is None:
+            job.completed_at = self._clock()
         return job.final
+
+    def _purge_expired(self) -> None:
+        now = self._clock()
+        expired = [
+            job_id for job_id, job in self._jobs.items()
+            if job.completed_at is not None and now - job.completed_at > TERMINAL_RETENTION_SECONDS
+        ]
+        for job_id in expired:
+            del self._jobs[job_id]
 
     def _submit_failure(self, bundle_id: str, scenario: str) -> MockResponse | None:
         if scenario in IMMEDIATE_FAILURES:
