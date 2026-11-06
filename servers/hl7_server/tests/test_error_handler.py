@@ -15,7 +15,7 @@ VALID_MESSAGE = (
 
 class TestErrorHandler(unittest.TestCase):
     @patch("hl7_server.error_handler.logger")
-    def test_reply_with_unsupported_message_type_returns_ar_nack(self, mock_logger: MagicMock) -> None:
+    def test_reply_with_unsupported_message_type_returns_ae_nack(self, mock_logger: MagicMock) -> None:
         exception = UnsupportedMessageType("Unsupported type")
         mock_event_logger = MagicMock()
 
@@ -26,10 +26,10 @@ class TestErrorHandler(unittest.TestCase):
         mock_event_logger.log_message_failed.assert_called_once_with(
             VALID_MESSAGE, f"Unsupported Message Type: {exception}", "Unsupported message type"
         )
-        self.assertIn("MSA|AR|0123456789", reply)
+        self.assertIn("MSA|AE|0123456789", reply)
 
     @patch("hl7_server.error_handler.logger")
-    def test_reply_with_unsupported_a05_message_type_returns_ar_nack(self, mock_logger: MagicMock) -> None:
+    def test_reply_with_unsupported_a05_message_type_returns_ae_nack(self, mock_logger: MagicMock) -> None:
         a05_msg = (
             "MSH|^~\\&|129|129|100|100|20260817211434||ADT^A05^ADT_A05|202608172114346670327|P|2.5|||||GBR||EN\r"
             "EVN||20260815062700||||20260817211434\r"
@@ -41,7 +41,7 @@ class TestErrorHandler(unittest.TestCase):
         handler = ErrorHandler(exception, a05_msg, mock_event_logger)
         reply = handler.reply()
 
-        self.assertIn("MSA|AR|202608172114346670327", reply)
+        self.assertIn("MSA|AE|202608172114346670327", reply)
         self.assertIn("Unsupported Message Type: Unsupported message type ADT^A05^ADT_A05", reply)
 
     @patch("hl7_server.error_handler.logger")
