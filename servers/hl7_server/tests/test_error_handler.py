@@ -98,7 +98,8 @@ class TestErrorHandler(unittest.TestCase):
         )
         self.assertIn("MSA|AE|0123456789", reply)
 
-    def test_reply_returns_mllp_framed_string(self) -> None:
+    @patch("hl7_server.error_handler.logger")
+    def test_reply_returns_mllp_framed_string(self, mock_logger: MagicMock) -> None:
         exception = ValidationException("bad message")
         mock_event_logger = MagicMock()
 
