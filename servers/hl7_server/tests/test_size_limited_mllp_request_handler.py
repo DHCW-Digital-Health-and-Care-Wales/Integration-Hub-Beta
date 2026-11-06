@@ -1,4 +1,5 @@
 import re
+import socket
 import unittest
 from typing import List
 from unittest.mock import Mock, patch
@@ -246,6 +247,124 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         self.assertIn("MSA|AE|", response)
         self.assertNotIn("empty segment", response)
         self.assertIn("segment framing", response)
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_multiple_messages_processed_over_single_persistent_connection(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=1000)
+
+        msg1 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|MSG001|P|2.5"
+        msg2 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A31|MSG002|P|2.5"
+        msg3 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A40|MSG003|P|2.5"
+
+        framed1 = self.start_block + msg1.encode('utf-8') + self.end_block + self.carriage_return
+        framed2 = self.start_block + msg2.encode('utf-8') + self.end_block + self.carriage_return
+        framed3 = self.start_block + msg3.encode('utf-8') + self.end_block + self.carriage_return
+
+        # Sequential delivery over the same socket, followed by client disconnect (EOF)
+        handler.request.recv.side_effect = [framed1, framed2, framed3, b'']
+
+        handler._extract_hl7_message = Mock(side_effect=lambda raw: raw.strip('\x0b\x1c\r'))
+        handler._route_message = Mock(side_effect=lambda msg: f"ACK|{msg.split('|')[9]}|P|2.5")
+
+        handler.handle()
+
+        self.assertEqual(handler._extract_hl7_message.call_count, 3)
+        self.assertEqual(handler._route_message.call_count, 3)
+        self.assertEqual(handler.wfile.write.call_count, 3)
+        self.assertEqual(handler.wfile.flush.call_count, 3)
+
+        written_responses = [call[0][0].decode('utf-8') for call in handler.wfile.write.call_args_list]
+        self.assertIn("ACK|MSG001|", written_responses[0])
+        self.assertIn("ACK|MSG002|", written_responses[1])
+        self.assertIn("ACK|MSG003|", written_responses[2])
+
+        # Socket closed only after connection ends (not between messages)
+        handler.request.close.assert_called_once()
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_pipelined_messages_in_single_buffer_processed_successfully(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=2000)
+
+        msg1 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|PIPE001|P|2.5"
+        msg2 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A31|PIPE002|P|2.5"
+
+        coalesced_data = (
+            self.start_block + msg1.encode('utf-8') + self.end_block + self.carriage_return +
+            self.start_block + msg2.encode('utf-8') + self.end_block + self.carriage_return
+        )
+
+        handler.request.recv.side_effect = [coalesced_data, b'']
+
+        handler._extract_hl7_message = Mock(side_effect=lambda raw: raw.strip('\x0b\x1c\r'))
+        handler._route_message = Mock(side_effect=lambda msg: f"ACK|{msg.split('|')[9]}|P|2.5")
+
+        handler.handle()
+
+        self.assertEqual(handler._extract_hl7_message.call_count, 2)
+        self.assertEqual(handler._route_message.call_count, 2)
+        self.assertEqual(handler.wfile.write.call_count, 2)
+        handler.request.close.assert_called_once()
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_multiple_messages_with_inter_message_newlines(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=2000)
+
+        msg1 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|DELIM001|P|2.5"
+        msg2 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A31|DELIM002|P|2.5"
+
+        stream_data = (
+            self.start_block + msg1.encode('utf-8') + self.end_block + self.carriage_return +
+            b'\r\n\r\n' +
+            self.start_block + msg2.encode('utf-8') + self.end_block + self.carriage_return
+        )
+
+        handler.request.recv.side_effect = [stream_data, b'']
+
+        handler._extract_hl7_message = Mock(side_effect=lambda raw: raw.strip('\x0b\x1c\r'))
+        handler._route_message = Mock(side_effect=lambda msg: f"ACK|{msg.split('|')[9]}|P|2.5")
+
+        handler.handle()
+
+        self.assertEqual(handler._extract_hl7_message.call_count, 2)
+        self.assertEqual(handler._route_message.call_count, 2)
+        self.assertEqual(handler.wfile.write.call_count, 2)
+        handler.request.close.assert_called_once()
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_idle_timeout_terminates_connection_cleanly(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=1000)
+
+        msg = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|TIMEOUT01|P|2.5"
+        framed = self.start_block + msg.encode('utf-8') + self.end_block + self.carriage_return
+
+        handler.request.recv.side_effect = [framed, socket.timeout("timed out")]
+
+        handler._extract_hl7_message = Mock(return_value=msg)
+        handler._route_message = Mock(return_value="ACK|TIMEOUT01|P|2.5")
+
+        handler.handle()
+
+        self.assertEqual(handler._extract_hl7_message.call_count, 1)
+        self.assertEqual(handler.wfile.write.call_count, 1)
+        handler.request.close.assert_called_once()
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_client_disconnect_during_message_body_terminates_cleanly(self, mock_logger: Mock) -> None:
+        handler = self._create_handler_instance(max_size=1000)
+
+        partial_data = self.start_block + b"MSH|^~\\&|APP|FAC"
+        handler.request.recv.side_effect = [partial_data, b'']
+
+        handler.handle()
+
+        handler.request.close.assert_called_once()
+        mock_logger.warning.assert_called()
+        self.assertTrue(
+            any(
+                "Client disconnected before sending complete" in call[0][0]
+                for call in mock_logger.warning.call_args_list
+            )
+        )
 
     def test_extract_control_id(self) -> None:
         handler = self._create_handler_instance(max_size=1000)

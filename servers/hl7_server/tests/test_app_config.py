@@ -2,7 +2,7 @@ import unittest
 from typing import Dict, Optional
 from unittest.mock import Mock, patch
 
-from hl7_server.app_config import DEFAULT_MAX_MESSAGE_SIZE_BYTES, AppConfig
+from hl7_server.app_config import DEFAULT_MAX_MESSAGE_SIZE_BYTES, DEFAULT_MLLP_TIMEOUT_SECONDS, AppConfig
 
 
 class TestAppConfig(unittest.TestCase):
@@ -47,8 +47,9 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.hl7_validation_flow, "test_flow")
         self.assertEqual(config.hl7_validation_standard, "2.5")
 
-        # Verify default message size is applied when not configured
+        # Verify default message size and MLLP timeout are applied when not configured
         self.assertEqual(config.max_message_size_bytes, DEFAULT_MAX_MESSAGE_SIZE_BYTES)
+        self.assertEqual(config.mllp_timeout_seconds, DEFAULT_MLLP_TIMEOUT_SECONDS)
 
     @patch("hl7_server.app_config.os.getenv")
     def test_read_env_config_with_custom_message_size(self, mock_getenv: Mock) -> None:
@@ -213,6 +214,45 @@ class TestAppConfig(unittest.TestCase):
 
         # Verify message size uses default when not configured
         self.assertEqual(config.max_message_size_bytes, DEFAULT_MAX_MESSAGE_SIZE_BYTES)
+        self.assertEqual(config.mllp_timeout_seconds, DEFAULT_MLLP_TIMEOUT_SECONDS)
+
+    @patch("hl7_server.app_config.os.getenv")
+    def test_read_env_config_with_custom_mllp_timeout(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values: Dict[str, str] = {
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test-health-board",
+                "PEER_SERVICE": "test-service",
+                "MLLP_TIMEOUT_SECONDS": "45",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.mllp_timeout_seconds, 45)
+
+    @patch("hl7_server.app_config.os.getenv")
+    def test_read_env_config_with_invalid_mllp_timeout_uses_default(self, mock_getenv: Mock) -> None:
+        def getenv_side_effect(name: str) -> Optional[str]:
+            values: Dict[str, str] = {
+                "EGRESS_QUEUE_NAME": "egress_queue",
+                "EGRESS_SESSION_ID": "test-session",
+                "WORKFLOW_ID": "test-workflow",
+                "MICROSERVICE_ID": "test-microservice",
+                "HEALTH_BOARD": "test-health-board",
+                "PEER_SERVICE": "test-service",
+                "MLLP_TIMEOUT_SECONDS": "0",
+            }
+            return values.get(name)
+
+        mock_getenv.side_effect = getenv_side_effect
+
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.mllp_timeout_seconds, DEFAULT_MLLP_TIMEOUT_SECONDS)
 
 
 if __name__ == "__main__":

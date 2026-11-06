@@ -3,7 +3,7 @@ from hl7apy.core import Message
 
 from hl7_server.exceptions.validation_exception import ValidationException
 
-ALLOWED_WDS_MESSAGE_TYPES: set[str] = {"A28", "A31"}
+ALLOWED_WDS_MESSAGE_TYPES: set[str] = {"A28", "A31", "A40"}
 
 
 def _validate_wds_specific_fields(message: Message) -> None:

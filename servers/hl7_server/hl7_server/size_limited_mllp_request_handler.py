@@ -18,52 +18,96 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         max_message_size: int = getattr(self.server, 'max_message_size_bytes')
         event_logger: Optional[EventLogger] = getattr(self.server, 'event_logger', None)
         ack_builder: Optional[HL7AckBuilder] = getattr(self.server, 'ack_builder', None)
+        server_timeout: int = getattr(self.server, 'timeout', 30)
 
         end_seq = self.eb + self.cr
-        accumulated_data = b""
-
         buffer_size = max(1024, min(8192, max_message_size // 4))  # 1KB-8KB range, or 1/4 of max size
 
         try:
-            initial_data = self.request.recv(1)
-            if not initial_data:
-                return
-            accumulated_data += initial_data
-        except socket.timeout:
-            self.request.close()
-            return
+            self.request.settimeout(server_timeout)
+        except Exception as e:
+            logger.debug(f"Could not set socket timeout: {e}")
 
-        if not self._validate_start_block(initial_data):
-            self.request.close()
-            return
+        buffer = b""
 
-        while not self._has_end_sequence(accumulated_data, end_seq):
+        try:
+            while True:
+                # Strip leading carriage returns or line feeds between MLLP frames
+                buffer = buffer.lstrip(b"\r\n")
+
+                # If buffer is empty, read until we have at least one byte
+                while not buffer:
+                    try:
+                        chunk = self.request.recv(buffer_size)
+                    except (socket.timeout, TimeoutError):
+                        logger.debug("Socket idle timeout waiting for next MLLP message; closing connection.")
+                        return
+                    except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                        logger.debug(f"Connection closed by client while waiting for message: {e}")
+                        return
+
+                    if not chunk:
+                        logger.debug("Client closed connection cleanly (EOF).")
+                        return
+
+                    buffer = chunk.lstrip(b"\r\n")
+
+                # Validate start block
+                if not self._validate_start_block(buffer):
+                    logger.warning("Invalid MLLP start block received; closing connection.")
+                    return
+
+                # Read until we have the complete end sequence
+                while end_seq not in buffer:
+                    if len(buffer) >= max_message_size:
+                        self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        return
+
+                    remaining_space = max_message_size - len(buffer)
+                    chunk_size = min(buffer_size, remaining_space)
+                    try:
+                        chunk = self.request.recv(chunk_size)
+                    except (socket.timeout, TimeoutError):
+                        logger.warning("Socket timeout while receiving message body; closing connection.")
+                        if event_logger and len(buffer) > 0:
+                            try:
+                                partial = buffer[:MAX_PARTIAL_MESSAGE_LOG_SIZE].decode('utf-8', errors='ignore')
+                                event_logger.log_message_failed(
+                                    partial, "Socket timeout while receiving message body", "MLLP Timeout"
+                                )
+                            except Exception:
+                                pass
+                        return
+                    except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                        logger.debug(f"Connection error while receiving message body: {e}")
+                        return
+
+                    if not chunk:
+                        logger.warning("Client disconnected before sending complete MLLP frame.")
+                        return
+
+                    buffer += chunk
+
+                    if len(buffer) > max_message_size and end_seq not in buffer[:max_message_size + len(end_seq)]:
+                        self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        return
+
+                # Extract the complete message frame up to the end sequence
+                end_pos = buffer.find(end_seq) + len(end_seq)
+                complete_message_data = buffer[:end_pos]
+                buffer = buffer[end_pos:]
+
+                if len(complete_message_data) > max_message_size:
+                    self._handle_size_limit_exceeded(complete_message_data, max_message_size, event_logger, ack_builder)
+                    return
+
+                self._process_complete_message(complete_message_data, max_message_size, ack_builder, event_logger)
+
+        finally:
             try:
-                # Check size limit before reading more data
-                remaining_space = max_message_size - len(accumulated_data)
-                if remaining_space <= 0:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger, ack_builder)
-                    return
-
-                # Read next chunk, limited by remaining space
-                chunk_size = min(buffer_size, remaining_space)
-                chunk = self.request.recv(chunk_size)
-
-                if not chunk:
-                    break
-
-                accumulated_data += chunk
-
-                # Double-check size limit after adding chunk
-                if len(accumulated_data) > max_message_size:
-                    self._handle_size_limit_exceeded(accumulated_data, max_message_size, event_logger, ack_builder)
-                    return
-
-            except socket.timeout:
                 self.request.close()
-                return
-
-        self._process_complete_message(accumulated_data, max_message_size, ack_builder, event_logger)
+            except Exception:
+                pass
 
     def _validate_start_block(self, data: bytes) -> bool:
         return len(data) > 0 and data[:1] == self.sb
@@ -94,6 +138,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
 
                 response = self._route_message(message_content)
                 self.wfile.write(response.encode(self.encoding))
+                self.wfile.flush()
                 # Positive confirmation the response (ACK or NACK) was written to the socket -
                 # without this, "no error logged" could otherwise be misread as proof of delivery.
                 logger.info(f"Response of {len(response)} chars written to client")
@@ -106,8 +151,6 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
             # the sender instead of the connection being silently closed.
             logger.error(f"Error processing message: {e}")
             self._send_fallback_nack(f"Unexpected error while processing message: {e}", ack_builder)
-        finally:
-            self.request.close()
 
     def _handle_malformed_message(
         self, raw_message: str, event_logger: Optional[EventLogger], ack_builder: Optional[HL7AckBuilder]
@@ -155,6 +198,7 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
             nack = builder.build_generic_nack(reason, control_id)
             framed_nack = nack.to_mllp()
             self.wfile.write(framed_nack.encode(self.encoding))
+            self.wfile.flush()
             logger.info(f"Fallback AE NACK ({len(framed_nack)} chars) written to client")
         except Exception as e:
             logger.error(f"Failed to send fallback NACK: {e}")
@@ -187,4 +231,3 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
         # The buffer is deliberately never parsed here (that's the point of the size guard), so
         # there's no original message to echo - always build a generic AE NACK with a fresh control ID.
         self._send_fallback_nack(error_msg, ack_builder)
-        self.request.close()

@@ -31,6 +31,19 @@ VALID_WDS_A28_MESSAGE = (
     "PV1||N"
 )
 
+VALID_WDS_A40_MESSAGE = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A40^ADT_A39|6778031837018553262|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A40|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI|||Testpatient^Test^^^||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN\r"
+    "MRG|B0000010613^^^328^PI\r"
+)
+
+DISALLOWED_WDS_A05_MESSAGE = (
+    "MSH|^~\\&|328||100||20260729095037||ADT^A05^ADT_A05|6778031837018553263|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A05|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI|||Testpatient^Test^^^||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN\r"
+)
+
 VALID_PARIS_A28_MESSAGE = (
     "MSH|^~\\&|169|169|100|100|20250505232328||ADT^A28^ADT_A05|202505052323326666666666|P|2.5|||||GBR||EN\r"
     "EVN||20250502102000|20250505232328|||20250505232328\r"
@@ -86,6 +99,21 @@ class TestHL7Validator(unittest.TestCase):
         validator = HL7Validator(hl7_version="2.5", sending_app="328", flow_name="wds")
 
         validator.validate(msg)
+
+    def test_wds_flow_accepts_a40_message(self) -> None:
+        msg = parse_message(VALID_WDS_A40_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="328", flow_name="wds")
+
+        validator.validate(msg)
+
+    def test_wds_flow_rejects_unsupported_a05_message(self) -> None:
+        msg = parse_message(DISALLOWED_WDS_A05_MESSAGE)
+
+        validator = HL7Validator(hl7_version="2.5", sending_app="328", flow_name="wds")
+
+        with self.assertRaises(ValidationException):
+            validator.validate(msg)
 
     def test_paris_flow_accepts_a28_message(self) -> None:
         msg = parse_message(VALID_PARIS_A28_MESSAGE)
