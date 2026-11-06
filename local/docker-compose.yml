@@ -216,6 +216,72 @@ services:
         aliases:
           - "wpas-rest-server"
 
+  # Consumes the WPAS topic subscription, builds the FHIR message Bundle and queues it for fhir-sender.
+  proms-fhir-transformer:
+    container_name: proms-fhir-transformer
+    build:
+      context: ../transformers/xml_fhir_proms_transformer
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/transformers/proms-fhir-transformer.env
+    <<: *default-healthcheck
+    depends_on:
+      - sb-emulator
+    profiles:
+      - wpas-to-proms
+      - everything
+    restart: on-failure
+    networks:
+      integration-hub:
+        aliases:
+          - "proms-fhir-transformer"
+
+  # Consumes local-inthub-fhir-sender and delivers Bundles to promptly-mock-receiver.
+  fhir-sender:
+    container_name: fhir-sender
+    build:
+      context: ../senders/fhir_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/fhir-sender.env
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+      - promptly-mock-receiver
+    profiles:
+      - wpas-to-proms
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "fhir-sender"
+
+  # Mock of the Promptly $process-message async API (http_mock_receiver). Bundle.id selects a scenario
+  # (mock-400, mock-429-once, ...) - see mock_receivers/http_mock_receiver/README.md.
+  promptly-mock-receiver:
+    container_name: promptly-mock-receiver
+    build:
+      context: ../mock_receivers/http_mock_receiver
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    ports:
+      - "127.0.0.1:8085:8080"
+    restart: on-failure
+    profiles:
+      - wpas-to-proms
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "promptly-mock-receiver"
+
   phw-hl7-transformer:
     container_name: phw-hl7-transformer
     build:
@@ -280,7 +346,6 @@ services:
       - pms-soap-to-mpi
       - chemo-to-mpi
       - wds-to-mpi
-      - wpas-to-proms
       - rest-to-mpi
       - everything
     networks:
@@ -518,7 +583,6 @@ services:
       - mosaiq-to-mpi
       - wds-to-mpi
       - risp-to-mpi
-      - wpas-to-proms
       - lims-to-mpi
       - lims-to-trrr
       - topic-mock-receiver
