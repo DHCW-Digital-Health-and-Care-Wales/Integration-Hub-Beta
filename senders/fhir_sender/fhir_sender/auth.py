@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Callable, Protocol
+from urllib.parse import urlparse
 
 import requests
 
@@ -56,6 +57,8 @@ class OAuth2ClientCredentialsAuth:
         session: requests.Session | None = None,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
+        if urlparse(token_url).scheme.lower() != "https":
+            raise ValueError("OAuth2 token endpoint must use HTTPS")
         self._token_url = token_url
         self._client_id = client_id
         self._client_secret = client_secret

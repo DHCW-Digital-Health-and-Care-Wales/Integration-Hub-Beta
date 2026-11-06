@@ -89,15 +89,17 @@ class FhirSenderClient:
         if not location:
             raise TransientDeliveryError("202 Accepted without a Content-Location status URL")
         status_url = urljoin(self.endpoint_url, location)
-        # Credentials are sent to the status URL, so never follow it to a different host.
-        if urlparse(status_url).netloc.lower() != urlparse(self.endpoint_url).netloc.lower():
-            raise PermanentDeliveryError(202, "Status URL host differs from the configured endpoint")
+        # Credentials are sent to the status URL, so require the configured endpoint's origin.
+        endpoint = urlparse(self.endpoint_url)
+        status = urlparse(status_url)
+        if (status.scheme.lower(), status.netloc.lower()) != (endpoint.scheme.lower(), endpoint.netloc.lower()):
+            raise PermanentDeliveryError(202, "Status URL origin differs from the configured endpoint")
         return status_url
 
     def _poll(self, status_url: str) -> None:
         deadline = self._monotonic() + self._poll_timeout_seconds
         while True:
-            response = self._request("GET", status_url)
+            response = self._request("GET", status_url, deadline=deadline)
             if response.status_code == 200:
                 self._check_outcome(response)
                 return
@@ -114,11 +116,22 @@ class FhirSenderClient:
             logger.debug("Message still processing; polling again in %.1fs", delay)
             self._sleep(delay)
 
-    def _request(self, method: str, url: str, data: Optional[bytes] = None) -> requests.Response:
+    def _request(
+        self, method: str, url: str, data: Optional[bytes] = None, deadline: Optional[float] = None
+    ) -> requests.Response:
+        """Send with retries; a deadline (monotonic seconds) bounds timeouts and waits so polling cannot overrun."""
         last_error = "no attempts made"
         token_refreshed = False
         attempt = 1
         while attempt <= self._max_attempts:
+            timeout: float = self._timeout_seconds
+            if deadline is not None:
+                remaining = deadline - self._monotonic()
+                if remaining <= 0:
+                    raise TransientDeliveryError(
+                        f"Polling deadline reached before {method} could complete: {last_error}"
+                    )
+                timeout = min(timeout, remaining)
             headers = {"Accept": FHIR_JSON, **self._auth.headers()}
             if data is not None:
                 headers["Content-Type"] = FHIR_JSON
@@ -126,12 +139,12 @@ class FhirSenderClient:
             try:
                 response = self._session.request(
                     method, url, data=data, headers=headers,
-                    timeout=self._timeout_seconds, allow_redirects=False,
+                    timeout=timeout, allow_redirects=False,
                 )
             except requests.exceptions.RequestException as exc:
                 last_error = f"{type(exc).__name__}: {exc}"
                 logger.warning("%s %s failed (attempt %d/%d): %s", method, url, attempt, self._max_attempts, last_error)
-                self._backoff(attempt)
+                self._backoff(attempt, deadline)
                 attempt += 1
                 continue
 
@@ -145,13 +158,13 @@ class FhirSenderClient:
                 delay = self._retry_after_seconds(response) or self._backoff_delay(attempt)
                 logger.warning("Rate limited (attempt %d/%d); waiting %.1fs", attempt, self._max_attempts, delay)
                 if attempt < self._max_attempts:
-                    self._sleep(min(delay, self._max_retry_after_seconds))
+                    self._wait(min(delay, self._max_retry_after_seconds), deadline)
                 attempt += 1
                 continue
             if status >= 500:
                 last_error = f"HTTP {status}: {_summarise_outcome(response)}"
                 logger.warning("%s %s returned %d (attempt %d/%d)", method, url, status, attempt, self._max_attempts)
-                self._backoff(attempt)
+                self._backoff(attempt, deadline)
                 attempt += 1
                 continue
             return response
@@ -161,9 +174,14 @@ class FhirSenderClient:
     def _backoff_delay(self, attempt: int) -> float:
         return self._backoff_seconds * (2 ** (attempt - 1))
 
-    def _backoff(self, attempt: int) -> None:
+    def _backoff(self, attempt: int, deadline: Optional[float] = None) -> None:
         if attempt < self._max_attempts:
-            self._sleep(self._backoff_delay(attempt))
+            self._wait(self._backoff_delay(attempt), deadline)
+
+    def _wait(self, delay: float, deadline: Optional[float]) -> None:
+        if deadline is not None and self._monotonic() + delay >= deadline:
+            raise TransientDeliveryError("Polling deadline would be exceeded while waiting to retry")
+        self._sleep(delay)
 
     @staticmethod
     def _retry_after_seconds(response: requests.Response) -> float | None:
@@ -189,11 +207,10 @@ class FhirSenderClient:
         """A 200 only means the status call succeeded; the OperationOutcome says whether processing did."""
         try:
             body = response.json()
-        except ValueError:
-            logger.warning("200 response was not JSON; treating as success")
-            return
+        except ValueError as exc:
+            raise TransientDeliveryError("200 response did not contain a valid OperationOutcome") from exc
         if not isinstance(body, dict) or body.get("resourceType") != "OperationOutcome":
-            return
+            raise TransientDeliveryError("200 response did not contain an OperationOutcome")
         issues = body.get("issue") or []
         if any(isinstance(i, dict) and i.get("severity") in ERROR_SEVERITIES for i in issues):
             raise PermanentDeliveryError(response.status_code, _summarise_outcome(response))

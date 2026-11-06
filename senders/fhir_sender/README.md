@@ -53,8 +53,8 @@ mechanism, so a retry after an unconfirmed POST or a polling timeout can resubmi
 | `FHIR_POLL_TIMEOUT_SECONDS` | `120` | No | Maximum time to wait for processing to finish |
 | `FHIR_ALLOW_INSECURE_HTTP` | `false` | No | Local development only |
 | `INGRESS_QUEUE_NAME` | — | **Yes** | Service Bus queue to consume from |
-| `INGRESS_SESSION_ID` | — | No | Session ID if the queue is session-enabled |
-| `MAX_BATCH_SIZE` | `10` | No | Messages per receive; keep small because each may poll for up to the timeout |
+| `INGRESS_SESSION_ID` | — | Yes | Session ID; the queue must be session-enabled. The shared receiver only auto-renews locks for sessions, and a status poll can outlast the queue's lock duration |
+| `MAX_BATCH_SIZE` | `1` | No | Messages per receive; keep small because each may poll for up to the timeout and the renewed lock is capped at 5 minutes |
 | `SERVICE_BUS_CONNECTION_STRING` / `SERVICE_BUS_NAMESPACE` | — | One of | Local / Managed Identity |
 | `WORKFLOW_ID`, `MICROSERVICE_ID`, `HEALTH_BOARD`, `PEER_SERVICE` | — | **Yes** | Observability identifiers |
 | `HEALTH_CHECK_HOST`, `HEALTH_CHECK_PORT` | — | No | TCP health probe |

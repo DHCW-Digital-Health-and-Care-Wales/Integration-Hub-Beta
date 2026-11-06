@@ -86,6 +86,14 @@ class FhirSenderClientTests(unittest.TestCase):
             self._client().send_bundle(BUNDLE)
         self.assertEqual(self.session.request.call_count, 1)
 
+    def test_status_url_with_downgraded_scheme_is_rejected(self) -> None:
+        self.session.request.side_effect = [
+            _response(202, {"Content-Location": "http://wpas-fhir.example.test/status/1"})
+        ]
+        with self.assertRaises(PermanentDeliveryError):
+            self._client().send_bundle(BUNDLE)
+        self.assertEqual(self.session.request.call_count, 1)
+
     def test_missing_content_location_is_transient(self) -> None:
         self.session.request.side_effect = [_response(202)]
         with self.assertRaises(TransientDeliveryError):
@@ -99,6 +107,35 @@ class FhirSenderClientTests(unittest.TestCase):
         with self.assertRaises(PermanentDeliveryError) as ctx:
             self._client().send_bundle(BUNDLE)
         self.assertIn("Invalid message format", ctx.exception.detail)
+
+    def test_200_without_operation_outcome_is_transient(self) -> None:
+        for body in (None, {"resourceType": "Bundle"}, ["not", "a", "dict"]):
+            with self.subTest(body=body):
+                self.session.request.side_effect = [_response(200, body=body)]
+                with self.assertRaises(TransientDeliveryError):
+                    self._client().send_bundle(BUNDLE)
+
+    def test_polled_200_without_operation_outcome_is_transient(self) -> None:
+        self.session.request.side_effect = [_response(202, {"Content-Location": STATUS}), _response(200)]
+        with self.assertRaises(TransientDeliveryError):
+            self._client().send_bundle(BUNDLE)
+
+    def test_poll_retry_wait_cannot_outlast_polling_deadline(self) -> None:
+        self.session.request.side_effect = [
+            _response(202, {"Content-Location": STATUS}),
+            _response(429, {"Retry-After": "60"}),
+        ]
+        with self.assertRaises(TransientDeliveryError):
+            self._client(poll_timeout_seconds=10).send_bundle(BUNDLE)
+        self.assertEqual(self.sleeps, [])
+
+    def test_poll_request_timeout_is_capped_by_remaining_budget(self) -> None:
+        self.session.request.side_effect = [
+            _response(202, {"Content-Location": STATUS}),
+            _response(200, body=_outcome("information")),
+        ]
+        self._client(poll_timeout_seconds=10, timeout_seconds=30).send_bundle(BUNDLE)
+        self.assertEqual(self.session.request.call_args_list[1].kwargs["timeout"], 10)
 
     def test_polling_gives_up_after_timeout(self) -> None:
         self.session.request.side_effect = [_response(202, {"Content-Location": STATUS})] + [

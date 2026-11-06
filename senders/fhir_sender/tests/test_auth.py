@@ -35,6 +35,10 @@ class OAuth2AuthTests(unittest.TestCase):
             session=self.session, monotonic=lambda: self.now,
         )
 
+    def test_plain_http_token_endpoint_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            OAuth2ClientCredentialsAuth("http://auth.example.test/token", "id", "secret", "scope")
+
     def test_requests_token_with_client_credentials_form(self) -> None:
         self.session.post.return_value = _token_response()
 
