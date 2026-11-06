@@ -192,11 +192,21 @@ inspect intermediate values at any point in the pipeline.
 | **Notes** | Makes a real HTTP POST to the mock receiver (default `http://localhost:8080/soap`, override with `SOAP_MOCK_URL`) if it is running (see the Mock Receiver bar below); otherwise falls back to an offline envelope preview. The two tabs are functionally identical — they exist separately to confirm both senders produce the same envelope. |
 | **Samples** | ADT A01, ADT A28, a message crafted to trigger the mock receiver's fault path |
 
+### FHIR Sender
+
+| | |
+|---|---|
+| **Input** | FHIR message Bundle JSON |
+| **Output** | Each HTTP request/response (POST, status polls) and the resulting Service Bus outcome (complete / dead-letter / abandon) |
+| **Underlying code** | `services/fhir_sender_plugin.py` → the real `FhirSenderClient` from `senders/fhir_sender` |
+| **Notes** | Needs the **SOAP Mock Receiver (port 8080)** running — it also serves the Promptly `$process-message` mock (override the URL with `FHIR_MOCK_URL`). `Bundle.id` selects the mock scenario (`mock-400`, `mock-429-once`, …; see `mock_receivers/http_mock_receiver/README.md`). Uses short retry/poll timings so scenarios finish in seconds. |
+| **Samples** | Success, slow, error OperationOutcome, 400, status-poll 400, 401, 403, 409, 429 once, 500 once, 500 always |
+
 ### Mock Receiver bar (not a tab)
 
 A persistent toolbar in the header (`services/mock_receiver_manager.py`) starts/stops
-`hl7_mock_receiver` (MLLP) or `http_mock_receiver` (SOAP) in a separate visible console window, so
-the **SOAP Sender** tabs can be tested end-to-end against a live receiver. Stopped automatically
+`hl7_mock_receiver` (MLLP) or `http_mock_receiver` (SOAP + Promptly FHIR mock) in a separate visible console window, so
+the **SOAP Sender** and **FHIR Sender** tabs can be tested end-to-end against a live receiver. Stopped automatically
 when the tester window is closed.
 
 ---
@@ -300,7 +310,10 @@ and the tab order within each group:
 PLUGIN_CATEGORIES: list[tuple[str, list[ServicePlugin]]] = [
     ("🔧 Transformers", [phw_plugin, chemo_plugin, pims_plugin, core_reference_plugin, proms_plugin]),
     ("🖥 Servers", [hl7_server_plugin, rest_server_plugin, hl7_soap_server_plugin]),
-    ("📤 Senders", [hl7_sender_plugin, hl7_sender_ack_plugin, soap_sender_plugin, soap_subscription_sender_plugin]),
+    ("📤 Senders", [
+        hl7_sender_plugin, hl7_sender_ack_plugin, soap_sender_plugin, soap_subscription_sender_plugin,
+        fhir_sender_plugin,
+    ]),
 ]
 ```
 
