@@ -20,7 +20,7 @@ class SizeLimitedMLLPServer(MLLPServer):
         max_message_size_bytes: int,
         event_logger: Optional[EventLogger] = None,
         ack_builder: Optional[HL7AckBuilder] = None,
-        timeout: int = 10
+        timeout: int = 30
     ) -> None:
         self.max_message_size_bytes = max_message_size_bytes
         self.event_logger = event_logger

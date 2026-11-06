@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 
 DEFAULT_MAX_MESSAGE_SIZE_BYTES = 1048576  # 1MB - default message size limit for HL7 messages
+DEFAULT_MLLP_TIMEOUT_SECONDS = 30  # Default socket timeout in seconds for persistent MLLP connections
 
 
 @dataclass
@@ -25,6 +26,7 @@ class AppConfig:
     hl7_validation_flow: str | None = None
     hl7_validation_standard: str | None = None
     max_message_size_bytes: int = DEFAULT_MAX_MESSAGE_SIZE_BYTES
+    mllp_timeout_seconds: int = DEFAULT_MLLP_TIMEOUT_SECONDS
 
     @staticmethod
     def read_env_config() -> AppConfig:
@@ -55,6 +57,7 @@ class AppConfig:
             hl7_validation_flow=_read_env("HL7_VALIDATION_FLOW"),
             hl7_validation_standard=_read_env("HL7_VALIDATION_STANDARD"),
             max_message_size_bytes=_read_and_validate_message_size(),
+            mllp_timeout_seconds=_read_mllp_timeout(),
         )
 
 
@@ -74,6 +77,13 @@ def _read_and_validate_message_size() -> int:
         )
 
     return configured_size
+
+
+def _read_mllp_timeout() -> int:
+    timeout = _read_int_env("MLLP_TIMEOUT_SECONDS")
+    if timeout is None or timeout <= 0:
+        return DEFAULT_MLLP_TIMEOUT_SECONDS
+    return timeout
 
 
 def _read_message_store_queue_name() -> str | None:
