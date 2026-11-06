@@ -122,7 +122,13 @@ class Hl7ServerApplication:
 
         try:
             self._server = SizeLimitedMLLPServer(
-                self.HOST, self.PORT, handlers, app_config.max_message_size_bytes, self.event_logger, self.ack_builder
+                self.HOST,
+                self.PORT,
+                handlers,
+                app_config.max_message_size_bytes,
+                self.event_logger,
+                self.ack_builder,
+                timeout=app_config.mllp_timeout_seconds,
             )
             self._server_thread = threading.Thread(target=self._server.serve_forever)
             self._server_thread.start()
