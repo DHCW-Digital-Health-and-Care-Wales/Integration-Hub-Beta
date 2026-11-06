@@ -45,22 +45,6 @@ class TestErrorHandler(unittest.TestCase):
         self.assertIn("Unsupported Message Type: Unsupported message type ADT^A05^ADT_A05", reply)
 
     @patch("hl7_server.error_handler.logger")
-    def test_reply_with_unsupported_a05_message_type_returns_ae_nack(self, mock_logger: MagicMock) -> None:
-        a05_msg = (
-            "MSH|^~\\&|129|129|100|100|20260817211434||ADT^A05^ADT_A05|202608172114346670327|P|2.5|||||GBR||EN\r"
-            "EVN||20260815062700||||20260817211434\r"
-            "PID|||1000000001^^^NHS^NH~100000^^^129^PI||SURNAME^FIRST^MIDDLE^^Miss||01011990|F\r"
-        )
-        exception = UnsupportedMessageType("ADT^A05^ADT_A05")
-        mock_event_logger = MagicMock()
-
-        handler = ErrorHandler(exception, a05_msg, mock_event_logger)
-        reply = handler.reply()
-
-        self.assertIn("MSA|AE|202608172114346670327", reply)
-        self.assertIn("Unsupported Message Type: Unsupported message type ADT^A05^ADT_A05", reply)
-
-    @patch("hl7_server.error_handler.logger")
     def test_reply_with_invalid_hl7_message_exception_returns_ae_nack(self, mock_logger: MagicMock) -> None:
         exception = InvalidHL7Message("invalid message")
         invalid_message = "<hello>"
@@ -114,7 +98,8 @@ class TestErrorHandler(unittest.TestCase):
         )
         self.assertIn("MSA|AE|0123456789", reply)
 
-    def test_reply_returns_mllp_framed_string(self) -> None:
+    @patch("hl7_server.error_handler.logger")
+    def test_reply_returns_mllp_framed_string(self, mock_logger: MagicMock) -> None:
         exception = ValidationException("bad message")
         mock_event_logger = MagicMock()
 
