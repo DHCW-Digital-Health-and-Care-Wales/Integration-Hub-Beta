@@ -74,7 +74,7 @@ _SOURCE_SYSTEMS: dict[str, SourceSystem] = {
     "149": _board("149", "Hywel Dda University Health Board", "hduhb", "7A2"),
     "170": _board("170", "Powys Teaching Health Board", "pthb", "7A7"),
     "126": _board("126", "Cwm Taf Morgannwg University Health Board", "ctmuhb", "7A5"),
-    "310": _board("310", "Velindre University NHS Trust", "vunhst", "RQF"),
+    "310": _board("310", "Velindre University NHS Trust", "vuht", "RQF"),
 }
 
 

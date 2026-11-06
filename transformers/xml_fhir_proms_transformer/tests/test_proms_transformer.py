@@ -424,6 +424,27 @@ class TestPatient(unittest.TestCase):
         nhs = next(i for i in self.patient.identifier if i.system == fc.NHS_NUMBER_SYSTEM)
         self.assertEqual(nhs.value, "9434765919")
 
+    def test_referral_nhs_number_has_no_verification_extension_even_when_certified(self) -> None:
+        message = REFERRAL_MESSAGE.replace(
+            "<nhsNumber>9434765919</nhsNumber>",
+            "<nhsNumber>9434765919</nhsNumber><nhsCertification>01</nhsCertification>",
+        )
+        patient = resource_at(build(message), 1)
+        nhs = next(i for i in patient.identifier if i.system == fc.NHS_NUMBER_SYSTEM)
+        self.assertIsNone(nhs.extension)
+
+    def test_non_referral_profile_keeps_verification_extension(self) -> None:
+        message = parse_proms_xml(
+            REFERRAL_MESSAGE.replace(
+                "<nhsNumber>9434765919</nhsNumber>",
+                "<nhsNumber>9434765919</nhsNumber><nhsCertification>01</nhsCertification>",
+            )
+        )
+        patient = map_patient(message, "p-id")
+        assert patient is not None and patient.identifier is not None
+        nhs = next(i for i in patient.identifier if i.system == fc.NHS_NUMBER_SYSTEM)
+        self.assertEqual(nhs.extension[0].url, fc.NHS_NUMBER_VERIFICATION_EXTENSION)
+
     def test_address_uses_building_name_street_and_post_town(self) -> None:
         addr = self.patient.address[0]
         line_str = " ".join(addr.line)

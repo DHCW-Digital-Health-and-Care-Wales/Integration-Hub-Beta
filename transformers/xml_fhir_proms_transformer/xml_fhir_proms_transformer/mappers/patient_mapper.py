@@ -31,6 +31,7 @@ from ..fhir_constants import (
     PATIENT_PROFILE,
     SPOKEN_LANGUAGE_SYSTEM,
     SPOKEN_LANGUAGE_UNKNOWN_CODE,
+    WPAS_IG_PATIENT_PROFILE,
 )
 from ..proms_parser import PromsMessage
 from ..reference_data import (
@@ -42,7 +43,7 @@ from ..source_systems import get_pas_identifier_system
 from .mapping_utils import profile_meta, to_fhir_date, to_fhir_datetime
 
 
-def _nhs_number_identifier(message: PromsMessage) -> Optional[Identifier]:
+def _nhs_number_identifier(message: PromsMessage, include_verification: bool = True) -> Optional[Identifier]:
     nhs_number = message.get("nhsNumber", "NHS_NUMBER")
     if not nhs_number:
         return None
@@ -50,7 +51,7 @@ def _nhs_number_identifier(message: PromsMessage) -> Optional[Identifier]:
     identifier = Identifier(system=NHS_NUMBER_SYSTEM, value=nhs_number)
 
     certification = message.get("NHS_CERTIFICATION", "nhsCertification")
-    if certification:
+    if include_verification and certification:
         identifier.extension = [
             Extension(
                 url=NHS_NUMBER_VERIFICATION_EXTENSION,
@@ -227,8 +228,12 @@ def map_patient(
     """Build the Patient resource from the actual WPAS PromsEventRequest fields."""
     patient = Patient(id=patient_uuid, meta=profile_meta(profile), active=True)
 
+    # The WPAS IG Patient profile (story 621936) omits nhsNumberVerificationStatus; other bundles keep it.
+    include_verification = profile != WPAS_IG_PATIENT_PROFILE
     identifiers = [
-        i for i in (_nhs_number_identifier(message), _pas_identifier(message)) if i is not None
+        i
+        for i in (_nhs_number_identifier(message, include_verification), _pas_identifier(message))
+        if i is not None
     ]
     if identifiers:
         patient.identifier = identifiers
