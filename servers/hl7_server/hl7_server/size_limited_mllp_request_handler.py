@@ -60,7 +60,10 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 # Read until we have the complete end sequence
                 while end_seq not in buffer:
                     if len(buffer) >= max_message_size:
-                        self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        try:
+                            self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                            logger.debug(f"Connection error while sending size limit NACK: {e}")
                         return
 
                     remaining_space = max_message_size - len(buffer)
@@ -89,7 +92,10 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                     buffer += chunk
 
                     if len(buffer) > max_message_size and end_seq not in buffer[:max_message_size + len(end_seq)]:
-                        self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        try:
+                            self._handle_size_limit_exceeded(buffer, max_message_size, event_logger, ack_builder)
+                        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                            logger.debug(f"Connection error while sending size limit NACK: {e}")
                         return
 
                 # Extract the complete message frame up to the end sequence
@@ -98,10 +104,19 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 buffer = buffer[end_pos:]
 
                 if len(complete_message_data) > max_message_size:
-                    self._handle_size_limit_exceeded(complete_message_data, max_message_size, event_logger, ack_builder)
+                    try:
+                        self._handle_size_limit_exceeded(
+                            complete_message_data, max_message_size, event_logger, ack_builder
+                        )
+                    except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                        logger.debug(f"Connection error while sending size limit NACK: {e}")
                     return
 
-                self._process_complete_message(complete_message_data, max_message_size, ack_builder, event_logger)
+                try:
+                    self._process_complete_message(complete_message_data, max_message_size, ack_builder, event_logger)
+                except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+                    logger.debug(f"Connection error while sending response: {e}")
+                    return
 
         finally:
             try:
@@ -143,6 +158,9 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
                 # without this, "no error logged" could otherwise be misread as proof of delivery.
                 logger.info(f"Response of {len(response)} chars written to client")
 
+        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+            logger.debug(f"Connection error while sending response: {e}")
+            raise
         except Exception as e:
             # This is a last resort: the registered ERR handler (see error_handler.ErrorHandler)
             # already turns validation/parsing/unexpected failures into a NACK before they reach
@@ -200,6 +218,9 @@ class SizeLimitedMLLPRequestHandler(MLLPRequestHandler):
             self.wfile.write(framed_nack.encode(self.encoding))
             self.wfile.flush()
             logger.info(f"Fallback AE NACK ({len(framed_nack)} chars) written to client")
+        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+            logger.debug(f"Connection error while sending fallback NACK: {e}")
+            raise
         except Exception as e:
             logger.error(f"Failed to send fallback NACK: {e}")
 

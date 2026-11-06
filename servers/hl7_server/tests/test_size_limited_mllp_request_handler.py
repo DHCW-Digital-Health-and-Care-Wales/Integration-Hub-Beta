@@ -374,6 +374,70 @@ class TestSizeLimitedMLLPRequestHandler(unittest.TestCase):
         self.assertIsNone(handler._extract_control_id("PID|1|2"))  # not an MSH segment
         self.assertIsNone(handler._extract_control_id(""))
 
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_transport_write_failure_on_ack_stops_connection_and_drops_buffered_frames(
+        self, mock_logger: Mock
+    ) -> None:
+        handler = self._create_handler_instance(max_size=2000)
+
+        msg1 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|FAIL001|P|2.5"
+        msg2 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A31|FAIL002|P|2.5"
+
+        coalesced_data = (
+            self.start_block + msg1.encode('utf-8') + self.end_block + self.carriage_return +
+            self.start_block + msg2.encode('utf-8') + self.end_block + self.carriage_return
+        )
+
+        handler.request.recv.side_effect = [coalesced_data, b'']
+
+        handler._extract_hl7_message = Mock(side_effect=lambda raw: raw.strip('\x0b\x1c\r'))
+        handler._route_message = Mock(return_value="ACK|FAIL001|P|2.5")
+        handler.wfile.write.side_effect = BrokenPipeError("Broken pipe")
+
+        handler.handle()
+
+        # Only the first message was extracted and routed; second buffered frame was dropped
+        self.assertEqual(handler._extract_hl7_message.call_count, 1)
+        self.assertEqual(handler._route_message.call_count, 1)
+        self.assertEqual(handler.wfile.write.call_count, 1)
+        handler.request.close.assert_called_once()
+        self.assertTrue(
+            any("Broken pipe" in str(call) for call in mock_logger.debug.call_args_list)
+        )
+
+    @patch('hl7_server.size_limited_mllp_request_handler.logger')
+    def test_transport_write_failure_on_fallback_nack_stops_connection_and_drops_buffered_frames(
+        self, mock_logger: Mock
+    ) -> None:
+        handler = self._create_handler_instance(max_size=2000)
+
+        msg1 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A28|FAIL001|P|2.5"
+        msg2 = "MSH|^~\\&|APP|FAC|||20250101||ADT^A31|FAIL002|P|2.5"
+
+        coalesced_data = (
+            self.start_block + msg1.encode('utf-8') + self.end_block + self.carriage_return +
+            self.start_block + msg2.encode('utf-8') + self.end_block + self.carriage_return
+        )
+
+        handler.request.recv.side_effect = [coalesced_data, b'']
+
+        handler._extract_hl7_message = Mock(side_effect=lambda raw: raw.strip('\x0b\x1c\r'))
+        # Primary routing fails with an unexpected exception, triggering fallback NACK
+        handler._route_message = Mock(side_effect=RuntimeError("Routing crashed"))
+        # Writing fallback NACK fails with ConnectionResetError
+        handler.wfile.write.side_effect = ConnectionResetError("Connection reset by peer")
+
+        handler.handle()
+
+        # Only the first message was routed; second buffered frame was dropped because response channel broke
+        self.assertEqual(handler._extract_hl7_message.call_count, 1)
+        self.assertEqual(handler._route_message.call_count, 1)
+        self.assertEqual(handler.wfile.write.call_count, 1)
+        handler.request.close.assert_called_once()
+        self.assertTrue(
+            any("Connection reset by peer" in str(call) for call in mock_logger.debug.call_args_list)
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
