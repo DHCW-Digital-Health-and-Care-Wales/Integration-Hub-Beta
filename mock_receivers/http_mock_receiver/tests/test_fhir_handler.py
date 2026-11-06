@@ -7,7 +7,7 @@ import unittest
 from fastapi.testclient import TestClient
 
 from http_mock_receiver.application import app
-from http_mock_receiver.fhir_handler import FhirMockState
+from http_mock_receiver.fhir_handler import TERMINAL_RETENTION_SECONDS, FhirMockState
 
 _client = TestClient(app, raise_server_exceptions=False)
 _URL = "/fhir/r4/$process-message"
@@ -66,6 +66,20 @@ class FhirMockStateTests(unittest.TestCase):
 
     def test_unknown_status_id_is_404(self) -> None:
         self.assertEqual(self.state.status("nope").status_code, 404)
+
+    def test_terminal_status_is_repeatable_then_expires(self) -> None:
+        now = [0.0]
+        state = FhirMockState(clock=lambda: now[0])
+        job_id = _job_id(state.submit(_bundle(), "http://host/").headers["Content-Location"])
+        result = state.status(job_id)
+        while result.status_code == 202:
+            result = state.status(job_id)
+
+        # A retried GET (e.g. after a dropped connection) must see the same outcome, not a 404
+        self.assertEqual(state.status(job_id).body, result.body)
+
+        now[0] += TERMINAL_RETENTION_SECONDS + 1
+        self.assertEqual(state.status(job_id).status_code, 404)
 
 
 class FhirEndpointTests(unittest.TestCase):
