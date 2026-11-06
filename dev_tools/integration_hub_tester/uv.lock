@@ -419,6 +419,51 @@ wheels = [
 ]
 
 [[package]]
+name = "fhir-sender"
+version = "0.1.0"
+source = { editable = "../../senders/fhir_sender" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "azure-identity" },
+    { name = "azure-servicebus" },
+    { name = "event-logger-lib" },
+    { name = "health-check-lib" },
+    { name = "message-bus-lib" },
+    { name = "metric-sender-lib" },
+    { name = "otel-lib" },
+    { name = "processor-manager-lib" },
+    { name = "requests" },
+    { name = "setuptools" },
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-core", specifier = ">=1.38.0" },
+    { name = "azure-identity", specifier = "==1.23.0" },
+    { name = "azure-servicebus", specifier = "==7.14.3" },
+    { name = "event-logger-lib", directory = "../../shared_libs/event_logger_lib" },
+    { name = "health-check-lib", directory = "../../shared_libs/health_check_lib" },
+    { name = "message-bus-lib", directory = "../../shared_libs/message_bus_lib" },
+    { name = "metric-sender-lib", directory = "../../shared_libs/metric_sender_lib" },
+    { name = "otel-lib", directory = "../../shared_libs/otel_lib" },
+    { name = "processor-manager-lib", directory = "../../shared_libs/processor_manager_lib" },
+    { name = "requests", specifier = ">=2.32.0" },
+    { name = "setuptools", specifier = ">=84.1.0" },
+    { name = "urllib3", specifier = ">=2.8.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.2" },
+    { name = "coverage", specifier = ">=7.6.0" },
+    { name = "mypy", specifier = "==1.18.2" },
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "ruff", specifier = "==0.14.9" },
+    { name = "types-requests" },
+]
+
+[[package]]
 name = "field-utils-lib"
 version = "0.1.0"
 source = { directory = "../../shared_libs/field_utils_lib" }
@@ -931,6 +976,7 @@ name = "integration-hub-tester"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "fhir-sender" },
     { name = "hl7-chemo-transformer" },
     { name = "hl7-core-reference-transformer" },
     { name = "hl7-phw-transformer" },
@@ -950,6 +996,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fhir-sender", editable = "../../senders/fhir_sender" },
     { name = "hl7-chemo-transformer", editable = "../../transformers/hl7_chemo_transformer" },
     { name = "hl7-core-reference-transformer", editable = "../../transformers/hl7_core_reference_transformer" },
     { name = "hl7-phw-transformer", editable = "../../transformers/hl7_phw_transformer" },
