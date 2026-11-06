@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 # Import order = tab order.  Add new services here only.
 from services.chemo_plugin import ChemoPlugin
 from services.core_reference_plugin import CoreReferencePlugin
+from services.fhir_sender_plugin import FhirSenderPlugin
 from services.hl7_sender_ack_plugin import Hl7SenderAckPlugin
 from services.hl7_sender_plugin import Hl7SenderPlugin
 from services.hl7_server_plugin import Hl7ServerPlugin
@@ -53,6 +54,7 @@ rest_server_plugin = RestServerPlugin()
 hl7_soap_server_plugin = HL7SoapServerPlugin()
 soap_sender_plugin = SoapSenderPlugin()
 soap_subscription_sender_plugin = SoapSubscriptionSenderPlugin()
+fhir_sender_plugin = FhirSenderPlugin()
 
 PLUGINS: list[ServicePlugin] = [
     phw_plugin,
@@ -67,6 +69,7 @@ PLUGINS: list[ServicePlugin] = [
     hl7_soap_server_plugin,
     soap_sender_plugin,
     soap_subscription_sender_plugin,
+    fhir_sender_plugin,
 ]
 
 # Category groupings for the top-level notebook, mirroring the repo's
@@ -78,7 +81,10 @@ PLUGINS: list[ServicePlugin] = [
 PLUGIN_CATEGORIES: list[tuple[str, list[ServicePlugin]]] = [
     ("🔧 Transformers", [phw_plugin, chemo_plugin, pims_plugin, core_reference_plugin, proms_plugin]),
     ("🖥 Servers", [hl7_server_plugin, rest_server_plugin, hl7_soap_server_plugin]),
-    ("📤 Senders", [hl7_sender_plugin, hl7_sender_ack_plugin, soap_sender_plugin, soap_subscription_sender_plugin]),
+    ("📤 Senders", [
+        hl7_sender_plugin, hl7_sender_ack_plugin, soap_sender_plugin, soap_subscription_sender_plugin,
+        fhir_sender_plugin,
+    ]),
 ]
 
 # ── DHCW brand colours & theme palettes ─────────────────────────────────────
