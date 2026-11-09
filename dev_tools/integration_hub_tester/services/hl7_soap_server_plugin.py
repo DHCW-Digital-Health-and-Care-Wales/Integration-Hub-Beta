@@ -55,8 +55,9 @@ class HL7SoapServerPlugin(ServicePlugin):
         from unittest.mock import MagicMock
 
         from hl7_validation import convert_er7_to_xml_with_flow_schema
-
-        from hl7_soap_server.soap_processor import SoapMessageProcessor
+        from rest_server.content_adapters.soap_adapter import SoapContentAdapter
+        from rest_server.message_processor import RestMessageProcessor
+        from rest_server.validators.hl7_xsd_validator import Hl7XsdValidator
 
         stripped = input_text.strip()
 
@@ -79,16 +80,17 @@ class HL7SoapServerPlugin(ServicePlugin):
                 "</SOAP-ENV:Envelope>"
             )
 
-        processor = SoapMessageProcessor(
+        processor = RestMessageProcessor(
+            content_adapter=SoapContentAdapter(),
+            validator=Hl7XsdValidator(schema_group="phw", allowed_structures={"ADT_A05", "ADT_A39"}),
             sender_client=MagicMock(),
             event_logger=MagicMock(),
             metric_sender=MagicMock(),
             message_store_client=MagicMock(),
             workflow_id="tester-demo",
             egress_session_id="tester-demo-session",
-            schema_group="phw",
-            allowed_hl7_structures=["ADT_A05", "ADT_A39"],
-            allowed_assigning_authorities=["328"],
+            allowed_source_identifiers=["328"],
+            output_format="er7",
         )
 
         status_code, response_xml = processor.process(soap_request)
