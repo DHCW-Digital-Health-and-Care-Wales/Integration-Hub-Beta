@@ -83,7 +83,7 @@ class TestSourceSystems(unittest.TestCase):
             "149": "https://fhir.hduhb.nhs.wales/Id/pas-identifier",
             "170": "https://fhir.pthb.nhs.wales/Id/pas-identifier",
             "126": "https://fhir.ctmuhb.nhs.wales/Id/pas-identifier",
-            "310": "https://fhir.vuht.nhs.wales/Id/pas-identifier",
+            "310": "https://fhir.vunhst.nhs.wales/Id/pas-identifier",
         }
         for system_id, url in expected.items():
             with self.subTest(system_id=system_id):
