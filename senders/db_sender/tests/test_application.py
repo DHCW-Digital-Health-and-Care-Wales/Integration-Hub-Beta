@@ -69,7 +69,13 @@ class TestApplication(unittest.TestCase):
         self.assertTrue(result)
         self.mock_db_client.execute_stored_procedure.assert_called_once_with(msg_body, is_priority=False)
         self.mock_metric_sender.send_metric.assert_called_once_with(
-            "messages_sent", 1, attributes={"database": "DRS", "stored_procedure": "dbo.prQueueMessage"}
+            "messages_sent",
+            1,
+            attributes={
+                "database": "DRS",
+                "stored_procedure": "dbo.prQueueMessage",
+                "procedure_type": "queue_message",
+            },
         )
         # Check Information Governance: verify logged text contains MSH but never SECRET_PATIENT
         rec_call_args = self.mock_event_logger.log_message_received.call_args[0]

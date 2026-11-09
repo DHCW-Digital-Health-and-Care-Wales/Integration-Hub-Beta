@@ -12,6 +12,8 @@ class MshInfo:
     msh_text: str
     control_id: str
     message_type: str
+    trigger_event: str = "UNKNOWN"
+    sending_app: str = ""
 
 
 def extract_msh_for_logging(message_body: str) -> MshInfo:
@@ -20,7 +22,13 @@ def extract_msh_for_logging(message_body: str) -> MshInfo:
     Guarantees no PID, OBX, OBR, or other clinical/patient segments are leaked into logs.
     """
     if not message_body or not message_body.strip():
-        return MshInfo(msh_text="[Empty message body]", control_id="UNKNOWN", message_type="UNKNOWN")
+        return MshInfo(
+            msh_text="[Empty message body]",
+            control_id="UNKNOWN",
+            message_type="UNKNOWN",
+            trigger_event="UNKNOWN",
+            sending_app="",
+        )
 
     cleaned = message_body.strip()
 
@@ -40,9 +48,20 @@ def extract_msh_for_logging(message_body: str) -> MshInfo:
             if msh_elem is not None:
                 control_id = _extract_xml_text(msh_elem, ["MSH.10.1", "MSH.10"]) or "UNKNOWN"
                 msg_type = _extract_xml_msg_type(msh_elem) or "UNKNOWN"
+                trigger_event = (
+                    _extract_xml_text(msh_elem, ["MSG.2", "MSH.9.2"])
+                    or _extract_trigger_from_msg_type(msg_type)
+                )
+                sending_app = _extract_xml_text(msh_elem, ["HD.1", "MSH.3.1", "MSH.3"]) or ""
                 # Strip all namespaces or prefixes when serializing if necessary, or just serialize the element
                 serialized_msh = ET.tostring(msh_elem, encoding="unicode").strip()
-                return MshInfo(msh_text=serialized_msh, control_id=control_id, message_type=msg_type)
+                return MshInfo(
+                    msh_text=serialized_msh,
+                    control_id=control_id,
+                    message_type=msg_type,
+                    trigger_event=trigger_event,
+                    sending_app=sending_app,
+                )
         except ET.ParseError:
             # Fallback regex to isolate <MSH>...</MSH> block if XML is partial
             match = re.search(r"(<MSH\b[^>]*>.*?</MSH>)", cleaned, re.DOTALL | re.IGNORECASE)
@@ -50,11 +69,23 @@ def extract_msh_for_logging(message_body: str) -> MshInfo:
                 msh_raw = match.group(1).strip()
                 cid_match = re.search(r"<MSH\.10[^>]*>(?:<[^>]+>)*([^<]+)", msh_raw)
                 control_id = cid_match.group(1).strip() if cid_match else "UNKNOWN"
-                return MshInfo(msh_text=msh_raw, control_id=control_id, message_type="UNKNOWN")
+                trigger_match = re.search(r"<(?:MSG\.2|MSH\.9\.2)[^>]*>(?:<[^>]+>)*([^<]+)", msh_raw)
+                trigger_event = trigger_match.group(1).strip() if trigger_match else "UNKNOWN"
+                app_match = re.search(r"<MSH\.3[^>]*>(?:<[^>]+>)*([^<]+)", msh_raw)
+                sending_app = app_match.group(1).strip() if app_match else ""
+                return MshInfo(
+                    msh_text=msh_raw,
+                    control_id=control_id,
+                    message_type="UNKNOWN",
+                    trigger_event=trigger_event,
+                    sending_app=sending_app,
+                )
         return MshInfo(
             msh_text="[XML MSH extraction failed - structure malformed]",
             control_id="UNKNOWN",
             message_type="UNKNOWN",
+            trigger_event="UNKNOWN",
+            sending_app="",
         )
 
     # 2. ER7 Pipe-Delimited Format
@@ -66,13 +97,37 @@ def extract_msh_for_logging(message_body: str) -> MshInfo:
             # In ER7:
             # fields[0] = 'MSH'
             # fields[1] = encoding characters (MSH-2)
+            # fields[2] = sending application (MSH-3)
             # fields[8] = message type (MSH-9)
             # fields[9] = message control ID (MSH-10)
+            sending_app = fields[2].split("^")[0] if len(fields) > 2 and fields[2] else ""
             msg_type = fields[8] if len(fields) > 8 and fields[8] else "UNKNOWN"
             control_id = fields[9] if len(fields) > 9 and fields[9] else "UNKNOWN"
-            return MshInfo(msh_text=line_clean, control_id=control_id, message_type=msg_type)
+            trigger_event = _extract_trigger_from_msg_type(msg_type)
+            return MshInfo(
+                msh_text=line_clean,
+                control_id=control_id,
+                message_type=msg_type,
+                trigger_event=trigger_event,
+                sending_app=sending_app,
+            )
 
-    return MshInfo(msh_text="[No MSH segment identified]", control_id="UNKNOWN", message_type="UNKNOWN")
+    return MshInfo(
+        msh_text="[No MSH segment identified]",
+        control_id="UNKNOWN",
+        message_type="UNKNOWN",
+        trigger_event="UNKNOWN",
+        sending_app="",
+    )
+
+
+def _extract_trigger_from_msg_type(msg_type: str) -> str:
+    if not msg_type or msg_type == "UNKNOWN":
+        return "UNKNOWN"
+    parts = msg_type.split("^")
+    if len(parts) >= 2 and parts[1].strip():
+        return parts[1].strip()
+    return parts[0].strip()
 
 
 def _extract_xml_text(parent: ET.Element, tag_names: list[str]) -> str | None:

@@ -152,6 +152,24 @@ class DatabaseClient:
             finally:
                 self._connection = None
 
+    def _execute_call(self, call_sql: str, args: tuple[Any, ...]) -> None:
+        try:
+            conn = self._get_connection()
+            conn.timeout = self.config.db_command_timeout
+            with conn.cursor() as cursor:
+                cursor.execute(call_sql, args)
+                conn.commit()
+        except pyodbc.Error as err:
+            self.close()
+            sql_state, err_code, err_msg = self._parse_odbc_error(err)
+            if self._is_transient(sql_state, err_code, err_msg):
+                raise TransientDatabaseError(err_msg, sql_state=sql_state, error_code=err_code) from err
+            raise FatalDatabaseError(err_msg, sql_state=sql_state, error_code=err_code) from err
+        except Exception as err:
+            self.close()
+            sanitized = sanitize_error_message(str(err))
+            raise TransientDatabaseError(sanitized, sql_state="UNKNOWN", error_code=0) from err
+
     def execute_stored_procedure(self, message_payload: str, is_priority: bool = False) -> None:
         """Execute the configured stored procedure with parameterised @Message and @IsPriority.
 
@@ -165,23 +183,41 @@ class DatabaseClient:
         """
         priority_val = 1 if is_priority else 0
         call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?)}}"
+        self._execute_call(call_sql, (message_payload, priority_val))
 
-        try:
-            conn = self._get_connection()
-            conn.timeout = self.config.db_command_timeout
-            with conn.cursor() as cursor:
-                cursor.execute(call_sql, (message_payload, priority_val))
-                conn.commit()
-        except pyodbc.Error as err:
-            self.close()
-            sql_state, err_code, err_msg = self._parse_odbc_error(err)
-            if self._is_transient(sql_state, err_code, err_msg):
-                raise TransientDatabaseError(err_msg, sql_state=sql_state, error_code=err_code) from err
-            raise FatalDatabaseError(err_msg, sql_state=sql_state, error_code=err_code) from err
-        except Exception as err:
-            self.close()
-            sanitized = sanitize_error_message(str(err))
-            raise TransientDatabaseError(sanitized, sql_state="UNKNOWN", error_code=0) from err
+    def execute_queue_id_update(
+        self,
+        provider_patient_identifier: str | None,
+        provider_assigning_authority: str | None,
+        old_identifier: str | None,
+        old_identifier_assigning_authority: str | None,
+        new_identifier: str,
+        new_identifier_assigning_authority: str,
+    ) -> None:
+        """Execute dbo.prQueueIdUpdate with extracted patient identifier and assigning authority parameters.
+
+        Args:
+            provider_patient_identifier: Local/provider ID (e.g. LIMS ID for A31, NULL for A40).
+            provider_assigning_authority: Authority of provider ID (e.g. '328' for A31, old_auth for A40).
+            old_identifier: Previous identifier from MRG segment (for A40, NULL for A31).
+            old_identifier_assigning_authority: Authority of old identifier (for A40, NULL for A31).
+            new_identifier: Surviving/new identifier (NHS number for A31, PID.3 matching old_auth for A40).
+            new_identifier_assigning_authority: Authority of new identifier ('NHS' for A31, old_auth for A40).
+
+        Raises:
+            TransientDatabaseError: If a transient network/timeout error occurred.
+            FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
+        """
+        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?, ?, ?, ?)}}"
+        args = (
+            provider_patient_identifier,
+            provider_assigning_authority,
+            old_identifier,
+            old_identifier_assigning_authority,
+            new_identifier,
+            new_identifier_assigning_authority,
+        )
+        self._execute_call(call_sql, args)
 
     @staticmethod
     def _parse_odbc_error(err: pyodbc.Error) -> tuple[str, int, str]:

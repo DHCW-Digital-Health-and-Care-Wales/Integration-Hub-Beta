@@ -16,6 +16,7 @@ from processor_manager_lib import ProcessorManager
 
 from db_sender.app_config import AppConfig
 from db_sender.db_client import DatabaseClient, FatalDatabaseError, TransientDatabaseError
+from db_sender.handlers import BaseDatabaseHandler, create_handler
 from db_sender.msh_extractor import extract_msh_for_logging
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
@@ -38,7 +39,11 @@ def process_message(
     app_config: AppConfig,
     event_logger: EventLogger,
     metric_sender: MetricSender,
+    handler: BaseDatabaseHandler | None = None,
 ) -> bool:
+    if handler is None:
+        handler = create_handler(app_config)
+
     message_body = b"".join(message.body).decode("utf-8")
     metadata = extract_metadata(message)
     meta = get_metadata_log_values(metadata)
@@ -49,11 +54,12 @@ def process_message(
 
     logger.info(
         "Message received for DB execution - CorrelationId: %s, MessageControlId: %s, "
-        "WorkflowID: %s, TargetProcedure: %s",
+        "WorkflowID: %s, TargetProcedure: %s, ProcedureType: %s",
         meta["correlation_id"],
         msh_info.control_id,
         meta["workflow_id"],
         app_config.db_stored_procedure,
+        app_config.db_procedure_type,
     )
 
     try:
@@ -63,9 +69,11 @@ def process_message(
             correlation_id=correlation_id_opt,
         )
 
-        db_client.execute_stored_procedure(
-            message_body,
-            is_priority=bool(app_config.default_is_priority),
+        handler.handle_message(
+            message_body=message_body,
+            metadata=metadata,
+            msh_info=msh_info,
+            db_client=db_client,
         )
 
         _send_metric_best_effort(
@@ -75,6 +83,7 @@ def process_message(
                 attributes={
                     "database": app_config.db_name,
                     "stored_procedure": app_config.db_stored_procedure,
+                    "procedure_type": app_config.db_procedure_type,
                 },
             ),
             "messages_sent",
@@ -102,6 +111,21 @@ def process_message(
             msh_info.msh_text,
         )
         return True
+
+    except DeadLetterMessage as dlq_err:
+        event_logger.log_message_failed(
+            msh_info.msh_text,
+            f"Message rejected for {app_config.db_stored_procedure}: {dlq_err.reason} - {dlq_err.description}",
+            correlation_id=correlation_id_opt,
+        )
+        logger.error(
+            "Dead-lettering message for %s (Reason: %s, Description: %s). MessageControlId: %s",
+            app_config.db_stored_procedure,
+            dlq_err.reason,
+            dlq_err.description,
+            msh_info.control_id,
+        )
+        raise
 
     except FatalDatabaseError as fatal_err:
         event_logger.log_message_failed(
@@ -161,9 +185,11 @@ def main() -> None:
         app_config.health_board,
         app_config.peer_service,
     )
+    handler = create_handler(app_config)
 
     logger.info(
-        "Starting db_sender for subscription %s/%s -> DB %s (%s)",
+        "Starting db_sender (%s) for subscription %s/%s -> DB %s (%s)",
+        app_config.db_procedure_type,
         app_config.ingress_topic_name,
         app_config.ingress_subscription_name,
         app_config.db_name,
@@ -192,6 +218,7 @@ def main() -> None:
                         app_config,
                         event_logger,
                         metric_sender,
+                        handler=handler,
                     ),
                 )
 
