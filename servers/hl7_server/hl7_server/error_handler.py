@@ -13,8 +13,8 @@ from .hl7_constant import Hl7Constants
 
 logger = logging.getLogger(__name__)
 
-# Business/schema/structural validation failures and unsupported message types -> AR (Application Reject).
-# Everything else (parsing failures, unexpected errors) -> AE (Application Error).
+# Business/schema/structural validation failures -> AR (Application Reject).
+# Everything else (parsing failures, unsupported types, unexpected errors) -> AE (Application Error).
 VALIDATION_EXCEPTIONS = (ValidationException, XmlValidationError)
 
 
@@ -57,7 +57,7 @@ class ErrorHandler(AbstractErrorHandler):
         if isinstance(self.exc, VALIDATION_EXCEPTIONS):
             return f"HL7 validation error: {self.exc}", "HL7 validation failed", Hl7Constants.ACK_CODE_REJECT
         if isinstance(self.exc, UnsupportedMessageType):
-            return f"Unsupported Message Type: {self.exc}", "Unsupported message type", Hl7Constants.ACK_CODE_REJECT
+            return f"Unsupported Message Type: {self.exc}", "Unsupported message type", Hl7Constants.ACK_CODE_ERROR
         if isinstance(self.exc, HL7apyException):
             return f"Invalid HL7 Message: {self.exc}", "Invalid HL7 message format", Hl7Constants.ACK_CODE_ERROR
         return (
