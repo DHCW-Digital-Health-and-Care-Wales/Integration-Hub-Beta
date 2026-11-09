@@ -537,8 +537,7 @@ def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
     only trailing empty components are dropped. CX.4 is itself a composite (HD), so its value sits in a
     child (``HD.1``) and is recursed into:
     ``<CX.1/><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``.
-    The top-level call joins components with "^"; anything nested below a component is a subcomponent
-    and is joined with "&".
+    The top-level call joins components with "^"; anything nested below a component is joined with "&".
     """
     text = elem.text
     if text:
@@ -546,12 +545,18 @@ def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
         if text:
             return text
 
+    child_separator = "&" if separator == "^" else separator
     parts: list[str] = []
+    fallback_index = 0
+
     for index, child in enumerate(elem, start=1):
-        position = _component_position(child.tag) or index
+        position = _component_position(child.tag)
+        if position is None:
+            fallback_index += 1
+            position = fallback_index
+        child_text = _extract_text_from_element(child, separator=child_separator)
         if len(parts) < position:
             parts.extend([""] * (position - len(parts)))
-        child_text = _extract_text_from_element(child, separator="&")
         if child_text and not parts[position - 1]:
             parts[position - 1] = child_text
 
