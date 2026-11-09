@@ -77,7 +77,7 @@ Runs as the Azure Container App `uks-dev-dbmockreceiver-ca`, defined in `Integra
 | Replicas | Exactly 1, no scale rules. Data is ephemeral and is lost on every restart or new revision |
 | Ingress | **Internal** TCP on 1433, reachable only from other apps in the Container Apps environment |
 | Edition | `MSSQL_PID=Express`, which is free to use in any environment (the default Developer edition is non-production only) |
-| Probes | TCP on 1433. The port opens before the schema is initialised, so a sender that connects too early gets a transient login error and retries |
+| Probes | TCP on 1433. Port 1433 is only opened by the entrypoint once `DRS` and `dbo.prQueueMessage` exist (the real SQL Server listens on loopback port 14330 and `socat` forwards 1433 afterwards), so a TCP probe is effectively schema-aware. While the mock is starting or restarting, clients get connection refused, which `db_sender` treats as transient and retries. Without this gate a client that connected early would hit a missing database or procedure, which `db_sender` classifies as **fatal** and dead-letters |
 | TLS | SQL Server presents a self-signed certificate, so the sender runs with `DB_ENCRYPT=yes` and `DB_TRUST_SERVER_CERTIFICATE=yes` (Terraform sets this automatically when the mock is deployed). Without it the driver fails with `08001 ... self-signed certificate`, which the sender treats as transient, so it would retry forever |
 | Sender target | `DB_SERVER` is the app name `uks-dev-dbmockreceiver-ca`, port 1433 (set by Terraform instead of the `wrrs-db-server` secret) |
 
@@ -109,8 +109,8 @@ The queries under "Inspecting and controlling the mock" work the same way.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | `mcr.microsoft.com/mssql/server:2022-latest` plus the init script and entrypoint |
-| `entrypoint.sh` | Starts SQL Server, waits until ready, applies `sql/init.sql` |
+| `Dockerfile` | `mcr.microsoft.com/mssql/server:2022-latest` plus `socat`, the init script and entrypoint |
+| `entrypoint.sh` | Starts SQL Server on a loopback-only port, applies `sql/init.sql`, then opens port 1433 via `socat`; forwards stop signals for a clean shutdown |
 | `sql/init.sql` | Idempotent creation of `DRS`, `dbo.QueueMessage`, `dbo.MockControl` and `dbo.prQueueMessage` |
 
 Configuration lives in `local/env/mock_receivers/db-mock-receiver.env` (`ACCEPT_EULA`, `MSSQL_MEMORY_LIMIT_MB`);

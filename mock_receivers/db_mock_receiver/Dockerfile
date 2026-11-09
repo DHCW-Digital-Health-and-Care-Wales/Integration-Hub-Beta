@@ -4,6 +4,10 @@
 FROM mcr.microsoft.com/mssql/server:2022-latest
 
 USER root
+# socat publishes port 1433 only once the schema is initialised (see entrypoint.sh).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends socat \
+    && rm -rf /var/lib/apt/lists/*
 COPY --chown=mssql:root entrypoint.sh /opt/mock_db_receiver/entrypoint.sh
 COPY --chown=mssql:root sql/init.sql /opt/mock_db_receiver/init.sql
 RUN chmod 0555 /opt/mock_db_receiver/entrypoint.sh
