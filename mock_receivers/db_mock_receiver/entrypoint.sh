@@ -14,6 +14,16 @@ fi
 /opt/mssql/bin/sqlservr &
 SQL_PID=$!
 
+# This script is PID 1, so it receives the stop signal. Forward it to SQL Server and wait for it to shut
+# down cleanly, otherwise the container is killed after the grace period instead.
+shutdown() {
+    echo "Stop signal received, shutting down SQL Server..."
+    kill -TERM "$SQL_PID" 2>/dev/null
+    wait "$SQL_PID"
+    exit $?
+}
+trap shutdown TERM INT
+
 echo "Waiting for SQL Server to accept connections..."
 for attempt in $(seq 1 "$MAX_RETRIES"); do
     if "$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" > /dev/null 2>&1; then
