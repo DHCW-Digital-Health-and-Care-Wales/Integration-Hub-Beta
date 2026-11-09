@@ -15,6 +15,7 @@ dependencies = [
     "rest-server",
     "hl7-soap-server",
     "hl7-sender",
+    "fhir-sender",
 ]
 
 [dependency-groups]
@@ -36,3 +37,4 @@ wrds-service         = { path = "../../shared_libs/wrds_service" }
 rest-server          = { path = "../../servers/rest_server", editable = true }
 hl7-soap-server      = { path = "../../servers/hl7_soap_server", editable = true }
 hl7-sender           = { path = "../../senders/hl7_sender", editable = true }
+fhir-sender          = { path = "../../senders/fhir_sender", editable = true }

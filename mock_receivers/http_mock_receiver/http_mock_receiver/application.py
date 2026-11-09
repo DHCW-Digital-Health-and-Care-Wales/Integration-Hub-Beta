@@ -1,11 +1,14 @@
 """HTTP Mock Receiver — FastAPI application.
 
 Provides a SOAP endpoint for testing the soap_sender and soap_subscription_sender
-services locally without requiring a real downstream SOAP system.
+services locally without requiring a real downstream SOAP system, and a mock of the
+Promptly FHIR ``$process-message`` async API for testing fhir_sender.
 
 Endpoints:
-  POST /soap    — Accept a SOAP envelope, return ACK or fault
-  GET  /health  — Simple liveness check
+  POST /soap                       — Accept a SOAP envelope, return ACK or fault
+  POST /fhir/r4/$process-message   — Accept a FHIR message Bundle (202 + Content-Location)
+  GET  /fhir/r4/status/{id}        — Poll a submitted Bundle (see fhir_handler for scenarios)
+  GET  /health                     — Simple liveness check
 
 Service Bus forwarding is optional.  When EGRESS_QUEUE_NAME and the relevant
 connection config are not set, the service operates in log-only mode — it still
@@ -13,6 +16,7 @@ returns valid SOAP responses.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import AsyncGenerator
@@ -22,6 +26,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from http_mock_receiver.app_config import AppConfig
+from http_mock_receiver.fhir_handler import FhirMockState, MockResponse
 from http_mock_receiver.soap_handler import parse_soap_request
 from http_mock_receiver.soap_response_builder import build_ack_response, build_fault_response
 
@@ -100,6 +105,40 @@ app = FastAPI(
 def health() -> str:
     """Liveness check — always returns 200 OK when the process is running."""
     return "OK"
+
+
+# ── FHIR $process-message endpoints (Promptly mock) ───────────────────────
+
+_fhir_state = FhirMockState()
+
+
+def _fhir_response(result: MockResponse) -> Response:
+    content = json.dumps(result.body) if result.body is not None else ""
+    return Response(
+        content=content,
+        status_code=result.status_code,
+        headers=result.headers,
+        media_type="application/fhir+json" if result.body is not None else None,
+    )
+
+
+@app.post("/fhir/r4/$process-message")
+async def fhir_process_message(request: Request) -> Response:
+    """Accept a message Bundle asynchronously (202 + Content-Location); see fhir_handler for scenarios."""
+    raw_body = (await request.body()).decode("utf-8", errors="replace")
+    auth = "X-API-Key" if request.headers.get("x-api-key") else (
+        "Bearer" if request.headers.get("authorization") else "none"
+    )
+    result = _fhir_state.submit(raw_body, str(request.base_url))
+    logger.info("FHIR POST — %d bytes, auth=%s -> HTTP %d", len(raw_body), auth, result.status_code)
+    return _fhir_response(result)
+
+
+@app.get("/fhir/r4/status/{job_id}")
+def fhir_status(job_id: str) -> Response:
+    result = _fhir_state.status(job_id)
+    logger.info("FHIR status %s -> HTTP %d", job_id, result.status_code)
+    return _fhir_response(result)
 
 
 # ── SOAP endpoint ─────────────────────────────────────────────────────────

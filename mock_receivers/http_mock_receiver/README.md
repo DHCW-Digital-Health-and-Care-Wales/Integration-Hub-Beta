@@ -12,6 +12,21 @@ the MLLP protocol.
 |--------|------|-------------|
 | `POST` | `/soap` | Accept a SOAP envelope, return ACK or fault |
 | `GET` | `/health` | Liveness check — returns `200 OK` |
+| `POST` | `/fhir/r4/$process-message` | Mock Promptly: accept a FHIR message Bundle, `202` + `Content-Location` |
+| `GET` | `/fhir/r4/status/{id}` | Mock Promptly: `202` (`Retry-After`, `X-Progress`) until done, then `200` OperationOutcome |
+
+## FHIR mock scenarios
+
+The scenario is chosen by `Bundle.id` (state is in memory, lost on restart):
+
+| `Bundle.id` | Behaviour |
+|-------------|-----------|
+| anything else | 202, two `202` polls, then `200` success |
+| `mock-slow` | six `202` polls before success |
+| `mock-error-outcome` | `200` with an `error` OperationOutcome |
+| `mock-status-400` | status poll returns `400` |
+| `mock-400` / `-401` / `-403` / `-404` / `-409` / `-429` / `-500` | POST rejected with that status (`429` adds `Retry-After`) |
+| `mock-429-once` / `mock-500-once` | first POST for that id fails, the retry is accepted |
 
 ## Fault convention
 
