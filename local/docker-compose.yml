@@ -43,6 +43,9 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets
+    volumes:
+      - ./sql-scripts:/var/opt/mssql/scripts:ro
+    entrypoint: ["/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh"]
 
 
   phw-hl7-server:
@@ -425,6 +428,7 @@ services:
       - sb-emulator
       - sqledge
     profiles:
+      - lims-to-trrr
       - everything
     networks:
       integration-hub:

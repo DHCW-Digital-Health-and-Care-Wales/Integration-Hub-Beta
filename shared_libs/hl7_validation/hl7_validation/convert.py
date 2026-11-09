@@ -498,24 +498,61 @@ def convert_er7_to_xml(er7_message: str) -> str:
     return er7_to_hl7v2xml(er7_message, structure_xsd_path=None)
 
 
-def _extract_text_from_element(elem: XElem) -> str:
-    """Extract text content from an XML element, handling nested components."""
+def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
+    """Extract text content from an XML element, handling nested components.
+
+    HL7v2 XML names every component and sub-component by position (e.g. ``CX.1``,
+    ``CX.4``, ``HD.1``), and the schema-based conversion emits *all* of them,
+    including empty ones (``<CX.2/>``, ``<CX.3/>``). We must therefore rebuild
+    the ER7 value from those positional indices and keep internal empties,
+    otherwise dropping an empty ``CX.2``/``CX.3`` would shift the ``CX.4``
+    assigning authority left (e.g. ``B0000010612^^^328^PI`` would collapse to
+    ``B0000010612^328^PI``), silently corrupting downstream identifier mapping.
+
+    Only *trailing* empty positions are trimmed, matching standard ER7
+    formatting where trailing empty components carry no meaning.
+
+    ``separator`` is the delimiter used to join this element's direct children:
+    ``^`` for components and ``&`` for sub-components. The next nesting level is
+    always joined with ``&`` (HL7v2 defines no deeper positional separator).
+    """
     text = elem.text
     if text:
         text = text.strip()
         if text:
             return text
 
-    children_texts: list[str] = []
-    append = children_texts.append
-    for child in elem:
-        child_text = _extract_text_from_element(child)
-        if child_text:
-            append(child_text)
+    # Sub-components (one level below components) are joined with ``&``.
+    child_separator = "&" if separator == "^" else separator
 
-    if children_texts:
-        return "^".join(children_texts)
-    return ""
+    indexed: Dict[int, str] = {}
+    fallback_index = 0  # used for any child without a numeric positional suffix
+    for child in elem:
+        child_text = _extract_text_from_element(child, child_separator)
+        child_name = _strip_namespace(child.tag)
+        dot_idx = child_name.rfind(".")
+        index: int | None = None
+        if dot_idx != -1:
+            try:
+                index = int(child_name[dot_idx + 1 :])
+            except ValueError:
+                index = None
+        if index is None:
+            fallback_index += 1
+            index = fallback_index
+        else:
+            fallback_index = max(fallback_index, index)
+        indexed[index] = child_text
+
+    if not indexed:
+        return ""
+
+    parts = [indexed.get(i, "") for i in range(1, max(indexed) + 1)]
+    while parts and parts[-1] == "":
+        parts.pop()
+    if not parts:
+        return ""
+    return separator.join(parts)
 
 
 def _strip_namespace(tag: str) -> str:

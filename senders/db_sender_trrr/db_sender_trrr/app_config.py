@@ -47,7 +47,7 @@ class AppConfig:
             db_name=_read_required_env("DB_NAME", default="Clinical_Results"),
             db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default="dbo.TRRRIDUpdate"),
             db_username=_read_env("DB_USERNAME") or "TRRR",
-            db_password=_read_env("DB_PASSWORD") or "trrr",
+            db_password=_read_env("DB_PASSWORD") or _read_env("MSSQL_SA_PASSWORD") or "trrr",
             db_encrypt=_read_env("DB_ENCRYPT") or "Yes",
             db_trust_server_certificate=_read_env("DB_TRUST_SERVER_CERTIFICATE") or "No",
             db_connection_timeout=_read_int_env("DB_CONNECTION_TIMEOUT") or 30,

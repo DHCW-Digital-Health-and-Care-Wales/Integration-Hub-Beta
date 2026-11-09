@@ -20,7 +20,7 @@ RUN apt-get update \
 WORKDIR /app/senders/db_sender_trrr
 
 COPY --from=shared_libs . /app/shared_libs
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 RUN uv --native-tls sync --locked --no-install-project --no-dev
 
 COPY db_sender_trrr/ /app/senders/db_sender_trrr/db_sender_trrr

@@ -11,12 +11,19 @@ MAX_RETRIES=30
 RETRY_INTERVAL=2
 RETRY_COUNT=0
 
+# azure-sql-edge ships sqlcmd at /opt/mssql-tools/bin; mssql/server images use /opt/mssql-tools18/bin.
+if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+    SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+else
+    SQLCMD=/opt/mssql-tools/bin/sqlcmd
+fi
+
 echo "Waiting for SQL Server to be ready..."
 
 # Wait loop - check if SQL Server is accepting connections
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     # Try to connect to SQL Server and run a simple query
-    /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" > /dev/null 2>&1
+    "$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" > /dev/null 2>&1
 
     if [ $? -eq 0 ]; then
         echo "SQL Server is ready!"
@@ -35,15 +42,20 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
 fi
 
 echo "Running database initialization script..."
-/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-db.sql
+"$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-db.sql
 
 if [ -f /var/opt/mssql/scripts/init-drs-db.sql ]; then
     echo "Running DRS database initialization script..."
-    /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-drs-db.sql
+    "$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-drs-db.sql
+fi
+
+if [ -f /var/opt/mssql/scripts/init-trrr-db.sql ]; then
+    echo "Running TRRR (Clinical_Results) database initialization script..."
+    "$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d master -i /var/opt/mssql/scripts/init-trrr-db.sql
 fi
 
 echo "Running seed data script..."
-/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d IntegrationHub -i /var/opt/mssql/scripts/seed-messages.sql
+"$SQLCMD" -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d IntegrationHub -i /var/opt/mssql/scripts/seed-messages.sql
 
 # Keep SQL Server running
 wait $SQL_PID

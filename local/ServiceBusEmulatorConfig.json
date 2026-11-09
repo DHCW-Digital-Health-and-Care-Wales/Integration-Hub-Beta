@@ -157,7 +157,18 @@
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                }
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },
