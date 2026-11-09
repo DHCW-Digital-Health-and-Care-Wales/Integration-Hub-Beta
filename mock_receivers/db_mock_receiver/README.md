@@ -1,8 +1,8 @@
 # DB Mock Receiver (`db_mock_receiver`)
 
-**Local testing only.** A real SQL Server container hosting a mock WRRS `DRS` database and a mock
+**Local testing and Azure DEV only.** A real SQL Server container hosting a mock WRRS `DRS` database and a mock
 `dbo.prQueueMessage` stored procedure, so `senders/db_sender` can be exercised end to end in the
-`risp-to-wrrs` flow without a real WRRS database. It is not deployed to Azure.
+`risp-to-wrrs` flow without a real WRRS database. It must never be deployed to a production-like environment.
 
 ## Contract of the mock procedure
 
@@ -64,6 +64,46 @@ sql "DELETE FROM dbo.QueueMessage"                      # clear stored messages
 ```
 
 Data is ephemeral: it is reset whenever the container is recreated.
+
+## Deploying to Azure DEV
+
+Runs as the Azure Container App `uks-dev-dbmockreceiver-ca`, defined in `Integration-Hub-Terraform`
+(`components/app-platform/flow_risp_to_wrrs.tf`, flag `deploy_db_mock_receiver`, DEV only).
+
+| Aspect | Setting |
+|---|---|
+| Image | `uksdhcwihsharedcr.azurecr.io/dbmockreceiver:dev`, built by `pipeline-ado/dbmockreceiver-build.yml` and released with the `DB Mock Receiver` entry in `release-apps.yml` (DEV only) |
+| Size | 1 vCPU / 2 GiB (SQL Server will not start with less than 2 GB); about 0.85 GiB used at idle |
+| Replicas | Exactly 1, no scale rules. Data is ephemeral and is lost on every restart or new revision |
+| Ingress | **Internal** TCP on 1433, reachable only from other apps in the Container Apps environment |
+| Edition | `MSSQL_PID=Express`, which is free to use in any environment (the default Developer edition is non-production only) |
+| Probes | TCP on 1433. The port opens before the schema is initialised, so a sender that connects too early gets a transient login error and retries |
+| TLS | SQL Server presents a self-signed certificate, so the sender runs with `DB_ENCRYPT=yes` and `DB_TRUST_SERVER_CERTIFICATE=yes` (Terraform sets this automatically when the mock is deployed). Without it the driver fails with `08001 ... self-signed certificate`, which the sender treats as transient, so it would retry forever |
+| Sender target | `DB_SERVER` is the app name `uks-dev-dbmockreceiver-ca`, port 1433 (set by Terraform instead of the `wrrs-db-server` secret) |
+
+### One-off setup before the first deploy
+
+1. **Key Vault secrets** in the shared Key Vault. The mock and the sender share them:
+   - `wrrs-db-username` = `sa`
+   - `wrrs-db-password` = a strong password. SQL Server requires 8+ characters with 3 of: upper case, lower case, digit, symbol.
+     A password that does not meet the policy makes SQL Server exit and the container restart-loop.
+   - `wrrs-db-server` is not needed while the mock is deployed.
+2. **Create the `DB Mock Receiver - Build` pipeline** in Azure DevOps from `pipeline-ado/dbmockreceiver-build.yml`. Release
+   refers to it by that name.
+3. **Build and release** the image (`DB Mock Receiver`, DEV), then apply Terraform with `deploy_risp_to_wrrs_flow = true`
+   and `deploy_db_mock_receiver = true` in `environments/app-platform-dev.tfvars`.
+   Release a new image after any change to `sql/init.sql`.
+
+### Using it in DEV
+
+There is no host port in Azure, so open a console in the container (portal: Container App > Monitoring > Console, or
+`az containerapp exec`) and run `sqlcmd` there. The password is already in the `MSSQL_SA_PASSWORD` environment variable:
+
+```bash
+/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d DRS -Q "SELECT COUNT(*) FROM dbo.QueueMessage"
+```
+
+The queries under "Inspecting and controlling the mock" work the same way.
 
 ## Files
 

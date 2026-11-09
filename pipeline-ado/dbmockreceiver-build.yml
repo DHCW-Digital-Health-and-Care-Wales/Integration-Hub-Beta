@@ -1,0 +1,41 @@
+# DB Mock Receiver Build Pipeline
+# Builds the SQL Server based mock WRRS database used in DEV only. No Python code, so there is no
+# code-quality stage and no shared_libs/ca-certs build contexts.
+trigger:
+  branches:
+    include:
+      - main
+      - release-*
+  paths:
+    include:
+      - mock_receivers/db_mock_receiver/**
+      - pipeline-ado/templates/**
+
+pr: none
+
+parameters:
+  - name: SEMANTIC_VERSION
+    displayName: 'Semantic Version'
+    type: string
+    default: 'v0.1.0'
+
+variables:
+  acrName: 'uksdhcwihsharedcr'
+  azureServiceConnection: 'Azure - NHSWales-DHCW-IntegrationHub-Subscription'
+  POOL_NAME: 'UKS-DHCW-IH-DEV-ADOManagedPool'
+
+stages:
+  - stage: BuildAndPushDBMockReceiver
+    displayName: 'Build and Push DB Mock Receiver'
+    jobs:
+      - template: templates/docker-build-push-template.yml
+        parameters:
+          jobName: 'BuildPushDBMockReceiver'
+          displayName: 'Build and Push DB Mock Receiver'
+          appName: 'dbmockreceiver'
+          dockerfilePath: 'mock_receivers/db_mock_receiver/Dockerfile'
+          buildContext: 'mock_receivers/db_mock_receiver'
+          acrName: $(acrName)
+          azureServiceConnection: $(azureServiceConnection)
+          POOL_NAME: ${{ variables.POOL_NAME }}
+          SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
