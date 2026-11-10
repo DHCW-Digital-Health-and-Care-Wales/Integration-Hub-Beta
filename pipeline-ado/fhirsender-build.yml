@@ -7,9 +7,9 @@ trigger:
   paths:
     include:
       - senders/fhir_sender/**
-      - shared_libs/*
-      - pipeline-ado/templates/*
-      - ca-certs/*
+      - shared_libs/**
+      - pipeline-ado/templates/**
+      - ca-certs/**
 
 pr: none
 
@@ -43,7 +43,7 @@ stages:
         parameters:
           jobName: 'BuildPushFhirSender'
           displayName: 'Build and Push FHIR Sender'
-          appName: 'fhirsender'
+          appName: 'proms-fhirsender'
           dockerfilePath: 'senders/fhir_sender/Dockerfile'
           buildContext: 'senders/fhir_sender'
           additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'

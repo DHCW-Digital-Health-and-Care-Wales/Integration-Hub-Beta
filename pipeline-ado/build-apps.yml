@@ -27,6 +27,7 @@ parameters:
       - hl7corereferencetransformer
       - hl7limswrrstransformer
       - promsfhirtransformer
+      - promsfhirsender
       - hl7soapserver
       - messagestoreservice
       - messagereplayjob
@@ -194,6 +195,17 @@ stages:
           parameters:
             appName: 'transformers/xml_fhir_proms_transformer'
             appDisplayName: 'PROMS FHIR Transformer'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'promsfhirsender') }}:
+    - stage: CodeQuality_promsfhirsender
+      displayName: 'Code Quality — PROMS FHIR Sender'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'senders/fhir_sender'
+            appDisplayName: 'PROMS FHIR Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
 
@@ -515,6 +527,25 @@ stages:
             appName: 'proms-fhirtransformer'
             dockerfilePath: 'transformers/xml_fhir_proms_transformer/Dockerfile'
             buildContext: 'transformers/xml_fhir_proms_transformer'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'promsfhirsender') }}:
+    - stage: Build_promsfhirsender
+      displayName: 'Build — PROMS FHIR Sender'
+      dependsOn: CodeQuality_promsfhirsender
+      condition: in(dependencies.CodeQuality_promsfhirsender.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushPromsFhirSender'
+            displayName: 'Build and Push PROMS FHIR Sender'
+            appName: 'proms-fhirsender'
+            dockerfilePath: 'senders/fhir_sender/Dockerfile'
+            buildContext: 'senders/fhir_sender'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
