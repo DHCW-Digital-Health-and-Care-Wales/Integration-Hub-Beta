@@ -4,6 +4,11 @@
 `dbo.prQueueMessage` stored procedure, so `senders/db_sender` can be exercised end to end in the
 `risp-to-wrrs` flow without a real WRRS database. It must never be deployed to a production-like environment.
 
+It also hosts a mock TRRR `Clinical_Results` database (table `dbo.TRRRIdentifierUpdate`, procedure
+`dbo.TRRRIDUpdate`) so `senders/db_sender_trrr` can be exercised in the `lims-to-trrr` flow. That procedure simply
+inserts the three identifier arguments (no scenarios); check results with
+`SELECT * FROM Clinical_Results.dbo.TRRRIdentifierUpdate` (host port `14334`).
+
 ## Contract of the mock procedure
 
 Mirrors the real procedure:

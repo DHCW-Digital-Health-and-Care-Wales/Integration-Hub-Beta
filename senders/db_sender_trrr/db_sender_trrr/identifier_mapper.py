@@ -1,7 +1,11 @@
-"""TRRR identifier mapping for LIMS-to-NHS association.
+"""TRRR identifier mapping for LIMS-to-NHS association and patient merges.
 
-Supports two classified message variants, both of which link a sending-LIMS local identifier to a
-patient's NHS number and preserve identifier text exactly as received (leading zeroes included):
+Each service instance runs one mapping type (``NHS_ID_UPDATE`` or ``MERGE``), matching the upstream
+subscription it consumes from. A single ``ADT^A40`` can satisfy both rules; the platform then delivers it
+to both subscriptions and each instance applies its own mapping, producing two TRRR requests.
+
+NHS_ID_UPDATE supports two classified message variants, both of which link a sending-LIMS local identifier
+to a patient's NHS number and preserve identifier text exactly as received (leading zeroes included):
 
 * ``ADT_A05`` / ``A31`` (WLIMS NHS-ID update): the LIMS identifier is the PID-3 repetition whose
   assigning authority is the fixed WLIMS code ``328``.
@@ -10,6 +14,10 @@ patient's NHS number and preserve identifier text exactly as received (leading z
   value is used as the LIMS identifier. This lets a single mapping support multiple sending systems.
 
 Both variants take the NHS number from the PID-3 repetition whose assigning authority is ``NHS``.
+
+MERGE handles every ``ADT^A40``: the superseded identifier and its assigning authority come from
+``MRG-1.1`` / ``MRG-1.4.1``, and the replacement identifier is the PID-3 repetition whose assigning
+authority equals ``MRG-1.4.1``. ``LIMSIdentifier`` is not produced.
 
 Messages are accepted as HL7 v2 pipe-delimited (ER7) or HL7 v2 XML. No identifier value is converted,
 reformatted, or interpreted as numeric data.
@@ -20,15 +28,26 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET  # nosec B405
 from dataclasses import dataclass
 
-# Fixed WLIMS assigning authority used by the A05/A31 NHS-ID update variant.
+# Fixed WLIMS assigning authority used by the A31 (ADT_A05 structure) NHS-ID update variant.
 LIMS_A05_ASSIGNING_AUTHORITY = "328"
 # Assigning authority of the patient NHS number, for both variants.
 NHS_ASSIGNING_AUTHORITY = "NHS"
 
-TRIGGER_A05 = "A05"
+MAPPING_NHS_ID_UPDATE = "NHS_ID_UPDATE"
+MAPPING_MERGE = "MERGE"
+SUPPORTED_MAPPING_TYPES = frozenset({MAPPING_NHS_ID_UPDATE, MAPPING_MERGE})
+
 TRIGGER_A31 = "A31"
 TRIGGER_A40 = "A40"
-_A05_TRIGGERS = frozenset({TRIGGER_A05, TRIGGER_A31})
+
+
+class NotRoutedError(ValueError):
+    """The message does not meet this instance's routing criteria and must not be sent to TRRR.
+
+    Locally and in the platform a subscription cannot filter on HL7 body fields (PID-3 authorities), so the
+    sender applies the routing rules itself. A message that fails them would never have been delivered to
+    this mapping service, so it is skipped rather than dead-lettered.
+    """
 
 
 @dataclass(frozen=True)
@@ -46,22 +65,40 @@ class ParsedTrrrMessage:
     sending_application: str
     trigger_event: str
     identifiers: tuple[Pid3Identifier, ...]
+    # MRG-1 old identifier: None when the message has no MRG segment; empty strings when MRG-1 is blank.
+    old_identifier: Pid3Identifier | None = None
 
 
-def map_trrr_identifiers(message: str) -> dict[str, str]:
-    """Map a classified LIMS message to the TRRR update payload, routing on the MSH-9.2 trigger.
+def map_trrr_identifiers(message: str, mapping_type: str = MAPPING_NHS_ID_UPDATE) -> dict[str, str]:
+    """Map a LIMS message to the TRRR payload for the configured mapping type.
 
-    ``A40`` uses the dynamic sending-LIMS rule; ``A05``/``A31`` use the fixed WLIMS (328) rule.
+    Routing mirrors the upstream subscriptions:
+
+    * ``MERGE``: every ``A40`` (MSH-9.2 = A40); old identifier from MRG-1.
+    * ``NHS_ID_UPDATE``: ``A31`` or ``A40`` whose PID-3 carries both the LIMS authority and ``NHS``.
+      ``A40`` uses the dynamic sending-LIMS rule (MSH-3.1); ``A31`` uses the fixed WLIMS (328) rule.
+
+    Raises:
+        NotRoutedError: the message does not meet this mapping type's routing criteria.
+        ValueError: the message is routed here but cannot be mapped.
     """
+    if mapping_type not in SUPPORTED_MAPPING_TYPES:
+        raise ValueError(f"Unsupported mapping type: {mapping_type}")
+
     parsed = _parse_message(message)
     trigger = parsed.trigger_event.upper()
 
+    if mapping_type == MAPPING_MERGE:
+        if trigger != TRIGGER_A40:
+            raise NotRoutedError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
+        return _build_merge_mapping(parsed)
+
     if trigger == TRIGGER_A40:
         return _map_dynamic_lims(parsed)
-    if trigger in _A05_TRIGGERS:
+    if trigger == TRIGGER_A31:
         return _build_mapping(parsed, LIMS_A05_ASSIGNING_AUTHORITY)
 
-    raise ValueError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
+    raise NotRoutedError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
 
 
 def map_adt_a05_identifiers(message: str) -> dict[str, str]:
@@ -85,6 +122,38 @@ def map_adt_a40_identifiers(message: str) -> dict[str, str]:
     return _map_dynamic_lims(parsed)
 
 
+def map_adt_a40_merge_identifiers(message: str) -> dict[str, str]:
+    """Map an ADT^A40 patient merge, pairing the MRG-1 old identifier with its PID-3 replacement.
+
+    The new identifier is the PID-3 repetition whose assigning authority equals ``MRG-1.4.1``. Identifier
+    text is preserved exactly as received (leading zeroes included) and never interpreted as numeric.
+
+    Raises:
+        ValueError: ``Missing old identifier``, ``Missing old assigning authority`` or
+            ``Missing new identifier`` when the corresponding value cannot be resolved.
+    """
+    return _build_merge_mapping(_parse_message(message))
+
+
+def _build_merge_mapping(parsed: ParsedTrrrMessage) -> dict[str, str]:
+    old = parsed.old_identifier
+    if old is None or not old.value.strip():
+        raise ValueError("Missing old identifier")
+    if not old.authority:
+        raise ValueError("Missing old assigning authority")
+
+    new_value = _first_identifier_for_authority(parsed.identifiers, old.authority)
+    if new_value is None:
+        raise ValueError("Missing new identifier")
+
+    return {
+        "OldIdentifier": old.value,
+        "OldIdentifierAssigningAuthority": old.authority,
+        "NewIdentifier": new_value,
+        "NewIdentifierAssigningAuthority": old.authority,
+    }
+
+
 def _map_dynamic_lims(parsed: ParsedTrrrMessage) -> dict[str, str]:
     if not parsed.sending_application:
         raise ValueError("Missing sending LIMS authority")
@@ -94,11 +163,11 @@ def _map_dynamic_lims(parsed: ParsedTrrrMessage) -> dict[str, str]:
 def _build_mapping(parsed: ParsedTrrrMessage, lims_authority: str) -> dict[str, str]:
     lims_identifier = _first_identifier_for_authority(parsed.identifiers, lims_authority)
     if lims_identifier is None:
-        raise ValueError("Missing LIMS identifier")
+        raise NotRoutedError("Missing LIMS identifier")
 
     nhs_identifier = _first_identifier_for_authority(parsed.identifiers, NHS_ASSIGNING_AUTHORITY)
     if nhs_identifier is None:
-        raise ValueError("Missing NHS identifier")
+        raise NotRoutedError("Missing NHS identifier")
 
     return {
         "LIMSIdentifier": lims_identifier,
@@ -128,6 +197,7 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
     sending_application = ""
     trigger_event = ""
     identifiers: list[Pid3Identifier] = []
+    old_identifier: Pid3Identifier | None = None
 
     # HL7 segments are carriage-return delimited; tolerate CRLF/LF from varied producers.
     segments = message.replace("\r\n", "\r").replace("\n", "\r").split("\r")
@@ -155,8 +225,19 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
                     # CX.4 is an HD; HD.1 is its first sub-component (& delimited).
                     authority = components[3].split("&")[0].strip()
                 identifiers.append(Pid3Identifier(value=value, authority=authority))
+        elif segment.startswith("MRG") and old_identifier is None:
+            fields = segment.split("|")
+            old_value = ""
+            old_authority = ""
+            if len(fields) > 1:
+                # MRG-1 may repeat; the first repetition is the superseded identifier.
+                components = fields[1].split("~")[0].split("^")
+                old_value = components[0]
+                if len(components) > 3:
+                    old_authority = components[3].split("&")[0].strip()
+            old_identifier = Pid3Identifier(value=old_value, authority=old_authority)
 
-    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers))
+    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers), old_identifier)
 
 
 def _parse_xml(message: str) -> ParsedTrrrMessage:
@@ -189,7 +270,22 @@ def _parse_xml(message: str) -> ParsedTrrrMessage:
         authority = _hd1_text(cx4) if cx4 is not None else ""
         identifiers.append(Pid3Identifier(value=value, authority=authority))
 
-    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers))
+    old_identifier: Pid3Identifier | None = None
+    mrg = _first_descendant(root, "MRG")
+    if mrg is not None:
+        old_value = ""
+        old_authority = ""
+        mrg1 = _first_child(mrg, "MRG.1")
+        if mrg1 is not None:
+            old_cx1 = _first_child(mrg1, "CX.1")
+            if old_cx1 is not None and old_cx1.text is not None:
+                old_value = old_cx1.text
+            old_cx4 = _first_child(mrg1, "CX.4")
+            if old_cx4 is not None:
+                old_authority = _hd1_text(old_cx4)
+        old_identifier = Pid3Identifier(value=old_value, authority=old_authority)
+
+    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers), old_identifier)
 
 
 def _hd1_text(element: ET.Element) -> str:

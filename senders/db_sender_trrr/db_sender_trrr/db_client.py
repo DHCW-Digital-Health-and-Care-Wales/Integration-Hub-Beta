@@ -161,19 +161,31 @@ class DatabaseClient:
         """Execute the TRRR identifier-update stored procedure with bound parameters.
 
         Args:
-            identifiers: Mapping containing ``LIMSIdentifier``, ``NewIdentifier`` and
-                ``NewIdentifierAssigningAuthority``. All are passed as text parameters.
+            identifiers: Either an association request (``LIMSIdentifier``, ``NewIdentifier``,
+                ``NewIdentifierAssigningAuthority``) or a merge request (``OldIdentifier``,
+                ``OldIdentifierAssigningAuthority``, ``NewIdentifier``, ``NewIdentifierAssigningAuthority``).
+                All values are passed as text parameters.
 
         Raises:
             TransientDatabaseError: If a transient network/timeout error occurred.
             FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
         """
-        params = (
-            identifiers["LIMSIdentifier"],
-            identifiers["NewIdentifier"],
-            identifiers["NewIdentifierAssigningAuthority"],
-        )
-        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?)}}"
+        params: tuple[str, ...]
+        if "OldIdentifier" in identifiers:
+            params = (
+                identifiers["OldIdentifier"],
+                identifiers["OldIdentifierAssigningAuthority"],
+                identifiers["NewIdentifier"],
+                identifiers["NewIdentifierAssigningAuthority"],
+            )
+            call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?, ?)}}"
+        else:
+            params = (
+                identifiers["LIMSIdentifier"],
+                identifiers["NewIdentifier"],
+                identifiers["NewIdentifierAssigningAuthority"],
+            )
+            call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?)}}"
 
         try:
             conn = self._get_connection()

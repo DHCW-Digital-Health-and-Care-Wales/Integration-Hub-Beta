@@ -3,6 +3,13 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from db_sender_trrr.identifier_mapper import MAPPING_MERGE, MAPPING_NHS_ID_UPDATE, SUPPORTED_MAPPING_TYPES
+
+_DEFAULT_PROCEDURES = {
+    MAPPING_NHS_ID_UPDATE: "dbo.TRRRIDUpdate",
+    MAPPING_MERGE: "dbo.TRRRIDMerge",
+}
+
 
 @dataclass
 class AppConfig:
@@ -16,6 +23,7 @@ class AppConfig:
     db_port: int
     db_name: str
     db_stored_procedure: str
+    mapping_type: str
     db_username: str | None
     db_password: str | None
     db_encrypt: str
@@ -36,6 +44,11 @@ class AppConfig:
 
     @staticmethod
     def read_env_config() -> "AppConfig":
+        mapping_type = (_read_env("TRRR_MAPPING_TYPE") or MAPPING_NHS_ID_UPDATE).strip().upper()
+        if mapping_type not in SUPPORTED_MAPPING_TYPES:
+            supported = ", ".join(sorted(SUPPORTED_MAPPING_TYPES))
+            raise ValueError(f"Invalid TRRR_MAPPING_TYPE '{mapping_type}'. Supported: {supported}")
+
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
@@ -45,7 +58,10 @@ class AppConfig:
             db_server=_read_required_env("DB_SERVER", default="TES06SRVSQLNOD1"),
             db_port=_read_int_env("DB_PORT") or 1433,
             db_name=_read_required_env("DB_NAME", default="Clinical_Results"),
-            db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default="dbo.TRRRIDUpdate"),
+            db_stored_procedure=_read_required_env(
+                "DB_STORED_PROCEDURE", default=_DEFAULT_PROCEDURES[mapping_type]
+            ),
+            mapping_type=mapping_type,
             db_username=_read_env("DB_USERNAME") or "TRRR",
             db_password=_read_env("DB_PASSWORD") or _read_env("MSSQL_SA_PASSWORD") or "trrr",
             db_encrypt=_read_env("DB_ENCRYPT") or "Yes",

@@ -16,7 +16,7 @@ from processor_manager_lib import ProcessorManager
 
 from db_sender_trrr.app_config import AppConfig
 from db_sender_trrr.db_client import DatabaseClient, FatalDatabaseError, TransientDatabaseError
-from db_sender_trrr.identifier_mapper import map_trrr_identifiers
+from db_sender_trrr.identifier_mapper import NotRoutedError, map_trrr_identifiers
 from db_sender_trrr.msh_extractor import extract_msh_for_logging
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
@@ -65,12 +65,35 @@ def process_message(
     )
 
     # ------------------------------------------------------------------
-    # Mapping gate: a message that cannot be mapped (unsupported trigger,
-    # missing LIMS authority/identifier, missing NHS identifier) can never
-    # succeed on redelivery, so dead-letter immediately instead of retrying.
+    # Routing gate: mirrors the upstream subscription criteria (trigger event and
+    # PID-3 authorities). A message outside them would never have been delivered to
+    # this mapping service, so acknowledge it without calling the database.
+    #
+    # Mapping gate: a routed message that cannot be mapped (e.g. missing LIMS
+    # authority, missing MRG) can never succeed on redelivery, so dead-letter
+    # immediately instead of retrying.
     # ------------------------------------------------------------------
     try:
-        mapping = map_trrr_identifiers(message_body)
+        mapping = map_trrr_identifiers(message_body, app_config.mapping_type)
+    except NotRoutedError as not_routed:
+        logger.info(
+            "TRRR message not routed to mapping %s (%s). Skipping, no database call. "
+            "MessageControlId: %s, MessageType: %s, MSH: %s",
+            app_config.mapping_type,
+            not_routed,
+            msh_info.control_id,
+            msh_info.message_type,
+            msh_info.msh_text,
+        )
+        try:
+            event_logger.log_message_processed(
+                msh_info.msh_text,
+                f"Skipped: not routed to TRRR {app_config.mapping_type} ({not_routed})",
+                correlation_id=correlation_id_opt,
+            )
+        except Exception:
+            logger.exception("Failed to log skipped message event - continuing")
+        return True
     except ValueError as mapping_err:
         event_logger.log_message_failed(
             msh_info.msh_text,
@@ -89,6 +112,8 @@ def process_message(
             description=str(mapping_err),
         ) from mapping_err
 
+    procedure_name = app_config.db_stored_procedure
+
     try:
         db_client.execute_identifier_update(mapping)
 
@@ -98,7 +123,7 @@ def process_message(
                 1,
                 attributes={
                     "database": app_config.db_name,
-                    "stored_procedure": app_config.db_stored_procedure,
+                    "stored_procedure": procedure_name,
                 },
             ),
             "messages_sent",
@@ -109,19 +134,19 @@ def process_message(
         try:
             event_logger.log_message_processed(
                 msh_info.msh_text,
-                f"TRRR identifier update {app_config.db_stored_procedure} executed successfully",
+                f"TRRR identifier update {procedure_name} executed successfully",
                 correlation_id=correlation_id_opt,
             )
         except Exception:
             logger.exception(
                 "Failed to log message processed event for %s - continuing delivery success "
                 "as database execution has already committed",
-                app_config.db_stored_procedure,
+                procedure_name,
             )
 
         logger.info(
             "TRRR identifier update %s executed successfully. MessageControlId: %s, MSH: %s",
-            app_config.db_stored_procedure,
+            procedure_name,
             msh_info.control_id,
             msh_info.msh_text,
         )
@@ -130,12 +155,12 @@ def process_message(
     except FatalDatabaseError as fatal_err:
         event_logger.log_message_failed(
             msh_info.msh_text,
-            f"Non-recoverable database error executing {app_config.db_stored_procedure}: {fatal_err.error_message}",
+            f"Non-recoverable database error executing {procedure_name}: {fatal_err.error_message}",
             correlation_id=correlation_id_opt,
         )
         logger.error(
             "Fatal database error executing %s (SQLState: %s, Code: %s): %s. MessageControlId: %s, MSH: %s",
-            app_config.db_stored_procedure,
+            procedure_name,
             fatal_err.sql_state,
             fatal_err.error_code,
             fatal_err.error_message,
@@ -152,7 +177,7 @@ def process_message(
         logger.warning(
             "Transient database error executing %s (SQLState: %s, Code: %s): %s. "
             "Abandoning message for retry. MessageControlId: %s, MSH: %s",
-            app_config.db_stored_procedure,
+            procedure_name,
             transient_err.sql_state,
             transient_err.error_code,
             transient_err.error_message,
@@ -165,7 +190,7 @@ def process_message(
         logger.exception(
             "Unexpected error executing stored procedure %s. "
             "Abandoning message for retry. MessageControlId: %s, MSH: %s",
-            app_config.db_stored_procedure,
+            procedure_name,
             msh_info.control_id,
             msh_info.msh_text,
         )
@@ -187,11 +212,12 @@ def main() -> None:
     )
 
     logger.info(
-        "Starting db_sender_trrr for subscription %s/%s -> DB %s (%s)",
+        "Starting db_sender_trrr for subscription %s/%s -> DB %s (%s, mapping %s)",
         app_config.ingress_topic_name,
         app_config.ingress_subscription_name,
         app_config.db_name,
         app_config.db_stored_procedure,
+        app_config.mapping_type,
     )
 
     with (
