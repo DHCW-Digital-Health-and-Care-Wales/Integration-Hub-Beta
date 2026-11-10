@@ -28,6 +28,7 @@ parameters:
       - RISP Core Reference Transformer
       - LIMS WRRS HL7 Transformer
       - PROMS FHIR Transformer
+      - PROMS FHIR Sender
       - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
@@ -111,6 +112,9 @@ resources:
       trigger: none
     - pipeline: 'PROMS FHIR Transformer - Build'
       source: 'PROMS FHIR Transformer - Build'
+      trigger: none
+    - pipeline: 'FHIR Sender - Build'
+      source: 'FHIR Sender - Build'
       trigger: none
     - pipeline: 'HL7 Sender - Build'
       source: 'HL7 Sender - Build'
@@ -365,6 +369,12 @@ stages:
           appImageName: 'soapsender'
           appFunctionMidfix: 'wis'
           buildPipeline: 'SOAP Sender - Build'
+
+        # WPAS to PROMS Flow (container app uks-<env>-proms-fhirsender-ca)
+        - name: 'PROMS FHIR Sender'
+          appImageName: 'proms-fhirsender'
+          appFunctionMidfix: ''
+          buildPipeline: 'FHIR Sender - Build'
 
         # RISP to WRRS Flow
         - name: 'WRRS STMSG DB Sender'
