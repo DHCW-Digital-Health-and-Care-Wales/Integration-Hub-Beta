@@ -11,8 +11,10 @@ import json
 import unittest
 from unittest import mock
 
+from azure.servicebus import ServiceBusMessage
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.resource import Resource
+from transformer_base_lib.message_processor import process_message
 
 from tests.wpas_messages import (
     CANCELLED_MESSAGE,
@@ -48,6 +50,7 @@ from xml_fhir_proms_transformer.proms_transformer import (
     build_fhir_bundle,
     transform_proms_xml_to_fhir_bundle,
 )
+from xml_fhir_proms_transformer.reference_data import DEFAULT_REFERENCE_DATA_RESOLVER
 
 
 def sequential_uuid_factory() -> UuidFactory:
@@ -864,6 +867,81 @@ class TestPromsFhirTransformer(unittest.TestCase):
         queue_bundle = build_fhir_bundle(message, uuid_factory=sequential_uuid_factory())
         standalone_bundle = build(REFERRAL_MESSAGE)
         self.assertEqual(queue_bundle.model_dump_json(), standalone_bundle.model_dump_json())
+
+
+# The declaration says utf-16 but the body is a UTF-8 str, exactly as WPAS delivers it
+WPAS_UTF16_DECLARED_REFERRAL = """<?xml version="1.0" encoding="utf-16"?>
+<PromsEventRequest>
+<system_id>149</system_id><unique_code>1268889121</unique_code><crn>H9211785</crn>
+<nhsNumber>1268889121</nhsNumber><patientTitle>Lady</patientTitle>
+<patientFirstname>SCHEMA TEST</patientFirstname><patientMiddlename></patientMiddlename>
+<patientSurname>JONES</patientSurname><dob>1977-03-01</dob><dod></dod><gender>F</gender>
+<buildingName>1 Ocean Buildings</buildingName><streetRoadName>Bute Crescent</streetRoadName>
+<postTown>Cardiff</postTown><postalCounty>Cardiff</postalCounty><postCode>CF10 5AY</postCode>
+<hbCode>X98</hbCode><letterID></letterID>
+<preferred_spoken_language_code>9</preferred_spoken_language_code><spoken_language>Unknown</spoken_language>
+<preferred_written_language_code>9</preferred_written_language_code><written_language>Unknown</written_language>
+<ethnic_origin_code>ZZ</ethnic_origin_code><ethnic_origin>Not stated</ethnic_origin>
+<religion_code>Z</religion_code><religion>Not known</religion>
+<marital_status_code>9</marital_status_code><marital_status>Not known</marital_status>
+<home_phone></home_phone><work_phone></work_phone><mobile_phone>0745592833911</mobile_phone>
+<email>ok@aol.com</email><referrer_code>G9505126</referrer_code><referrer_prac>W95065</referrer_prac>
+<referrer_name>GRIFFITHS HM</referrer_name>
+<referrer_location>Oakfield Surgery         Oakfield Street         Ystrad Mynach          Hengoed</referrer_location>
+<referrer_postcode>CF82 7WX</referrer_postcode><referrer_org>4WN58</referrer_org>
+<eventCode>REFERRAL</eventCode><eventPathway>GENERIC</eventPathway><eventDate>2026-10-07</eventDate>
+<consultant_code>HANJO</consultant_code><clinicianName>Jones, Hannah</clinicianName>
+<consultant_specialty>650100</consultant_specialty><specialty_name>MSK (Physiotherapy)</specialty_name>
+<main_specialty_name>Physiotherapy</main_specialty_name><pathway>7A22868085</pathway>
+<activityNotekey>31689017</activityNotekey>
+</PromsEventRequest>"""
+
+
+class TestProcessMessageEndToEnd(unittest.TestCase):
+    def setUp(self) -> None:
+        patcher = mock.patch.object(PromsFhirTransformer, "__init__", lambda self: None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.transformer = PromsFhirTransformer()
+        self.transformer._resolver = DEFAULT_REFERENCE_DATA_RESOLVER
+        self.transformer.transformer_name = "WPAS_PROMS"
+        self.sender = mock.MagicMock()
+        self.event_logger = mock.MagicMock()
+
+    def _process(self, body: str) -> bool:
+        message = mock.MagicMock(spec=ServiceBusMessage)
+        message.body = [body.encode("utf-8")]
+        message.application_properties = {}
+        return process_message(
+            message=message,
+            sender_client=self.sender,
+            event_logger=self.event_logger,
+            transform=self.transformer.transform_message,
+            transformer_display_name="WPAS_PROMS",
+            received_audit_text="received",
+            processed_audit_text_builder=self.transformer.get_processed_audit_text,
+            failed_audit_text="failed",
+            egress_properties_builder=self.transformer.get_egress_properties,
+            parse_input=self.transformer.parse_input,
+            serialise_output=self.transformer.serialise_output,
+        )
+
+    def test_wpas_xml_is_transformed_and_sent_as_bundle_json(self) -> None:
+        self.assertTrue(self._process(WPAS_UTF16_DECLARED_REFERRAL))
+
+        sent_body = self.sender.send_message.call_args[0][0]
+        payload = json.loads(sent_body)
+        self.assertEqual(payload["resourceType"], "Bundle")
+        self.assertEqual(payload["entry"][0]["resource"]["resourceType"], "MessageHeader")
+        logged = self.event_logger.log_message_processed.call_args
+        self.assertEqual(logged[0][0], sent_body)
+        self.assertIn("REFERRAL", logged[0][1])
+
+    def test_malformed_xml_is_logged_as_a_failure_and_not_sent(self) -> None:
+        self.assertFalse(self._process("<PromsEventRequest><unclosed>"))
+
+        self.sender.send_message.assert_not_called()
+        self.event_logger.log_message_failed.assert_called_once()
 
 
 if __name__ == "__main__":

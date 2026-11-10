@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 from azure.servicebus import ServiceBusMessage
 from event_logger_lib import EventLogger
@@ -11,17 +11,29 @@ from message_bus_lib.metadata_utils import correlation_id_for_logger, extract_me
 logger = logging.getLogger(__name__)
 
 
+def serialise_hl7_message(transformed_message: Any) -> str:
+    """Default egress serialisation: HL7 ER7 (pipe-delimited) text."""
+    return transformed_message.to_er7()  # type: ignore[no-any-return]
+
+
 def process_message(
     message: ServiceBusMessage,
     sender_client: MessageSenderClient,
     event_logger: EventLogger,
-    transform: Callable[[Message], Message],
+    transform: Callable[[Any], Any],
     transformer_display_name: str,
     received_audit_text: str,
-    processed_audit_text_builder: Callable[[Message], str],
+    processed_audit_text_builder: Callable[[Any], str],
     failed_audit_text: str,
-    egress_properties_builder: Callable[[dict[str, str] | None, Message], dict[str, str] | None] | None = None,
+    egress_properties_builder: Callable[[dict[str, str] | None, Any], dict[str, str] | None] | None = None,
+    parse_input: Callable[[str], Any] = parse_message,
+    serialise_output: Callable[[Any], str] = serialise_hl7_message,
 ) -> bool:
+    """Receive, transform and forward one Service Bus message.
+
+    parse_input and serialise_output default to HL7 ER7 handling. Non-HL7 transformers (for example the
+    WPAS XML to FHIR transformer) override them so their payload is never run through the HL7 parser.
+    """
     message_body = b"".join(message.body).decode("utf-8")
     incoming_props: dict[str, str] | None = extract_metadata(message)
     meta = get_metadata_log_values(incoming_props)
@@ -41,22 +53,24 @@ def process_message(
     try:
         event_logger.log_message_received(message_body, received_audit_text, correlation_id=correlation_id_opt)
 
-        hl7_msg = parse_message(message_body)
-        msh_segment = hl7_msg.msh
-        logger.debug(f"Message ID: {msh_segment.msh_10.value}")
+        parsed_message = parse_input(message_body)
+        # MSH-10 only exists on HL7 messages; other payload types have no equivalent to log
+        if isinstance(parsed_message, Message):
+            logger.debug(f"Message ID: {parsed_message.msh.msh_10.value}")
 
-        transformed_hl7_message = transform(hl7_msg)
+        transformed_message = transform(parsed_message)
 
         egress_props = (
-            egress_properties_builder(incoming_props, transformed_hl7_message)
+            egress_properties_builder(incoming_props, transformed_message)
             if egress_properties_builder
             else incoming_props
         )
-        sender_client.send_message(transformed_hl7_message.to_er7(), custom_properties=egress_props)
+        egress_body = serialise_output(transformed_message)
+        sender_client.send_message(egress_body, custom_properties=egress_props)
 
         event_logger.log_message_processed(
-            transformed_hl7_message.to_er7(),
-            processed_audit_text_builder(hl7_msg),
+            egress_body,
+            processed_audit_text_builder(parsed_message),
             correlation_id=correlation_id_opt,
         )
 
