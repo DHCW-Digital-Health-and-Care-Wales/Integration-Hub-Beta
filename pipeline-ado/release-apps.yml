@@ -278,6 +278,7 @@ stages:
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
           appFunctionMidfix: ''
+          containerAppNameSuffix: 'proms-fhir-tfmr'
           buildPipeline: 'PROMS FHIR Transformer - Build'
 
         - name: 'HL7 WDS Transformer'
