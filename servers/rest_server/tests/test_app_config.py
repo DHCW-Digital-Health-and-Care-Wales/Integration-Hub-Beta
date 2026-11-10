@@ -109,6 +109,36 @@ class TestAppConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             AppConfig.read_env_config()
 
+    @patch.dict(
+        os.environ,
+        {
+            **BASE_ENV,
+            "WRRS_TOPIC_NAME": "wrrs-topic",
+            "WRRS_EGRESS_SESSION_ID": "lims-to-wrrs",
+            "WRRS_WORKFLOW_ID": "lims-to-wrrs",
+            "WRRS_TRIGGER_EVENTS": "A31, A40",
+        },
+        clear=True,
+    )
+    def test_generic_pipeline_with_wrrs_config(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.wrrs_topic_name, "wrrs-topic")
+        self.assertEqual(config.wrrs_egress_session_id, "lims-to-wrrs")
+        self.assertEqual(config.wrrs_workflow_id, "lims-to-wrrs")
+        self.assertEqual(config.wrrs_trigger_events, ["A31", "A40"])
+
+    @patch.dict(
+        os.environ,
+        {
+            **BASE_ENV,
+            "WRRS_TOPIC_NAME": "wrrs-topic",
+        },
+        clear=True,
+    )
+    def test_generic_pipeline_missing_wrrs_session_raises(self) -> None:
+        with self.assertRaises(RuntimeError):
+            AppConfig.read_env_config()
+
     @patch.dict(os.environ, {k: v for k, v in BASE_ENV.items() if k != "MESSAGE_STORE_QUEUE_NAME"}, clear=True)
     def test_message_store_queue_name_optional_when_unset(self) -> None:
         config = AppConfig.read_env_config()

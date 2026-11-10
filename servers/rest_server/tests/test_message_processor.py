@@ -151,6 +151,70 @@ class TestRestMessageProcessor(unittest.TestCase):
         self.assertEqual(status_code, 500)
         self.mock_sender.send_text_message.assert_not_called()
 
+    def test_wrrs_forwarding_for_a31_and_a40(self) -> None:
+        mock_wrrs_sender = MagicMock()
+        processor = RestMessageProcessor(
+            content_adapter=self.mock_adapter,
+            validator=self.mock_validator,
+            sender_client=self.mock_sender,
+            event_logger=self.mock_event_logger,
+            metric_sender=self.mock_metric_sender,
+            message_store_client=self.mock_message_store,
+            workflow_id="workflow-rest",
+            egress_session_id="rest-session",
+            allowed_source_identifiers=["partner-x"],
+            output_format="raw",
+            allowed_trigger_events=["A28", "A31", "A40"],
+            wrrs_sender_client=mock_wrrs_sender,
+            wrrs_workflow_id="wrrs-workflow",
+            wrrs_trigger_events=["A31", "A40"],
+        )
+
+        for trigger in ("A31", "A40"):
+            with self.subTest(trigger=trigger):
+                self.mock_sender.reset_mock()
+                mock_wrrs_sender.reset_mock()
+                self.mock_adapter.extract.return_value = self._extracted(message_type=trigger)
+                self.mock_adapter.build_success_response.return_value = "<ack/>"
+
+                status_code, _ = processor.process("<Document/>")
+
+                self.assertEqual(status_code, 200)
+                self.mock_sender.send_text_message.assert_called_once()
+                mock_wrrs_sender.send_text_message.assert_called_once()
+
+                wrrs_props = mock_wrrs_sender.send_text_message.call_args.args[1]
+                self.assertEqual(wrrs_props["MessageType"], trigger)
+                self.assertEqual(wrrs_props["WorkflowID"], "wrrs-workflow")
+                self.assertIn("CorrelationId", wrrs_props)
+
+    def test_wrrs_not_forwarded_for_a28(self) -> None:
+        mock_wrrs_sender = MagicMock()
+        processor = RestMessageProcessor(
+            content_adapter=self.mock_adapter,
+            validator=self.mock_validator,
+            sender_client=self.mock_sender,
+            event_logger=self.mock_event_logger,
+            metric_sender=self.mock_metric_sender,
+            message_store_client=self.mock_message_store,
+            workflow_id="workflow-rest",
+            egress_session_id="rest-session",
+            allowed_source_identifiers=["partner-x"],
+            output_format="raw",
+            allowed_trigger_events=["A28", "A31", "A40"],
+            wrrs_sender_client=mock_wrrs_sender,
+            wrrs_workflow_id="wrrs-workflow",
+            wrrs_trigger_events=["A31", "A40"],
+        )
+        self.mock_adapter.extract.return_value = self._extracted(message_type="A28")
+        self.mock_adapter.build_success_response.return_value = "<ack/>"
+
+        status_code, _ = processor.process("<Document/>")
+
+        self.assertEqual(status_code, 200)
+        self.mock_sender.send_text_message.assert_called_once()
+        mock_wrrs_sender.send_text_message.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
