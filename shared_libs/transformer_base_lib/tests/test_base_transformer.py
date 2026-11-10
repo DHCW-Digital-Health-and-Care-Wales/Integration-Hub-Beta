@@ -39,5 +39,19 @@ class TestBaseTransformer(unittest.TestCase):
         self.assertIs(transformer.get_egress_properties(props, MagicMock()), props)
         self.assertIsNone(transformer.get_egress_properties(None, MagicMock()))
 
+    def test_default_parse_input_parses_hl7(self):
+        transformer = TestTransformer("test_transformer")
+
+        parsed = transformer.parse_input("MSH|^~\\&|252|252|100|100|2025-05-05 23:23:32||ADT^A31^ADT_A05|1|P|2.5\r")
+
+        self.assertEqual(parsed.msh.msh_10.value, "1")
+
+    def test_default_serialise_output_returns_er7(self):
+        transformer = TestTransformer("test_transformer")
+        message = MagicMock()
+        message.to_er7.return_value = "MSH|^~\\&|...\r"
+
+        self.assertEqual(transformer.serialise_output(message), "MSH|^~\\&|...\r")
+
 if __name__ == '__main__':
     unittest.main()
