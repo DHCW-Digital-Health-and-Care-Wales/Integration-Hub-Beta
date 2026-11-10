@@ -1,5 +1,5 @@
 # Local testing and the Azure DEV environment: a real SQL Server hosting a mock WRRS DRS database and
-# dbo.prQueueMessage procedure. The image is linux/amd64 only (Azure Container Apps is amd64; on Apple Silicon it
+# dbo.prQueueMessage procedure, plus a mock TRRR Clinical_Results database and dbo.TRRRIDUpdate procedure. The image is linux/amd64 only (Azure Container Apps is amd64; on Apple Silicon it
 # runs under emulation, the platform is set in compose).
 FROM mcr.microsoft.com/mssql/server:2022-latest
 

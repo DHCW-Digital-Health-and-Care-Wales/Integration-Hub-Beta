@@ -169,6 +169,26 @@
                     }
                   }
                 ]
+              },
+              {
+                "Name": "local-inthub-lims-transformer-ingress-trrr-mrg-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },

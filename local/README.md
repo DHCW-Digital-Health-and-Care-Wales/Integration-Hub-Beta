@@ -265,7 +265,7 @@ Profiles:
 
 - phw-to-mpi
 - lims-to-mpi
-- lims-to-trrr
+- lims-to-wrrs
 - pms-soap-to-mpi
 - paris-to-mpi
 - chemo-to-mpi
@@ -289,7 +289,7 @@ Each profile starts a complete integration flow with all required services:
 | **phw-to-mpi**   | phw-hl7-server, phw-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PHW (Public Health Wales) to MPI integration flow                                                 |
 | **lims-to-mpi**  | hl7-soap-server, lims-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no MPI transformer); uses the topic-based mock receiver, mirroring DEV |
 | **lims-to-wrrs** | hl7-soap-server, wrrs-idupd-dbsender, mock-db-receiver, sqledge, sb-emulator | LIMS to WRRS SQL database delivery for patient identifier updates and merges (`dbo.prQueueIdUpdate` in `DRS`); a third subscription on the same topic the LIMS server publishes to; the database is the `mock_receivers/db_mock_receiver` SQL Server mock (the sender waits for it to be healthy) |
-| **lims-to-trrr** | hl7-soap-server, lims-trrr-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator              | LIMS SOAP HL7 XML ingress (assigning authority 328) to TRRR integration flow; a second subscription on the same topic the LIMS server publishes to, using a dedicated full-image sender (lims-trrr-hl7-sender), mirroring the DEV hl7_lims_trrr_sender container app |
+| **lims-to-trrr** | hl7-soap-server, lims-trrr-hl7-sender, db_sender_trrr, db_sender_trrr_merge, mock-db-receiver, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to TRRR SQL delivery; subscriptions on the same `local-inthub-lims-hl7-input` topic the LIMS server publishes to. `db_sender_trrr` (`TRRR_MAPPING_TYPE=NHS_ID_UPDATE`, subscription `local-inthub-lims-trrr-sender-sub`) writes A31/A40 NHS-ID updates via `dbo.TRRRIDUpdate`; `db_sender_trrr_merge` (`TRRR_MAPPING_TYPE=MERGE`, subscription `local-inthub-lims-trrr-merge-sender-sub`, every A40) writes merges via `dbo.TRRRIDMerge` into `Clinical_Results.dbo.TRRRIdentifierMerge`. An A40 meeting both rules produces one row in each. NHS-ID updates are written into `Clinical_Results.dbo.TRRRIdentifierUpdate` on `mock-db-receiver` (host port 14334) |
 | **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator             | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
 | **paris-to-mpi** | cav-paris-hl7-server, paris-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Paris healthcare system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (paris-mpi-hl7-sender), mirroring Mosaiq/LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |

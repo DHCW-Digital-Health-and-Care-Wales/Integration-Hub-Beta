@@ -426,8 +426,10 @@ services:
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
-      - sb-emulator
-      - sqledge
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
     profiles:
       - lims-to-trrr
       - everything
@@ -435,6 +437,33 @@ services:
       integration-hub:
         aliases:
           - "db_sender_trrr"
+
+  # TRRR merge sender: same image as db_sender_trrr, but on its own subscription (every ADT^A40) and
+  # configured with TRRR_MAPPING_TYPE=MERGE so it writes via dbo.TRRRIDMerge. An A40 that also matches
+  # the NHS-IDUpdate rule is delivered to both subscriptions and results in two TRRR requests.
+  db_sender_trrr_merge:
+    container_name: db_sender_trrr_merge
+    # Reuses the image built for db_sender_trrr (same code, different TRRR_MAPPING_TYPE) to avoid a second build.
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-merge-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_merge"
 
   # Dedicated Mosaiq -> MPI sender. Unlike the shared mpi-hl7-sender (queue-based ingress), this
   # mirrors the DEV hl7_mpi_sender container app for Mosaiq: subscription-based ingress from the
@@ -630,10 +659,10 @@ services:
         aliases:
           - "mpi-hl7-topic-mock-receiver"
 
-  # Mock WRRS database for the RISP -> WRRS and LIMS -> WRRS flows (local testing only). Real SQL Server
-  # hosting a mock DRS database with dbo.prQueueMessage and dbo.prQueueIdUpdate. The image is amd64-only,
-  # so it runs emulated on Apple Silicon.
-  # Healthy only once DRS and both procedures exist, so the senders never start against a missing database.
+  # Mock databases for the RISP -> WRRS, LIMS -> WRRS and LIMS -> TRRR flows (local testing only).
+  # Hosts mock DRS procedures for WRRS and mock Clinical_Results procedures for TRRR. The image is
+  # amd64-only, so it runs emulated on Apple Silicon.
+  # Healthy only once the required databases and procedures exist, so the senders never start against missing databases.
   mock-db-receiver:
     container_name: mock-db-receiver
     platform: linux/amd64
@@ -645,7 +674,7 @@ services:
     ports:
       - "14334:1433"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d DRS -Q \"SELECT CASE WHEN OBJECT_ID('dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('dbo.prQueueIdUpdate') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d master -Q \"SELECT CASE WHEN DB_ID('DRS') IS NOT NULL AND DB_ID('Clinical_Results') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueIdUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDMerge') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -653,7 +682,7 @@ services:
     restart: on-failure
     profiles:
       - risp-to-wrrs
-      - lims-to-wrrs
+      - lims-to-trrr
       - everything
     networks:
       integration-hub:
