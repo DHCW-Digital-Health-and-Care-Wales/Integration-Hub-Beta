@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
@@ -65,6 +65,7 @@ class AppConfig:
     wrrs_topic_name: str | None
     wrrs_egress_session_id: str | None
     wrrs_workflow_id: str | None
+    allowed_trigger_events: List[str] = field(default_factory=list)
     max_request_size_bytes: int = DEFAULT_MAX_REQUEST_SIZE_BYTES
     tls_cert_file: str | None = None
     tls_key_file: str | None = None
@@ -123,6 +124,7 @@ class AppConfig:
             validation_schema=validation_schema,
             allowed_hl7_structures=allowed_hl7_structures,
             allowed_source_identifiers=_read_csv_list_optional("ALLOWED_SOURCE_IDENTIFIERS"),
+            allowed_trigger_events=_read_csv_list_optional("ALLOWED_TRIGGER_EVENTS"),
             source_identifier_locator=_read_path_env("SOURCE_IDENTIFIER_LOCATOR"),
             message_control_id_locator=_read_path_env("MESSAGE_CONTROL_ID_LOCATOR"),
             output_format=output_format,

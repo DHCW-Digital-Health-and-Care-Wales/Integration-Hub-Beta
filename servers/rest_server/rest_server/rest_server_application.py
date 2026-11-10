@@ -57,7 +57,10 @@ def build_validator(app_config: AppConfig) -> Validator:
             allowed_structures=set(app_config.allowed_hl7_structures),
         )
     if app_config.validator_type == "hl7apy":
-        return Hl7ApyValidator(allowed_structures=set(app_config.allowed_hl7_structures))
+        return Hl7ApyValidator(
+            allowed_structures=set(app_config.allowed_hl7_structures),
+            allowed_trigger_events=set(app_config.allowed_trigger_events),
+        )
     if app_config.validator_type == "xsd":
         return XsdValidator(schema_path=app_config.validation_schema or "")
     if app_config.validator_type == "none":
@@ -96,6 +99,7 @@ class RestServerApplication:
             egress_session_id=app_config.egress_session_id,
             allowed_source_identifiers=app_config.allowed_source_identifiers,
             output_format=app_config.output_format or "",
+            allowed_trigger_events=app_config.allowed_trigger_events,
         )
 
         @asynccontextmanager

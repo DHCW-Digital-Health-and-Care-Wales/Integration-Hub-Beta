@@ -43,6 +43,7 @@ class RestMessageProcessor:
         egress_session_id: str,
         allowed_source_identifiers: List[str],
         output_format: str,
+        allowed_trigger_events: List[str] | None = None,
     ) -> None:
         self.content_adapter = content_adapter
         self.validator = validator
@@ -53,6 +54,7 @@ class RestMessageProcessor:
         self.workflow_id = workflow_id
         self.egress_session_id = egress_session_id
         self.allowed_source_identifiers = set(allowed_source_identifiers)
+        self.allowed_trigger_events = set(allowed_trigger_events) if allowed_trigger_events else set()
         self.output_format = output_format
 
     @property
@@ -81,6 +83,16 @@ class RestMessageProcessor:
                         f"Allowed values: {', '.join(sorted(self.allowed_source_identifiers))}"
                     ),
                     403,
+                )
+
+            if self.allowed_trigger_events and extracted.message_type not in self.allowed_trigger_events:
+                raise RequestError(
+                    "Client.Validation",
+                    (
+                        f"Unsupported HL7 trigger event '{extracted.message_type or 'unknown'}'. "
+                        f"Allowed values: {', '.join(sorted(self.allowed_trigger_events))}"
+                    ),
+                    400,
                 )
 
             output_payload = self._format_output(extracted.payload_xml)

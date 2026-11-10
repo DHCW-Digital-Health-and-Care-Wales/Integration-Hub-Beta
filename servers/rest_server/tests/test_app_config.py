@@ -32,8 +32,14 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.endpoint_path, "/ingest")
         self.assertEqual(config.allowed_hl7_structures, ["ADT_A05", "ADT_A39"])
         self.assertEqual(config.allowed_source_identifiers, [])
+        self.assertEqual(config.allowed_trigger_events, [])
         self.assertIsNone(config.source_identifier_locator)
         self.assertEqual(config.max_request_size_bytes, DEFAULT_MAX_REQUEST_SIZE_BYTES)
+
+    @patch.dict(os.environ, {**BASE_ENV, "ALLOWED_TRIGGER_EVENTS": "A28, A31, A40"}, clear=True)
+    def test_read_env_config_allowed_trigger_events(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.allowed_trigger_events, ["A28", "A31", "A40"])
 
     @patch.dict(os.environ, {**BASE_ENV, "ENDPOINT_PATH": "ingest"}, clear=True)
     def test_invalid_endpoint_path_raises(self) -> None:

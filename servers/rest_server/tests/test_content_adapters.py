@@ -34,6 +34,27 @@ class TestSoapContentAdapter(unittest.TestCase):
         self.assertEqual(extracted.message_control_id, "6774333028472727804z213950")
         self.assertIn("<ns0:ADT_A05", extracted.payload_xml)
 
+    def test_extract_valid_soap_request_unprefixed_no_namespace(self) -> None:
+        unprefixed_xml = (
+            "<ADT_A05>"
+            "<MSH>"
+            "<MSH.1>|</MSH.1>"
+            "<MSH.2>^~\\&amp;</MSH.2>"
+            "<MSH.3><HD.1>328</HD.1></MSH.3>"
+            "<MSH.4><HD.1>328</HD.1></MSH.4>"
+            "<MSH.9><MSG.1>ADT</MSG.1><MSG.2>A28</MSG.2><MSG.3>ADT_A05</MSG.3></MSH.9>"
+            "<MSH.10>1022803</MSH.10>"
+            "</MSH>"
+            "</ADT_A05>"
+        )
+        extracted = self.adapter.extract(_wrap_in_soap(unprefixed_xml))
+
+        self.assertEqual(extracted.structure_id, "ADT_A05")
+        self.assertEqual(extracted.source_identifier, "328")
+        self.assertEqual(extracted.message_control_id, "1022803")
+        self.assertEqual(extracted.message_type, "A28")
+        self.assertIn("<ADT_A05>", extracted.payload_xml)
+
     def test_extract_message_type_from_msh_9_2(self) -> None:
         for trigger in ("A31", "A40"):
             with self.subTest(trigger=trigger):
