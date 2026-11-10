@@ -131,6 +131,9 @@ async def fhir_process_message(request: Request) -> Response:
     )
     result = _fhir_state.submit(raw_body, str(request.base_url))
     logger.info("FHIR POST — %d bytes, auth=%s -> HTTP %d", len(raw_body), auth, result.status_code)
+    # Only accepted Bundles are forwarded, so rejected-then-retried scenarios don't produce duplicates
+    if result.status_code == 202 and _sb_sender:
+        _forward_to_service_bus(raw_body, "FHIR Bundle")
     return _fhir_response(result)
 
 
