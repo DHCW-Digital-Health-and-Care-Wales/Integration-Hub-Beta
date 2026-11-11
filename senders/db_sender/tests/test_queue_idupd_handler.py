@@ -179,6 +179,31 @@ class TestQueueIdUpdateHandler(unittest.TestCase):
             new_identifier_assigning_authority="NHS",
         )
 
+    def test_handle_a31_none_metadata_falls_back_to_msh_and_config(self) -> None:
+        msh_info = MshInfo(
+            msh_text="MSH|...",
+            control_id="MSG-A31",
+            message_type="ADT^A31^ADT_A05",
+            trigger_event="A31",
+            sending_app="328",
+        )
+        # Passing None metadata (e.g., if called directly) should not fail with AttributeError
+        self.handler.handle_message(
+            SAMPLE_A31_VALID,
+            metadata=None,  # type: ignore[arg-type]
+            msh_info=msh_info,
+            db_client=self.mock_db_client,
+        )
+
+        self.mock_db_client.execute_queue_id_update.assert_called_once_with(
+            provider_patient_identifier="LIMS-PAT-01",
+            provider_assigning_authority="328",
+            old_identifier=None,
+            old_identifier_assigning_authority=None,
+            new_identifier="9876543210",
+            new_identifier_assigning_authority="NHS",
+        )
+
     def test_handle_a31_missing_provider_identifier_raises_dlq(self) -> None:
         # Has NHS ID but missing 328 ID
         msg = (

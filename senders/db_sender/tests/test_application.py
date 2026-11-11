@@ -185,6 +185,26 @@ class TestApplication(unittest.TestCase):
         self.assertNotIn(sentinel_patient_data, failed_call_args[1])
         self.assertIn("converting the varchar value '***' to data type int", failed_call_args[1])
 
+    def test_process_message_normalizes_absent_metadata_to_empty_dict(self) -> None:
+        mock_msg = MagicMock()
+        mock_msg.body = [b"MSH|^~\\&|349|349|||20261022||ADT^A40|CTRL1|P|2.5\rPID|1||999"]
+        mock_msg.application_properties = None
+
+        mock_handler = MagicMock()
+        result = process_message(
+            mock_msg,
+            self.mock_db_client,
+            self.config,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            handler=mock_handler,
+        )
+
+        self.assertTrue(result)
+        mock_handler.handle_message.assert_called_once()
+        call_kwargs = mock_handler.handle_message.call_args[1]
+        self.assertEqual(call_kwargs["metadata"], {})
+
 
 if __name__ == "__main__":
     unittest.main()
