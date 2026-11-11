@@ -135,10 +135,11 @@ class QueueIdUpdateHandler(BaseDatabaseHandler):
             new_identifier_assigning_authority="NHS",
         )
 
-    def _resolve_source_system(self, metadata: dict[str, Any], msh_info: MshInfo) -> str:
-        sb_source = metadata.get("source_system") or metadata.get("SourceSystem")
-        if sb_source and str(sb_source).strip():
-            return str(sb_source).strip()
+    def _resolve_source_system(self, metadata: dict[str, Any] | None, msh_info: MshInfo) -> str:
+        if metadata:
+            sb_source = metadata.get("source_system") or metadata.get("SourceSystem")
+            if sb_source and str(sb_source).strip():
+                return str(sb_source).strip()
 
         if msh_info.sending_app and msh_info.sending_app.strip():
             return msh_info.sending_app.strip()

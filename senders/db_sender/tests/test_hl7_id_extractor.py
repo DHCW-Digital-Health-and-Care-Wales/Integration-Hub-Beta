@@ -129,6 +129,46 @@ class TestHl7IdExtractor(unittest.TestCase):
         self.assertIsNone(extract_pid_identifier_by_authority("", "NHS"))
         self.assertIsNone(extract_pid_identifier_by_authority(SAMPLE_A31_ER7, ""))
 
+    def test_extract_pid_standard_cx_does_not_match_other_components(self) -> None:
+        msg = "MSH|^~\\&|SEND|FAC|||20260101||ADT^A31||P|2.5\rPID|||WRONG^^^999^PI^328~RIGHT^^^328^PI"
+        self.assertEqual(extract_pid_identifier_by_authority(msg, "328"), "RIGHT")
+        self.assertEqual(extract_pid_identifier_by_authority(msg, "999"), "WRONG")
+
+    def test_extract_mrg_standard_cx_does_not_treat_type_as_authority(self) -> None:
+        msg = "MSH|^~\\&|SEND|FAC|||20260101||ADT^A40||P|2.5\rMRG|OLD^^^^PI"
+        old_id, old_auth = extract_mrg_identifiers(msg)
+        self.assertEqual(old_id, "OLD")
+        self.assertIsNone(old_auth)
+
+    def test_extract_mrg_er7_compacted_layouts(self) -> None:
+        msg_2comp = "MSH|^~\\&|SEND|FAC|||20260101||ADT^A40||P|2.5\rMRG|OLD^PAS"
+        self.assertEqual(extract_mrg_identifiers(msg_2comp), ("OLD", "PAS"))
+
+        msg_3comp = "MSH|^~\\&|SEND|FAC|||20260101||ADT^A40||P|2.5\rMRG|OLD^PAS^PI"
+        self.assertEqual(extract_mrg_identifiers(msg_3comp), ("OLD", "PAS"))
+
+    def test_extract_mrg_repetitions(self) -> None:
+        msg = "MSH|^~\\&|SEND|FAC|||20260101||ADT^A40||P|2.5\rMRG|FIRST^^^AUTH1~SECOND^^^AUTH2"
+        self.assertEqual(extract_mrg_identifiers(msg), ("FIRST", "AUTH1"))
+
+    def test_extract_pid_xml_ignores_assigning_facility_hd1(self) -> None:
+        xml_msg = """<?xml version="1.0" encoding="UTF-8"?>
+        <ADT_A31 xmlns="urn:hl7-org:v2xml">
+            <PID>
+                <PID.3>
+                    <CX.1>WRONG_PATIENT</CX.1>
+                    <CX.4><HD.1>999</HD.1></CX.4>
+                    <CX.6><HD.1>328</HD.1></CX.6>
+                </PID.3>
+                <PID.3>
+                    <CX.1>CORRECT_PATIENT</CX.1>
+                    <CX.4><HD.1>328</HD.1></CX.4>
+                </PID.3>
+            </PID>
+        </ADT_A31>"""
+        self.assertEqual(extract_pid_identifier_by_authority(xml_msg, "328"), "CORRECT_PATIENT")
+        self.assertEqual(extract_pid_identifier_by_authority(xml_msg, "999"), "WRONG_PATIENT")
+
 
 if __name__ == "__main__":
     unittest.main()

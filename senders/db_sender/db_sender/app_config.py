@@ -43,7 +43,8 @@ class AppConfig:
 
     @staticmethod
     def read_env_config() -> AppConfig:
-        procedure_type = _read_env("DB_PROCEDURE_TYPE") or "queue_message"
+        raw_procedure_type = _read_env("DB_PROCEDURE_TYPE")
+        procedure_type = raw_procedure_type.strip().lower() if raw_procedure_type else "queue_message"
         default_sp = "dbo.prQueueIdUpdate" if procedure_type == "queue_id_update" else "dbo.prQueueMessage"
 
         return AppConfig(

@@ -69,23 +69,29 @@ def _extract_mrg_from_er7(cleaned: str) -> tuple[str | None, str | None]:
             return None, None
 
         mrg_1 = fields[1].strip()
-        components = mrg_1.split("^")
-        old_id = components[0].strip() if components[0].strip() else None
+        repetitions = mrg_1.split("~")
+        for repetition in repetitions:
+            rep_clean = repetition.strip()
+            if not rep_clean:
+                continue
 
-        old_auth: str | None = None
-        # Standard ER7: CX.4 is component index 3
-        if len(components) > 3 and components[3].strip():
-            old_auth = components[3].split("&")[0].strip() or None
+            components = rep_clean.split("^")
+            old_id = components[0].strip() if components[0].strip() else None
 
-        # Compacted ER7 fallback: check any component after CX.1
-        if not old_auth:
-            for comp in components[1:]:
-                clean_comp = comp.split("&")[0].strip()
-                if clean_comp:
-                    old_auth = clean_comp
-                    break
+            old_auth: str | None = None
+            if len(components) > 3:
+                # Standard ER7: CX.4 is component index 3
+                if components[3].strip():
+                    old_auth = components[3].split("&")[0].strip() or None
+            elif len(components) in (2, 3):
+                # Compacted ER7: ID^AUTH or ID^AUTH^TYPE
+                if components[1].strip():
+                    old_auth = components[1].split("&")[0].strip() or None
 
-        return old_id, old_auth
+            if old_id or old_auth:
+                return old_id, old_auth
+
+        return None, None
 
     return None, None
 
@@ -116,17 +122,18 @@ def _extract_pid_by_authority_er7(cleaned: str, authority: str) -> str | None:
             if not ident:
                 continue
 
-            # Standard ER7: CX.4 is index 3
-            if len(components) > 3 and components[3].strip():
-                auth_code = components[3].split("&")[0].strip()
-                if _authority_matches(auth_code, target_auth):
-                    return ident
+            auth_code: str | None = None
+            if len(components) > 3:
+                # Standard ER7: CX.4 is index 3
+                if components[3].strip():
+                    auth_code = components[3].split("&")[0].strip()
+            elif len(components) in (2, 3):
+                # Compacted ER7: ID^AUTH or ID^AUTH^TYPE
+                if components[1].strip():
+                    auth_code = components[1].split("&")[0].strip()
 
-            # Compacted ER7: check all components after index 0
-            for comp in components[1:]:
-                auth_code = comp.split("&")[0].strip()
-                if _authority_matches(auth_code, target_auth):
-                    return ident
+            if auth_code and _authority_matches(auth_code, target_auth):
+                return ident
 
     return None
 
@@ -161,18 +168,32 @@ def _extract_mrg_from_xml(cleaned: str) -> tuple[str | None, str | None]:
     if mrg_elem is None:
         return None, None
 
-    old_id: str | None = None
-    old_auth: str | None = None
+    # Check MRG.1 repetition elements first, else fall back to mrg_elem
+    mrg1_list = [child for child in mrg_elem if _local_tag(child) == "MRG.1"]
+    if not mrg1_list:
+        mrg1_list = [mrg_elem]
 
-    for elem in mrg_elem.iter():
-        tag = _local_tag(elem)
-        if tag in ("CX.1", "MRG.1.1") and elem.text and elem.text.strip():
-            old_id = elem.text.strip()
-        elif tag in ("HD.1", "MRG.1.4.1") and elem.text and elem.text.strip():
-            if old_auth is None:
-                old_auth = elem.text.strip()
+    for mrg1 in mrg1_list:
+        old_id: str | None = None
+        old_auth: str | None = None
 
-    return old_id, old_auth
+        for child in mrg1.iter():
+            tag = _local_tag(child)
+            if tag in ("CX.1", "MRG.1.1") and child.text and child.text.strip():
+                if old_id is None:
+                    old_id = child.text.strip()
+            elif tag in ("CX.4", "MRG.1.4"):
+                for hd in child.iter():
+                    hd_tag = _local_tag(hd)
+                    if hd_tag in ("HD.1", "MRG.1.4.1", "CX.4.1") and hd.text and hd.text.strip():
+                        if old_auth is None:
+                            old_auth = hd.text.strip()
+                        break
+
+        if old_id or old_auth:
+            return old_id, old_auth
+
+    return None, None
 
 
 def _extract_pid_by_authority_xml(cleaned: str, authority: str) -> str | None:
@@ -187,7 +208,7 @@ def _extract_pid_by_authority_xml(cleaned: str, authority: str) -> str | None:
             continue
 
         # Look for PID.3 repetitions under this PID
-        for pid3 in elem.iter():
+        for pid3 in elem:
             if _local_tag(pid3) != "PID.3":
                 continue
 
@@ -197,10 +218,15 @@ def _extract_pid_by_authority_xml(cleaned: str, authority: str) -> str | None:
             for child in pid3.iter():
                 tag = _local_tag(child)
                 if tag in ("CX.1", "PID.3.1") and child.text and child.text.strip():
-                    ident_val = child.text.strip()
-                elif tag in ("HD.1", "PID.3.4.1") and child.text and child.text.strip():
-                    if auth_val is None:
-                        auth_val = child.text.strip()
+                    if ident_val is None:
+                        ident_val = child.text.strip()
+                elif tag in ("CX.4", "PID.3.4"):
+                    for hd in child.iter():
+                        hd_tag = _local_tag(hd)
+                        if hd_tag in ("HD.1", "PID.3.4.1", "CX.4.1") and hd.text and hd.text.strip():
+                            if auth_val is None:
+                                auth_val = hd.text.strip()
+                            break
 
             if ident_val and auth_val and _authority_matches(auth_val, authority):
                 return ident_val
@@ -214,19 +240,39 @@ def _regex_fallback_mrg(cleaned: str) -> tuple[str | None, str | None]:
         return None, None
 
     mrg_content = match.group(1)
-    id_match = re.search(r"<(?:CX\.1|MRG\.1\.1)[^>]*>(?:<[^>]+>)*([^<]+)", mrg_content)
-    old_id = id_match.group(1).strip() if id_match else None
+    mrg1_matches = re.findall(r"<MRG\.1\b[^>]*>(.*?)</MRG\.1>", mrg_content, re.DOTALL | re.IGNORECASE)
+    targets = mrg1_matches if mrg1_matches else [mrg_content]
 
-    auth_match = re.search(r"<(?:HD\.1|MRG\.1\.4\.1)[^>]*>(?:<[^>]+>)*([^<]+)", mrg_content)
-    old_auth = auth_match.group(1).strip() if auth_match else None
+    for target_block in targets:
+        id_match = re.search(r"<(?:CX\.1|MRG\.1\.1)[^>]*>(?:<[^>]+>)*([^<]+)", target_block)
+        old_id = id_match.group(1).strip() if id_match else None
 
-    return old_id, old_auth
+        auth_match = re.search(
+            r"<(?:CX\.4|MRG\.1\.4)\b[^>]*>.*?<(?:HD\.1|MRG\.1\.4\.1)[^>]*>(?:<[^>]+>)*([^<]+)",
+            target_block,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if not auth_match:
+            auth_match = re.search(r"<MRG\.1\.4\.1[^>]*>(?:<[^>]+>)*([^<]+)", target_block)
+        old_auth = auth_match.group(1).strip() if auth_match else None
+
+        if old_id or old_auth:
+            return old_id, old_auth
+
+    return None, None
 
 
 def _regex_fallback_pid_by_authority(cleaned: str, authority: str) -> str | None:
     pid3_matches = re.findall(r"<PID\.3\b[^>]*>(.*?)</PID\.3>", cleaned, re.DOTALL | re.IGNORECASE)
     for pid3 in pid3_matches:
-        auth_match = re.search(r"<(?:HD\.1|PID\.3\.4\.1)[^>]*>(?:<[^>]+>)*([^<]+)", pid3)
+        auth_match = re.search(
+            r"<(?:CX\.4|PID\.3\.4)\b[^>]*>.*?<(?:HD\.1|PID\.3\.4\.1)[^>]*>(?:<[^>]+>)*([^<]+)",
+            pid3,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if not auth_match:
+            auth_match = re.search(r"<PID\.3\.4\.1[^>]*>(?:<[^>]+>)*([^<]+)", pid3)
+
         if auth_match and _authority_matches(auth_match.group(1), authority):
             id_match = re.search(r"<(?:CX\.1|PID\.3\.1)[^>]*>(?:<[^>]+>)*([^<]+)", pid3)
             if id_match:

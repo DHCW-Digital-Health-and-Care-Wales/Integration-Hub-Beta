@@ -45,7 +45,7 @@ def process_message(
         handler = create_handler(app_config)
 
     message_body = b"".join(message.body).decode("utf-8")
-    metadata = extract_metadata(message)
+    metadata = extract_metadata(message) or {}
     meta = get_metadata_log_values(metadata)
     correlation_id_opt = correlation_id_for_logger(meta)
 

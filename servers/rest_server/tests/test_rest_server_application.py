@@ -1,5 +1,6 @@
 import unittest
 from typing import cast
+from unittest.mock import MagicMock, patch
 
 from rest_server.app_config import AppConfig
 from rest_server.content_adapters.soap_adapter import SoapContentAdapter
@@ -105,16 +106,16 @@ class TestBuildValidator(unittest.TestCase):
 
 
 class TestRestServerApplicationGeneric(unittest.TestCase):
-    @unittest.mock.patch("rest_server.rest_server_application.build_extra_sender_client")
-    @unittest.mock.patch("rest_server.rest_server_application.build_shared_resources")
+    @patch("rest_server.rest_server_application.build_extra_sender_client")
+    @patch("rest_server.rest_server_application.build_shared_resources")
     def test_build_generic_app_wires_wrrs_sender_when_configured(
         self,
-        mock_build_shared: unittest.mock.MagicMock,
-        mock_build_extra: unittest.mock.MagicMock,
+        mock_build_shared: MagicMock,
+        mock_build_extra: MagicMock,
     ) -> None:
-        mock_shared = unittest.mock.MagicMock()
+        mock_shared = MagicMock()
         mock_build_shared.return_value = mock_shared
-        mock_extra = unittest.mock.MagicMock()
+        mock_extra = MagicMock()
         mock_build_extra.return_value = mock_extra
 
         app_config = _config(

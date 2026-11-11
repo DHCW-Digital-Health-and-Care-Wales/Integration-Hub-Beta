@@ -269,17 +269,13 @@ stages:
           appFunctionMidfix: 'risp'
           buildPipeline: 'HL7 Core Reference Transformer - Build'
 
-        # RISP to WRRS Flow
-        - name: 'WRRS STMSG DB Sender'
-          appImageName: 'dbsender'
-          appFunctionMidfix: 'wrrs-stmsg'
-          buildPipeline: 'Database Sender - Build'
-
         # WRRS QueueIdUpdate Flow (LIMS to WRRS)
         - name: 'WRRS IDUPD DB Sender'
           appImageName: 'dbsender'
           appFunctionMidfix: 'wrrs-idupd'
           buildPipeline: 'Database Sender - Build'
+
+        - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
           appFunctionMidfix: ''
           containerAppNameSuffix: 'proms-fhir-tfmr'
