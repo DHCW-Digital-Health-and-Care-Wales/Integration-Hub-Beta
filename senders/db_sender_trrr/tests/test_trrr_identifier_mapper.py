@@ -3,7 +3,6 @@ from __future__ import annotations
 from db_sender_trrr.identifier_mapper import (
     MAPPING_MERGE,
     MAPPING_NHS_ID_UPDATE,
-    NotRoutedError,
     map_adt_a05_identifiers,
     map_adt_a40_identifiers,
     map_adt_a40_merge_identifiers,
@@ -492,79 +491,59 @@ def test_unknown_mapping_type_is_rejected() -> None:
         lambda m: map_trrr_identifiers(m, "BOGUS"), VALID_MERGE_XML, "Unsupported mapping type: BOGUS"
     )
 
-def test_nhs_id_update_not_routed_when_a40_has_no_nhs_identifier() -> None:
+def test_nhs_id_update_fails_when_a40_has_no_nhs_identifier() -> None:
     message = (
         "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG1|P|2.5\r"
         "PID|1||LIMS-77^^^WLIMS^PI||Doe^John\r"
         "MRG|OLD-001^^^WLIMS^PI\r"
     )
 
-    try:
-        map_trrr_identifiers(message, MAPPING_NHS_ID_UPDATE)
-        raise AssertionError("Expected NotRoutedError")
-    except NotRoutedError as exc:
-        assert str(exc) == "Missing NHS identifier"
+    _assert_value_error(lambda m: map_trrr_identifiers(m, MAPPING_NHS_ID_UPDATE), message, "Missing NHS identifier")
 
-    # The same A40 still meets the merge criteria (every A40), so it is mapped there.
+    # The same A40 is still valid for the merge mapping (every A40), so it is mapped there.
     assert map_trrr_identifiers(message, MAPPING_MERGE)["OldIdentifier"] == "OLD-001"
 
 
-def test_nhs_id_update_not_routed_when_lims_authority_missing_from_pid3() -> None:
+def test_nhs_id_update_fails_when_lims_authority_missing_from_pid3() -> None:
     message = (
         "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG1|P|2.5\r"
         "PID|1||9876543210^^^NHS^NH||Doe^John\r"
     )
 
-    try:
-        map_trrr_identifiers(message, MAPPING_NHS_ID_UPDATE)
-        raise AssertionError("Expected NotRoutedError")
-    except NotRoutedError as exc:
-        assert str(exc) == "Missing LIMS identifier"
+    _assert_value_error(lambda m: map_trrr_identifiers(m, MAPPING_NHS_ID_UPDATE), message, "Missing LIMS identifier")
 
 
-def test_not_routed_for_unsupported_trigger_in_both_mapping_types() -> None:
+def test_unsupported_trigger_fails_in_both_mapping_types() -> None:
     message = (
         "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A08^ADT_A08|MSG1|P|2.5\r"
         "PID|1||LIMS-77^^^WLIMS^PI~9876543210^^^NHS^NH||Doe^John\r"
     )
 
     for mapping_type in (MAPPING_NHS_ID_UPDATE, MAPPING_MERGE):
-        try:
-            map_trrr_identifiers(message, mapping_type)
-            raise AssertionError("Expected NotRoutedError")
-        except NotRoutedError as exc:
-            assert str(exc).startswith("Unsupported trigger event")
+        _assert_value_error(
+            lambda m, mt=mapping_type: map_trrr_identifiers(m, mt), message, "Unsupported trigger event: A08"
+        )
 
 
-def test_missing_sending_authority_and_missing_mrg_are_not_routing_failures() -> None:
+def test_missing_sending_authority_and_missing_mrg_fail_with_their_own_reason() -> None:
     no_authority = (
         "MSH|^~\\&||WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG1|P|2.5\r"
         "PID|1||LIMS-77^^^WLIMS^PI~9876543210^^^NHS^NH||Doe^John\r"
     )
-    try:
-        map_trrr_identifiers(no_authority, MAPPING_NHS_ID_UPDATE)
-        raise AssertionError("Expected ValueError")
-    except NotRoutedError:
-        raise AssertionError("Missing sending authority must be dead-lettered, not skipped")
-    except ValueError as exc:
-        assert str(exc) == "Missing sending LIMS authority"
+    _assert_value_error(
+        lambda m: map_trrr_identifiers(m, MAPPING_NHS_ID_UPDATE), no_authority, "Missing sending LIMS authority"
+    )
+    _assert_value_error(
+        lambda m: map_trrr_identifiers(m, MAPPING_MERGE), VALID_ADT_A40_XML, "Missing old identifier"
+    )
 
-    try:
-        map_trrr_identifiers(VALID_ADT_A40_XML, MAPPING_MERGE)
-        raise AssertionError("Expected ValueError")
-    except NotRoutedError:
-        raise AssertionError("An A40 without MRG must be dead-lettered by the merge sender, not skipped")
-    except ValueError as exc:
-        assert str(exc) == "Missing old identifier"
 
-def test_a05_trigger_is_not_routed_to_nhs_id_update() -> None:
+def test_a05_trigger_is_unsupported() -> None:
     message = (
         "MSH|^~\\&|LIMS|LIMS|TRRR|TRRR|20250101010101||ADT^A05^ADT_A05|MSG123|P|2.5\r"
         "PID|1||ABC123^^^328^PI~9876543210^^^NHS^NH||Doe^John||19900101|M\r"
     )
 
-    try:
-        map_trrr_identifiers(message, MAPPING_NHS_ID_UPDATE)
-        raise AssertionError("Expected NotRoutedError")
-    except NotRoutedError as exc:
-        assert str(exc) == "Unsupported trigger event: A05"
+    _assert_value_error(
+        lambda m: map_trrr_identifiers(m, MAPPING_NHS_ID_UPDATE), message, "Unsupported trigger event: A05"
+    )

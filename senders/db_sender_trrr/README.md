@@ -20,13 +20,13 @@ Routing is done upstream by separate Service Bus subscriptions; each `db_sender_
 | `NHS_ID_UPDATE` (default) | A31 NHS-IDUpdate and A40 NHS-IDUpdate (`PID-3.4.1` = LIMS authority and `NHS`) | `A31`, `A40` | `dbo.TRRRIDUpdate` |
 | `MERGE` | A40 Merge (every `MSH-9.2` = `A40`) | `A40` | `dbo.TRRRIDMerge` |
 
-An `A40` that meets both criteria is delivered to both subscriptions, so both instances process it and two TRRR requests result.
+An `A40` is delivered to both subscriptions, so both instances process it and two TRRR requests result.
 
-Subscription filters cannot inspect HL7 body fields, so the sender enforces the body criteria itself. A message that does not meet the instance's criteria (unsupported `MSH-9.2`, or for `NHS_ID_UPDATE` no `PID-3` repetition for the LIMS authority or for `NHS`) is acknowledged and skipped without a database call, as it would never have reached that mapping service; the reason is logged. For example, an `A40` with no `NHS` identifier is skipped by `NHS_ID_UPDATE` but still processed by `MERGE`.
+The sender does no routing of its own: every message that arrives is mapped. Subscription filters cannot inspect HL7 body fields, so a message the instance cannot map (unsupported `MSH-9.2`, or for `NHS_ID_UPDATE` no `PID-3` repetition for the LIMS authority or for `NHS`) is dead-lettered with `MappingFailed` and the reason. For example, an `A40` with no `NHS` identifier is dead-lettered by `NHS_ID_UPDATE` but still processed by `MERGE`.
 
 ### ADT^A40 NHS-IDUpdate (`NHS_ID_UPDATE`)
 
-The LIMS identifier is the `PID-3` repetition whose assigning authority equals `MSH-3.1`; the NHS number is the `PID-3` repetition with authority `NHS`. `NewIdentifierAssigningAuthority` is `NHS`; `Old*` fields are not mapped (any `MRG` is ignored). `Missing LIMS identifier` and `Missing NHS identifier` mean the message does not meet the routing criteria and it is skipped; `Missing sending LIMS authority` (empty `MSH-3.1`) is dead-lettered.
+The LIMS identifier is the `PID-3` repetition whose assigning authority equals `MSH-3.1`; the NHS number is the `PID-3` repetition with authority `NHS`. `NewIdentifierAssigningAuthority` is `NHS`; `Old*` fields are not mapped (any `MRG` is ignored). `Missing LIMS identifier`, `Missing NHS identifier` and `Missing sending LIMS authority` (empty `MSH-3.1`) are all dead-lettered.
 
 ### ADT^A40 patient merge (`MERGE`)
 

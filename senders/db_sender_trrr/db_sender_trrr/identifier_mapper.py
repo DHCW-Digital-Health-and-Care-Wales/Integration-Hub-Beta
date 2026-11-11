@@ -1,8 +1,9 @@
 """TRRR identifier mapping for LIMS-to-NHS association and patient merges.
 
 Each service instance runs one mapping type (``NHS_ID_UPDATE`` or ``MERGE``), matching the upstream
-subscription it consumes from. A single ``ADT^A40`` can satisfy both rules; the platform then delivers it
-to both subscriptions and each instance applies its own mapping, producing two TRRR requests.
+subscription it consumes from. Every ``ADT^A40`` is delivered to both subscriptions and each instance
+applies its own mapping, producing two TRRR requests. Nothing is skipped in the sender: a message that
+cannot be mapped is dead-lettered.
 
 NHS_ID_UPDATE supports two classified message variants, both of which link a sending-LIMS local identifier
 to a patient's NHS number and preserve identifier text exactly as received (leading zeroes included):
@@ -41,15 +42,6 @@ TRIGGER_A31 = "A31"
 TRIGGER_A40 = "A40"
 
 
-class NotRoutedError(ValueError):
-    """The message does not meet this instance's routing criteria and must not be sent to TRRR.
-
-    Locally and in the platform a subscription cannot filter on HL7 body fields (PID-3 authorities), so the
-    sender applies the routing rules itself. A message that fails them would never have been delivered to
-    this mapping service, so it is skipped rather than dead-lettered.
-    """
-
-
 @dataclass(frozen=True)
 class Pid3Identifier:
     """A single PID-3 repetition: the CX.1 value and its CX.4.1 (HD.1) assigning authority."""
@@ -72,15 +64,14 @@ class ParsedTrrrMessage:
 def map_trrr_identifiers(message: str, mapping_type: str = MAPPING_NHS_ID_UPDATE) -> dict[str, str]:
     """Map a LIMS message to the TRRR payload for the configured mapping type.
 
-    Routing mirrors the upstream subscriptions:
+    Routing is done upstream by the Service Bus subscription filters; this function only maps what it is given:
 
-    * ``MERGE``: every ``A40`` (MSH-9.2 = A40); old identifier from MRG-1.
-    * ``NHS_ID_UPDATE``: ``A31`` or ``A40`` whose PID-3 carries both the LIMS authority and ``NHS``.
+    * ``MERGE``: ``A40`` (MSH-9.2 = A40); old identifier from MRG-1.
+    * ``NHS_ID_UPDATE``: ``A31`` or ``A40``; the PID-3 must carry both the LIMS authority and ``NHS``.
       ``A40`` uses the dynamic sending-LIMS rule (MSH-3.1); ``A31`` uses the fixed WLIMS (328) rule.
 
     Raises:
-        NotRoutedError: the message does not meet this mapping type's routing criteria.
-        ValueError: the message is routed here but cannot be mapped.
+        ValueError: the message cannot be mapped (unsupported trigger or a missing identifier).
     """
     if mapping_type not in SUPPORTED_MAPPING_TYPES:
         raise ValueError(f"Unsupported mapping type: {mapping_type}")
@@ -90,7 +81,7 @@ def map_trrr_identifiers(message: str, mapping_type: str = MAPPING_NHS_ID_UPDATE
 
     if mapping_type == MAPPING_MERGE:
         if trigger != TRIGGER_A40:
-            raise NotRoutedError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
+            raise ValueError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
         return _build_merge_mapping(parsed)
 
     if trigger == TRIGGER_A40:
@@ -98,7 +89,7 @@ def map_trrr_identifiers(message: str, mapping_type: str = MAPPING_NHS_ID_UPDATE
     if trigger == TRIGGER_A31:
         return _build_mapping(parsed, LIMS_A05_ASSIGNING_AUTHORITY)
 
-    raise NotRoutedError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
+    raise ValueError(f"Unsupported trigger event: {parsed.trigger_event or 'UNKNOWN'}")
 
 
 def map_adt_a05_identifiers(message: str) -> dict[str, str]:
@@ -163,11 +154,11 @@ def _map_dynamic_lims(parsed: ParsedTrrrMessage) -> dict[str, str]:
 def _build_mapping(parsed: ParsedTrrrMessage, lims_authority: str) -> dict[str, str]:
     lims_identifier = _first_identifier_for_authority(parsed.identifiers, lims_authority)
     if lims_identifier is None:
-        raise NotRoutedError("Missing LIMS identifier")
+        raise ValueError("Missing LIMS identifier")
 
     nhs_identifier = _first_identifier_for_authority(parsed.identifiers, NHS_ASSIGNING_AUTHORITY)
     if nhs_identifier is None:
-        raise NotRoutedError("Missing NHS identifier")
+        raise ValueError("Missing NHS identifier")
 
     return {
         "LIMSIdentifier": lims_identifier,
