@@ -16,7 +16,7 @@ from processor_manager_lib import ProcessorManager
 
 from db_sender_trrr.app_config import AppConfig
 from db_sender_trrr.db_client import DatabaseClient, FatalDatabaseError, TransientDatabaseError
-from db_sender_trrr.identifier_mapper import NotRoutedError, map_trrr_identifiers
+from db_sender_trrr.identifier_mapper import map_trrr_identifiers
 from db_sender_trrr.msh_extractor import extract_msh_for_logging
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
@@ -65,35 +65,13 @@ def process_message(
     )
 
     # ------------------------------------------------------------------
-    # Routing gate: mirrors the upstream subscription criteria (trigger event and
-    # PID-3 authorities). A message outside them would never have been delivered to
-    # this mapping service, so acknowledge it without calling the database.
-    #
-    # Mapping gate: a routed message that cannot be mapped (e.g. missing LIMS
-    # authority, missing MRG) can never succeed on redelivery, so dead-letter
-    # immediately instead of retrying.
+    # Routing is done by the upstream subscription filters, so every message that
+    # arrives is mapped. One that cannot be mapped (e.g. missing LIMS authority,
+    # missing NHS identifier, missing MRG) can never succeed on redelivery, so
+    # dead-letter immediately instead of retrying.
     # ------------------------------------------------------------------
     try:
         mapping = map_trrr_identifiers(message_body, app_config.mapping_type)
-    except NotRoutedError as not_routed:
-        logger.info(
-            "TRRR message not routed to mapping %s (%s). Skipping, no database call. "
-            "MessageControlId: %s, MessageType: %s, MSH: %s",
-            app_config.mapping_type,
-            not_routed,
-            msh_info.control_id,
-            msh_info.message_type,
-            msh_info.msh_text,
-        )
-        try:
-            event_logger.log_message_processed(
-                msh_info.msh_text,
-                f"Skipped: not routed to TRRR {app_config.mapping_type} ({not_routed})",
-                correlation_id=correlation_id_opt,
-            )
-        except Exception:
-            logger.exception("Failed to log skipped message event - continuing")
-        return True
     except ValueError as mapping_err:
         event_logger.log_message_failed(
             msh_info.msh_text,

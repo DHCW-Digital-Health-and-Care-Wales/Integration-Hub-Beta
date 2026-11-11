@@ -51,14 +51,15 @@ def test_nhs_id_update_writes_when_a40_meets_criteria() -> None:
     db_client.execute_identifier_update.assert_called_once()
 
 
-def test_nhs_id_update_skips_a40_without_nhs_identifier_without_db_call() -> None:
-    result, db_client = _run(A40_WITHOUT_NHS, MAPPING_NHS_ID_UPDATE)
+def test_nhs_id_update_dead_letters_a40_without_nhs_identifier() -> None:
+    try:
+        _run(A40_WITHOUT_NHS, MAPPING_NHS_ID_UPDATE)
+        raise AssertionError("Expected DeadLetterMessage")
+    except DeadLetterMessage as exc:
+        assert exc.description == "Missing NHS identifier"
 
-    assert result is True
-    db_client.execute_identifier_update.assert_not_called()
 
-
-def test_merge_still_writes_the_a40_that_nhs_id_update_skipped() -> None:
+def test_merge_still_writes_the_a40_the_nhs_id_update_instance_rejected() -> None:
     result, db_client = _run(A40_WITHOUT_NHS, MAPPING_MERGE)
 
     assert result is True
