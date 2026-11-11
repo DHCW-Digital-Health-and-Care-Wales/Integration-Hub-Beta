@@ -53,6 +53,11 @@ configured:
 
 Malformed (non-well-formed) XML is never forwarded to Service Bus.
 
+- **FHIR Bundles** (`POST /fhir/r4/$process-message`) — the raw Bundle JSON is forwarded
+  when the POST is accepted (`202`). Rejected POSTs (the `mock-4xx` / `mock-500` scenarios)
+  are not forwarded, so a retried `*-once` scenario produces one queue message. This lets
+  end-to-end tests confirm a message reached the end of the flow by reading `EGRESS_QUEUE_NAME`.
+
 ## Running locally
 
 ```bash

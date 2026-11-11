@@ -66,6 +66,10 @@ _WIS_ENVELOPE_NO_PAYLOAD = """\
 _MALFORMED_XML = "this is not xml at all"
 
 
+def _fhir_bundle(bundle_id: str) -> str:
+    return '{"resourceType": "Bundle", "type": "message", "id": "%s"}' % bundle_id
+
+
 class TestHealthEndpoint(unittest.TestCase):
 
     def test_health_returns_200(self) -> None:
@@ -189,6 +193,34 @@ class TestServiceBusForwarding(unittest.TestCase):
                 headers={"Content-Type": "text/xml; charset=utf-8"},
             )
         fake_sender.send_text_message.assert_not_called()
+
+    def test_accepted_fhir_bundle_is_forwarded(self) -> None:
+        fake_sender = MagicMock()
+        bundle = _fhir_bundle("abc")
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            response = _client.post("/fhir/r4/$process-message", content=bundle)
+        self.assertEqual(response.status_code, 202)
+        fake_sender.send_text_message.assert_called_once_with(bundle)
+
+    def test_rejected_fhir_bundle_is_not_forwarded(self) -> None:
+        fake_sender = MagicMock()
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            response = _client.post("/fhir/r4/$process-message", content=_fhir_bundle("mock-500"))
+        self.assertEqual(response.status_code, 500)
+        fake_sender.send_text_message.assert_not_called()
+
+    def test_fhir_bundle_accepted_in_log_only_mode(self) -> None:
+        # No Service Bus sender configured: the mock still accepts the Bundle
+        with patch("http_mock_receiver.application._sb_sender", None):
+            response = _client.post("/fhir/r4/$process-message", content=_fhir_bundle("abc"))
+        self.assertEqual(response.status_code, 202)
+
+    def test_fhir_forwarding_failure_does_not_change_response(self) -> None:
+        fake_sender = MagicMock()
+        fake_sender.send_text_message.side_effect = RuntimeError("bus down")
+        with patch("http_mock_receiver.application._sb_sender", fake_sender):
+            response = _client.post("/fhir/r4/$process-message", content=_fhir_bundle("abc"))
+        self.assertEqual(response.status_code, 202)
 
 
 if __name__ == "__main__":
