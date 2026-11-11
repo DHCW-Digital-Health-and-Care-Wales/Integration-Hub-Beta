@@ -505,7 +505,6 @@ services:
       - sqledge
     profiles:
       - lims-to-wrrs
-      - lims-to-mpi
       - everything
     networks:
       integration-hub:
@@ -513,7 +512,7 @@ services:
           - "wrrs-idupd-dbsender"
 
   # Dedicated LIMS -> TRRR sender. Mirrors the DEV hl7_lims_trrr_sender container app: a second
-  # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-transformer-ingress),
+  # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-hl7-input),
   # delivering a parallel copy of LIMS traffic on to TRRR. Uses the full hl7_sender image (not
   # hl7_subscription_sender) to match the Terraform flow (image hl7_sender, tag lims-trrr-<env>) and
   # preserve message-store/replay support. Sends to mpi-hl7-topic-mock-receiver locally (no dedicated

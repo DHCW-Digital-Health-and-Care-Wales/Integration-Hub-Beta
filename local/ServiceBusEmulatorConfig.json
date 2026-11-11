@@ -119,10 +119,10 @@
             ]
           },
           {
-            "Name": "local-inthub-lims-transformer-ingress",
+            "Name": "local-inthub-lims-hl7-input",
             "Subscriptions": [
               {
-                "Name": "local-inthub-lims-transformer-ingress-sub",
+                "Name": "local-inthub-lims-mpi-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -131,27 +131,44 @@
                 }
               },
               {
-                "Name": "local-inthub-lims-transformer-ingress-trrr-sub",
+                "Name": "local-inthub-lims-trrr-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                }
-              }
-            ]
-          },
-          {
-            "Name": "local-inthub-wrrs-idupd-outbound",
-            "Subscriptions": [
+                },
+                "Rules": [
+                  {
+                    "Name": "lims-trrr-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
+                      }
+                    }
+                  }
+                ]
+              },
               {
-                "Name": "local-inthub-wrrs-idupd-outbound-sub",
+                "Name": "local-inthub-lims-wrrs-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                }
+                },
+                "Rules": [
+                  {
+                    "Name": "lims-wrrs-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },

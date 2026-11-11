@@ -29,9 +29,9 @@ class TestQueueIdUpdateHandler(unittest.TestCase):
         self.config = AppConfig(
             connection_string="Endpoint=sb://localhost;",
             service_bus_namespace=None,
-            ingress_topic_name="local-inthub-wrrs-idupd-outbound",
-            ingress_subscription_name="local-inthub-wrrs-idupd-sub",
-            ingress_session_id="lims-to-wrrs",
+            ingress_topic_name="local-inthub-lims-hl7-input",
+            ingress_subscription_name="local-inthub-lims-wrrs-sender-sub",
+            ingress_session_id="lims-soapserver",
             db_server="localhost",
             db_port=1433,
             db_name="DRS",
