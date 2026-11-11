@@ -53,6 +53,7 @@ parameters:
       - HL7 Mock Receiver
       - HTTP Mock Receiver
       - HL7 Topic Mock Receiver
+      - DB Mock Receiver
       - Network Test App
       
   - name: selectedEnvironment
@@ -135,6 +136,9 @@ resources:
       trigger: none
     - pipeline: 'HL7 Topic Mock Receiver - Build'
       source: 'HL7 Topic Mock Receiver - Build'
+      trigger: none
+    - pipeline: 'DB Mock Receiver - Build'
+      source: 'DB Mock Receiver - Build'
       trigger: none
     - pipeline: 'Network Test App - Build'
       source: 'Network Test App - Build'
@@ -278,6 +282,7 @@ stages:
           buildPipeline: 'Database Sender - Build'
           appImageName: 'proms-fhirtransformer'
           appFunctionMidfix: ''
+          containerAppNameSuffix: 'proms-fhir-tfmr'
           buildPipeline: 'PROMS FHIR Transformer - Build'
 
         - name: 'HL7 WDS Transformer'
@@ -397,6 +402,14 @@ stages:
           appImageName: 'hl7topicmockreceiver'
           appFunctionMidfix: ''
           buildPipeline: 'HL7 Topic Mock Receiver - Build'
+
+        # DB Mock Receiver (DEV only: SQL Server, mock WRRS database; container app uks-dev-dbmockreceiver-ca)
+        - name: 'DB Mock Receiver'
+          appImageName: 'dbmockreceiver'
+          appFunctionMidfix: ''
+          buildPipeline: 'DB Mock Receiver - Build'
+          allowedEnvironments:
+            - dev
 
         # Network Test App
         - name: 'Network Test App'

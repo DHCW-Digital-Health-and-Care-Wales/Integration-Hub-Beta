@@ -117,6 +117,8 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
                 processed_audit_text_builder=transformer.get_processed_audit_text,
                 failed_audit_text=f"{transformer.transformer_name} transformation failed",
                 egress_properties_builder=transformer.get_egress_properties,
+                parse_input=transformer.parse_input,
+                serialise_output=transformer.serialise_output,
             )
 
         wrapped_processor = processor_manager.wrap_handler(
