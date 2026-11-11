@@ -2,27 +2,38 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from hl7apy.core import Message
+from hl7apy.parser import parse_message
 
 
 class BaseTransformer(ABC):
-    """Abstract base class for HL7 transformers.
+    """Abstract base class for message transformers.
 
-    Provides a standardised interface for creating HL7 message transformers.
+    Provides a standardised interface for creating message transformers. HL7 transformers use the default
+    wire-format hooks (parse_input / serialise_output); transformers for other payloads, such as XML to FHIR,
+    override those two hooks.
     """
 
     def __init__(self, transformer_name: str, config_path: Optional[str] = None):
         self.transformer_name = transformer_name
         self.config_path = config_path or self._get_default_config_path()
 
+    def parse_input(self, message_body: str) -> Any:
+        """Parse the inbound message body. Defaults to an HL7 v2 (ER7) parse."""
+        return parse_message(message_body)
+
     @abstractmethod
-    def transform_message(self, hl7_msg: Message) -> Message:
+    def transform_message(self, hl7_msg: Any) -> Any:
         pass
 
+    def serialise_output(self, transformed_message: Any) -> str:
+        """Serialise the transformed message for the egress queue. Defaults to HL7 v2 (ER7) text."""
+        return transformed_message.to_er7()  # type: ignore[no-any-return]
+
     def get_egress_properties(
-        self, incoming_props: Optional[Dict[str, str]], transformed_msg: Message
+        self, incoming_props: Optional[Dict[str, str]], transformed_msg: Any
     ) -> Optional[Dict[str, str]]:
         """Service Bus application properties for the outgoing message. Defaults to passing them through unchanged."""
         return incoming_props
