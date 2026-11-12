@@ -117,7 +117,7 @@ flowchart LR
 ```
 
 > [!NOTE]
-> `servers/hl7_rest_server` and `servers/hl7_soap_server` are legacy REST/SOAP ingress services being phased out in favour of the generalised `servers/rest_server`, which now handles all new REST and SOAP/XML ingress flows (RISP, LIMS, PMS, WPAS).
+> `servers/rest_server` is the generalised REST and SOAP/XML ingress service handling all REST and SOAP/XML ingress flows (RISP, LIMS, PMS, WPAS). It has superseded and replaced the legacy `hl7_rest_server` and `hl7_soap_server` services, which have been decommissioned.
 
 ## Repository Structure
 
@@ -159,11 +159,7 @@ The platform handles HL7 message processing through specialized microservices:
 **`servers/rest_server/`**
 
 - Generalised REST/SOAP/XML ingress service, configurable per flow (e.g. `PIPELINE`, `CONTENT_ADAPTER`, `VALIDATOR_TYPE` env vars) to support HL7-over-REST (RISP), SOAP/XML (LIMS, PMS), and XML (WPAS) ingestion.
-- Intended to be the single replacement for `servers/hl7_rest_server` and `servers/hl7_soap_server` — see note below.
-
-**`servers/hl7_rest_server/`** and **`servers/hl7_soap_server/`**
-
-- Existing REST and SOAP ingress services. **Due to be decommissioned** and consolidated into `servers/rest_server` once the migration is complete — avoid building new flows on these.
+- The single replacement consolidating both retired legacy services (`servers/hl7_rest_server` and `servers/hl7_soap_server`).
 
 **`transformers/hl7_phw_transformer/`**
 
