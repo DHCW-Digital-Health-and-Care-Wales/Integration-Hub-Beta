@@ -219,6 +219,43 @@ class DatabaseClient:
         )
         self._execute_call(call_sql, args)
 
+    def execute_trrr_id_update(
+        self,
+        lims_identifier: str,
+        new_identifier: str,
+        new_identifier_assigning_authority: str,
+    ) -> None:
+        """Execute the TRRR NHS-ID update procedure (LIMS identifier linked to an NHS number).
+
+        Raises:
+            TransientDatabaseError: If a transient network/timeout error occurred.
+            FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
+        """
+        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?)}}"
+        self._execute_call(call_sql, (lims_identifier, new_identifier, new_identifier_assigning_authority))
+
+    def execute_trrr_merge(
+        self,
+        old_identifier: str,
+        old_identifier_assigning_authority: str,
+        new_identifier: str,
+        new_identifier_assigning_authority: str,
+    ) -> None:
+        """Execute the TRRR merge procedure (superseded identifier replaced by the surviving identifier).
+
+        Raises:
+            TransientDatabaseError: If a transient network/timeout error occurred.
+            FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
+        """
+        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?, ?)}}"
+        args = (
+            old_identifier,
+            old_identifier_assigning_authority,
+            new_identifier,
+            new_identifier_assigning_authority,
+        )
+        self._execute_call(call_sql, args)
+
     @staticmethod
     def _parse_odbc_error(err: pyodbc.Error) -> tuple[str, int, str]:
         sql_state = "UNKNOWN"

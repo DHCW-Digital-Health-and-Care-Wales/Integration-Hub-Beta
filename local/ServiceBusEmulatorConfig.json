@@ -151,6 +151,26 @@
                 ]
               },
               {
+                "Name": "local-inthub-lims-trrr-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "lims-trrr-merge-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
                 "Name": "local-inthub-lims-wrrs-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",

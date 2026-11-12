@@ -45,7 +45,11 @@ class AppConfig:
     def read_env_config() -> AppConfig:
         raw_procedure_type = _read_env("DB_PROCEDURE_TYPE")
         procedure_type = raw_procedure_type.strip().lower() if raw_procedure_type else "queue_message"
-        default_sp = "dbo.prQueueIdUpdate" if procedure_type == "queue_id_update" else "dbo.prQueueMessage"
+        default_sp = {
+            "queue_id_update": "dbo.prQueueIdUpdate",
+            "trrr_id_update": "dbo.TRRRIDUpdate",
+            "trrr_merge": "dbo.TRRRIDMerge",
+        }.get(procedure_type, "dbo.prQueueMessage")
 
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
