@@ -70,6 +70,85 @@ BEGIN
      END TRY
      BEGIN CATCH
         THROW;
+        RETURN 55555
      END CATCH;
 END
+GO
+
+/****** Object:  Table [dbo].[QueueIdUpdate] ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'QueueIdUpdate')
+BEGIN
+    CREATE TABLE [dbo].[QueueIdUpdate](
+        [Id] [int] IDENTITY(1,1) NOT NULL,
+        [ProviderPatientIdentifier] [varchar](20) NULL,
+        [ProviderAssigningAuthority] [varchar](10) NULL,
+        [OldIdentifier] [varchar](20) NULL,
+        [OldIdentifierAssigningAuthority] [varchar](10) NULL,
+        [NewIdentifier] [varchar](20) NOT NULL,
+        [NewIdentifierAssigningAuthority] [varchar](10) NOT NULL,
+        [DateCreated] [datetime2](7) NOT NULL CONSTRAINT [DF_QueueIdUpdate_DateCreated] DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT [PK_QueueIdUpdate] PRIMARY KEY CLUSTERED 
+        (
+            [Id] ASC
+        ) WITH (
+            PAD_INDEX = OFF, 
+            STATISTICS_NORECOMPUTE = OFF, 
+            IGNORE_DUP_KEY = OFF, 
+            ALLOW_ROW_LOCKS = ON, 
+            ALLOW_PAGE_LOCKS = ON, 
+            OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF
+        ) ON [PRIMARY]
+    ) ON [PRIMARY];
+END;
+GO
+
+/****** Object:  StoredProcedure [dbo].[prQueueIdUpdate] ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[prQueueIdUpdate]
+    @ProviderPatientIdentifier VARCHAR(20) = NULL,
+    @ProviderAssigningAuthority VARCHAR(10) = NULL,
+    @OldIdentifier VARCHAR(20) = NULL,
+    @OldIdentifierAssigningAuthority VARCHAR(10) = NULL,
+    @NewIdentifier VARCHAR(20),
+    @NewIdentifierAssigningAuthority VARCHAR(10)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO dbo.QueueIdUpdate (
+            [ProviderPatientIdentifier],
+            [ProviderAssigningAuthority],
+            [OldIdentifier],
+            [OldIdentifierAssigningAuthority],
+            [NewIdentifier],
+            [NewIdentifierAssigningAuthority]
+        )
+        VALUES (
+            @ProviderPatientIdentifier,
+            @ProviderAssigningAuthority,
+            @OldIdentifier,
+            @OldIdentifierAssigningAuthority,
+            @NewIdentifier,
+            @NewIdentifierAssigningAuthority
+        );
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH;
+END;
 GO

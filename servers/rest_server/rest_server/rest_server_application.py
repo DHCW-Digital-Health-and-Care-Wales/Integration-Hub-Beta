@@ -21,7 +21,7 @@ from .content_adapters.soap_adapter import SoapContentAdapter
 from .content_adapters.xml_raw_adapter import XmlRawContentAdapter
 from .hl7.app import create_hl7_app
 from .hl7.runtime import build_hl7_runtime
-from .infra import SharedResources, build_shared_resources
+from .infra import SharedResources, build_extra_sender_client, build_shared_resources
 from .message_processor import RestMessageProcessor
 from .validators.base import Validator
 from .validators.hl7_xsd_validator import Hl7XsdValidator
@@ -57,7 +57,10 @@ def build_validator(app_config: AppConfig) -> Validator:
             allowed_structures=set(app_config.allowed_hl7_structures),
         )
     if app_config.validator_type == "hl7apy":
-        return Hl7ApyValidator(allowed_structures=set(app_config.allowed_hl7_structures))
+        return Hl7ApyValidator(
+            allowed_structures=set(app_config.allowed_hl7_structures),
+            allowed_trigger_events=set(app_config.allowed_trigger_events),
+        )
     if app_config.validator_type == "xsd":
         return XsdValidator(schema_path=app_config.validation_schema or "")
     if app_config.validator_type == "none":
@@ -85,6 +88,20 @@ class RestServerApplication:
     def _build_generic_app(self, app_config: AppConfig) -> FastAPI:
         self.resources = self._build_shared_resources(app_config)
 
+        if app_config.wrrs_topic_name or app_config.wrrs_queue_name:
+            self.extra_sender_client = build_extra_sender_client(
+                self.resources.factory,
+                queue_name=app_config.wrrs_queue_name,
+                topic_name=app_config.wrrs_topic_name,
+                session_id=app_config.wrrs_egress_session_id or "",
+            )
+            logger.info(
+                "Configured WRRS destination -> %s",
+                app_config.wrrs_topic_name or app_config.wrrs_queue_name,
+            )
+        else:
+            self.extra_sender_client = None
+
         processor = RestMessageProcessor(
             content_adapter=build_content_adapter(app_config),
             validator=build_validator(app_config),
@@ -96,6 +113,10 @@ class RestServerApplication:
             egress_session_id=app_config.egress_session_id,
             allowed_source_identifiers=app_config.allowed_source_identifiers,
             output_format=app_config.output_format or "",
+            allowed_trigger_events=app_config.allowed_trigger_events,
+            wrrs_sender_client=self.extra_sender_client,
+            wrrs_workflow_id=app_config.wrrs_workflow_id,
+            wrrs_trigger_events=app_config.wrrs_trigger_events,
         )
 
         @asynccontextmanager

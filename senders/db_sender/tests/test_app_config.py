@@ -79,6 +79,41 @@ class TestAppConfig(unittest.TestCase):
                 AppConfig.read_env_config()
             self.assertIn("Invalid integer value for configuration: DB_PORT", str(ctx.exception))
 
+    def test_read_env_config_queue_id_update_defaults(self) -> None:
+        env = {
+            "INGRESS_TOPIC_NAME": "test-topic",
+            "INGRESS_SUBSCRIPTION_NAME": "test-sub",
+            "DB_PROCEDURE_TYPE": "queue_id_update",
+            "SOURCE_SYSTEM": "328",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.read_env_config()
+            self.assertEqual(config.db_procedure_type, "queue_id_update")
+            self.assertEqual(config.source_system, "328")
+            self.assertEqual(config.db_stored_procedure, "dbo.prQueueIdUpdate")
+
+    def test_read_env_config_queue_id_update_case_and_whitespace_normalization(self) -> None:
+        env = {
+            "INGRESS_TOPIC_NAME": "test-topic",
+            "INGRESS_SUBSCRIPTION_NAME": "test-sub",
+            "DB_PROCEDURE_TYPE": "  QUEUE_ID_UPDATE  ",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.read_env_config()
+            self.assertEqual(config.db_procedure_type, "queue_id_update")
+            self.assertEqual(config.db_stored_procedure, "dbo.prQueueIdUpdate")
+
+    def test_read_env_config_explicit_stored_proc_override(self) -> None:
+        env = {
+            "INGRESS_TOPIC_NAME": "test-topic",
+            "INGRESS_SUBSCRIPTION_NAME": "test-sub",
+            "DB_PROCEDURE_TYPE": "queue_id_update",
+            "DB_STORED_PROCEDURE": "dbo.customProcedure",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.read_env_config()
+            self.assertEqual(config.db_stored_procedure, "dbo.customProcedure")
+
 
 if __name__ == "__main__":
     unittest.main()

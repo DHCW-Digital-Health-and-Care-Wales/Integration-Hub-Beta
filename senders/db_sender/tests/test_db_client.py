@@ -182,6 +182,32 @@ class TestDatabaseClient(unittest.TestCase):
         self.assertEqual(ctx.exception.sql_state, "42000")
         self.assertIn("Could not find stored procedure", ctx.exception.error_message)
 
+    @patch("pyodbc.connect")
+    def test_execute_queue_id_update_success(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        config = self._create_config()
+        config.db_stored_procedure = "dbo.prQueueIdUpdate"
+        client = DatabaseClient(config)
+
+        client.execute_queue_id_update(
+            provider_patient_identifier="L123",
+            provider_assigning_authority="328",
+            old_identifier=None,
+            old_identifier_assigning_authority=None,
+            new_identifier="9876543210",
+            new_identifier_assigning_authority="NHS",
+        )
+
+        mock_cursor.execute.assert_called_once_with(
+            "{CALL dbo.prQueueIdUpdate (?, ?, ?, ?, ?, ?)}",
+            ("L123", "328", None, None, "9876543210", "NHS"),
+        )
+        mock_conn.commit.assert_called_once()
+
     def test_sanitize_error_message_conversion_failure(self) -> None:
         sentinel_patient_id = "9999999999"
         raw_msg = (

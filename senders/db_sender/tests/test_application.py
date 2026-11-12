@@ -69,7 +69,13 @@ class TestApplication(unittest.TestCase):
         self.assertTrue(result)
         self.mock_db_client.execute_stored_procedure.assert_called_once_with(msg_body, is_priority=False)
         self.mock_metric_sender.send_metric.assert_called_once_with(
-            "messages_sent", 1, attributes={"database": "DRS", "stored_procedure": "dbo.prQueueMessage"}
+            "messages_sent",
+            1,
+            attributes={
+                "database": "DRS",
+                "stored_procedure": "dbo.prQueueMessage",
+                "procedure_type": "queue_message",
+            },
         )
         # Check Information Governance: verify logged text contains MSH but never SECRET_PATIENT
         rec_call_args = self.mock_event_logger.log_message_received.call_args[0]
@@ -178,6 +184,26 @@ class TestApplication(unittest.TestCase):
         failed_call_args = self.mock_event_logger.log_message_failed.call_args[0]
         self.assertNotIn(sentinel_patient_data, failed_call_args[1])
         self.assertIn("converting the varchar value '***' to data type int", failed_call_args[1])
+
+    def test_process_message_normalizes_absent_metadata_to_empty_dict(self) -> None:
+        mock_msg = MagicMock()
+        mock_msg.body = [b"MSH|^~\\&|349|349|||20261022||ADT^A40|CTRL1|P|2.5\rPID|1||999"]
+        mock_msg.application_properties = None
+
+        mock_handler = MagicMock()
+        result = process_message(
+            mock_msg,
+            self.mock_db_client,
+            self.config,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            handler=mock_handler,
+        )
+
+        self.assertTrue(result)
+        mock_handler.handle_message.assert_called_once()
+        call_kwargs = mock_handler.handle_message.call_args[1]
+        self.assertEqual(call_kwargs["metadata"], {})
 
 
 if __name__ == "__main__":

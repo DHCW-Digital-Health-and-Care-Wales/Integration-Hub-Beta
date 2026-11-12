@@ -75,14 +75,11 @@ stages:
               # See docs/code_coverage.md for how this list was derived.
               APPS=(
                 "servers/hl7_server|HL7 Server|unittest"
-                "servers/hl7_rest_server|HL7 REST Server|unittest"
                 "servers/rest_server|REST Server|unittest"
-                "servers/hl7_soap_server|HL7 SOAP Server|unittest"
                 "transformers/hl7_phw_transformer|PHW HL7 Transformer|unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer|unittest"
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer|unittest"
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer|unittest"
-                "transformers/hl7_lims_wrrs_transformer|LIMS WRRS HL7 Transformer|unittest"
                 "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer|unittest"
                 "transformers/hl7_wds_transformer|WDS HL7 Transformer|pytest"
                 "senders/hl7_sender|HL7 Sender|unittest"

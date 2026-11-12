@@ -159,6 +159,7 @@ services:
     profiles:
       - lims-to-mpi
       - lims-to-trrr
+      - lims-to-wrrs
       - everything
     networks:
       integration-hub:
@@ -489,32 +490,33 @@ services:
         aliases:
           - "lims-mpi-hl7-sender"
 
-  # Classifies LIMS ADT A31/A40 messages (LIMS/NHS ID Update and/or ADT_A40) and fans out one
-  # classified message per matching rule to local-inthub-lims-wrrs-classified. Mirrors the DEV
-  # lims_wrrs_transformer container app - see transformers/hl7_lims_wrrs_transformer/README.md.
-  lims-wrrs-hl7-transformer:
-    container_name: lims-wrrs-hl7-transformer
+  # Generic db_sender instance configured for the WRRS Queue ID Update flow (A31/A40 patient updates & merges)
+  wrrs-idupd-dbsender:
+    container_name: wrrs-idupd-dbsender
     build:
-      context: ../transformers/hl7_lims_wrrs_transformer
+      context: ../senders/db_sender
+      dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./env/transformers/lims-wrrs-hl7-transformer.env
+      - ./env/senders/wrrs-idupd-dbsender.env
+      - ./.secrets
     <<: *default-healthcheck
+    restart: on-failure
     depends_on:
       - sb-emulator
+      - sqledge
     profiles:
-      - lims-to-mpi
+      - lims-to-wrrs
       - everything
-    restart: on-failure
     networks:
       integration-hub:
         aliases:
-          - "lims-wrrs-hl7-transformer"
+          - "wrrs-idupd-dbsender"
 
   # Dedicated LIMS -> TRRR sender. Mirrors the DEV hl7_lims_trrr_sender container app: a second
-  # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-transformer-ingress),
+  # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-hl7-input),
   # delivering a parallel copy of LIMS traffic on to TRRR. Uses the full hl7_sender image (not
   # hl7_subscription_sender) to match the Terraform flow (image hl7_sender, tag lims-trrr-<env>) and
   # preserve message-store/replay support. Sends to mpi-hl7-topic-mock-receiver locally (no dedicated

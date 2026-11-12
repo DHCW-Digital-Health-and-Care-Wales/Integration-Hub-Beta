@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
@@ -65,6 +65,8 @@ class AppConfig:
     wrrs_topic_name: str | None
     wrrs_egress_session_id: str | None
     wrrs_workflow_id: str | None
+    allowed_trigger_events: List[str] = field(default_factory=list)
+    wrrs_trigger_events: List[str] = field(default_factory=lambda: ["A31", "A40"])
     max_request_size_bytes: int = DEFAULT_MAX_REQUEST_SIZE_BYTES
     tls_cert_file: str | None = None
     tls_key_file: str | None = None
@@ -123,6 +125,8 @@ class AppConfig:
             validation_schema=validation_schema,
             allowed_hl7_structures=allowed_hl7_structures,
             allowed_source_identifiers=_read_csv_list_optional("ALLOWED_SOURCE_IDENTIFIERS"),
+            allowed_trigger_events=_read_csv_list_optional("ALLOWED_TRIGGER_EVENTS"),
+            wrrs_trigger_events=_read_csv_list("WRRS_TRIGGER_EVENTS", "A31,A40"),
             source_identifier_locator=_read_path_env("SOURCE_IDENTIFIER_LOCATOR"),
             message_control_id_locator=_read_path_env("MESSAGE_CONTROL_ID_LOCATOR"),
             output_format=output_format,
@@ -213,23 +217,27 @@ def _read_generic_pipeline_config(pipeline: str) -> tuple[str | None, str | None
 def _read_and_validate_wrrs_config(
     hl7_validation_flow: str | None,
 ) -> tuple[str | None, str | None, str | None, str | None]:
-    """Read the WRRS destination config, required only for the ``hl7`` pipeline's 'risp' flow."""
+    """Read the WRRS destination config, required for 'risp' and optional for other flows."""
     wrrs_queue_name = _read_env("WRRS_QUEUE_NAME")
     wrrs_topic_name = _read_env("WRRS_TOPIC_NAME")
     wrrs_egress_session_id = _read_env("WRRS_EGRESS_SESSION_ID")
     wrrs_workflow_id = _read_env("WRRS_WORKFLOW_ID")
 
-    if hl7_validation_flow != "risp":
-        return wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id
-
-    if not wrrs_queue_name and not wrrs_topic_name:
-        raise RuntimeError("The 'risp' flow requires either WRRS_QUEUE_NAME or WRRS_TOPIC_NAME to be provided.")
     if wrrs_queue_name and wrrs_topic_name:
         raise RuntimeError("Cannot specify both WRRS_QUEUE_NAME and WRRS_TOPIC_NAME.")
-    if not wrrs_egress_session_id:
-        raise RuntimeError("The 'risp' flow requires WRRS_EGRESS_SESSION_ID to be provided.")
-    if not wrrs_workflow_id:
-        raise RuntimeError("The 'risp' flow requires WRRS_WORKFLOW_ID to be provided.")
+
+    if hl7_validation_flow == "risp":
+        if not wrrs_queue_name and not wrrs_topic_name:
+            raise RuntimeError("The 'risp' flow requires either WRRS_QUEUE_NAME or WRRS_TOPIC_NAME to be provided.")
+        if not wrrs_egress_session_id:
+            raise RuntimeError("The 'risp' flow requires WRRS_EGRESS_SESSION_ID to be provided.")
+        if not wrrs_workflow_id:
+            raise RuntimeError("The 'risp' flow requires WRRS_WORKFLOW_ID to be provided.")
+    elif wrrs_queue_name or wrrs_topic_name:
+        if not wrrs_egress_session_id:
+            raise RuntimeError("WRRS destination requires WRRS_EGRESS_SESSION_ID to be provided.")
+        if not wrrs_workflow_id:
+            raise RuntimeError("WRRS destination requires WRRS_WORKFLOW_ID to be provided.")
 
     return wrrs_queue_name, wrrs_topic_name, wrrs_egress_session_id, wrrs_workflow_id
 

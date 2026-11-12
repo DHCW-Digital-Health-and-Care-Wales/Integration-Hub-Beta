@@ -119,10 +119,10 @@
             ]
           },
           {
-            "Name": "local-inthub-lims-transformer-ingress",
+            "Name": "local-inthub-lims-hl7-input",
             "Subscriptions": [
               {
-                "Name": "local-inthub-lims-transformer-ingress-sub",
+                "Name": "local-inthub-lims-mpi-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -131,7 +131,7 @@
                 }
               },
               {
-                "Name": "local-inthub-lims-wrrs-transformer-sub",
+                "Name": "local-inthub-lims-trrr-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -140,7 +140,7 @@
                 },
                 "Rules": [
                   {
-                    "Name": "LIMS_WRRS_FILTER",
+                    "Name": "lims-trrr-filter",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
@@ -151,25 +151,7 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-transformer-ingress-trrr-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                }
-              }
-            ]
-          },
-          {
-            "Name": "local-inthub-lims-wrrs-classified",
-            "Properties": {
-              "RequiresDuplicateDetection": true,
-              "DuplicateDetectionHistoryTimeWindow": "PT5M"
-            },
-            "Subscriptions": [
-              {
-                "Name": "local-inthub-lims-wrrs-nhs-id-sub",
+                "Name": "local-inthub-lims-wrrs-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -178,31 +160,11 @@
                 },
                 "Rules": [
                   {
-                    "Name": "LIMS_WRRS_NHS_ID_FILTER",
+                    "Name": "lims-wrrs-filter",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
-                        "SqlExpression": "user.MappingType = 'LIMS_NHS_ID_UPDATE'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-wrrs-a40-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_WRRS_A40_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MappingType = 'ADT_A40'"
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
                       }
                     }
                   }
@@ -243,6 +205,20 @@
             "Subscriptions": [
               {
                 "Name": "local-inthub-core-reference-transformer-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-wrrs-stmsg-outbound",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-wrrs-stmsg-outbound-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",

@@ -43,6 +43,10 @@ class RestMessageProcessor:
         egress_session_id: str,
         allowed_source_identifiers: List[str],
         output_format: str,
+        allowed_trigger_events: List[str] | None = None,
+        wrrs_sender_client: MessageSenderClient | None = None,
+        wrrs_workflow_id: str | None = None,
+        wrrs_trigger_events: List[str] | None = None,
     ) -> None:
         self.content_adapter = content_adapter
         self.validator = validator
@@ -53,7 +57,11 @@ class RestMessageProcessor:
         self.workflow_id = workflow_id
         self.egress_session_id = egress_session_id
         self.allowed_source_identifiers = set(allowed_source_identifiers)
+        self.allowed_trigger_events = set(allowed_trigger_events) if allowed_trigger_events else set()
         self.output_format = output_format
+        self.wrrs_sender_client = wrrs_sender_client
+        self.wrrs_workflow_id = wrrs_workflow_id
+        self.wrrs_trigger_events = set(wrrs_trigger_events) if wrrs_trigger_events else {"A31", "A40"}
 
     @property
     def content_type(self) -> str:
@@ -83,6 +91,16 @@ class RestMessageProcessor:
                     403,
                 )
 
+            if self.allowed_trigger_events and extracted.message_type not in self.allowed_trigger_events:
+                raise RequestError(
+                    "Client.Validation",
+                    (
+                        f"Unsupported HL7 trigger event '{extracted.message_type or 'unknown'}'. "
+                        f"Allowed values: {', '.join(sorted(self.allowed_trigger_events))}"
+                    ),
+                    400,
+                )
+
             output_payload = self._format_output(extracted.payload_xml)
 
             tracking_metadata_properties = build_common_properties(self.workflow_id, extracted.source_identifier)
@@ -103,6 +121,27 @@ class RestMessageProcessor:
                 message_id=message_control_id or None,
             )
             self.metric_sender.send_message_sent_metric()
+
+            if self.wrrs_sender_client is not None and extracted.message_type in self.wrrs_trigger_events:
+                wrrs_tracking_properties = build_common_properties(
+                    self.wrrs_workflow_id or self.workflow_id,
+                    extracted.source_identifier,
+                )
+                if correlation_id:
+                    wrrs_tracking_properties[CORRELATION_ID_KEY] = correlation_id
+                if extracted.message_type:
+                    wrrs_tracking_properties[MESSAGE_TYPE_KEY] = extracted.message_type
+
+                self.wrrs_sender_client.send_text_message(
+                    output_payload,
+                    wrrs_tracking_properties,
+                    message_id=message_control_id or None,
+                )
+                logger.info(
+                    "Forwarded message %s (trigger: %s) to WRRS secondary destination",
+                    message_control_id,
+                    extracted.message_type,
+                )
 
             self.event_logger.log_message_processed(
                 raw_body,

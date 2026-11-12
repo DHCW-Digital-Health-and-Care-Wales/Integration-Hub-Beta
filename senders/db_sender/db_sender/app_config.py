@@ -37,8 +37,16 @@ class AppConfig:
     default_is_priority: int
     max_batch_size: int
 
+    # Strategy & Dynamic Resolution
+    db_procedure_type: str = "queue_message"
+    source_system: str = "328"
+
     @staticmethod
     def read_env_config() -> AppConfig:
+        raw_procedure_type = _read_env("DB_PROCEDURE_TYPE")
+        procedure_type = raw_procedure_type.strip().lower() if raw_procedure_type else "queue_message"
+        default_sp = "dbo.prQueueIdUpdate" if procedure_type == "queue_id_update" else "dbo.prQueueMessage"
+
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),
             service_bus_namespace=_read_env("SERVICE_BUS_NAMESPACE"),
@@ -48,7 +56,8 @@ class AppConfig:
             db_server=_read_required_env("DB_SERVER", default="localhost"),
             db_port=_read_int_env("DB_PORT") or 1433,
             db_name=_read_required_env("DB_NAME", default="DRS"),
-            db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default="dbo.prQueueMessage"),
+            db_stored_procedure=_read_required_env("DB_STORED_PROCEDURE", default=default_sp),
+            db_procedure_type=procedure_type,
             db_username=_read_env("DB_USERNAME") or ("sa" if _read_env("MSSQL_SA_PASSWORD") else None),
             db_password=_read_env("DB_PASSWORD") or _read_env("MSSQL_SA_PASSWORD"),
             db_encrypt=_read_env("DB_ENCRYPT") or "Yes",
@@ -60,6 +69,7 @@ class AppConfig:
             microservice_id=_read_env("MICROSERVICE_ID") or "wrrs_stmsg_dbsender",
             health_board=_read_env("HEALTH_BOARD") or "SHARED",
             peer_service=_read_env("PEER_SERVICE") or "WRRS",
+            source_system=_read_env("SOURCE_SYSTEM") or "328",
             health_check_hostname=_read_env("HEALTH_CHECK_HOST"),
             health_check_port=_read_int_env("HEALTH_CHECK_PORT"),
             log_level=_read_env("LOG_LEVEL") or "INFO",

@@ -26,7 +26,7 @@ parameters:
       - HL7 Pims Transformer
       - HL7 Core Reference Transformer
       - RISP Core Reference Transformer
-      - LIMS WRRS HL7 Transformer
+      - WRRS IDUPD DB Sender
       - PROMS FHIR Transformer
       - PROMS FHIR Sender
       - HL7 Sender
@@ -269,11 +269,11 @@ stages:
           appFunctionMidfix: 'risp'
           buildPipeline: 'HL7 Core Reference Transformer - Build'
 
-        - name: 'LIMS WRRS HL7 Transformer'
-          appImageName: 'lims-wrrs-hl7transformer'
-          appFunctionMidfix: 'lims'
-          containerAppNameSuffix: 'lims-wrrs-tfmr'
-          buildPipeline: 'HL7 LIMS WRRS Transformer - Build'
+        # WRRS QueueIdUpdate Flow (LIMS to WRRS)
+        - name: 'WRRS IDUPD DB Sender'
+          appImageName: 'dbsender'
+          appFunctionMidfix: 'wrrs-idupd'
+          buildPipeline: 'Database Sender - Build'
 
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'

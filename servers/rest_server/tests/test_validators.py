@@ -125,6 +125,81 @@ class TestHl7ApyValidator(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validator.validate(smuggled_xml, "ADT_A05")
 
+    def test_unprefixed_payload_without_namespace_passes(self) -> None:
+        unprefixed_xml = (
+            "<ADT_A05>"
+            "<MSH>"
+            "<MSH.1>|</MSH.1>"
+            "<MSH.2>^~\\&amp;</MSH.2>"
+            "<MSH.3><HD.1>328</HD.1></MSH.3>"
+            "<MSH.4><HD.1>328</HD.1></MSH.4>"
+            "<MSH.5><HD.1>200</HD.1></MSH.5>"
+            "<MSH.6><HD.1>200</HD.1></MSH.6>"
+            "<MSH.7><TS.1>202611100805</TS.1></MSH.7>"
+            "<MSH.9><MSG.1>ADT</MSG.1><MSG.2>A28</MSG.2><MSG.3>ADT_A05</MSG.3></MSH.9>"
+            "<MSH.10>1022803</MSH.10>"
+            "<MSH.11><PT.1>P</PT.1></MSH.11>"
+            "<MSH.12><VID.1>2.5</VID.1></MSH.12>"
+            "</MSH>"
+            "<EVN><EVN.2><TS.1>202611100805</TS.1></EVN.2></EVN>"
+            "<PID>"
+            "<PID.3><CX.1>2222222222</CX.1><CX.4><HD.1>NHS</HD.1></CX.4><CX.5>NH</CX.5></PID.3>"
+            "<PID.3><CX.1>51011115</CX.1><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5></PID.3>"
+            "<PID.5><XPN.1><FN.1>BLACK</FN.1></XPN.1><XPN.2>K</XPN.2></PID.5>"
+            "</PID>"
+            "<PV1><PV1.2>N</PV1.2></PV1>"
+            "</ADT_A05>"
+        )
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05", "ADT_A39"})
+        validator.validate(unprefixed_xml, "ADT_A05")
+
+    def test_trigger_based_root_tag_matches_canonical_structure(self) -> None:
+        xml_with_trigger_root = (
+            "<ADT_A28>"
+            "<MSH>"
+            "<MSH.1>|</MSH.1>"
+            "<MSH.2>^~\\&amp;</MSH.2>"
+            "<MSH.3><HD.1>328</HD.1></MSH.3>"
+            "<MSH.4><HD.1>328</HD.1></MSH.4>"
+            "<MSH.5><HD.1>200</HD.1></MSH.5>"
+            "<MSH.6><HD.1>200</HD.1></MSH.6>"
+            "<MSH.7><TS.1>202611100805</TS.1></MSH.7>"
+            "<MSH.9><MSG.1>ADT</MSG.1><MSG.2>A28</MSG.2><MSG.3>ADT_A05</MSG.3></MSH.9>"
+            "<MSH.10>1022803</MSH.10>"
+            "<MSH.11><PT.1>P</PT.1></MSH.11>"
+            "<MSH.12><VID.1>2.5</VID.1></MSH.12>"
+            "</MSH>"
+            "<EVN><EVN.2><TS.1>202611100805</TS.1></EVN.2></EVN>"
+            "<PID>"
+            "<PID.3><CX.1>2222222222</CX.1><CX.4><HD.1>NHS</HD.1></CX.4><CX.5>NH</CX.5></PID.3>"
+            "<PID.5><XPN.1><FN.1>BLACK</FN.1></XPN.1><XPN.2>K</XPN.2></PID.5>"
+            "</PID>"
+            "<PV1><PV1.2>N</PV1.2></PV1>"
+            "</ADT_A28>"
+        )
+        validator = Hl7ApyValidator(allowed_structures={"ADT_A05"})
+        validator.validate(xml_with_trigger_root, "ADT_A28")
+
+    def test_allowed_trigger_events_pass(self) -> None:
+        validator = Hl7ApyValidator(
+            allowed_structures={"ADT_A05"},
+            allowed_trigger_events={"A28", "A31", "A40"},
+        )
+        validator.validate(self.valid_payload_xml, "ADT_A05")
+
+        a31_xml = self.valid_payload_xml.replace("<ns0:MSG.2>A28</ns0:MSG.2>", "<ns0:MSG.2>A31</ns0:MSG.2>")
+        validator.validate(a31_xml, "ADT_A05")
+
+    def test_disallowed_trigger_event_raises(self) -> None:
+        validator = Hl7ApyValidator(
+            allowed_structures={"ADT_A05"},
+            allowed_trigger_events={"A28", "A31", "A40"},
+        )
+        a05_xml = self.valid_payload_xml.replace("<ns0:MSG.2>A28</ns0:MSG.2>", "<ns0:MSG.2>A05</ns0:MSG.2>")
+        with self.assertRaises(ValidationError) as ctx:
+            validator.validate(a05_xml, "ADT_A05")
+        self.assertIn("Unsupported HL7 trigger event 'A05'", ctx.exception.message)
+
 
 class TestXsdValidator(unittest.TestCase):
     def setUp(self) -> None:

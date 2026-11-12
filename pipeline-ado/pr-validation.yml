@@ -12,7 +12,6 @@ pr:
   paths:
     include:
       - servers/hl7_server/**
-      - servers/hl7_rest_server/**
       - servers/rest_server/**
       - transformers/hl7_phw_transformer/**
       - senders/hl7_sender/**
@@ -27,7 +26,6 @@ pr:
       - transformers/hl7_core_reference_transformer/**
       - transformers/hl7_lims_wrrs_transformer/**
       - transformers/xml_fhir_proms_transformer/**
-      - servers/hl7_soap_server/**
       - dev_tools/buswatch/**
       - message_processing/message_store_service/**
       - lookup_service/**
@@ -99,7 +97,6 @@ stages:
               # testRunner: unittest (default) or pytest
               APPS=(
                 "servers/hl7_server|HL7 Server||unittest"
-                "servers/hl7_rest_server|HL7 REST Server||unittest"
                 "servers/rest_server|REST Server||unittest"
                 "transformers/hl7_phw_transformer|PHW HL7 Transformer||unittest"
                 "senders/hl7_sender|HL7 Sender||unittest"
@@ -114,7 +111,6 @@ stages:
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer||unittest"
                 "transformers/hl7_lims_wrrs_transformer|LIMS WRRS HL7 Transformer||unittest"
                 "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer||unittest"
-                "servers/hl7_soap_server|HL7 SOAP Server||unittest"
                 "message_processing/message_store_service|Message Store Service||unittest"
                 "lookup_service|Lookup Service||unittest"
                 "dev_tools/buswatch|BusWatch||unittest"

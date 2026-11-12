@@ -32,8 +32,14 @@ class TestAppConfig(unittest.TestCase):
         self.assertEqual(config.endpoint_path, "/ingest")
         self.assertEqual(config.allowed_hl7_structures, ["ADT_A05", "ADT_A39"])
         self.assertEqual(config.allowed_source_identifiers, [])
+        self.assertEqual(config.allowed_trigger_events, [])
         self.assertIsNone(config.source_identifier_locator)
         self.assertEqual(config.max_request_size_bytes, DEFAULT_MAX_REQUEST_SIZE_BYTES)
+
+    @patch.dict(os.environ, {**BASE_ENV, "ALLOWED_TRIGGER_EVENTS": "A28, A31, A40"}, clear=True)
+    def test_read_env_config_allowed_trigger_events(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.allowed_trigger_events, ["A28", "A31", "A40"])
 
     @patch.dict(os.environ, {**BASE_ENV, "ENDPOINT_PATH": "ingest"}, clear=True)
     def test_invalid_endpoint_path_raises(self) -> None:
@@ -101,6 +107,36 @@ class TestAppConfig(unittest.TestCase):
     @patch.dict(os.environ, {**BASE_ENV, "MAX_REQUEST_SIZE_BYTES": "-2"}, clear=True)
     def test_request_size_below_minus_one_raises(self) -> None:
         with self.assertRaises(ValueError):
+            AppConfig.read_env_config()
+
+    @patch.dict(
+        os.environ,
+        {
+            **BASE_ENV,
+            "WRRS_TOPIC_NAME": "wrrs-topic",
+            "WRRS_EGRESS_SESSION_ID": "lims-to-wrrs",
+            "WRRS_WORKFLOW_ID": "lims-to-wrrs",
+            "WRRS_TRIGGER_EVENTS": "A31, A40",
+        },
+        clear=True,
+    )
+    def test_generic_pipeline_with_wrrs_config(self) -> None:
+        config = AppConfig.read_env_config()
+        self.assertEqual(config.wrrs_topic_name, "wrrs-topic")
+        self.assertEqual(config.wrrs_egress_session_id, "lims-to-wrrs")
+        self.assertEqual(config.wrrs_workflow_id, "lims-to-wrrs")
+        self.assertEqual(config.wrrs_trigger_events, ["A31", "A40"])
+
+    @patch.dict(
+        os.environ,
+        {
+            **BASE_ENV,
+            "WRRS_TOPIC_NAME": "wrrs-topic",
+        },
+        clear=True,
+    )
+    def test_generic_pipeline_missing_wrrs_session_raises(self) -> None:
+        with self.assertRaises(RuntimeError):
             AppConfig.read_env_config()
 
     @patch.dict(os.environ, {k: v for k, v in BASE_ENV.items() if k != "MESSAGE_STORE_QUEUE_NAME"}, clear=True)
