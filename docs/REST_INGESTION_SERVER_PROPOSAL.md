@@ -1,10 +1,9 @@
 # Proposal: Configurable REST Ingestion Server
 
-> Status: **Proposal** — no implementation yet. This document proposes generalising the existing
-> `hl7_soap_server` into a **configurable, content-type-agnostic REST ingestion server**, built on
-> the same shared-library foundation as `hl7_server`, so that multiple differently-configured
-> instances can be deployed for different source systems and payload formats without new code per
-> flow.
+> Status: **Implemented & Accepted** — this proposal was implemented as `servers/rest_server/`
+> (see [`servers/rest_server/README.md`](../servers/rest_server/README.md)). Both legacy standalone
+> services (`hl7_soap_server` and `hl7_rest_server`) have since been consolidated into `rest_server`
+> and removed from the repository. This document is preserved for historical context.
 
 ## Goal
 
@@ -25,15 +24,14 @@ The key insight, carried over from the earlier SOAP spike: only the **transport,
 validation rule-set** differ between source systems. Everything after "we have a validated payload
 + tracking metadata" should be **reused**, not re-implemented per flow.
 
-## Current state
+## Current state (historical)
 
-Two ingestion services exist today and both already follow the "shared core, config-driven flow"
-pattern — this proposal extends that pattern rather than inventing a new one.
+Two ingestion services existed at the time of this proposal:
 
-| Service | Transport | Payload | Validation | Reused today for |
+| Service | Transport | Payload | Validation | Reused for |
 |---|---|---|---|---|
-| [`hl7_server`](../hl7_server/README.md) | MLLP/TCP | ER7 (pipe-delimited HL7v2) | `HL7Validator` + per-flow custom validation (`custom_validation/`) + optional flow XSD | PHW, Paris, Chemo, PIMS, WDS, Mosaiq, MPI outbound |
-| [`hl7_soap_server`](../hl7_soap_server/README.md) | HTTP (SOAP 1.1 POST) | HL7 v2.xml, SOAP-enveloped | Hard-coded SOAP envelope unwrap + HL7 XSD (`HL7_SCHEMA_GROUP`) + assigning-authority allow-list | LIMS → MPI (`flow_lims_to_mpi.tf`) |
+| [`hl7_server`](../servers/hl7_server/README.md) | MLLP/TCP | ER7 (pipe-delimited HL7v2) | `HL7Validator` + per-flow custom validation (`custom_validation/`) + optional flow XSD | PHW, Paris, Chemo, PIMS, WDS, Mosaiq, MPI outbound |
+| `hl7_soap_server` *(legacy)* | HTTP (SOAP 1.1 POST) | HL7 v2.xml, SOAP-enveloped | Hard-coded SOAP envelope unwrap + HL7 XSD (`HL7_SCHEMA_GROUP`) + assigning-authority allow-list | LIMS → MPI (`flow_lims_to_mpi.tf`) |
 
 `hl7_soap_server` is the right starting point for this proposal — it already proves the REST/HTTP
 ingestion model end-to-end (Service Bus publish, message store, event logging, metrics, health

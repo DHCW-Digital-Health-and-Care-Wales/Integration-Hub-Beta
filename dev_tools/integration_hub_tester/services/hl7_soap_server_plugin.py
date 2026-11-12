@@ -1,10 +1,10 @@
 """HL7 SOAP Server plugin — unwrap, XSD-validate and preview the SOAP ACK/fault response.
 
-Runs the real ``SoapMessageProcessor.process()`` from ``servers/hl7_soap_server`` (unwrap SOAP
-envelope, allowed-structure check, XSD schema validation, assigning-authority check, ER7
-conversion). Only the outbound I/O boundary is stubbed out with no-op mocks (Service Bus sender,
-event logger, metric sender, message store) — this is the exact pattern the service's own test
-suite uses (see tests/test_soap_processor.py), so no network calls are made and the validation/
+Runs the real ``RestMessageProcessor.process()`` from ``servers/rest_server`` using
+``SoapContentAdapter`` and ``Hl7XsdValidator`` (unwrap SOAP envelope, allowed-structure check,
+XSD schema validation, assigning-authority check, ER7 conversion) — superseding the retired
+``hl7_soap_server`` service. Only the outbound I/O boundary is stubbed out with no-op mocks (Service Bus
+sender, event logger, metric sender, message store) — so no network calls are made and the validation/
 response-building logic is unmodified production code.
 
 Fixed for this preview: schema_group="phw", allowed_hl7_structures=["ADT_A05", "ADT_A39"],
@@ -37,7 +37,7 @@ class HL7SoapServerPlugin(ServicePlugin):
     tab_label = "HL7 SOAP Server"
     description = (
         "POST SOAP+HL7v2.xml envelope → SOAP AckResponse (200) / SOAP Fault (400/403/500)  — "
-        "hl7_soap_server, schema_group='phw', structures=ADT_A05/ADT_A39, authority='328'"
+        "rest_server (generic SOAP pipeline, superseding hl7_soap_server), schema_group='phw', structures=ADT_A05/ADT_A39, authority='328'"
     )
     input_label = "Inbound HL7v2 ER7  (converted to v2.xml + wrapped in a SOAP envelope here)"
     output_label = "SOAP response envelope (AckResponse or Fault)"

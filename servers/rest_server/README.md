@@ -19,12 +19,10 @@ shape and destination queue. See
 [`docs/REST_INGESTION_SERVER_PROPOSAL.md`](../docs/REST_INGESTION_SERVER_PROPOSAL.md) and
 [`docs/rest_merge.md`](../docs/rest_merge.md) for the background design proposals.
 
-`hl7_soap_server` remains the dedicated SOAP+HL7-v2.xml service for now (it also serves a WSDL
-contract) - see [`docs/rest_merge.md`](../docs/rest_merge.md) §9 for its planned consolidation into
-the `generic` pipeline (`CONTENT_ADAPTER=soap`, `VALIDATOR_TYPE=hl7-xsd`), which already reproduces
-its behaviour. [`tests/test_hl7_soap_server_parity.py`](tests/test_hl7_soap_server_parity.py)
-characterises that parity against `hl7_soap_server`'s own sample payloads; two behavioural gaps
-found this way have since been fixed (see `docs/rest_merge.md` §9).
+The legacy `hl7_soap_server` has been decommissioned and consolidated into the `generic` pipeline
+(`CONTENT_ADAPTER=soap`, `VALIDATOR_TYPE=hl7-xsd`), which reproduces its behaviour.
+[`tests/test_hl7_soap_server_parity.py`](tests/test_hl7_soap_server_parity.py) characterises that
+parity against the former SOAP sample payloads (see `docs/rest_merge.md` §9).
 
 ## Choosing a configuration
 

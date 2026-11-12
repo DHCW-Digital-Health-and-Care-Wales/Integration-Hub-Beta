@@ -73,7 +73,7 @@ so the debugger steps into all service source code, not just `app.py`.
 | **HL7 Sender** | `services/hl7_sender_plugin.py` → `run()` to inspect the MLLP byte frame before it is displayed |
 | **HL7 Sender ACK** | `senders/hl7_sender/hl7_sender/ack_processor.py` → `get_ack_result()` |
 | **REST Server (HL7)** | `servers/rest_server/rest_server/hl7/hl7_message_processor.py` → `Hl7MessageProcessor.process()` |
-| **HL7 SOAP Server** | `servers/hl7_soap_server/hl7_soap_server/soap_processor.py` → `SoapMessageProcessor.process()` |
+| **HL7 SOAP Server** | `servers/rest_server/rest_server/message_processor.py` → `RestMessageProcessor.process()` (SOAP adapter) |
 | **SOAP Sender / SOAP Sub Sender** | `services/soap_sender_plugin.py` / `services/soap_subscription_sender_plugin.py` → `run()` |
 
 Use **F10** to step over, **F11** to step into, and the Watch / Variables panels to
@@ -178,7 +178,7 @@ inspect intermediate values at any point in the pipeline.
 |---|---|
 | **Input** | HL7v2 ER7 (converted to HL7 v2.xml and wrapped in a SOAP envelope by the plugin) |
 | **Output** | HTTP status + SOAP `AckResponse` (200) / SOAP `Fault` (400/403/500) |
-| **Underlying code** | `servers/hl7_soap_server/hl7_soap_server/soap_processor.py` · `SoapMessageProcessor.process()` — real SOAP unwrap, allowed-structure check, XSD schema validation, assigning-authority check |
+| **Underlying code** | `servers/rest_server/rest_server/message_processor.py` · `RestMessageProcessor.process()` with `SoapContentAdapter` and `Hl7XsdValidator` — real SOAP unwrap, allowed-structure check, XSD schema validation, assigning-authority check (superseding the retired `hl7_soap_server`) |
 | **Notes** | Fixed for this preview: `schema_group="phw"`, `allowed_hl7_structures=["ADT_A05", "ADT_A39"]`, `allowed_assigning_authorities=["328"]`. Only the outbound I/O boundary is stubbed with no-op mocks (the same pattern the service's own tests use). |
 | **Samples** | Valid ADT_A05 (authority 328) → 200, Malformed SOAP request → 400, Unknown assigning authority (999) → 403 |
 
@@ -265,7 +265,6 @@ transformers/hl7_core_reference_transformer/ installed as path dep in .venv
 transformers/xml_fhir_proms_transformer/     installed as path dep in .venv
 servers/hl7_server/                          installed as path dep in .venv
 servers/rest_server/                         installed as path dep in .venv
-servers/hl7_soap_server/                     installed as path dep in .venv
 senders/hl7_sender/                          installed as path dep in .venv
 shared_libs/wrds_service/                    installed as path dep in .venv
 ```
@@ -353,7 +352,6 @@ hl7-core-reference-transformer  = { path = "../../transformers/hl7_core_referenc
 proms-fhir-transformer          = { path = "../../transformers/xml_fhir_proms_transformer" }
 hl7-server                      = { path = "../../servers/hl7_server" }
 rest-server                     = { path = "../../servers/rest_server" }
-hl7-soap-server                 = { path = "../../servers/hl7_soap_server" }
 hl7-sender                      = { path = "../../senders/hl7_sender" }
 wrds-service                    = { path = "../../shared_libs/wrds_service" }
 ```
