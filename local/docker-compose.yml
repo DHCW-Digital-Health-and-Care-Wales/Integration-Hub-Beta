@@ -505,8 +505,10 @@ services:
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
-      - sb-emulator
-      - sqledge
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
     profiles:
       - lims-to-wrrs
       - everything
@@ -598,9 +600,10 @@ services:
         aliases:
           - "mpi-hl7-topic-mock-receiver"
 
-  # Mock WRRS database for the RISP -> WRRS flow (local testing only). Real SQL Server hosting a mock
-  # DRS database and dbo.prQueueMessage. The image is amd64-only, so it runs emulated on Apple Silicon.
-  # Healthy only once DRS and the procedure exist, so the sender never starts against a missing database.
+  # Mock WRRS database for the RISP -> WRRS and LIMS -> WRRS flows (local testing only). Real SQL Server hosting a
+  # mock DRS database with dbo.prQueueMessage and dbo.prQueueIdUpdate. The image is amd64-only, so it runs emulated
+  # on Apple Silicon. Healthy only once DRS and both procedures exist, so the senders never start against a missing
+  # database.
   mock-db-receiver:
     container_name: mock-db-receiver
     platform: linux/amd64
@@ -612,7 +615,7 @@ services:
     ports:
       - "14334:1433"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d DRS -Q \"SELECT OBJECT_ID('dbo.prQueueMessage')\" -h -1 -W | grep -qE '^[0-9]+$'"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d DRS -Q \"SET NOCOUNT ON; SELECT COUNT(*) FROM sys.procedures WHERE name IN ('prQueueMessage', 'prQueueIdUpdate')\" -h -1 -W | grep -qx 2"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -620,6 +623,7 @@ services:
     restart: on-failure
     profiles:
       - risp-to-wrrs
+      - lims-to-wrrs
       - everything
     networks:
       integration-hub:

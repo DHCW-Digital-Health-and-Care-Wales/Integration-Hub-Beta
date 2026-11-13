@@ -13,6 +13,23 @@ from db_sender.db_client import (
 
 TEST_CREDENTIAL = "dummy_auth_token"
 
+EXPECTED_TWO_PARAM_SQL = (
+    "SET NOCOUNT ON; DECLARE @rc INT; EXEC @rc = dbo.prQueueMessage ?, ?; SELECT @rc;"
+)
+EXPECTED_SIX_PARAM_SQL = (
+    "SET NOCOUNT ON; DECLARE @rc INT; EXEC @rc = dbo.prQueueIdUpdate ?, ?, ?, ?, ?, ?; SELECT @rc;"
+)
+
+
+def _configure_cursor_return_code(mock_cursor: MagicMock, return_code: int | None = 0) -> None:
+    """Make a mock cursor yield a single result set holding the procedure return code."""
+    if return_code is None:
+        mock_cursor.description = None
+    else:
+        mock_cursor.description = [("",)]
+        mock_cursor.fetchone.return_value = (return_code,)
+    mock_cursor.nextset.return_value = False
+
 
 class TestDatabaseClient(unittest.TestCase):
     def _create_config(
@@ -90,6 +107,7 @@ class TestDatabaseClient(unittest.TestCase):
     def test_execute_stored_procedure_success(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, 0)
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
         mock_connect.return_value = mock_conn
 
@@ -103,14 +121,16 @@ class TestDatabaseClient(unittest.TestCase):
             autocommit=False,
             timeout=30,
         )
-        mock_cursor.execute.assert_called_once_with("{CALL dbo.prQueueMessage (?, ?)}", ("<XML>payload</XML>", 0))
+        mock_cursor.execute.assert_called_once_with(EXPECTED_TWO_PARAM_SQL, ("<XML>payload</XML>", 0))
         mock_conn.commit.assert_called_once()
+        mock_conn.rollback.assert_not_called()
         self.assertEqual(mock_conn.timeout, 60)
 
     @patch("pyodbc.connect")
     def test_execute_stored_procedure_priority_true(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, 0)
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
         mock_connect.return_value = mock_conn
 
@@ -119,7 +139,60 @@ class TestDatabaseClient(unittest.TestCase):
 
         client.execute_stored_procedure("<XML>payload</XML>", is_priority=True)
 
-        mock_cursor.execute.assert_called_once_with("{CALL dbo.prQueueMessage (?, ?)}", ("<XML>payload</XML>", 1))
+        mock_cursor.execute.assert_called_once_with(EXPECTED_TWO_PARAM_SQL, ("<XML>payload</XML>", 1))
+
+    @patch("pyodbc.connect")
+    def test_execute_stored_procedure_non_zero_return_code_is_fatal(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, 55555)
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        client = DatabaseClient(self._create_config())
+
+        with self.assertRaises(FatalDatabaseError) as ctx:
+            client.execute_stored_procedure("<XML>test</XML>")
+
+        self.assertEqual(ctx.exception.sql_state, "PROC_RC")
+        self.assertEqual(ctx.exception.error_code, 55555)
+        self.assertIn("55555", ctx.exception.error_message)
+        mock_conn.rollback.assert_called_once()
+        mock_conn.commit.assert_not_called()
+        # The connection itself is healthy, so it is kept for the next message.
+        self.assertIsNotNone(client._connection)
+
+    @patch("pyodbc.connect")
+    def test_execute_stored_procedure_missing_return_code_is_fatal(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, None)
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        client = DatabaseClient(self._create_config())
+
+        with self.assertRaises(FatalDatabaseError) as ctx:
+            client.execute_stored_procedure("<XML>test</XML>")
+
+        self.assertIn("no return code", ctx.exception.error_message)
+        mock_conn.rollback.assert_called_once()
+        mock_conn.commit.assert_not_called()
+
+    @patch("pyodbc.connect")
+    def test_execute_stored_procedure_return_code_read_from_last_result_set(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        # A procedure result set followed by the trailing SELECT @rc.
+        mock_cursor.description = [("",)]
+        mock_cursor.fetchone.side_effect = [("ignored",), (0,)]
+        mock_cursor.nextset.side_effect = [True, False]
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        DatabaseClient(self._create_config()).execute_stored_procedure("<XML>test</XML>")
+
+        mock_conn.commit.assert_called_once()
 
     @patch("pyodbc.connect")
     def test_execute_stored_procedure_transient_error(self, mock_connect: MagicMock) -> None:
@@ -186,6 +259,7 @@ class TestDatabaseClient(unittest.TestCase):
     def test_execute_queue_id_update_success(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, 0)
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
         mock_connect.return_value = mock_conn
 
@@ -203,10 +277,36 @@ class TestDatabaseClient(unittest.TestCase):
         )
 
         mock_cursor.execute.assert_called_once_with(
-            "{CALL dbo.prQueueIdUpdate (?, ?, ?, ?, ?, ?)}",
+            EXPECTED_SIX_PARAM_SQL,
             ("L123", "328", None, None, "9876543210", "NHS"),
         )
         mock_conn.commit.assert_called_once()
+
+    @patch("pyodbc.connect")
+    def test_execute_queue_id_update_non_zero_return_code_is_fatal(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        _configure_cursor_return_code(mock_cursor, 55555)
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        config = self._create_config()
+        config.db_stored_procedure = "dbo.prQueueIdUpdate"
+        client = DatabaseClient(config)
+
+        with self.assertRaises(FatalDatabaseError) as ctx:
+            client.execute_queue_id_update(
+                provider_patient_identifier="L123",
+                provider_assigning_authority="328",
+                old_identifier=None,
+                old_identifier_assigning_authority=None,
+                new_identifier="9876543210",
+                new_identifier_assigning_authority="NHS",
+            )
+
+        self.assertEqual(ctx.exception.error_code, 55555)
+        mock_conn.rollback.assert_called_once()
+        mock_conn.commit.assert_not_called()
 
     def test_sanitize_error_message_conversion_failure(self) -> None:
         sentinel_patient_id = "9999999999"

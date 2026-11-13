@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 
 ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
+# Synthetic SQLSTATE reported when a stored procedure signals failure through a non-zero return code.
+PROCEDURE_RETURN_CODE_SQLSTATE = "PROC_RC"
+
 # Known transient SQLSTATE values
 TRANSIENT_SQLSTATES = frozenset({
     "08001",  # Unable to connect to server
@@ -158,7 +161,21 @@ class DatabaseClient:
             conn.timeout = self.config.db_command_timeout
             with conn.cursor() as cursor:
                 cursor.execute(call_sql, args)
+                return_code = self._read_return_code(cursor)
+                if return_code != 0:
+                    # The procedure reported failure through its return code rather than raising a SQL error.
+                    # Discard any partial work and treat it as non-recoverable, exactly like a raised SQL error.
+                    conn.rollback()
+                    detail = "no return code" if return_code is None else f"non-zero return code {return_code}"
+                    raise FatalDatabaseError(
+                        f"Stored procedure {self.config.db_stored_procedure} returned {detail}",
+                        sql_state=PROCEDURE_RETURN_CODE_SQLSTATE,
+                        error_code=return_code if isinstance(return_code, int) else 0,
+                    )
                 conn.commit()
+        except FatalDatabaseError:
+            # Raised above for a non-zero return code. The connection is still healthy, so keep it.
+            raise
         except pyodbc.Error as err:
             self.close()
             sql_state, err_code, err_msg = self._parse_odbc_error(err)
@@ -169,6 +186,38 @@ class DatabaseClient:
             self.close()
             sanitized = sanitize_error_message(str(err))
             raise TransientDatabaseError(sanitized, sql_state="UNKNOWN", error_code=0) from err
+
+    @staticmethod
+    def _read_return_code(cursor: Any) -> Any:
+        """Return the value of the trailing ``SELECT @rc`` emitted by the call batch.
+
+        Every result set is consumed so that errors raised late by the procedure surface here, and the last
+        value wins (the procedure itself may return result sets before the return code).
+        Returns None if no return code was produced, which the caller treats as a failure.
+        """
+        return_code: Any = None
+        while True:
+            if cursor.description is not None:
+                row = cursor.fetchone()
+                if row is not None:
+                    return_code = row[0]
+            if not cursor.nextset():
+                break
+        return return_code
+
+    def _build_call_sql(self, parameter_count: int) -> str:
+        """Build the batch that runs the configured stored procedure and selects its return code.
+
+        pyodbc does not expose the return value of ``{CALL ...}``, so the code is captured in T-SQL.
+        SET NOCOUNT ON keeps row-count messages from appearing as result sets before the return code.
+        """
+        placeholders = ", ".join(["?"] * parameter_count)
+        return (
+            "SET NOCOUNT ON; "
+            "DECLARE @rc INT; "
+            f"EXEC @rc = {self.config.db_stored_procedure} {placeholders}; "
+            "SELECT @rc;"
+        )
 
     def execute_stored_procedure(self, message_payload: str, is_priority: bool = False) -> None:
         """Execute the configured stored procedure with parameterised @Message and @IsPriority.
@@ -182,7 +231,7 @@ class DatabaseClient:
             FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
         """
         priority_val = 1 if is_priority else 0
-        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?)}}"
+        call_sql = self._build_call_sql(2)
         self._execute_call(call_sql, (message_payload, priority_val))
 
     def execute_queue_id_update(
@@ -208,7 +257,7 @@ class DatabaseClient:
             TransientDatabaseError: If a transient network/timeout error occurred.
             FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
         """
-        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?, ?, ?, ?)}}"
+        call_sql = self._build_call_sql(6)
         args = (
             provider_patient_identifier,
             provider_assigning_authority,

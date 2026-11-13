@@ -2,7 +2,8 @@
 # Starts SQL Server, applies the idempotent mock schema, and only then opens port 1433.
 #
 # SQL Server itself listens on a loopback-only internal port. A small forwarder publishes 1433 once the
-# schema exists, so "port 1433 is open" really means "DRS and dbo.prQueueMessage are ready". Without this,
+# schema exists, so "port 1433 is open" really means "DRS, dbo.prQueueMessage and dbo.prQueueIdUpdate are ready".
+# Without this,
 # clients (and TCP health probes) can connect during startup and hit a missing database or procedure, which
 # db_sender classifies as fatal and dead-letters, rather than as a transient connection failure it would retry.
 set -u
@@ -53,7 +54,7 @@ fi
 
 socat "TCP-LISTEN:$PUBLIC_PORT,fork,reuseaddr" "TCP:127.0.0.1:$INTERNAL_PORT" &
 PROXY_PID=$!
-echo "Mock DB receiver ready: database DRS, procedure dbo.prQueueMessage, listening on port $PUBLIC_PORT."
+echo "Mock DB receiver ready: database DRS, procedures dbo.prQueueMessage and dbo.prQueueIdUpdate, listening on port $PUBLIC_PORT."
 
 wait "$SQL_PID"
 status=$?
