@@ -414,6 +414,7 @@ services:
   # TRRR-specific database sender for ADT_A05/LIMS-to-NHS identifier association
   db_sender_trrr:
     container_name: db_sender_trrr
+    image: localhost/integration-hub_db_sender_trrr:latest
     build:
       context: ../senders/db_sender_trrr
       dockerfile: ./Dockerfile
