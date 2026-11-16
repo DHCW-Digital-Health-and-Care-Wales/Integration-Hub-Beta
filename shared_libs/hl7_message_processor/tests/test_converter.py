@@ -153,6 +153,50 @@ class SubcomponentSeparatorTests(unittest.TestCase):
         self.assertEqual(er7_value, self.raw_value)
 
 
+class XmlToEr7ComponentPositionTests(unittest.TestCase):
+    """An empty or absent component must keep its position; only trailing empty components are dropped."""
+
+    @staticmethod
+    def _mrg_segment(mrg_1_children: str) -> str:
+        xml = f'<ADT_A39 xmlns="{HL7_XML_NAMESPACE}"><MRG><MRG.1>{mrg_1_children}</MRG.1></MRG></ADT_A39>'
+        return next(seg for seg in xml_to_er7(xml).split("\r") if seg.startswith("MRG|"))
+
+    def test_empty_first_component_keeps_its_position(self) -> None:
+        segment = self._mrg_segment(
+            "<CX.1/><CX.2/><CX.3/><CX.4><HD.1>328</HD.1><HD.2/><HD.3/></CX.4><CX.5>PI</CX.5>"
+        )
+        self.assertEqual(segment, "MRG|^^^328^PI")
+
+    def test_empty_authority_keeps_its_position(self) -> None:
+        segment = self._mrg_segment(
+            "<CX.1>O1</CX.1><CX.2/><CX.3/><CX.4><HD.1/><HD.2/><HD.3/></CX.4><CX.5>PI</CX.5>"
+        )
+        self.assertEqual(segment, "MRG|O1^^^^PI")
+
+    def test_all_components_populated(self) -> None:
+        segment = self._mrg_segment(
+            "<CX.1>00001</CX.1><CX.2/><CX.3/><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5>"
+        )
+        self.assertEqual(segment, "MRG|00001^^^328^PI")
+
+    def test_absent_components_are_placed_by_tag_number(self) -> None:
+        segment = self._mrg_segment("<CX.1>00001</CX.1><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5>")
+        self.assertEqual(segment, "MRG|00001^^^328^PI")
+
+    def test_trailing_empty_components_are_dropped(self) -> None:
+        segment = self._mrg_segment(
+            "<CX.1>00001</CX.1><CX.2/><CX.3/><CX.4><HD.1>328</HD.1></CX.4><CX.5/>"
+            "<CX.6><HD.1/><HD.2/><HD.3/></CX.6><CX.7/>"
+        )
+        self.assertEqual(segment, "MRG|00001^^^328")
+
+    def test_subcomponents_are_joined_with_ampersand_and_keep_position(self) -> None:
+        segment = self._mrg_segment(
+            "<CX.1>00001</CX.1><CX.4><HD.1/><HD.2>2.16.840.1</HD.2><HD.3>ISO</HD.3></CX.4>"
+        )
+        self.assertEqual(segment, "MRG|00001^^^&2.16.840.1&ISO")
+
+
 class Er7EscapeSequenceTests(unittest.TestCase):
     """ER7 escape sequences (\\T\\, \\F\\, etc.) must be decoded to literal characters when
     converting to XML, so the XML serializer can entity-encode them correctly (e.g. \\T\\ -> & ->

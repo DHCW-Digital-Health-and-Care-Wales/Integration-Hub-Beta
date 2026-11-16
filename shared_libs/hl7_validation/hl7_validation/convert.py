@@ -498,24 +498,39 @@ def convert_er7_to_xml(er7_message: str) -> str:
     return er7_to_hl7v2xml(er7_message, structure_xsd_path=None)
 
 
-def _extract_text_from_element(elem: XElem) -> str:
-    """Extract text content from an XML element, handling nested components."""
+def _component_position(tag: str) -> Optional[int]:
+    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None."""
+    suffix = _strip_namespace(tag).rpartition(".")[2]
+    return int(suffix) if suffix.isdigit() else None
+
+
+def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
+    """Extract text content from an XML element, handling nested components.
+
+    A composite element is rebuilt positionally: each child is placed at the position given by its tag
+    number (``CX.4`` is the 4th component), so empty or absent components keep their slot and only
+    trailing empty components are dropped (``<CX.1/><CX.4>328</CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``).
+    The top-level call joins components with "^"; anything nested below a component is a subcomponent
+    and is joined with "&".
+    """
     text = elem.text
     if text:
         text = text.strip()
         if text:
             return text
 
-    children_texts: list[str] = []
-    append = children_texts.append
-    for child in elem:
-        child_text = _extract_text_from_element(child)
-        if child_text:
-            append(child_text)
+    parts: list[str] = []
+    for index, child in enumerate(elem, start=1):
+        position = _component_position(child.tag) or index
+        if len(parts) < position:
+            parts.extend([""] * (position - len(parts)))
+        child_text = _extract_text_from_element(child, separator="&")
+        if child_text and not parts[position - 1]:
+            parts[position - 1] = child_text
 
-    if children_texts:
-        return "^".join(children_texts)
-    return ""
+    while parts and not parts[-1]:
+        parts.pop()
+    return separator.join(parts)
 
 
 def _strip_namespace(tag: str) -> str:

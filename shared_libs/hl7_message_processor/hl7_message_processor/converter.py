@@ -286,6 +286,12 @@ def _strip_namespace(tag: str) -> str:
     return tag
 
 
+def _component_position(tag: str) -> Optional[int]:
+    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None."""
+    suffix = _strip_namespace(tag).rpartition(".")[2]
+    return int(suffix) if suffix.isdigit() else None
+
+
 def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
     """Extract ER7 text from ``elem``, re-joining composite children with ``separator`` if ``elem``
     itself has no direct text (i.e. it's a composite element whose value lives in its children).
@@ -302,9 +308,22 @@ def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
     text = elem.text.strip() if elem.text else ""
     if text:
         return encode_hl7_escapes(text)
-    children_texts = [_extract_text_from_element(child, separator="&") for child in elem]
-    children_texts = [text for text in children_texts if text]
-    return separator.join(children_texts) if children_texts else ""
+
+    # Rebuild positionally: each child goes in the slot given by its tag number (``CX.4`` is the 4th
+    # component), so empty or absent components keep their position and only trailing empties are dropped
+    # (``<CX.1/><CX.4>328</CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``, not ``328^PI``).
+    parts: List[str] = []
+    for index, child in enumerate(elem, start=1):
+        position = _component_position(child.tag) or index
+        if len(parts) < position:
+            parts.extend([""] * (position - len(parts)))
+        child_text = _extract_text_from_element(child, separator="&")
+        if child_text and not parts[position - 1]:
+            parts[position - 1] = child_text
+
+    while parts and not parts[-1]:
+        parts.pop()
+    return separator.join(parts)
 
 
 def _process_segment_element(seg_elem: XElem, seg_name: str) -> str:

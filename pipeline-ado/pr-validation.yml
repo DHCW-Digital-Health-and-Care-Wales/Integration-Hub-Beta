@@ -24,7 +24,6 @@ pr:
       - transformers/hl7_chemo_transformer/**
       - transformers/hl7_pims_transformer/**
       - transformers/hl7_core_reference_transformer/**
-      - transformers/hl7_lims_wrrs_transformer/**
       - transformers/xml_fhir_proms_transformer/**
       - dev_tools/buswatch/**
       - message_processing/message_store_service/**
@@ -109,7 +108,6 @@ stages:
                 "transformers/hl7_chemo_transformer|Chemo HL7 Transformer||unittest"
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer||unittest"
-                "transformers/hl7_lims_wrrs_transformer|LIMS WRRS HL7 Transformer||unittest"
                 "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer||unittest"
                 "message_processing/message_store_service|Message Store Service||unittest"
                 "lookup_service|Lookup Service||unittest"
