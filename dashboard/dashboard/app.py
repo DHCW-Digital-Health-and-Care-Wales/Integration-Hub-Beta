@@ -14,6 +14,7 @@ from flask import Flask, session
 from flask_babel import Babel  # type: ignore[import-untyped]
 
 import dashboard.config as config
+import dashboard.http_performance as http_performance
 import dashboard.template_filters as template_filters
 from dashboard.routes import alarm_config as alarm_config_routes
 from dashboard.routes import alarms as alarms_routes
@@ -116,6 +117,7 @@ alarms_routes.register(app)
 alarm_config_routes.register(app)
 contacts_routes.register(app)
 template_filters.register(app)
+http_performance.register(app)
 
 # Log Cosmos persistence status at startup so it is visible in Container App log
 # streams and makes misconfigured deployments immediately obvious.
