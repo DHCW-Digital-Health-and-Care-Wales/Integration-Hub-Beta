@@ -62,8 +62,8 @@ class AppConfig:
                 "DB_STORED_PROCEDURE", default=_DEFAULT_PROCEDURES[mapping_type]
             ),
             mapping_type=mapping_type,
-            db_username=_read_env("DB_USERNAME") or "TRRR",
-            db_password=_read_env("DB_PASSWORD") or _read_env("MSSQL_SA_PASSWORD") or "trrr",
+            db_username=_read_env("DB_USERNAME"),
+            db_password=_read_env("DB_PASSWORD") or _read_env("MSSQL_SA_PASSWORD"),
             db_encrypt=_read_env("DB_ENCRYPT") or "Yes",
             db_trust_server_certificate=_read_env("DB_TRUST_SERVER_CERTIFICATE") or "No",
             db_connection_timeout=_read_int_env("DB_CONNECTION_TIMEOUT") or 30,
