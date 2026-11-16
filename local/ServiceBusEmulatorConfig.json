@@ -171,7 +171,27 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-transformer-ingress-trrr-mrg-sub",
+                "Name": "local-inthub-lims-trrr-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "lims-trrr-db-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-merge-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
