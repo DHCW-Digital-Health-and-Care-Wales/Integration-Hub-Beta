@@ -288,6 +288,12 @@ stages:
           containerAppNameSuffix: 'trrr-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
 
+        - name: 'TRRR Merge Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-merge'
+          containerAppNameSuffix: 'trrr-merge-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
           appFunctionMidfix: ''
