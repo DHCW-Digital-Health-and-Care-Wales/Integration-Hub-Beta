@@ -442,6 +442,37 @@ def test_map_a40_merge_er7_successfully() -> None:
     }
 
 
+def test_map_a40_merge_rejects_multiple_xml_patient_groups() -> None:
+    message = _merge_xml(
+        mrg=f"<MRG.1>{_cx('OLD-001', 'NHS')}</MRG.1>",
+        pid3=f"<PID.3>{_cx('NEW-002', 'NHS')}</PID.3>",
+    ).replace(
+        "</ADT_A39>",
+        "<ADT_A39.PATIENT>"
+        f"<PID><PID.3>{_cx('NEW-003', 'NHS')}</PID.3></PID>"
+        f"<MRG><MRG.1>{_cx('OLD-002', 'NHS')}</MRG.1></MRG>"
+        "</ADT_A39.PATIENT></ADT_A39>",
+    )
+
+    _assert_value_error(
+        map_adt_a40_merge_identifiers, message, "Multiple patient groups are not supported"
+    )
+
+
+def test_map_a40_merge_rejects_multiple_er7_patient_groups() -> None:
+    message = (
+        "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG1|P|2.5\r"
+        "PID|1||NEW-002^^^NHS^NH\r"
+        "MRG|OLD-001^^^NHS^NH\r"
+        "PID|1||NEW-003^^^NHS^NH\r"
+        "MRG|OLD-002^^^NHS^NH\r"
+    )
+
+    _assert_value_error(
+        map_adt_a40_merge_identifiers, message, "Multiple patient groups are not supported"
+    )
+
+
 def test_merge_mapping_type_maps_a40_to_merge_payload() -> None:
     mapped = map_trrr_identifiers(VALID_MERGE_XML, MAPPING_MERGE)
 

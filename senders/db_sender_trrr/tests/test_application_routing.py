@@ -21,12 +21,19 @@ A40_WITHOUT_MRG = (
     "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG3|P|2.5\r"
     "PID|1||LIMS-77^^^WLIMS^PI~9876543210^^^NHS^NH||Doe^John\r"
 )
+A40_WITH_MULTIPLE_PATIENT_GROUPS = (
+    "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG4|P|2.5\r"
+    "PID|1||NEW-002^^^NHS^NH\r"
+    "MRG|OLD-001^^^NHS^NH\r"
+    "PID|1||NEW-003^^^NHS^NH\r"
+    "MRG|OLD-002^^^NHS^NH\r"
+)
 
 
-def _run(body: str, mapping_type: str) -> tuple[bool, MagicMock]:
+def _run(body: str, mapping_type: str, db_client: MagicMock | None = None) -> tuple[bool, MagicMock]:
     message = MagicMock()
     message.body = [body.encode("utf-8")]
-    db_client = MagicMock()
+    db_client = db_client if db_client is not None else MagicMock()
     app_config = MagicMock()
     app_config.mapping_type = mapping_type
     app_config.db_stored_procedure = "dbo.Test"
@@ -72,3 +79,13 @@ def test_merge_dead_letters_a40_without_mrg() -> None:
         raise AssertionError("Expected DeadLetterMessage")
     except DeadLetterMessage as exc:
         assert exc.description == "Missing old identifier"
+
+
+def test_merge_dead_letters_multiple_patient_groups_before_database_write() -> None:
+    db_client = MagicMock()
+    try:
+        _run(A40_WITH_MULTIPLE_PATIENT_GROUPS, MAPPING_MERGE, db_client)
+        raise AssertionError("Expected DeadLetterMessage")
+    except DeadLetterMessage as exc:
+        assert exc.description == "Multiple patient groups are not supported"
+    db_client.execute_identifier_update.assert_not_called()

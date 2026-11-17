@@ -16,9 +16,9 @@ to a patient's NHS number and preserve identifier text exactly as received (lead
 
 Both variants take the NHS number from the PID-3 repetition whose assigning authority is ``NHS``.
 
-MERGE handles every ``ADT^A40``: the superseded identifier and its assigning authority come from
-``MRG-1.1`` / ``MRG-1.4.1``, and the replacement identifier is the PID-3 repetition whose assigning
-authority equals ``MRG-1.4.1``. ``LIMSIdentifier`` is not produced.
+MERGE maps single-patient-group ``ADT^A40`` messages: the superseded identifier and its assigning authority come
+from ``MRG-1.1`` / ``MRG-1.4.1``, and the replacement identifier is the PID-3 repetition whose assigning
+authority equals ``MRG-1.4.1``. Multi-patient messages are rejected. ``LIMSIdentifier`` is not produced.
 
 Messages are accepted as HL7 v2 pipe-delimited (ER7) or HL7 v2 XML. No identifier value is converted,
 reformatted, or interpreted as numeric data.
@@ -59,6 +59,8 @@ class ParsedTrrrMessage:
     identifiers: tuple[Pid3Identifier, ...]
     # MRG-1 old identifier: None when the message has no MRG segment; empty strings when MRG-1 is blank.
     old_identifier: Pid3Identifier | None = None
+    pid_segment_count: int = 0
+    mrg_segment_count: int = 0
 
 
 def map_trrr_identifiers(message: str, mapping_type: str = MAPPING_NHS_ID_UPDATE) -> dict[str, str]:
@@ -121,12 +123,16 @@ def map_adt_a40_merge_identifiers(message: str) -> dict[str, str]:
 
     Raises:
         ValueError: ``Missing old identifier``, ``Missing old assigning authority`` or
-            ``Missing new identifier`` when the corresponding value cannot be resolved.
+            ``Missing new identifier`` when the corresponding value cannot be resolved, or
+            ``Multiple patient groups are not supported`` for multi-patient messages.
     """
     return _build_merge_mapping(_parse_message(message))
 
 
 def _build_merge_mapping(parsed: ParsedTrrrMessage) -> dict[str, str]:
+    if parsed.pid_segment_count > 1 or parsed.mrg_segment_count > 1:
+        raise ValueError("Multiple patient groups are not supported")
+
     old = parsed.old_identifier
     if old is None or not old.value.strip():
         raise ValueError("Missing old identifier")
@@ -189,6 +195,8 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
     trigger_event = ""
     identifiers: list[Pid3Identifier] = []
     old_identifier: Pid3Identifier | None = None
+    pid_segment_count = 0
+    mrg_segment_count = 0
 
     # HL7 segments are carriage-return delimited; tolerate CRLF/LF from varied producers.
     segments = message.replace("\r\n", "\r").replace("\n", "\r").split("\r")
@@ -203,6 +211,7 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
                 if len(msh9_components) > 1:
                     trigger_event = msh9_components[1].strip()
         elif segment.startswith("PID"):
+            pid_segment_count += 1
             fields = segment.split("|")
             if len(fields) <= 3:
                 continue
@@ -216,7 +225,10 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
                     # CX.4 is an HD; HD.1 is its first sub-component (& delimited).
                     authority = components[3].split("&")[0].strip()
                 identifiers.append(Pid3Identifier(value=value, authority=authority))
-        elif segment.startswith("MRG") and old_identifier is None:
+        elif segment.startswith("MRG"):
+            mrg_segment_count += 1
+            if old_identifier is not None:
+                continue
             fields = segment.split("|")
             old_value = ""
             old_authority = ""
@@ -228,7 +240,9 @@ def _parse_er7(message: str) -> ParsedTrrrMessage:
                     old_authority = components[3].split("&")[0].strip()
             old_identifier = Pid3Identifier(value=old_value, authority=old_authority)
 
-    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers), old_identifier)
+    return ParsedTrrrMessage(
+        sending_application, trigger_event, tuple(identifiers), old_identifier, pid_segment_count, mrg_segment_count
+    )
 
 
 def _parse_xml(message: str) -> ParsedTrrrMessage:
@@ -251,6 +265,9 @@ def _parse_xml(message: str) -> ParsedTrrrMessage:
             if msg2 is not None and msg2.text and msg2.text.strip():
                 trigger_event = msg2.text.strip()
 
+    pid_segments = _all_descendants(root, "PID")
+    mrg_segments = _all_descendants(root, "MRG")
+
     identifiers: list[Pid3Identifier] = []
     for pid3 in _all_descendants(root, "PID.3"):
         cx1 = _first_child(pid3, "CX.1")
@@ -262,11 +279,10 @@ def _parse_xml(message: str) -> ParsedTrrrMessage:
         identifiers.append(Pid3Identifier(value=value, authority=authority))
 
     old_identifier: Pid3Identifier | None = None
-    mrg = _first_descendant(root, "MRG")
-    if mrg is not None:
+    if mrg_segments:
         old_value = ""
         old_authority = ""
-        mrg1 = _first_child(mrg, "MRG.1")
+        mrg1 = _first_child(mrg_segments[0], "MRG.1")
         if mrg1 is not None:
             old_cx1 = _first_child(mrg1, "CX.1")
             if old_cx1 is not None and old_cx1.text is not None:
@@ -276,7 +292,9 @@ def _parse_xml(message: str) -> ParsedTrrrMessage:
                 old_authority = _hd1_text(old_cx4)
         old_identifier = Pid3Identifier(value=old_value, authority=old_authority)
 
-    return ParsedTrrrMessage(sending_application, trigger_event, tuple(identifiers), old_identifier)
+    return ParsedTrrrMessage(
+        sending_application, trigger_event, tuple(identifiers), old_identifier, len(pid_segments), len(mrg_segments)
+    )
 
 
 def _hd1_text(element: ET.Element) -> str:
