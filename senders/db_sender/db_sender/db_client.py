@@ -152,13 +152,40 @@ class DatabaseClient:
             finally:
                 self._connection = None
 
+    def _build_call_sql(self, placeholder_count: int) -> str:
+        """Build a batch that runs the stored procedure and selects its return code.
+
+        pyodbc does not expose the ``{? = CALL ...}`` return value, so the code is selected back instead.
+        """
+        placeholders = ", ".join(["?"] * placeholder_count)
+        procedure = self.config.db_stored_procedure
+        return f"SET NOCOUNT ON; DECLARE @rc INT; EXEC @rc = {procedure} {placeholders}; SELECT @rc;"
+
+    @staticmethod
+    def _read_return_code(cursor: pyodbc.Cursor) -> int | None:
+        """Return the value of the last result set (the selected return code), skipping any earlier result sets."""
+        return_code: int | None = None
+        while True:
+            if cursor.description is not None:
+                rows = cursor.fetchall()
+                if rows:
+                    return_code = rows[-1][0]
+            if not cursor.nextset():
+                break
+        return return_code
+
     def _execute_call(self, call_sql: str, args: tuple[Any, ...]) -> None:
+        return_code: int | None = None
         try:
             conn = self._get_connection()
             conn.timeout = self.config.db_command_timeout
             with conn.cursor() as cursor:
                 cursor.execute(call_sql, args)
-                conn.commit()
+                return_code = self._read_return_code(cursor)
+                if return_code:
+                    conn.rollback()
+                else:
+                    conn.commit()
         except pyodbc.Error as err:
             self.close()
             sql_state, err_code, err_msg = self._parse_odbc_error(err)
@@ -169,6 +196,14 @@ class DatabaseClient:
             self.close()
             sanitized = sanitize_error_message(str(err))
             raise TransientDatabaseError(sanitized, sql_state="UNKNOWN", error_code=0) from err
+
+        if return_code:
+            # A non-zero return code (e.g. 55555) is the procedure's failure signal; it raises no SQL error.
+            raise FatalDatabaseError(
+                f"Stored procedure {self.config.db_stored_procedure} returned failure code {return_code}",
+                sql_state="PROC_RC",
+                error_code=int(return_code),
+            )
 
     def execute_stored_procedure(self, message_payload: str, is_priority: bool = False) -> None:
         """Execute the configured stored procedure with parameterised @Message and @IsPriority.
@@ -182,8 +217,7 @@ class DatabaseClient:
             FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
         """
         priority_val = 1 if is_priority else 0
-        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?)}}"
-        self._execute_call(call_sql, (message_payload, priority_val))
+        self._execute_call(self._build_call_sql(2), (message_payload, priority_val))
 
     def execute_queue_id_update(
         self,
@@ -208,7 +242,7 @@ class DatabaseClient:
             TransientDatabaseError: If a transient network/timeout error occurred.
             FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
         """
-        call_sql = f"{{CALL {self.config.db_stored_procedure} (?, ?, ?, ?, ?, ?)}}"
+        call_sql = self._build_call_sql(6)
         args = (
             provider_patient_identifier,
             provider_assigning_authority,

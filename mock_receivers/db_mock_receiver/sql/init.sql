@@ -83,3 +83,81 @@ BEGIN
     END CATCH;
 END
 GO
+
+-- Identifier updates and merges received by dbo.prQueueIdUpdate (LIMS to WRRS), so testers can see what was received.
+IF OBJECT_ID('dbo.QueueIdUpdate', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.QueueIdUpdate (
+        Id                              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_QueueIdUpdate PRIMARY KEY CLUSTERED,
+        ProviderPatientIdentifier       VARCHAR(20)       NULL,
+        ProviderAssigningAuthority      VARCHAR(10)       NULL,
+        OldIdentifier                   VARCHAR(20)       NULL,
+        OldIdentifierAssigningAuthority VARCHAR(10)       NULL,
+        NewIdentifier                   VARCHAR(20)       NOT NULL,
+        NewIdentifierAssigningAuthority VARCHAR(10)       NOT NULL,
+        DateCreated                     DATETIME2(7)      NOT NULL
+            CONSTRAINT DF_QueueIdUpdate_DateCreated DEFAULT (SYSUTCDATETIME())
+    );
+END;
+GO
+
+-- Mock of the WRRS identifier update procedure (same six parameters as the real one).
+-- Per-call scenarios, selected by the NewIdentifier value:
+--   MOCK_ERROR   -> THROW a SQL error, as the real CATCH block does          (sender dead-letters)
+--   MOCK_REJECT  -> RETURN 55555, nothing stored                              (failure return code)
+--   MOCK_TIMEOUT -> delay longer than the sender's command timeout            (sender retries)
+-- Any other value falls back to the global dbo.MockControl switch; by default the call is stored.
+CREATE OR ALTER PROCEDURE dbo.prQueueIdUpdate
+    @ProviderPatientIdentifier       VARCHAR(20) = NULL,
+    @ProviderAssigningAuthority      VARCHAR(10) = NULL,
+    @OldIdentifier                   VARCHAR(20) = NULL,
+    @OldIdentifierAssigningAuthority VARCHAR(10) = NULL,
+    @NewIdentifier                   VARCHAR(20),
+    @NewIdentifierAssigningAuthority VARCHAR(10)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @scenario VARCHAR(20);
+
+    IF @NewIdentifier = 'MOCK_REJECT'       SET @scenario = 'REJECT';
+    ELSE IF @NewIdentifier = 'MOCK_ERROR'   SET @scenario = 'ERROR';
+    ELSE IF @NewIdentifier = 'MOCK_TIMEOUT' SET @scenario = 'TIMEOUT';
+    ELSE SELECT @scenario = Scenario FROM dbo.MockControl WHERE Id = 1;
+
+    IF @scenario = 'TIMEOUT'
+    BEGIN
+        -- Longer than the sender's default DB_COMMAND_TIMEOUT (60s) so it surfaces as a query timeout.
+        WAITFOR DELAY '00:01:30';
+    END;
+
+    IF @scenario = 'ERROR'
+    BEGIN
+        THROW 50001, 'Mock SQL error requested by MOCK_ERROR', 1;
+    END;
+
+    IF @scenario = 'REJECT'
+        RETURN 55555;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO dbo.QueueIdUpdate (
+            ProviderPatientIdentifier, ProviderAssigningAuthority, OldIdentifier,
+            OldIdentifierAssigningAuthority, NewIdentifier, NewIdentifierAssigningAuthority
+        )
+        VALUES (
+            @ProviderPatientIdentifier, @ProviderAssigningAuthority, @OldIdentifier,
+            @OldIdentifierAssigningAuthority, @NewIdentifier, @NewIdentifierAssigningAuthority
+        );
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH;
+END
+GO
