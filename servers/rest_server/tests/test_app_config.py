@@ -114,8 +114,8 @@ class TestAppConfig(unittest.TestCase):
         {
             **BASE_ENV,
             "WRRS_TOPIC_NAME": "wrrs-topic",
-            "WRRS_EGRESS_SESSION_ID": "lims-to-wrrs",
-            "WRRS_WORKFLOW_ID": "lims-to-wrrs",
+            "WRRS_EGRESS_SESSION_ID": "risp-to-wrrs",
+            "WRRS_WORKFLOW_ID": "risp-to-wrrs",
             "WRRS_TRIGGER_EVENTS": "A31, A40",
         },
         clear=True,
@@ -123,8 +123,8 @@ class TestAppConfig(unittest.TestCase):
     def test_generic_pipeline_with_wrrs_config(self) -> None:
         config = AppConfig.read_env_config()
         self.assertEqual(config.wrrs_topic_name, "wrrs-topic")
-        self.assertEqual(config.wrrs_egress_session_id, "lims-to-wrrs")
-        self.assertEqual(config.wrrs_workflow_id, "lims-to-wrrs")
+        self.assertEqual(config.wrrs_egress_session_id, "risp-to-wrrs")
+        self.assertEqual(config.wrrs_workflow_id, "risp-to-wrrs")
         self.assertEqual(config.wrrs_trigger_events, ["A31", "A40"])
 
     @patch.dict(
