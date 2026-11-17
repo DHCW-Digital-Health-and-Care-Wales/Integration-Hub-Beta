@@ -309,9 +309,10 @@ def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
     if text:
         return encode_hl7_escapes(text)
 
-    # Rebuild positionally: each child goes in the slot given by its tag number (``CX.4`` is the 4th
-    # component), so empty or absent components keep their position and only trailing empties are dropped
-    # (``<CX.1/><CX.4>328</CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``, not ``328^PI``).
+    # Rebuild positionally: each child goes in the slot given by the number in its tag (``CX.4`` is the 4th
+    # component of CX), so absent or empty components keep their position and only trailing empties are
+    # dropped. CX.4 is itself a composite (HD), so its value sits in a child (``HD.1``) and is recursed
+    # into: ``<CX.1/><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``, not ``328^PI``.
     parts: List[str] = []
     for index, child in enumerate(elem, start=1):
         position = _component_position(child.tag) or index

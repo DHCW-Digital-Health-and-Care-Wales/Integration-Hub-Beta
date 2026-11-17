@@ -507,9 +507,11 @@ def _component_position(tag: str) -> Optional[int]:
 def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
     """Extract text content from an XML element, handling nested components.
 
-    A composite element is rebuilt positionally: each child is placed at the position given by its tag
-    number (``CX.4`` is the 4th component), so empty or absent components keep their slot and only
-    trailing empty components are dropped (``<CX.1/><CX.4>328</CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``).
+    A composite element is rebuilt positionally: each child is placed at the position given by the number
+    in its tag (``CX.4`` is the 4th component of CX), so empty or absent components keep their slot and
+    only trailing empty components are dropped. CX.4 is itself a composite (HD), so its value sits in a
+    child (``HD.1``) and is recursed into:
+    ``<CX.1/><CX.4><HD.1>328</HD.1></CX.4><CX.5>PI</CX.5>`` -> ``^^^328^PI``.
     The top-level call joins components with "^"; anything nested below a component is a subcomponent
     and is joined with "&".
     """
