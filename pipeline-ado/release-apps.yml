@@ -284,7 +284,8 @@ stages:
 
         - name: 'TRRR Database Sender'
           appImageName: 'dbsendertrrr'
-          appFunctionMidfix: ''
+          appFunctionMidfix: 'lims-trrr'
+          containerAppNameSuffix: 'trrr-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
 
         - name: 'PROMS FHIR Transformer'
