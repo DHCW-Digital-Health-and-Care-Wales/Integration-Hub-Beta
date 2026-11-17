@@ -19,7 +19,14 @@ from xml.etree.ElementTree import Element as XElem  # nosec B405
 
 from defusedxml.ElementTree import fromstring, tostring
 
-from .constants import HL7_XML_NAMESPACE, MSH_FIELD_SEPARATOR_INDEX, MSH_SEGMENT, VARIABLE_DATATYPE_FIELDS
+from .constants import (
+    HL7_XML_NAMESPACE,
+    MAX_XML_COMPONENT_NUMBER,
+    MAX_XML_FIELD_NUMBER,
+    MSH_FIELD_SEPARATOR_INDEX,
+    MSH_SEGMENT,
+    VARIABLE_DATATYPE_FIELDS,
+)
 from .escaping import decode_hl7_escapes, encode_hl7_escapes
 from .exceptions import MessageNotProcessableError
 from .matcher import MatchedGroup, MatchedSegment, match_structure
@@ -286,10 +293,26 @@ def _strip_namespace(tag: str) -> str:
     return tag
 
 
+def _check_within(number: int, limit: int, kind: str) -> int:
+    if number > limit:
+        raise MessageNotProcessableError(f"XML {kind} number exceeds the supported maximum of {limit}")
+    return number
+
+
 def _component_position(tag: str) -> Optional[int]:
-    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None."""
+    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None.
+
+    Raises ``MessageNotProcessableError`` if the number exceeds ``MAX_XML_COMPONENT_NUMBER``: the number
+    sizes the padding built in ``_extract_text_from_element``, so it must be bounded before it is used.
+    """
     suffix = _strip_namespace(tag).rpartition(".")[2]
-    return int(suffix) if suffix.isdigit() else None
+    if not (suffix.isascii() and suffix.isdigit()):
+        return None
+    try:
+        position = int(suffix)
+    except ValueError:  # a digit string beyond Python's int conversion limit is over any bound
+        position = MAX_XML_COMPONENT_NUMBER + 1
+    return _check_within(position, MAX_XML_COMPONENT_NUMBER, "component")
 
 
 def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
@@ -340,6 +363,8 @@ def _process_segment_element(seg_elem: XElem, seg_name: str) -> str:
             field_num = int(field_tag[dot_idx + 1 :])
         except ValueError:
             continue
+        # field_num sizes the ``parts`` list built below, so bound it before it is used.
+        _check_within(field_num, MAX_XML_FIELD_NUMBER, "field")
         max_field = max(max_field, field_num)
         if seg_name == MSH_SEGMENT and field_num == MSH_FIELD_SEPARATOR_INDEX:
             # MSH.2 holds the literal encoding characters (e.g. "^~\&") - never escape/encode it.

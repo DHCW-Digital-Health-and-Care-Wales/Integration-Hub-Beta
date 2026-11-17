@@ -36,6 +36,15 @@ PV1_SEGMENT = "PV1"
 SFT_SEGMENT = "SFT"
 PV1_DEFAULT_VALUE = "U"
 
+# Upper bounds on the numbers accepted from XML tag suffixes (``PID.3``, ``CX.4``) in ``xml_to_er7``. The
+# suffix is attacker-controlled and sizes the padding list built for it, so an unbounded value (e.g.
+# ``<PID.999999999/>``) could exhaust the worker's memory. The values are the largest numbers that occur in
+# the bundled schemas (2.4, 2.5, 2.5.1 and 2.3.1): ``IN2.72`` for a segment field and ``PPN.24`` for a
+# datatype component. ``tests/test_xml_to_er7_component_positions.py`` fails if a bundled schema ever
+# exceeds them.
+MAX_XML_FIELD_NUMBER = 72
+MAX_XML_COMPONENT_NUMBER = 24
+
 
 def _qname(tag: str) -> str:
     return f"{{{HL7_XML_NAMESPACE}}}{tag}"
@@ -498,10 +507,26 @@ def convert_er7_to_xml(er7_message: str) -> str:
     return er7_to_hl7v2xml(er7_message, structure_xsd_path=None)
 
 
+def _check_within(number: int, limit: int, kind: str) -> int:
+    if number > limit:
+        raise ValueError(f"XML {kind} number exceeds the supported maximum of {limit}")
+    return number
+
+
 def _component_position(tag: str) -> Optional[int]:
-    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None."""
+    """Return the 1-based component number from a tag such as ``CX.4`` or ``{ns}HD.1``, else None.
+
+    Raises ``ValueError`` if the number exceeds ``MAX_XML_COMPONENT_NUMBER``: the number sizes the padding
+    built in ``_extract_text_from_element``, so it must be bounded before it is used.
+    """
     suffix = _strip_namespace(tag).rpartition(".")[2]
-    return int(suffix) if suffix.isdigit() else None
+    if not (suffix.isascii() and suffix.isdigit()):
+        return None
+    try:
+        position = int(suffix)
+    except ValueError:  # a digit string beyond Python's int conversion limit is over any bound
+        position = MAX_XML_COMPONENT_NUMBER + 1
+    return _check_within(position, MAX_XML_COMPONENT_NUMBER, "component")
 
 
 def _extract_text_from_element(elem: XElem, separator: str = "^") -> str:
@@ -575,15 +600,19 @@ def _process_segment_element(seg_elem: XElem, seg_name: str) -> str:
 
         try:
             field_num = int(field_name[dot_idx + 1 :])
-            if field_num > max_field:
-                max_field = field_num
-            field_text = _extract_text_from_element(field_elem)
-            if field_text:
-                if field_num not in fields:
-                    fields[field_num] = []
-                fields[field_num].append(field_text)
-        except (ValueError, IndexError):
+        except ValueError:
             continue
+
+        # Outside the try above on purpose: this raises ValueError for an oversized number, which must
+        # propagate rather than be skipped like a non-numeric suffix. field_num sizes ``field_parts`` below.
+        _check_within(field_num, MAX_XML_FIELD_NUMBER, "field")
+        if field_num > max_field:
+            max_field = field_num
+        field_text = _extract_text_from_element(field_elem)
+        if field_text:
+            if field_num not in fields:
+                fields[field_num] = []
+            fields[field_num].append(field_text)
 
     if max_field == 0:
         return seg_name + "|"
