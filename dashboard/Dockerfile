@@ -39,4 +39,4 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["gunicorn", "dashboard.app:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "60"]
+CMD ["gunicorn", "dashboard.app:app", "--bind", "0.0.0.0:8080", "--workers", "1", "--worker-class", "gthread", "--threads", "8", "--timeout", "60"]

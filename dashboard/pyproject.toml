@@ -26,6 +26,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "tzdata>=2024.1",
     "werkzeug>=3.1.9",
+    "flask-compress>=1.26",
 ]
 
 [dependency-groups]
