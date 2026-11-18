@@ -8,6 +8,8 @@ Authentication order is:
 
 from __future__ import annotations
 
+import threading
+
 from azure.core.credentials import TokenCredential
 from azure.identity import ChainedTokenCredential, ClientSecretCredential, DefaultAzureCredential
 
@@ -24,7 +26,29 @@ def _service_principal_configured() -> bool:
     )
 
 
+# Credentials cache their tokens, so one shared instance avoids re-running the `az` CLI on every call.
+_credential_cache: dict[str, TokenCredential | None] = {"credential": None}
+_credential_lock = threading.Lock()
+
+
 def get_azure_credential() -> TokenCredential:
+    """Return the process-wide Azure credential, building it on first use."""
+    cached = _credential_cache["credential"]
+    if cached is not None:
+        return cached
+    with _credential_lock:
+        if _credential_cache["credential"] is None:
+            _credential_cache["credential"] = _build_azure_credential()
+        return _credential_cache["credential"]  # type: ignore[return-value]
+
+
+def _reset_credential_for_tests() -> None:
+    """Clear the cached credential so tests can vary configuration."""
+    with _credential_lock:
+        _credential_cache["credential"] = None
+
+
+def _build_azure_credential() -> TokenCredential:
     """
     Build an Azure credential with a safe fallback chain.
 

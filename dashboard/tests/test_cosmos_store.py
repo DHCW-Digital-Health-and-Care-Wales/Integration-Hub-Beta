@@ -403,3 +403,36 @@ class TestGetContainer:
     def test_returns_none_when_client_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_client", return_value=None):
             assert cosmos_store._get_container() is None
+
+    def test_skips_cosmos_during_backoff_after_failure(self) -> None:
+        client = MagicMock(name="client")
+        client.create_database_if_not_exists.side_effect = CosmosHttpResponseError(message="boom")
+
+        with (
+            patch.object(cosmos_store, "_get_client", return_value=client) as get_client,
+            patch.object(cosmos_store.config, "COSMOS_KEY", "the-key"),
+        ):
+            assert cosmos_store._get_container() is None
+            assert cosmos_store._get_container() is None
+
+        client.create_database_if_not_exists.assert_called_once()
+        get_client.assert_called_once()
+
+    def test_outage_after_container_cached_starts_backoff(self) -> None:
+        container = MagicMock(name="container")
+        container.read_item.side_effect = ServiceRequestError(message="unreachable")
+        cosmos_store._container_cache["container"] = container
+
+        assert cosmos_store.get_document("alarm1", "config") is None
+        assert cosmos_store._in_backoff()
+
+        assert cosmos_store.get_document("alarm1", "config") is None
+        container.read_item.assert_called_once()
+
+    def test_http_error_response_does_not_start_backoff(self) -> None:
+        container = MagicMock(name="container")
+        container.read_item.side_effect = CosmosHttpResponseError(message="boom")
+        cosmos_store._container_cache["container"] = container
+
+        assert cosmos_store.get_document("alarm1", "config") is None
+        assert not cosmos_store._in_backoff()
