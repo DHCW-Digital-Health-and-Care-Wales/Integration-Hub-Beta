@@ -22,8 +22,6 @@ _DEFAULT_STATIC_CACHE_CONTROL = "public, max-age=3600"
 
 def _asset_version(app: Flask, filename: str, cache: dict[str, str]) -> str | None:
     """Return a short fingerprint for a static file, or None if it cannot be resolved."""
-    if filename in cache:
-        return cache[filename]
     if not app.static_folder:
         return None
     path = safe_join(app.static_folder, filename)
