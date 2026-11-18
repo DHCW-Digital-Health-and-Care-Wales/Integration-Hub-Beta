@@ -403,3 +403,17 @@ class TestGetContainer:
     def test_returns_none_when_client_unavailable(self) -> None:
         with patch.object(cosmos_store, "_get_client", return_value=None):
             assert cosmos_store._get_container() is None
+
+    def test_skips_cosmos_during_backoff_after_failure(self) -> None:
+        client = MagicMock(name="client")
+        client.create_database_if_not_exists.side_effect = CosmosHttpResponseError(message="boom")
+
+        with (
+            patch.object(cosmos_store, "_get_client", return_value=client) as get_client,
+            patch.object(cosmos_store.config, "COSMOS_KEY", "the-key"),
+        ):
+            assert cosmos_store._get_container() is None
+            assert cosmos_store._get_container() is None
+
+        client.create_database_if_not_exists.assert_called_once()
+        get_client.assert_called_once()

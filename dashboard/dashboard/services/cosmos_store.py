@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from azure.core.exceptions import AzureError
@@ -51,6 +52,24 @@ _RESERVED_KEYS = frozenset({"id", "pk", "type"})
 # than a reassigned module global) so the singleton can be updated without ``global``.
 _client_cache: dict[str, CosmosClient | None] = {"client": None}
 _client_lock = threading.Lock()
+
+# After a connectivity failure, skip Cosmos for this long so an unreachable account
+# doesn't stall every request for the full SDK retry window.
+_UNAVAILABLE_BACKOFF_SECONDS = 30.0
+_unavailable_until: dict[str, float] = {"t": 0.0}
+
+# Resolved container client; the first resolution is serialised so concurrent requests
+# hitting a dead account fail once and then fall into the back-off window.
+_container_cache: dict[str, Any] = {"container": None}
+_container_lock = threading.Lock()
+
+
+def _in_backoff() -> bool:
+    return time.monotonic() < _unavailable_until["t"]
+
+
+def _start_backoff() -> None:
+    _unavailable_until["t"] = time.monotonic() + _UNAVAILABLE_BACKOFF_SECONDS
 
 
 class CosmosUnavailableError(RuntimeError):
@@ -95,6 +114,7 @@ def _get_client() -> CosmosClient | None:
             _client_cache["client"] = CosmosClient(config.COSMOS_ENDPOINT, credential=credential, **client_kwargs)
         except Exception as exc:  # noqa: BLE001 — surface as degraded, never crash the app
             log.error("Failed to initialise Cosmos client: %s", exc)
+            _start_backoff()
             return None
 
     return _client_cache["client"]
@@ -107,6 +127,23 @@ def _get_container() -> Any | None:
     on demand so a fresh emulator needs no manual setup. With RBAC auth they are assumed
     to already exist.
     """
+    cached = _container_cache["container"]
+    if cached is not None:
+        return cached
+    if _in_backoff():
+        return None
+
+    with _container_lock:
+        if _container_cache["container"] is not None:
+            return _container_cache["container"]
+        if _in_backoff():
+            return None
+        container = _resolve_container()
+        _container_cache["container"] = container
+        return container
+
+
+def _resolve_container() -> Any | None:
     client = _get_client()
     if client is None:
         return None
@@ -131,6 +168,7 @@ def _get_container() -> Any | None:
         # Covers both Cosmos-returned HTTP errors and connectivity failures (DNS,
         # timeouts, connection refused) — either way the container is unavailable.
         log.error("Failed to access Cosmos container '%s': %s", config.COSMOS_CONTAINER, exc)
+        _start_backoff()
         return None
 
 
@@ -282,3 +320,5 @@ def _reset_client_for_tests() -> None:
     """Clear the cached client — used by unit tests to isolate configuration changes."""
     with _client_lock:
         _client_cache["client"] = None
+    _container_cache["container"] = None
+    _unavailable_until["t"] = 0.0

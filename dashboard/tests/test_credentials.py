@@ -4,9 +4,19 @@ Unit tests for Azure credential selection.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from unittest.mock import patch
 
+import pytest
+
 from dashboard.services import credentials
+
+
+@pytest.fixture(autouse=True)
+def _fresh_credential_cache() -> Iterator[None]:
+    credentials._reset_credential_for_tests()
+    yield
+    credentials._reset_credential_for_tests()
 
 
 class TestAzureCredentialSelection:
@@ -25,6 +35,8 @@ class TestAzureCredentialSelection:
             result = credentials.get_azure_credential()
 
             assert result is default_instance
+            assert credentials.get_azure_credential() is default_instance
+            default_cls.assert_called_once()
             client_secret_cls.assert_not_called()
             chained_cls.assert_not_called()
 
