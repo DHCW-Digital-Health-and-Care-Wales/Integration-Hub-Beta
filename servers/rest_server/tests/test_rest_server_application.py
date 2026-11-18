@@ -119,9 +119,9 @@ class TestRestServerApplicationGeneric(unittest.TestCase):
         mock_build_extra.return_value = mock_extra
 
         app_config = _config(
-            wrrs_topic_name="local-inthub-wrrs-idupd-outbound",
-            wrrs_egress_session_id="lims-to-wrrs",
-            wrrs_workflow_id="lims-to-wrrs",
+            wrrs_topic_name="local-inthub-wrrs-outbound",
+            wrrs_egress_session_id="risp-to-wrrs",
+            wrrs_workflow_id="risp-to-wrrs",
         )
 
         app_instance = RestServerApplication()
@@ -130,8 +130,8 @@ class TestRestServerApplicationGeneric(unittest.TestCase):
         mock_build_extra.assert_called_once_with(
             mock_shared.factory,
             queue_name=None,
-            topic_name="local-inthub-wrrs-idupd-outbound",
-            session_id="lims-to-wrrs",
+            topic_name="local-inthub-wrrs-outbound",
+            session_id="risp-to-wrrs",
         )
         self.assertEqual(app_instance.extra_sender_client, mock_extra)
 
