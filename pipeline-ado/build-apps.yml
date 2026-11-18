@@ -25,6 +25,7 @@ parameters:
       - hl7chemotransformer
       - hl7corereferencetransformer
       - dbsender
+      - dbsendertrrr
       - promsfhirtransformer
       - promsfhirsender
       - messagestoreservice
@@ -173,6 +174,18 @@ stages:
             appDisplayName: 'Database Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
+
+  - ${{ if containsValue(parameters.buildApps, 'dbsendertrrr') }}:
+    - stage: CodeQuality_dbsendertrrr
+      displayName: 'Code Quality — TRRR Database Sender'
+      jobs:
+        - template: templates/code-quality-template.yml
+          parameters:
+            appName: 'senders/db_sender_trrr'
+            appDisplayName: 'TRRR Database Sender'
+            pythonVersion: '3.13'
+            poolName: ${{ variables.POOL_NAME }}
+            usePytest: true
 
   - ${{ if containsValue(parameters.buildApps, 'promsfhirtransformer') }}:
     - stage: CodeQuality_promsfhirtransformer
@@ -465,6 +478,25 @@ stages:
             appName: 'dbsender'
             dockerfilePath: 'senders/db_sender/Dockerfile'
             buildContext: 'senders/db_sender'
+            additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
+            acrName: $(acrName)
+            azureServiceConnection: $(azureServiceConnection)
+            POOL_NAME: ${{ variables.POOL_NAME }}
+            SEMANTIC_VERSION: ${{ parameters.SEMANTIC_VERSION }}
+
+  - ${{ if containsValue(parameters.buildApps, 'dbsendertrrr') }}:
+    - stage: Build_dbsendertrrr
+      displayName: 'Build — TRRR Database Sender'
+      dependsOn: CodeQuality_dbsendertrrr
+      condition: in(dependencies.CodeQuality_dbsendertrrr.result, 'Succeeded', 'SucceededWithIssues')
+      jobs:
+        - template: templates/docker-build-push-template.yml
+          parameters:
+            jobName: 'BuildPushDbSenderTRRR'
+            displayName: 'Build and Push TRRR Database Sender'
+            appName: 'dbsendertrrr'
+            dockerfilePath: 'senders/db_sender_trrr/Dockerfile'
+            buildContext: 'senders/db_sender_trrr'
             additionalContexts: 'shared_libs=shared_libs,ca-certs=ca-certs'
             acrName: $(acrName)
             azureServiceConnection: $(azureServiceConnection)
