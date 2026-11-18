@@ -405,6 +405,8 @@ services:
         condition: service_healthy
     profiles:
       - risp-to-wrrs
+      - lims-to-wrrs
+      - lims-to-trrr
       - everything
     networks:
       integration-hub:
