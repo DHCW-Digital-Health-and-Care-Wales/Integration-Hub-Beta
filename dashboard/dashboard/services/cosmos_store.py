@@ -30,7 +30,7 @@ import threading
 import time
 from typing import Any
 
-from azure.core.exceptions import AzureError
+from azure.core.exceptions import AzureError, ServiceRequestError, ServiceResponseError
 from azure.cosmos import CosmosClient, PartitionKey
 from azure.cosmos.exceptions import (
     CosmosResourceExistsError,
@@ -70,6 +70,12 @@ def _in_backoff() -> bool:
 
 def _start_backoff() -> None:
     _unavailable_until["t"] = time.monotonic() + _UNAVAILABLE_BACKOFF_SECONDS
+
+
+def _note_operation_failure(exc: AzureError) -> None:
+    """Start back-off for connectivity failures only; HTTP error responses mean Cosmos is reachable."""
+    if isinstance(exc, (ServiceRequestError, ServiceResponseError)):
+        _start_backoff()
 
 
 class CosmosUnavailableError(RuntimeError):
@@ -127,17 +133,17 @@ def _get_container() -> Any | None:
     on demand so a fresh emulator needs no manual setup. With RBAC auth they are assumed
     to already exist.
     """
+    if _in_backoff():
+        return None
     cached = _container_cache["container"]
     if cached is not None:
         return cached
-    if _in_backoff():
-        return None
 
     with _container_lock:
-        if _container_cache["container"] is not None:
-            return _container_cache["container"]
         if _in_backoff():
             return None
+        if _container_cache["container"] is not None:
+            return _container_cache["container"]
         container = _resolve_container()
         _container_cache["container"] = container
         return container
@@ -191,6 +197,7 @@ def get_document(pk: str, doc_id: str) -> dict | None:
         # Broad catch so an unreachable Cosmos account (not just an HTTP error
         # response) still degrades gracefully instead of raising.
         log.warning("Failed to read Cosmos document %s/%s: %s", pk, doc_id, exc)
+        _note_operation_failure(exc)
         return None
 
     return {k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")}
@@ -221,6 +228,7 @@ def query_documents(pk: str, *, strict: bool = False) -> list[dict]:
         return [{k: v for k, v in item.items() if k not in _RESERVED_KEYS and not k.startswith("_")} for item in items]
     except AzureError as exc:
         log.warning("Failed to query Cosmos documents for partition %s: %s", pk, exc)
+        _note_operation_failure(exc)
         if strict:
             raise CosmosUnavailableError(f"Failed to query Cosmos partition {pk}.") from exc
         return []
@@ -256,6 +264,7 @@ def upsert_document(pk: str, doc_id: str, data: dict, doc_type: str | None = Non
         container.upsert_item(body=document)
     except AzureError as exc:
         log.error("Failed to persist Cosmos document %s/%s: %s", pk, doc_id, exc)
+        _note_operation_failure(exc)
         return False
 
     return True
@@ -287,6 +296,7 @@ def create_document(pk: str, doc_id: str, data: dict, doc_type: str | None = Non
         raise
     except AzureError as exc:
         log.error("Failed to create Cosmos document %s/%s: %s", pk, doc_id, exc)
+        _note_operation_failure(exc)
         return False
 
     return True
@@ -311,6 +321,7 @@ def delete_document(pk: str, doc_id: str) -> bool:
         return True
     except AzureError as exc:
         log.error("Failed to delete Cosmos document %s/%s: %s", pk, doc_id, exc)
+        _note_operation_failure(exc)
         return False
 
     return True

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Generator
 from pathlib import Path
 
@@ -41,6 +42,13 @@ class TestStaticFingerprinting:
     def test_static_url_gets_version_param(self, client: FlaskClient) -> None:
         body = client.get("/page").get_data(as_text=True)
         assert body.startswith("/static/js/app.js?v=")
+
+    def test_editing_a_file_changes_its_fingerprint(self, client: FlaskClient, static_dir: Path) -> None:
+        before = client.get("/page").get_data(as_text=True)
+        asset = static_dir / "js" / "app.js"
+        stat = asset.stat()
+        os.utime(asset, (stat.st_atime, stat.st_mtime + 100))
+        assert client.get("/page").get_data(as_text=True) != before
 
     def test_missing_file_is_not_fingerprinted(self, client: FlaskClient) -> None:
         with client.application.test_request_context():
