@@ -399,8 +399,6 @@ services:
     depends_on:
       sb-emulator:
         condition: service_started
-      sqledge:
-        condition: service_started
       mock-db-receiver:
         condition: service_healthy
     profiles:
@@ -567,8 +565,6 @@ services:
     depends_on:
       sb-emulator:
         condition: service_started
-      sqledge:
-        condition: service_started
       mock-db-receiver:
         condition: service_healthy
     profiles:
@@ -685,6 +681,7 @@ services:
     restart: on-failure
     profiles:
       - risp-to-wrrs
+      - lims-to-wrrs
       - lims-to-trrr
       - everything
     networks:
