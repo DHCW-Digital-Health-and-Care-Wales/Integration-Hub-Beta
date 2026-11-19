@@ -712,6 +712,7 @@ services:
       - risp-to-wrrs
       - lims-to-wrrs
       - lims-to-trrr
+      - cav-pms-to-wcrs
       - everything
     networks:
       integration-hub:
