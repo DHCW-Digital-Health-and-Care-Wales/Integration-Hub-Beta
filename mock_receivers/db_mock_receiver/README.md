@@ -1,8 +1,8 @@
 # DB Mock Receiver (`db_mock_receiver`)
 
-**Local testing and Azure DEV only.** A real SQL Server container hosting a mock WRRS `DRS` database and a mock
-`dbo.prQueueMessage` stored procedure, so `senders/db_sender` can be exercised end to end in the
-`risp-to-wrrs` flow without a real WRRS database. It must never be deployed to a production-like environment.
+**Local testing and Azure DEV only.** A real SQL Server container hosting a mock WRRS `DRS` database and mock
+`dbo.prQueueMessage` / `dbo.prQueueIdUpdate` stored procedures, so `senders/db_sender` can be exercised end to end in the
+`risp-to-wrrs` and `lims-to-wrrs` flows without a real WRRS database. It must never be deployed to a production-like environment.
 
 It also hosts a mock TRRR `Clinical_Results` database (table `dbo.TRRRIdentifierUpdate`, procedure
 `dbo.TRRRIDUpdate`) so `senders/db_sender_trrr` can be exercised in the `lims-to-trrr` flow. That procedure simply
@@ -20,9 +20,8 @@ Mirrors the real procedure:
 
 Parameters: `@Message VARCHAR(MAX)`, `@IsPriority BIT = 0`.
 
-> **Known `db_sender` limitation:** the sender currently ignores the procedure's return code, so a
-> `REJECT` scenario is logged as "executed successfully" and the message is completed (it is not dead-lettered).
-> The mock reproduces the real contract faithfully; it is the sender that needs to honour the return code.
+`db_sender` honours the return code: any non-zero return code is treated as a fatal failure and the message is
+dead-lettered with reason `StoredProcedureExecutionFailed` (the description holds only the return code, never the message body).
 
 ## Scenarios
 
@@ -32,11 +31,11 @@ comment `<!-- MOCK_SCENARIO=REJECT -->`, or force one for every call with the gl
 | Scenario | Trigger | Procedure behaviour | Expected `db_sender` outcome |
 |---|---|---|---|
 | Success | none (default) | Stores the message, returns nothing | Message completed |
-| `REJECT` | `MOCK_SCENARIO=REJECT` | `RETURN 55555` | Currently treated as success (see limitation above) |
+| `REJECT` | `MOCK_SCENARIO=REJECT` | `RETURN 55555` | Fatal (non-zero return code) -> dead-lettered, `StoredProcedureExecutionFailed` |
 | `ERROR` | `MOCK_SCENARIO=ERROR` | `THROW 50001` (SQL error) | Fatal -> dead-lettered |
 | `TIMEOUT` | `MOCK_SCENARIO=TIMEOUT` | `WAITFOR DELAY '00:01:30'` (longer than the sender's default 60s `DB_COMMAND_TIMEOUT`) | Query timeout -> transient -> abandoned and retried |
 | Invalid XML | message that is not XML | Cannot be stored -> `RETURN 55555` | As `REJECT` |
-| DB down | `docker stop mock-db-receiver` | Connection failure | Transient -> retried |
+| DB down | `podman stop mock-db-receiver` (or `docker stop`) | Connection failure | Transient -> abandoned and retried; never completed while the database is unavailable |
 
 Never put real patient data in test messages.
 
@@ -73,7 +72,8 @@ Data is ephemeral: it is reset whenever the container is recreated.
 ## Deploying to Azure DEV
 
 Runs as the Azure Container App `uks-dev-dbmockreceiver-ca`, defined in `Integration-Hub-Terraform`
-(`components/app-platform/flow_risp_to_wrrs.tf`, flag `deploy_db_mock_receiver`, DEV only).
+(`components/app-platform/db_mock_receiver.tf`, flag `deploy_db_mock_receiver`, DEV only). The RISP to WRRS sender
+(`flow_risp_to_wrrs.tf`, flag `deploy_risp_to_wrrs_flow`) and the LIMS to WRRS / LIMS to TRRR senders point at it when it is deployed.
 
 | Aspect | Setting |
 |---|---|
