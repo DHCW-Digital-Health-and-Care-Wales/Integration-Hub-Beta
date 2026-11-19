@@ -253,6 +253,23 @@ class DatabaseClient:
         )
         self._execute_call(call_sql, args)
 
+    def execute_update_identifier(
+        self,
+        old_identifier: str,
+        old_identifier_assigning_authority: str,
+        new_identifier: str,
+    ) -> None:
+        """Execute dbo.spUpdateIdentifier (WCRS) to replace a superseded identifier with its surviving one.
+
+        Identifiers are passed as strings so leading zeroes are preserved.
+
+        Raises:
+            TransientDatabaseError: If a transient network/timeout error occurred.
+            FatalDatabaseError: If a non-recoverable SQL or configuration error occurred.
+        """
+        call_sql = self._build_call_sql(3)
+        self._execute_call(call_sql, (old_identifier, old_identifier_assigning_authority, new_identifier))
+
     @staticmethod
     def _parse_odbc_error(err: pyodbc.Error) -> tuple[str, int, str]:
         sql_state = "UNKNOWN"
