@@ -9,6 +9,11 @@ It also hosts a mock TRRR `Clinical_Results` database (table `dbo.TRRRIdentifier
 inserts the three identifier arguments (no scenarios); check results with
 `SELECT * FROM Clinical_Results.dbo.TRRRIdentifierUpdate` (host port `14334`).
 
+It also hosts a mock WCRS `NDR` database (table `dbo.IdentifierUpdate`, procedure `dbo.spUpdateIdentifier`) for the
+`cav-pms-to-wcrs` flow. The real procedure's definition is not available, so the mock only inserts its three
+inputs (`OldIdentifier`, `OldIdentifierAssigningAuthority`, `NewIdentifier`); check results with
+`SELECT * FROM NDR.dbo.IdentifierUpdate`. Revisit once the real signature is known.
+
 ## Contract of the mock procedure
 
 Mirrors the real procedure:

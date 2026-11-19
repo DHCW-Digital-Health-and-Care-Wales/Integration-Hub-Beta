@@ -189,6 +189,7 @@ services:
       - sb-emulator
     profiles:
       - pms-soap-to-mpi
+      - cav-pms-to-wcrs
       - everything
     networks:
       integration-hub:
@@ -575,6 +576,34 @@ services:
         aliases:
           - "wrrs-idupd-dbsender"
 
+  # Generic db_sender instance for the CAV PMS -> WCRS identifier update flow (A40 merges).
+  # Subscribes to the topic pms-hl7-soap-server publishes to and calls dbo.spUpdateIdentifier in NDR.
+  wcrs-idupd-dbsender:
+    container_name: wcrs-idupd-dbsender
+    build:
+      context: ../senders/db_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/wcrs-idupd-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - cav-pms-to-wcrs
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "wcrs-idupd-dbsender"
+
   # Dedicated LIMS -> TRRR sender. Mirrors the DEV hl7_lims_trrr_sender container app: a second
   # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-hl7-input),
   # delivering a parallel copy of LIMS traffic on to TRRR. Uses the full hl7_sender image (not
@@ -673,7 +702,7 @@ services:
     ports:
       - "14334:1433"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d master -Q \"SELECT CASE WHEN DB_ID('DRS') IS NOT NULL AND DB_ID('Clinical_Results') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueIdUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDMerge') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d master -Q \"SELECT CASE WHEN DB_ID('DRS') IS NOT NULL AND DB_ID('Clinical_Results') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueIdUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.TRRRIDMerge') IS NOT NULL AND DB_ID('NDR') IS NOT NULL AND OBJECT_ID('NDR.dbo.spUpdateIdentifier') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
       interval: 10s
       timeout: 5s
       retries: 30
