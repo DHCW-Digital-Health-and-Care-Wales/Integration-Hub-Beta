@@ -408,9 +408,10 @@ services:
         aliases:
           - "wrrs-stmsg-dbsender"
 
-  # TRRR-specific database sender for ADT_A05/LIMS-to-NHS identifier association
-  db_sender_trrr:
-    container_name: db_sender_trrr
+  # TRRR-specific database senders for NHS-ID update fan-out. Each service consumes its own
+  # subscription and writes independently, so one destination failure does not block others.
+  db_sender_trrr_abmu:
+    container_name: db_sender_trrr_abmu
     image: localhost/integration-hub_db_sender_trrr:latest
     build:
       context: ../senders/db_sender_trrr
@@ -419,7 +420,7 @@ services:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./env/senders/trrr-dbsender.env
+      - ./env/senders/trrr-abmu-dbsender.env
       - ./.secrets
     <<: *default-healthcheck
     restart: on-failure
@@ -434,14 +435,129 @@ services:
     networks:
       integration-hub:
         aliases:
-          - "db_sender_trrr"
+          - "db_sender_trrr_abmu"
+
+  db_sender_trrr_abhb:
+    container_name: db_sender_trrr_abhb
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-abhb-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr_abmu:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_abhb"
+
+  db_sender_trrr_bcu:
+    container_name: db_sender_trrr_bcu
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-bcu-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr_abmu:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_bcu"
+
+  db_sender_trrr_ct:
+    container_name: db_sender_trrr_ct
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-ct-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr_abmu:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_ct"
+
+  db_sender_trrr_cav:
+    container_name: db_sender_trrr_cav
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-cav-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr_abmu:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_cav"
+
+  db_sender_trrr_hd:
+    container_name: db_sender_trrr_hd
+    image: localhost/integration-hub_db_sender_trrr:latest
+    env_file:
+      - ./env/senders/trrr-hd-dbsender.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      db_sender_trrr_abmu:
+        condition: service_started
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - lims-to-trrr
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "db_sender_trrr_hd"
 
   # TRRR merge sender: same image as db_sender_trrr, but on its own subscription (every ADT^A40) and
   # configured with TRRR_MAPPING_TYPE=MERGE so it writes via dbo.TRRRIDMerge. An A40 that also matches
   # the NHS-IDUpdate rule is delivered to both subscriptions and results in two TRRR requests.
   db_sender_trrr_merge:
     container_name: db_sender_trrr_merge
-    # Reuses the image built for db_sender_trrr (same code, different TRRR_MAPPING_TYPE) to avoid a second build.
+    # Reuses the image built for db_sender_trrr_abmu (same code, different TRRR_MAPPING_TYPE) to avoid a second build.
     image: localhost/integration-hub_db_sender_trrr:latest
     env_file:
       - ./env/senders/trrr-merge-dbsender.env
@@ -449,7 +565,7 @@ services:
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
-      db_sender_trrr:
+      db_sender_trrr_abmu:
         condition: service_started
       sb-emulator:
         condition: service_started

@@ -19,6 +19,12 @@ parameters:
       - WDS To PHW HL7 Sender
       - TRRR Database Sender
       - TRRR Merge Database Sender
+      - TRRR ABMU Database Sender
+      - TRRR ABHB Database Sender
+      - TRRR BCU Database Sender
+      - TRRR CT Database Sender
+      - TRRR CAV Database Sender
+      - TRRR HD Database Sender
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -308,6 +314,42 @@ stages:
           appImageName: 'dbsendertrrr'
           appFunctionMidfix: 'trrr-merge'
           containerAppNameSuffix: 'trrr-merge-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR ABMU Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-abmu'
+          containerAppNameSuffix: 'trrr-abmu-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR ABHB Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-abhb'
+          containerAppNameSuffix: 'trrr-abhb-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR BCU Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-bcu'
+          containerAppNameSuffix: 'trrr-bcu-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR CT Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-ct'
+          containerAppNameSuffix: 'trrr-ct-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR CAV Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-cav'
+          containerAppNameSuffix: 'trrr-cav-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR HD Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-hd'
+          containerAppNameSuffix: 'trrr-hd-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
 
         - name: 'PROMS FHIR Transformer'
