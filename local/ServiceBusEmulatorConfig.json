@@ -273,9 +273,14 @@
               {
                 "Name": "local-inthub-lims-trrr-hd-db-sender-sub",
                 "Properties": {
+                  "DeadLetteringOnMessageExpiration": false,
                   "DefaultMessageTimeToLive": "PT1H",
+                  "DuplicateDetectionHistoryTimeWindow": "PT20S",
+                  "ForwardDeadLetteredMessagesTo": "",
+                  "ForwardTo": "",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
+                  "RequiresDuplicateDetection": false,
                   "RequiresSession": true
                 },
                 "Rules": [
@@ -291,7 +296,7 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-trrr-merge-sender-sub",
+                "Name": "local-inthub-lims-trrr-abmu-merge-sender-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -300,7 +305,107 @@
                 },
                 "Rules": [
                   {
-                    "Name": "LIMS_TRRR_MERGE_FILTER",
+                    "Name": "LIMS_TRRR_ABMU_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-abhb-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_ABHB_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-bcu-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_BCU_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-ct-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_CT_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-cav-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_CAV_MERGE_FILTER",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-hd-merge-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "LIMS_TRRR_HD_MERGE_FILTER",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
