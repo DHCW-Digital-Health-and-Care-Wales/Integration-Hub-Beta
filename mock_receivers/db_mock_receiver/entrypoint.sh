@@ -53,7 +53,7 @@ fi
 
 socat "TCP-LISTEN:$PUBLIC_PORT,fork,reuseaddr" "TCP:127.0.0.1:$INTERNAL_PORT" &
 PROXY_PID=$!
-echo "Mock DB receiver ready: database DRS, procedure dbo.prQueueMessage, listening on port $PUBLIC_PORT."
+echo "Mock DB receiver ready: databases DRS, Clinical_Results and NDR, listening on port $PUBLIC_PORT."
 
 wait "$SQL_PID"
 status=$?

@@ -223,6 +223,26 @@
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
                 }
+              },
+              {
+                "Name": "local-inthub-pms-wcrs-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "pms-wcrs-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40' AND user.SourceSystem = '140'"
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },

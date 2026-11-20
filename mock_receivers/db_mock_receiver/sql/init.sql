@@ -250,3 +250,53 @@ BEGIN
     END CATCH;
 END
 GO
+
+-- =============================================================================================
+-- Mock WCRS "NDR" database for local testing of the CAV PMS -> WCRS flow (db_sender with
+-- DB_PROCEDURE_TYPE=update_identifier). Independent of DRS and Clinical_Results above.
+-- =============================================================================================
+USE master;
+GO
+
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'NDR')
+BEGIN
+    CREATE DATABASE NDR;
+END;
+GO
+
+USE [NDR];
+GO
+
+-- Receives the identifier updates written via dbo.spUpdateIdentifier, so testers can see what was received.
+IF OBJECT_ID('dbo.IdentifierUpdate', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.IdentifierUpdate (
+        Id                              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_IdentifierUpdate PRIMARY KEY CLUSTERED,
+        OldIdentifier                   VARCHAR(100)      NOT NULL,
+        OldIdentifierAssigningAuthority VARCHAR(50)       NOT NULL,
+        NewIdentifier                   VARCHAR(100)      NOT NULL,
+        ReceivedUtc                     DATETIME2(7)      NOT NULL CONSTRAINT DF_IdentifierUpdate_ReceivedUtc DEFAULT (SYSUTCDATETIME())
+    );
+END;
+GO
+
+-- The real procedure's full definition is not available, so this only stores its three inputs.
+-- Parameter order matches db_sender's execute_update_identifier. Arguments are text and are stored exactly
+-- as received (leading zeroes retained).
+CREATE OR ALTER PROCEDURE dbo.spUpdateIdentifier
+    @OldIdentifier                   VARCHAR(100),
+    @OldIdentifierAssigningAuthority VARCHAR(50),
+    @NewIdentifier                   VARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        INSERT INTO dbo.IdentifierUpdate (OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier)
+        VALUES (@OldIdentifier, @OldIdentifierAssigningAuthority, @NewIdentifier);
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH;
+END
+GO
