@@ -18,13 +18,14 @@ parameters:
       - WDS To MPI HL7 Sender
       - WDS To PHW HL7 Sender
       - TRRR Database Sender
-      - TRRR Merge Database Sender
       - TRRR ABMU Database Sender
       - TRRR ABHB Database Sender
       - TRRR BCU Database Sender
       - TRRR CT Database Sender
       - TRRR CAV Database Sender
       - TRRR HD Database Sender
+      - LIMS TRRR NHS ID Mapper
+      - LIMS TRRR Merge Mapper
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -172,6 +173,9 @@ resources:
     - pipeline: 'Database Sender TRRR - Build'
       source: 'Database Sender TRRR - Build'
       trigger: none
+    - pipeline: 'LIMS TRRR Mapper - Build'
+      source: 'LIMS TRRR Mapper - Build'
+      trigger: none
 
 stages:
   # Define applications metadata inline
@@ -310,12 +314,6 @@ stages:
           containerAppNameSuffix: 'trrr-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
 
-        - name: 'TRRR Merge Database Sender'
-          appImageName: 'dbsendertrrr'
-          appFunctionMidfix: 'trrr-merge'
-          containerAppNameSuffix: 'trrr-merge-dbsender'
-          buildPipeline: 'Database Sender TRRR - Build'
-
         - name: 'TRRR ABMU Database Sender'
           appImageName: 'dbsendertrrr'
           appFunctionMidfix: 'trrr-abmu'
@@ -351,6 +349,20 @@ stages:
           appFunctionMidfix: 'trrr-hd'
           containerAppNameSuffix: 'trrr-hd-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
+
+        # LIMS -> TRRR mappers (same image, TRRR_MAPPING_TYPE set per app in Terraform);
+        # container apps uks-<env>-trrr-nhsid-mapper-ca and uks-<env>-trrr-merge-mapper-ca
+        - name: 'LIMS TRRR NHS ID Mapper'
+          appImageName: 'limstrrrmapper'
+          appFunctionMidfix: 'trrr-nhsid'
+          containerAppNameSuffix: 'trrr-nhsid-mapper'
+          buildPipeline: 'LIMS TRRR Mapper - Build'
+
+        - name: 'LIMS TRRR Merge Mapper'
+          appImageName: 'limstrrrmapper'
+          appFunctionMidfix: 'trrr-merge'
+          containerAppNameSuffix: 'trrr-merge-mapper'
+          buildPipeline: 'LIMS TRRR Mapper - Build'
 
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
