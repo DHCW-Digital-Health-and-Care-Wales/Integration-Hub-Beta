@@ -15,6 +15,23 @@ def get_trigger_event(message_body: str) -> str:
     return msh_info.trigger_event
 
 
+def count_segments(message_body: str, segment: str) -> int:
+    """Count occurrences of an HL7 segment (e.g. 'MRG', 'PID') in an XML or ER7 message."""
+    if not message_body or not message_body.strip():
+        return 0
+
+    cleaned = message_body.strip()
+
+    if cleaned.startswith("<"):
+        try:
+            root = ET.fromstring(cleaned)  # nosec B314
+        except ET.ParseError:
+            return len(re.findall(rf"<(?:[\w.-]+:)?{segment}[\s>/]", cleaned))
+        return sum(1 for elem in root.iter() if _local_tag(elem) == segment)
+
+    return sum(1 for line in cleaned.splitlines() if line.strip().startswith(f"{segment}|"))
+
+
 def extract_mrg_identifiers(message_body: str) -> tuple[str | None, str | None]:
     """Extract old patient identifier and assigning authority from MRG segment.
 

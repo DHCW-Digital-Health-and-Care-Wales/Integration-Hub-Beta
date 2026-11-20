@@ -114,6 +114,17 @@ class TestAppConfig(unittest.TestCase):
             config = AppConfig.read_env_config()
             self.assertEqual(config.db_stored_procedure, "dbo.customProcedure")
 
+    def test_read_env_config_update_identifier_defaults(self) -> None:
+        env = {
+            "INGRESS_TOPIC_NAME": "test-topic",
+            "INGRESS_SUBSCRIPTION_NAME": "test-sub",
+            "DB_PROCEDURE_TYPE": "update_identifier",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.read_env_config()
+            self.assertEqual(config.db_procedure_type, "update_identifier")
+            self.assertEqual(config.db_stored_procedure, "dbo.spUpdateIdentifier")
+
 
 if __name__ == "__main__":
     unittest.main()
