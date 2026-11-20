@@ -90,7 +90,12 @@ class Hl7MessageProcessor:
 
         self._run_common_validation(raw_message, msg, message_type)
 
-        message_sending_app = get_hl7_field_value(msg.msh, "msh_3") or None
+        message_sending_app = (
+            get_hl7_field_value(msg.msh, "msh_3.msh_3_1")
+            or get_hl7_field_value(msg.msh, "msh_3.hd_1")
+            or get_hl7_field_value(msg.msh, "msh_3")
+            or None
+        )
         tracking_metadata_properties = build_common_properties(self.workflow_id, message_sending_app)
         correlation_id = tracking_metadata_properties.get(CORRELATION_ID_KEY, "")
 
