@@ -2,58 +2,56 @@
 
 ## Overview
 
-`db_sender_trrr` is a TRRR-specific database sender that mirrors the generic `db_sender` pattern while enforcing the LIMS/NHS identifier mapping for ADT_A05 messages.
+`db_sender_trrr` writes TRRR identifier requests to a health board's `Clinical_Results` database. It does **no HL7
+parsing or mapping**: that is done upstream by [`lims_trrr_mapper`](../../transformers/lims_trrr_mapper/README.md),
+which publishes one JSON request per mapped HL7 message to the mapped topic.
 
-It selects the ID values from `PID-3` by assigning authority:
+```text
+LIMS topic ──► lims_trrr_mapper (NHS_ID_UPDATE) ──┐
+           └─► lims_trrr_mapper (MERGE) ──────────┴─► mapped topic ──► 6 x db_sender_trrr (one per health board)
+```
 
-- `328` -> `LIMSIdentifier`
-- `NHS` -> `NewIdentifier`
+Each instance subscribes to the mapped topic with its board's subscription, which has no filter, so every
+board receives every request. The sender identifies the request type from the JSON body: a body containing
+`OldIdentifier` is a merge, anything else is an NHS-ID update. It then validates the body against that type
+and calls the stored procedure.
 
-The mapped values are then passed as a structured update request to the database layer only when both values are present. If either identifier is missing, the message is rejected and no database update request is created.
+### Request types
 
-### Mapping types and routing
+Both request types call the same procedure, `dbo.spProcessResult`, with positional parameters:
 
-Routing is done upstream by separate Service Bus subscriptions; each `db_sender_trrr` instance applies the one mapping selected by `TRRR_MAPPING_TYPE` and never infers it from message content:
-
-| `TRRR_MAPPING_TYPE` | Upstream subscription | Accepts | Default procedure |
-| --- | --- | --- | --- |
-| `NHS_ID_UPDATE` (default) | A31 NHS-IDUpdate and A40 NHS-IDUpdate (`PID-3.4.1` = LIMS authority and `NHS`) | `A31`, `A40` | `dbo.TRRRIDUpdate` |
-| `MERGE` | A40 Merge (every `MSH-9.2` = `A40`) | `A40` | `dbo.TRRRIDMerge` |
-
-An `A40` is delivered to both subscriptions, so both instances process it and two TRRR requests result.
-
-The sender does no routing of its own: every message that arrives is mapped. Subscription filters cannot inspect HL7 body fields, so a message the instance cannot map (unsupported `MSH-9.2`, or for `NHS_ID_UPDATE` no `PID-3` repetition for the LIMS authority or for `NHS`) is dead-lettered with `MappingFailed` and the reason. For example, an `A40` with no `NHS` identifier is dead-lettered by `NHS_ID_UPDATE` but still processed by `MERGE`.
-
-### ADT^A40 NHS-IDUpdate (`NHS_ID_UPDATE`)
-
-The LIMS identifier is the `PID-3` repetition whose assigning authority equals `MSH-3.1`; the NHS number is the `PID-3` repetition with authority `NHS`. `NewIdentifierAssigningAuthority` is `NHS`; `Old*` fields are not mapped (any `MRG` is ignored). `Missing LIMS identifier`, `Missing NHS identifier` and `Missing sending LIMS authority` (empty `MSH-3.1`) are all dead-lettered.
-
-### ADT^A40 patient merge (`MERGE`)
-
-Every `ADT^A40` handled by a `MERGE` instance is mapped as a patient merge:
-
-| Target field | Source | Rule |
+| Request type | JSON fields (parameter order) | Parameters |
 | --- | --- | --- |
-| `OldIdentifier` | `MRG-1.1` | Copied as received |
-| `OldIdentifierAssigningAuthority` | `MRG-1.4.1` | Copied as received |
-| `NewIdentifier` | `PID-3.1` | The repetition whose `PID-3.4.1` equals `MRG-1.4.1` |
-| `NewIdentifierAssigningAuthority` | `PID-3.4.1` | The authority matching `MRG-1.4.1` |
-| `LIMSIdentifier` | - | Not mapped |
+| `NHS_ID_UPDATE` | `LIMSIdentifier`, `NewIdentifier`, `NewIdentifierAssigningAuthority` | 3 |
+| `MERGE` | `OldIdentifier`, `OldIdentifierAssigningAuthority`, `NewIdentifier`, `NewIdentifierAssigningAuthority` | 4 |
 
-Messages are dead-lettered (reason `MappingFailed`, no database call) with `Missing old identifier`, `Missing old assigning authority` or `Missing new identifier`. The merge request is sent to `DB_STORED_PROCEDURE` (default `dbo.TRRRIDMerge` for `MERGE`) as `(OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier, NewIdentifierAssigningAuthority)`.
+The JSON fields are passed exactly as received (no numeric coercion). An individual field may be an empty string
+when the mapper could not map it; it is passed through as blank.
+
+### Failure handling
+
+| Situation | Outcome |
+| --- | --- |
+| Body is not JSON, not an object, has missing/non-string fields, mixes fields of both request types, or every field is blank | Dead-lettered `InvalidPayload`, no database call |
+| Non-recoverable database error | Dead-lettered `StoredProcedureExecutionFailed` |
+| Transient database error / unexpected error | Abandoned for redelivery |
+
+Logs and events never contain the payload (it holds the NHS number). They use the `MessageControlId` and
+`MessageType` application properties stamped by the mapper (logged as `UNKNOWN` if absent; they are not
+needed to process the request).
 
 ## Required environment variables
 
 - `SERVICE_BUS_CONNECTION_STRING`
 - `SERVICE_BUS_NAMESPACE`
-- `INGRESS_TOPIC_NAME`
+- `INGRESS_TOPIC_NAME` (the mapped topic, e.g. `local-inthub-lims-trrr-mapped`)
 - `INGRESS_SUBSCRIPTION_NAME`
+- `INGRESS_SESSION_ID` (must equal the mappers' `EGRESS_SESSION_ID`, `lims-trrr-mapped`)
 - `DB_SERVER` (default `TES06SRVSQLNOD1`)
 - `DB_NAME` (default `Clinical_Results`)
 - `DB_USERNAME` (default `TRRR`)
 - `DB_PASSWORD` (default `trrr`)
-- `TRRR_MAPPING_TYPE` (`NHS_ID_UPDATE` default, or `MERGE`)
-- `DB_STORED_PROCEDURE` (default `dbo.TRRRIDUpdate` for `NHS_ID_UPDATE`, `dbo.TRRRIDMerge` for `MERGE`)
+- `DB_STORED_PROCEDURE` (default `dbo.spProcessResult`, used for both request types)
 - `WORKFLOW_ID`
 - `MICROSERVICE_ID`
 

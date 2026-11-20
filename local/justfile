@@ -18,6 +18,12 @@
 # ------------------
 # - phw-to-mpi     : Public Health Wales to MPI integration
 # - lims-to-mpi    : LIMS SOAP ingress to MPI integration
+# - lims-to-trrr   : LIMS to TRRR smoke test (both mappers + ABMU DB sender)
+# - lims-to-trrr-update : LIMS to TRRR NHS-ID mapper + all six update DB senders
+# - lims-to-trrr-merge  : LIMS to TRRR merge mapper + all six board DB senders
+# - lims-to-trrr-mllp   : LIMS to TRRR MLLP copy (lims-trrr-hl7-sender -> topic mock receiver)
+#   (split because the Service Bus emulator allows max 10 connections; run
+#    'just build lims-to-trrr' first - it builds the mapper and TRRR sender images)
 # - pms-soap-to-mpi: PMS SOAP ingress to MPI integration
 # - paris-to-mpi   : PARIS to MPI integration
 # - chemo-to-mpi   : Chemo to MPI integration
@@ -58,7 +64,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile lims-to-trrr-update --profile lims-to-trrr-merge --profile lims-to-trrr-mllp --profile pms-soap-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -97,6 +103,11 @@ python := "python3"
     echo "  - risp-to-mpi    : RISP to MPI integration"
     echo "  - risp-to-wrrs   : RISP to WRRS database integration"
     echo "  - lims-to-wrrs   : LIMS to WRRS database integration (QueueIdUpdate)"
+    echo "  - lims-to-trrr   : LIMS to TRRR smoke test (both mappers + ABMU DB sender)"
+    echo "  - lims-to-trrr-update : LIMS to TRRR NHS-ID mapper + all six update DB senders"
+    echo "  - lims-to-trrr-merge  : LIMS to TRRR merge mapper + all six board DB senders"
+    echo "  - lims-to-trrr-mllp   : LIMS to TRRR MLLP copy (lims-trrr-hl7-sender)"
+    echo "    (run 'just build lims-to-trrr' first; it builds the TRRR mapper and sender images)"
     echo "  - mpi-to-topic   : MPI Outbound integration"
     echo "  - replay         : Message Replay Job"
     echo ""

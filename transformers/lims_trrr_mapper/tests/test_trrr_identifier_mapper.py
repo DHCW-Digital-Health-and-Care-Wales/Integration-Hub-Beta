@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from db_sender_trrr.identifier_mapper import (
+from lims_trrr_mapper.identifier_mapper import (
     MAPPING_MERGE,
     MAPPING_NHS_ID_UPDATE,
     map_adt_a05_identifiers,

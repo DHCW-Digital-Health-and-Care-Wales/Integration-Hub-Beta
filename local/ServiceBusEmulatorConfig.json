@@ -171,7 +171,7 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-trrr-abmu-db-sender-sub",
+                "Name": "local-inthub-lims-trrr-nhsid-mapper-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -180,7 +180,7 @@
                 },
                 "Rules": [
                   {
-                    "Name": "lims-trrr-abmu-db-filter",
+                    "Name": "lims-trrr-nhsid-mapper-filter",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
@@ -189,6 +189,40 @@
                     }
                   }
                 ]
+              },
+              {
+                "Name": "local-inthub-lims-trrr-merge-mapper-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "lims-trrr-merge-mapper-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40'"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-lims-trrr-mapped",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-lims-trrr-abmu-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
               },
               {
                 "Name": "local-inthub-lims-trrr-abhb-db-sender-sub",
@@ -197,18 +231,7 @@
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "lims-trrr-abhb-db-filter",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "Name": "local-inthub-lims-trrr-bcu-db-sender-sub",
@@ -217,18 +240,7 @@
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "lims-trrr-bcu-db-filter",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "Name": "local-inthub-lims-trrr-ct-db-sender-sub",
@@ -237,18 +249,7 @@
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "lims-trrr-ct-db-filter",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "Name": "local-inthub-lims-trrr-cav-db-sender-sub",
@@ -257,163 +258,16 @@
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "lims-trrr-cav-db-filter",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "Name": "local-inthub-lims-trrr-hd-db-sender-sub",
                 "Properties": {
-                  "DeadLetteringOnMessageExpiration": false,
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "DuplicateDetectionHistoryTimeWindow": "PT20S",
-                  "ForwardDeadLetteredMessagesTo": "",
-                  "ForwardTo": "",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresDuplicateDetection": false,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "lims-trrr-hd-db-filter",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType IN ('A31', 'A40') AND user.SourceSystem = '328'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-abmu-merge-sender-sub",
-                "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_ABMU_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-abhb-merge-sender-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_ABHB_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-bcu-merge-sender-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_BCU_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-ct-merge-sender-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_CT_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-cav-merge-sender-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_CAV_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "Name": "local-inthub-lims-trrr-hd-merge-sender-sub",
-                "Properties": {
-                  "DefaultMessageTimeToLive": "PT1H",
-                  "LockDuration": "PT1M",
-                  "MaxDeliveryCount": 10,
-                  "RequiresSession": true
-                },
-                "Rules": [
-                  {
-                    "Name": "LIMS_TRRR_HD_MERGE_FILTER",
-                    "Properties": {
-                      "FilterType": "Sql",
-                      "SqlFilter": {
-                        "SqlExpression": "user.MessageType = 'A40'"
-                      }
-                    }
-                  }
-                ]
+                }
               }
             ]
           },
