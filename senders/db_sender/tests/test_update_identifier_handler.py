@@ -113,6 +113,30 @@ class TestUpdateIdentifierHandler(unittest.TestCase):
         self.assertEqual(kwargs["old_identifier"], "000123")
         self.assertEqual(kwargs["new_identifier"], "000456")
 
+    def test_multiple_patient_groups_xml_raises_dlq_before_db_write(self) -> None:
+        # Two PID/MRG groups: only the first MRG would be read, so the whole message must be rejected.
+        group = "<ADT_A39.PATIENT>" + _a40_xml().split("<ADT_A39.PATIENT>")[1].split("</ADT_A39.PATIENT>")[0]
+        msg = _a40_xml().replace("</ADT_A39>", group + "</ADT_A39.PATIENT></ADT_A39>")
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            self.handler.handle_message(msg, {}, _msh(), self.mock_db_client)
+
+        self.assertEqual(ctx.exception.reason, "MultiplePatientGroups")
+        self.mock_db_client.execute_update_identifier.assert_not_called()
+
+    def test_multiple_patient_groups_er7_raises_dlq_before_db_write(self) -> None:
+        msg = (
+            "MSH|^~\\&|140|140|200|200|202610261222||ADT^A40^ADT_A39|MSG-1|P|2.5\r"
+            "PID|1||U363137^^^140^PI\rMRG|U692047^^^140\r"
+            "PID|1||U999999^^^140^PI\rMRG|U888888^^^140\r"
+        )
+
+        with self.assertRaises(DeadLetterMessage) as ctx:
+            self.handler.handle_message(msg, {}, _msh(), self.mock_db_client)
+
+        self.assertEqual(ctx.exception.reason, "MultiplePatientGroups")
+        self.mock_db_client.execute_update_identifier.assert_not_called()
+
     def test_missing_old_identifier_raises_dlq(self) -> None:
         with self.assertRaises(DeadLetterMessage) as ctx:
             self.handler.handle_message(_a40_xml(old_id=""), {}, _msh(), self.mock_db_client)

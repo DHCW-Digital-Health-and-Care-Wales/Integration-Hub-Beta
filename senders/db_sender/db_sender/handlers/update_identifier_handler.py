@@ -9,6 +9,7 @@ from db_sender.db_client import DatabaseClient
 from db_sender.handlers.base_handler import BaseDatabaseHandler
 from db_sender.msh_extractor import MshInfo
 from db_sender.parsers.hl7_id_extractor import (
+    count_segments,
     extract_mrg_identifiers,
     extract_pid_identifier_by_authority,
     get_trigger_event,
@@ -46,6 +47,15 @@ class UpdateIdentifierHandler(BaseDatabaseHandler):
             raise DeadLetterMessage(
                 reason="UnsupportedTriggerEvent",
                 description=f"Trigger event {trigger} is not supported for identifier update",
+            )
+
+        # The extractors read only the first MRG but search every PID, so a multi-patient message could pair one
+        # patient's old identifier with another patient's new identifier. Reject it before any DB write.
+        if count_segments(message_body, "MRG") > 1 or count_segments(message_body, "PID") > 1:
+            logger.error("Multiple patient groups in A40. MessageControlId: %s", msh_info.control_id)
+            raise DeadLetterMessage(
+                reason="MultiplePatientGroups",
+                description="A40 messages with more than one MRG or PID segment are not supported",
             )
 
         old_id, old_auth = extract_mrg_identifiers(message_body)
