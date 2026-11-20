@@ -17,7 +17,6 @@ parameters:
       - WDS HL7Server
       - WDS To MPI HL7 Sender
       - WDS To PHW HL7 Sender
-      - TRRR Database Sender
       - TRRR ABMU Database Sender
       - TRRR ABHB Database Sender
       - TRRR BCU Database Sender
@@ -293,12 +292,8 @@ stages:
           appFunctionMidfix: 'wrrs-idupd'
           buildPipeline: 'Database Sender - Build'
 
-        - name: 'TRRR Database Sender'
-          appImageName: 'dbsendertrrr'
-          appFunctionMidfix: 'lims-trrr'
-          containerAppNameSuffix: 'trrr-dbsender'
-          buildPipeline: 'Database Sender TRRR - Build'
-
+        # LIMS -> TRRR board writers: one per health board, each reading its own unfiltered
+        # subscription on the LIMS TRRR mapped topic; container apps uks-<env>-trrr-<hb>-dbsender-ca
         - name: 'TRRR ABMU Database Sender'
           appImageName: 'dbsendertrrr'
           appFunctionMidfix: 'trrr-abmu'
