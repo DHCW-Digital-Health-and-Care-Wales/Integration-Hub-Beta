@@ -6,6 +6,19 @@
 
 It serves as the generic delivery engine for database integration flows in NHS Wales Integration Hub, starting with the **RISP to WRRS flow** (`dbo.prQueueMessage` in database `DRS`). Future database integrations can reuse this container by configuring environment variables without changing code.
 
+### Procedure types (`DB_PROCEDURE_TYPE`)
+
+| Type | Default stored procedure | Purpose |
+|---|---|---|
+| `queue_message` (default) | `dbo.prQueueMessage` | Passes the whole HL7 message (`@Message`, `@IsPriority`) - RISP to WRRS |
+| `queue_id_update` | `dbo.prQueueIdUpdate` | WRRS identifier updates from A31 and A40 messages - LIMS to WRRS |
+| `update_identifier` | `dbo.spUpdateIdentifier` | WCRS identifier update from A40 merges - CAV PMS to WCRS |
+
+`update_identifier` accepts ADT^A40 only (HL7v2 XML or ER7). It passes three string parameters:
+`OldIdentifier` (MRG-1.1), `OldIdentifierAssigningAuthority` (MRG-1.4.1, as-is) and `NewIdentifier` (the PID-3.1
+whose PID-3.4.1 matches MRG-1.4.1). Missing values or a non-A40 trigger dead-letter the message
+(`MissingOldIdentifier`, `MissingOldAssigningAuthority`, `MissingNewIdentifier`, `UnsupportedTriggerEvent`).
+
 ## Architecture
 
 1. **Service Bus Ingress:** Subscribes to an Azure Service Bus topic subscription (supports session-enabled and non-session subscriptions).
@@ -27,7 +40,8 @@ It serves as the generic delivery engine for database integration flows in NHS W
 | `DB_SERVER` | SQL Server hostname or container alias | `localhost` |
 | `DB_PORT` | SQL Server port | `1433` |
 | `DB_NAME` | Target database name | `DRS` |
-| `DB_STORED_PROCEDURE` | Stored procedure to invoke | `dbo.prQueueMessage` |
+| `DB_STORED_PROCEDURE` | Stored procedure to invoke | `dbo.prQueueMessage` (`dbo.prQueueIdUpdate` / `dbo.spUpdateIdentifier` for the other procedure types) |
+| `DB_PROCEDURE_TYPE` | Handler strategy: `queue_message`, `queue_id_update` or `update_identifier` | `queue_message` |
 | `DB_USERNAME` | SQL Auth username (local / dev) | None |
 | `DB_PASSWORD` | SQL Auth password (local / dev) | None |
 | `DB_ENCRYPT` | Enable TLS encryption | `Yes` |

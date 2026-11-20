@@ -265,6 +265,39 @@ class TestDatabaseClient(unittest.TestCase):
         )
         mock_conn.commit.assert_called_once()
 
+    @patch("pyodbc.connect")
+    def test_execute_update_identifier_success(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_cursor = _make_cursor()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connect.return_value = mock_conn
+
+        config = self._create_config()
+        config.db_stored_procedure = "dbo.spUpdateIdentifier"
+        client = DatabaseClient(config)
+
+        client.execute_update_identifier("000123", "140", "000456")
+
+        mock_cursor.execute.assert_called_once_with(
+            "SET NOCOUNT ON; DECLARE @rc INT; EXEC @rc = dbo.spUpdateIdentifier ?, ?, ?; SELECT @rc;",
+            ("000123", "140", "000456"),
+        )
+        mock_conn.commit.assert_called_once()
+
+    @patch("pyodbc.connect")
+    def test_execute_update_identifier_non_zero_return_code_rolls_back(self, mock_connect: MagicMock) -> None:
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = _make_cursor(return_code=55555)
+        mock_connect.return_value = mock_conn
+
+        client = DatabaseClient(self._create_config())
+
+        with self.assertRaises(FatalDatabaseError):
+            client.execute_update_identifier("1", "140", "2")
+
+        mock_conn.rollback.assert_called_once()
+        mock_conn.commit.assert_not_called()
+
     def test_sanitize_error_message_conversion_failure(self) -> None:
         sentinel_patient_id = "9999999999"
         raw_msg = (

@@ -3,6 +3,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+_DEFAULT_STORED_PROCEDURES = {
+    "queue_id_update": "dbo.prQueueIdUpdate",
+    "update_identifier": "dbo.spUpdateIdentifier",
+}
+
 
 @dataclass
 class AppConfig:
@@ -45,7 +50,7 @@ class AppConfig:
     def read_env_config() -> AppConfig:
         raw_procedure_type = _read_env("DB_PROCEDURE_TYPE")
         procedure_type = raw_procedure_type.strip().lower() if raw_procedure_type else "queue_message"
-        default_sp = "dbo.prQueueIdUpdate" if procedure_type == "queue_id_update" else "dbo.prQueueMessage"
+        default_sp = _DEFAULT_STORED_PROCEDURES.get(procedure_type, "dbo.prQueueMessage")
 
         return AppConfig(
             connection_string=_read_env("SERVICE_BUS_CONNECTION_STRING"),

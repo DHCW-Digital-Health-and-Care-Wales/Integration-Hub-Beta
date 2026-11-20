@@ -267,7 +267,7 @@ Profiles:
 - lims-to-mpi
 - lims-to-wrrs
 - pms-soap-to-mpi
-- paris-to-mpi
+- cav-pms-to-wcrs- paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
 - mosaiq-to-mpi
@@ -291,6 +291,7 @@ Each profile starts a complete integration flow with all required services:
 | **lims-to-wrrs** | hl7-soap-server, wrrs-idupd-dbsender, mock-db-receiver, sqledge, sb-emulator | LIMS to WRRS SQL database delivery for patient identifier updates and merges (`dbo.prQueueIdUpdate` in `DRS`); a third subscription on the same topic the LIMS server publishes to; the database is the `mock_receivers/db_mock_receiver` SQL Server mock (the sender waits for it to be healthy) |
 | **lims-to-trrr** | hl7-soap-server, lims-trrr-hl7-sender, db_sender_trrr, db_sender_trrr_merge, mock-db-receiver, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to TRRR SQL delivery; subscriptions on the same `local-inthub-lims-hl7-input` topic the LIMS server publishes to. `db_sender_trrr` (`TRRR_MAPPING_TYPE=NHS_ID_UPDATE`, subscription `local-inthub-lims-trrr-sender-sub`) writes A31/A40 NHS-ID updates via `dbo.TRRRIDUpdate`; `db_sender_trrr_merge` (`TRRR_MAPPING_TYPE=MERGE`, subscription `local-inthub-lims-trrr-merge-sender-sub`, every A40) writes merges via `dbo.TRRRIDMerge` into `Clinical_Results.dbo.TRRRIdentifierMerge`. An A40 meeting both rules produces one row in each. NHS-ID updates are written into `Clinical_Results.dbo.TRRRIdentifierUpdate` on `mock-db-receiver` (host port 14334) |
 | **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator             | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
+| **cav-pms-to-wcrs** | pms-hl7-soap-server, wcrs-idupd-dbsender, mock-db-receiver, sb-emulator | CAV PMS ADT^A40 merges (assigning authority 140) to WCRS: subscription `local-inthub-pms-wcrs-sender-sub` on the PMS topic (filter `MessageType = 'A40' AND SourceSystem = '140'`) calls `dbo.spUpdateIdentifier` in the mock `NDR` database; results land in `NDR.dbo.IdentifierUpdate`. Send `just send-soap ./sample_messages/cav-pms-to-wcrs.sample.xml 8086` |
 | **paris-to-mpi** | cav-paris-hl7-server, paris-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Paris healthcare system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (paris-mpi-hl7-sender), mirroring Mosaiq/LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PIMS (Patient Information Management System) to MPI integration flow                              |
@@ -332,6 +333,7 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/senders/mpi-hl7-chemo-sender.env**   | MPI HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-mock-receiver` |
 | **env/senders/lims-mpi-hl7-sender.env**    | LIMS HL7 Subscription Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/senders/wrrs-idupd-dbsender.env** | WRRS QueueIdUpdate DB Sender | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `DB_SERVER`, `DB_NAME`, `DB_STORED_PROCEDURE`, `DB_PROCEDURE_TYPE`, `SOURCE_SYSTEM` |
+| **env/senders/wcrs-idupd-dbsender.env** | WCRS ID Update DB Sender (CAV PMS) | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `DB_NAME=NDR`, `DB_STORED_PROCEDURE=dbo.spUpdateIdentifier`, `DB_PROCEDURE_TYPE=update_identifier`, `SOURCE_SYSTEM=140` |
 | **env/senders/lims-trrr-hl7-sender.env**   | LIMS TO TRRR HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver`, `WORKFLOW_ID=lims-to-trrr`, `PEER_SERVICE=TRRR` |
 | **env/senders/mosaiq-mpi-hl7-sender.env**  | Mosaiq To MPI HL7 Sender     | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
 | **env/senders/paris-mpi-hl7-sender.env**   | Paris To MPI HL7 Sender      | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID`, `RECEIVER_MLLP_HOST=mpi-hl7-topic-mock-receiver` |
