@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from field_utils_lib import get_hl7_field_value
 from hl7_message_processor import ProcessedMessage
 
 from rest_server.hl7.errors import Hl7ParseError, Hl7ValidationError
@@ -62,6 +63,84 @@ class Hl7MessageProcessorTests(unittest.TestCase):
         sender.send_text_message.side_effect = RuntimeError("bus down")
         with self.assertRaises(RuntimeError):
             context.processor.process(VALID_ER7_MESSAGE)
+
+    def test_sourcesystem_extracted_from_composite_msh3_in_store_and_forward(self) -> None:
+        """Composite MSH-3 (e.g. APP^OID^ISO) extracts the first component instead of the raw composite."""
+        context, sender, store, _ = build_test_context()
+        composite_msg = VALID_ER7_MESSAGE.replace("|252|252|", "|COMP_APP^1.2.3.4^ISO|FAC|")
+
+        context.processor.process(composite_msg)
+
+        store.send_to_store.assert_called_once()
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "COMP_APP")
+
+        sender.send_text_message.assert_called_once()
+        forwarded_props = sender.send_text_message.call_args.args[1]
+        self.assertEqual(forwarded_props["SourceSystem"], "COMP_APP")
+
+    def test_sourcesystem_extracted_from_simple_msh3_in_store_and_forward(self) -> None:
+        """Simple scalar MSH-3 extracts correctly in both stored and forwarded metadata."""
+        context, sender, store, _ = build_test_context()
+        simple_msg = VALID_ER7_MESSAGE.replace("|252|252|", "|SIMPLE_APP|FAC|")
+
+        context.processor.process(simple_msg)
+
+        store.send_to_store.assert_called_once()
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "SIMPLE_APP")
+
+        sender.send_text_message.assert_called_once()
+        forwarded_props = sender.send_text_message.call_args.args[1]
+        self.assertEqual(forwarded_props["SourceSystem"], "SIMPLE_APP")
+
+    def test_sourcesystem_empty_when_msh3_is_empty_in_store_and_forward(self) -> None:
+        """Empty MSH-3 yields an empty SourceSystem string in both stored and forwarded metadata."""
+        context, sender, store, _ = build_test_context()
+        empty_msh3_msg = VALID_ER7_MESSAGE.replace("|252|252|", "||FAC|")
+
+        context.processor.process(empty_msh3_msg)
+
+        store.send_to_store.assert_called_once()
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "")
+
+        sender.send_text_message.assert_called_once()
+        forwarded_props = sender.send_text_message.call_args.args[1]
+        self.assertEqual(forwarded_props["SourceSystem"], "")
+
+    def test_sourcesystem_fallback_precedence_in_store_and_forward(self) -> None:
+        """Test fallback precedence: msh_3.msh_3_1 -> msh_3.hd_1 -> msh_3."""
+        context, sender, store, _ = build_test_context()
+
+        # When msh_3_1 is absent but hd_1 is present:
+        def hd1_side_effect(segment: object, path: str) -> str:
+            if path == "msh_3.msh_3_1":
+                return ""
+            if path == "msh_3.hd_1":
+                return "HD1_FALLBACK"
+            if path == "msh_3":
+                return "RAW_MSH3"
+            return get_hl7_field_value(segment, path)
+
+        with patch("rest_server.hl7.hl7_message_processor.get_hl7_field_value", side_effect=hd1_side_effect):
+            context.processor.process(VALID_ER7_MESSAGE)
+
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "HD1_FALLBACK")
+        self.assertEqual(sender.send_text_message.call_args.args[1]["SourceSystem"], "HD1_FALLBACK")
+
+        # When both msh_3_1 and hd_1 are absent but raw msh_3 is present:
+        def raw_side_effect(segment: object, path: str) -> str:
+            if path in ("msh_3.msh_3_1", "msh_3.hd_1"):
+                return ""
+            if path == "msh_3":
+                return "RAW_FALLBACK"
+            return get_hl7_field_value(segment, path)
+
+        sender.reset_mock()
+        store.reset_mock()
+        with patch("rest_server.hl7.hl7_message_processor.get_hl7_field_value", side_effect=raw_side_effect):
+            context.processor.process(VALID_ER7_MESSAGE)
+
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "RAW_FALLBACK")
+        self.assertEqual(sender.send_text_message.call_args.args[1]["SourceSystem"], "RAW_FALLBACK")
 
 
 class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
@@ -134,6 +213,25 @@ class Hl7MessageProcessorRispFlowTests(unittest.TestCase):
         wrrs_args = wrrs.send_text_message.call_args
         self.assertEqual(wrrs_args[0][0], fake_xml)
         self.assertEqual(wrrs_args[0][1]["MessageStructure"], "ORU_R01")
+
+    def test_oru_r01_composite_msh3_sourcesystem_in_wrrs_metadata(self) -> None:
+        context, sender, store, wrrs = build_test_context(flow_name="risp")
+        assert wrrs is not None
+        composite_oru = RISP_ORU_R01_MESSAGE.replace("|350|350|", "|350^2.16.840.1.113883.2.1.8.1.5.350^ISO|350|")
+        fake_xml = "<ORU_R01>...</ORU_R01>"
+        fake_result = ProcessedMessage(
+            xml=fake_xml, structure_id="ORU_R01", version="2.5.1", xsd_path=Path("/schemas/ORU_R01.xsd")
+        )
+        with (
+            patch("rest_server.hl7.risp_routing.process_er7", return_value=fake_result),
+            patch("rest_server.hl7.risp_routing.validate_xml"),
+        ):
+            context.processor.process(composite_oru)
+
+        wrrs.send_text_message.assert_called_once()
+        self.assertEqual(wrrs.send_text_message.call_args[0][1]["SourceSystem"], "350")
+        store.send_to_store.assert_called_once()
+        self.assertEqual(store.send_to_store.call_args.kwargs["source_system"], "350")
 
     def test_wrong_sending_facility_rejects_with_no_sends(self) -> None:
         context, sender, _, wrrs = build_test_context(flow_name="risp")

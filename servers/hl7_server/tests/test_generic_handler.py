@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
+from field_utils_lib import get_hl7_field_value
 from hl7_validation import XmlValidationError
 
 from hl7_server.generic_handler import GenericHandler
@@ -116,6 +117,92 @@ class TestGenericHandler(unittest.TestCase):
         self.assertEqual(tracking_metadata_properties["SourceSystem"], "252")
         # MSH-10 control ID is used as Service Bus message_id for broker-level deduplication
         self.assertEqual(call_args.kwargs.get("message_id"), "202505052323364444")
+
+    def test_sourcesystem_extracted_from_composite_msh3_in_store_and_forward(self) -> None:
+        """Composite MSH-3 (e.g. COMP_APP^1.2.3.4^ISO) extracts only the first component."""
+        composite_message = VALID_A28_MESSAGE.replace("|252|252|", "|COMP_APP^1.2.3.4^ISO|252|")
+        handler = GenericHandler(
+            composite_message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="COMP_APP",
+            message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
+        )
+
+        handler.reply()
+
+        self.mock_sender.send_text_message.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "COMP_APP")
+
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.assertEqual(self.mock_message_store.send_to_store.call_args.kwargs["source_system"], "COMP_APP")
+
+    def test_sourcesystem_empty_when_msh3_is_empty_in_store_and_forward(self) -> None:
+        """Empty MSH-3 yields an empty SourceSystem string in both stored and forwarded metadata."""
+        empty_msh3_message = VALID_A28_MESSAGE.replace("|252|252|", "||252|")
+        handler = GenericHandler(
+            empty_msh3_message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            self.validator,
+            workflow_id="test-workflow",
+            sending_app="",
+            message_store_client=self.mock_message_store,
+            egress_session_id="test-session",
+        )
+
+        handler.reply()
+
+        self.mock_sender.send_text_message.assert_called_once()
+        tracking_metadata_properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual(tracking_metadata_properties["SourceSystem"], "")
+
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.assertEqual(self.mock_message_store.send_to_store.call_args.kwargs["source_system"], "")
+
+    def test_sourcesystem_fallback_precedence_in_store_and_forward(self) -> None:
+        """Test fallback precedence: msh_3.msh_3_1 -> msh_3.hd_1 -> msh_3."""
+        # When msh_3_1 is absent but hd_1 is present:
+        def hd1_side_effect(segment: object, path: str) -> str:
+            if path == "msh_3.msh_3_1":
+                return ""
+            if path == "msh_3.hd_1":
+                return "HD1_FALLBACK"
+            if path == "msh_3":
+                return "RAW_MSH3"
+            return get_hl7_field_value(segment, path)
+
+        with patch("hl7_server.generic_handler.get_hl7_field_value", side_effect=hd1_side_effect):
+            self.handler.reply()
+
+        self.mock_sender.send_text_message.assert_called_once()
+        self.assertEqual(self.mock_sender.send_text_message.call_args[0][1]["SourceSystem"], "HD1_FALLBACK")
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.assertEqual(self.mock_message_store.send_to_store.call_args.kwargs["source_system"], "HD1_FALLBACK")
+
+        # When both msh_3_1 and hd_1 are absent but raw msh_3 is present:
+        def raw_side_effect(segment: object, path: str) -> str:
+            if path in ("msh_3.msh_3_1", "msh_3.hd_1"):
+                return ""
+            if path == "msh_3":
+                return "RAW_FALLBACK"
+            return get_hl7_field_value(segment, path)
+
+        self.mock_sender.reset_mock()
+        self.mock_message_store.reset_mock()
+        with patch("hl7_server.generic_handler.get_hl7_field_value", side_effect=raw_side_effect):
+            self.handler.reply()
+
+        self.mock_sender.send_text_message.assert_called_once()
+        self.assertEqual(self.mock_sender.send_text_message.call_args[0][1]["SourceSystem"], "RAW_FALLBACK")
+        self.mock_message_store.send_to_store.assert_called_once()
+        self.assertEqual(self.mock_message_store.send_to_store.call_args.kwargs["source_system"], "RAW_FALLBACK")
 
     @patch("hl7_server.generic_handler.FLOW_PROPERTY_BUILDERS", {})
     @patch("hl7_server.generic_handler.build_routing_properties")
