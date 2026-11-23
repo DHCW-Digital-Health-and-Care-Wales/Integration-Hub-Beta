@@ -266,8 +266,9 @@ Profiles:
 - phw-to-mpi
 - lims-to-mpi
 - lims-to-wrrs
-- pms-soap-to-mpi
-- cav-pms-to-wcrs- paris-to-mpi
+- pms-to-mpi
+- cav-pms-to-wcrs
+- paris-to-mpi
 - chemo-to-mpi
 - pims-to-mpi
 - mosaiq-to-mpi
@@ -290,8 +291,8 @@ Each profile starts a complete integration flow with all required services:
 | **lims-to-mpi**  | hl7-soap-server, lims-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to MPI integration flow (no MPI transformer); uses the topic-based mock receiver, mirroring DEV |
 | **lims-to-wrrs** | hl7-soap-server, wrrs-idupd-dbsender, mock-db-receiver, sqledge, sb-emulator | LIMS to WRRS SQL database delivery for patient identifier updates and merges (`dbo.prQueueIdUpdate` in `DRS`); a third subscription on the same topic the LIMS server publishes to; the database is the `mock_receivers/db_mock_receiver` SQL Server mock (the sender waits for it to be healthy) |
 | **lims-to-trrr** | hl7-soap-server, lims-trrr-hl7-sender, db_sender_trrr, db_sender_trrr_merge, mock-db-receiver, mpi-hl7-topic-mock-receiver, sb-emulator | LIMS SOAP HL7 XML ingress (assigning authority 328) to TRRR SQL delivery; subscriptions on the same `local-inthub-lims-hl7-input` topic the LIMS server publishes to. `db_sender_trrr` (`TRRR_MAPPING_TYPE=NHS_ID_UPDATE`, subscription `local-inthub-lims-trrr-sender-sub`) writes A31/A40 NHS-ID updates via `dbo.TRRRIDUpdate`; `db_sender_trrr_merge` (`TRRR_MAPPING_TYPE=MERGE`, subscription `local-inthub-lims-trrr-merge-sender-sub`, every A40) writes merges via `dbo.TRRRIDMerge` into `Clinical_Results.dbo.TRRRIdentifierMerge`. An A40 meeting both rules produces one row in each. NHS-ID updates are written into `Clinical_Results.dbo.TRRRIdentifierUpdate` on `mock-db-receiver` (host port 14334) |
-| **pms-soap-to-mpi** | pms-hl7-soap-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator             | PMS SOAP HL7 XML ingress to MPI integration flow (no transformer yet)                              |
-| **cav-pms-to-wcrs** | pms-hl7-soap-server, wcrs-idupd-dbsender, mock-db-receiver, sb-emulator | CAV PMS ADT^A40 merges (assigning authority 140) to WCRS: subscription `local-inthub-pms-wcrs-sender-sub` on the PMS topic (filter `MessageType = 'A40' AND SourceSystem = '140'`) calls `dbo.spUpdateIdentifier` in the mock `NDR` database; results land in `NDR.dbo.IdentifierUpdate`. Send `just send-soap ./sample_messages/cav-pms-to-wcrs.sample.xml 8086` |
+| **pms-to-mpi** | pms-hl7-server, pms-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator             | PMS HL7 (MLLP, port 2585) ingress to MPI integration flow (no transformer yet)                              |
+| **cav-pms-to-wcrs** | pms-hl7-server, wcrs-idupd-dbsender, mock-db-receiver, sb-emulator | CAV PMS ADT^A40 merges (assigning authority 140) to WCRS: subscription `local-inthub-pms-wcrs-sender-sub` on the PMS topic (filter `MessageType = 'A40' AND SourceSystem = '140'`) calls `dbo.spUpdateIdentifier` in the mock `NDR` database; results land in `NDR.dbo.IdentifierUpdate`. Send `just send ./sample_messages/cav-pms-to-wcrs.sample.hl7 2585` |
 | **paris-to-mpi** | cav-paris-hl7-server, paris-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Paris healthcare system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (paris-mpi-hl7-sender), mirroring Mosaiq/LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
 | **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PIMS (Patient Information Management System) to MPI integration flow                              |
@@ -322,6 +323,8 @@ Each service is configured via a corresponding `.env` file in the `local/` direc
 | **env/servers/chemo-hl7-server.env**      | Chemocare HL7 Server        | `PORT=2578`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=chemo`                         |
 | **env/transformers/chemo-hl7-transformer.env** | Chemocare Transformer       | `INGRESS_QUEUE_NAME`, `EGRESS_QUEUE_NAME`, `WORKFLOW_ID=chemocare-to-mpi`             |
 | **env/servers/pims-hl7-server.env**       | PIMS HL7 Server             | `PORT=2579`, `EGRESS_TOPIC_NAME`, `HL7_VALIDATION_FLOW=pims`                          |
+| **env/senders/pms-mpi-hl7-sender.env**    | PMS MPI HL7 Sender          | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `INGRESS_SESSION_ID=pms-to-mpi`    |
+| **env/servers/pms-hl7-server.env**        | PMS HL7 Server              | `PORT=2585`, `EGRESS_TOPIC_NAME`, `SENDING_APP=140`, `HL7_VALIDATION_FLOW=phw`        |
 | **env/transformers/pims-hl7-transformer.env**  | PIMS Transformer            | `INGRESS_TOPIC_NAME`, `INGRESS_SUBSCRIPTION_NAME`, `EGRESS_TOPIC_NAME`, `WORKFLOW_ID=pims-to-mpi`, `REFERENCE_DATA_API_BASE_URL`                  |
 | **env/servers/wds-hl7-server.env**        | WDS HL7 Server              | `PORT=2582`, `EGRESS_QUEUE_NAME`, `HL7_VALIDATION_FLOW=wds`                           |
 | **env/message_processing/message-store-service.env** | Message Store Service       | `INGRESS_QUEUE_NAME`, `SQL_SERVER`, `SQL_DATABASE`                                    |

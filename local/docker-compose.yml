@@ -141,8 +141,7 @@ services:
 
   # Built from rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7apy - see
   # local/env/servers/lims-soap-hl7-server.env). hl7apy validates against hl7apy's own HL7 v2
-  # reference structures (lenient on optional/empty composite sub-elements), unlike the strict
-  # XSD validator used by the pms-hl7-soap-server instance below.
+  # reference structures (lenient on optional/empty composite sub-elements).
   hl7-soap-server:
     container_name: hl7-soap-server
     build:
@@ -169,32 +168,31 @@ services:
         aliases:
           - "hl7-soap-server"
 
-  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=soap, VALIDATOR_TYPE=hl7-xsd).
-  # Host port 8086 (not 8083) to avoid clashing with rest-hl7-server's 8083.
-  pms-hl7-soap-server:
-    container_name: pms-hl7-soap-server
+  # Built from servers/hl7_server (MLLP, HL7_VALIDATION_FLOW=phw, sending application 140).
+  pms-hl7-server:
+    container_name: pms-hl7-server
     build:
-      context: ../servers/rest_server
+      context: ../servers/hl7_server
       dockerfile: ./Dockerfile
       additional_contexts:
         - ca-certs=../ca-certs
         - shared_libs=../shared_libs
     env_file:
-      - ./env/servers/pms-soap-hl7-server.env
+      - ./env/servers/pms-hl7-server.env
     ports:
-      - "8086:8081"
+      - "2585:2585"
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
       - sb-emulator
     profiles:
-      - pms-soap-to-mpi
+      - pms-to-mpi
       - cav-pms-to-wcrs
       - everything
     networks:
       integration-hub:
         aliases:
-          - "pms-hl7-soap-server"
+          - "pms-hl7-server"
 
   # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
   wpas-rest-server:
@@ -348,7 +346,6 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
-      - pms-soap-to-mpi
       - chemo-to-mpi
       - wds-to-mpi
       - rest-to-mpi
@@ -495,6 +492,30 @@ services:
         aliases:
           - "mosaiq-mpi-hl7-sender"
 
+  # Dedicated PMS -> MPI sender: subscription-based ingress from the topic pms-hl7-server publishes to
+  # (mirrors the DEV pms-hl7subsndr container app), delivering to mpi-hl7-topic-mock-receiver.
+  pms-mpi-hl7-sender:
+    container_name: pms-mpi-hl7-sender
+    build:
+      context: ../senders/hl7_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/pms-mpi-hl7-sender.env
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      - sb-emulator
+    profiles:
+      - pms-to-mpi
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "pms-mpi-hl7-sender"
+
   # Dedicated Paris -> MPI sender. Unlike the shared mpi-hl7-sender (queue-based ingress), this
   # mirrors the DEV hl7_mpi_sender container app for Paris: subscription-based ingress from the
   # dedicated topic cav-paris-hl7-server publishes to, and sends on to mpi-hl7-topic-mock-receiver
@@ -577,7 +598,7 @@ services:
           - "wrrs-idupd-dbsender"
 
   # Generic db_sender instance for the CAV PMS -> WCRS identifier update flow (A40 merges).
-  # Subscribes to the topic pms-hl7-soap-server publishes to and calls dbo.spUpdateIdentifier in NDR.
+  # Subscribes to the topic pms-hl7-server publishes to and calls dbo.spUpdateIdentifier in NDR.
   wcrs-idupd-dbsender:
     container_name: wcrs-idupd-dbsender
     build:
@@ -671,7 +692,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
-      - pms-soap-to-mpi
+      - pms-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
@@ -975,7 +996,7 @@ services:
     profiles:
       - phw-to-mpi
       - lims-to-mpi
-      - pms-soap-to-mpi
+      - pms-to-mpi
       - paris-to-mpi
       - chemo-to-mpi
       - pims-to-mpi
