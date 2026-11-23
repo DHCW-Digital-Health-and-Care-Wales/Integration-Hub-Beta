@@ -25,6 +25,21 @@ INVALID_MPI_OUTBOUND_MESSAGE_TYPE = (
     "PID|1|98765^^^108^MR||Doe^John\r"
 )
 
+PMS_A28_MESSAGE = (
+    "MSH|^~\\&|140|140|100|100|20260729095037||ADT^A28^ADT_A05|6778031837018553261z82215|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A28|20260729095037\r"
+    "PID|1||B0000010612^^^328^PI||Pms2val^2807261||20010909|M|||Welsh Parliament^Cardiff Bay^CARDIFF^^CF99 1SN\r"
+    "PD1|||^^UNK|UNK\r"
+    "PV1||N\r"
+)
+
+PMS_A40_MESSAGE = (
+    "MSH|^~\\&|140|140|WCRS|WCRS|20260729095037||ADT^A40^ADT_A39|6778031837018553261z82216|P|2.5|||AL|NE||UTF-8\r"
+    "EVN|A40|20260729095037\r"
+    "PID|1||U363137^^^140^PI~7025040525^^^NHS^NH||Testpatient^Merge||20010909|M\r"
+    "MRG|U692047^^^140^PI\r"
+)
+
 ACK_BUILDER_ATTRIBUTE = "hl7_server.generic_handler.HL7AckBuilder"
 
 
@@ -609,6 +624,47 @@ class TestGenericHandler(unittest.TestCase):
         self.mock_message_store.send_to_store.assert_called_once()
         failed_call_args = self.mock_event_logger.log_message_failed.call_args_list[0][0]
         self.assertIn("CorrelationId:", failed_call_args[1])
+
+    def _reply_to_pms_message(self, message: str, sending_app: str = "140") -> str:
+        # Real validator and real flow XSD validation, mirroring local/env/servers/pms-hl7-server.env
+        handler = GenericHandler(
+            message,
+            self.mock_sender,
+            self.mock_event_logger,
+            self.mock_metric_sender,
+            HL7Validator(hl7_version="2.5", sending_app=sending_app, flow_name="phw"),
+            workflow_id="pms-to-mpi",
+            sending_app=sending_app,
+            message_store_client=self.mock_message_store,
+            egress_session_id="pms-to-mpi",
+            flow_name="phw",
+        )
+        return handler.reply()
+
+    def test_pms_a28_message_is_accepted_and_routed_with_source_system(self) -> None:
+        ack = self._reply_to_pms_message(PMS_A28_MESSAGE)
+
+        self.assertIn("MSA|AA", ack)
+        properties = self.mock_sender.send_text_message.call_args[0][1]
+        self.assertEqual("140", properties["SourceSystem"])
+        self.assertEqual("A28", properties["MessageType"])
+
+    def test_pms_a40_merge_carries_properties_used_by_wcrs_subscription_filter(self) -> None:
+        ack = self._reply_to_pms_message(PMS_A40_MESSAGE)
+
+        self.assertIn("MSA|AA", ack)
+        properties = self.mock_sender.send_text_message.call_args[0][1]
+        # WCRS subscription filter: MessageType = 'A40' AND SourceSystem = '140'
+        self.assertEqual("A40", properties["MessageType"])
+        self.assertEqual("140", properties["SourceSystem"])
+
+    def test_pms_message_from_other_sending_application_is_rejected(self) -> None:
+        message = PMS_A28_MESSAGE.replace("MSH|^~\\&|140|140|", "MSH|^~\\&|999|999|")
+
+        with self.assertRaises(ValidationException):
+            self._reply_to_pms_message(message, sending_app="140")
+
+        self.mock_sender.send_text_message.assert_not_called()
 
 
 if __name__ == "__main__":

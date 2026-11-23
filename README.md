@@ -56,6 +56,7 @@ flowchart LR
     PARIS[Paris]
     CHEMO[Chemocare]
     PIMSSRC[PIMS]
+    PMS[PMS]
     MOSAIQ[Mosaiq]
     WDS[WDS]
   end
@@ -63,7 +64,6 @@ flowchart LR
   subgraph REST_SOAP_Sources["REST / SOAP Source Systems"]
     RISP[RISP]
     LIMS[LIMS]
-    PMS[PMS]
     WPAS[WPAS]
   end
 
@@ -71,12 +71,12 @@ flowchart LR
   PARIS --> S_PARIS["hl7_server (Paris)"]
   CHEMO --> S_CHEMO["hl7_server (Chemo)"]
   PIMSSRC --> S_PIMS["hl7_server (PIMS)"]
+  PMS --> S_PMS["hl7_server (PMS)"]
   MOSAIQ --> S_MOSAIQ["hl7_server (Mosaiq)"]
   WDS --> S_WDS["hl7_server (WDS)"]
 
   RISP --> S_RISP["rest_server (RISP)"]
   LIMS --> S_LIMS["rest_server (LIMS, SOAP/XML)"]
-  PMS --> S_PMS["rest_server (PMS, SOAP/XML)"]
   WPAS --> S_WPAS["rest_server (WPAS)"]
 
   S_PHW --> SB["Service Bus (pre-transform queues)"]
@@ -117,7 +117,7 @@ flowchart LR
 ```
 
 > [!NOTE]
-> `servers/rest_server` is the generalised REST and SOAP/XML ingress service handling all REST and SOAP/XML ingress flows (RISP, LIMS, PMS, WPAS). It has superseded and replaced the legacy `hl7_rest_server` and `hl7_soap_server` services, which have been decommissioned.
+> `servers/rest_server` is the generalised REST and SOAP/XML ingress service handling all REST and SOAP/XML ingress flows (RISP, LIMS, WPAS). It has superseded and replaced the legacy `hl7_rest_server` and `hl7_soap_server` services, which have been decommissioned.
 
 ## Repository Structure
 
@@ -158,7 +158,7 @@ The platform handles HL7 message processing through specialized microservices:
 
 **`servers/rest_server/`**
 
-- Generalised REST/SOAP/XML ingress service, configurable per flow (e.g. `PIPELINE`, `CONTENT_ADAPTER`, `VALIDATOR_TYPE` env vars) to support HL7-over-REST (RISP), SOAP/XML (LIMS, PMS), and XML (WPAS) ingestion.
+- Generalised REST/SOAP/XML ingress service, configurable per flow (e.g. `PIPELINE`, `CONTENT_ADAPTER`, `VALIDATOR_TYPE` env vars) to support HL7-over-REST (RISP), SOAP/XML (LIMS), and XML (WPAS) ingestion.
 - The single replacement consolidating both retired legacy services (`servers/hl7_rest_server` and `servers/hl7_soap_server`).
 
 **`transformers/hl7_phw_transformer/`**
@@ -225,7 +225,7 @@ The system supports the following integration profiles (see `local/docker-compos
 | WDS to MPI | `hl7_server` (MLLP) | — | MPI |
 | RISP to MPI (`hl7-rest`) | `rest_server` (HL7-over-REST) | — | MPI (also fans out to WRRS) |
 | LIMS to MPI | `rest_server` (SOAP/XML) | — | MPI (assigning authority `328` enforced) |
-| PMS to MPI | `rest_server` (SOAP/XML) | — | MPI |
+| PMS to MPI | `hl7_server` (MLLP) | — | MPI |
 | WPAS to PROMS | `rest_server` (XML) | in development (`xml_fhir_proms_transformer`) | PROMS |
 | MPI to Outbound | `hl7_server` (MLLP, from MPI) | — | Subscription-based outbound systems (e.g. Chemo) via `hl7_subscription_sender` |
 
