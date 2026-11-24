@@ -46,7 +46,11 @@ class TestProcessMessage(unittest.TestCase):
 
     def _run(self, body: str, props: dict[bytes, bytes] | None = PROPS) -> bool:
         return application.process_message(
-            _message(body, props), self.db_client, _config(), self.event_logger, self.metric_sender
+            _message(body, props),  # type: ignore[arg-type]
+            self.db_client,
+            _config(),
+            self.event_logger,
+            self.metric_sender,
         )
 
     def test_nhs_id_update_executes_stored_procedure_with_payload(self) -> None:
