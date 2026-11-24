@@ -58,7 +58,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile pms-to-mpi --profile cav-pms-to-wcrs --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile pms-to-mpi --profile cav-pms-to-wcrs --profile cav-pms-to-wrrs --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -89,6 +89,7 @@ python := "python3"
     echo "  - lims-to-mpi    : LIMS SOAP ingress to MPI integration"
     echo "  - pms-to-mpi     : PMS HL7 (MLLP) ingress to MPI integration"
     echo "  - cav-pms-to-wcrs: CAV PMS A40 merges to WCRS database (spUpdateIdentifier)"
+    echo "  - cav-pms-to-wrrs: CAV PMS A40 merges to WRRS database (prQueueIdUpdate)"
     echo "  - paris-to-mpi   : PARIS to MPI integration"
     echo "  - chemo-to-mpi   : Chemo to MPI integration"
     echo "  - pims-to-mpi    : PIMS to MPI integration"

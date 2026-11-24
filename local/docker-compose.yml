@@ -188,6 +188,7 @@ services:
     profiles:
       - pms-to-mpi
       - cav-pms-to-wcrs
+      - cav-pms-to-wrrs
       - everything
     networks:
       integration-hub:
@@ -401,8 +402,6 @@ services:
         condition: service_healthy
     profiles:
       - risp-to-wrrs
-      - lims-to-wrrs
-      - lims-to-trrr
       - everything
     networks:
       integration-hub:
@@ -625,6 +624,34 @@ services:
         aliases:
           - "wcrs-idupd-dbsender"
 
+  # Generic db_sender instance for the CAV PMS -> WRRS identifier update flow (A40 merges).
+  # Subscribes to the topic pms-hl7-server publishes to and calls dbo.prQueueIdUpdate in DRS.
+  pms-wrrs-idupd-ca:
+    container_name: pms-wrrs-idupd-ca
+    build:
+      context: ../senders/db_sender
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        - ca-certs=../ca-certs
+        - shared_libs=../shared_libs
+    env_file:
+      - ./env/senders/pms-wrrs-idupd-ca.env
+      - ./.secrets
+    <<: *default-healthcheck
+    restart: on-failure
+    depends_on:
+      sb-emulator:
+        condition: service_started
+      mock-db-receiver:
+        condition: service_healthy
+    profiles:
+      - cav-pms-to-wrrs
+      - everything
+    networks:
+      integration-hub:
+        aliases:
+          - "pms-wrrs-idupd-ca"
+
   # Dedicated LIMS -> TRRR sender. Mirrors the DEV hl7_lims_trrr_sender container app: a second
   # subscription on the same topic the hl7-soap-server publishes to (local-inthub-lims-hl7-input),
   # delivering a parallel copy of LIMS traffic on to TRRR. Uses the full hl7_sender image (not
@@ -734,6 +761,7 @@ services:
       - lims-to-wrrs
       - lims-to-trrr
       - cav-pms-to-wcrs
+      - cav-pms-to-wrrs
       - everything
     networks:
       integration-hub:
