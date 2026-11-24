@@ -56,7 +56,12 @@ class TestProcessMessage(unittest.TestCase):
         self.event_logger = MagicMock()
 
     def _run(self, body: str, mapping_type: str, props: dict[bytes, bytes] | None = None) -> bool:
-        return application.process_message(_message(body, props), self.sender, _config(mapping_type), self.event_logger)
+        return application.process_message(
+            _message(body, props),  # type: ignore[arg-type]
+            self.sender,
+            _config(mapping_type),
+            self.event_logger,
+        )
 
     def _published(self) -> tuple[dict[str, str], dict[str, str]]:
         self.sender.send_text_message.assert_called_once()
