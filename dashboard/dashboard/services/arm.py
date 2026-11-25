@@ -270,8 +270,8 @@ def resolve_flow_ids(tagged_flow_ids: list[str], workflow_id: str, known_workflo
     (``mpi-to-topic``) only lists the downstream flows it feeds. With no usable tag entries the app belongs to its
     ``WORKFLOW_ID`` flow.
     """
-    known = {wid.lower() for wid in known_workflow_ids}
-    flow_ids = [flow_id for flow_id in tagged_flow_ids if flow_id in known]
+    known = {wid.lower(): wid for wid in known_workflow_ids}
+    flow_ids = [known[flow_id] for flow_id in tagged_flow_ids if flow_id in known]
     ignored = [flow_id for flow_id in tagged_flow_ids if flow_id not in known]
     if ignored:
         log.info("Ignoring %s tag entries with no matching WORKFLOW_ID: %s", FLOW_TAG, ", ".join(ignored))
