@@ -294,7 +294,7 @@ stages:
         # WRRS ID Update Flow from CAV PMS
         - name: 'PMS WRRS IDUPD DB Sender'
           appImageName: 'dbsender'
-          appFunctionMidfix: 'wrrs-idupd'
+          appFunctionMidfix: 'pms-wrrs-idupd'
           containerAppNameSuffix: 'pms-wrrs-idupd'
           buildPipeline: 'Database Sender - Build'
 
