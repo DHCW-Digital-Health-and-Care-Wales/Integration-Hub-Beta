@@ -33,7 +33,7 @@ def _message(body: str, props: dict[bytes, bytes] | None = PROPS) -> SimpleNames
 
 def _config() -> MagicMock:
     config = MagicMock()
-    config.db_stored_procedure = "dbo.spProcessResult"
+    config.db_stored_procedure = "dbo.spProcessIdUpdate"
     config.db_name = "Clinical_Results"
     return config
 
@@ -60,7 +60,7 @@ class TestProcessMessage(unittest.TestCase):
         self.metric_sender.send_metric.assert_called_once()
         attributes = self.metric_sender.send_metric.call_args.kwargs["attributes"]
         self.assertEqual(attributes["request_type"], MAPPING_NHS_ID_UPDATE)
-        self.assertEqual(attributes["stored_procedure"], "dbo.spProcessResult")
+        self.assertEqual(attributes["stored_procedure"], "dbo.spProcessIdUpdate")
 
     def test_merge_executes_same_stored_procedure_with_payload(self) -> None:
         self.assertTrue(self._run(json.dumps(MERGE), MERGE_PROPS))

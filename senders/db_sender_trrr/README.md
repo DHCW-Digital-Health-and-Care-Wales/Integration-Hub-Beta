@@ -18,7 +18,7 @@ and calls the stored procedure.
 
 ### Request types
 
-Both request types call the same procedure, `dbo.spProcessResult`, with positional parameters:
+Both request types call the same procedure, `dbo.spProcessIdUpdate`, with positional parameters:
 
 | Request type | JSON fields (parameter order) | Parameters |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ needed to process the request).
 - `DB_NAME` (default `Clinical_Results`)
 - `DB_USERNAME` (default `TRRR`)
 - `DB_PASSWORD` (default `trrr`)
-- `DB_STORED_PROCEDURE` (default `dbo.spProcessResult`, used for both request types)
+- `DB_STORED_PROCEDURE` (default `dbo.spProcessIdUpdate`, used for both request types)
 - `WORKFLOW_ID`
 - `MICROSERVICE_ID`
 

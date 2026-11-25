@@ -63,7 +63,7 @@ class TestParseTrrrRequest(unittest.TestCase):
             parse_trrr_request(json.dumps(payload))
 
     def test_accepts_blank_unmapped_fields_unchanged(self) -> None:
-        # spProcessResult accepts blank parameters for values the source message did not map.
+        # spProcessIdUpdate accepts blank parameters for values the source message did not map.
         payload = {**MERGE, "OldIdentifierAssigningAuthority": "", "NewIdentifierAssigningAuthority": "  "}
 
         self.assertEqual(parse_trrr_request(json.dumps(payload)), TrrrRequest(MAPPING_MERGE, payload))

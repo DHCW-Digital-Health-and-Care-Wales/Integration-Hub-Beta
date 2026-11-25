@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 
 # TRRR uses one stored procedure for both NHS-ID update and merge requests.
-DEFAULT_STORED_PROCEDURE = "dbo.spProcessResult"
+DEFAULT_STORED_PROCEDURE = "dbo.spProcessIdUpdate"
 
 
 @dataclass

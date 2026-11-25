@@ -4,7 +4,7 @@
 `dbo.prQueueMessage` / `dbo.prQueueIdUpdate` stored procedures, so `senders/db_sender` can be exercised end to end in the
 `risp-to-wrrs` and `lims-to-wrrs` flows without a real WRRS database. It must never be deployed to a production-like environment.
 
-It also hosts a mock TRRR `Clinical_Results` database (procedure `dbo.spProcessResult`, tables
+It also hosts a mock TRRR `Clinical_Results` database (procedure `dbo.spProcessIdUpdate`, tables
 `dbo.TRRRIdentifierUpdate` and `dbo.TRRRIdentifierMerge`) so `senders/db_sender_trrr` can be exercised in the
 `lims-to-trrr` flows. The procedure simply inserts its arguments (no scenarios): a 3-argument NHS-ID update call goes to
 `TRRRIdentifierUpdate` and a 4-argument merge call to `TRRRIdentifierMerge`. Check results with

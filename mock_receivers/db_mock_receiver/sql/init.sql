@@ -206,9 +206,12 @@ BEGIN
 END;
 GO
 
--- Superseded by dbo.spProcessResult; dropped so an existing mock database does not keep stale procedures.
+-- Superseded by dbo.spProcessIdUpdate; dropped so an existing mock database does not keep stale procedures.
+-- dbo.spProcessResult is TRRR's results procedure, not the identifier update one; an earlier version of this
+-- mock created it by mistake.
 DROP PROCEDURE IF EXISTS dbo.TRRRIDUpdate;
 DROP PROCEDURE IF EXISTS dbo.TRRRIDMerge;
+DROP PROCEDURE IF EXISTS dbo.spProcessResult;
 GO
 
 -- TRRR processes both request types through one procedure, called positionally by db_sender_trrr's
@@ -219,7 +222,7 @@ GO
 -- The mock distinguishes them by whether the 4th argument was supplied and writes to the matching table.
 -- Arguments may be blank when the source message did not map them; all are text and are stored exactly as
 -- received (leading zeroes retained).
-CREATE OR ALTER PROCEDURE dbo.spProcessResult
+CREATE OR ALTER PROCEDURE dbo.spProcessIdUpdate
     @Param1 VARCHAR(100),
     @Param2 VARCHAR(100),
     @Param3 VARCHAR(100),

@@ -18,7 +18,7 @@ def _read(extra: dict[str, str] | None = None) -> AppConfig:
 
 
 def test_default_stored_procedure_is_sp_process_result() -> None:
-    assert _read().db_stored_procedure == "dbo.spProcessResult"
+    assert _read().db_stored_procedure == "dbo.spProcessIdUpdate"
 
 
 def test_explicit_stored_procedure_overrides_default() -> None:
@@ -29,4 +29,4 @@ def test_explicit_stored_procedure_overrides_default() -> None:
 
 def test_legacy_mapping_type_variable_is_ignored() -> None:
     # One sender now handles both request types; a leftover TRRR_MAPPING_TYPE must not break start-up.
-    assert _read({"TRRR_MAPPING_TYPE": "BOGUS"}).db_stored_procedure == "dbo.spProcessResult"
+    assert _read({"TRRR_MAPPING_TYPE": "BOGUS"}).db_stored_procedure == "dbo.spProcessIdUpdate"

@@ -61,7 +61,7 @@ def parse_trrr_request(message_body: str) -> TrrrRequest:
     if unexpected:
         raise ValueError(f"Unexpected fields for {request_type}: {', '.join(unexpected)}")
 
-    # Individual parameters may be blank when the source message did not map them; spProcessResult accepts
+    # Individual parameters may be blank when the source message did not map them; spProcessIdUpdate accepts
     # blanks. A request with every parameter blank carries nothing to process, so it is still rejected.
     if not any(payload[name].strip() for name in required):
         raise ValueError(f"All {request_type} fields are blank")

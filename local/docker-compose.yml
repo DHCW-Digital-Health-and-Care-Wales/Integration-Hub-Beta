@@ -417,7 +417,7 @@ services:
   # listens on). The mappers stay separate because an A40 is mapped by both (NHS-ID update and merge).
   # See transformers/lims_trrr_mapper/README.md.
   #
-  # One db_sender_trrr per health board handles both request types via dbo.spProcessResult. The Service Bus
+  # One db_sender_trrr per health board handles both request types via dbo.spProcessIdUpdate. The Service Bus
   # emulator allows only 10 concurrent connections, so the full fan-out (2 mappers x 2 connections + 6 senders
   # + SOAP server = 11) cannot run at once. It is split into smaller profiles:
   #   lims-to-trrr        - smoke test: both mappers + the ABMU sender
@@ -470,7 +470,7 @@ services:
           - "lims-trrr-merge-mapper"
 
   # TRRR database senders, one per health board. Each consumes its own subscription on
-  # local-inthub-lims-trrr-mapped (unfiltered: every request) and executes dbo.spProcessResult for NHS-ID
+  # local-inthub-lims-trrr-mapped (unfiltered: every request) and executes dbo.spProcessIdUpdate for NHS-ID
   # updates and merges, so one board's failure does not block another.
   db_sender_trrr_abmu:
     container_name: db_sender_trrr_abmu
@@ -908,7 +908,7 @@ services:
     ports:
       - "14334:1433"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d master -Q \"SELECT CASE WHEN DB_ID('DRS') IS NOT NULL AND DB_ID('Clinical_Results') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueIdUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.spProcessResult') IS NOT NULL AND DB_ID('NDR') IS NOT NULL AND OBJECT_ID('NDR.dbo.spUpdateIdentifier') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d master -Q \"SELECT CASE WHEN DB_ID('DRS') IS NOT NULL AND DB_ID('Clinical_Results') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueMessage') IS NOT NULL AND OBJECT_ID('DRS.dbo.prQueueIdUpdate') IS NOT NULL AND OBJECT_ID('Clinical_Results.dbo.spProcessIdUpdate') IS NOT NULL AND DB_ID('NDR') IS NOT NULL AND OBJECT_ID('NDR.dbo.spUpdateIdentifier') IS NOT NULL THEN 1 ELSE 0 END\" -h -1 -W | grep -qx '1'"]
       interval: 10s
       timeout: 5s
       retries: 30
