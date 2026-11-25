@@ -17,8 +17,14 @@ parameters:
       - WDS HL7Server
       - WDS To MPI HL7 Sender
       - WDS To PHW HL7 Sender
-      - TRRR Database Sender
-      - TRRR Merge Database Sender
+      - TRRR ABMU Database Sender
+      - TRRR ABHB Database Sender
+      - TRRR BCU Database Sender
+      - TRRR CT Database Sender
+      - TRRR CAV Database Sender
+      - TRRR HD Database Sender
+      - LIMS TRRR NHS ID Mapper
+      - LIMS TRRR Merge Mapper
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -166,6 +172,9 @@ resources:
     - pipeline: 'Database Sender TRRR - Build'
       source: 'Database Sender TRRR - Build'
       trigger: none
+    - pipeline: 'LIMS TRRR Mapper - Build'
+      source: 'LIMS TRRR Mapper - Build'
+      trigger: none
 
 stages:
   # Define applications metadata inline
@@ -298,17 +307,57 @@ stages:
           containerAppNameSuffix: 'pms-wrrs-idupd'
           buildPipeline: 'Database Sender - Build'
 
-        - name: 'TRRR Database Sender'
+        # LIMS -> TRRR board writers: one per health board, each reading its own unfiltered
+        # subscription on the LIMS TRRR mapped topic; container apps uks-<env>-trrr-<hb>-dbsender-ca
+        - name: 'TRRR ABMU Database Sender'
           appImageName: 'dbsendertrrr'
-          appFunctionMidfix: 'lims-trrr'
-          containerAppNameSuffix: 'trrr-dbsender'
+          appFunctionMidfix: 'trrr-abmu'
+          containerAppNameSuffix: 'trrr-abmu-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
 
-        - name: 'TRRR Merge Database Sender'
+        - name: 'TRRR ABHB Database Sender'
           appImageName: 'dbsendertrrr'
-          appFunctionMidfix: 'trrr-merge'
-          containerAppNameSuffix: 'trrr-merge-dbsender'
+          appFunctionMidfix: 'trrr-abhb'
+          containerAppNameSuffix: 'trrr-abhb-dbsender'
           buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR BCU Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-bcu'
+          containerAppNameSuffix: 'trrr-bcu-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR CT Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-ct'
+          containerAppNameSuffix: 'trrr-ct-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR CAV Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-cav'
+          containerAppNameSuffix: 'trrr-cav-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        - name: 'TRRR HD Database Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'trrr-hd'
+          containerAppNameSuffix: 'trrr-hd-dbsender'
+          buildPipeline: 'Database Sender TRRR - Build'
+
+        # LIMS -> TRRR mappers (same image, TRRR_MAPPING_TYPE set per app in Terraform);
+        # container apps uks-<env>-trrr-nhsid-mapper-ca and uks-<env>-trrr-merge-mapper-ca
+        - name: 'LIMS TRRR NHS ID Mapper'
+          appImageName: 'limstrrrmapper'
+          appFunctionMidfix: 'trrr-nhsid'
+          containerAppNameSuffix: 'trrr-nhsid-mapper'
+          buildPipeline: 'LIMS TRRR Mapper - Build'
+
+        - name: 'LIMS TRRR Merge Mapper'
+          appImageName: 'limstrrrmapper'
+          appFunctionMidfix: 'trrr-merge'
+          containerAppNameSuffix: 'trrr-merge-mapper'
+          buildPipeline: 'LIMS TRRR Mapper - Build'
 
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
