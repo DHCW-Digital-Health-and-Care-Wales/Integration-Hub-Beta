@@ -1,248 +1,162 @@
-# Dynamic Flow Discovery — NOC Dashboard
+# Flow Discovery — NOC Dashboard
 
 ## Overview
 
-The NOC dashboard automatically discovers which integration flows are currently
-deployed in Azure, rather than showing a fixed hardcoded list. When a new flow
-is deployed via Terraform, it will appear on the dashboard after the next
-refresh — with no code changes required.
+The NOC dashboard discovers the integration flows deployed in Azure at runtime
+instead of using a hardcoded list. When a flow is deployed via Terraform it
+appears on the dashboard after the next discovery refresh, with no code change.
 
-This is achieved by tagging every Container App with an `integration-hub-flow`
-Azure resource tag, and having the dashboard query the Azure Resource Manager
-(ARM) API to read those tags at runtime.
+Discovery lives in `dashboard/services/arm.py`. It lists every Container App in
+`AZURE_CONTAINER_APPS_RESOURCE_GROUP` through the Container Apps management API
+and reads, per app:
 
----
+- its Service Bus env vars (`WORKFLOW_ID`, `MICROSERVICE_ID`,
+  `INGRESS_/EGRESS_QUEUE_NAME`, `INGRESS_/EGRESS_TOPIC_NAME`, `WRRS_TOPIC_NAME`,
+  `INGRESS_SUBSCRIPTION_NAME`, `RECEIVER_MLLP_HOST/PORT`), which decide the
+  app's role (server, transformer, sender, ...) and the queues/topics it uses;
+- its `integration-hub-flow` resource tag, which decides **which flows the app
+  belongs to**.
 
-## How It Works
-
-```
-Terraform deploys Container Apps
-          │
-          │  tags = merge(local.tags, {
-          │    "integration-hub-flow" = "phw-to-mpi"
-          │  })
-          ▼
-  Azure Container Apps
-  (each tagged with flow ID)
-          │
-          │  ARM API: list_by_resource_group()
-          │  reads app.tags["integration-hub-flow"]
-          ▼
-  dashboard/services/arm.py
-  → returns set of deployed flow IDs
-          │
-          ▼
-  dashboard/services/flows.py  get_active_flows()
-  → filters FLOWS dict to deployed only
-          │
-          ▼
-  Dashboard renders only live flows
-```
-
-### Fallback behaviour
-
-If ARM credentials are not configured (e.g. local development) or the ARM call
-fails for any reason, `get_active_flows()` returns the full `FLOWS` dict so the
-dashboard continues to display all known flows. This means the dashboard
-**degrades gracefully** rather than showing a blank page.
+Only apps with a `WORKFLOW_ID` env var are considered.
 
 ---
 
-## Tag Schema
+## Flow membership
 
-A single tag is applied to every Container App that belongs to an integration flow:
+`WORKFLOW_ID` is the app's **telemetry identity**: `event_logger_lib` and
+`metric_sender_lib` stamp it on every event and metric, and alarm rules and
+pauses are stored against it. A Container App can only have one, but a server
+that publishes to a shared topic feeds several flows. For example, the WDS
+server (`WORKFLOW_ID=wds-to-mpi`) publishes to the WDS input topic, which
+`wds-to-mpi`, `wds-to-wis` and `wds-to-phw` each subscribe to.
 
-| Tag key                 | Example value     | Description                        |
-|-------------------------|-------------------|------------------------------------|
-| `integration-hub-flow`  | `phw-to-mpi`      | Unique slug identifying the flow   |
+The `integration-hub-flow` tag carries **flow membership** as a comma-separated
+list of flow IDs:
 
-### Flow ID reference
+| App                  | `WORKFLOW_ID`  | `integration-hub-flow` tag                           |
+|----------------------|----------------|------------------------------------------------------|
+| WDS HL7 server       | `wds-to-mpi`   | `wds-to-mpi,wds-to-wis,wds-to-phw`                   |
+| WDS → WIS transformer| `wds-to-wis`   | `wds-to-wis`                                         |
+| WDS → PHW sender     | `wds-to-phw`   | `wds-to-phw`                                         |
 
-| Flow ID            | Label            | Source port |
-|--------------------|------------------|-------------|
-| `phw-to-mpi`       | PHW → MPI        | 2575        |
-| `paris-to-mpi`     | Paris → MPI      | 2577        |
-| `chemocare-to-mpi` | ChemoCare → MPI  | 2578        |
-| `pims-to-mpi`      | PIMS → MPI       | 2579        |
-| `wds-to-mpi`       | WDS → MPI        | 2582        |
-| `mpi-outbound`     | MPI Outbound     | —           |
+Rules (`arm.parse_flow_tag`, `arm.resolve_flow_ids`):
+
+1. Entries are trimmed, lower-cased and de-duplicated; entries that are not
+   valid flow IDs are dropped. Tag names are matched case-insensitively.
+2. A listed flow is kept only if some deployed app has that `WORKFLOW_ID`.
+   Telemetry, alarm rules and pauses are all keyed by `WORKFLOW_ID`, so every
+   flow must be one. This also stops a stale tag (such as the old
+   `mpi-outbound` value) from inventing a flow.
+3. A tagged app does not have to list its own `WORKFLOW_ID`. The MPI server's
+   `WORKFLOW_ID` (`mpi-to-topic`) is its telemetry identity, not a flow, so its
+   tag lists only the downstream flows it feeds.
+4. With no tag, or no usable entries, the app belongs to its `WORKFLOW_ID` flow.
+
+An app joins every flow it belongs to. Each flow is then built from its member
+apps only (`arm._build_flow`), so a flow on a shared topic lists only its own
+subscriptions, transformer and sender, and takes its source host/port from the
+shared server.
+
+### Untagged consumers on a shared topic
+
+If a publisher's tag does not list a consumer's flow, that consumer's flow has
+no server. Flows consisting only of subscription senders are then merged into
+the flow that owns the topic (`arm._merge_subscription_sender_flows`), as before
+tagging existed. Tag the publisher to show such a flow on its own.
+
+### Why a tag rather than another env var
+
+- Changing a tag does not create a new Container App revision, so membership can
+  be corrected without restarting the services.
+- Tags come back in the same `list_by_resource_group` call the dashboard already
+  makes, so no extra ARM calls or RBAC are needed.
+
+Azure limits a tag value to 256 characters (roughly 15 flow IDs).
 
 ---
 
-## Terraform Changes
+## Terraform
 
-The tag is applied at the module call site in each flow file under
-`components/app-platform/`.  The change is a one-line merge per flow:
+Tags are set at the module call in each `components/app-platform/flow_*.tf`
+file. Most apps carry their own flow ID:
 
 ```hcl
-# Before
-tags = local.tags
-
-# After
-tags = merge(local.tags, { "integration-hub-flow" = "phw-to-mpi" })
+tags = merge(local.tags, { "integration-hub-flow" = "wds-to-wis" })
 ```
 
-### Files changed
-
-| File                          | Tag value added        |
-|-------------------------------|------------------------|
-| `flow_phw_to_mpi.tf`          | `phw-to-mpi`           |
-| `flow_paris_to_mpi.tf`        | `paris-to-mpi`         |
-| `flow_chemocare_to_mpi.tf`    | `chemocare-to-mpi`     |
-| `flow_pims_to_mpi.tf`         | `pims-to-mpi`          |
-| `flow_mpi_outbound.tf`        | `mpi-outbound`         |
-| `flow_wds_to_mpi.tf`          | `wds-to-mpi`           |
-
-No changes to the container app module (`modules/terraform-azurerm-container-app`)
-were needed — `tags` is already passed through from `var.tags` to the resource.
-
----
-
-## Dashboard Changes
-
-### New file: `dashboard/services/arm.py`
-
-Queries ARM for all Container Apps in the configured resource group and returns
-the set of `integration-hub-flow` tag values found.
-
-Results are **cached for 5 minutes** to avoid querying ARM on every page load.
-Use the `/api/refresh` endpoint (see below) to force an immediate re-query.
-
-```
-Required env vars (already used by the rest of the dashboard):
-  AZURE_TENANT_ID
-  AZURE_CLIENT_ID
-  AZURE_CLIENT_SECRET
-  AZURE_SUBSCRIPTION_ID
-  AZURE_CONTAINER_APPS_RESOURCE_GROUP
-```
-
-### Updated: `dashboard/services/flows.py`
-
-- **`FLOWS` dict** — added `wds-to-mpi` (port 2582, orange `#f97316`).
-- **`get_active_flows(force_refresh=False)`** — new function that calls
-  `arm.get_deployed_flow_ids()` and filters `FLOWS` to only deployed flows.
-- **`build_flow_data(queues, flows=None)`** and **`flow_health(..., flows=None)`**
-  — now accept an explicit `flows` dict so they operate on the active subset.
-
-### Updated: `dashboard/dashboard/config.py`
-
-Two new environment variables for the WDS flow queues:
-
-| Variable        | Default              |
-|-----------------|----------------------|
-| `QUEUE_WDS_PRE` | `pre-wds-transform`  |
-| `QUEUE_WDS_POST`| `post-wds-transform` |
-
-### Updated: `dashboard/dashboard/app.py`
-
-- `_build_status()` and `flows_page()` now call `get_active_flows()` instead
-  of using the static `FLOWS` dict directly.
-- New **`/api/refresh`** endpoint (see below).
-
----
-
-## Adding a New Flow
-
-To add a new integration flow and have it appear on the dashboard automatically:
-
-### Step 1 — Add the tag in Terraform
-
-In the new flow's `.tf` file (e.g. `flow_newflow_to_mpi.tf`), add the tag to
-the module call:
+Shared publishers list every deployed flow that consumes their topic(s),
+including their own `WORKFLOW_ID` only when that is a real flow:
 
 ```hcl
-module "container_apps_newflow_to_mpi" {
-  source   = "../../modules/terraform-azurerm-container-app"
-  for_each = local.container_apps_newflow_to_mpi
+wds_hl7_server_flow_tag = join(",", concat(
+  local.wds_to_mpi_enabled ? ["wds-to-mpi"] : [],
+  local.wds_to_wis_enabled ? ["wds-to-wis"] : [],
+  local.wds_to_phw_enabled ? ["wds-to-phw"] : [],
+))
 
-  tags = merge(local.tags, { "integration-hub-flow" = "newflow-to-mpi" })
-  # ... rest of arguments unchanged
-}
+tags = merge(local.tags, {
+  "integration-hub-flow" = each.key == "wds_hl7_server" ? local.wds_hl7_server_flow_tag : "wds-to-mpi"
+})
 ```
 
-### Step 2 — Add flow metadata to the dashboard
+| Shared publisher | File                   | Flows listed                                              |
+|------------------|------------------------|-----------------------------------------------------------|
+| WDS HL7 server   | `flow_wds_to_mpi.tf`   | `wds-to-mpi`, `wds-to-wis`, `wds-to-phw`                  |
+| LIMS REST server | `flow_lims_to_mpi.tf`  | `lims-to-hub`, `lims-to-trrr`, `lims-to-wrrs`             |
+| PMS HL7 server   | `flow_pms_to_mpi.tf`   | `pms-to-mpi`, `cav-pms-to-wcrs`                           |
+| RISP REST server | `flow_risp_to_mpi.tf`  | `risp-to-mpi`, `risp-to-wrrs` (publishes to two topics)   |
+| MPI HL7 server   | `flow_mpi_outbound.tf` | `sww-to-chemo`, `bcu-to-chemo`, `mpi-to-phw` (not its own `mpi-to-topic`) |
 
-In `dashboard/dashboard/services/flows.py`, add an entry to the `FLOWS` dict:
+Each flow is only listed when it is deployed in that environment.
 
-```python
-"newflow-to-mpi": {
-    "label": "NewFlow → MPI",
-    "source": "NewFlow",
-    "source_port": 2583,                  # the MLLP port
-    "pre_queue":  config.QUEUE_NEWFLOW_PRE,
-    "transformer": "NewFlow Transformer", # or None
-    "post_queue": config.QUEUE_NEWFLOW_POST,
-    "destination": "MPI",
-    "colour": "#your-colour",
-    "icon": "bi-bootstrap-icon-name",
-},
-```
+### Adding a flow that consumes an existing topic
 
-And add the queue env vars to `config.py`:
-
-```python
-QUEUE_NEWFLOW_PRE  = os.getenv("QUEUE_NEWFLOW_PRE",  "pre-newflow-transform")
-QUEUE_NEWFLOW_POST = os.getenv("QUEUE_NEWFLOW_POST", "post-newflow-transform")
-```
-
-### Step 3 — Deploy
-
-Once Terraform is applied and the Container Apps are running with the new tag,
-visit `/api/refresh` on the dashboard to force-refresh the ARM cache and display
-the new flow immediately.
+1. Give the new consumer apps their own `WORKFLOW_ID` and tag them with it.
+2. Add the new flow ID to the publisher's tag list (guarded by the flow's
+   `*_enabled` local).
+3. Optionally add display metadata (label, source, destination, colour, icon) to
+   `_DISPLAY_META` in `dashboard/services/arm.py`; otherwise a label is derived
+   from the flow ID.
 
 ---
 
-## API Endpoints
+## What uses flow membership
 
-### `GET /api/refresh`
-
-Force-refreshes both the ARM flow discovery cache and the status data cache.
-Returns the full status payload plus an `active_flows` list.
-
-```json
-{
-  "refreshed": true,
-  "active_flows": ["phw-to-mpi", "pims-to-mpi", "chemocare-to-mpi"],
-  "system_health": "healthy",
-  "kpis": { ... },
-  "flows": [ ... ],
-  "queues": [ ... ]
-}
-```
-
-Use this after deploying a new flow to see it on the dashboard without waiting
-for the 5-minute ARM cache TTL to expire.
-
-### `GET /api/status?force=true`
-
-Forces a refresh of the status data (queue depths, health) but does **not**
-re-query ARM for flow discovery.
+| Area | Behaviour |
+|------|-----------|
+| Overview / Flows pages | One card per flow, built from its member apps. A shared server's topic backlog counts towards each flow it feeds. |
+| Container Apps metrics | A shared app is listed under every flow it belongs to (`container_apps.get_container_apps_metrics`). |
+| Messages page filter | A shared topic maps to every flow using it (`flows.entity_to_flow_ids`). |
+| Network Testing | Each flow gets its own sender destination, so fan-out destinations are no longer hidden behind the first sender. |
+| Alarm config | Every discovered flow can be selected. Alarm queries still filter on the `workflow_id` written by each app, so a fan-out flow's inbound/outbound/failure alarms come from its own transformer and sender events. Events from a publisher whose `WORKFLOW_ID` is not a flow (the MPI server's `mpi-to-topic`) are not shown on any flow card, but alarms for that ID still work: existing rules stay selectable and new ones can be added by entering the ID. |
 
 ---
 
-## Cache TTLs
+## Fallback behaviour
 
-| Cache                     | TTL        | Override                   |
-|---------------------------|------------|----------------------------|
-| Status data (queues etc.) | 30 seconds | `?force=true` on `/api/status` |
-| ARM flow discovery        | 5 minutes  | `GET /api/refresh`          |
+- **Demo mode** (`DEMO_MODE=true`): synthetic flows from `demo_data.py`.
+- **Container Apps API not configured or unreachable**: static `_FLOW_DEFS` in
+  `dashboard/services/flows.py`, with queue/topic names resolved by suffix
+  against the Service Bus namespace. If discovery fails after a successful
+  run, the last cached result is used.
 
-The ARM TTL is deliberately longer since deployed flows change rarely — only
-when Terraform is applied.
+---
+
+## Refreshing
+
+| Cache                         | TTL        | Override                        |
+|-------------------------------|------------|---------------------------------|
+| Status data (queues etc.)     | 30 seconds | `?force=true` on `/api/status`  |
+| Container App flow discovery  | 5 minutes  | `GET /api/refresh`              |
+
+Flow definitions are built once per process. `GET /api/refresh` re-reads the
+Container Apps and rebuilds the flow definitions, so a tag change shows without
+restarting the dashboard. The response includes an `active_flows` list.
 
 ---
 
 ## Required Azure RBAC
 
-The service principal used by the dashboard (`AZURE_CLIENT_ID`) needs the
-following permission to list Container Apps:
-
-| Role                      | Scope                 |
-|---------------------------|-----------------------|
-| `Reader`                  | Resource group        |
-
-The `Reader` role grants read-only access to list resources and their tags.
-The dashboard already requires this role for existing Container Apps metrics
-functionality (`azure_monitor.py`), so no additional RBAC changes are needed.
+The dashboard identity needs `Reader` on the Container Apps resource group to
+list Container Apps with their env vars and tags. This is the same role already
+needed for Container Apps metrics, so no extra RBAC is required.

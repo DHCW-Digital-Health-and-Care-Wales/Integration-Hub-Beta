@@ -64,12 +64,14 @@ def api_status() -> Response:
 def api_refresh() -> Response:
     """Force-refresh all caches including ARM flow discovery."""
     discover_flows(force=True)
+    # Rebuild the flow definitions too, so flow tag changes (which do not restart any app) show immediately.
+    active_flows = get_active_flows(force_refresh=True)
     # Bust every cache entry
     with cache.cache_lock:
         for entry in cache.cache_data.values():
             entry["ts"] = 0.0
     data = get_cached_status(force=True)
-    return jsonify({"refreshed": True, "active_flows": list(get_active_flows().keys()), **data})
+    return jsonify({"refreshed": True, "active_flows": list(active_flows.keys()), **data})
 
 
 def api_flows() -> Response:

@@ -239,7 +239,7 @@ class TestPageRoutes:
     def test_messages_accepts_subscription_filter(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.routes.pages.entity_to_microservice_ids", return_value=["sub-sender"]),
-            patch("dashboard.routes.pages.entity_to_workflow_id", return_value="mpi-to-topic"),
+            patch("dashboard.routes.pages.entity_to_flow_ids", return_value=["mpi-to-topic"]),
             patch("dashboard.routes.pages.get_flows", return_value={"mpi-to-topic": {"label": "MPI Outbound"}}),
             patch(
                 "dashboard.routes.pages.get_messages_today",
@@ -441,6 +441,19 @@ class TestApiRoutes:
         assert response.status_code == 200
         data = response.get_json()
         assert "flows" in data
+
+    def test_api_refresh_rebuilds_flow_definitions(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.routes.api.discover_flows") as mock_discover,
+            patch("dashboard.routes.api.get_active_flows", return_value={"wds-to-phw": {}}) as mock_active,
+            patch("dashboard.routes.api.get_cached_status", return_value={}),
+        ):
+            response = client.get("/api/refresh")
+
+        assert response.status_code == 200
+        mock_discover.assert_called_once_with(force=True)
+        mock_active.assert_called_once_with(force_refresh=True)
+        assert response.get_json()["active_flows"] == ["wds-to-phw"]
 
     def test_api_messages_returns_json(self, client: FlaskClient) -> None:
         with patch("dashboard.routes.api.get_messages_today", return_value=EMPTY_MESSAGES):

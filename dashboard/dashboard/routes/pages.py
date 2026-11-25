@@ -22,7 +22,7 @@ from dashboard.services.alarm3 import get_alarm3_status, load_alarm3_config
 from dashboard.services.arm import entity_to_microservice_ids
 from dashboard.services.azure_monitor import get_exceptions, get_messages_today, get_throughput_filter_options
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, entity_to_workflow_id, get_flows
+from dashboard.services.flows import build_flow_data, entity_to_flow_ids, get_flows
 from dashboard.services.service_bus import get_namespace_snapshot
 from dashboard.services.status_builder import build_alarm_map, get_cached_status
 from dashboard.services.traces import get_trace
@@ -161,10 +161,10 @@ def messages_page() -> str:
         microservice_ids = entity_to_microservice_ids(entity_type, entity_name)
         if not microservice_ids:
             microservice_ids = ["__no_match__"]
-        workflow_id = entity_to_workflow_id(entity_type, entity_name)
-        if workflow_id:
+        flow_ids = entity_to_flow_ids(entity_type, entity_name)
+        if flow_ids:
             flows = get_flows()
-            flow_label = flows.get(workflow_id, {}).get("label", workflow_id)
+            flow_label = ", ".join(flows.get(fid, {}).get("label", fid) for fid in flow_ids)
 
     # Vary the cache key by entity filter: the builder's result depends on
     # microservice_ids, so a fixed "messages" key would serve one filter's
