@@ -10,15 +10,23 @@ describe how it connects to Azure Service Bus:
 - ``INGRESS_SUBSCRIPTION_NAME`` — topic subscription (subscription senders)
 
 This module queries the Container Apps Management API, reads those env vars
-from every deployed app, groups apps by ``WORKFLOW_ID``, and constructs a
-complete set of flow definitions — replacing the need for hardcoded queue
-suffix patterns.
+from every deployed app, groups apps into flows, and constructs a complete set
+of flow definitions — replacing the need for hardcoded queue suffix patterns.
+
+Flow membership comes from the ``integration-hub-flow`` Container App tag (a
+comma-separated list of flow IDs, each of which must be some deployed app's
+``WORKFLOW_ID``), otherwise from the app's own ``WORKFLOW_ID``. A shared
+publisher (e.g. the WDS server feeding the WDS→MPI, WDS→WIS and WDS→PHW
+subscriptions) lists every flow it feeds, so it appears in each of them.
+``WORKFLOW_ID`` remains the telemetry identity used by alarms.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 import time
+from collections.abc import Mapping
 from threading import Lock
 
 from azure.mgmt.appcontainers import ContainerAppsAPIClient
@@ -38,6 +46,7 @@ _FLOW_ENV_VARS = frozenset(
         "MICROSERVICE_ID",
         "EGRESS_QUEUE_NAME",
         "EGRESS_TOPIC_NAME",
+        "WRRS_TOPIC_NAME",
         "INGRESS_QUEUE_NAME",
         "INGRESS_TOPIC_NAME",
         "INGRESS_SUBSCRIPTION_NAME",
@@ -47,6 +56,17 @@ _FLOW_ENV_VARS = frozenset(
         "RECEIVER_MLLP_PORT",
     }
 )
+
+# Env vars naming topics an app publishes to. The RISP REST server publishes
+# WRRS-bound messages to a second topic alongside its EGRESS_TOPIC_NAME.
+_EGRESS_TOPIC_ENV_VARS = ("EGRESS_TOPIC_NAME", "WRRS_TOPIC_NAME")
+
+# Container App tag holding a comma-separated list of the flow IDs an app
+# belongs to. Azure tag names are case-insensitive.
+FLOW_TAG = "integration-hub-flow"
+
+# Same shape as the flow IDs accepted by the alarm config and pause routes.
+_FLOW_ID_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,119}")
 
 # ---------------------------------------------------------------------------
 # Display metadata for known flows
@@ -97,9 +117,23 @@ _DISPLAY_META: dict[str, dict] = {
     "lims-to-hub": {
         "label": "LIMS → Hub",
         "source": "LIMS",
-        "destination": "MPI / TRRR / WRRS",
+        "destination": "MPI / TRRR",
         "colour": "#14b8a6",
         "icon": "bi-hospital",
+    },
+    "lims-to-trrr": {
+        "label": "LIMS → TRRR",
+        "source": "LIMS",
+        "destination": "TRRR",
+        "colour": "#0d9488",
+        "icon": "bi-database",
+    },
+    "lims-to-wrrs": {
+        "label": "LIMS → WRRS",
+        "source": "LIMS",
+        "destination": "WRRS",
+        "colour": "#2dd4bf",
+        "icon": "bi-database",
     },
     "wds-to-mpi": {
         "label": "WDS → MPI",
@@ -116,12 +150,69 @@ _DISPLAY_META: dict[str, dict] = {
         "icon": "bi-send",
         "transformer": "WDS Transformer",
     },
+    "wds-to-phw": {
+        "label": "WDS → PHW",
+        "source": "WDS",
+        "destination": "PHW",
+        "colour": "#fb923c",
+        "icon": "bi-heart-pulse",
+    },
+    "risp-to-mpi": {
+        "label": "RISP → MPI",
+        "source": "RISP",
+        "destination": "MPI",
+        "colour": "#6366f1",
+        "icon": "bi-clipboard2-data",
+        "transformer": "Core Reference Transformer",
+    },
+    "risp-to-wrrs": {
+        "label": "RISP → WRRS",
+        "source": "RISP",
+        "destination": "WRRS",
+        "colour": "#818cf8",
+        "icon": "bi-database",
+    },
+    "pms-to-mpi": {
+        "label": "PMS → MPI",
+        "source": "PMS",
+        "destination": "MPI",
+        "colour": "#84cc16",
+        "icon": "bi-hospital",
+    },
+    "cav-pms-to-wcrs": {
+        "label": "CAV PMS → WCRS",
+        "source": "PMS",
+        "destination": "WCRS",
+        "colour": "#65a30d",
+        "icon": "bi-database",
+    },
     "mpi-to-topic": {
         "label": "MPI Outbound",
         "source": "MPI",
         "destination": "Downstream Systems",
         "colour": "#f59e0b",
         "icon": "bi-broadcast",
+    },
+    "sww-to-chemo": {
+        "label": "MPI → SWW ChemoCare",
+        "source": "MPI",
+        "destination": "SWW ChemoCare",
+        "colour": "#eab308",
+        "icon": "bi-capsule",
+    },
+    "bcu-to-chemo": {
+        "label": "MPI → BCU ChemoCare",
+        "source": "MPI",
+        "destination": "BCU ChemoCare",
+        "colour": "#ca8a04",
+        "icon": "bi-capsule",
+    },
+    "mpi-to-phw": {
+        "label": "MPI → PHW",
+        "source": "MPI",
+        "destination": "PHW",
+        "colour": "#d97706",
+        "icon": "bi-heart-pulse",
     },
 }
 
@@ -152,11 +243,61 @@ def _is_configured() -> bool:
     )
 
 
+def _get_tag(tags: Mapping[str, str] | None, name: str) -> str | None:
+    """Return a tag value by case-insensitive name (Azure tag names are case-insensitive)."""
+    for key, value in (tags or {}).items():
+        if key.lower() == name.lower():
+            return value
+    return None
+
+
+def parse_flow_tag(tag_value: str | None) -> list[str]:
+    """Parse a comma-separated flow tag: entries are trimmed, lower-cased and de-duplicated; invalid IDs are dropped."""
+    flow_ids: list[str] = []
+    for raw in (tag_value or "").split(","):
+        flow_id = raw.strip().lower()
+        if _FLOW_ID_RE.fullmatch(flow_id) and flow_id not in flow_ids:
+            flow_ids.append(flow_id)
+    return flow_ids
+
+
+def resolve_flow_ids(tagged_flow_ids: list[str], workflow_id: str, known_workflow_ids: set[str]) -> list[str]:
+    """Return the flows an app belongs to.
+
+    Tagged flow IDs are kept only if some deployed app has that ``WORKFLOW_ID``. Alarm rules, pauses and telemetry are
+    keyed by ``WORKFLOW_ID``, so every flow must be one; this also stops a stale tag (for example the old
+    ``mpi-outbound`` value) from inventing a flow. A tagged app need not list its own ``WORKFLOW_ID``: the MPI server
+    (``mpi-to-topic``) only lists the downstream flows it feeds. With no usable tag entries the app belongs to its
+    ``WORKFLOW_ID`` flow.
+    """
+    known = {wid.lower(): wid for wid in known_workflow_ids}
+    flow_ids = [known[flow_id] for flow_id in tagged_flow_ids if flow_id in known]
+    ignored = [flow_id for flow_id in tagged_flow_ids if flow_id not in known]
+    if ignored:
+        log.info("Ignoring %s tag entries with no matching WORKFLOW_ID: %s", FLOW_TAG, ", ".join(ignored))
+    return flow_ids or [workflow_id]
+
+
+def app_flow_ids(app: Mapping) -> list[str]:
+    """Return the flow IDs a discovered app belongs to (falls back to its ``WORKFLOW_ID``)."""
+    flow_ids = app.get("flow_ids")
+    if flow_ids:
+        return list(flow_ids)
+    workflow_id = (app.get("env") or {}).get("WORKFLOW_ID")
+    return [workflow_id] if workflow_id else []
+
+
+def _egress_topics(env: Mapping[str, str]) -> list[str]:
+    """Return every topic an app publishes to, in ``_EGRESS_TOPIC_ENV_VARS`` order."""
+    return [topic for name in _EGRESS_TOPIC_ENV_VARS if (topic := env.get(name))]
+
+
 def _list_container_apps() -> list[dict]:
     """Query all Container Apps and extract flow-relevant env vars.
 
     Returns a list of dicts, one per app, with keys:
-    ``name``, ``env`` (dict of flow env vars), ``target_port``.
+    ``name``, ``env`` (dict of flow env vars), ``target_port``, ``fqdn`` and
+    ``flow_tag`` (parsed flow IDs from the flow tag, see :func:`parse_flow_tag`).
     Only apps that have a ``WORKFLOW_ID`` env var are included.
     """
     cred = get_azure_credential()
@@ -191,6 +332,7 @@ def _list_container_apps() -> list[dict]:
                     "env": env_vars,
                     "target_port": target_port,
                     "fqdn": fqdn,
+                    "flow_tag": parse_flow_tag(_get_tag(app.tags, FLOW_TAG)),
                 }
             )
 
@@ -236,7 +378,7 @@ def _classify_app(env: dict[str, str]) -> str:
 
 
 def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
-    """Build a single flow definition from a group of apps sharing a WORKFLOW_ID."""
+    """Build a single flow definition from the apps that belong to flow ``workflow_id``."""
     servers: list[dict] = []
     transformers: list[dict] = []
     subscription_transformers: list[dict] = []
@@ -258,7 +400,6 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
 
     source_port: int | None = servers[0]["target_port"] if servers else None
     source_host: str | None = servers[0].get("fqdn") if servers else None
-    topic: str | None = None
     pre_queue: str | None = None
     post_queue: str | None = None
     transformer_name: str | None = None
@@ -275,23 +416,16 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
             break
 
     # --- Topic-based flow (e.g. MPI Outbound) ---
-    for srv in servers:
-        t = srv["env"].get("EGRESS_TOPIC_NAME")
-        if t:
-            topic = t
-            break
+    # Prefer a topic this flow's servers publish to *and* its consumers read, so a
+    # server shared by several flows over different topics (RISP publishes to an
+    # MPI topic and a WRRS topic) is shown against the topic this flow uses.
+    server_topics = [t for srv in servers for t in _egress_topics(srv["env"])]
+    consumer_topics = [
+        t for app in subscription_senders + subscription_transformers if (t := app["env"].get("INGRESS_TOPIC_NAME"))
+    ]
+    topic = next((t for t in server_topics if t in consumer_topics), None)
     if not topic:
-        for ss in subscription_senders:
-            t = ss["env"].get("INGRESS_TOPIC_NAME")
-            if t:
-                topic = t
-                break
-    if not topic:
-        for st in subscription_transformers:
-            t = st["env"].get("INGRESS_TOPIC_NAME")
-            if t:
-                topic = t
-                break
+        topic = next(iter(server_topics + consumer_topics), None)
 
     # --- Queue-based flow ---
     # Capture the server's egress queue (used when no transformer in the group)
@@ -402,6 +536,10 @@ def _merge_subscription_sender_flows(flows: dict[str, dict]) -> None:
     that publishes to the same topic (e.g. ``bcu-to-chemo`` reads from the MPI
     topic owned by ``mpi-to-topic``).  These should not appear as separate flows
     since the dashboard already lists all subscriptions under the topic flow.
+
+    This only applies when the publisher's ``integration-hub-flow`` tag does not
+    list the consumer's flow; a tagged publisher joins that flow, giving it a
+    ``source_port`` so it is kept as a flow in its own right.
     """
     # Map topic → flow_id for flows that have a server (i.e. source_port set)
     topic_owners: dict[str, str] = {}
@@ -459,8 +597,8 @@ def discover_flows(force: bool = False) -> dict[str, dict]:
     """Discover flow definitions from Container App environment variables.
 
     Queries all Container Apps in the configured resource group, reads their
-    env vars, groups them by ``WORKFLOW_ID``, and builds a flow definition
-    for each group.
+    env vars and flow tag, groups them by flow ID (an app shared by several
+    flows joins each of them), and builds a flow definition for each group.
 
     Results are cached for 5 minutes.  Pass ``force=True`` to bypass cache.
     Returns an empty dict if the Container Apps API is unreachable or not
@@ -481,11 +619,15 @@ def discover_flows(force: bool = False) -> dict[str, dict]:
             apps = _list_container_apps()
             log.info("Discovered %d Container App(s) with WORKFLOW_ID", len(apps))
 
-            # Group apps by WORKFLOW_ID
+            # Resolve flow membership, then group by flow ID; a shared app is listed under every flow it belongs to.
+            known_workflow_ids = {app["env"]["WORKFLOW_ID"] for app in apps}
             groups: dict[str, list[dict]] = {}
             for app in apps:
-                wf_id = app["env"]["WORKFLOW_ID"]
-                groups.setdefault(wf_id, []).append(app)
+                app["flow_ids"] = resolve_flow_ids(
+                    app.get("flow_tag") or [], app["env"]["WORKFLOW_ID"], known_workflow_ids
+                )
+                for flow_id in app["flow_ids"]:
+                    groups.setdefault(flow_id, []).append(app)
 
             flows: dict[str, dict] = {}
             for wf_id, group in groups.items():
@@ -554,14 +696,14 @@ def entity_to_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
         ingress = (env.get("INGRESS_QUEUE_NAME") or "").lower()
         egress = (env.get("EGRESS_QUEUE_NAME") or "").lower()
         ingress_topic = (env.get("INGRESS_TOPIC_NAME") or "").lower()
-        egress_topic = (env.get("EGRESS_TOPIC_NAME") or "").lower()
+        egress_topics = [t.lower() for t in _egress_topics(env)]
         ingress_subscription = (env.get("INGRESS_SUBSCRIPTION_NAME") or "").lower()
 
         matches = False
         if entity_type_lower == "queue":
             matches = lower in (ingress, egress)
         elif entity_type_lower == "topic":
-            matches = lower in (ingress_topic, egress_topic)
+            matches = lower == ingress_topic or lower in egress_topics
         elif entity_type_lower == "subscription":
             matches = ingress_topic == topic_name_lower and ingress_subscription == subscription_name_lower
 
@@ -601,6 +743,7 @@ def get_subscription_consumers_by_topic() -> dict[str, list[dict]]:
                     "microservice_id": env.get("MICROSERVICE_ID") or app["name"],
                     "sender_type": _classify_app(env),
                     "workflow_id": workflow_id,
+                    "flow_ids": app_flow_ids(app),
                 }
             ],
         }

@@ -491,37 +491,45 @@ def build_flow_options(flows: dict[str, dict], alarm_rules: list[dict]) -> list[
 
 
 def queue_to_workflow_id(queue_name: str) -> str | None:
-    """Map a queue name back to the workflow_id (flow ID) that owns it.
+    """Map a queue name back to the first workflow_id (flow ID) that uses it.
 
     Searches the active flow definitions for a flow whose ``pre_queue``
     or ``post_queue`` matches *queue_name* (case-insensitive).
     Returns ``None`` if no match is found.
     """
-    return entity_to_workflow_id("queue", queue_name)
+    return next(iter(entity_to_flow_ids("queue", queue_name)), None)
 
 
-def entity_to_workflow_id(entity_type: str, entity_name: str) -> str | None:
-    """Map a queue, topic, or topic subscription back to its owning workflow."""
+def entity_to_flow_ids(entity_type: str, entity_name: str) -> list[str]:
+    """Map a queue, topic, or topic subscription to every flow that uses it.
+
+    A topic published by a shared server (e.g. the WDS input topic) belongs to
+    each flow that server feeds, so several flow IDs can match.
+    """
     flows = get_flows()
     lower = entity_name.lower()
     entity_type_lower = entity_type.lower()
+    topic_name, _, subscription_name = entity_name.partition("/")
+    matches: list[str] = []
     for flow_id, flow in flows.items():
         pre = (flow.get("pre_queue") or "").lower()
         post = (flow.get("post_queue") or "").lower()
         topic = (flow.get("topic") or "").lower()
 
-        if entity_type_lower == "queue" and lower in (pre, post):
-            return flow_id
-        if entity_type_lower == "topic" and topic == lower:
-            return flow_id
-        if entity_type_lower == "subscription" and "/" in entity_name:
-            topic_name, subscription_name = entity_name.split("/", maxsplit=1)
-            if topic != topic_name.lower():
-                continue
-            for sub in flow.get("subscriptions", []):
-                if (sub.get("name") or "").lower() == subscription_name.lower():
-                    return flow_id
-    return None
+        matched = False
+        if entity_type_lower == "queue":
+            matched = lower in (pre, post)
+        elif entity_type_lower == "topic":
+            matched = topic == lower
+        elif entity_type_lower == "subscription" and subscription_name:
+            matched = any(
+                (sub.get("topic") or topic).lower() == topic_name.lower()
+                and (sub.get("name") or "").lower() == subscription_name.lower()
+                for sub in flow.get("subscriptions", [])
+            )
+        if matched:
+            matches.append(flow_id)
+    return matches
 
 
 def build_flow_data(

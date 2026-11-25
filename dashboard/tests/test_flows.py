@@ -12,6 +12,7 @@ from dashboard.services.flows import (
     _FLOW_DEFS,
     _merge_subscription_records,
     build_flow_data,
+    entity_to_flow_ids,
     flow_health,
     overall_health,
     queue_health,
@@ -584,3 +585,27 @@ class TestMergeSubscriptionRecords:
         merged = _merge_subscription_records(self.TOPIC, [], [], service_bus_subscriptions)
 
         assert merged == []
+
+
+class TestEntityToFlowIds:
+    SHARED_TOPIC_FLOWS: dict[str, dict[str, Any]] = {
+        "wds-to-mpi": {
+            "topic": "sbt-wds-hl7-input",
+            "subscriptions": [{"name": "sbs-wds-mpi-sender", "topic": "sbt-wds-hl7-input"}],
+        },
+        "wds-to-wis": {
+            "topic": "sbt-wds-hl7-input",
+            "post_queue": "sbq-wis-soap-sender",
+            "subscriptions": [{"name": "sbs-wds-wis-transformer", "topic": "sbt-wds-hl7-input"}],
+        },
+    }
+
+    def test_shared_topic_maps_to_every_flow(self) -> None:
+        with patch("dashboard.services.flows.get_flows", return_value=self.SHARED_TOPIC_FLOWS):
+            assert entity_to_flow_ids("topic", "SBT-WDS-HL7-INPUT") == ["wds-to-mpi", "wds-to-wis"]
+
+    def test_subscription_and_queue_map_to_their_own_flow(self) -> None:
+        with patch("dashboard.services.flows.get_flows", return_value=self.SHARED_TOPIC_FLOWS):
+            assert entity_to_flow_ids("subscription", "sbt-wds-hl7-input/sbs-wds-wis-transformer") == ["wds-to-wis"]
+            assert entity_to_flow_ids("queue", "sbq-wis-soap-sender") == ["wds-to-wis"]
+            assert entity_to_flow_ids("subscription", "sbt-wds-hl7-input") == []

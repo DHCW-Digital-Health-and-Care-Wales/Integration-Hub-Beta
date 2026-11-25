@@ -3,8 +3,9 @@ Azure Container Apps metrics — thin wrapper around azure_monitor.get_container
 Provides grouping by integration flow.
 
 When Container App discovery is active, the app-to-flow mapping is derived
-from the discovered WORKFLOW_ID env vars.  Otherwise falls back to a
-keyword-based mapping.
+from the discovered flow membership (``integration-hub-flow`` tag, falling back
+to ``WORKFLOW_ID``); an app shared by several flows is listed under each.
+Otherwise falls back to a keyword-based mapping.
 """
 
 from __future__ import annotations
@@ -29,12 +30,12 @@ _FALLBACK_APP_FLOW_MAP: dict[str, str] = {
 }
 
 
-def _build_app_flow_map() -> dict[str, str]:
-    """Build a Container-App-name → flow_id mapping from discovered flows.
+def _build_app_flow_map() -> dict[str, list[str]]:
+    """Build a Container-App-name → flow IDs mapping from discovered flows.
 
-    Container App discovery stores the app names that belong to each flow.
-    If discovery was used, we can build an exact mapping.  If not, we
-    return an empty dict and the caller falls back to keyword matching.
+    Container App discovery stores the flow IDs each app belongs to.  If
+    discovery was used, we can build an exact mapping.  If not, we return an
+    empty dict and the caller falls back to keyword matching.
     """
     try:
         flows = arm.discover_flows()
@@ -47,19 +48,24 @@ def _build_app_flow_map() -> dict[str, str]:
             if flow.get("topic") and flow.get("source_port")
         }
 
-        app_flow_map: dict[str, str] = {}
+        app_flow_map: dict[str, list[str]] = {}
         for app in arm._cached_apps:
             name = app.get("name")
-            env = app.get("env", {})
-            workflow_id = env.get("WORKFLOW_ID")
-            if not name or not workflow_id:
+            if not name:
                 continue
+            env = app.get("env", {})
+            topic_name = env.get("INGRESS_TOPIC_NAME") or env.get("EGRESS_TOPIC_NAME")
 
-            if workflow_id not in flows:
-                topic_name = env.get("INGRESS_TOPIC_NAME") or env.get("EGRESS_TOPIC_NAME")
-                workflow_id = topic_owner_flow_map.get(topic_name, workflow_id)
-
-            app_flow_map[name] = workflow_id
+            flow_ids: list[str] = []
+            for discovered_id in arm.app_flow_ids(app):
+                # Flows merged into their topic owner no longer exist on their own.
+                flow_id = (
+                    discovered_id if discovered_id in flows else topic_owner_flow_map.get(topic_name, discovered_id)
+                )
+                if flow_id not in flow_ids:
+                    flow_ids.append(flow_id)
+            if flow_ids:
+                app_flow_map[name] = flow_ids
 
         return app_flow_map
     except Exception:
@@ -78,6 +84,7 @@ def _infer_flow(app_name: str) -> str | None:
 def get_container_apps_metrics() -> dict[str, list[dict]]:
     """
     Return a dict keyed by flow_id → list of container app metric dicts.
+    An app shared by several flows appears under each of them.
     Apps that cannot be mapped to a flow are placed under 'other'.
     """
     raw = get_container_app_metrics()
@@ -86,10 +93,14 @@ def get_container_apps_metrics() -> dict[str, list[dict]]:
     app_flow_map = _build_app_flow_map()
 
     for app in raw:
-        flow_id = app_flow_map.get(app["name"]) or _infer_flow(app["name"])
-        if flow_id and flow_id in grouped:
-            grouped[flow_id].append(app)
-        else:
+        mapped = app_flow_map.get(app["name"])
+        if not mapped:
+            inferred = _infer_flow(app["name"])
+            mapped = [inferred] if inferred else []
+        flow_ids = [fid for fid in mapped if fid in grouped]
+        if not flow_ids:
             grouped["other"].append(app)
+        for flow_id in flow_ids:
+            grouped[flow_id].append(app)
 
     return grouped
