@@ -186,7 +186,6 @@ stages:
             appDisplayName: 'TRRR Database Sender'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
-            usePytest: true
 
   - ${{ if containsValue(parameters.buildApps, 'limstrrrmapper') }}:
     - stage: CodeQuality_limstrrrmapper
@@ -198,7 +197,6 @@ stages:
             appDisplayName: 'LIMS TRRR Mapper'
             pythonVersion: '3.13'
             poolName: ${{ variables.POOL_NAME }}
-            usePytest: true
 
   - ${{ if containsValue(parameters.buildApps, 'promsfhirtransformer') }}:
     - stage: CodeQuality_promsfhirtransformer

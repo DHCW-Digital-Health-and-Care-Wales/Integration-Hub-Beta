@@ -44,7 +44,6 @@ stages:
           appDisplayName: 'LIMS TRRR Mapper'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
-          usePytest: true
 
   - stage: BuildAndPushLimsTrrrMapper
     displayName: 'Build and Push LIMS TRRR Mapper'

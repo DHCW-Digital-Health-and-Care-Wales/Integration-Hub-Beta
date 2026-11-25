@@ -81,8 +81,7 @@ Only the MSH segment is logged. The NHS number and other PID data are never logg
 
 ```bash
 uv sync
-bash check.sh                                   # ruff, bandit, mypy, pytest
-uv run python -m unittest discover tests        # unittest runner also works
+bash check.sh                                   # ruff, bandit, mypy, unittest
 ```
 
 In the local stack, the mappers run as `lims-trrr-nhsid-mapper` and `lims-trrr-merge-mapper` in the `lims-to-trrr` Compose profile
