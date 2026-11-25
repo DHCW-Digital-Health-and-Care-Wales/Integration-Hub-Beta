@@ -31,6 +31,7 @@ parameters:
       - RISP Core Reference Transformer
       - WRRS IDUPD DB Sender
       - WCRS IDUPD DB Sender
+      - PMS WRRS IDUPD DB Sender
       - PROMS FHIR Transformer
       - PROMS FHIR Sender
       - HL7 Sender
@@ -288,6 +289,13 @@ stages:
         - name: 'WCRS IDUPD DB Sender'
           appImageName: 'dbsender'
           appFunctionMidfix: 'wcrs-idupd'
+          buildPipeline: 'Database Sender - Build'
+
+        # WRRS ID Update Flow from CAV PMS
+        - name: 'PMS WRRS IDUPD DB Sender'
+          appImageName: 'dbsender'
+          appFunctionMidfix: 'pms-wrrs-idupd'
+          containerAppNameSuffix: 'pms-wrrs-idupd'
           buildPipeline: 'Database Sender - Build'
 
         - name: 'TRRR Database Sender'
