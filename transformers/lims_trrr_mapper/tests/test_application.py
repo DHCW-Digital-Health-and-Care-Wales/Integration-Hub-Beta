@@ -28,6 +28,12 @@ A40_WITHOUT_MRG = (
     "MSH|^~\\&|WLIMS|WLIMS|TRRR|TRRR|20250101010101||ADT^A40^ADT_A39|MSG3|P|2.5\r"
     "PID|1||LIMS-77^^^WLIMS^PI~9876543210^^^NHS^NH||Doe^John\r"
 )
+CAV_PMS_A40 = (
+    "MSH|^~\\&|140|140|TRRR|TRRR|20260729095037||ADT^A40^ADT_A39|CAV-MSG-1|P|2.5\r"
+    "EVN|A40|20260729095037\r"
+    "PID|1||U363137^^^140^PI~7025040525^^^NHS^NH||Testpatient^Merge||20010909|M\r"
+    "MRG|U692047^^^140^PI\r"
+)
 
 # Service Bus delivers application property keys/values as bytes; mirror that here.
 INCOMING_PROPS = {
@@ -40,7 +46,9 @@ INCOMING_PROPS = {
 
 
 def _message(body: str, props: dict[bytes, bytes] | None = None) -> SimpleNamespace:
-    return SimpleNamespace(body=[body.encode("utf-8")], application_properties=props, raw_amqp_message=None)
+    return SimpleNamespace(
+        body=[body.encode("utf-8")], application_properties=props, raw_amqp_message=None, message_id="source-msg-id"
+    )
 
 
 def _config(mapping_type: str) -> MagicMock:
@@ -110,6 +118,31 @@ class TestProcessMessage(unittest.TestCase):
             },
         )
         self.assertNotIn("TrrrRequestType", props)
+
+    def test_cav_pms_a40_merge_publishes_request_with_source_message_id_and_correlation(self) -> None:
+        cav_props = {
+            b"CorrelationId": b"corr-cav",
+            b"WorkflowID": b"cav-pms-to-trrr",
+            b"SourceSystem": b"140",
+            b"MessageType": b"A40",
+        }
+
+        self.assertTrue(self._run(CAV_PMS_A40, MAPPING_MERGE, cav_props))
+
+        payload, props = self._published()
+        # Leading characters/zeroes in identifiers are preserved and no LIMSIdentifier is produced.
+        self.assertEqual(
+            payload,
+            {
+                "OldIdentifier": "U692047",
+                "OldIdentifierAssigningAuthority": "140",
+                "NewIdentifier": "U363137",
+                "NewIdentifierAssigningAuthority": "140",
+            },
+        )
+        self.assertEqual(props["CorrelationId"], "corr-cav")
+        self.assertEqual(props["SourceSystem"], "140")
+        self.assertEqual(self.sender.send_text_message.call_args.kwargs["message_id"], "source-msg-id")
 
     def test_nhs_id_update_dead_letters_a40_without_nhs_identifier_without_publishing(self) -> None:
         with self.assertRaises(DeadLetterMessage) as ctx:

@@ -102,7 +102,12 @@ def process_message(
     egress_props = build_egress_properties(incoming_props, msh_info.control_id, msh_info.message_type)
 
     try:
-        sender_client.send_text_message(json.dumps(request), custom_properties=egress_props)
+        # Reuse the source MessageId so the published request is traceable to the originating HL7 message.
+        sender_client.send_text_message(
+            json.dumps(request),
+            custom_properties=egress_props,
+            message_id=message.message_id,
+        )
     except Exception:
         # Publishing is the only side effect, so abandoning and retrying is safe.
         logger.exception(

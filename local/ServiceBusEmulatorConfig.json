@@ -322,6 +322,40 @@
                     }
                   }
                 ]
+              },
+              {
+                "Name": "local-inthub-pms-trrr-merge-mapper-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                },
+                "Rules": [
+                  {
+                    "Name": "pms-trrr-merge-mapper-filter",
+                    "Properties": {
+                      "FilterType": "Sql",
+                      "SqlFilter": {
+                        "SqlExpression": "user.MessageType = 'A40' AND user.SourceSystem = '140'"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-cav-trrr-id-update",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-cav-trrr-id-update-db-writer-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
               }
             ]
           },

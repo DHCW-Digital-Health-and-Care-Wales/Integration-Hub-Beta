@@ -148,8 +148,12 @@ class DatabaseClient:
         return self._connection
 
     def close(self) -> None:
-        """Close and discard the underlying connection if active."""
+        """Roll back an active transaction and close/discard the connection."""
         if self._connection is not None:
+            try:
+                self._connection.rollback()
+            except Exception:
+                logger.debug("Error while rolling back transaction (ignored)", exc_info=True)
             try:
                 self._connection.close()
             except Exception:
