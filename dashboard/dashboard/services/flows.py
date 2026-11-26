@@ -170,6 +170,7 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
                 "transformer": defn["transformer"],
                 "post_queue": post_queue,
                 "topic": topic_name,
+                "post_topic": None,
                 "subscriptions": subscriptions,
                 "destination": defn["destination"],
                 "colour": defn["colour"],
@@ -201,6 +202,29 @@ def _resolve_flows_from_suffix(queue_names: list[str], topic_names: list[str]) -
     return flows
 
 
+def _group_subscriptions_by_topic(
+    subscriptions: list[dict],
+    default_topic: str | None,
+    post_topic: str | None = None,
+) -> list[tuple[str, list[dict]]]:
+    """Group a flow's subscriptions by topic, keeping input topic before post_topic."""
+    grouped: dict[str, list[dict]] = {}
+    for sub in subscriptions:
+        sub_topic = sub.get("topic") or default_topic
+        if not sub_topic:
+            continue
+        grouped.setdefault(sub_topic, []).append(sub)
+
+    ordered_topics: list[str] = []
+    for preferred in (default_topic, post_topic):
+        if preferred and preferred in grouped and preferred not in ordered_topics:
+            ordered_topics.append(preferred)
+    for topic_name in grouped:
+        if topic_name not in ordered_topics:
+            ordered_topics.append(topic_name)
+    return [(topic_name, grouped[topic_name]) for topic_name in ordered_topics]
+
+
 def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
     """Enrich each topic-based flow's own subscriptions with live Service Bus counts.
 
@@ -208,21 +232,43 @@ def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
     topic may be shared by several flows, so the per-flow ownership filtering in
     :func:`_merge_subscription_records` is what keeps a subscription from
     appearing under a flow that does not own it.
+
+    A Topic→Transformer→Topic→Sender flow has subscriptions on both ``topic``
+    (input) and ``post_topic`` (output), so subscriptions are grouped by their
+    own topic before merging.
     """
 
     consumers_by_topic = get_subscription_consumers_by_topic()
+    sb_subs_cache: dict[str, list[dict]] = {}
 
     for flow in flows.values():
         topic = flow.get("topic")
-        if topic:
-            subs = get_subscriptions(topic)
-            flow["subscriptions"] = _merge_subscription_records(
-                topic,
-                flow.get("subscriptions", []),
-                consumers_by_topic.get(topic, []),
-                subs,
+        post_topic = flow.get("post_topic")
+        if not topic and not post_topic:
+            continue
+        buckets = _group_subscriptions_by_topic(flow.get("subscriptions", []), topic, post_topic)
+        if not buckets:
+            if topic:
+                if topic not in sb_subs_cache:
+                    sb_subs_cache[topic] = get_subscriptions(topic)
+                    log.info("Topic %s has %d subscriptions", topic, len(sb_subs_cache[topic]))
+                flow["subscriptions"] = []
+            continue
+
+        merged_subs: list[dict] = []
+        for sub_topic, sub_bucket in buckets:
+            if sub_topic not in sb_subs_cache:
+                sb_subs_cache[sub_topic] = get_subscriptions(sub_topic)
+                log.info("Topic %s has %d subscriptions", sub_topic, len(sb_subs_cache[sub_topic]))
+            merged_subs.extend(
+                _merge_subscription_records(
+                    sub_topic,
+                    sub_bucket,
+                    consumers_by_topic.get(sub_topic, []),
+                    sb_subs_cache[sub_topic],
+                )
             )
-            log.info("Topic %s has %d subscriptions", topic, len(subs))
+        flow["subscriptions"] = merged_subs
 
 
 def _merge_subscription_records(
@@ -431,6 +477,20 @@ def flow_health(
                 )
             )
 
+    # Topic→Transformer→Topic flow — check the transformer's output topic too.
+    post_topic_name = flow.get("post_topic")
+    if post_topic_name and topics_by_name is not None:
+        post_topic = topics_by_name.get(post_topic_name)
+        if post_topic is None:
+            statuses.append("unknown")
+        else:
+            statuses.append(
+                queue_health(
+                    post_topic.get("active_message_count", 0),
+                    post_topic.get("dead_letter_message_count", 0),
+                )
+            )
+
     # Topic-based flow — check subscriptions
     subscriptions = flow.get("subscriptions", [])
     if subscriptions:
@@ -515,12 +575,13 @@ def entity_to_flow_ids(entity_type: str, entity_name: str) -> list[str]:
         pre = (flow.get("pre_queue") or "").lower()
         post = (flow.get("post_queue") or "").lower()
         topic = (flow.get("topic") or "").lower()
+        post_topic = (flow.get("post_topic") or "").lower()
 
         matched = False
         if entity_type_lower == "queue":
-            matched = lower in (pre, post)
+            matched = bool(lower) and lower in (pre, post)
         elif entity_type_lower == "topic":
-            matched = topic == lower
+            matched = bool(lower) and lower in (topic, post_topic)
         elif entity_type_lower == "subscription" and subscription_name:
             matched = any(
                 (sub.get("topic") or topic).lower() == topic_name.lower()
@@ -559,14 +620,24 @@ def build_flow_data(
         post_q = queues_by_name.get(flow.get("post_queue", ""))
         subscriptions = flow.get("subscriptions", [])
         topic_name = flow.get("topic")
-        topic = (topics_by_name or {}).get(topic_name or "")
-        if topic_name and topic is not None:
-            subscriptions = _merge_subscription_records(
-                topic_name,
-                subscriptions,
-                [],
-                topic.get("subscriptions", []),
-            )
+        post_topic_name = flow.get("post_topic")
+        if topics_by_name is not None and (topic_name or post_topic_name) and subscriptions:
+            buckets = _group_subscriptions_by_topic(subscriptions, topic_name, post_topic_name)
+            merged_subs: list[dict] = []
+            for sub_topic, sub_bucket in buckets:
+                sb_topic = topics_by_name.get(sub_topic)
+                if sb_topic is not None:
+                    merged_subs.extend(
+                        _merge_subscription_records(
+                            sub_topic,
+                            sub_bucket,
+                            [],
+                            sb_topic.get("subscriptions", []),
+                        )
+                    )
+                else:
+                    merged_subs.extend(sub_bucket)
+            subscriptions = merged_subs
         flow_with_subscriptions = {**flow, "subscriptions": subscriptions}
 
         health = flow_health(flow_id, queues_by_name, {flow_id: flow_with_subscriptions}, topics_by_name)
@@ -579,21 +650,27 @@ def build_flow_data(
             if owns_topic
             else _topic_summary(topic_name if flow.get("source_port") else None, None)
         )
+        post_topic_summary = (
+            _topic_summary(post_topic_name, (topics_by_name or {}).get(post_topic_name or ""))
+            if post_topic_name
+            else _topic_summary(None, None)
+        )
 
         # Build subscription summaries for topic-based flows
         sub_summaries = []
         for sub in subscriptions:
             active = sub.get("active_message_count", 0)
             dlq = sub.get("dead_letter_message_count", 0)
+            sub_topic_name = sub.get("topic") or topic_name
             sub_summaries.append(
                 {
                     "name": sub["name"],
-                    "topic": sub.get("topic") or topic_name,
+                    "topic": sub_topic_name,
                     "entity_type": "subscription",
                     "entity_name": (
                         sub.get("entity_name")
-                        or f"{topic_name}/{sub['name']}"
-                        if topic_name
+                        or f"{sub_topic_name}/{sub['name']}"
+                        if sub_topic_name
                         else sub["name"]
                     ),
                     "active": active,
@@ -624,6 +701,8 @@ def build_flow_data(
                 "post_queue": _queue_summary(flow.get("post_queue"), post_q),
                 "topic": topic_name,
                 "topic_summary": topic_summary,
+                "post_topic": post_topic_name,
+                "post_topic_summary": post_topic_summary,
                 "subscriptions": sub_summaries,
             }
         )

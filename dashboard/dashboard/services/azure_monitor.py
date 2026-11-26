@@ -285,9 +285,13 @@ def get_hl7_throughput_metrics(
         if safe_svc:
             filters += f'\n    | where tostring(Properties["workflow_id"]) == "{safe_svc}"'
 
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
     query = f"""
     AppMetrics
-    | where TimeGenerated > ago({hours}h)
+    | where TimeGenerated > ago({hours}h){resource_filter}
     | where Name in ("messages_received", "messages_sent"){filters}
     | summarize Value = sum(Sum) by bin(TimeGenerated, {bin_size}), Name
     | order by TimeGenerated asc
@@ -359,9 +363,13 @@ def get_throughput_filter_options() -> dict:
     if not workspace_id:
         return empty
 
-    query = """
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
+    query = f"""
     AppMetrics
-    | where TimeGenerated > ago(30d)
+    | where TimeGenerated > ago(30d){resource_filter}
     | where Name in ("messages_received", "messages_sent")
     | extend health_board = tostring(Properties["health_board"])
     | extend workflow_id = tostring(Properties["workflow_id"])

@@ -186,6 +186,21 @@ _DISPLAY_META: dict[str, dict] = {
         "colour": "#65a30d",
         "icon": "bi-database",
     },
+    "cav-pms-to-wrrs": {
+        "label": "CAV PMS → WRRS",
+        "source": "PMS",
+        "destination": "WRRS",
+        "colour": "#4d7c0f",
+        "icon": "bi-database",
+    },
+    "wpas-to-proms": {
+        "label": "WPAS → PROMS",
+        "source": "WPAS",
+        "destination": "PROMS",
+        "colour": "#0284c7",
+        "icon": "bi-clipboard2-check",
+        "transformer": "PROMS FHIR Transformer",
+    },
     "mpi-to-topic": {
         "label": "MPI Outbound",
         "source": "MPI",
@@ -350,7 +365,7 @@ def _classify_app(env: dict[str, str]) -> str:
     Roles:
     - ``server``: receives HL7 and sends to a queue or topic
     - ``transformer``: reads from one queue, writes to another
-    - ``subscription_transformer``: reads from a topic subscription, writes to a queue
+    - ``subscription_transformer``: reads from a topic subscription, writes to a queue or topic
     - ``sender``: reads from a queue and delivers HL7 downstream
     - ``subscription_sender``: reads from a topic subscription
     """
@@ -359,7 +374,7 @@ def _classify_app(env: dict[str, str]) -> str:
     has_egress_topic = bool(env.get("EGRESS_TOPIC_NAME"))
     has_ingress_topic = bool(env.get("INGRESS_TOPIC_NAME"))
 
-    if has_ingress_topic and has_egress_queue:
+    if has_ingress_topic and (has_egress_queue or has_egress_topic):
         return "subscription_transformer"
     if has_ingress_topic:
         return "subscription_sender"
@@ -402,6 +417,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     source_host: str | None = servers[0].get("fqdn") if servers else None
     pre_queue: str | None = None
     post_queue: str | None = None
+    post_topic: str | None = None
     transformer_name: str | None = None
 
     # --- Destination (RECEIVER_MLLP_HOST/PORT, set on senders/subscription senders) ---
@@ -419,9 +435,12 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     # Prefer a topic this flow's servers publish to *and* its consumers read, so a
     # server shared by several flows over different topics (RISP publishes to an
     # MPI topic and a WRRS topic) is shown against the topic this flow uses.
+    # Order subscription_transformers before subscription_senders so that in a
+    # Topic→Transformer→Topic→Sender flow without a server in the group, the
+    # input topic is preferred over the transformed output topic.
     server_topics = [t for srv in servers for t in _egress_topics(srv["env"])]
     consumer_topics = [
-        t for app in subscription_senders + subscription_transformers if (t := app["env"].get("INGRESS_TOPIC_NAME"))
+        t for app in subscription_transformers + subscription_senders if (t := app["env"].get("INGRESS_TOPIC_NAME"))
     ]
     topic = next((t for t in server_topics if t in consumer_topics), None)
     if not topic:
@@ -451,6 +470,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
     elif subscription_transformers:
         st_app = subscription_transformers[0]
         post_queue = st_app["env"].get("EGRESS_QUEUE_NAME")
+        post_topic = st_app["env"].get("EGRESS_TOPIC_NAME")
         meta_tfr = _DISPLAY_META.get(workflow_id, {}).get("transformer")
         if meta_tfr:
             transformer_name = meta_tfr
@@ -522,6 +542,7 @@ def _build_flow(workflow_id: str, apps: list[dict]) -> dict:
         "transformer": transformer_name,
         "post_queue": post_queue,
         "topic": topic,
+        "post_topic": post_topic,
         "subscriptions": subscriptions,
         "destination": meta.get("destination", "MPI"),
         "colour": meta.get("colour", _AUTO_COLOURS[colour_idx]),
@@ -558,6 +579,7 @@ def _merge_subscription_sender_flows(flows: dict[str, dict]) -> None:
             and not flow.get("source_port")
             and not flow.get("pre_queue")
             and not flow.get("post_queue")
+            and not flow.get("post_topic")
         ):
             to_remove.append(fid)
 
