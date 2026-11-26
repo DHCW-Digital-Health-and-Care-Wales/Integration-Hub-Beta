@@ -10,13 +10,14 @@ unchanged.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any
 
 from flask import Flask, Response, jsonify, request
 
 import dashboard.config as config
-from dashboard.services import alarm_pauses, cache, flow_sources, network_test
+from dashboard.services import alarm_base, alarm_pauses, cache, contacts_store, flow_sources, network_test
 from dashboard.services.alarm1 import get_alarm_status
 from dashboard.services.alarm2 import get_alarm2_status
 from dashboard.services.alarm3 import get_alarm3_status
@@ -27,8 +28,8 @@ from dashboard.services.azure_monitor import (
     get_messages_today,
 )
 from dashboard.services.container_apps import get_container_apps_metrics
-from dashboard.services.flows import build_flow_data, get_active_flows, get_flows
-from dashboard.services.service_bus import get_message_metrics, get_queues, get_topics
+from dashboard.services.flows import get_active_flows, get_flows
+from dashboard.services.service_bus import get_message_metrics
 from dashboard.services.status_builder import LONDON_TZ, alarm_summary, get_cached_status
 
 
@@ -66,7 +67,10 @@ def api_refresh() -> Response:
     discover_flows(force=True)
     # Rebuild the flow definitions too, so flow tag changes (which do not restart any app) show immediately.
     active_flows = get_active_flows(force_refresh=True)
-    # Bust every cache entry
+    # Bust every cache entry (including Cosmos read caches)
+    alarm_base.invalidate_config_cache()
+    alarm_pauses.invalidate_pauses_cache()
+    contacts_store.invalidate_contacts_cache()
     with cache.cache_lock:
         for entry in cache.cache_data.values():
             entry["ts"] = 0.0
@@ -75,14 +79,21 @@ def api_refresh() -> Response:
 
 
 def api_flows() -> Response:
-    """JSON endpoint returning live flow health and container-app metrics."""
-    queues = get_queues()
-    active_flows = get_active_flows()
-    flows = build_flow_data(queues, active_flows, get_topics())
-    container_metrics = get_container_apps_metrics()
+    """JSON endpoint returning cached flow health and container-app metrics."""
+    if cache.has_cached("status") and cache.has_cached("flows"):
+        status = get_cached_status()
+        container_metrics = cache.cached_nowait("flows", get_container_apps_metrics, ttl=config.API_CACHE_TTL)
+    else:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_status = pool.submit(get_cached_status)
+            fut_metrics = pool.submit(
+                cache.cached_nowait, "flows", get_container_apps_metrics, config.API_CACHE_TTL
+            )
+            status = fut_status.result()
+            container_metrics = fut_metrics.result()
     return jsonify(
         {
-            "flows": flows,
+            "flows": status.get("flows", []),
             "container_metrics": container_metrics,
         }
     )
@@ -97,7 +108,12 @@ def api_container_app_history(name: str) -> Response:
     hours_raw = request.args.get("hours", "1", type=str)
     allowed = {"1": 1, "6": 6, "24": 24, "168": 168}
     hours = allowed.get(hours_raw, 1)
-    history = get_container_app_metric_history(name, hours=hours)
+    ttl = 60 if hours <= 6 else 300
+    history = cache.cached_nowait(
+        f"app_history_{name}_{hours}",
+        lambda: get_container_app_metric_history(name, hours=hours),
+        ttl=ttl,
+    )
     return jsonify(history)
 
 
@@ -113,7 +129,12 @@ def api_messages() -> Response:
         if not microservice_ids:
             microservice_ids = ["__no_match__"]
 
-    messages = get_messages_today(microservice_ids=microservice_ids)
+    filter_cache_fragment = f"{entity_type}_{entity_name}" if entity_type and entity_name else "all"
+    messages = cache.cached_nowait(
+        f"messages_{filter_cache_fragment}",
+        lambda: get_messages_today(microservice_ids=microservice_ids),
+        ttl=config.API_CACHE_TTL,
+    )
     return jsonify({"messages": messages, "count": len(messages)})
 
 
@@ -132,11 +153,17 @@ def api_servicebus_metrics() -> Response:
     queue = request.args.get("queue", "").strip() or None
     entity_type = request.args.get("entity_type", "").strip().lower() or None
     entity_name = request.args.get("entity_name", "").strip() or None
-    metrics = get_message_metrics(
-        timespan_hours,
-        queue_name=queue,
-        entity_type=entity_type,
-        entity_name=entity_name,
+    ttl = config.API_CACHE_TTL if timespan_hours <= 1 else (60 if timespan_hours <= 24 else 300)
+    cache_key = f"sb_metrics_{timespan_hours}_{entity_type or ''}_{entity_name or queue or ''}"
+    metrics = cache.cached_nowait(
+        cache_key,
+        lambda: get_message_metrics(
+            timespan_hours,
+            queue_name=queue,
+            entity_type=entity_type,
+            entity_name=entity_name,
+        ),
+        ttl=ttl,
     )
     return jsonify(metrics)
 
@@ -155,10 +182,16 @@ def api_hl7_throughput() -> Response:
     timespan_hours = allowed.get(hours, 24)
     health_board = request.args.get("health_board", "").strip() or None
     service = request.args.get("service", "").strip() or None
-    metrics = get_hl7_throughput_metrics(
-        hours=timespan_hours,
-        health_board=health_board,
-        service=service,
+    ttl = 60 if timespan_hours <= 24 else 300
+    cache_key = f"hl7_throughput_{timespan_hours}_{health_board or ''}_{service or ''}"
+    metrics = cache.cached_nowait(
+        cache_key,
+        lambda: get_hl7_throughput_metrics(
+            hours=timespan_hours,
+            health_board=health_board,
+            service=service,
+        ),
+        ttl=ttl,
     )
     return jsonify(metrics)
 

@@ -15,13 +15,38 @@ from unittest.mock import patch
 
 import pytest
 
-from dashboard.services import cosmos_store
+from dashboard.services import (
+    alarm_base,
+    alarm_pauses,
+    arm,
+    azure_monitor,
+    cache,
+    contacts_store,
+    cosmos_store,
+    email_service,
+    service_bus,
+)
+
+
+def _reset_caches() -> None:
+    cosmos_store._reset_client_for_tests()
+    service_bus._reset_client_for_tests()
+    azure_monitor._reset_clients_for_tests()
+    arm._reset_client_for_tests()
+    email_service._reset_clients_for_tests()
+    cache.reset_for_tests()
+    alarm_base.invalidate_config_cache()
+    alarm_pauses.invalidate_pauses_cache()
+    contacts_store.invalidate_contacts_cache()
 
 
 @pytest.fixture(autouse=True)
 def _disable_cosmos() -> Generator[None, None, None]:
-    """Disable Cosmos persistence for every test and reset the cached client."""
-    cosmos_store._reset_client_for_tests()
-    with patch.object(cosmos_store.config, "COSMOS_ENDPOINT", ""):
+    """Keep tests hermetic regardless of local ``dashboard/.env`` settings."""
+    _reset_caches()
+    with (
+        patch.object(cosmos_store.config, "COSMOS_ENDPOINT", ""),
+        patch.object(cosmos_store.config, "DEMO_MODE", False),
+    ):
         yield
-    cosmos_store._reset_client_for_tests()
+    _reset_caches()

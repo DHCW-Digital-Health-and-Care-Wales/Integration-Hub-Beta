@@ -139,6 +139,21 @@ class TestFlowConfigPageGet:
         assert b"Invalid workflow ID." in response.data
         assert b'id="flow-config-form"' not in response.data
 
+    def test_get_loads_alarm_configs_only_once(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.routes.alarm_config.get_flows", return_value=FLOWS) as mock_flows,
+            patch("dashboard.routes.alarm_config.get_config_page_data", return_value=A1_RULES) as mock_a1,
+            patch("dashboard.routes.alarm_config.get_alarm2_config_page_data", return_value=[]) as mock_a2,
+            patch("dashboard.routes.alarm_config.get_alarm3_config_page_data", return_value=A3_RULES) as mock_a3,
+        ):
+            response = client.get("/alarms/config?flow=phw-to-mpi")
+
+        assert response.status_code == 200
+        mock_flows.assert_called_once()
+        mock_a1.assert_called_once()
+        mock_a2.assert_called_once()
+        mock_a3.assert_called_once()
+
 
 class TestFlowConfigPagePost:
     def test_post_without_valid_flow_is_rejected(self, client: FlaskClient, saves: dict[int, MagicMock]) -> None:

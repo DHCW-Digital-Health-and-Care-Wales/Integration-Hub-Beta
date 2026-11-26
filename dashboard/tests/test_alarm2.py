@@ -348,3 +348,28 @@ class TestSendAlarm2Email:
         assert any(
             r.levelname == "WARNING" and "Failed to send alarm 2 email" in r.message for r in caplog.records
         )
+
+
+class TestGetLastSentTimesKql:
+    def test_prefilters_properties_with_has_any_and_uses_shared_logs_client(self) -> None:
+        from types import SimpleNamespace  # noqa: PLC0415
+        from unittest.mock import MagicMock  # noqa: PLC0415
+
+        from azure.monitor.query import LogsQueryStatus  # noqa: PLC0415
+
+        from dashboard.services import alarm2  # noqa: PLC0415
+
+        table = SimpleNamespace(columns=["workflow_id", "last_message"], rows=[["phw-to-mpi", LAST_MSG_30_AGO]])
+        mock_client = MagicMock()
+        mock_client.query_workspace.return_value = SimpleNamespace(status=LogsQueryStatus.SUCCESS, tables=[table])
+
+        with (
+            patch.object(alarm2.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-1"),
+            patch("dashboard.services.alarm2._get_logs_client", return_value=mock_client),
+        ):
+            result = alarm2.get_last_sent_times_by_workflow(["phw-to-mpi", "chemo-to-mpi"], lookback_days=3)
+
+        assert result == {"phw-to-mpi": LAST_MSG_30_AGO, "chemo-to-mpi": None}
+        query = mock_client.query_workspace.call_args.kwargs["query"]
+        assert 'Properties has_any ("phw-to-mpi", "chemo-to-mpi")' in query
+        assert query.index("Properties has_any") < query.index('tostring(Properties["workflow_id"])')

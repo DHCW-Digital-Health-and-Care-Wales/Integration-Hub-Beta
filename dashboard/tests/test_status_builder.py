@@ -154,3 +154,52 @@ def test_build_status_uses_snapshot_subscription_counts_for_flows() -> None:
 
     assert status["flows"][0]["subscriptions"][0]["active"] == 4
     assert status["flows"][0]["subscriptions"][0]["dlq"] == 1
+
+
+def test_build_status_runs_retry_delay_concurrently_and_warms_servicebus_cache() -> None:
+    import threading  # noqa: PLC0415
+
+    from dashboard.services import cache  # noqa: PLC0415
+
+    namespace_snapshot = {
+        "queues": [],
+        "topics": [],
+        "kpis": {
+            "queue_active_messages": 0,
+            "queue_dead_letter_messages": 0,
+            "topic_active_messages": 0,
+            "topic_dead_letter_messages": 0,
+            "subscription_active_messages": 0,
+            "subscription_dead_letter_messages": 0,
+            "queue_count": 0,
+            "topic_count": 0,
+            "subscription_count": 0,
+        },
+    }
+    barrier = threading.Barrier(4, timeout=2.0)
+
+    def _snap() -> dict:
+        barrier.wait()
+        return namespace_snapshot
+
+    def _flows() -> dict:
+        barrier.wait()
+        return {}
+
+    def _exc(**_kwargs: object) -> list:
+        barrier.wait()
+        return []
+
+    def _retry(**_kwargs: object) -> list:
+        barrier.wait()
+        return []
+
+    with (
+        patch("dashboard.services.status_builder.get_namespace_snapshot", side_effect=_snap),
+        patch("dashboard.services.status_builder.get_active_flows", side_effect=_flows),
+        patch("dashboard.services.status_builder.get_exceptions", side_effect=_exc),
+        patch("dashboard.services.status_builder.get_retry_delay_metrics_by_flow", side_effect=_retry),
+    ):
+        build_status()
+
+    assert cache.get_fresh("servicebus") == namespace_snapshot

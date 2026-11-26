@@ -515,3 +515,113 @@ def test_get_throughput_filter_options_omits_resource_filter_when_unset() -> Non
 
     query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
     assert "_ResourceId" not in query_text
+
+
+def test_get_container_app_metrics_fetches_apps_in_parallel_preserving_order() -> None:
+    import threading  # noqa: PLC0415
+
+    apps = [
+        MagicMock(
+            id=f"/subscriptions/s/resourceGroups/rg/providers/Microsoft.App/containerApps/app-{i}",
+            location="uksouth",
+        )
+        for i in range(3)
+    ]
+    for i, app_obj in enumerate(apps):
+        app_obj.name = f"app-{i}"
+
+    barrier = threading.Barrier(3, timeout=2.0)
+
+    def _fake_session_get(url: str, **_kwargs: object) -> MagicMock:
+        barrier.wait()  # Proves all 3 HTTP requests are in flight concurrently.
+        if "app-1" in url:
+            raise RuntimeError("transient error")
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {
+            "value": [
+                {"name": {"value": "CpuPercentage"}, "timeseries": [{"data": [{"average": 12.5}]}]},
+                {"name": {"value": "WorkingSetBytes"}, "timeseries": [{"data": [{"average": 1024.0}]}]},
+                {"name": {"value": "Replicas"}, "timeseries": [{"data": [{"average": 2.0}]}]},
+            ]
+        }
+        return resp
+
+    fake_cred = MagicMock()
+    fake_cred.get_token.return_value = MagicMock(token="tok")  # nosec B106
+    fake_session = MagicMock()
+    fake_session.get.side_effect = _fake_session_get
+    fake_apps_client = MagicMock()
+    fake_apps_client.container_apps.list_by_resource_group.return_value = apps
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-1"),
+        patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_RESOURCE_GROUP", "rg-1"),
+        patch.object(azure_monitor.config, "AZURE_CONTAINER_APPS_ENVIRONMENT", "env-1"),
+        patch("dashboard.services.azure_monitor.get_azure_credential", return_value=fake_cred),
+        patch("dashboard.services.azure_monitor.ContainerAppsAPIClient", return_value=fake_apps_client),
+        patch("dashboard.services.azure_monitor._get_http_session", return_value=fake_session),
+    ):
+        results = azure_monitor.get_container_app_metrics()
+
+    assert [r["name"] for r in results] == ["app-0", "app-1", "app-2"]
+    assert results[0]["cpu_usage"] == 12.5
+    assert results[0]["replicas"] == 2
+    assert results[1] == {"name": "app-1", "cpu_usage": 0, "memory_bytes": 0, "replicas": 0}
+    assert results[2]["cpu_usage"] == 12.5
+
+
+def test_get_logs_client_returns_singleton() -> None:
+    with (
+        patch("dashboard.services.azure_monitor.get_azure_credential", return_value=object()),
+        patch("dashboard.services.azure_monitor.LogsQueryClient") as mock_cls,
+    ):
+        c1 = azure_monitor._get_logs_client()
+        c2 = azure_monitor._get_logs_client()
+
+    assert c1 is c2
+    mock_cls.assert_called_once()
+
+
+def test_get_container_apps_client_caches_per_subscription() -> None:
+    with (
+        patch("dashboard.services.azure_monitor.get_azure_credential", return_value=object()),
+        patch("dashboard.services.azure_monitor.ContainerAppsAPIClient") as mock_cls,
+    ):
+        mock_cls.side_effect = lambda _cred, sub: MagicMock(sub=sub)
+        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-a"):
+            c1 = azure_monitor._get_container_apps_client()
+            c2 = azure_monitor._get_container_apps_client()
+        with patch.object(azure_monitor.config, "AZURE_SUBSCRIPTION_ID", "sub-b"):
+            c3 = azure_monitor._get_container_apps_client()
+
+    assert c1 is c2
+    assert c3 is not c1
+    assert mock_cls.call_count == 2
+
+
+def test_get_messages_today_uses_has_filter_for_microservices() -> None:
+    with (
+        patch.object(azure_monitor.config, "DEMO_MODE", False),
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "ws-1"),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([])
+        azure_monitor.get_messages_today(microservice_ids=["phw-server", "phw-sender"])
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert 'Properties has "phw-server"' in query_text
+    assert 'Properties has "phw-sender"' in query_text
+    assert "Properties contains" not in query_text
+
+
+def test_demo_mode_returns_container_apps_and_metric_history() -> None:
+    with patch.object(azure_monitor.config, "DEMO_MODE", True):
+        apps = azure_monitor.get_container_app_metrics()
+        assert len(apps) >= 1
+        history = azure_monitor.get_container_app_metric_history(apps[0]["name"], hours=6)
+        invalid = azure_monitor.get_container_app_metric_history("../bad", hours=1)
+
+    assert history["name"] == apps[0]["name"]
+    assert len(history["timestamps"]) == len(history["cpu"]) == len(history["memory_mb"]) > 0
+    assert invalid == {"name": "../bad", "timestamps": [], "cpu": [], "memory_mb": []}

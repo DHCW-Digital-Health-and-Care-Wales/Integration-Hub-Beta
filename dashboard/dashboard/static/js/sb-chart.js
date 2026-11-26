@@ -48,7 +48,11 @@
   // ═══════════════════════════════════════════════════════════════════════════
 
   var canvas, ctx, dpr;
+  var baseCanvas, baseCtx;
+  var baseDirty = true;
+  var rafId = null;
   var chartData = null;
+  var cachedLayer = null;
   var currentHours = 1;
 
   // Hover state
@@ -82,6 +86,8 @@
     if (!canvas) return;
 
     ctx = canvas.getContext('2d');
+    baseCanvas = document.createElement('canvas');
+    baseCtx = baseCanvas.getContext('2d');
     dpr = window.devicePixelRatio || 1;
 
     sizeCanvas();
@@ -107,6 +113,7 @@
         btn.classList.add('active');
         currentHours = parseInt(btn.dataset.hours, 10) || 1;
         zoomedRange = null;
+        baseDirty = true;
         updateResetButton();
         fetchData(currentHours);
       });
@@ -141,6 +148,12 @@
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
+
+    baseCanvas.width = w * dpr;
+    baseCanvas.height = h * dpr;
+    baseCtx.setTransform(1, 0, 0, 1, 0, 0);
+    baseCtx.scale(dpr, dpr);
+    baseDirty = true;
   }
 
   function cssWidth() { return canvas.width / dpr; }
@@ -151,9 +164,23 @@
     draw();
   }
 
+  function scheduleDraw() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(function () {
+      rafId = null;
+      draw();
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // DATA FETCHING
   // ═══════════════════════════════════════════════════════════════════════════
+
+  function attachTimestamps(points) {
+    return (points || []).map(function (p) {
+      return { time: p.time, ms: +new Date(p.time), value: p.value };
+    });
+  }
 
   function fetchData(hours) {
     var loader = document.getElementById('messages-chart-loading');
@@ -168,7 +195,12 @@
     fetch(url)
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        chartData = data;
+        chartData = {
+          incoming: attachTimestamps(data && data.incoming),
+          outgoing: attachTimestamps(data && data.outgoing),
+          timespan: data && data.timespan
+        };
+        baseDirty = true;
         if (loader) loader.style.display = 'none';
         updateLegend();
         draw();
@@ -176,6 +208,8 @@
       .catch(function (err) {
         console.error('Chart data fetch failed:', err);
         chartData = null;
+        cachedLayer = null;
+        baseDirty = true;
         if (loader) loader.style.display = 'none';
         drawEmpty('Failed to load metrics');
       });
@@ -228,19 +262,18 @@
   // MAIN DRAW
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function draw() {
-    if (!chartData) return;
-
+  function renderBaseLayer() {
     var w = cssWidth();
     var h = cssHeight();
-    ctx.clearRect(0, 0, w, h);
+    baseCtx.clearRect(0, 0, w, h);
 
     // Filter data by zoom range
     var incoming = filterByZoom(chartData.incoming || []);
     var outgoing = filterByZoom(chartData.outgoing || []);
 
     if (!incoming.length && !outgoing.length) {
-      drawEmpty('No message data for this period');
+      cachedLayer = { hasData: false };
+      baseDirty = false;
       return;
     }
 
@@ -255,7 +288,10 @@
     if (minTime === maxTime) maxTime = minTime + 60000; // Prevent division by zero
 
     // Compute Y axis range
-    var maxVal = Math.max.apply(null, allPoints.map(function (p) { return p.value; }).concat([1]));
+    var maxVal = 1;
+    for (var i = 0; i < allPoints.length; i++) {
+      if (allPoints[i].value > maxVal) maxVal = allPoints[i].value;
+    }
     var yStep = niceStep(maxVal);
     var yMax = Math.ceil(maxVal / yStep) * yStep || 1;
 
@@ -268,20 +304,52 @@
       maxValue: yMax
     };
 
-    // Draw layers
-    drawBackground(areaWidth, areaHeight);
-    drawGrid(incoming, minTime, maxTime, yMax, areaWidth, areaHeight);
-    drawSeries(incoming, COLORS.incoming, COLORS.incomingFill, minTime, maxTime, yMax, areaWidth, areaHeight);
-    drawSeries(outgoing, COLORS.outgoing, COLORS.outgoingFill, minTime, maxTime, yMax, areaWidth, areaHeight);
+    var inCoords = pointsToCoords(incoming, minTime, maxTime, yMax, areaWidth, areaHeight);
+    var outCoords = pointsToCoords(outgoing, minTime, maxTime, yMax, areaWidth, areaHeight);
+
+    // Draw static layers onto offscreen canvas
+    drawBackground(baseCtx, areaWidth, areaHeight);
+    drawGrid(baseCtx, incoming, minTime, maxTime, yMax, areaWidth, areaHeight);
+    drawSeries(baseCtx, inCoords, COLORS.incoming, COLORS.incomingFill, areaHeight);
+    drawSeries(baseCtx, outCoords, COLORS.outgoing, COLORS.outgoingFill, areaHeight);
+
+    cachedLayer = {
+      hasData: true,
+      inCoords: inCoords,
+      outCoords: outCoords,
+      srcCoords: inCoords.length ? inCoords : outCoords,
+      areaWidth: areaWidth,
+      areaHeight: areaHeight
+    };
+    baseDirty = false;
+  }
+
+  function draw() {
+    if (!chartData) return;
+
+    if (baseDirty) {
+      renderBaseLayer();
+    }
+
+    var w = cssWidth();
+    var h = cssHeight();
+
+    if (!cachedLayer || !cachedLayer.hasData) {
+      drawEmpty('No message data for this period');
+      return;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(baseCanvas, 0, 0, w, h);
 
     // Crosshair and tooltip (only when not dragging)
     if (hoverPos && !isDragging) {
-      drawCrosshair(incoming, outgoing, minTime, maxTime, yMax, areaWidth, areaHeight);
+      drawCrosshair(cachedLayer.inCoords, cachedLayer.outCoords, cachedLayer.srcCoords, cachedLayer.areaHeight);
     }
 
     // Zoom selection box
     if (isDragging && dragStart && dragCurrent) {
-      drawZoomBox(areaHeight);
+      drawZoomBox(cachedLayer.areaHeight);
     }
 
     // Hint text when not zoomed or interacting
@@ -297,8 +365,7 @@
   function filterByZoom(points) {
     if (!zoomedRange) return points;
     return points.filter(function (p) {
-      var t = +new Date(p.time);
-      return t >= zoomedRange.minT && t <= zoomedRange.maxT;
+      return p.ms >= zoomedRange.minT && p.ms <= zoomedRange.maxT;
     });
   }
 
@@ -306,41 +373,41 @@
   // BACKGROUND
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function drawBackground(areaWidth, areaHeight) {
-    var gradient = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + areaHeight);
+  function drawBackground(targetCtx, areaWidth, areaHeight) {
+    var gradient = targetCtx.createLinearGradient(0, PAD.top, 0, PAD.top + areaHeight);
     gradient.addColorStop(0, COLORS.bgGradientStart);
     gradient.addColorStop(1, COLORS.bgGradientEnd);
-    ctx.fillStyle = gradient;
-    roundedRect(PAD.left, PAD.top, areaWidth, areaHeight, 8);
-    ctx.fill();
+    targetCtx.fillStyle = gradient;
+    roundedRect(targetCtx, PAD.left, PAD.top, areaWidth, areaHeight, 8);
+    targetCtx.fill();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // GRID
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function drawGrid(incoming, minTime, maxTime, yMax, areaWidth, areaHeight) {
+  function drawGrid(targetCtx, incoming, minTime, maxTime, yMax, areaWidth, areaHeight) {
     var yStep = niceStep(yMax);
     var yTicks = Math.min(6, Math.ceil(yMax / yStep));
 
-    ctx.font = '10px monospace';
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'right';
+    targetCtx.font = '10px monospace';
+    targetCtx.textBaseline = 'middle';
+    targetCtx.textAlign = 'right';
 
     // Horizontal grid lines and Y labels
     for (var i = 0; i <= yTicks; i++) {
       var val = i * yStep;
       var y = PAD.top + areaHeight - (val / yMax) * areaHeight;
 
-      ctx.strokeStyle = COLORS.gridLine;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(PAD.left, y);
-      ctx.lineTo(PAD.left + areaWidth, y);
-      ctx.stroke();
+      targetCtx.strokeStyle = COLORS.gridLine;
+      targetCtx.lineWidth = 1;
+      targetCtx.beginPath();
+      targetCtx.moveTo(PAD.left, y);
+      targetCtx.lineTo(PAD.left + areaWidth, y);
+      targetCtx.stroke();
 
-      ctx.fillStyle = COLORS.axisText;
-      ctx.fillText(formatNumber(val), PAD.left - 8, y);
+      targetCtx.fillStyle = COLORS.axisText;
+      targetCtx.fillText(formatNumber(val), PAD.left - 8, y);
     }
 
     // X axis time labels
@@ -349,24 +416,24 @@
     var labelCount = Math.min(8, incoming.length);
     var interval = Math.max(1, Math.floor(incoming.length / labelCount));
 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'top';
 
     for (var xi = 0; xi < incoming.length; xi += interval) {
-      var t = new Date(incoming[xi].time);
-      var x = PAD.left + ((+t - minTime) / (maxTime - minTime)) * areaWidth;
+      var ms = incoming[xi].ms;
+      var x = PAD.left + ((ms - minTime) / (maxTime - minTime)) * areaWidth;
 
       // Tick mark
-      ctx.strokeStyle = COLORS.gridLine;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, PAD.top + areaHeight);
-      ctx.lineTo(x, PAD.top + areaHeight + 4);
-      ctx.stroke();
+      targetCtx.strokeStyle = COLORS.gridLine;
+      targetCtx.lineWidth = 1;
+      targetCtx.beginPath();
+      targetCtx.moveTo(x, PAD.top + areaHeight);
+      targetCtx.lineTo(x, PAD.top + areaHeight + 4);
+      targetCtx.stroke();
 
       // Label
-      ctx.fillStyle = COLORS.axisText;
-      ctx.fillText(formatTime(t, currentHours), x, PAD.top + areaHeight + 8);
+      targetCtx.fillStyle = COLORS.axisText;
+      targetCtx.fillText(formatTime(new Date(ms), currentHours), x, PAD.top + areaHeight + 8);
     }
   }
 
@@ -374,90 +441,93 @@
   // SERIES DRAWING (straight line segments with gradient fill and glow)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function drawSeries(points, lineColor, fillColor, minTime, maxTime, yMax, areaWidth, areaHeight) {
-    if (!points.length) return;
-
-    var coords = pointsToCoords(points, minTime, maxTime, yMax, areaWidth, areaHeight);
+  function drawSeries(targetCtx, coords, lineColor, fillColor, areaHeight) {
+    if (!coords.length) return;
 
     // Gradient fill under the curve
-    var gradient = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + areaHeight);
+    var gradient = targetCtx.createLinearGradient(0, PAD.top, 0, PAD.top + areaHeight);
     gradient.addColorStop(0, fillColor);
     gradient.addColorStop(0.6, fillColor.replace(/[\d.]+\)$/, '0.06)'));
     gradient.addColorStop(1, 'rgba(0,0,0,0)');
 
-    ctx.save();
-    ctx.beginPath();
-    linearPath(coords);
-    ctx.lineTo(coords[coords.length - 1].x, PAD.top + areaHeight);
-    ctx.lineTo(coords[0].x, PAD.top + areaHeight);
-    ctx.closePath();
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.beginPath();
+    linearPath(targetCtx, coords);
+    targetCtx.lineTo(coords[coords.length - 1].x, PAD.top + areaHeight);
+    targetCtx.lineTo(coords[0].x, PAD.top + areaHeight);
+    targetCtx.closePath();
+    targetCtx.fillStyle = gradient;
+    targetCtx.fill();
+    targetCtx.restore();
 
     // Line stroke
-    ctx.save();
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    linearPath(coords);
-    ctx.stroke();
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.strokeStyle = lineColor;
+    targetCtx.lineWidth = 2.5;
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineCap = 'round';
+    targetCtx.beginPath();
+    linearPath(targetCtx, coords);
+    targetCtx.stroke();
+    targetCtx.restore();
 
     // Data point dots (skip when data is dense)
     if (coords.length <= 60) {
-      ctx.fillStyle = lineColor;
+      targetCtx.fillStyle = lineColor;
       for (var i = 0; i < coords.length; i++) {
-        ctx.beginPath();
-        ctx.arc(coords[i].x, coords[i].y, coords.length > 30 ? 2 : 3, 0, Math.PI * 2);
-        ctx.fill();
+        targetCtx.beginPath();
+        targetCtx.arc(coords[i].x, coords[i].y, coords.length > 30 ? 2 : 3, 0, Math.PI * 2);
+        targetCtx.fill();
       }
     }
   }
 
   function pointsToCoords(points, minTime, maxTime, yMax, areaWidth, areaHeight) {
+    var span = maxTime - minTime;
     return points.map(function (p) {
-      var t = +new Date(p.time);
       return {
-        x: PAD.left + ((t - minTime) / (maxTime - minTime)) * areaWidth,
+        x: PAD.left + ((p.ms - minTime) / span) * areaWidth,
         y: PAD.top + areaHeight - (p.value / yMax) * areaHeight,
         value: p.value,
-        time: p.time
+        ms: p.ms
       };
     });
   }
 
   // Straight line path connecting data points
-  function linearPath(coords) {
+  function linearPath(targetCtx, coords) {
     if (coords.length === 0) return;
-    ctx.moveTo(coords[0].x, coords[0].y);
+    targetCtx.moveTo(coords[0].x, coords[0].y);
     for (var i = 1; i < coords.length; i++) {
-      ctx.lineTo(coords[i].x, coords[i].y);
+      targetCtx.lineTo(coords[i].x, coords[i].y);
     }
+  }
+
+  function findClosestCoordIndex(coords, targetX) {
+    var lo = 0;
+    var hi = coords.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (coords[mid].x < targetX) lo = mid + 1;
+      else hi = mid;
+    }
+    var best = lo;
+    if (lo > 0 && Math.abs(coords[lo - 1].x - targetX) < Math.abs(coords[lo].x - targetX)) {
+      best = lo - 1;
+    }
+    return best;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CROSSHAIR AND TOOLTIP
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function drawCrosshair(incoming, outgoing, minTime, maxTime, yMax, areaWidth, areaHeight) {
-    var inCoords = pointsToCoords(incoming, minTime, maxTime, yMax, areaWidth, areaHeight);
-    var outCoords = pointsToCoords(outgoing, minTime, maxTime, yMax, areaWidth, areaHeight);
-    var srcCoords = inCoords.length ? inCoords : outCoords;
+  function drawCrosshair(inCoords, outCoords, srcCoords, areaHeight) {
     if (!srcCoords.length) return;
 
-    // Find closest point to hover position
-    var closestIdx = 0;
-    var closestDist = Infinity;
-    for (var i = 0; i < srcCoords.length; i++) {
-      var dist = Math.abs(srcCoords[i].x - hoverPos.x);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestIdx = i;
-      }
-    }
+    // Find closest point to hover position via binary search on sorted X.
+    var closestIdx = findClosestCoordIndex(srcCoords, hoverPos.x);
+    var closestDist = Math.abs(srcCoords[closestIdx].x - hoverPos.x);
 
     if (closestDist > 45) return; // Too far from any point
 
@@ -480,7 +550,7 @@
     drawHighlightDot(outCoords, closestIdx, COLORS.outgoing);
 
     // Tooltip
-    var timestamp = new Date(srcCoords[closestIdx].time);
+    var timestamp = new Date(srcCoords[closestIdx].ms);
     var inValue = (inCoords.length && closestIdx < inCoords.length) ? inCoords[closestIdx].value : 0;
     var outValue = (outCoords.length && closestIdx < outCoords.length) ? outCoords[closestIdx].value : 0;
     drawTooltip(px, hoverPos.y, timestamp, inValue, outValue, areaHeight);
@@ -537,13 +607,13 @@
     ctx.shadowBlur = 16;
     ctx.shadowOffsetY = 4;
     ctx.fillStyle = COLORS.tooltipBg;
-    roundedRect(tx, ty, boxWidth, boxHeight, 8);
+    roundedRect(ctx, tx, ty, boxWidth, boxHeight, 8);
     ctx.fill();
     ctx.restore();
 
     ctx.strokeStyle = COLORS.tooltipBorder;
     ctx.lineWidth = 1;
-    roundedRect(tx, ty, boxWidth, boxHeight, 8);
+    roundedRect(ctx, tx, ty, boxWidth, boxHeight, 8);
     ctx.stroke();
 
     // Draw tooltip content
@@ -626,13 +696,13 @@
     var pos = canvasPos(e);
     hoverPos = pos;
     canvas.style.cursor = isInChartArea(pos) ? 'crosshair' : 'default';
-    draw();
+    scheduleDraw();
   }
 
   function onCanvasMouseLeave() {
     if (!isDragging) {
       hoverPos = null;
-      draw();
+      scheduleDraw();
     }
   }
 
@@ -655,7 +725,7 @@
   function onWindowMouseMove(e) {
     dragCurrent = canvasPos(e);
     hoverPos = dragCurrent;
-    draw();
+    scheduleDraw();
   }
 
   function onWindowMouseUp(e) {
@@ -677,6 +747,7 @@
 
       if (newMaxTime > newMinTime) {
         zoomedRange = { minT: newMinTime, maxT: newMaxTime };
+        baseDirty = true;
         updateResetButton();
         updateLegend();
       }
@@ -693,6 +764,7 @@
 
   function resetZoom() {
     zoomedRange = null;
+    baseDirty = true;
     updateResetButton();
     updateLegend();
     draw();
@@ -711,26 +783,34 @@
 
   function minTimestamp(points) {
     if (!points.length) return 0;
-    return Math.min.apply(null, points.map(function (p) { return +new Date(p.time); }));
+    var min = points[0].ms;
+    for (var i = 1; i < points.length; i++) {
+      if (points[i].ms < min) min = points[i].ms;
+    }
+    return min;
   }
 
   function maxTimestamp(points) {
     if (!points.length) return 0;
-    return Math.max.apply(null, points.map(function (p) { return +new Date(p.time); }));
+    var max = points[0].ms;
+    for (var i = 1; i < points.length; i++) {
+      if (points[i].ms > max) max = points[i].ms;
+    }
+    return max;
   }
 
-  function roundedRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
+  function roundedRect(targetCtx, x, y, w, h, r) {
+    targetCtx.beginPath();
+    targetCtx.moveTo(x + r, y);
+    targetCtx.lineTo(x + w - r, y);
+    targetCtx.quadraticCurveTo(x + w, y, x + w, y + r);
+    targetCtx.lineTo(x + w, y + h - r);
+    targetCtx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    targetCtx.lineTo(x + r, y + h);
+    targetCtx.quadraticCurveTo(x, y + h, x, y + h - r);
+    targetCtx.lineTo(x, y + r);
+    targetCtx.quadraticCurveTo(x, y, x + r, y);
+    targetCtx.closePath();
   }
 
   function niceStep(max) {

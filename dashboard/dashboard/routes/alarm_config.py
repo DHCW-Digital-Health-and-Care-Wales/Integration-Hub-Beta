@@ -259,8 +259,12 @@ def alarm_flow_config_page() -> str:
     POST – applies deletions/updates/additions for the selected flow, then re-renders.
     """
     requested = request.args.get("flow", "").strip()
-    cfg_rows = get_config_page_data() + get_alarm2_config_page_data() + get_alarm3_config_page_data()
-    selected_flow, flow_invalid = _resolve_flow(requested, build_flow_options(get_flows(), cfg_rows))
+    alarm1_rules = get_config_page_data()
+    alarm2_rules = get_alarm2_config_page_data()
+    alarm3_rules = get_alarm3_config_page_data()
+    flows = get_flows()
+    flow_options = build_flow_options(flows, alarm1_rules + alarm2_rules + alarm3_rules)
+    selected_flow, flow_invalid = _resolve_flow(requested, flow_options)
 
     saved = False
     new_rule_anchor: str | None = None
@@ -272,12 +276,10 @@ def alarm_flow_config_page() -> str:
         new_rule_anchor = next(
             (f"{ALARM_PREFIXES[n]}rule-{rid}" for n, rid in sorted(new_ids.items()) if rid), None
         )
-
-    alarm1_rules = get_config_page_data()
-    alarm2_rules = get_alarm2_config_page_data()
-    alarm3_rules = get_alarm3_config_page_data()
-    flow_options = build_flow_options(get_flows(), alarm1_rules + alarm2_rules + alarm3_rules)
-    if selected_flow is not None:
+        alarm1_rules = get_config_page_data()
+        alarm2_rules = get_alarm2_config_page_data()
+        alarm3_rules = get_alarm3_config_page_data()
+        flow_options = build_flow_options(flows, alarm1_rules + alarm2_rules + alarm3_rules)
         # Re-resolve so a newly added custom flow is no longer flagged as new.
         selected_flow, _ = _resolve_flow(selected_flow["id"], flow_options)
 

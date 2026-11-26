@@ -10,6 +10,8 @@ Container Apps API is unavailable or not configured).
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 from dashboard import config
 from dashboard.services.arm import (  # noqa: PLC0415 (deferred to avoid circular at load time)
@@ -239,7 +241,11 @@ def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
     """
 
     consumers_by_topic = get_subscription_consumers_by_topic()
-    sb_subs_cache: dict[str, list[dict]] = {}
+
+    # Collect all unique topics we need to query, then fetch them concurrently.
+    flow_buckets: list[tuple[dict, str | None, list[tuple[str, list[dict]]]]] = []
+    topics_to_fetch: list[str] = []
+    seen_topics: set[str] = set()
 
     for flow in flows.values():
         topic = flow.get("topic")
@@ -247,19 +253,34 @@ def _enrich_with_subscriptions(flows: dict[str, dict]) -> None:
         if not topic and not post_topic:
             continue
         buckets = _group_subscriptions_by_topic(flow.get("subscriptions", []), topic, post_topic)
+        flow_buckets.append((flow, topic, buckets))
+        if not buckets:
+            if topic and topic not in seen_topics:
+                seen_topics.add(topic)
+                topics_to_fetch.append(topic)
+        else:
+            for sub_topic, _ in buckets:
+                if sub_topic not in seen_topics:
+                    seen_topics.add(sub_topic)
+                    topics_to_fetch.append(sub_topic)
+
+    sb_subs_cache: dict[str, list[dict]] = {}
+    if topics_to_fetch:
+        max_workers = min(8, len(topics_to_fetch))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            subs_lists = list(pool.map(get_subscriptions, topics_to_fetch))
+        for topic_name, subs in zip(topics_to_fetch, subs_lists):
+            sb_subs_cache[topic_name] = subs
+            log.info("Topic %s has %d subscriptions", topic_name, len(subs))
+
+    for flow, topic, buckets in flow_buckets:
         if not buckets:
             if topic:
-                if topic not in sb_subs_cache:
-                    sb_subs_cache[topic] = get_subscriptions(topic)
-                    log.info("Topic %s has %d subscriptions", topic, len(sb_subs_cache[topic]))
                 flow["subscriptions"] = []
             continue
 
         merged_subs: list[dict] = []
         for sub_topic, sub_bucket in buckets:
-            if sub_topic not in sb_subs_cache:
-                sb_subs_cache[sub_topic] = get_subscriptions(sub_topic)
-                log.info("Topic %s has %d subscriptions", sub_topic, len(sb_subs_cache[sub_topic]))
             merged_subs.extend(
                 _merge_subscription_records(
                     sub_topic,
@@ -351,6 +372,7 @@ def _merge_subscription_records(
 
 # Module-level default — populated lazily on first access
 FLOWS: dict[str, dict] = {}
+_flows_lock = Lock()
 
 
 def get_flows() -> dict[str, dict]:
@@ -365,9 +387,12 @@ def get_flows() -> dict[str, dict]:
     ``refresh_flows()`` is called.
     """
     global FLOWS  # noqa: PLW0602
-    if not FLOWS:
-        refresh_flows()
-    return FLOWS
+    if FLOWS:
+        return FLOWS
+    with _flows_lock:
+        if not FLOWS:
+            refresh_flows()
+        return FLOWS
 
 
 def refresh_flows() -> dict[str, dict]:

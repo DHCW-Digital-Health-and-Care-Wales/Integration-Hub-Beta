@@ -15,19 +15,34 @@ rather than raising when Cosmos is unconfigured or unreachable.
 
 from __future__ import annotations
 
+import copy
 import csv
 import io
 import logging
 import re
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
+from threading import Lock
 from typing import Any
 
 from dashboard import config
-from dashboard.services import cosmos_store
+from dashboard.services import cache, cosmos_store
 from dashboard.services.flows import get_flows
 
 log = logging.getLogger(__name__)
+
+# Short-TTL cache for the full contacts partition (invalidated immediately on any write).
+_contacts_cache_lock = Lock()
+_contacts_cache: dict[str, Any] = {"data": None, "ts": 0.0}
+
+
+def invalidate_contacts_cache() -> None:
+    """Clear the cached contacts list and the Flows-page grouped contacts cache."""
+    with _contacts_cache_lock:
+        _contacts_cache["data"] = None
+        _contacts_cache["ts"] = 0.0
+    cache.invalidate("flow_contacts")
 
 _PK = "contacts"
 _DOC_TYPE = "contact"
@@ -141,7 +156,7 @@ def _validate_notes(value: Any) -> str:
     return value
 
 
-def _validate_flow_ids(value: Any) -> list[str]:
+def _validate_flow_ids(value: Any, *, known_ids: set[str] | None = None) -> list[str]:
     """Validate linked flow ids against currently known flows.
 
     Falls back to accepting the supplied ids unchanged when no flow definitions are
@@ -156,11 +171,12 @@ def _validate_flow_ids(value: Any) -> list[str]:
 
     flow_ids = [v.strip() for v in value if v.strip()]
 
-    try:
-        known_ids = set(get_flows().keys())
-    except Exception as exc:  # noqa: BLE001 - flow discovery must never block a contact save
-        log.warning("Could not validate linked flow ids against live flow discovery: %s", exc)
-        known_ids = set()
+    if known_ids is None:
+        try:
+            known_ids = set(get_flows().keys())
+        except Exception as exc:  # noqa: BLE001 - flow discovery must never block a contact save
+            log.warning("Could not validate linked flow ids against live flow discovery: %s", exc)
+            known_ids = set()
 
     if known_ids:
         unknown = [flow_id for flow_id in flow_ids if flow_id not in known_ids]
@@ -176,7 +192,7 @@ def _validate_flow_ids(value: Any) -> list[str]:
     return deduped
 
 
-def _validate_contact(data: dict[str, Any]) -> dict[str, Any]:
+def _validate_contact(data: dict[str, Any], *, known_flow_ids: set[str] | None = None) -> dict[str, Any]:
     """Validate every contact field, raising InvalidContactError on the first problem."""
     first_name = _validate_name(data.get("first_name", ""), "First name")
     last_name = _validate_name(data.get("last_name", ""), "Last name")
@@ -187,7 +203,7 @@ def _validate_contact(data: dict[str, Any]) -> dict[str, Any]:
     organisation_type = _validate_organisation_type(data.get("organisation_type", ""))
     organisation_name = _validate_organisation_name(data.get("organisation_name", ""))
     notes = _validate_notes(data.get("notes"))
-    flow_ids = _validate_flow_ids(data.get("flow_ids"))
+    flow_ids = _validate_flow_ids(data.get("flow_ids"), known_ids=known_flow_ids)
 
     return {
         "first_name": first_name,
@@ -217,22 +233,38 @@ def _with_id(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def _list_all() -> list[dict[str, Any]]:
-    """Return every stored contact document, including soft-deleted ones."""
-    return [_with_id(document) for document in cosmos_store.query_documents(_PK)]
+    """Return every stored contact document (short-TTL cached), including soft-deleted ones."""
+    now = time.monotonic()
+    with _contacts_cache_lock:
+        cached = _contacts_cache["data"]
+        if cached is not None and (now - _contacts_cache["ts"]) <= config.API_CACHE_TTL:
+            return copy.deepcopy(cached)
+
+    contacts = [_with_id(document) for document in cosmos_store.query_documents(_PK)]
+    with _contacts_cache_lock:
+        _contacts_cache["data"] = copy.deepcopy(contacts)
+        _contacts_cache["ts"] = time.monotonic()
+    return contacts
 
 
 def _find(contact_id: str) -> dict[str, Any] | None:
-    for contact in _list_all():
-        if contact.get("id") == contact_id:
-            return contact
-    return None
+    """Point-read a single contact document by id instead of scanning the whole partition."""
+    document = cosmos_store.get_document(_PK, contact_id)
+    if document is None:
+        return None
+    contact = _with_id(document)
+    if not contact.get("id"):
+        contact["id"] = contact_id
+    return contact
 
 
-def _persist(contact_id: str, contact: dict[str, Any]) -> None:
+def _persist(contact_id: str, contact: dict[str, Any], *, invalidate: bool = True) -> None:
     payload = {k: v for k, v in contact.items() if k not in ("id", "contact_id")}
     payload["contact_id"] = contact_id
     if not cosmos_store.upsert_document(_PK, contact_id, payload, doc_type=_DOC_TYPE):
         raise ContactPersistenceError(_PERSISTENCE_UNAVAILABLE_MESSAGE)
+    if invalidate:
+        invalidate_contacts_cache()
 
 
 # --- Public API ------------------------------------------------------------
@@ -426,6 +458,9 @@ def purge_expired_contacts(now: datetime | None = None) -> int:
         else:
             log.warning("Failed to permanently delete expired contact %s", contact_id)
 
+    if purged:
+        invalidate_contacts_cache()
+
     return purged
 
 
@@ -454,6 +489,13 @@ def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:
         key = normalized_fields.get(name)
         return (row.get(key) or "") if key else ""
 
+    # Fetch known flow ids once for the whole CSV rather than once per row.
+    try:
+        known_flow_ids: set[str] = set(get_flows().keys())
+    except Exception as exc:  # noqa: BLE001 - flow discovery must never block CSV parsing
+        log.warning("Could not validate linked flow ids against live flow discovery: %s", exc)
+        known_flow_ids = set()
+
     valid_rows: list[dict[str, Any]] = []
     errors: list[str] = []
     for row_number, row in enumerate(reader, start=2):  # row 1 is the header
@@ -470,7 +512,8 @@ def parse_csv(file_content: str) -> tuple[list[dict[str, Any]], list[str]]:
                     "organisation_name": _column(row, "organisation_name"),
                     "notes": _column(row, "notes"),
                     "flow_ids": flow_ids,
-                }
+                },
+                known_flow_ids=known_flow_ids,
             )
         except InvalidContactError as exc:
             errors.append(f"Row {row_number}: {exc.safe_message}")
@@ -521,12 +564,25 @@ def import_contacts(file_content: str) -> dict[str, Any]:
         label = f"{row['first_name']} {row['last_name']}"
         key = _dedupe_key(row)
         match = existing_by_key.get(key) if key else None
+        now = datetime.now(UTC).isoformat()
         try:
             if match:
-                contact = update_contact(match["id"], row)
+                contact_id = str(match["id"])
+                contact = {
+                    **row,
+                    "deleted": match.get("deleted", False),
+                    "deleted_at": match.get("deleted_at"),
+                    "created_at": match.get("created_at") or now,
+                    "updated_at": now,
+                }
+                _persist(contact_id, contact, invalidate=False)
+                contact["id"] = contact_id
                 updated += 1
             else:
-                contact = add_contact(row)
+                contact_id = str(uuid.uuid4())
+                contact = {**row, "deleted": False, "created_at": now, "updated_at": now}
+                _persist(contact_id, contact, invalidate=False)
+                contact["id"] = contact_id
                 created += 1
         except InvalidContactError as exc:
             errors.append(f"{label}: {exc.safe_message}")
@@ -539,5 +595,8 @@ def import_contacts(file_content: str) -> dict[str, Any]:
         # email/phone key updates this row instead of creating a duplicate contact.
         if key:
             existing_by_key[key] = contact
+
+    if created or updated:
+        invalidate_contacts_cache()
 
     return {"created": created, "updated": updated, "errors": errors, "persistence_failed": persistence_failed}

@@ -9,6 +9,7 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from dashboard.services import email_service
@@ -229,3 +230,33 @@ class TestSendAlertEmailRetry:
 
         assert result is True
         mock_sleep.assert_called_once_with(2.0)  # 2.0 * 2**0
+
+
+class TestClientCachingAndAsyncDispatch:
+    def test_get_email_client_caches_per_connection_string(self) -> None:
+        with patch("azure.communication.email.EmailClient.from_connection_string") as mock_factory:
+            mock_factory.side_effect = lambda conn: MagicMock(conn=conn)
+            c1 = email_service._get_email_client("endpoint=a")
+            c2 = email_service._get_email_client("endpoint=a")
+            c3 = email_service._get_email_client("endpoint=b")
+
+        assert c1 is c2
+        assert c3 is not c1
+        assert mock_factory.call_count == 2
+
+    def test_dispatch_email_runs_task_and_catches_exceptions(self, caplog: Any) -> None:
+        ran: list[str] = []
+
+        def _ok() -> None:
+            ran.append("ok")
+
+        def _boom() -> None:
+            raise RuntimeError("smtp down")
+
+        email_service.dispatch_email(_ok).result(timeout=2.0)
+        assert ran == ["ok"]
+
+        # Must log and swallow exceptions from the background pool rather than raising.
+        with caplog.at_level("ERROR", logger="dashboard.services.email_service"):
+            email_service.dispatch_email(_boom).result(timeout=2.0)
+        assert any("Background alert email task failed" in r.message for r in caplog.records)

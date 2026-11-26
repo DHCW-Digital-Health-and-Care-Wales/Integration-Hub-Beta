@@ -20,9 +20,13 @@
   document.addEventListener('keyup', function (e) { delete pressed[e.key]; });
   window.addEventListener('blur', function () { pressed = {}; });
 
-  // ── Inject styles ────────────────────────────────────────────────────────
-  var css = document.createElement('style');
-  css.textContent = [
+  // ── Inject styles lazily when the easter egg is first triggered ──────────
+  var stylesInjected = false;
+  function ensureStyles() {
+    if (stylesInjected) return;
+    stylesInjected = true;
+    var css = document.createElement('style');
+    css.textContent = [
     /* Ocean */
     '.ee-ocean{',
     '  position:fixed;left:0;bottom:0;width:100%;height:0;',
@@ -128,8 +132,9 @@
     '  40%{transform:translateY(20px) rotate(12deg)}',
     '  100%{transform:translateY(300px) rotate(25deg);opacity:0}',
     '}',
-  ].join('\n');
-  document.head.appendChild(css);
+    ].join('\n');
+    document.head.appendChild(css);
+  }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function rand(a, b) { return Math.random() * (b - a) + a; }
@@ -235,6 +240,7 @@
 
   // ── Main scene ───────────────────────────────────────────────────────────
   function runScene() {
+    ensureStyles();
     active = true;
     var body = document.body;
 

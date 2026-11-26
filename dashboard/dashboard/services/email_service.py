@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
+from typing import Any
 
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
@@ -27,6 +30,46 @@ log = logging.getLogger(__name__)
 _secret_cache: str | None = None
 _secret_cache_expiry: float = 0.0
 _cache_lock = Lock()
+
+_email_client_lock = Lock()
+_email_clients: dict[str, Any] = {}
+
+# Bounded daemon pool for background alert email delivery so ACS polling and
+# 429 retry-backoff sleeps never block alarm evaluation or HTTP worker threads.
+_EMAIL_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="alert-email")
+
+
+def _get_email_client(connection_string: str) -> Any:
+    """Return a cached ACS EmailClient per connection string (reuses HTTP pool)."""
+    cached = _email_clients.get(connection_string)
+    if cached is not None:
+        return cached
+    with _email_client_lock:
+        cached = _email_clients.get(connection_string)
+        if cached is None:
+            from azure.communication.email import EmailClient  # noqa: PLC0415
+
+            cached = EmailClient.from_connection_string(connection_string)
+            _email_clients[connection_string] = cached
+        return cached
+
+
+def _reset_clients_for_tests() -> None:
+    """Clear cached ACS EmailClient instances (used by unit tests)."""
+    with _email_client_lock:
+        _email_clients.clear()
+
+
+def dispatch_email(task: Callable[[], None]) -> Future[None]:
+    """Run an email delivery callable on the background daemon pool."""
+
+    def _run() -> None:
+        try:
+            task()
+        except Exception as exc:  # noqa: BLE001 - background email must never surface unhandled
+            log.error("Background alert email task failed: %s", exc, exc_info=True)
+
+    return _EMAIL_EXECUTOR.submit(_run)
 
 
 def _fetch_from_key_vault() -> str | None:
@@ -117,9 +160,7 @@ def send_alert_email(subject: str, html_body: str) -> bool:
         return False
 
     try:
-        from azure.communication.email import EmailClient  # noqa: PLC0415
-
-        client = EmailClient.from_connection_string(connection_string)
+        client = _get_email_client(connection_string)
         message = {
             "senderAddress": config.ALERT_EMAIL_FROM,
             "recipients": {"to": [{"address": config.ALERT_EMAIL_TO}]},

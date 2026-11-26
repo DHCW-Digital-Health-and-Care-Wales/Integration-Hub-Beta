@@ -19,26 +19,59 @@ created before the upgrade keep working.
 
 from __future__ import annotations
 
+import copy
 import logging
+import time
 from datetime import datetime, timezone
+from threading import Lock
 
+from dashboard import config
 from dashboard.services import alarm_pauses, cosmos_store
 
 log = logging.getLogger(__name__)
 
+# Short-TTL in-memory cache for alarm config documents (invalidated on write).
+# Prevents every page render (/, /flows, /alarms) from issuing 3 sequential
+# Cosmos DB point reads when rules haven't changed.
+_config_cache_lock = Lock()
+_config_cache: dict[tuple[str, str], tuple[dict, float]] = {}
+
+
+def invalidate_config_cache(partition_key: str | None = None, config_doc_id: str = "config") -> None:
+    """Clear cached alarm config for one alarm (or all alarms when ``partition_key`` is None)."""
+    with _config_cache_lock:
+        if partition_key is None:
+            _config_cache.clear()
+        else:
+            _config_cache.pop((partition_key, config_doc_id), None)
+
 
 def load_config(partition_key: str, config_doc_id: str = "config") -> dict:
-    """Load an alarm's rule config from Cosmos DB. Returns empty config when none is stored."""
+    """Load an alarm's rule config from Cosmos DB (short-TTL cached). Returns empty config when none is stored."""
+    cache_key = (partition_key, config_doc_id)
+    ttl = config.API_CACHE_TTL
+    now = time.monotonic()
+    with _config_cache_lock:
+        cached = _config_cache.get(cache_key)
+        if cached is not None and (now - cached[1]) <= ttl:
+            return copy.deepcopy(cached[0])
+
     doc = cosmos_store.get_document(partition_key, config_doc_id)
     if not doc:
-        return {"rules": {}}
-    doc.setdefault("rules", {})
-    return doc
+        result: dict = {"rules": {}}
+    else:
+        doc.setdefault("rules", {})
+        result = doc
+
+    with _config_cache_lock:
+        _config_cache[cache_key] = (copy.deepcopy(result), time.monotonic())
+    return result
 
 
 def save_config(partition_key: str, cfg: dict, config_doc_id: str = "config") -> None:
-    """Persist an alarm's rule config to Cosmos DB."""
+    """Persist an alarm's rule config to Cosmos DB and invalidate its cached copy."""
     cosmos_store.upsert_document(partition_key, config_doc_id, cfg, doc_type="alarm_config")
+    invalidate_config_cache(partition_key, config_doc_id)
 
 
 def load_state(partition_key: str, state_doc_id: str = "state") -> dict:

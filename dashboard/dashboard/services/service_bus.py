@@ -6,22 +6,45 @@ from __future__ import annotations
 
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
+from threading import Lock
 from typing import Any
 
 from azure.mgmt.servicebus import ServiceBusManagementClient
-from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+from azure.monitor.query import LogsQueryStatus
 
 from dashboard import config
+from dashboard.services.azure_monitor import _get_logs_client
 from dashboard.services.credentials import get_azure_credential
 
 log = logging.getLogger(__name__)
 
+_SUBSCRIPTION_FETCH_MAX_WORKERS = 8
+
+_sb_client_lock = Lock()
+_sb_clients: dict[str, ServiceBusManagementClient] = {}
+
 
 def _get_client() -> Any:
-    cred = get_azure_credential()
-    return ServiceBusManagementClient(cred, config.AZURE_SUBSCRIPTION_ID)
+    """Return a cached ServiceBusManagementClient per subscription ID."""
+    sub_id = config.AZURE_SUBSCRIPTION_ID
+    cached = _sb_clients.get(sub_id)
+    if cached is not None:
+        return cached
+    with _sb_client_lock:
+        cached = _sb_clients.get(sub_id)
+        if cached is None:
+            cached = ServiceBusManagementClient(get_azure_credential(), sub_id)
+            _sb_clients[sub_id] = cached
+        return cached
+
+
+def _reset_client_for_tests() -> None:
+    """Clear cached Service Bus management clients (used by unit tests)."""
+    with _sb_client_lock:
+        _sb_clients.clear()
 
 
 def get_queues() -> list[dict]:
@@ -93,6 +116,11 @@ def resolve_by_suffix(names: list[str], suffix: str) -> str | None:
 
 def get_topics() -> list[dict]:
     """Return a list of topic dicts from the Service Bus namespace."""
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_TOPICS  # noqa: PLC0415
+
+        return DEMO_TOPICS
+
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
         return []
 
@@ -128,6 +156,11 @@ def get_topic_names() -> list[str]:
 
 def get_subscriptions(topic_name: str) -> list[dict]:
     """Return subscription dicts for a given topic."""
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_SUBSCRIPTIONS  # noqa: PLC0415
+
+        return DEMO_SUBSCRIPTIONS.get(topic_name, [])
+
     if not all([config.AZURE_SUBSCRIPTION_ID, config.AZURE_RESOURCE_GROUP, config.AZURE_SERVICE_BUS_NAMESPACE]):
         return []
 
@@ -175,8 +208,17 @@ def get_namespace_snapshot() -> dict:
     """Return a unified namespace snapshot covering queues, topics, and subscriptions."""
     from dashboard.services.arm import get_subscription_consumers_by_topic  # noqa: PLC0415
 
+    # Fetch queues, topics, and ARM subscription-consumer metadata concurrently.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        fut_queues = pool.submit(get_queues)
+        fut_topics = pool.submit(get_topics)
+        fut_consumers = pool.submit(get_subscription_consumers_by_topic)
+        raw_queues = fut_queues.result()
+        raw_topics = fut_topics.result()
+        consumers_by_topic = fut_consumers.result()
+
     queues = []
-    for queue in get_queues():
+    for queue in raw_queues:
         active = queue.get("active_message_count", 0)
         dlq = queue.get("dead_letter_message_count", 0)
         queues.append(
@@ -188,12 +230,20 @@ def get_namespace_snapshot() -> dict:
             }
         )
 
-    consumers_by_topic = get_subscription_consumers_by_topic()
+    # Fetch subscriptions for every topic in parallel instead of serially.
+    subs_by_topic: dict[str, list[dict]] = {}
+    if raw_topics:
+        topic_names = [topic["name"] for topic in raw_topics]
+        max_workers = min(_SUBSCRIPTION_FETCH_MAX_WORKERS, len(topic_names))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            subs_lists = list(pool.map(get_subscriptions, topic_names))
+        subs_by_topic = dict(zip(topic_names, subs_lists))
+
     topics: list[dict] = []
     subscription_active_total = 0
     subscription_dlq_total = 0
 
-    for topic in get_topics():
+    for topic in raw_topics:
         active = topic.get("active_message_count", 0)
         dlq = topic.get("dead_letter_message_count", 0)
         subscriptions_by_name: dict[str, dict] = {}
@@ -226,7 +276,7 @@ def get_namespace_snapshot() -> dict:
             )
             _merge_consumer_apps(subscription, consumer.get("consumer_apps", []))
 
-        for subscription in get_subscriptions(topic["name"]):
+        for subscription in subs_by_topic.get(topic["name"], []):
             sub_name = subscription.get("name")
             if not sub_name:
                 continue
@@ -381,28 +431,30 @@ def get_message_metrics(
         safe_entity_type = entity_type.lower()
         if safe_entity_type == "queue":
             safe_queue = re.sub(r"[^a-zA-Z0-9\-_]", "", entity_name)
-            entity_filter_kql = f"| where tolower(ResourceId) contains '/queues/{safe_queue.lower()}'\n"
+            entity_filter_kql = f"| where ResourceId contains '/queues/{safe_queue}'\n"
         elif safe_entity_type == "topic":
             safe_topic = re.sub(r"[^a-zA-Z0-9\-_]", "", entity_name)
             entity_filter_kql = (
-                f"| where tolower(ResourceId) contains '/topics/{safe_topic.lower()}'\n"
-                "| where tolower(ResourceId) !contains '/subscriptions/'\n"
+                f"| where ResourceId contains '/topics/{safe_topic}'\n"
+                "| where ResourceId !contains '/subscriptions/'\n"
             )
         elif safe_entity_type == "subscription" and "/" in entity_name:
             topic_name, subscription_name = entity_name.split("/", maxsplit=1)
             safe_topic = re.sub(r"[^a-zA-Z0-9\-_]", "", topic_name)
             safe_subscription = re.sub(r"[^a-zA-Z0-9\-_]", "", subscription_name)
             entity_filter_kql = (
-                f"| where tolower(ResourceId) contains '/topics/{safe_topic.lower()}/'\n"
-                f"| where tolower(ResourceId) contains '/subscriptions/{safe_subscription.lower()}'\n"
+                f"| where ResourceId contains '/topics/{safe_topic}/'\n"
+                f"| where ResourceId contains '/subscriptions/{safe_subscription}'\n"
             )
 
     # Scope to this environment's Service Bus namespace so that results are not
     # polluted by other environments sharing the same Log Analytics workspace.
+    # KQL =~ and contains are already case-insensitive; avoiding tolower() lets
+    # Kusto push filters down to column indexes.
     ns_filter_kql = ""
     if config.AZURE_SERVICE_BUS_NAMESPACE:
         safe_ns = re.sub(r"[^a-zA-Z0-9\-_]", "", config.AZURE_SERVICE_BUS_NAMESPACE)
-        ns_filter_kql = f"| where tolower(Resource) =~ tolower('{safe_ns}')\n"
+        ns_filter_kql = f"| where Resource =~ '{safe_ns}'\n"
 
     kql = (
         "AzureMetrics\n"
@@ -416,8 +468,7 @@ def get_message_metrics(
     )
 
     try:
-        cred = get_azure_credential()
-        client = LogsQueryClient(cred)
+        client = _get_logs_client()
 
         response = client.query_workspace(
             workspace_id=workspace_id,

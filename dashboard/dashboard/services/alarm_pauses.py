@@ -19,17 +19,33 @@ validation data is passed in by callers as ``known_rules``.
 
 from __future__ import annotations
 
+import copy
 import logging
 import re
+import time
 import uuid
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from dashboard import config
 from dashboard.services import cosmos_store
 
 log = logging.getLogger(__name__)
+
+# Short-TTL cache for non-strict pause reads (invalidated immediately on writes).
+# Eliminates live Cosmos partition scans on every page load and 30s status poll.
+_pauses_cache_lock = Lock()
+_pauses_cache: dict[str, Any] = {"data": None, "ts": 0.0}
+
+
+def invalidate_pauses_cache() -> None:
+    """Clear the cached pause list so the next read fetches fresh data from Cosmos."""
+    with _pauses_cache_lock:
+        _pauses_cache["data"] = None
+        _pauses_cache["ts"] = 0.0
 
 PARTITION_KEY = "alarm-pause"
 _DOC_TYPE = "alarm_pause"
@@ -463,25 +479,43 @@ def _persist(pause: dict[str, Any]) -> None:
 def list_pauses(strict: bool = False) -> list[dict]:
     """Return every stored pause.
 
-    Fails open (``[]``) when Cosmos is unavailable, unless ``strict`` — then raises
-    ``PausePersistenceError`` so write paths never act on a failed read.
+    Non-strict reads are cached in memory for ``config.API_CACHE_TTL`` seconds
+    (invalidated immediately on create/cancel/purge). Fails open (``[]``) when
+    Cosmos is unavailable. With ``strict=True``, always reads live from Cosmos
+    and raises ``PausePersistenceError`` on failure so write paths never act on
+    stale data or a failed read.
     """
+    if not strict:
+        now = time.monotonic()
+        with _pauses_cache_lock:
+            cached = _pauses_cache["data"]
+            if cached is not None and (now - _pauses_cache["ts"]) <= config.API_CACHE_TTL:
+                return copy.deepcopy(cached)
+
     try:
         documents = cosmos_store.query_documents(PARTITION_KEY, strict=strict)
     except cosmos_store.CosmosUnavailableError as exc:
         raise PausePersistenceError("Pause persistence is currently unavailable.") from exc
-    return [p for p in documents if p.get("pause_id")]
+    pauses = [p for p in documents if p.get("pause_id")]
+    with _pauses_cache_lock:
+        _pauses_cache["data"] = copy.deepcopy(pauses)
+        _pauses_cache["ts"] = time.monotonic()
+    return pauses
 
 
 def purge_old(pauses: list[dict], now: datetime) -> None:
     """Delete ended/cancelled pauses that finished more than the retention period ago."""
     cutoff = now - _RETENTION
+    deleted_any = False
     for pause in pauses:
         if pause_status(pause, now) not in (STATUS_ENDED, STATUS_CANCELLED):
             continue
         finished = _finished_at(pause)
         if finished is not None and finished < cutoff:
             cosmos_store.delete_document(PARTITION_KEY, pause["pause_id"])
+            deleted_any = True
+    if deleted_any:
+        invalidate_pauses_cache()
 
 
 def create_pause(
@@ -494,6 +528,7 @@ def create_pause(
     pause = build_pause(payload, known_rules, now)
     _ensure_persistence_configured()
     _persist(pause)
+    invalidate_pauses_cache()
     log.info(
         "Alarm pause %s created by %s: scope=%s targets=%s start=%s end=%s reason=%s",
         pause["pause_id"],
@@ -525,6 +560,7 @@ def cancel_pause(pause_id: str, now: datetime | None = None) -> dict[str, Any]:
     else:
         raise PauseError("This pause has already ended.")
     _persist(pause)
+    invalidate_pauses_cache()
     log.info("Alarm pause %s cancelled (was %s)", pause_id, status)
     purge_old(pauses, now)
     return to_view(pause, now)

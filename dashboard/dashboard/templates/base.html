@@ -253,16 +253,19 @@
 <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 <script>
-  // Footer clock
+  // Footer clock (skip DOM writes while tab is hidden)
   (function () {
     const el = document.getElementById("footer-time");
     function tick() {
-      if (el) el.textContent = new Date().toLocaleString("en-GB", {
+      if (el && !document.hidden) el.textContent = new Date().toLocaleString("en-GB", {
         dateStyle: "medium", timeStyle: "medium"
       });
     }
     tick();
     setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) tick();
+    });
   })();
 
   // Theme toggle
@@ -314,8 +317,8 @@
 
 {% block scripts %}{% endblock %}
 
-  <script src="{{ url_for('static', filename='js/enhanced-ui.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/alternate_ui.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/enhanced-ui.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/alternate_ui.js') }}"></script>
 
   <!-- ── Unsaved-changes modal (shared, used by config pages) ─────────── -->
   <div id="unsaved-modal-backdrop" aria-hidden="true" style="

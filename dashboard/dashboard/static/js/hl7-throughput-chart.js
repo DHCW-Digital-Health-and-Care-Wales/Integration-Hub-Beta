@@ -44,7 +44,12 @@
   // ═══════════════════════════════════════════════════════════════════════════
 
   var canvas, ctx, dpr;
+  var baseCanvas, baseCtx;
+  var baseDirty = true;
+  var rafId = null;
   var chartData = null;
+  var preparedData = null;
+  var cachedRefBins = [];
   var currentHours = 24; // Default to last 24 hours
   var currentHealthBoard = null;
   var currentService = null;
@@ -72,6 +77,8 @@
     if (!canvas) return;
 
     ctx = canvas.getContext('2d');
+    baseCanvas = document.createElement('canvas');
+    baseCtx = baseCanvas.getContext('2d');
     dpr = window.devicePixelRatio || 1;
 
     sizeCanvas();
@@ -108,6 +115,12 @@
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
+
+    baseCanvas.width = w * dpr;
+    baseCanvas.height = h * dpr;
+    baseCtx.setTransform(1, 0, 0, 1, 0, 0);
+    baseCtx.scale(dpr, dpr);
+    baseDirty = true;
   }
 
   function cssWidth() { return canvas.width / dpr; }
@@ -118,9 +131,38 @@
     draw();
   }
 
+  function scheduleDraw() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(function () {
+      rafId = null;
+      draw();
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // DATA FETCHING
   // ═══════════════════════════════════════════════════════════════════════════
+
+  function prepareSeries(series) {
+    return (series || []).map(function (pt) {
+      return { ms: parseISO(pt.time), value: pt.value || 0 };
+    });
+  }
+
+  function prepareData(data) {
+    var incoming = prepareSeries(data && data.incoming);
+    var outgoing = prepareSeries(data && data.outgoing);
+    var inByMs = Object.create(null);
+    var outByMs = Object.create(null);
+    for (var i = 0; i < incoming.length; i++) inByMs[incoming[i].ms] = incoming[i].value;
+    for (var j = 0; j < outgoing.length; j++) outByMs[outgoing[j].ms] = outgoing[j].value;
+    return {
+      incoming: incoming,
+      outgoing: outgoing,
+      inByMs: inByMs,
+      outByMs: outByMs
+    };
+  }
 
   function fetchData(hours) {
     var loader = document.getElementById('hl7-chart-loading');
@@ -138,6 +180,8 @@
       .then(function (res) { return res.json(); })
       .then(function (data) {
         chartData = data;
+        preparedData = prepareData(data);
+        baseDirty = true;
         if (loader) loader.style.display = 'none';
         updateLegend();
         draw();
@@ -145,6 +189,9 @@
       .catch(function (err) {
         console.error('HL7 chart data fetch failed:', err);
         chartData = null;
+        preparedData = null;
+        cachedRefBins = [];
+        baseDirty = true;
         if (loader) loader.style.display = 'none';
         drawEmpty('Failed to load metrics');
       });
@@ -173,19 +220,20 @@
   // DRAWING
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function draw() {
+  function renderBaseLayer() {
     var w = cssWidth();
     var h = cssHeight();
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 1)';
-    ctx.fillRect(0, 0, w, h);
+    baseCtx.fillStyle = 'rgba(15, 23, 42, 1)';
+    baseCtx.fillRect(0, 0, w, h);
 
-    var incoming = (chartData && chartData.incoming) || [];
-    var outgoing = (chartData && chartData.outgoing) || [];
+    var incoming = (preparedData && preparedData.incoming) || [];
+    var outgoing = (preparedData && preparedData.outgoing) || [];
 
     if (incoming.length === 0 && outgoing.length === 0) {
-      drawEmpty('No data available');
-      return;
+      cachedRefBins = [];
+      baseDirty = false;
+      return false;
     }
 
     // Compute layout
@@ -195,10 +243,10 @@
     // Time domain spans whichever series has data.
     var times = [];
     if (incoming.length > 0) {
-      times.push(parseISO(incoming[0].time), parseISO(incoming[incoming.length - 1].time));
+      times.push(incoming[0].ms, incoming[incoming.length - 1].ms);
     }
     if (outgoing.length > 0) {
-      times.push(parseISO(outgoing[0].time), parseISO(outgoing[outgoing.length - 1].time));
+      times.push(outgoing[0].ms, outgoing[outgoing.length - 1].ms);
     }
     chartMetrics.minTime = Math.min.apply(null, times);
     chartMetrics.maxTime = Math.max.apply(null, times);
@@ -211,79 +259,108 @@
       1
     );
 
-    // Draw background
-    drawBackground();
+    // Precompute reference bin screen X and O(1) values for hover tooltips.
+    var ref = incoming.length >= outgoing.length ? incoming : outgoing;
+    var span = chartMetrics.maxTime - chartMetrics.minTime;
+    cachedRefBins = ref.map(function (pt) {
+      return {
+        x: PAD.left + ((pt.ms - chartMetrics.minTime) / span) * chartMetrics.width,
+        ms: pt.ms,
+        inVal: preparedData.inByMs[pt.ms] || 0,
+        outVal: preparedData.outByMs[pt.ms] || 0
+      };
+    });
 
-    // Draw axes
-    drawAxes();
+    // Render static layers onto offscreen canvas
+    drawBackground(baseCtx);
+    drawAxes(baseCtx);
+    drawSeries(baseCtx, outgoing, COLORS.outgoingLine, COLORS.outgoingFill);
+    drawSeries(baseCtx, incoming, COLORS.incomingLine, COLORS.incomingFill);
 
-    // Draw series (outgoing first so the larger incoming line sits on top)
-    drawSeries(outgoing, COLORS.outgoingLine, COLORS.outgoingFill);
-    drawSeries(incoming, COLORS.incomingLine, COLORS.incomingFill);
+    baseDirty = false;
+    return true;
+  }
 
-    // Draw crosshair on hover
+  function draw() {
+    var w = cssWidth();
+    var h = cssHeight();
+
+    var incoming = (preparedData && preparedData.incoming) || [];
+    var outgoing = (preparedData && preparedData.outgoing) || [];
+    if (incoming.length === 0 && outgoing.length === 0) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 1)';
+      ctx.fillRect(0, 0, w, h);
+      drawEmpty('No data available');
+      return;
+    }
+
+    if (baseDirty) {
+      renderBaseLayer();
+    }
+
+    // Blit cached static chart layer, then paint only the hover overlay.
+    ctx.drawImage(baseCanvas, 0, 0, w, h);
+
     if (hoverPos) {
       drawCrosshair(hoverPos);
       drawTooltip(hoverPos);
     }
   }
 
-  function drawBackground() {
-    var w = cssWidth();
+  function drawBackground(targetCtx) {
     var h = cssHeight();
 
     // Gradient
-    var grad = ctx.createLinearGradient(0, PAD.top, 0, h - PAD.bottom);
+    var grad = targetCtx.createLinearGradient(0, PAD.top, 0, h - PAD.bottom);
     grad.addColorStop(0, COLORS.bgGradientStart);
     grad.addColorStop(1, COLORS.bgGradientEnd);
-    ctx.fillStyle = grad;
-    ctx.fillRect(PAD.left, PAD.top, chartMetrics.width, chartMetrics.height);
+    targetCtx.fillStyle = grad;
+    targetCtx.fillRect(PAD.left, PAD.top, chartMetrics.width, chartMetrics.height);
   }
 
-  function drawAxes() {
-    var w = cssWidth();
+  function drawAxes(targetCtx) {
     var h = cssHeight();
     var x0 = PAD.left;
     var y0 = h - PAD.bottom;
 
     // Frame
-    ctx.strokeStyle = COLORS.gridLine;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x0, PAD.top, chartMetrics.width, chartMetrics.height);
+    targetCtx.strokeStyle = COLORS.gridLine;
+    targetCtx.lineWidth = 1;
+    targetCtx.strokeRect(x0, PAD.top, chartMetrics.width, chartMetrics.height);
 
     // Y-axis label
-    ctx.save();
-    ctx.translate(8, h / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = COLORS.axisText;
-    ctx.font = '0.7rem system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('Messages', 0, 0);
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.translate(8, h / 2);
+    targetCtx.rotate(-Math.PI / 2);
+    targetCtx.fillStyle = COLORS.axisText;
+    targetCtx.font = '0.7rem system-ui';
+    targetCtx.textAlign = 'center';
+    targetCtx.fillText('Messages', 0, 0);
+    targetCtx.restore();
 
     // Y-axis gridlines and labels
-    ctx.fillStyle = COLORS.axisText;
-    ctx.font = '0.65rem system-ui';
-    ctx.textAlign = 'right';
+    targetCtx.fillStyle = COLORS.axisText;
+    targetCtx.font = '0.65rem system-ui';
+    targetCtx.textAlign = 'right';
     var yTicks = [0, 0.25, 0.5, 0.75, 1.0];
     yTicks.forEach(function (tick) {
       var y = y0 - tick * chartMetrics.height;
       var val = Math.round(tick * chartMetrics.maxValue);
 
       // Gridline
-      ctx.strokeStyle = COLORS.gridLine;
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x0, y);
-      ctx.lineTo(x0 + chartMetrics.width, y);
-      ctx.stroke();
+      targetCtx.strokeStyle = COLORS.gridLine;
+      targetCtx.lineWidth = 0.5;
+      targetCtx.beginPath();
+      targetCtx.moveTo(x0, y);
+      targetCtx.lineTo(x0 + chartMetrics.width, y);
+      targetCtx.stroke();
 
       // Label
-      ctx.fillText(formatNumber(val), x0 - 8, y + 3);
+      targetCtx.fillText(formatNumber(val), x0 - 8, y + 3);
     });
 
     // X-axis labels (sample timestamps)
-    ctx.textAlign = 'center';
+    targetCtx.textAlign = 'center';
     var spanMs = chartMetrics.maxTime - chartMetrics.minTime;
     var multiDay = spanMs > 24 * 60 * 60 * 1000;
     var xTicks = [0, 0.25, 0.5, 0.75, 1.0];
@@ -291,86 +368,101 @@
       var x = x0 + tick * chartMetrics.width;
       var t = chartMetrics.minTime + tick * (chartMetrics.maxTime - chartMetrics.minTime);
       var label = multiDay ? formatDateShort(t) : formatTime(t);
-      ctx.fillText(label, x, y0 + 16);
+      targetCtx.fillText(label, x, y0 + 16);
     });
   }
 
-  function drawSeries(series, lineColor, fillColor) {
+  function drawSeries(targetCtx, series, lineColor, fillColor) {
     if (series.length === 0) return;
 
     var x0 = PAD.left;
     var y0 = cssHeight() - PAD.bottom;
+    var span = chartMetrics.maxTime - chartMetrics.minTime;
 
     // Points
     var points = series.map(function (pt) {
-      var t = parseISO(pt.time);
+      var t = pt.ms;
       var v = pt.value || 0;
-      var x = x0 + ((t - chartMetrics.minTime) / (chartMetrics.maxTime - chartMetrics.minTime)) * chartMetrics.width;
+      var x = x0 + ((t - chartMetrics.minTime) / span) * chartMetrics.width;
       var y = y0 - (v / chartMetrics.maxValue) * chartMetrics.height;
       return { x: x, y: y, value: v, time: t };
     });
 
     if (points.length < 2) {
       // Just draw points
-      ctx.fillStyle = lineColor;
+      targetCtx.fillStyle = lineColor;
       points.forEach(function (pt) {
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.beginPath();
+        targetCtx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
+        targetCtx.fill();
       });
       return;
     }
 
     // Draw filled area
-    ctx.fillStyle = fillColor;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, y0);
+    targetCtx.fillStyle = fillColor;
+    targetCtx.beginPath();
+    targetCtx.moveTo(points[0].x, y0);
 
     // Curve through points
     var cp = {};
     for (var i = 0; i < points.length; i++) {
       catmullRomControlPoints(points, i, cp);
       if (i === 0) {
-        ctx.quadraticCurveTo(cp.c1x, cp.c1y, points[i + 1].x, points[i + 1].y);
+        targetCtx.quadraticCurveTo(cp.c1x, cp.c1y, points[i + 1].x, points[i + 1].y);
       } else if (i < points.length - 1) {
-        ctx.bezierCurveTo(cp.c1x, cp.c1y, cp.c2x, cp.c2y, points[i + 1].x, points[i + 1].y);
+        targetCtx.bezierCurveTo(cp.c1x, cp.c1y, cp.c2x, cp.c2y, points[i + 1].x, points[i + 1].y);
       }
     }
 
-    ctx.lineTo(points[points.length - 1].x, y0);
-    ctx.closePath();
-    ctx.fill();
+    targetCtx.lineTo(points[points.length - 1].x, y0);
+    targetCtx.closePath();
+    targetCtx.fill();
 
     // Draw line
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
+    targetCtx.strokeStyle = lineColor;
+    targetCtx.lineWidth = 2;
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineCap = 'round';
+    targetCtx.beginPath();
+    targetCtx.moveTo(points[0].x, points[0].y);
 
-    for (var i = 0; i < points.length; i++) {
-      catmullRomControlPoints(points, i, cp);
-      if (i === 0) {
-        ctx.quadraticCurveTo(cp.c1x, cp.c1y, points[i + 1].x, points[i + 1].y);
-      } else if (i < points.length - 1) {
-        ctx.bezierCurveTo(cp.c1x, cp.c1y, cp.c2x, cp.c2y, points[i + 1].x, points[i + 1].y);
+    for (var j = 0; j < points.length; j++) {
+      catmullRomControlPoints(points, j, cp);
+      if (j === 0) {
+        targetCtx.quadraticCurveTo(cp.c1x, cp.c1y, points[j + 1].x, points[j + 1].y);
+      } else if (j < points.length - 1) {
+        targetCtx.bezierCurveTo(cp.c1x, cp.c1y, cp.c2x, cp.c2y, points[j + 1].x, points[j + 1].y);
       }
     }
 
-    ctx.stroke();
+    targetCtx.stroke();
 
     // Draw data points
-    ctx.fillStyle = lineColor;
+    targetCtx.fillStyle = lineColor;
     points.forEach(function (pt) {
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 2.5, 0, 2 * Math.PI);
-      ctx.fill();
+      targetCtx.beginPath();
+      targetCtx.arc(pt.x, pt.y, 2.5, 0, 2 * Math.PI);
+      targetCtx.fill();
     });
   }
 
+  function findNearestBin(bins, targetX) {
+    var lo = 0;
+    var hi = bins.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (bins[mid].x < targetX) lo = mid + 1;
+      else hi = mid;
+    }
+    var best = lo;
+    if (lo > 0 && Math.abs(bins[lo - 1].x - targetX) < Math.abs(bins[lo].x - targetX)) {
+      best = lo - 1;
+    }
+    return best;
+  }
+
   function drawCrosshair(pos) {
-    var x0 = PAD.left;
     var y0 = cssHeight() - PAD.bottom;
 
     ctx.strokeStyle = COLORS.crosshair;
@@ -387,36 +479,16 @@
   }
 
   function drawTooltip(pos) {
-    if (!chartData) return;
+    if (!cachedRefBins.length) return;
 
-    var incoming = chartData.incoming || [];
-    var outgoing = chartData.outgoing || [];
-    var ref = incoming.length >= outgoing.length ? incoming : outgoing;
-    if (ref.length === 0) return;
+    var nearestIdx = findNearestBin(cachedRefBins, pos.x);
+    var bin = cachedRefBins[nearestIdx];
+    if (Math.abs(bin.x - pos.x) > 30) return;
 
-    var x0 = PAD.left;
-    var span = chartMetrics.maxTime - chartMetrics.minTime;
-
-    // Find nearest bin index by screen X using the reference series.
-    var nearestIdx = -1;
-    var nearestX = 0;
-    var minDist = Infinity;
-    for (var i = 0; i < ref.length; i++) {
-      var t = parseISO(ref[i].time);
-      var x = x0 + ((t - chartMetrics.minTime) / span) * chartMetrics.width;
-      var dist = Math.abs(x - pos.x);
-      if (dist < minDist) {
-        minDist = dist;
-        nearestIdx = i;
-        nearestX = x;
-      }
-    }
-
-    if (nearestIdx < 0 || minDist > 30) return;
-
-    var binTime = parseISO(ref[nearestIdx].time);
-    var inVal = valueAtTime(incoming, binTime);
-    var outVal = valueAtTime(outgoing, binTime);
+    var nearestX = bin.x;
+    var binTime = bin.ms;
+    var inVal = bin.inVal;
+    var outVal = bin.outVal;
 
     var line1 = formatDateTime(binTime);
     var line2 = 'Received: ' + formatNumber(inVal);
@@ -482,12 +554,12 @@
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     };
-    draw();
+    scheduleDraw();
   }
 
   function onCanvasMouseLeave() {
     hoverPos = null;
-    draw();
+    scheduleDraw();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -531,16 +603,6 @@
       sum += pt.value || 0;
     });
     return sum;
-  }
-
-  function valueAtTime(series, ms) {
-    if (!series) return 0;
-    for (var i = 0; i < series.length; i++) {
-      if (parseISO(series[i].time) === ms) {
-        return series[i].value || 0;
-      }
-    }
-    return 0;
   }
 
   function formatNumber(num) {
