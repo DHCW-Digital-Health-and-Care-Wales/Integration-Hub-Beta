@@ -987,6 +987,7 @@ services:
       - lims-to-trrr-merge
       - cav-pms-to-wcrs
       - cav-pms-to-wrrs
+      - cav-pms-to-trrr
       - everything
     networks:
       integration-hub:
