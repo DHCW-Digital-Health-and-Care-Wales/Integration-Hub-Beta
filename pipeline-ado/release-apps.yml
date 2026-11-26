@@ -25,6 +25,8 @@ parameters:
       - TRRR HD Database Sender
       - LIMS TRRR NHS ID Mapper
       - LIMS TRRR Merge Mapper
+      - CAV PMS TRRR Merge Mapper
+      - CAV TRRR IDUPD DB Sender
       - Mosaiq HL7Server
       - HL7 REST Server
       - REST Server
@@ -358,6 +360,24 @@ stages:
           appFunctionMidfix: 'trrr-merge'
           containerAppNameSuffix: 'trrr-merge-mapper'
           buildPipeline: 'LIMS TRRR Mapper - Build'
+
+        # CAV PMS -> TRRR (A40 merges to dbo.spProcessIdUpdate via the CAV TRRR ID update topic);
+        # container apps uks-<env>-cav-pms-trrr-mapper-ca and uks-<env>-cav-trrr-idupd-db-ca
+        - name: 'CAV PMS TRRR Merge Mapper'
+          appImageName: 'limstrrrmapper'
+          appFunctionMidfix: 'cav-pms-trrr'
+          containerAppNameSuffix: 'cav-pms-trrr-mapper'
+          buildPipeline: 'LIMS TRRR Mapper - Build'
+          allowedEnvironments:
+            - dev
+
+        - name: 'CAV TRRR IDUPD DB Sender'
+          appImageName: 'dbsendertrrr'
+          appFunctionMidfix: 'cav-trrr-idupd'
+          containerAppNameSuffix: 'cav-trrr-idupd-db'
+          buildPipeline: 'Database Sender TRRR - Build'
+          allowedEnvironments:
+            - dev
 
         - name: 'PROMS FHIR Transformer'
           appImageName: 'proms-fhirtransformer'
