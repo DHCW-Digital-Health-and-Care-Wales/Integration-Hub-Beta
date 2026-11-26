@@ -81,6 +81,7 @@ class Ultra7App(tk.Tk):
         self._theme: Theme = get_theme(self._prefs.theme)
         self._mock_receiver_win: MockReceiverDialog | None = None
         self._help_win: HelpDialog | None = None
+        self._prefs_win: PreferencesDialog | None = None
 
         self._build_menu()
         self._build_layout()
@@ -283,7 +284,8 @@ class Ultra7App(tk.Tk):
         self._project_title_label.configure(font=(ui_family, ui_size + 4, "bold"))
 
         style = ttk.Style(self)
-        style.theme_use("clam")
+        if style.theme_use() != "clam":
+            style.theme_use("clam")
         style.configure(".", background=theme.bg, foreground=theme.fg, font=(ui_family, ui_size))
         style.configure("TFrame", background=theme.bg)
         style.configure("TLabel", background=theme.bg, foreground=theme.fg, font=(ui_family, ui_size))
@@ -404,6 +406,26 @@ class Ultra7App(tk.Tk):
         style.map("TSpinbox", bordercolor=[("focus", theme.accent)])
 
         style.configure(
+            "TCombobox",
+            fieldbackground=theme.pane_bg,
+            background=theme.pane_bg,
+            foreground=theme.pane_fg,
+            arrowcolor=muted_fg,
+            bordercolor=border_color,
+            padding=(6, 4),
+            relief="flat",
+            font=(ui_family, small_size),
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", theme.pane_bg)],
+            foreground=[("readonly", theme.pane_fg)],
+            selectbackground=[("readonly", theme.pane_bg)],
+            selectforeground=[("readonly", theme.pane_fg)],
+            bordercolor=[("focus", theme.accent), ("active", theme.accent)],
+        )
+
+        style.configure(
             "TMenubutton",
             background=theme.pane_bg,
             foreground=theme.fg,
@@ -474,15 +496,18 @@ class Ultra7App(tk.Tk):
             save_preferences(self._prefs)
 
     def _open_preferences(self) -> None:
+        if self._prefs_win is not None and self._prefs_win.winfo_exists():
+            self._prefs_win.lift()
+            self._prefs_win.focus_set()
+            return
         original = AppPreferences.from_dict(self._prefs.to_dict())
-        dialog = PreferencesDialog(
+        self._prefs_win = PreferencesDialog(
             self,
             original,
             on_apply=lambda updated: self._apply_preferences(updated, save=True),
         )
-        self.wait_window(dialog)
-        if dialog.result is not None:
-            self._apply_preferences(dialog.result, save=True)
+        self._prefs_win.lift()
+        self._prefs_win.focus_set()
 
     def _adjust_editor_font(self, delta: int) -> None:
         new_size = max(MIN_EDITOR_FONT_SIZE, min(MAX_EDITOR_FONT_SIZE, self._prefs.editor_font_size + delta))
