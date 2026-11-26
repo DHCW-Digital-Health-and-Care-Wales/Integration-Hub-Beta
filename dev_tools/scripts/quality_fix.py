@@ -51,18 +51,18 @@ PHASE_LABELS = {
     PHASE_FORMAT: "Formatting",
 }
 
-# Which quality_report.py check groups to re-run after each fixer.
+# Which quality_report.py checks to re-run after each fixer.
 RECHECK_GROUPS: Dict[str, Tuple[str, ...]] = {
     "ruff": ("ruff",),
     "format": ("ruff",),
     "unused-ignores": ("mypy",),
     "annotate-none": ("mypy",),
-    "bandit-timeouts": ("security",),
-    "baseline": ("mypy", "security"),
-    "audit": ("security",),
-    "audit-pin": ("security",),
-    "audit-transitive": ("security",),
-    "audit-override": ("security",),
+    "bandit-timeouts": ("bandit",),
+    "baseline": ("mypy", "bandit"),
+    "audit": ("audit",),
+    "audit-pin": ("audit",),
+    "audit-transitive": ("audit",),
+    "audit-override": ("audit",),
 }
 
 NONE_HINT = 'Use "-> None" if function does not return a value'
@@ -595,13 +595,11 @@ def update_requirement(requirement: str, target: str) -> ReqUpdate:
 # pyproject.toml / uv.lock helpers
 # --------------------------------------------------------------------------------------------------
 
-def load_pyproject(directory: Path) -> Dict[str, Any]:
-    path = directory / "pyproject.toml"
-    try:
-        return tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
-        LOG.warning("Cannot read %s: %s", path, exc)
-        return {}
+load_pyproject = qr.load_pyproject
+build_source_graph = qr.build_source_graph
+dependency_closure = qr.dependency_closure
+dependents_of = qr.dependents_of
+component_of = qr.component_of
 
 
 def requirement_entries(data: Dict[str, Any]) -> List[Tuple[str, str]]:
@@ -616,42 +614,6 @@ def requirement_entries(data: Dict[str, Any]) -> List[Tuple[str, str]]:
     for key in ("dev-dependencies", "override-dependencies", "constraint-dependencies"):
         entries += [(f"tool.uv.{key}", r) for r in uv.get(key, [])]
     return [(section, r) for section, r in entries if isinstance(r, str)]
-
-
-def build_source_graph(root: Path, components: Iterable[str]) -> Dict[str, List[str]]:
-    """component -> components it pulls in through `[tool.uv.sources]` path entries."""
-    known = set(components)
-    graph: Dict[str, List[str]] = {}
-    for component in sorted(known):
-        sources = load_pyproject(root / component).get("tool", {}).get("uv", {}).get("sources", {})
-        found: List[str] = []
-        for spec in sources.values():
-            for entry in spec if isinstance(spec, list) else [spec]:
-                if not (isinstance(entry, dict) and isinstance(entry.get("path"), str)):
-                    continue
-                try:
-                    rel = (root / component / entry["path"]).resolve().relative_to(root.resolve()).as_posix()
-                except ValueError:
-                    continue
-                if rel in known and rel not in found:
-                    found.append(rel)
-        graph[component] = found
-    return graph
-
-
-def dependency_closure(component: str, graph: Dict[str, List[str]]) -> List[str]:
-    order, queue = [], [component]
-    while queue:
-        current = queue.pop(0)
-        if current not in order:
-            order.append(current)
-            queue.extend(graph.get(current, []))
-    return order
-
-
-def dependents_of(changed: Set[str], graph: Dict[str, List[str]]) -> Set[str]:
-    """Components whose lock files embed metadata from any changed component (including the changed ones)."""
-    return {c for c in graph if changed & set(dependency_closure(c, graph))}
 
 
 def lock_contains(root: Path, component: str, package: str) -> bool:
@@ -879,6 +841,7 @@ def plan_audit(report: Report, opts: Options, root: Path, components: Sequence[s
         edited.setdefault(component, {})[package] = version
 
     # 4. Re-lock everything affected, after every manifest has been edited (path deps embed manifest metadata).
+    tls_flags = qr.uv_tls_flags(root)
     for component in sorted(set(lock_targets) | dependents_of(set(edited), graph)):
         if not (root / component / "uv.lock").is_file():
             continue
@@ -888,7 +851,7 @@ def plan_audit(report: Report, opts: Options, root: Path, components: Sequence[s
                 if lock_contains(root, component, package) and (
                         release_key(version) or ()) > (release_key(wanted.get(package, "0")) or ()):
                     wanted[package] = version
-        cmd = ["uv", "--native-tls", "lock"]
+        cmd = ["uv", *tls_flags, "lock"]
         for package, version in sorted(wanted.items()):
             cmd += ["--upgrade-package", f"{package}=={version}"]
         fixed = tuple(f for (c, package), fs in members.items() if c == component and package in wanted for f in fs
@@ -896,11 +859,6 @@ def plan_audit(report: Report, opts: Options, root: Path, components: Sequence[s
         plan.actions.append(Action(PHASE_LOCK, "audit", component, f"`{' '.join(cmd)}`",
                                    partial(run_checked, cmd, root / component), fixed))
     return plan
-
-
-def component_of(path: str, components: Sequence[str]) -> Optional[str]:
-    matches = [c for c in components if path == c or path.startswith(c + "/")]
-    return max(matches, key=len) if matches else None
 
 
 def changed_python_files(root: Path) -> List[str]:
@@ -1061,14 +1019,15 @@ def write_triage(path: Path, report: Report, plan: Plan, opts: Options) -> List[
 
 def _finding_key(f: ReportFinding) -> Tuple[str, str, str, str, str]:
     # Line numbers move when code is edited, so compare on file + code + message instead.
-    return (f.check, f.component, f.code, f.location.split(":", 1)[0], f.message)
+    return qr.finding_key(f.check, f.component, f.code, f.location, f.message)
 
 
 def recheck(before: Report, components: Sequence[str], groups: Sequence[str]) -> None:
     checks = qr.resolve_checks(",".join(groups))
     LOG.info("")
     LOG.info("== Re-running %s for %d component(s) ==", ", ".join(groups), len(components))
-    qr.main([*components, "--checks", ",".join(groups), "--output", str(RECHECK_OUTPUT)])
+    qr.main([*components, "--checks", ",".join(groups), "--output", str(RECHECK_OUTPUT),
+             "--compare", str(before.path)])
     after = load_report(RECHECK_OUTPUT.with_suffix(".json"), set(components))
     old = Counter(_finding_key(f) for f in before.findings if f.component in components and f.check in checks)
     new = Counter(_finding_key(f) for f in after.findings)
