@@ -290,6 +290,13 @@ def parse_xml_structure(content: str) -> tuple[list[StructureNode], str | None]:
 
     parser = expat.ParserCreate()
 
+    def _forbid_dtd(*_args: object) -> None:
+        raise ValueError("DTD and entity declarations are not permitted")
+
+    parser.StartDoctypeDeclHandler = _forbid_dtd
+    parser.EntityDeclHandler = _forbid_dtd
+    parser.UnparsedEntityDeclHandler = _forbid_dtd
+
     def _on_start(name: str, _attrs: dict[str, str]) -> None:
         start_char = _to_char(parser.CurrentByteIndex)
         tag_end = content.find(">", start_char)
@@ -364,7 +371,7 @@ def parse_xml_structure(content: str) -> tuple[list[StructureNode], str | None]:
 
     try:
         parser.Parse(raw, True)
-    except expat.ExpatError as exc:
+    except (expat.ExpatError, ValueError) as exc:
         return [], f"Invalid XML: {exc}"
 
     return roots, None

@@ -3,7 +3,9 @@ name = "ultra7"
 version = "0.1.0"
 description = "GUI tool for testing MLLP, REST and SOAP HL7 endpoints"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "defusedxml==0.7.1",
+]
 
 [dependency-groups]
 dev = [

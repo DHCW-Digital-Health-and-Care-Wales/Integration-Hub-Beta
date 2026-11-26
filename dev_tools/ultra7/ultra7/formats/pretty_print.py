@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import json
-from xml.dom import minidom  # nosec B408 - dev-only tool, input is typed by the developer
+
+from defusedxml import minidom
 
 from ultra7.models import MessageFormat
 
@@ -31,8 +32,8 @@ def _pretty_json(content: str) -> str:
 
 def _pretty_xml(content: str) -> str:
     try:
-        dom = minidom.parseString(content)  # nosec B318
-    except Exception as exc:  # noqa: BLE001 — minidom raises various ExpatError subclasses
+        dom = minidom.parseString(content)
+    except Exception as exc:  # noqa: BLE001 — minidom raises various ExpatError/DefusedXml subclasses
         raise ValueError(f"Invalid XML: {exc}") from exc
     pretty = dom.toprettyxml(indent="  ")
     # minidom.toprettyxml leaves blank lines around text-only elements; drop them.
