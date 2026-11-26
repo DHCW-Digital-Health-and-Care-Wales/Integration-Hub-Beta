@@ -105,6 +105,7 @@ def main() -> None:
         app_config.health_check_hostname, app_config.health_check_port
     ) as health_check_server:
         health_check_server.start()
+        processor_manager.register_shutdown_callback(health_check_server.stop)
 
         ingress_name = app_config.ingress_queue_name or (
             f"{app_config.ingress_topic_name}/{app_config.ingress_subscription_name}"
@@ -142,6 +143,10 @@ def main() -> None:
             message_store_client,
         ):
             logger.info("Processor started.")
+            receiver_client.configure_lifecycle(
+                stop_event=processor_manager.shutdown_event,
+                on_unhealthy=health_check_server.mark_unhealthy,
+            )
 
             batch_size = _calculate_batch_size(throttler)
 

@@ -57,6 +57,11 @@ class MessageStoreService:
         ):
             logger.info("Listening for messages on queue: %s", self.config.ingress_queue_name)
             health_check_server.start()
+            self.processor_manager.register_shutdown_callback(health_check_server.stop)
+            receiver_client.configure_lifecycle(
+                stop_event=self.processor_manager.shutdown_event,
+                on_unhealthy=health_check_server.mark_unhealthy,
+            )
             self._process_messages(receiver_client, event_logger)
 
         logger.info("Message Store Service stopped")

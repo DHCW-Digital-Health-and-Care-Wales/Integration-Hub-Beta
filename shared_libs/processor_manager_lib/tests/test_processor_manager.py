@@ -62,7 +62,25 @@ class TestProcessorManager(unittest.TestCase):
 
         # Assert
         self.assertFalse(self.processor_manager.is_running)
+        self.assertTrue(self.processor_manager.shutdown_event.is_set())
         mock_logger.info.assert_called_once_with("Manual processor stop requested")
+
+    def test_shutdown_invokes_registered_callbacks_and_sets_event(self) -> None:
+        callback = MagicMock()
+        failing_callback = MagicMock(side_effect=RuntimeError("boom"))
+        second_callback = MagicMock()
+
+        self.processor_manager.register_shutdown_callback(failing_callback)
+        self.processor_manager.register_shutdown_callback(callback)
+        self.processor_manager.register_shutdown_callback(second_callback)
+
+        self.processor_manager._shutdown_handler(signal.SIGTERM, None)
+
+        self.assertFalse(self.processor_manager.is_running)
+        self.assertTrue(self.processor_manager.shutdown_event.is_set())
+        failing_callback.assert_called_once_with()
+        callback.assert_called_once_with()
+        second_callback.assert_called_once_with()
 
 
 class TestWrapHandler(unittest.TestCase):

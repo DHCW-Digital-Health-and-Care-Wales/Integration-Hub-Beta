@@ -154,7 +154,12 @@ services:
       - ./env/servers/lims-soap-hl7-server.env
     ports:
       - "8082:8080"
-    <<: *default-healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health', timeout=2).status == 200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: on-failure
     depends_on:
       - sb-emulator
@@ -211,7 +216,12 @@ services:
       - ./env/servers/wpas-rest-server.env
     ports:
       - "127.0.0.1:8084:8080"
-    <<: *default-healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health', timeout=2).status == 200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: on-failure
     depends_on:
       - sb-emulator

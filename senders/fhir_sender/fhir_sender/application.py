@@ -104,6 +104,7 @@ def main() -> None:
         app_config.health_check_hostname, app_config.health_check_port
     ) as health_check_server:
         health_check_server.start()
+        processor_manager.register_shutdown_callback(health_check_server.stop)
 
         with (
             factory.create_message_receiver_client(
@@ -112,6 +113,10 @@ def main() -> None:
             _build_client(app_config) as fhir_client,
         ):
             logger.info("FHIR Sender processor started.")
+            receiver_client.configure_lifecycle(
+                stop_event=processor_manager.shutdown_event,
+                on_unhealthy=health_check_server.mark_unhealthy,
+            )
 
             def message_processor(message: ServiceBusMessage) -> bool:
                 return _process_message(message, fhir_client, event_logger, metric_sender)

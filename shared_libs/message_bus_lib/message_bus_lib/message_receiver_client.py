@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 from contextlib import AbstractContextManager
 from types import TracebackType
@@ -15,7 +16,14 @@ from azure.servicebus import (
     ServiceBusReceiver,
     ServiceBusSessionFilter,
 )
-from azure.servicebus.exceptions import ServiceBusError, SessionCannotBeLockedError
+from azure.servicebus.exceptions import (
+    MessagingEntityDisabledError,
+    MessagingEntityNotFoundError,
+    ServiceBusAuthenticationError,
+    ServiceBusAuthorizationError,
+    ServiceBusError,
+    SessionCannotBeLockedError,
+)
 from metric_sender_lib.metric_sender import MetricSender
 from otel_lib import extract_trace_context
 
@@ -23,12 +31,20 @@ from message_bus_lib.dead_letter import DeadLetterMessage
 
 logger = logging.getLogger(__name__)
 
+_PERMANENT_SERVICE_BUS_ERRORS = (
+    ServiceBusAuthenticationError,
+    ServiceBusAuthorizationError,
+    MessagingEntityNotFoundError,
+    MessagingEntityDisabledError,
+)
+
 
 class MessageReceiverClient:
     MAX_DELAY_SECONDS = 15 * 60  # 15 minutes
     INITIAL_DELAY_SECONDS = 5
     MAX_WAIT_TIME_SECONDS = 60
     LOCK_RENEWAL_DURATION_SECONDS = 5 * 60  # default AutoLockRenewer limit
+    FATAL_ERROR_THRESHOLD = 3
 
     DEFAULT_WORKFLOW_ID = "unknown-workflow"
     DEFAULT_MICROSERVICE_ID = "unknown-microservice"
@@ -46,6 +62,8 @@ class MessageReceiverClient:
         health_board: Optional[str] = None,
         peer_service: Optional[str] = None,
         recreate_sb_client: Optional[Callable[[], ServiceBusClient]] = None,
+        stop_event: Optional[threading.Event] = None,
+        on_unhealthy: Optional[Callable[[str], None]] = None,
     ):
         self.sb_client = sb_client
         self._recreate_sb_client = recreate_sb_client
@@ -55,6 +73,9 @@ class MessageReceiverClient:
         self.retry_attempt = 0
         self.delay = self.INITIAL_DELAY_SECONDS
         self.next_retry_time: Optional[float] = None
+        self._stop_event = stop_event
+        self._on_unhealthy = on_unhealthy
+        self._consecutive_fatal_errors = 0
 
         resolved_workflow_id = self._resolve_metric_dimension(
             explicit_value=workflow_id,
@@ -83,6 +104,16 @@ class MessageReceiverClient:
             health_board=resolved_health_board,
             peer_service=resolved_peer_service,
         )
+
+    def configure_lifecycle(
+        self,
+        *,
+        stop_event: Optional[threading.Event] = None,
+        on_unhealthy: Optional[Callable[[str], None]] = None,
+    ) -> None:
+        """Attach optional shutdown event (interrupts backoff sleeps) and fatal-error health callback."""
+        self._stop_event = stop_event
+        self._on_unhealthy = on_unhealthy
 
     @staticmethod
     def _resolve_metric_dimension(explicit_value: Optional[str], env_var_name: str, default: str) -> str:
@@ -207,6 +238,7 @@ class MessageReceiverClient:
                     messages = receiver.receive_messages(
                         max_message_count=num_of_messages, max_wait_time=self.MAX_WAIT_TIME_SECONDS
                     )
+                    self._consecutive_fatal_errors = 0
 
                     if messages:
                         try:
@@ -239,7 +271,22 @@ class MessageReceiverClient:
                     autolock_renewer = None
         except SessionCannotBeLockedError:
             logger.warning("Session %s cannot be locked currently. Will retry later.", self.session_id)
-            time.sleep(self.MAX_WAIT_TIME_SECONDS)
+            self._sleep(self.MAX_WAIT_TIME_SECONDS)
+        except _PERMANENT_SERVICE_BUS_ERRORS as exc:
+            self._consecutive_fatal_errors += 1
+            logger.error(
+                "Permanent Service Bus error on '%s' (consecutive=%d/%d): %s",
+                self.queue_name,
+                self._consecutive_fatal_errors,
+                self.FATAL_ERROR_THRESHOLD,
+                exc,
+            )
+            if self._consecutive_fatal_errors >= self.FATAL_ERROR_THRESHOLD and self._on_unhealthy is not None:
+                self._on_unhealthy(
+                    f"Permanent Service Bus error on '{self.queue_name}' repeated "
+                    f"{self._consecutive_fatal_errors} times: {exc}"
+                )
+            self._set_delay_before_retry()
         except ServiceBusError as exc:
             # Transient AMQP-level errors (e.g. session not yet established, connection dropped)
             # are surfaced as ServiceBusError. Treat them as recoverable and retry after a delay.
@@ -271,6 +318,12 @@ class MessageReceiverClient:
         finally:
             self._close_autolock_renewer(autolock_renewer)
 
+    def _sleep(self, seconds: float) -> None:
+        if self._stop_event is not None:
+            self._stop_event.wait(seconds)
+        else:
+            time.sleep(seconds)
+
     @staticmethod
     def _close_autolock_renewer(autolock_renewer: Optional[AutoLockRenewer]) -> None:
         """Close *autolock_renewer* if present, waiting for any in-flight lock renewal to finish."""
@@ -297,7 +350,10 @@ class MessageReceiverClient:
             sleep_time = min(self.next_retry_time - time.time(), self.MAX_WAIT_TIME_SECONDS)
             if sleep_time > 0:
                 logger.debug("Sleeping for : %s before retry", sleep_time)
-                time.sleep(sleep_time)
+                self._sleep(sleep_time)
+
+            if self._stop_event is not None and self._stop_event.is_set():
+                return False
 
             if time.time() < self.next_retry_time:
                 return False

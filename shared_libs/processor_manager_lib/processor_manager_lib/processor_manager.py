@@ -1,5 +1,6 @@
 import logging
 import signal
+import threading
 from types import FrameType
 from typing import Any, Callable, Optional
 
@@ -10,23 +11,44 @@ class ProcessorManager:
 
     def __init__(self) -> None:
         self._running = True
+        self._shutdown_event = threading.Event()
+        self._shutdown_callbacks: list[Callable[[], None]] = []
         self._setup_signal_handlers()
 
     def _setup_signal_handlers(self) -> None:
         signal.signal(signal.SIGINT, self._shutdown_handler)
         signal.signal(signal.SIGTERM, self._shutdown_handler)
 
+    def _invoke_shutdown_callbacks(self) -> None:
+        for callback in list(self._shutdown_callbacks):
+            try:
+                callback()
+            except Exception as exc:
+                logger.warning("Shutdown callback failed: %s", exc)
+
     def _shutdown_handler(self, signum: int, frame: Optional[FrameType]) -> None:
         logger.info("Shutting down the processor")
         self._running = False
+        self._shutdown_event.set()
+        self._invoke_shutdown_callbacks()
 
     @property
     def is_running(self) -> bool:
         return self._running
 
+    @property
+    def shutdown_event(self) -> threading.Event:
+        return self._shutdown_event
+
+    def register_shutdown_callback(self, callback: Callable[[], None]) -> None:
+        """Register a callback invoked immediately when shutdown is triggered (e.g. stop health probe)."""
+        self._shutdown_callbacks.append(callback)
+
     def stop(self) -> None:
         logger.info("Manual processor stop requested")
         self._running = False
+        self._shutdown_event.set()
+        self._invoke_shutdown_callbacks()
 
     def wrap_handler(
         self,

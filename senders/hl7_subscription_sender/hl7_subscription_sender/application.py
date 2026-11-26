@@ -95,6 +95,7 @@ def main() -> None:
         app_config.health_check_hostname, app_config.health_check_port
     ) as health_check_server:
         health_check_server.start()
+        processor_manager.register_shutdown_callback(health_check_server.stop)
 
         with (
             factory.create_subscription_receiver_client(
@@ -109,6 +110,10 @@ def main() -> None:
             ) as hl7_subscription_sender_client,
         ):
             logger.info("Subscription processor started.")
+            subscription_receiver_client.configure_lifecycle(
+                stop_event=processor_manager.shutdown_event,
+                on_unhealthy=health_check_server.mark_unhealthy,
+            )
 
             batch_size = _calculate_batch_size(throttler)
 

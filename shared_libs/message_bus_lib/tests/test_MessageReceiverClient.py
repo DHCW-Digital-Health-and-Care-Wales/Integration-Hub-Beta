@@ -500,5 +500,66 @@ class TestInvokeWithTraceContext(unittest.TestCase):
         self.assertTrue(result)
         mock_extract.assert_called_once_with({})
 
+
+class TestReceiverLifecycleAndHealth(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sb_client = MagicMock()
+        self.sb_receiver = self.sb_client.get_queue_receiver.return_value.__enter__.return_value
+
+    def test_permanent_service_bus_errors_trigger_unhealthy_callback_at_threshold(self) -> None:
+        from azure.servicebus.exceptions import ServiceBusAuthorizationError  # noqa: PLC0415
+
+        on_unhealthy = MagicMock()
+        client = MessageReceiverClient(self.sb_client, "test-queue")
+        client.configure_lifecycle(on_unhealthy=on_unhealthy)
+        self.sb_receiver.receive_messages.side_effect = ServiceBusAuthorizationError(message="RBAC missing")
+
+        for _ in range(client.FATAL_ERROR_THRESHOLD - 1):
+            client.next_retry_time = None
+            client.receive_messages(1, lambda msg: True)
+        on_unhealthy.assert_not_called()
+
+        client.next_retry_time = None
+        client.receive_messages(1, lambda msg: True)
+        on_unhealthy.assert_called_once()
+        self.assertIn("test-queue", on_unhealthy.call_args[0][0])
+
+    def test_successful_poll_resets_consecutive_fatal_errors(self) -> None:
+        from azure.servicebus.exceptions import MessagingEntityNotFoundError  # noqa: PLC0415
+
+        on_unhealthy = MagicMock()
+        client = MessageReceiverClient(self.sb_client, "test-queue")
+        client.configure_lifecycle(on_unhealthy=on_unhealthy)
+        self.sb_receiver.receive_messages.side_effect = [
+            MessagingEntityNotFoundError(message="missing"),
+            MessagingEntityNotFoundError(message="missing"),
+            [],
+            MessagingEntityNotFoundError(message="missing"),
+        ]
+
+        for _ in range(4):
+            client.next_retry_time = None
+            client.receive_messages(1, lambda msg: True)
+
+        on_unhealthy.assert_not_called()
+
+    def test_stop_event_interrupts_retry_sleep(self) -> None:
+        import threading  # noqa: PLC0415
+        import time  # noqa: PLC0415
+
+        stop_event = threading.Event()
+        stop_event.set()
+        client = MessageReceiverClient(self.sb_client, "test-queue")
+        client.configure_lifecycle(stop_event=stop_event)
+        client.next_retry_time = time.time() + 60
+
+        start = time.monotonic()
+        ready = client._apply_delay_and_check_if_its_retry_time()
+        elapsed = time.monotonic() - start
+
+        self.assertFalse(ready)
+        self.assertLess(elapsed, 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -46,9 +46,10 @@ class Hl7ServerApplication:
         )
 
         try:
-            # Start MLLP server
-            self._server.serve_forever()
-            # Start health check in background
+            # Start MLLP server in background thread
+            self._server_thread = threading.Thread(target=self._server.serve_forever)
+            self._server_thread.start()
+            # Start health check in background thread
             self.health_check_server.start()
         except Exception as e:
             logger.exception("Server error: %s", e)

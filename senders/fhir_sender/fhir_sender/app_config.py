@@ -104,7 +104,7 @@ def _read_required_env(name: str) -> str:
 
 def _read_optional_int(name: str) -> int | None:
     value = _read_env(name)
-    if value is None:
+    if value is None or value.strip() == "":
         return None
     try:
         return int(value)

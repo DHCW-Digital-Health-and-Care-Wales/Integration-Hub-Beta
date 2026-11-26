@@ -201,6 +201,7 @@ def main() -> None:
         DatabaseClient(app_config) as db_client,
     ):
         health_check_server.start()
+        processor_manager.register_shutdown_callback(health_check_server.stop)
 
         with factory.create_subscription_receiver_client(
             app_config.ingress_topic_name,
@@ -208,6 +209,10 @@ def main() -> None:
             app_config.ingress_session_id,
         ) as subscription_receiver_client:
             logger.info("Subscription receiver client initialized. Processing messages...")
+            subscription_receiver_client.configure_lifecycle(
+                stop_event=processor_manager.shutdown_event,
+                on_unhealthy=health_check_server.mark_unhealthy,
+            )
 
             while processor_manager.is_running:
                 subscription_receiver_client.receive_messages(
