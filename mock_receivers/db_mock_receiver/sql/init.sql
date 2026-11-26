@@ -178,7 +178,7 @@ GO
 USE [Clinical_Results];
 GO
 
--- Receives the LIMS -> NHS identifier associations written by db_sender_trrr.
+-- Receives the LIMS -> NHS identifier associations (NHS_ID_UPDATE requests) written by db_sender_trrr.
 IF OBJECT_ID('dbo.TRRRIdentifierUpdate', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.TRRRIdentifierUpdate (
@@ -189,27 +189,6 @@ BEGIN
         ReceivedUtc                    DATETIME2(7)      NOT NULL CONSTRAINT DF_TRRRIdentifierUpdate_ReceivedUtc DEFAULT (SYSUTCDATETIME())
     );
 END;
-GO
-
--- Signature must match db_sender_trrr's db_client.execute_identifier_update:
--- (LIMSIdentifier, NewIdentifier, NewIdentifierAssigningAuthority). All arguments are text and are
--- stored exactly as received (leading zeroes retained).
-CREATE OR ALTER PROCEDURE dbo.TRRRIDUpdate
-    @LIMSIdentifier                  VARCHAR(100),
-    @NewIdentifier                   VARCHAR(100),
-    @NewIdentifierAssigningAuthority VARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        INSERT INTO dbo.TRRRIdentifierUpdate (LIMSIdentifier, NewIdentifier, NewIdentifierAssigningAuthority)
-        VALUES (@LIMSIdentifier, @NewIdentifier, @NewIdentifierAssigningAuthority);
-    END TRY
-    BEGIN CATCH
-        THROW;
-    END CATCH;
-END
 GO
 
 -- Receives the patient merge (superseded -> replacement identifier) requests written by db_sender_trrr
@@ -227,23 +206,39 @@ BEGIN
 END;
 GO
 
--- Signature must match db_sender_trrr's db_client.execute_identifier_update for merge requests:
--- (OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier, NewIdentifierAssigningAuthority).
--- All arguments are text and are stored exactly as received (leading zeroes retained).
-CREATE OR ALTER PROCEDURE dbo.TRRRIDMerge
-    @OldIdentifier                   VARCHAR(100),
-    @OldIdentifierAssigningAuthority VARCHAR(50),
-    @NewIdentifier                   VARCHAR(100),
-    @NewIdentifierAssigningAuthority VARCHAR(50)
+-- Superseded by dbo.spProcessIdUpdate; dropped so an existing mock database does not keep stale procedures.
+-- dbo.spProcessResult is TRRR's results procedure, not the identifier update one; an earlier version of this
+-- mock created it by mistake.
+DROP PROCEDURE IF EXISTS dbo.TRRRIDUpdate;
+DROP PROCEDURE IF EXISTS dbo.TRRRIDMerge;
+DROP PROCEDURE IF EXISTS dbo.spProcessResult;
+GO
+
+-- TRRR processes both request types through one procedure, called positionally by db_sender_trrr's
+-- db_client.execute_identifier_update:
+--   NHS_ID_UPDATE (3 args): LIMSIdentifier, NewIdentifier, NewIdentifierAssigningAuthority
+--   MERGE         (4 args): OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier,
+--                           NewIdentifierAssigningAuthority
+-- The mock distinguishes them by whether the 4th argument was supplied and writes to the matching table.
+-- Arguments may be blank when the source message did not map them; all are text and are stored exactly as
+-- received (leading zeroes retained).
+CREATE OR ALTER PROCEDURE dbo.spProcessIdUpdate
+    @Param1 VARCHAR(100),
+    @Param2 VARCHAR(100),
+    @Param3 VARCHAR(100),
+    @Param4 VARCHAR(50) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
     BEGIN TRY
-        INSERT INTO dbo.TRRRIdentifierMerge
-            (OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier, NewIdentifierAssigningAuthority)
-        VALUES
-            (@OldIdentifier, @OldIdentifierAssigningAuthority, @NewIdentifier, @NewIdentifierAssigningAuthority);
+        IF @Param4 IS NULL
+            INSERT INTO dbo.TRRRIdentifierUpdate (LIMSIdentifier, NewIdentifier, NewIdentifierAssigningAuthority)
+            VALUES (@Param1, @Param2, @Param3);
+        ELSE
+            INSERT INTO dbo.TRRRIdentifierMerge
+                (OldIdentifier, OldIdentifierAssigningAuthority, NewIdentifier, NewIdentifierAssigningAuthority)
+            VALUES (@Param1, @Param2, @Param3, @Param4);
     END TRY
     BEGIN CATCH
         THROW;

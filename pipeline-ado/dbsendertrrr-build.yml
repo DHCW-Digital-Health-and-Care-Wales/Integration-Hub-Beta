@@ -44,7 +44,6 @@ stages:
           appDisplayName: 'TRRR Database Sender'
           pythonVersion: '3.13'
           poolName: ${{ variables.POOL_NAME }}
-          usePytest: true
 
   - stage: BuildAndPushDbSenderTRRR
     displayName: 'Build and Push TRRR Database Sender'

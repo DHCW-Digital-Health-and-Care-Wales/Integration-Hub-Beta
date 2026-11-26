@@ -171,7 +171,7 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-trrr-db-sender-sub",
+                "Name": "local-inthub-lims-trrr-nhsid-mapper-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -180,7 +180,7 @@
                 },
                 "Rules": [
                   {
-                    "Name": "lims-trrr-db-filter",
+                    "Name": "lims-trrr-nhsid-mapper-filter",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
@@ -191,7 +191,7 @@
                 ]
               },
               {
-                "Name": "local-inthub-lims-trrr-merge-sender-sub",
+                "Name": "local-inthub-lims-trrr-merge-mapper-sub",
                 "Properties": {
                   "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
@@ -200,7 +200,7 @@
                 },
                 "Rules": [
                   {
-                    "Name": "LIMS_TRRR_MERGE_FILTER",
+                    "Name": "lims-trrr-merge-mapper-filter",
                     "Properties": {
                       "FilterType": "Sql",
                       "SqlFilter": {
@@ -209,6 +209,65 @@
                     }
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "Name": "local-inthub-lims-trrr-mapped",
+            "Subscriptions": [
+              {
+                "Name": "local-inthub-lims-trrr-abmu-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              },
+              {
+                "Name": "local-inthub-lims-trrr-abhb-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              },
+              {
+                "Name": "local-inthub-lims-trrr-bcu-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              },
+              {
+                "Name": "local-inthub-lims-trrr-ct-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              },
+              {
+                "Name": "local-inthub-lims-trrr-cav-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
+              },
+              {
+                "Name": "local-inthub-lims-trrr-hd-db-sender-sub",
+                "Properties": {
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": true
+                }
               }
             ]
           },

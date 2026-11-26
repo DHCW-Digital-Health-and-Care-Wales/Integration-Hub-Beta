@@ -17,6 +17,7 @@ pr:
       - senders/hl7_sender/**
       - senders/hl7_subscription_sender/**
       - senders/db_sender/**
+      - senders/db_sender_trrr/**
       - senders/fhir_sender/**
       - mock_receivers/hl7_mock_receiver/**
       - mock_receivers/http_mock_receiver/**
@@ -25,6 +26,7 @@ pr:
       - transformers/hl7_pims_transformer/**
       - transformers/hl7_core_reference_transformer/**
       - transformers/xml_fhir_proms_transformer/**
+      - transformers/lims_trrr_mapper/**
       - dev_tools/buswatch/**
       - message_processing/message_store_service/**
       - lookup_service/**
@@ -101,6 +103,7 @@ stages:
                 "senders/hl7_sender|HL7 Sender||unittest"
                 "senders/hl7_subscription_sender|HL7 Subscription Sender||unittest"
                 "senders/db_sender|Database Sender||unittest"
+                "senders/db_sender_trrr|TRRR Database Sender||unittest"
                 "senders/fhir_sender|FHIR Sender||unittest"
                 "mock_receivers/hl7_mock_receiver|HL7 Mock Receiver||unittest"
                 "mock_receivers/http_mock_receiver|HTTP Mock Receiver||pytest"
@@ -109,6 +112,7 @@ stages:
                 "transformers/hl7_pims_transformer|PIMS HL7 Transformer||unittest"
                 "transformers/hl7_core_reference_transformer|Core Reference HL7 Transformer||unittest"
                 "transformers/xml_fhir_proms_transformer|PROMS FHIR Transformer||unittest"
+                "transformers/lims_trrr_mapper|LIMS TRRR Mapper||unittest"
                 "message_processing/message_store_service|Message Store Service||unittest"
                 "lookup_service|Lookup Service||unittest"
                 "dev_tools/buswatch|BusWatch||unittest"
