@@ -5,6 +5,7 @@ import tkinter as tk
 import unittest
 from unittest.mock import patch
 
+from ultra7.mock_receiver import MockMllpServer, ReceivedMessage
 from ultra7.models import Endpoint, IterationSpec, Message, Project
 from ultra7.senders.base import SendResult
 from ultra7.ui.send_controls import SendControls
@@ -342,6 +343,38 @@ class TestSendWorkerLabels(unittest.TestCase):
         )
         controls._handle_setting_change(None)  # type: ignore[arg-type]
         self.assertTrue(called)
+
+    def test_send_worker_mllp_stream_and_pipelined_modes(self) -> None:
+        captured: list[ReceivedMessage] = []
+        server = MockMllpServer("127.0.0.1", 0, ack_code="AA", on_message=captured.append)
+        port = server.start()
+        try:
+            content = "MSH|^~\\&|A|B|C|D|2025||ADT^A01|0001|P|2.5"
+            start = content.index("0001")
+            msg = Message(
+                name="A01",
+                format="hl7",
+                content=content,
+                iteration=IterationSpec(start=start, end=start + 4, mode="increment", step=1),
+            )
+
+            for mode in ("stream", "pipelined"):
+                captured.clear()
+                endpoint = Endpoint(
+                    kind="mllp", host="127.0.0.1", port=port, timeout_seconds=2.0, mllp_mode=mode  # type: ignore[arg-type]
+                )
+                self.controls._send_worker(endpoint, [msg], repeat_count=3, delay_ms=0)
+                items = self._drain()
+                results = [res for _name, res in items if res is not None]
+                self.assertEqual(len(results), 3)
+                self.assertTrue(all(r.ok for r in results))
+                self.assertIn("MSA|AA|0001", results[0].response_summary)
+                self.assertIn("MSA|AA|0002", results[1].response_summary)
+                self.assertIn("MSA|AA|0003", results[2].response_summary)
+                self.assertEqual(len(captured), 3)
+                self.assertEqual(len({m.remote for m in captured}), 1)
+        finally:
+            server.stop()
 
 
 if __name__ == "__main__":

@@ -38,6 +38,9 @@ class TestHelpContent(unittest.TestCase):
         mllp_hits = search_help_topics("2575", all_topics)
         self.assertTrue(any(t.id == "endpoints" for t in mllp_hits))
 
+        stream_hits = search_help_topics("Pipelined burst", all_topics)
+        self.assertTrue(any(t.id == "endpoints" for t in stream_hits))
+
         self.assertEqual(search_help_topics("xyznonexistentterm123", all_topics), [])
 
     def test_shortcuts_reflect_accelerator(self) -> None:

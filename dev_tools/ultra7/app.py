@@ -56,9 +56,10 @@ _EDITOR_LOG_SASH_HEIGHT = 500
 
 def _format_endpoint_summary(endpoint: Endpoint) -> str:
     if endpoint.kind == "mllp":
+        mode_tag = {"stream": " (Stream)", "pipelined": " (Pipelined)"}.get(endpoint.mllp_mode, "")
         if endpoint.host and endpoint.port:
-            return f"MLLP · {endpoint.host}:{endpoint.port}"
-        return "MLLP · not configured"
+            return f"MLLP{mode_tag} · {endpoint.host}:{endpoint.port}"
+        return f"MLLP{mode_tag} · not configured"
     if endpoint.url:
         return f"{endpoint.kind.upper()} · {endpoint.url}"
     return f"{endpoint.kind.upper()} · not configured"

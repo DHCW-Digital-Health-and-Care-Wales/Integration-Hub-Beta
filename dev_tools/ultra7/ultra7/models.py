@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 MessageFormat = Literal["hl7", "xml", "json"]
 EndpointKind = Literal["mllp", "rest", "soap"]
+MllpMode = Literal["per_message", "stream", "pipelined"]
 IterationMode = Literal["increment", "list", "timestamp", "nhs_number"]
 
 
@@ -138,6 +139,7 @@ class Endpoint:
     headers: dict[str, str] = field(default_factory=dict)
     soap_action: str = ""
     timeout_seconds: float = 5.0
+    mllp_mode: MllpMode = "per_message"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -148,10 +150,13 @@ class Endpoint:
             "headers": dict(self.headers),
             "soap_action": self.soap_action,
             "timeout_seconds": self.timeout_seconds,
+            "mllp_mode": self.mllp_mode,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Endpoint:
+        raw_mode = data.get("mllp_mode", "per_message")
+        mllp_mode: MllpMode = raw_mode if raw_mode in ("per_message", "stream", "pipelined") else "per_message"
         return cls(
             kind=data.get("kind", "mllp"),
             host=data.get("host", ""),
@@ -160,6 +165,7 @@ class Endpoint:
             headers=dict(data.get("headers", {})),
             soap_action=data.get("soap_action", ""),
             timeout_seconds=data.get("timeout_seconds", 5.0),
+            mllp_mode=mllp_mode,
         )
 
 

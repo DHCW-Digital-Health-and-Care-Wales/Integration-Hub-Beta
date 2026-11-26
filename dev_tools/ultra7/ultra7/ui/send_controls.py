@@ -13,6 +13,7 @@ from ultra7.iteration import apply_iterations
 from ultra7.models import Endpoint, Message, Project
 from ultra7.senders import get_sender
 from ultra7.senders.base import SendResult
+from ultra7.senders.mllp_sender import MllpSender, MllpStreamSession
 
 # Queue item: (message_name, SendResult) for a completed send, (info_text, None) for a
 # plain informational line, or (None, None) as a sentinel for "job finished".
@@ -182,15 +183,21 @@ class SendControls(ttk.Frame):
         """Send *messages* for *repeat_count* iterations. Returns False if cancelled."""
         sender = get_sender(endpoint.kind)
         destination = _describe_destination(endpoint)
+
+        if endpoint.kind == "mllp" and isinstance(sender, MllpSender) and endpoint.mllp_mode != "per_message":
+            if endpoint.mllp_mode == "pipelined":
+                return self._send_mllp_pipelined(
+                    sender, endpoint, messages, repeat_count, destination, label_prefix
+                )
+            return self._send_mllp_stream(
+                sender, endpoint, messages, repeat_count, delay_ms, destination, label_prefix
+            )
+
         for repeat_index in range(repeat_count):
             for message in messages:
                 if self._cancel_event.is_set():
                     return False
-                outgoing = message
-                specs = message.all_iterations()
-                if specs:
-                    content = apply_iterations(message.content, specs, repeat_index)
-                    outgoing = replace(message, content=content)
+                outgoing = self._prepare_outgoing(message, repeat_index)
                 label = f"{label_prefix}{message.name} [{repeat_index + 1}/{repeat_count}]"
                 self._queue.put((f"Sending {label} to {destination}", None))
                 try:
@@ -201,6 +208,92 @@ class SendControls(ttk.Frame):
                 if delay_ms and self._cancel_event.wait(delay_ms / 1000):
                     return False
         return True
+
+    def _prepare_outgoing(self, message: Message, repeat_index: int) -> Message:
+        specs = message.all_iterations()
+        if not specs:
+            return message
+        content = apply_iterations(message.content, specs, repeat_index)
+        return replace(message, content=content)
+
+    def _send_mllp_stream(
+        self,
+        sender: MllpSender,
+        endpoint: Endpoint,
+        messages: list[Message],
+        repeat_count: int,
+        delay_ms: int,
+        destination: str,
+        label_prefix: str,
+    ) -> bool:
+        """Send all frames sequentially over a single persistent MLLP TCP connection."""
+        session: MllpStreamSession = sender.open_stream(endpoint)
+        self._queue.put((f"Opening persistent MLLP stream to {destination}", None))
+        try:
+            for repeat_index in range(repeat_count):
+                for message in messages:
+                    if self._cancel_event.is_set():
+                        return False
+                    outgoing = self._prepare_outgoing(message, repeat_index)
+                    label = f"{label_prefix}{message.name} [{repeat_index + 1}/{repeat_count}]"
+                    self._queue.put((f"Streaming {label} on persistent connection to {destination}", None))
+                    try:
+                        result = session.send_message(outgoing)
+                    except Exception as exc:  # noqa: BLE001
+                        result = SendResult(ok=False, latency_ms=0.0, response_summary="", error=str(exc))
+                    self._queue.put((label, result))
+                    if delay_ms and self._cancel_event.wait(delay_ms / 1000):
+                        return False
+            return True
+        finally:
+            session.close()
+            self._queue.put((f"Closed MLLP stream to {destination}", None))
+
+    def _send_mllp_pipelined(
+        self,
+        sender: MllpSender,
+        endpoint: Endpoint,
+        messages: list[Message],
+        repeat_count: int,
+        destination: str,
+        label_prefix: str,
+    ) -> bool:
+        """Write all MLLP frames back-to-back onto a single TCP stream, then drain all ACKs."""
+        planned: list[tuple[str, Message]] = []
+        for repeat_index in range(repeat_count):
+            for message in messages:
+                if self._cancel_event.is_set():
+                    return False
+                outgoing = self._prepare_outgoing(message, repeat_index)
+                label = f"{label_prefix}{message.name} [{repeat_index + 1}/{repeat_count}]"
+                planned.append((label, outgoing))
+
+        if not planned:
+            return True
+
+        session: MllpStreamSession = sender.open_stream(endpoint)
+        self._queue.put((f"Pipelining {len(planned)} MLLP frame(s) on 1 stream to {destination}", None))
+        try:
+            try:
+                session.connect()
+                for _label, outgoing in planned:
+                    if self._cancel_event.is_set():
+                        return False
+                    session.send_frame(outgoing)
+            except (OSError, TimeoutError) as exc:
+                err = SendResult(ok=False, latency_ms=0.0, response_summary="", error=str(exc))
+                self._queue.put((planned[0][0], err))
+                return True
+
+            for label, _outgoing in planned:
+                if self._cancel_event.is_set():
+                    return False
+                result = session.read_next_ack()
+                self._queue.put((label, result))
+            return True
+        finally:
+            session.close()
+            self._queue.put((f"Closed pipelined MLLP stream to {destination}", None))
 
     def _send_worker(
         self, endpoint: Endpoint, messages: list[Message], repeat_count: int, delay_ms: int

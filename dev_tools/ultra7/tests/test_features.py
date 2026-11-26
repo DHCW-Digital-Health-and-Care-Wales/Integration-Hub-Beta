@@ -236,6 +236,58 @@ class TestMockReceiversAndConnectivity(unittest.TestCase):
         finally:
             server.stop()
 
+    def test_mllp_persistent_stream_reuses_single_tcp_connection(self) -> None:
+        captured: list[ReceivedMessage] = []
+        server = MockMllpServer("127.0.0.1", 0, ack_code="AA", on_message=captured.append)
+        port = server.start()
+        try:
+            endpoint = Endpoint(kind="mllp", host="127.0.0.1", port=port, timeout_seconds=2.0, mllp_mode="stream")
+            self.assertEqual(Endpoint.from_dict(endpoint.to_dict()).mllp_mode, "stream")
+
+            sender = MllpSender()
+            with sender.open_stream(endpoint) as session:
+                for idx in range(1, 5):
+                    msg = Message(
+                        name=f"M{idx}",
+                        format="hl7",
+                        content=f"MSH|^~\\&|A|B|C|D|2025||ADT^A01|CTL{idx:03d}|P|2.5",
+                    )
+                    result = session.send_message(msg)
+                    self.assertTrue(result.ok, result.error)
+                    self.assertIn(f"MSA|AA|CTL{idx:03d}", result.response_summary)
+
+            self.assertEqual(len(captured), 4)
+            # All 4 messages arrived on the exact same client TCP socket (same ephemeral port).
+            self.assertEqual(len({m.remote for m in captured}), 1)
+        finally:
+            server.stop()
+
+    def test_mllp_pipelined_frames_share_one_stream_and_return_ordered_acks(self) -> None:
+        captured: list[ReceivedMessage] = []
+        server = MockMllpServer("127.0.0.1", 0, ack_code="AA", on_message=captured.append)
+        port = server.start()
+        try:
+            endpoint = Endpoint(kind="mllp", host="127.0.0.1", port=port, timeout_seconds=2.0, mllp_mode="pipelined")
+            sender = MllpSender()
+            with sender.open_stream(endpoint) as session:
+                for idx in range(1, 6):
+                    session.send_frame(
+                        Message(
+                            name=f"P{idx}",
+                            format="hl7",
+                            content=f"MSH|^~\\&|A|B|C|D|2025||ADT^A01|PIPE{idx:02d}|P|2.5",
+                        )
+                    )
+                acks = [session.read_next_ack() for _ in range(5)]
+
+            self.assertTrue(all(r.ok for r in acks))
+            for idx, res in enumerate(acks, start=1):
+                self.assertIn(f"MSA|AA|PIPE{idx:02d}", res.response_summary)
+            self.assertEqual(len(captured), 5)
+            self.assertEqual(len({m.remote for m in captured}), 1)
+        finally:
+            server.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

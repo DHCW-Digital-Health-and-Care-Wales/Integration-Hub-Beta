@@ -5,9 +5,16 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
-from ultra7.models import Endpoint
+from ultra7.models import Endpoint, MllpMode
 from ultra7.senders.connectivity import INTEGRATION_HUB_PRESETS, test_endpoint_connection
 from ultra7.ui.themes import DEFAULT_THEME_NAME, Theme, get_border_color, get_semantic_colors, get_theme
+
+_MLLP_MODE_LABELS: dict[MllpMode, str] = {
+    "per_message": "Per message (new TCP connection)",
+    "stream": "Persistent stream (single TCP connection)",
+    "pipelined": "Pipelined burst (all frames on 1 stream)",
+}
+_MLLP_LABEL_TO_MODE: dict[str, MllpMode] = {label: mode for mode, label in _MLLP_MODE_LABELS.items()}
 
 
 class EndpointDialog(tk.Toplevel):
@@ -24,6 +31,8 @@ class EndpointDialog(tk.Toplevel):
             self.configure(bg=theme.bg)
 
         self._kind = tk.StringVar(value=endpoint.kind)
+        default_mode_label = _MLLP_MODE_LABELS.get(endpoint.mllp_mode, _MLLP_MODE_LABELS["per_message"])
+        self._mllp_mode_label = tk.StringVar(value=default_mode_label)
         self._host = tk.StringVar(value=endpoint.host)
         self._port = tk.StringVar(value=str(endpoint.port) if endpoint.port else "")
         self._url = tk.StringVar(value=endpoint.url)
@@ -67,6 +76,17 @@ class EndpointDialog(tk.Toplevel):
         self._port_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
         self._port_entry = ttk.Entry(self, textvariable=self._port)
         self._port_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
+        row += 1
+
+        self._mllp_mode_lbl = ttk.Label(self, text="MLLP Mode")
+        self._mllp_mode_lbl.grid(row=row, column=0, sticky="w", padx=12, pady=4)
+        self._mllp_mode_menu = ttk.OptionMenu(
+            self,
+            self._mllp_mode_label,
+            self._mllp_mode_label.get(),
+            *_MLLP_MODE_LABELS.values(),
+        )
+        self._mllp_mode_menu.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
         row += 1
 
         self._url_label = ttk.Label(self, text="URL")
@@ -136,6 +156,7 @@ class EndpointDialog(tk.Toplevel):
         if preset is None:
             return
         self._kind.set(preset.kind)
+        self._mllp_mode_label.set(_MLLP_MODE_LABELS.get(preset.mllp_mode, _MLLP_MODE_LABELS["per_message"]))
         self._host.set(preset.host)
         self._port.set(str(preset.port) if preset.port else "")
         self._url.set(preset.url)
@@ -165,6 +186,7 @@ class EndpointDialog(tk.Toplevel):
             headers=self._parse_headers(),
             soap_action=self._soap_action.get().strip(),
             timeout_seconds=timeout_seconds,
+            mllp_mode=_MLLP_LABEL_TO_MODE.get(self._mllp_mode_label.get(), "per_message"),
         )
 
     def _run_connection_test(self) -> None:
@@ -193,7 +215,14 @@ class EndpointDialog(tk.Toplevel):
 
     def _on_kind_change(self, kind: str) -> None:
         is_mllp = kind == "mllp"
-        for widget in (self._host_label, self._host_entry, self._port_label, self._port_entry):
+        for widget in (
+            self._host_label,
+            self._host_entry,
+            self._port_label,
+            self._port_entry,
+            self._mllp_mode_lbl,
+            self._mllp_mode_menu,
+        ):
             widget.configure(state="normal" if is_mllp else "disabled")
         for widget in (self._url_label, self._url_entry):
             widget.configure(state="disabled" if is_mllp else "normal")

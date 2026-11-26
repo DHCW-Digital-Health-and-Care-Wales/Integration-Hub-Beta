@@ -12,7 +12,7 @@ from typing import Callable, Literal
 
 from ultra7.formats.detect import detect_format
 from ultra7.models import MessageFormat
-from ultra7.senders.mllp_sender import MLLP_CARRIAGE_RETURN, MLLP_END_BLOCK, MLLP_START_BLOCK
+from ultra7.senders.mllp_sender import MLLP_END_BLOCK, MLLP_END_SEQ, MLLP_START_BLOCK
 
 ReceiverKind = Literal["mllp", "http"]
 
@@ -75,38 +75,68 @@ class MockMllpServer:
                 sock: socket.socket = self.request
                 sock.settimeout(5.0)
                 buf = b""
-                try:
-                    while MLLP_END_BLOCK not in buf:
-                        chunk = sock.recv(4096)
+                remote = f"{self.client_address[0]}:{self.client_address[1]}"
+
+                # Loop on the persistent TCP connection to handle a stream of MLLP frames,
+                # matching servers/hl7_server's SizeLimitedMLLPRequestHandler behaviour.
+                while True:
+                    buf = buf.lstrip(b"\r\n")
+                    while not buf:
+                        try:
+                            chunk = sock.recv(4096)
+                        except (OSError, TimeoutError):
+                            return
+                        if not chunk:
+                            return
+                        buf = chunk.lstrip(b"\r\n")
+
+                    while MLLP_END_SEQ not in buf:
+                        if MLLP_END_BLOCK in buf:
+                            idx = buf.find(MLLP_END_BLOCK)
+                            if idx + 1 < len(buf) and buf[idx + 1 : idx + 2] != b"\r":
+                                break
+                        try:
+                            chunk = sock.recv(4096)
+                        except (OSError, TimeoutError):
+                            return
                         if not chunk:
                             break
                         buf += chunk
-                except (OSError, TimeoutError):
-                    return
-                if not buf:
-                    return
-                raw = buf.decode("utf-8", errors="replace").strip("\x0b\x1c\r\n")
-                if parent.delay_ms:
-                    time.sleep(parent.delay_ms / 1000)
-                ack = build_hl7_ack(raw, parent.ack_code)
-                frame = MLLP_START_BLOCK + ack.encode("utf-8") + MLLP_END_BLOCK + MLLP_CARRIAGE_RETURN
-                try:
-                    sock.sendall(frame)
-                except OSError:
-                    pass
-                if parent._on_message is not None:
-                    remote = f"{self.client_address[0]}:{self.client_address[1]}"
-                    ts = datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3]
-                    parent._on_message(
-                        ReceivedMessage(
-                            timestamp=ts,
-                            protocol="mllp",
-                            remote=remote,
-                            content=raw,
-                            detected_format=detect_format(raw),
-                            response_sent=ack,
+
+                    if MLLP_END_SEQ in buf:
+                        end_pos = buf.find(MLLP_END_SEQ) + len(MLLP_END_SEQ)
+                    elif MLLP_END_BLOCK in buf:
+                        end_pos = buf.find(MLLP_END_BLOCK) + len(MLLP_END_BLOCK)
+                    else:
+                        return
+
+                    frame_bytes = buf[:end_pos]
+                    buf = buf[end_pos:]
+
+                    raw = frame_bytes.decode("utf-8", errors="replace").strip("\x0b\x1c\r\n")
+                    if parent.delay_ms:
+                        time.sleep(parent.delay_ms / 1000)
+                    ack = build_hl7_ack(raw, parent.ack_code)
+                    reply_frame = MLLP_START_BLOCK + ack.encode("utf-8") + MLLP_END_SEQ
+                    send_ok = True
+                    try:
+                        sock.sendall(reply_frame)
+                    except OSError:
+                        send_ok = False
+                    if parent._on_message is not None:
+                        ts = datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3]
+                        parent._on_message(
+                            ReceivedMessage(
+                                timestamp=ts,
+                                protocol="mllp",
+                                remote=remote,
+                                content=raw,
+                                detected_format=detect_format(raw),
+                                response_sent=ack,
+                            )
                         )
-                    )
+                    if not send_ok:
+                        return
 
         self._server = _ReusableTCPServer((self.host, self.port), _Handler)
         self.port = int(self._server.server_address[1])
