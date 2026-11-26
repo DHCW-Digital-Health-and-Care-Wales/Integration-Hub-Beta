@@ -29,7 +29,7 @@ class TCPHealthCheckServer:
         self._server_socket: socket.socket | None = None
         self._thread: threading.Thread | None = None
         self._running: bool = False
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def is_running(self) -> bool:

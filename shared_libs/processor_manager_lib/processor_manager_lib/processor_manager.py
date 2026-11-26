@@ -12,25 +12,55 @@ class ProcessorManager:
     def __init__(self) -> None:
         self._running = True
         self._shutdown_event = threading.Event()
+        self._callbacks_done = threading.Event()
+        self._callbacks_lock = threading.Lock()
+        self._callbacks_invoked = False
         self._shutdown_callbacks: list[Callable[[], None]] = []
+        self._coordinator_thread: Optional[threading.Thread] = None
         self._setup_signal_handlers()
 
     def _setup_signal_handlers(self) -> None:
         signal.signal(signal.SIGINT, self._shutdown_handler)
         signal.signal(signal.SIGTERM, self._shutdown_handler)
 
+    def _ensure_coordinator_started(self) -> None:
+        if self._coordinator_thread is not None:
+            return
+        thread = threading.Thread(
+            target=self._run_shutdown_coordinator,
+            name="processor-shutdown-coordinator",
+            daemon=True,
+        )
+        self._coordinator_thread = thread
+        thread.start()
+
+    def _run_shutdown_coordinator(self) -> None:
+        self._shutdown_event.wait()
+        self._invoke_shutdown_callbacks()
+
     def _invoke_shutdown_callbacks(self) -> None:
-        for callback in list(self._shutdown_callbacks):
-            try:
-                callback()
-            except Exception as exc:
-                logger.warning("Shutdown callback failed: %s", exc)
+        with self._callbacks_lock:
+            if self._callbacks_invoked:
+                return
+            self._callbacks_invoked = True
+            callbacks = list(self._shutdown_callbacks)
+
+        try:
+            for callback in callbacks:
+                try:
+                    callback()
+                except Exception as exc:
+                    logger.warning("Shutdown callback failed: %s", exc)
+        finally:
+            self._callbacks_done.set()
 
     def _shutdown_handler(self, signum: int, frame: Optional[FrameType]) -> None:
         logger.info("Shutting down the processor")
         self._running = False
+        # Only set the shutdown event inside the signal handler; registered callbacks
+        # run on the shutdown coordinator thread so lock-taking callbacks (such as
+        # TCPHealthCheckServer.stop()) can never deadlock on signal re-entry.
         self._shutdown_event.set()
-        self._invoke_shutdown_callbacks()
 
     @property
     def is_running(self) -> bool:
@@ -41,8 +71,19 @@ class ProcessorManager:
         return self._shutdown_event
 
     def register_shutdown_callback(self, callback: Callable[[], None]) -> None:
-        """Register a callback invoked immediately when shutdown is triggered (e.g. stop health probe)."""
-        self._shutdown_callbacks.append(callback)
+        """Register a callback invoked promptly off-signal-handler when shutdown is triggered."""
+        already_invoked = False
+        with self._callbacks_lock:
+            if self._callbacks_invoked:
+                already_invoked = True
+            else:
+                self._shutdown_callbacks.append(callback)
+                self._ensure_coordinator_started()
+        if already_invoked:
+            try:
+                callback()
+            except Exception as exc:
+                logger.warning("Shutdown callback failed: %s", exc)
 
     def stop(self) -> None:
         logger.info("Manual processor stop requested")
