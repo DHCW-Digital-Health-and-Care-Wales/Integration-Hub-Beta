@@ -1,10 +1,11 @@
 import gc
 import queue
+import time
 import tkinter as tk
 import unittest
 from unittest.mock import patch
 
-from ultra7.models import Endpoint, IterationSpec, Message
+from ultra7.models import Endpoint, IterationSpec, Message, Project
 from ultra7.senders.base import SendResult
 from ultra7.ui.send_controls import SendControls
 
@@ -262,6 +263,85 @@ class TestSendWorkerLabels(unittest.TestCase):
         # Originals must stay untouched — each send recomputes from the source, not the last output.
         self.assertEqual(message_a.content, content_a)
         self.assertEqual(message_b.content, content_b)
+
+    def test_set_enabled_keeps_cancel_disabled_when_idle(self) -> None:
+        self.controls.set_enabled(True)
+        self.assertEqual(str(self.controls._send_btn.cget("state")), "normal")
+        self.assertEqual(str(self.controls._cancel_btn.cget("state")), "disabled")
+
+    def test_start_batch_runs_projects_and_blocks_concurrent_send(self) -> None:
+        fake_sender = type("FakeSender", (), {"send": lambda self, endpoint, message: SendResult(
+            ok=True, latency_ms=1.0, response_summary="ack"
+        )})()
+        projects = [
+            Project(
+                name="P1",
+                endpoint=Endpoint(kind="mllp", host="127.0.0.1", port=2575),
+                messages=[Message(name="M1", format="hl7", content="MSH|...")],
+            ),
+            Project(
+                name="P2",
+                endpoint=Endpoint(kind="mllp", host="127.0.0.1", port=2576),
+                messages=[Message(name="M2", format="hl7", content="MSH|...", enabled=False)],
+            ),
+        ]
+
+        with patch("ultra7.ui.send_controls.get_sender", return_value=fake_sender):
+            started = self.controls.start_batch(projects)
+            self.assertTrue(started)
+            self.assertFalse(self.controls.start_batch(projects))
+            self.assertEqual(str(self.controls._cancel_btn.cget("state")), "normal")
+            assert self.controls._worker is not None
+            self.controls._worker.join(timeout=2)
+
+        items = self._drain()
+        names = [name for name, _result in items if name is not None]
+        self.assertEqual(
+            names,
+            [
+                "=== Running: P1 ===",
+                "Sending   M1 [1/1] to 127.0.0.1 on port 2575",
+                "  M1 [1/1]",
+                "=== Running: P2 ===",
+                "No enabled messages",
+            ],
+        )
+
+    def test_cancel_interrupts_delay_promptly(self) -> None:
+        fake_sender = type("FakeSender", (), {"send": lambda self, endpoint, message: SendResult(
+            ok=True, latency_ms=1.0, response_summary="ack"
+        )})()
+        self.controls._get_messages = lambda: [Message(name="A01", format="hl7", content="MSH|...")]
+        self.controls.set_repeat_and_delay(repeat_count=3, delay_ms=5000)
+
+        start = time.monotonic()
+        with patch("ultra7.ui.send_controls.get_sender", return_value=fake_sender):
+            self.controls._start_send()
+            time.sleep(0.05)
+            self.controls._cancel()
+            assert self.controls._worker is not None
+            self.controls._worker.join(timeout=2)
+        elapsed = time.monotonic() - start
+        self.assertLess(elapsed, 1.0)
+
+    def test_setting_change_triggers_on_change(self) -> None:
+        called = False
+
+        def _mark() -> None:
+            nonlocal called
+            called = True
+
+        controls = SendControls(
+            self.root,
+            get_endpoint=lambda: Endpoint(),
+            get_messages=lambda: [],
+            get_selected_messages=lambda: [],
+            on_result=lambda *_a: None,
+            on_info=lambda *_a: None,
+            on_change=_mark,
+        )
+        controls._handle_setting_change(None)  # type: ignore[arg-type]
+        self.assertTrue(called)
 
 
 if __name__ == "__main__":

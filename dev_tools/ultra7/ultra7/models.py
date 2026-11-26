@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 MessageFormat = Literal["hl7", "xml", "json"]
 EndpointKind = Literal["mllp", "rest", "soap"]
-IterationMode = Literal["increment", "list", "timestamp"]
+IterationMode = Literal["increment", "list", "timestamp", "nhs_number"]
 
 
 def _new_id() -> str:
@@ -66,29 +66,63 @@ class Message:
     content: str
     id: str = field(default_factory=_new_id)
     iteration: IterationSpec | None = None
-    """The highlighted substring (if any) that gets recomputed on each repeat send."""
+    """Primary iteration field (kept in sync with `iterations[0]` for backwards compatibility)."""
+    iterations: list[IterationSpec] = field(default_factory=list)
+    """All marked iteration fields that get recomputed on each repeat send."""
     enabled: bool = True
     """Whether this message is included in batch (Send) runs; disabled messages are skipped."""
 
+    def __post_init__(self) -> None:
+        if self.iteration is not None and not self.iterations:
+            self.iterations = [self.iteration]
+        elif self.iterations and self.iteration is None:
+            self.iteration = self.iterations[0]
+
+    def all_iterations(self) -> list[IterationSpec]:
+        """Return all configured iteration specs (synced with legacy single `iteration`)."""
+        if self.iterations:
+            return list(self.iterations)
+        return [self.iteration] if self.iteration is not None else []
+
+    def set_iterations(self, specs: list[IterationSpec]) -> None:
+        self.iterations = sorted(specs, key=lambda s: s.start)
+        self.iteration = self.iterations[0] if self.iterations else None
+
     def to_dict(self) -> dict[str, Any]:
+        specs = self.all_iterations()
         return {
             "id": self.id,
             "name": self.name,
             "format": self.format,
             "content": self.content,
-            "iteration": self.iteration.to_dict() if self.iteration else None,
+            "iteration": specs[0].to_dict() if specs else None,
+            "iterations": [s.to_dict() for s in specs],
             "enabled": self.enabled,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Message:
+        iterations_data = data.get("iterations")
+        if isinstance(iterations_data, list) and iterations_data:
+            specs = [IterationSpec.from_dict(item) for item in iterations_data]
+            return cls(
+                id=data.get("id", _new_id()),
+                name=data["name"],
+                format=data["format"],
+                content=data["content"],
+                iteration=specs[0],
+                iterations=specs,
+                enabled=data.get("enabled", True),
+            )
         iteration_data = data.get("iteration")
+        spec = IterationSpec.from_dict(iteration_data) if iteration_data else None
         return cls(
             id=data.get("id", _new_id()),
             name=data["name"],
             format=data["format"],
             content=data["content"],
-            iteration=IterationSpec.from_dict(iteration_data) if iteration_data else None,
+            iteration=spec,
+            iterations=[spec] if spec else [],
             enabled=data.get("enabled", True),
         )
 

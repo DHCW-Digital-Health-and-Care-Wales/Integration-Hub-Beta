@@ -4,8 +4,8 @@ from ultra7.ui.themes import DEFAULT_THEME_NAME, THEMES, get_theme
 
 
 class TestThemes(unittest.TestCase):
-    def test_has_ten_themes(self) -> None:
-        self.assertEqual(len(THEMES), 10)
+    def test_has_fifteen_themes(self) -> None:
+        self.assertEqual(len(THEMES), 15)
 
     def test_names_are_unique(self) -> None:
         names = [theme.name for theme in THEMES]

@@ -3,17 +3,19 @@ name = "ultra7"
 version = "0.1.0"
 description = "GUI tool for testing MLLP, REST and SOAP HL7 endpoints"
 requires-python = ">=3.13"
-dependencies = [
-    "hl7apy",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
     "ruff==0.14.9",
+    "bandit==1.9.2",
     "mypy==1.18.2",
     "coverage>=7.6.0",
     "pytest>=8.3.0",
 ]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/*_test.py"]
 
 [tool.coverage.run]
 branch = true
