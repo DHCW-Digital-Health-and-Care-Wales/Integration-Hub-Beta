@@ -124,9 +124,106 @@
         rowDlq.className = "text-end count-cell " + (total > 0 ? "dlq-warn" : "zero");
       }
 
-      // Detail card pipeline nodes (only present on flows page)
+      // Detail card header DLQ badge (only present on flows page)
+      const headerDlq = card.querySelector("[data-flow-header-dlq]");
+      if (headerDlq) {
+        const pre = flow.pre_queue || {};
+        const post = flow.post_queue || {};
+        const topic = flow.topic_summary || {};
+        const postTopic = flow.post_topic_summary || {};
+        const subDlq = (flow.subscriptions || []).reduce((s, q) => s + (q.dlq || 0), 0);
+        const totalDlq = (pre.dlq || 0) + (post.dlq || 0) + (topic.dlq || 0) + (postTopic.dlq || 0) + subDlq;
+        headerDlq.style.display = totalDlq > 0 ? "" : "none";
+        const countEl = headerDlq.querySelector("[data-flow-header-dlq-count]");
+        if (countEl) animateCounter(countEl, totalDlq);
+      }
+
+      // Detail card pipeline nodes and metric cards (only present on flows page)
       updateQueueNode(card, "pre", flow.pre_queue);
       updateQueueNode(card, "post", flow.post_queue);
+      updateSubscriptionNodes(card, flow.subscriptions);
+    }
+  }
+
+  function updateSubscriptionNodes(card, subscriptions) {
+    if (!Array.isArray(subscriptions) || subscriptions.length === 0) return;
+
+    const subsByEntity = new Map();
+    for (const sub of subscriptions) {
+      const key = sub.entity_name || (sub.topic ? `${sub.topic}/${sub.name}` : sub.name);
+      if (key) subsByEntity.set(key, sub);
+    }
+
+    // Pipeline arrows tied to a subscription
+    for (const arrow of card.querySelectorAll("[data-sub-arrow]")) {
+      const sub = subsByEntity.get(arrow.dataset.subArrow);
+      if (!sub) continue;
+      arrow.classList.remove("healthy", "warning", "critical", "unknown");
+      arrow.classList.add(healthClass(sub.health));
+    }
+
+    // Pipeline subscription nodes
+    for (const node of card.querySelectorAll("[data-sub-node]")) {
+      const sub = subsByEntity.get(node.dataset.subNode);
+      if (!sub) continue;
+      const health = healthClass(sub.health);
+      const active = sub.active || 0;
+      const dlq = sub.dlq || 0;
+
+      const box = node.querySelector("[data-sub-box]");
+      if (box) {
+        box.classList.remove("healthy", "warning", "critical", "neutral", "unknown");
+        box.classList.add(health);
+      }
+
+      const activeEl = node.querySelector("[data-sub-active]");
+      if (activeEl) animateCounter(activeEl, active);
+
+      const activeWrap = node.querySelector("[data-sub-active-wrap]");
+      if (activeWrap) {
+        activeWrap.style.color = health === "critical"
+          ? "var(--accent-red)"
+          : health === "warning"
+            ? "var(--accent-amber)"
+            : "var(--text-muted)";
+      }
+
+      const dlqEl = node.querySelector("[data-sub-dlq]");
+      if (dlqEl) animateCounter(dlqEl, dlq);
+
+      const dlqBadge = node.querySelector("[data-sub-dlq-badge]");
+      if (dlqBadge) dlqBadge.style.display = dlq > 0 ? "" : "none";
+    }
+
+    // Subscription metric boxes in the detail grid
+    for (const metricCard of card.querySelectorAll("[data-sub-card]")) {
+      const sub = subsByEntity.get(metricCard.dataset.subCard);
+      if (!sub) continue;
+      const health = healthClass(sub.health);
+      const active = sub.active || 0;
+      const dlq = sub.dlq || 0;
+
+      metricCard.classList.remove("healthy", "warning", "critical", "unknown");
+      metricCard.classList.add(health);
+
+      const badge = metricCard.querySelector("[data-sub-badge]");
+      if (badge) {
+        badge.className = `status-badge ${health}`;
+        badge.textContent = health;
+      }
+
+      const activeEl = metricCard.querySelector("[data-sub-active]");
+      if (activeEl) {
+        animateCounter(activeEl, active);
+        activeEl.className = "qmv-value " +
+          (active >= CRIT_THRESHOLD ? "critical" : active >= WARN_THRESHOLD ? "warning" : "ok");
+      }
+
+      const dlqEl = metricCard.querySelector("[data-sub-dlq]");
+      if (dlqEl) {
+        animateCounter(dlqEl, dlq);
+        dlqEl.className = "qmv-value " + (dlq > 0 ? "critical" : "ok");
+      }
     }
   }
 

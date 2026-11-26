@@ -167,6 +167,11 @@ class TestPageRoutes:
         assert b"sbt-phw-hl7-output" in response.data
         assert b"sbs-phw-mpi-sndr" in response.data
         assert b"OUTPUT TOPIC" in response.data
+        assert b'data-sub-node="sbt-phw-hl7-input/sbs-phw-tfmr"' in response.data
+        assert b'data-sub-card="sbt-phw-hl7-input/sbs-phw-tfmr"' in response.data
+        assert b'data-sub-node="sbt-phw-hl7-output/sbs-phw-mpi-sndr"' in response.data
+        assert b'data-sub-card="sbt-phw-hl7-output/sbs-phw-mpi-sndr"' in response.data
+        assert b'data-sub-arrow="sbt-phw-hl7-output/sbs-phw-mpi-sndr"' in response.data
 
     def test_exceptions_returns_200(self, client: FlaskClient) -> None:
         with (
