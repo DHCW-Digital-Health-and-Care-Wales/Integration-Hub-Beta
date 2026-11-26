@@ -459,3 +459,59 @@ def test_get_throughput_filter_options_returns_empty_when_workspace_missing() ->
     with patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", ""):
         result = azure_monitor.get_throughput_filter_options()
     assert result == {"health_boards": [], "services": []}
+
+
+def test_get_hl7_throughput_includes_resource_filter_when_configured() -> None:
+    resource_id = "/subscriptions/test/resourceGroups/rg/providers/microsoft.insights/components/appi-dev"
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch.object(azure_monitor.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", resource_id),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([])
+        azure_monitor.get_hl7_throughput_metrics(hours=24)
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert f"_ResourceId =~ '{resource_id}'" in query_text
+
+
+def test_get_hl7_throughput_omits_resource_filter_when_unset() -> None:
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch.object(azure_monitor.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", ""),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([])
+        azure_monitor.get_hl7_throughput_metrics(hours=24)
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert "_ResourceId" not in query_text
+
+
+def test_get_throughput_filter_options_includes_resource_filter_when_configured() -> None:
+    resource_id = "/subscriptions/test/resourceGroups/rg/providers/microsoft.insights/components/appi-dev"
+
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch.object(azure_monitor.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", resource_id),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([])
+        azure_monitor.get_throughput_filter_options()
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert f"_ResourceId =~ '{resource_id}'" in query_text
+
+
+def test_get_throughput_filter_options_omits_resource_filter_when_unset() -> None:
+    with (
+        patch.object(azure_monitor.config, "AZURE_LOG_ANALYTICS_WORKSPACE_ID", "workspace-id"),
+        patch.object(azure_monitor.config, "AZURE_APP_INSIGHTS_RESOURCE_ID", ""),
+        patch("dashboard.services.azure_monitor._get_logs_client") as mock_client_factory,
+    ):
+        mock_client_factory.return_value.query_workspace.return_value = FakeResponse([])
+        azure_monitor.get_throughput_filter_options()
+
+    query_text = mock_client_factory.return_value.query_workspace.call_args.kwargs["query"]
+    assert "_ResourceId" not in query_text

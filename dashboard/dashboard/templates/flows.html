@@ -91,8 +91,9 @@
   {% for source, source_flows in status.flows | groupby('source') %}
   {% set ns = namespace(group_active=0, group_dlq=0, group_health='healthy') %}
   {% for f in source_flows %}
-    {% set f_active = (f.pre_queue.active or 0) + (f.post_queue.active or 0) + (f.topic_summary.active or 0) + (f.subscriptions | sum(attribute='active') if f.subscriptions else 0) %}
-    {% set f_dlq    = (f.pre_queue.dlq   or 0) + (f.post_queue.dlq   or 0) + (f.topic_summary.dlq   or 0) + (f.subscriptions | sum(attribute='dlq')    if f.subscriptions else 0) %}
+    {% set f_post_topic = f.post_topic_summary or {} %}
+    {% set f_active = (f.pre_queue.active or 0) + (f.post_queue.active or 0) + (f.topic_summary.active or 0) + (f_post_topic.active or 0) + (f.subscriptions | sum(attribute='active') if f.subscriptions else 0) %}
+    {% set f_dlq    = (f.pre_queue.dlq   or 0) + (f.post_queue.dlq   or 0) + (f.topic_summary.dlq   or 0) + (f_post_topic.dlq   or 0) + (f.subscriptions | sum(attribute='dlq')    if f.subscriptions else 0) %}
     {% set ns.group_active = ns.group_active + f_active %}
     {% set ns.group_dlq    = ns.group_dlq    + f_dlq %}
     {% if f.health == 'critical' %}{% set ns.group_health = 'critical' %}
@@ -142,7 +143,7 @@
         </div>
       </div>
       <div class="d-flex align-items-center gap-2">
-        {% set flow_dlq = (pre.dlq or 0) + (post.dlq or 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
+        {% set flow_dlq = (pre.dlq or 0) + (post.dlq or 0) + (flow.topic_summary.dlq or 0 if flow.topic_summary else 0) + (flow.post_topic_summary.dlq or 0 if flow.post_topic_summary else 0) + (flow.subscriptions | sum(attribute='dlq') if flow.subscriptions else 0) %}
         {% if flow_dlq > 0 %}
         <span class="dlq-badge-pill"><i class="bi bi-exclamation-octagon-fill"></i> DLQ: {{ flow_dlq }}</span>
         {% endif %}
@@ -174,7 +175,7 @@
            so all nodes share the same total height and the arrow line stays centred. -->
       <div class="section-title mb-2"><i class="bi bi-arrow-right-circle"></i> {{ _("Message Flow") }}</div>
 
-      {% if flow.topic and flow.source_port and not flow.transformer and not post.name %}
+      {% if flow.topic and flow.source_port and not flow.transformer and not post.name and not flow.post_topic %}
       {# ── Topic / subscription flow (MPI Outbound) ── #}
       <div class="pipeline mb-3" style="gap:0; overflow-x:auto;">
         <!-- SOURCE -->
@@ -245,12 +246,23 @@
       {% endif %}
 
       {% elif flow.topic %}
-      {# ── Topic subscription branch with downstream queue/sender ── #}
-      {% set sub = flow.subscriptions[0] if flow.subscriptions else None %}
+      {# ── Topic subscription branch with downstream queue or output topic ── #}
+      {% set sub_groups = namespace(pre=[], post=[], other=[]) %}
+      {% for s in (flow.subscriptions or []) %}
+        {% if s.topic == flow.topic or (not s.topic and not flow.post_topic) %}
+          {% set sub_groups.pre = sub_groups.pre + [s] %}
+        {% elif flow.post_topic and s.topic == flow.post_topic %}
+          {% set sub_groups.post = sub_groups.post + [s] %}
+        {% else %}
+          {% set sub_groups.other = sub_groups.other + [s] %}
+        {% endif %}
+      {% endfor %}
+      {% set pre_sub = sub_groups.pre[0] if sub_groups.pre else None %}
+      {% set post_sub = sub_groups.post[0] if sub_groups.post else None %}
       <div class="pipeline mb-3" style="gap:0; overflow-x:auto;">
         <div class="pipeline-node">
           <div class="pipeline-node-box neutral" style="min-width:80px; font-size:0.72rem;">
-            <div style="font-size:0.58rem; color:var(--text-dim)">{{ _("SOURCE") }}</div>
+            <div style="font-size:0.58rem; color:var(--text-dim)">{% if flow.source_port %}{{ _("Server") }} :{{ flow.source_port }}{% else %}{{ _("SOURCE") }}{% endif %}</div>
             {{ flow.source }}
           </div>
           <div class="pipeline-node-count"></div>
@@ -260,28 +272,28 @@
 
         <div class="pipeline-node">
           <div class="pipeline-node-box neutral" style="min-width:120px; border-color:{{ flow.colour }}40;">
-            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-broadcast"></i> {{ _("TOPIC") }}</div>
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-broadcast"></i> {{ _("INPUT TOPIC") if flow.post_topic else _("TOPIC") }}</div>
             {{ flow.topic }}
           </div>
           <div class="pipeline-node-count"></div>
         </div>
 
-        {% if sub %}
-        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ sub.health }}"></div></div>
+        {% if pre_sub %}
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ pre_sub.health }}"></div></div>
         <div class="pipeline-node">
-          <div class="pipeline-node-box {{ sub.health }}" style="min-width:120px;">
+          <div class="pipeline-node-box {{ pre_sub.health }}" style="min-width:120px;">
             <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-envelope-arrow-down"></i> {{ _("SUBSCRIPTION") }}</div>
-            {{ sub.name }}
+            {{ pre_sub.name }}
           </div>
           <div class="pipeline-node-count" style="font-size:0.7rem;">
-            <span style="color: {% if sub.health == 'critical' %}var(--accent-red){% elif sub.health == 'warning' %}var(--accent-amber){% else %}var(--text-muted){% endif %}">{{ sub.active }} {{ _("active") }}</span>
-            {% if sub.dlq > 0 %}<span class="dlq-badge"> · {{ sub.dlq }} DLQ</span>{% endif %}
+            <span style="color: {% if pre_sub.health == 'critical' %}var(--accent-red){% elif pre_sub.health == 'warning' %}var(--accent-amber){% else %}var(--text-muted){% endif %}">{{ pre_sub.active }} {{ _("active") }}</span>
+            {% if pre_sub.dlq > 0 %}<span class="dlq-badge"> · {{ pre_sub.dlq }} DLQ</span>{% endif %}
           </div>
         </div>
         {% endif %}
 
         {% if flow.transformer %}
-        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ post.health if post.name else '' }}"></div></div>
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ post.health if post.name else (post_sub.health if post_sub else '') }}"></div></div>
         <div class="pipeline-node">
           <div class="pipeline-node-box neutral" style="min-width:110px;">
             <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-gear"></i> {{ _("TRANSFORMER") }}</div>
@@ -303,6 +315,29 @@
             {% if post.dlq > 0 %}<span class="dlq-badge"> · {{ post.dlq }} DLQ</span>{% endif %}
           </div>
         </div>
+        {% elif flow.post_topic %}
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line healthy"></div></div>
+        <div class="pipeline-node">
+          <div class="pipeline-node-box neutral" style="min-width:120px; border-color:{{ flow.colour }}40;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-broadcast"></i> {{ _("OUTPUT TOPIC") }}</div>
+            {{ flow.post_topic }}
+          </div>
+          <div class="pipeline-node-count"></div>
+        </div>
+
+        {% if post_sub %}
+        <div class="pipeline-arrow"><div class="pipeline-arrow-line {{ post_sub.health }}"></div></div>
+        <div class="pipeline-node">
+          <div class="pipeline-node-box {{ post_sub.health }}" style="min-width:120px;">
+            <div style="font-size:0.6rem; opacity:0.7; margin-bottom:1px;"><i class="bi bi-envelope-arrow-down"></i> {{ _("SUBSCRIPTION") }}</div>
+            {{ post_sub.name }}
+          </div>
+          <div class="pipeline-node-count" style="font-size:0.7rem;">
+            <span style="color: {% if post_sub.health == 'critical' %}var(--accent-red){% elif post_sub.health == 'warning' %}var(--accent-amber){% else %}var(--text-muted){% endif %}">{{ post_sub.active }} {{ _("active") }}</span>
+            {% if post_sub.dlq > 0 %}<span class="dlq-badge"> · {{ post_sub.dlq }} DLQ</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
         {% endif %}
 
         <div class="pipeline-arrow"><div class="pipeline-arrow-line healthy"></div></div>
@@ -326,7 +361,7 @@
       </div>
 
       <div class="flow-detail-queue-grid">
-        {% if sub %}
+        {% for sub in sub_groups.pre %}
         <div class="queue-metric-box {{ sub.health }}">
           <div class="queue-metric-name">
             <span><i class="bi bi-envelope-arrow-down"></i> {{ sub.name }}</span>
@@ -342,12 +377,12 @@
               <div class="qmv-label">{{ _("DLQ") }}</div>
             </div>
             <div>
-              <div class="qmv-value ok" style="font-size:0.9rem;">{{ _("Subscription") }}</div>
+              <div class="qmv-value ok" style="font-size:0.9rem;">{{ _("Pre") if (flow.post_topic or post.name) else _("Subscription") }}</div>
               <div class="qmv-label">{{ _("Stage") }}</div>
             </div>
           </div>
         </div>
-        {% endif %}
+        {% endfor %}
 
         {% if post.name and post.exists %}
         <div class="queue-metric-box {{ post.health }}">
@@ -376,6 +411,52 @@
           <div style="color:var(--text-dim); font-size:0.75rem; margin-top:0.5rem;">{{ _("Queue not found in namespace") }}</div>
         </div>
         {% endif %}
+
+        {% for sub in sub_groups.post %}
+        <div class="queue-metric-box {{ sub.health }}">
+          <div class="queue-metric-name">
+            <span><i class="bi bi-send"></i> {{ sub.name }}</span>
+            <span class="status-badge {{ sub.health }}" style="font-size:0.6rem;">{{ sub.health }}</span>
+          </div>
+          <div class="queue-metric-values">
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.active >= 50 else ('warning' if sub.active >= 10 else 'ok') }}">{{ sub.active }}</div>
+              <div class="qmv-label">{{ _("Active") }}</div>
+            </div>
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.dlq > 0 else 'ok' }}">{{ sub.dlq }}</div>
+              <div class="qmv-label">{{ _("DLQ") }}</div>
+            </div>
+            <div>
+              <div class="qmv-value ok" style="font-size:0.9rem;">{{ _("Post") }}</div>
+              <div class="qmv-label">{{ _("Stage") }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+
+        {% for sub in sub_groups.other %}
+        <div class="queue-metric-box {{ sub.health }}">
+          <div class="queue-metric-name">
+            <span><i class="bi bi-envelope-arrow-down"></i> {{ sub.name }}</span>
+            <span class="status-badge {{ sub.health }}" style="font-size:0.6rem;">{{ sub.health }}</span>
+          </div>
+          <div class="queue-metric-values">
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.active >= 50 else ('warning' if sub.active >= 10 else 'ok') }}">{{ sub.active }}</div>
+              <div class="qmv-label">{{ _("Active") }}</div>
+            </div>
+            <div>
+              <div class="qmv-value {{ 'critical' if sub.dlq > 0 else 'ok' }}">{{ sub.dlq }}</div>
+              <div class="qmv-label">{{ _("DLQ") }}</div>
+            </div>
+            <div>
+              <div class="qmv-value ok" style="font-size:0.9rem;">{{ _("Subscription") }}</div>
+              <div class="qmv-label">{{ _("Stage") }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
 
       {% else %}

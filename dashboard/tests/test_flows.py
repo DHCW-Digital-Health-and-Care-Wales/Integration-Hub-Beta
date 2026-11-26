@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from dashboard.services.flows import (
     _FLOW_DEFS,
+    _enrich_with_subscriptions,
     _merge_subscription_records,
     build_flow_data,
     entity_to_flow_ids,
@@ -609,3 +610,163 @@ class TestEntityToFlowIds:
             assert entity_to_flow_ids("subscription", "sbt-wds-hl7-input/sbs-wds-wis-transformer") == ["wds-to-wis"]
             assert entity_to_flow_ids("queue", "sbq-wis-soap-sender") == ["wds-to-wis"]
             assert entity_to_flow_ids("subscription", "sbt-wds-hl7-input") == []
+
+    def test_post_topic_and_output_subscription_map_to_topic_to_topic_flow(self) -> None:
+        flows: dict[str, dict[str, Any]] = {
+            "phw-to-mpi": {
+                "topic": "sbt-phw-hl7-input",
+                "post_topic": "sbt-phw-hl7-output",
+                "subscriptions": [
+                    {"name": "sbs-phw-tfmr", "topic": "sbt-phw-hl7-input"},
+                    {"name": "sbs-phw-mpi-sndr", "topic": "sbt-phw-hl7-output"},
+                ],
+            }
+        }
+        with patch("dashboard.services.flows.get_flows", return_value=flows):
+            assert entity_to_flow_ids("topic", "SBT-PHW-HL7-OUTPUT") == ["phw-to-mpi"]
+            assert entity_to_flow_ids("subscription", "sbt-phw-hl7-output/sbs-phw-mpi-sndr") == ["phw-to-mpi"]
+
+
+class TestTopicToTopicFlows:
+    def _make_phw_flow(self) -> dict[str, dict[str, Any]]:
+        return {
+            "phw-to-mpi": {
+                "label": "PHW → MPI",
+                "source": "PHW",
+                "source_port": 2575,
+                "pre_queue": None,
+                "transformer": "PHW Transformer",
+                "post_queue": None,
+                "topic": "sbt-phw-hl7-input",
+                "post_topic": "sbt-phw-hl7-output",
+                "subscriptions": [
+                    {
+                        "name": "sbs-phw-tfmr",
+                        "topic": "sbt-phw-hl7-input",
+                        "entity_name": "sbt-phw-hl7-input/sbs-phw-tfmr",
+                        "consumer_apps": [{"app_name": "phw-tfmr-ca", "microservice_id": "phw-tfmr-ca"}],
+                    },
+                    {
+                        "name": "sbs-phw-mpi-sndr",
+                        "topic": "sbt-phw-hl7-output",
+                        "entity_name": "sbt-phw-hl7-output/sbs-phw-mpi-sndr",
+                        "consumer_apps": [{"app_name": "phw-sndr-ca", "microservice_id": "phw-sndr-ca"}],
+                    },
+                ],
+                "destination": "MPI",
+                "colour": "#3b82f6",
+                "icon": "bi-heart-pulse",
+            }
+        }
+
+    def test_enrich_with_subscriptions_queries_both_input_and_output_topics(self) -> None:
+        flows = self._make_phw_flow()
+        sb_subs = {
+            "sbt-phw-hl7-input": [
+                {"name": "sbs-phw-tfmr", "status": "Active", "active_message_count": 2, "dead_letter_message_count": 0},
+            ],
+            "sbt-phw-hl7-output": [
+                {
+                    "name": "sbs-phw-mpi-sndr",
+                    "status": "Active",
+                    "active_message_count": 5,
+                    "dead_letter_message_count": 1,
+                },
+            ],
+        }
+        with (
+            patch("dashboard.services.flows.get_subscription_consumers_by_topic", return_value={}),
+            patch("dashboard.services.flows.get_subscriptions", side_effect=lambda t: sb_subs[t]) as mock_get_subs,
+        ):
+            _enrich_with_subscriptions(flows)
+
+        assert mock_get_subs.call_count == 2
+        by_name = {sub["name"]: sub for sub in flows["phw-to-mpi"]["subscriptions"]}
+        assert by_name["sbs-phw-tfmr"]["status"] == "Active"
+        assert by_name["sbs-phw-tfmr"]["active_message_count"] == 2
+        assert by_name["sbs-phw-tfmr"]["topic"] == "sbt-phw-hl7-input"
+        assert by_name["sbs-phw-mpi-sndr"]["status"] == "Active"
+        assert by_name["sbs-phw-mpi-sndr"]["active_message_count"] == 5
+        assert by_name["sbs-phw-mpi-sndr"]["dead_letter_message_count"] == 1
+        assert by_name["sbs-phw-mpi-sndr"]["topic"] == "sbt-phw-hl7-output"
+
+    def test_build_flow_data_enriches_both_topics_and_computes_healthy_status(self) -> None:
+        flows = self._make_phw_flow()
+        topics = [
+            {
+                "name": "sbt-phw-hl7-input",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+                "subscriptions": [
+                    {
+                        "name": "sbs-phw-tfmr",
+                        "topic": "sbt-phw-hl7-input",
+                        "status": "Active",
+                        "active_message_count": 1,
+                        "dead_letter_message_count": 0,
+                        "message_count": 1,
+                    }
+                ],
+            },
+            {
+                "name": "sbt-phw-hl7-output",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+                "subscriptions": [
+                    {
+                        "name": "sbs-phw-mpi-sndr",
+                        "topic": "sbt-phw-hl7-output",
+                        "status": "Active",
+                        "active_message_count": 3,
+                        "dead_letter_message_count": 0,
+                        "message_count": 3,
+                    }
+                ],
+            },
+        ]
+
+        with patch.multiple("dashboard.services.flows.config", **_THRESHOLD_KWARGS):
+            result = build_flow_data([], flows, topics)
+
+        assert len(result) == 1
+        flow = result[0]
+        assert flow["health"] == "healthy"
+        assert flow["post_topic"] == "sbt-phw-hl7-output"
+        assert flow["post_topic_summary"]["exists"] is True
+        by_name = {sub["name"]: sub for sub in flow["subscriptions"]}
+        assert by_name["sbs-phw-tfmr"]["active"] == 1
+        assert by_name["sbs-phw-tfmr"]["health"] == "healthy"
+        assert by_name["sbs-phw-mpi-sndr"]["active"] == 3
+        assert by_name["sbs-phw-mpi-sndr"]["health"] == "healthy"
+        assert by_name["sbs-phw-mpi-sndr"]["entity_name"] == "sbt-phw-hl7-output/sbs-phw-mpi-sndr"
+
+    def test_post_topic_backlog_or_missing_affects_flow_health(self) -> None:
+        flows = self._make_phw_flow()
+        for sub in flows["phw-to-mpi"]["subscriptions"]:
+            sub["status"] = "Active"
+            sub["active_message_count"] = 0
+            sub["dead_letter_message_count"] = 0
+
+        topics_warning = {
+            "sbt-phw-hl7-input": {
+                "name": "sbt-phw-hl7-input",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+            },
+            "sbt-phw-hl7-output": {
+                "name": "sbt-phw-hl7-output",
+                "active_message_count": 0,
+                "dead_letter_message_count": 2,
+            },
+        }
+        topics_missing_post = {
+            "sbt-phw-hl7-input": {
+                "name": "sbt-phw-hl7-input",
+                "active_message_count": 0,
+                "dead_letter_message_count": 0,
+            },
+        }
+
+        with patch.multiple("dashboard.services.flows.config", **_THRESHOLD_KWARGS):
+            assert flow_health("phw-to-mpi", {}, flows, topics_warning) == "warning"
+            assert flow_health("phw-to-mpi", {}, flows, topics_missing_post) == "unknown"

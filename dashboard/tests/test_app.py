@@ -93,6 +93,81 @@ class TestPageRoutes:
             response = client.get("/flows")
         assert response.status_code == 200
 
+    def test_flows_renders_topic_to_topic_pipeline(self, client: FlaskClient) -> None:
+        phw_flows = {
+            "phw-to-mpi": {
+                "label": "PHW → MPI",
+                "source": "PHW",
+                "source_port": 2575,
+                "pre_queue": None,
+                "transformer": "PHW Transformer",
+                "post_queue": None,
+                "topic": "sbt-phw-hl7-input",
+                "post_topic": "sbt-phw-hl7-output",
+                "subscriptions": [
+                    {"name": "sbs-phw-tfmr", "topic": "sbt-phw-hl7-input"},
+                    {"name": "sbs-phw-mpi-sndr", "topic": "sbt-phw-hl7-output"},
+                ],
+                "destination": "MPI",
+                "colour": "#3b82f6",
+                "icon": "bi-heart-pulse",
+            }
+        }
+        snapshot = {
+            **EMPTY_NAMESPACE_SNAPSHOT,
+            "topics": [
+                {
+                    "name": "sbt-phw-hl7-input",
+                    "active_message_count": 0,
+                    "dead_letter_message_count": 0,
+                    "subscriptions": [
+                        {
+                            "name": "sbs-phw-tfmr",
+                            "topic": "sbt-phw-hl7-input",
+                            "status": "Active",
+                            "active_message_count": 2,
+                            "dead_letter_message_count": 0,
+                            "message_count": 2,
+                        }
+                    ],
+                },
+                {
+                    "name": "sbt-phw-hl7-output",
+                    "active_message_count": 0,
+                    "dead_letter_message_count": 0,
+                    "subscriptions": [
+                        {
+                            "name": "sbs-phw-mpi-sndr",
+                            "topic": "sbt-phw-hl7-output",
+                            "status": "Active",
+                            "active_message_count": 4,
+                            "dead_letter_message_count": 0,
+                            "message_count": 4,
+                        }
+                    ],
+                },
+            ],
+        }
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=snapshot),
+            patch("dashboard.services.status_builder.get_active_flows", return_value=phw_flows),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
+            from dashboard.services import cache as cache_mod  # noqa: PLC0415
+
+            with cache_mod.cache_lock:
+                cache_mod.cache_data.clear()
+            response = client.get("/flows")
+
+        assert response.status_code == 200
+        assert b"sbt-phw-hl7-input" in response.data
+        assert b"sbs-phw-tfmr" in response.data
+        assert b"PHW Transformer" in response.data
+        assert b"sbt-phw-hl7-output" in response.data
+        assert b"sbs-phw-mpi-sndr" in response.data
+        assert b"OUTPUT TOPIC" in response.data
+
     def test_exceptions_returns_200(self, client: FlaskClient) -> None:
         with (
             patch("dashboard.services.azure_monitor.get_exceptions", return_value=EMPTY_EXCEPTIONS),

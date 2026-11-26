@@ -57,6 +57,15 @@ class TestClassifyApp:
         }
         assert _classify_app(env) == "subscription_transformer"
 
+    def test_subscription_transformer_with_egress_topic(self) -> None:
+        env = {
+            "INGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-input",
+            "INGRESS_SUBSCRIPTION_NAME": "prefix-sbs-phw-tfmr",
+            "EGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-output",
+            "WORKFLOW_ID": "phw-to-mpi",
+        }
+        assert _classify_app(env) == "subscription_transformer"
+
     def test_unknown_no_relevant_vars(self) -> None:
         env = {"WORKFLOW_ID": "mystery"}
         assert _classify_app(env) == "unknown"
@@ -186,10 +195,128 @@ class TestBuildFlow:
 
         assert flow["label"] == "WDS → WIS"
         assert flow["topic"] == "prefix-sbt-wds-hl7-input"
+        assert flow["post_topic"] is None
         assert flow["post_queue"] == "prefix-sbq-wis-soap-sender"
         assert flow["transformer"] == "WDS Transformer"
         assert flow["subscriptions"][0]["name"] == "prefix-sbs-wds-wis-transformer"
         assert flow["subscriptions"][0]["consumer_apps"][0]["sender_type"] == "subscription_transformer"
+
+    def test_topic_to_topic_transformer_flow(self) -> None:
+        apps: list[dict[str, Any]] = [
+            {
+                "name": "phw-hl7server-ca",
+                "env": {
+                    "WORKFLOW_ID": "phw-to-mpi",
+                    "EGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-input",
+                    "MICROSERVICE_ID": "phw-hl7server-ca",
+                },
+                "target_port": 2575,
+            },
+            {
+                "name": "phw-hl7transformer-ca",
+                "env": {
+                    "WORKFLOW_ID": "phw-to-mpi",
+                    "INGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-input",
+                    "INGRESS_SUBSCRIPTION_NAME": "prefix-sbs-phw-tfmr",
+                    "EGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-output",
+                    "MICROSERVICE_ID": "phw-hl7transformer-ca",
+                },
+                "target_port": None,
+            },
+            {
+                "name": "phw-to-mpi-hl7sender-ca",
+                "env": {
+                    "WORKFLOW_ID": "phw-to-mpi",
+                    "INGRESS_TOPIC_NAME": "prefix-sbt-phw-hl7-output",
+                    "INGRESS_SUBSCRIPTION_NAME": "prefix-sbs-phw-mpi-sndr",
+                    "RECEIVER_MLLP_HOST": "mpi.example",
+                    "RECEIVER_MLLP_PORT": "2576",
+                    "MICROSERVICE_ID": "phw-to-mpi-hl7sender-ca",
+                },
+                "target_port": None,
+            },
+        ]
+        flow = _build_flow("phw-to-mpi", apps)
+
+        assert flow["label"] == "PHW → MPI"
+        assert flow["source_port"] == 2575
+        assert flow["topic"] == "prefix-sbt-phw-hl7-input"
+        assert flow["post_topic"] == "prefix-sbt-phw-hl7-output"
+        assert flow["post_queue"] is None
+        assert flow["transformer"] == "PHW Transformer"
+        assert (flow["destination_host"], flow["destination_port"]) == ("mpi.example", 2576)
+        assert [(s["topic"], s["name"]) for s in flow["subscriptions"]] == [
+            ("prefix-sbt-phw-hl7-input", "prefix-sbs-phw-tfmr"),
+            ("prefix-sbt-phw-hl7-output", "prefix-sbs-phw-mpi-sndr"),
+        ]
+        assert flow["subscriptions"][0]["consumer_apps"][0]["sender_type"] == "subscription_transformer"
+        assert flow["subscriptions"][1]["consumer_apps"][0]["sender_type"] == "subscription_sender"
+
+    def test_wpas_to_proms_and_cav_pms_to_wrrs_use_display_metadata(self) -> None:
+        wpas_flow = _build_flow(
+            "wpas-to-proms",
+            [
+                {
+                    "name": "uks-dev-wpas-restserver-ca",
+                    "env": {"WORKFLOW_ID": "wpas-to-proms", "EGRESS_TOPIC_NAME": "sbt-wpas-ingress"},
+                    "target_port": 3584,
+                },
+                {
+                    "name": "uks-dev-proms-fhir-tfmr-ca",
+                    "env": {
+                        "WORKFLOW_ID": "wpas-to-proms",
+                        "INGRESS_TOPIC_NAME": "sbt-wpas-ingress",
+                        "INGRESS_SUBSCRIPTION_NAME": "sbs-wpas-proms-tfmr",
+                        "EGRESS_QUEUE_NAME": "sbq-proms-fhir-egress",
+                    },
+                    "target_port": None,
+                },
+            ],
+        )
+        assert wpas_flow["label"] == "WPAS → PROMS"
+        assert wpas_flow["source"] == "WPAS"
+        assert wpas_flow["destination"] == "PROMS"
+        assert wpas_flow["transformer"] == "PROMS FHIR Transformer"
+
+        pms_wrrs_flow = _build_flow(
+            "cav-pms-to-wrrs",
+            [
+                {
+                    "name": "uks-dev-pms-wrrs-idupd-ca",
+                    "env": {
+                        "WORKFLOW_ID": "cav-pms-to-wrrs",
+                        "INGRESS_TOPIC_NAME": "sbt-pms-hl7-input",
+                        "INGRESS_SUBSCRIPTION_NAME": "sbs-pms-wrrs-sender",
+                    },
+                    "target_port": None,
+                },
+            ],
+        )
+        assert pms_wrrs_flow["label"] == "CAV PMS → WRRS"
+        assert pms_wrrs_flow["source"] == "PMS"
+        assert pms_wrrs_flow["destination"] == "WRRS"
+
+    def test_merge_does_not_absorb_topic_to_topic_transformer_flow(self) -> None:
+        flows: dict[str, dict[str, Any]] = {
+            "owner": {
+                "topic": "sbt-shared-input",
+                "source_port": 2582,
+                "pre_queue": None,
+                "post_queue": None,
+                "post_topic": None,
+                "subscriptions": [],
+            },
+            "downstream-tfmr": {
+                "topic": "sbt-shared-input",
+                "source_port": None,
+                "pre_queue": None,
+                "post_queue": None,
+                "post_topic": "sbt-downstream-output",
+                "subscriptions": [{"name": "sbs-tfmr", "topic": "sbt-shared-input", "consumer_apps": []}],
+            },
+        }
+        _merge_subscription_sender_flows(flows)
+        assert "downstream-tfmr" in flows
 
     def test_merge_subscription_sender_flow_keeps_consumer_metadata(self) -> None:
         flows: dict[str, dict[str, Any]] = {
