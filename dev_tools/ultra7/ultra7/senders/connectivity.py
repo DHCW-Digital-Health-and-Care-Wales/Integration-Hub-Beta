@@ -43,13 +43,13 @@ def test_endpoint_connection(endpoint: Endpoint) -> tuple[bool, float, str]:
     if scheme not in _ALLOWED_SCHEMES:
         return False, 0.0, f"Unsupported URL scheme: {scheme}"
 
-    request = urllib.request.Request(endpoint.url, headers=dict(endpoint.headers), method="HEAD")
     start = time.monotonic()
     try:
+        request = urllib.request.Request(endpoint.url, headers=dict(endpoint.headers), method="HEAD")
         with urllib.request.urlopen(request, timeout=endpoint.timeout_seconds) as response:  # noqa: S310  # nosec B310
             return True, (time.monotonic() - start) * 1000, f"HTTP {response.status} reachable"
     except urllib.error.HTTPError as exc:
         # An HTTP response (e.g. 405 Method Not Allowed on HEAD) still confirms the endpoint is reachable.
         return True, (time.monotonic() - start) * 1000, f"Reachable (HTTP {exc.code})"
-    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+    except (ValueError, urllib.error.URLError, OSError, TimeoutError) as exc:
         return False, (time.monotonic() - start) * 1000, str(exc)

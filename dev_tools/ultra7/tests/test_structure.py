@@ -147,12 +147,31 @@ class TestJsonStructure(unittest.TestCase):
         assert name_el.value_start is not None and name_el.value_end is not None
         self.assertEqual(xml[name_el.value_start : name_el.value_end], "Jane")
 
-        raw = '{"patient": {"name": "Jane"}}'
+        raw = '{"patient": {"name": "Jane"}, "a.b": 1, "first name": 2}'
         j_nodes, _ = parse_json_structure(raw)
         leaf = find_deepest_node(j_nodes, raw.index("Jane"))
         assert leaf is not None and leaf.value_start is not None and leaf.value_end is not None
         self.assertEqual(leaf.path, "$.patient.name")
         self.assertEqual(raw[leaf.value_start : leaf.value_end], "Jane")
+
+        dotted = find_deepest_node(j_nodes, raw.index("1"))
+        assert dotted is not None
+        self.assertEqual(dotted.path, '$["a.b"]')
+        spaced = find_deepest_node(j_nodes, raw.index("2"))
+        assert spaced is not None
+        self.assertEqual(spaced.path, '$["first name"]')
+
+    def test_xml_attribute_containing_greater_than_preserves_exact_offsets(self) -> None:
+        xml = '<Name note="a > b">Jane</Name>'
+        nodes, error = parse_xml_structure(xml)
+        self.assertIsNone(error)
+        root = nodes[0]
+        self.assertEqual(xml[root.start : root.end], xml)
+        assert root.value_start is not None and root.value_end is not None
+        self.assertEqual(xml[root.value_start : root.value_end], "Jane")
+        attr = root.children[0]
+        assert attr.value_start is not None and attr.value_end is not None
+        self.assertEqual(xml[attr.value_start : attr.value_end], "a > b")
 
 
 if __name__ == "__main__":

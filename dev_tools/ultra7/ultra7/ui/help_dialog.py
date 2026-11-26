@@ -12,6 +12,7 @@ from ultra7.ui.themes import (
     DEFAULT_THEME_NAME,
     Theme,
     blend_colors,
+    get_accent_fg,
     get_border_color,
     get_muted_fg,
     get_theme,
@@ -223,12 +224,13 @@ class AboutDialog(tk.Toplevel):
 
         banner = tk.Frame(self, bg=active_theme.accent, padx=20, pady=14)
         banner.pack(fill=tk.X)
+        accent_fg = get_accent_fg(active_theme)
         tk.Label(
             banner,
             text="Ultra7",
             font=("Rubik", 18, "bold"),
             bg=active_theme.accent,
-            fg=active_theme.select_fg,
+            fg=accent_fg,
             anchor="w",
         ).pack(fill=tk.X)
         tk.Label(
@@ -236,7 +238,7 @@ class AboutDialog(tk.Toplevel):
             text="NHS Wales Integration Hub · MLLP / REST / SOAP Tester",
             font=("Rubik", 9),
             bg=active_theme.accent,
-            fg=active_theme.select_fg,
+            fg=accent_fg,
             anchor="w",
         ).pack(fill=tk.X)
 

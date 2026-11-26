@@ -35,6 +35,7 @@ from ultra7.ui.themes import (
     THEMES,
     Theme,
     blend_colors,
+    get_accent_fg,
     get_border_color,
     get_hover_bg,
     get_muted_fg,
@@ -269,7 +270,8 @@ class Ultra7App(tk.Tk):
         border_color = get_border_color(theme)
         muted_fg = get_muted_fg(theme)
         hover_bg = get_hover_bg(theme)
-        accent_hover = blend_colors(theme.accent, theme.select_fg, 0.14)
+        accent_fg = get_accent_fg(theme)
+        accent_hover = blend_colors(theme.accent, accent_fg, 0.14)
         disabled_bg = blend_colors(theme.pane_bg, theme.bg, 0.5)
         colors = get_semantic_colors(theme)
 
@@ -314,11 +316,11 @@ class Ultra7App(tk.Tk):
         style.configure(
             "Accent.TButton",
             background=theme.accent,
-            foreground=theme.select_fg,
+            foreground=accent_fg,
             bordercolor=theme.accent,
             lightcolor=theme.accent,
             darkcolor=theme.accent,
-            focuscolor=theme.select_fg,
+            focuscolor=accent_fg,
             borderwidth=1,
             relief="flat",
             padding=(12, 5),
@@ -327,7 +329,7 @@ class Ultra7App(tk.Tk):
         style.map(
             "Accent.TButton",
             background=[("disabled", disabled_bg), ("pressed", accent_hover), ("active", accent_hover)],
-            foreground=[("disabled", muted_fg)],
+            foreground=[("disabled", muted_fg), ("pressed", accent_fg), ("active", accent_fg)],
             bordercolor=[("disabled", border_color)],
         )
 

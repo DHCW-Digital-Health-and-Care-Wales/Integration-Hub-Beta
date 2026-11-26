@@ -6,7 +6,7 @@ from tkinter import ttk
 from typing import Callable
 
 from ultra7.settings import AppPreferences
-from ultra7.ui.themes import DEFAULT_THEME_NAME, Theme, get_border_color, get_hover_bg, get_theme
+from ultra7.ui.themes import DEFAULT_THEME_NAME, Theme, get_accent_fg, get_border_color, get_hover_bg, get_theme
 
 
 class ProjectItem(tk.Frame):
@@ -193,9 +193,10 @@ class Sidebar(ttk.Frame):
         """Recolour the branded header and separators for the active theme."""
         self._theme = theme
         border = get_border_color(theme)
+        accent_fg = get_accent_fg(theme)
         self._header.configure(bg=theme.accent)
-        self._header_label.configure(bg=theme.accent, fg=theme.select_fg)
-        self._header_badge.configure(bg=theme.accent, fg=theme.select_fg)
+        self._header_label.configure(bg=theme.accent, fg=accent_fg)
+        self._header_badge.configure(bg=theme.accent, fg=accent_fg)
         self._separator.configure(bg=border)
         self._list_canvas.configure(bg=theme.pane_bg, highlightbackground=border, highlightcolor=theme.accent)
         self._list_inner_frame.configure(bg=theme.pane_bg)

@@ -257,6 +257,32 @@ def parse_hl7_structure(content: str) -> list[StructureNode]:
 # ---------------------------------------------------------------------------
 
 _ATTR_RE = re.compile(r'([A-Za-z_][\w:.-]*)\s*=\s*("[^"]*"|\'[^\']*\')')
+_JSON_IDENT_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
+
+
+def _find_tag_end(content: str, start: int) -> int:
+    """Find the closing '>' of an XML tag starting at *start*, ignoring '>' inside quotes."""
+    quote: str | None = None
+    pos = start
+    n = len(content)
+    while pos < n:
+        ch = content[pos]
+        if quote is not None:
+            if ch == quote:
+                quote = None
+        elif ch in ('"', "'"):
+            quote = ch
+        elif ch == ">":
+            return pos
+        pos += 1
+    return -1
+
+
+def _format_json_path_child(parent_path: str, key: str) -> str:
+    """Format a JSONPath child segment using dot notation for identifiers and bracket notation otherwise."""
+    if _JSON_IDENT_RE.match(key):
+        return f"{parent_path}.{key}"
+    return f"{parent_path}[{json.dumps(key)}]"
 
 
 def _build_byte_to_char_map(content: str, raw: bytes) -> list[int] | None:
@@ -299,7 +325,7 @@ def parse_xml_structure(content: str) -> tuple[list[StructureNode], str | None]:
 
     def _on_start(name: str, _attrs: dict[str, str]) -> None:
         start_char = _to_char(parser.CurrentByteIndex)
-        tag_end = content.find(">", start_char)
+        tag_end = _find_tag_end(content, start_char)
         parent_xpath = stack[-1][1] if stack else ""
         xpath = f"{parent_xpath}/{name}"
         children: list[StructureNode] = []
@@ -341,7 +367,7 @@ def parse_xml_structure(content: str) -> tuple[list[StructureNode], str | None]:
             v_end: int | None = None
         else:
             end_tag_start = _to_char(parser.CurrentByteIndex)
-            gt = content.find(">", end_tag_start)
+            gt = _find_tag_end(content, end_tag_start)
             end_char = (gt + 1) if gt != -1 else len(content)
             if not has_child_elements and open_tag_end != -1 and open_tag_end + 1 <= end_tag_start:
                 v_start = open_tag_end + 1
@@ -416,7 +442,7 @@ def parse_json_structure(content: str) -> tuple[list[StructureNode], str | None]
                 pos = _skip_ws(content, pos)
                 if pos >= n or content[pos] != ":":
                     raise ValueError(f"Expected ':' at offset {pos}")
-                child_path = f"{json_path}.{key}"
+                child_path = _format_json_path_child(json_path, key)
                 child, pos = _parse_value(pos + 1, key, child_path)
                 children.append(
                     StructureNode(

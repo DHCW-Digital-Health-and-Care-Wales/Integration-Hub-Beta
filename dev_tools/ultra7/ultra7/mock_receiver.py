@@ -158,11 +158,14 @@ class MockHttpServer:
                 if parent.delay_ms:
                     time.sleep(parent.delay_ms / 1000)
                 payload = parent.response_body.encode("utf-8")
-                self.send_response(parent.status_code)
-                self.send_header("Content-Type", parent.content_type)
-                self.send_header("Content-Length", str(len(payload)))
-                self.end_headers()
-                self.wfile.write(payload)
+                try:
+                    self.send_response(parent.status_code)
+                    self.send_header("Content-Type", parent.content_type)
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.end_headers()
+                    self.wfile.write(payload)
+                except OSError:
+                    pass
                 if parent._on_message is not None:
                     remote = f"{self.client_address[0]}:{self.client_address[1]}"
                     ts = datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3]

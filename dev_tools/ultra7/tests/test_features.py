@@ -1,5 +1,7 @@
 import json
 import random
+import socket
+import time
 import unittest
 
 from ultra7.anonymise import anonymise_message
@@ -97,23 +99,61 @@ class TestAnonymise(unittest.TestCase):
         self.assertTrue(pid_fields[3].endswith("^^^NHS^NH"))
 
     def test_anonymises_xml_pii(self) -> None:
-        xml = "<Patient><NHSNumber>9434765919</NHSNumber><Surname>RealName</Surname><Code>KEEP</Code></Patient>"
+        xml = (
+            '<Patient>'
+            '<NHSNumber value="9434765919"/>'
+            '<Surname><![CDATA[RealName]]></Surname>'
+            '<GivenName>RealGiven</GivenName>'
+            '<Code>KEEP</Code>'
+            '</Patient>'
+        )
         scrubbed = anonymise_message(xml, "xml", seed=2)
         self.assertNotIn("9434765919", scrubbed)
         self.assertNotIn("RealName", scrubbed)
+        self.assertNotIn("RealGiven", scrubbed)
+        self.assertIn("<![CDATA[", scrubbed)
         self.assertIn("<Code>KEEP</Code>", scrubbed)
+
+    def test_anonymises_hl7_nk1_and_mrg_repetitions(self) -> None:
+        hl7 = (
+            "MSH|^~\\&|PHW|SITE|MPI|DHCW|20250101||ADT^A40|CTL1|P|2.5\r"
+            "NK1|1|PATEL^PRIYA~BAKER^TOM|SPO|"
+            "1 REAL RD^^CARDIFF^^CF10 1ZZ~2 REAL AVE^^SWANSEA^^SA1 1ZZ|07111111111~07222222222\r"
+            "MRG|9434765919^^^NHS^NH||||||OLDONE^FIRST~OLDTWO^SECOND"
+        )
+        scrubbed = anonymise_message(hl7, "hl7", seed=4)
+        leaked_values = (
+            "PATEL",
+            "PRIYA",
+            "BAKER",
+            "TOM",
+            "1 REAL RD",
+            "2 REAL AVE",
+            "07111111111",
+            "07222222222",
+            "OLDONE",
+            "OLDTWO",
+        )
+        for leaked in leaked_values:
+            self.assertNotIn(leaked, scrubbed)
 
     def test_anonymises_json_fhir_patient(self) -> None:
         payload = json.dumps({
             "resourceType": "Patient",
             "identifier": [{"system": "https://fhir.nhs.uk/Id/nhs-number", "value": "9434765919"}],
             "name": [{"family": "RealFamily", "given": ["RealGiven"]}],
+            "telecom": [
+                {"system": "phone", "value": "07123456789"},
+                {"system": "email", "value": "real.person@nhs.wales"},
+            ],
             "birthDate": "1970-01-01",
         })
         scrubbed = json.loads(anonymise_message(payload, "json", seed=3))
         self.assertEqual(scrubbed["resourceType"], "Patient")
         self.assertNotEqual(scrubbed["name"][0]["family"], "RealFamily")
         self.assertTrue(is_valid_nhs_number(scrubbed["identifier"][0]["value"]))
+        self.assertNotEqual(scrubbed["telecom"][0]["value"], "07123456789")
+        self.assertEqual(scrubbed["telecom"][1]["value"], "test.patient@example.test")
 
 
 class TestSideBySideDiff(unittest.TestCase):
@@ -169,6 +209,32 @@ class TestMockReceiversAndConnectivity(unittest.TestCase):
 
     def test_integration_hub_presets_exist(self) -> None:
         self.assertGreaterEqual(len(INTEGRATION_HUB_PRESETS), 5)
+
+    def test_malformed_url_returns_error_instead_of_raising(self) -> None:
+        ok, _latency, detail = test_endpoint_connection(Endpoint(kind="rest", url="http://[::1"))
+        self.assertFalse(ok)
+        self.assertTrue(detail)
+
+    def test_mock_http_receiver_captures_even_when_client_disconnects_during_delay(self) -> None:
+        captured: list[ReceivedMessage] = []
+        server = MockHttpServer("127.0.0.1", 0, delay_ms=150, on_message=captured.append)
+        port = server.start()
+        try:
+            body = b'{"timeout": true}'
+            raw_req = (
+                f"POST /ingest HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
+                f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n"
+            ).encode("ascii") + body
+            with socket.create_connection(("127.0.0.1", port), timeout=1.0) as sock:
+                sock.sendall(raw_req)
+            # Socket closed immediately before delay_ms elapses; wait for handler to finish.
+            deadline = time.monotonic() + 2.0
+            while not captured and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertEqual(len(captured), 1)
+            self.assertIn("timeout", captured[0].content)
+        finally:
+            server.stop()
 
 
 if __name__ == "__main__":

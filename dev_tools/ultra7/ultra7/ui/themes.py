@@ -126,6 +126,31 @@ def blend_colors(hex_a: str, hex_b: str, weight_b: float) -> str:
     )
 
 
+def _relative_luminance(hex_color: str) -> float:
+    """Compute WCAG 2.1 relative luminance for an #RRGGBB hex colour."""
+    channels = []
+    for c in _hex_to_rgb(hex_color):
+        srgb = c / 255.0
+        channels.append(srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def _contrast_ratio(hex_a: str, hex_b: str) -> float:
+    l1 = _relative_luminance(hex_a)
+    l2 = _relative_luminance(hex_b)
+    lighter, darker = (l1, l2) if l1 >= l2 else (l2, l1)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def get_accent_fg(theme: Theme) -> str:
+    """Return a high-contrast foreground colour (#FFFFFF or #0F172A) legible on `theme.accent`."""
+    light_ink = "#FFFFFF"
+    dark_ink = "#0F172A"
+    if _contrast_ratio(theme.accent, light_ink) >= _contrast_ratio(theme.accent, dark_ink):
+        return light_ink
+    return dark_ink
+
+
 def is_dark_theme(theme: Theme) -> bool:
     """Return True if the theme's window background is perceptually dark."""
     r, g, b = _hex_to_rgb(theme.bg)

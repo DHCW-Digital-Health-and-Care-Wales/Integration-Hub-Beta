@@ -23,9 +23,11 @@ _XML_PII_TAGS = {
     "patientid",
     "patientname",
     "fullname",
+    "family",
     "familyname",
     "surname",
     "lastname",
+    "given",
     "givenname",
     "forename",
     "firstname",
@@ -37,6 +39,7 @@ _XML_PII_TAGS = {
     "addressline",
     "addressline1",
     "street",
+    "city",
     "postcode",
     "postalcode",
     "telephone",
@@ -45,7 +48,14 @@ _XML_PII_TAGS = {
     "email",
 }
 
-_XML_LEAF_RE = re.compile(r"(<([A-Za-z_][\w:.-]*)(\s[^>]*)?>)([^<>]+)(</\2>)")
+_TAG_ATTRS_PART = r'(?:\s(?:"[^"]*"|\'[^\']*\'|[^>"\'])*)?'
+_XML_CDATA_RE = re.compile(
+    rf"(<([A-Za-z_][\w:.-]*){_TAG_ATTRS_PART}>\s*<!\[CDATA\[)(.*?)(\]\]>\s*</\2>)",
+    re.DOTALL,
+)
+_XML_LEAF_RE = re.compile(rf"(<([A-Za-z_][\w:.-]*){_TAG_ATTRS_PART}>)([^<>]+)(</\2>)")
+_XML_OPEN_TAG_RE = re.compile(r"<([A-Za-z_][\w:.-]*)((?:\s(?:\"[^\"]*\"|'[^']*'|[^<>\"'])*)?)(/?)>")
+_XML_VALUE_ATTR_RE = re.compile(r'(\bvalue\s*=\s*)(["\'])([^"\']*)\2')
 
 
 def anonymise_message(content: str, message_format: MessageFormat, seed: int | None = None) -> str:
@@ -183,21 +193,31 @@ def _anonymise_hl7(content: str, rng: random.Random) -> str:
                 )
             for idx in (13, 14):
                 if len(fields) > idx and fields[idx]:
-                    fields[idx] = rng.choice(_SYNTHETIC_PHONES)
+                    fields[idx] = rep_sep.join(
+                        rng.choice(_SYNTHETIC_PHONES) if r.strip() else r for r in fields[idx].split(rep_sep)
+                    )
             if len(fields) > 19 and fields[19]:
                 fields[19] = generate_nhs_number(rng)
         elif seg == "NK1":
             if len(fields) > 2 and fields[2]:
-                fields[2] = _scrub_hl7_name(fields[2], comp_sep, rng)
+                fields[2] = rep_sep.join(
+                    _scrub_hl7_name(r, comp_sep, rng) for r in fields[2].split(rep_sep)
+                )
             if len(fields) > 4 and fields[4]:
-                fields[4] = _scrub_hl7_address(fields[4], comp_sep, rng)
+                fields[4] = rep_sep.join(
+                    _scrub_hl7_address(r, comp_sep, rng) for r in fields[4].split(rep_sep)
+                )
             if len(fields) > 5 and fields[5]:
-                fields[5] = rng.choice(_SYNTHETIC_PHONES)
+                fields[5] = rep_sep.join(
+                    rng.choice(_SYNTHETIC_PHONES) if r.strip() else r for r in fields[5].split(rep_sep)
+                )
         elif seg == "MRG":
             if len(fields) > 1 and fields[1]:
                 fields[1] = _scrub_hl7_id_list(fields[1], comp_sep, rep_sep, rng)
             if len(fields) > 7 and fields[7]:
-                fields[7] = _scrub_hl7_name(fields[7], comp_sep, rng)
+                fields[7] = rep_sep.join(
+                    _scrub_hl7_name(r, comp_sep, rng) for r in fields[7].split(rep_sep)
+                )
 
         out.append(field_sep.join(fields))
     return "".join(out)
@@ -208,15 +228,41 @@ def _anonymise_hl7(content: str, rng: random.Random) -> str:
 # ---------------------------------------------------------------------------
 
 def _anonymise_xml(content: str, rng: random.Random) -> str:
-    def _replace(match: re.Match[str]) -> str:
-        open_tag, full_name, _attrs, text_val, close_tag = match.groups()
+    def _replace_cdata(match: re.Match[str]) -> str:
+        prefix, full_name, text_val, suffix = match.groups()
+        local = full_name.split(":")[-1].lower()
+        if local in _XML_PII_TAGS and text_val.strip():
+            scrubbed = _synthetic_for_key(local, text_val.strip(), rng)
+            return f"{prefix}{scrubbed}{suffix}"
+        return match.group(0)
+
+    def _replace_leaf(match: re.Match[str]) -> str:
+        open_tag, full_name, text_val, close_tag = match.groups()
         local = full_name.split(":")[-1].lower()
         if local in _XML_PII_TAGS and text_val.strip():
             scrubbed = _synthetic_for_key(local, text_val.strip(), rng)
             return f"{open_tag}{scrubbed}{close_tag}"
         return match.group(0)
 
-    return _XML_LEAF_RE.sub(_replace, content)
+    def _replace_value_attr(match: re.Match[str]) -> str:
+        full_name, attrs, slash = match.groups()
+        local = full_name.split(":")[-1].lower()
+        if local not in _XML_PII_TAGS or not attrs:
+            return match.group(0)
+
+        def _scrub_attr(attr_match: re.Match[str]) -> str:
+            prefix, quote, val = attr_match.groups()
+            if not val.strip():
+                return attr_match.group(0)
+            return f"{prefix}{quote}{_synthetic_for_key(local, val.strip(), rng)}{quote}"
+
+        new_attrs = _XML_VALUE_ATTR_RE.sub(_scrub_attr, attrs)
+        return f"<{full_name}{new_attrs}{slash}>"
+
+    result = _XML_CDATA_RE.sub(_replace_cdata, content)
+    result = _XML_LEAF_RE.sub(_replace_leaf, result)
+    result = _XML_OPEN_TAG_RE.sub(_replace_value_attr, result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -248,12 +294,23 @@ _JSON_PII_KEYS = {
 def _scrub_json_node(node: Any, rng: random.Random, parent_key: str = "") -> Any:
     if isinstance(node, dict):
         result: dict[str, Any] = {}
-        # Handle FHIR Identifier objects with NHS system URI.
+        # Handle FHIR Identifier (NHS number) and ContactPoint (telecom) objects by system.
         system = str(node.get("system", "")).lower()
         for k, v in node.items():
             low = k.lower().replace("-", "")
-            if k == "value" and "nhs-number" in system and isinstance(v, str):
-                result[k] = generate_nhs_number(rng, spaced=" " in v)
+            if k == "value" and isinstance(v, str) and v.strip():
+                if "nhs-number" in system:
+                    result[k] = generate_nhs_number(rng, spaced=" " in v)
+                elif system in ("phone", "fax", "sms", "pager"):
+                    result[k] = rng.choice(_SYNTHETIC_PHONES)
+                elif system == "email":
+                    result[k] = "test.patient@example.test"
+                elif system == "url" and parent_key == "telecom":
+                    result[k] = "https://example.test"
+                elif parent_key == "telecom":
+                    result[k] = rng.choice(_SYNTHETIC_PHONES)
+                else:
+                    result[k] = v
             elif low in _JSON_PII_KEYS:
                 result[k] = _scrub_json_value(low, v, rng)
             else:

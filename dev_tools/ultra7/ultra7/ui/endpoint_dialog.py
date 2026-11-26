@@ -173,7 +173,10 @@ class EndpointDialog(tk.Toplevel):
         self._test_status_var.set("Testing…")
 
         def _worker() -> None:
-            ok, latency_ms, detail = test_endpoint_connection(endpoint)
+            try:
+                ok, latency_ms, detail = test_endpoint_connection(endpoint)
+            except Exception as exc:  # noqa: BLE001 — always restore the Test Connection button
+                ok, latency_ms, detail = False, 0.0, str(exc)
             if self.winfo_exists():
                 self.after(0, lambda: self._finish_connection_test(ok, latency_ms, detail))
 
