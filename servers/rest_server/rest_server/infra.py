@@ -28,10 +28,11 @@ class SharedResources:
     message_store_client: MessageStoreClient
     event_logger: EventLogger
     metric_sender: MetricSender
-    health_check_server: TCPHealthCheckServer
+    health_check_server: TCPHealthCheckServer | None
 
     def start(self) -> None:
-        self.health_check_server.start()
+        if self.health_check_server is not None:
+            self.health_check_server.start()
 
     def stop(self) -> None:
         logger.info("Shutting down shared REST server resources...")
@@ -45,11 +46,12 @@ class SharedResources:
             logger.info("Message store client shut down.")
         except Exception as exc:
             logger.warning("Error closing message store client: %s", exc)
-        try:
-            self.health_check_server.stop()
-            logger.info("Health check server shut down.")
-        except Exception as exc:
-            logger.warning("Error closing health check server: %s", exc)
+        if self.health_check_server is not None:
+            try:
+                self.health_check_server.stop()
+                logger.info("Health check server shut down.")
+            except Exception as exc:
+                logger.warning("Error closing health check server: %s", exc)
 
 
 def build_shared_resources(
@@ -82,13 +84,20 @@ def build_shared_resources(
         message_store_queue_name, microservice_id, peer_service
     )
 
+    health_check_server = (
+        TCPHealthCheckServer(health_check_hostname, health_check_port)
+        if (health_check_hostname is not None and health_check_hostname.strip() != "")
+        or health_check_port is not None
+        else None
+    )
+
     return SharedResources(
         factory=factory,
         sender_client=sender_client,
         message_store_client=message_store_client,
         event_logger=EventLogger(workflow_id, microservice_id),
         metric_sender=MetricSender(workflow_id, microservice_id, health_board, peer_service),
-        health_check_server=TCPHealthCheckServer(health_check_hostname, health_check_port),
+        health_check_server=health_check_server,
     )
 
 

@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from rest_server.hl7.api_constant import ApiConstants
 
@@ -22,26 +23,35 @@ def ping(request: Request) -> dict[str, str]:
     }
 
 
-@router.get("/hl7MessageReceiver/status")
-def status(request: Request) -> dict[str, object]:
-    """Readiness probe — cheap check that the Service Bus sender is initialised."""
-    # Start timing
+@router.get("/hl7MessageReceiver/status", response_model=None)
+def status(request: Request) -> dict[str, object] | JSONResponse:
+    """Readiness probe — verifies the runtime context and Service Bus sender are initialised."""
     start_time = time.perf_counter()
 
-    # Execute health check
+    context = getattr(request.app.state, "context", None)
+    processor = getattr(context, "processor", None)
+    sender_client = getattr(processor, "sender_client", None)
+    if context is None or processor is None or sender_client is None:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "application": ApiConstants.APPLICATION_NAME,
+                "description": "Service Bus sender is not initialised",
+                "status": 503,
+                "timeout": False,
+                "version": ApiConstants.VERSION,
+                "revision": ApiConstants.REVISION,
+            },
+        )
+
     ping(request)
 
-    # Previous request time
     previous_requested_at = getattr(request.app.state, "_last_requested", None)
     last_requested = previous_requested_at.isoformat() if previous_requested_at is not None else "Never"
-
-    # Update request timestamp
     request.app.state._last_requested = datetime.now()
 
     timeout_threshold = 100  # milliseconds
-
     response_time = round((time.perf_counter() - start_time) * 1000)
-
     timeout_occurred = response_time > timeout_threshold
 
     previous_healthy_at = getattr(request.app.state, "_last_healthy", None)
@@ -54,13 +64,16 @@ def status(request: Request) -> dict[str, object]:
     description = (
         f"Version {ApiConstants.VERSION}.{ApiConstants.REVISION} API is working, response time {response_time} ms"
     )
-    return {
+    payload: dict[str, object] = {
         "application": ApiConstants.APPLICATION_NAME,
         "description": description,
-        "status": 200,
+        "status": 503 if timeout_occurred else 200,
         "timeout": timeout_occurred,
         "lastRequested": last_requested,
         "lastHealthy": last_healthy,
         "version": ApiConstants.VERSION,
         "revision": ApiConstants.REVISION,
     }
+    if timeout_occurred:
+        return JSONResponse(status_code=503, content=payload)
+    return payload

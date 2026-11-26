@@ -30,6 +30,12 @@ class HealthRouteTests(unittest.TestCase):
         self.assertFalse(body["timeout"])
         self.assertEqual(body["status"], 200)
 
+    def test_status_returns_503_when_sender_not_initialised(self) -> None:
+        self.app.state.context.processor.sender_client = None
+        response = self.client.get("/hl7MessageReceiver/status")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["status"], 503)
+
 
 class SwaggerGatingTests(unittest.TestCase):
     def test_docs_available_in_dev(self) -> None:

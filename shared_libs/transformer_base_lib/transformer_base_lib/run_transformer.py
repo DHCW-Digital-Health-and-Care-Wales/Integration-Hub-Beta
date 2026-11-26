@@ -105,6 +105,11 @@ def run_transformer_app(transformer: BaseTransformer) -> None:
             transformer.transformer_name,
         )
         health_check_server.start()
+        processor_manager.register_shutdown_callback(health_check_server.stop)
+        receiver_client.configure_lifecycle(
+            stop_event=processor_manager.shutdown_event,
+            on_unhealthy=health_check_server.mark_unhealthy,
+        )
 
         def message_processor(message: ServiceBusMessage) -> bool:
             return process_message(

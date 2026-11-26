@@ -140,7 +140,7 @@ def _read_env(name: str, required: bool = False) -> str | None:
 
 def _read_int_env(name: str, required: bool = False) -> int | None:
     value = os.getenv(name)
-    if value is None:
+    if value is None or value.strip() == "":
         if required:
             raise RuntimeError(f"Missing required configuration: {name}")
         return None

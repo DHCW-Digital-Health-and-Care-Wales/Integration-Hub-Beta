@@ -62,7 +62,58 @@ class TestProcessorManager(unittest.TestCase):
 
         # Assert
         self.assertFalse(self.processor_manager.is_running)
+        self.assertTrue(self.processor_manager.shutdown_event.is_set())
         mock_logger.info.assert_called_once_with("Manual processor stop requested")
+
+    def test_shutdown_invokes_registered_callbacks_and_sets_event(self) -> None:
+        callback = MagicMock()
+        failing_callback = MagicMock(side_effect=RuntimeError("boom"))
+        second_callback = MagicMock()
+
+        self.processor_manager.register_shutdown_callback(failing_callback)
+        self.processor_manager.register_shutdown_callback(callback)
+        self.processor_manager.register_shutdown_callback(second_callback)
+
+        self.processor_manager._shutdown_handler(signal.SIGTERM, None)
+        self.assertTrue(self.processor_manager._callbacks_done.wait(timeout=2.0))
+
+        self.assertFalse(self.processor_manager.is_running)
+        self.assertTrue(self.processor_manager.shutdown_event.is_set())
+        failing_callback.assert_called_once_with()
+        callback.assert_called_once_with()
+        second_callback.assert_called_once_with()
+
+    def test_signal_handler_does_not_deadlock_when_callback_lock_is_held(self) -> None:
+        import threading  # noqa: PLC0415
+
+        lock = threading.Lock()
+        acquired = threading.Event()
+
+        def lock_taking_callback() -> None:
+            with lock:
+                acquired.set()
+
+        self.processor_manager.register_shutdown_callback(lock_taking_callback)
+
+        # Simulate SIGTERM interrupting the main thread while it holds the callback's lock.
+        with lock:
+            self.processor_manager._shutdown_handler(signal.SIGTERM, None)
+            self.assertFalse(self.processor_manager.is_running)
+            self.assertTrue(self.processor_manager.shutdown_event.is_set())
+
+        # Once the main thread releases the lock, the coordinator completes promptly.
+        self.assertTrue(acquired.wait(timeout=2.0))
+        self.assertTrue(self.processor_manager._callbacks_done.wait(timeout=2.0))
+
+    def test_callbacks_run_only_once_across_signal_and_stop(self) -> None:
+        callback = MagicMock()
+        self.processor_manager.register_shutdown_callback(callback)
+
+        self.processor_manager._shutdown_handler(signal.SIGTERM, None)
+        self.assertTrue(self.processor_manager._callbacks_done.wait(timeout=2.0))
+        self.processor_manager.stop()
+
+        callback.assert_called_once_with()
 
 
 class TestWrapHandler(unittest.TestCase):
