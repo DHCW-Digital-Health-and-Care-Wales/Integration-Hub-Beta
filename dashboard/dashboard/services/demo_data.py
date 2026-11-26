@@ -9,6 +9,7 @@ flows in varied health states.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 # ---------------------------------------------------------------------------
@@ -357,3 +358,148 @@ DEMO_EXCEPTIONS: list[dict] = [
         "operation_id": "d0e1f2a3b4c5d0e1f2a3b4c5d0e1f2a3",
     },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Topics & Subscriptions  (same shape as service_bus.get_topics / get_subscriptions)
+# ---------------------------------------------------------------------------
+
+
+def _sub(name: str, active: int = 0, dlq: int = 0) -> dict:
+    return {
+        "name": name,
+        "status": "Active",
+        "active_message_count": active,
+        "dead_letter_message_count": dlq,
+        "message_count": active + dlq,
+    }
+
+
+DEMO_SUBSCRIPTIONS: dict[str, list[dict]] = {
+    "demo-sbt-mpi-hl7-input": [
+        _sub("downstream-a", active=0, dlq=0),
+        _sub("downstream-b", active=3, dlq=0),
+        _sub("downstream-c", active=72, dlq=2),
+    ],
+    "demo-sbt-wds-hl7-input": [
+        _sub("wds-mpi-sender", active=2, dlq=0),
+        _sub("wds-wis-transformer", active=14, dlq=1),
+    ],
+}
+
+DEMO_TOPICS: list[dict] = [
+    {
+        "name": topic_name,
+        "status": "Active",
+        "active_message_count": 0,
+        "dead_letter_message_count": 0,
+        "scheduled_message_count": 0,
+        "subscription_count": len(subs),
+        "size_in_bytes": sum(s["active_message_count"] for s in subs) * 2048,
+        "max_size_in_megabytes": 1024,
+    }
+    for topic_name, subs in DEMO_SUBSCRIPTIONS.items()
+]
+
+DEMO_SUBSCRIPTION_CONSUMERS: dict[str, list[dict]] = {
+    "demo-sbt-mpi-hl7-input": [
+        {
+            "name": "downstream-a",
+            "topic": "demo-sbt-mpi-hl7-input",
+            "entity_name": "demo-sbt-mpi-hl7-input/downstream-a",
+            "consumer_apps": [
+                {
+                    "app_name": "demo-mpi-downstream-a-sender-ca",
+                    "microservice_id": "mpi_downstream_a_sender",
+                    "sender_type": "sender",
+                    "workflow_id": "mpi-outbound",
+                    "flow_ids": ["mpi-outbound"],
+                }
+            ],
+        },
+        {
+            "name": "downstream-c",
+            "topic": "demo-sbt-mpi-hl7-input",
+            "entity_name": "demo-sbt-mpi-hl7-input/downstream-c",
+            "consumer_apps": [
+                {
+                    "app_name": "demo-mpi-downstream-c-sender-ca",
+                    "microservice_id": "mpi_downstream_c_sender",
+                    "sender_type": "sender",
+                    "workflow_id": "mpi-outbound",
+                    "flow_ids": ["mpi-outbound"],
+                }
+            ],
+        },
+    ],
+    "demo-sbt-wds-hl7-input": [
+        {
+            "name": "wds-mpi-sender",
+            "topic": "demo-sbt-wds-hl7-input",
+            "entity_name": "demo-sbt-wds-hl7-input/wds-mpi-sender",
+            "consumer_apps": [
+                {
+                    "app_name": "demo-wds-hl7sender-ca",
+                    "microservice_id": "wds_hl7_sender",
+                    "sender_type": "sender",
+                    "workflow_id": "wds-to-mpi",
+                    "flow_ids": ["wds-to-mpi"],
+                }
+            ],
+        },
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
+# Container Apps  (same shape as azure_monitor.get_container_app_metrics)
+# ---------------------------------------------------------------------------
+
+
+def _container_app(name: str, cpu: float, memory_mb: float, replicas: int = 1) -> dict:
+    return {
+        "name": name,
+        "location": "uksouth",
+        "cpu_usage": cpu,
+        "memory_bytes": int(memory_mb * 1048576),
+        "replicas": replicas,
+    }
+
+
+DEMO_CONTAINER_APPS: list[dict] = [
+    _container_app("demo-phw-hl7server-ca", cpu=8.4, memory_mb=142.0, replicas=2),
+    _container_app("demo-phw-transformer-ca", cpu=14.2, memory_mb=198.5, replicas=2),
+    _container_app("demo-chemo-hl7server-ca", cpu=46.8, memory_mb=312.0, replicas=3),
+    _container_app("demo-chemo-transformer-ca", cpu=68.5, memory_mb=420.4, replicas=3),
+    _container_app("demo-pims-transformer-ca", cpu=22.1, memory_mb=228.0, replicas=2),
+    _container_app("demo-mpi-hl7server-ca", cpu=31.0, memory_mb=276.2, replicas=2),
+    _container_app("demo-hl7sender-ca", cpu=19.6, memory_mb=184.0, replicas=2),
+    _container_app("demo-wds-hl7sender-ca", cpu=11.3, memory_mb=156.8, replicas=1),
+]
+
+_DEMO_APPS_BY_NAME: dict[str, dict] = {a["name"]: a for a in DEMO_CONTAINER_APPS}
+
+
+def get_demo_container_app_history(app_name: str, hours: int = 1) -> dict:
+    """Return a lightweight synthetic CPU & memory time-series for a demo Container App."""
+    app = _DEMO_APPS_BY_NAME.get(app_name)
+    if app is None:
+        return {"name": app_name, "timestamps": [], "cpu": [], "memory_mb": []}
+
+    base_cpu = float(app["cpu_usage"])
+    base_mem = float(app["memory_bytes"]) / 1048576
+    points = 20
+    step_seconds = max(60, int((hours * 3600) / points))
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+
+    timestamps: list[str] = []
+    cpu: list[float] = []
+    memory_mb: list[float] = []
+    for i in range(points):
+        ts = now - timedelta(seconds=step_seconds * (points - 1 - i))
+        wave = math.sin(i * 0.6)
+        timestamps.append(ts.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        cpu.append(round(max(0.5, base_cpu + wave * max(2.0, base_cpu * 0.15)), 2))
+        memory_mb.append(round(max(32.0, base_mem + math.cos(i * 0.4) * (base_mem * 0.06)), 2))
+
+    return {"name": app_name, "timestamps": timestamps, "cpu": cpu, "memory_mb": memory_mb}

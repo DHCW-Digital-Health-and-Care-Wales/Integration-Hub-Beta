@@ -33,6 +33,22 @@ class TestLoadSaveConfig:
             alarm_base.save_config("alarm3", {"rules": {}}, "config")
         mock_upsert.assert_called_once_with("alarm3", "config", {"rules": {}}, doc_type="alarm_config")
 
+    def test_load_config_caches_reads_and_save_invalidates(self) -> None:
+        stored = {"rules": {"r1": {"alarm_enabled": True}}}
+        with (
+            patch("dashboard.services.alarm_base.cosmos_store.get_document", return_value=stored) as mock_get,
+            patch("dashboard.services.alarm_base.cosmos_store.upsert_document"),
+        ):
+            first = alarm_base.load_config("alarm1")
+            first["rules"]["r1"]["alarm_enabled"] = False  # Mutate caller copy
+            second = alarm_base.load_config("alarm1")
+            assert second["rules"]["r1"]["alarm_enabled"] is True
+            assert mock_get.call_count == 1
+
+            alarm_base.save_config("alarm1", stored)
+            alarm_base.load_config("alarm1")
+            assert mock_get.call_count == 2
+
 
 class TestLoadSaveState:
     def test_load_state_returns_empty_rules_when_no_document_stored(self) -> None:

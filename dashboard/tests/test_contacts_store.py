@@ -148,24 +148,22 @@ class TestAddContact:
 
 class TestUpdateContact:
     def test_updates_existing_contact_and_preserves_created_at(self) -> None:
-        existing = [
-            {
-                "contact_id": "abc-123",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "email": "jane.doe@example.nhs.uk",
-                "phone_number": "",
-                "organisation_type": "Team",
-                "organisation_name": "Hub Team",
-                "notes": "",
-                "flow_ids": [],
-                "deleted": False,
-                "created_at": "2024-01-01T00:00:00+00:00",
-                "updated_at": "2024-01-01T00:00:00+00:00",
-            }
-        ]
+        existing = {
+            "contact_id": "abc-123",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane.doe@example.nhs.uk",
+            "phone_number": "",
+            "organisation_type": "Team",
+            "organisation_name": "Hub Team",
+            "notes": "",
+            "flow_ids": [],
+            "deleted": False,
+            "created_at": "2024-01-01T00:00:00+00:00",
+            "updated_at": "2024-01-01T00:00:00+00:00",
+        }
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=existing) as get_doc,
             patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as upsert,
         ):
             updated = contacts_store.update_contact("abc-123", _base_contact(last_name="Smith"))
@@ -173,35 +171,34 @@ class TestUpdateContact:
         assert updated["last_name"] == "Smith"
         assert updated["created_at"] == "2024-01-01T00:00:00+00:00"
         assert updated["updated_at"] != "2024-01-01T00:00:00+00:00"
+        get_doc.assert_called_once_with("contacts", "abc-123")
         upsert.assert_called_once()
 
     def test_rejects_updating_unknown_contact(self) -> None:
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=[]),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=None),
             pytest.raises(contacts_store.InvalidContactError, match="not found"),
         ):
             contacts_store.update_contact("missing-id", _base_contact())
 
     def test_preserves_deleted_at_when_editing_a_soft_deleted_contact(self) -> None:
-        existing = [
-            {
-                "contact_id": "abc-123",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "email": "jane.doe@example.com",
-                "phone_number": "",
-                "organisation_type": "Team",
-                "organisation_name": "Hub Team",
-                "notes": "",
-                "flow_ids": [],
-                "deleted": True,
-                "deleted_at": "2024-01-01T00:00:00+00:00",
-                "created_at": "2023-12-01T00:00:00+00:00",
-                "updated_at": "2024-01-01T00:00:00+00:00",
-            }
-        ]
+        existing = {
+            "contact_id": "abc-123",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane.doe@example.com",
+            "phone_number": "",
+            "organisation_type": "Team",
+            "organisation_name": "Hub Team",
+            "notes": "",
+            "flow_ids": [],
+            "deleted": True,
+            "deleted_at": "2024-01-01T00:00:00+00:00",
+            "created_at": "2023-12-01T00:00:00+00:00",
+            "updated_at": "2024-01-01T00:00:00+00:00",
+        }
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=existing),
             patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as upsert,
         ):
             updated = contacts_store.update_contact("abc-123", _base_contact(last_name="Smith"))
@@ -214,24 +211,22 @@ class TestUpdateContact:
 
 class TestDeleteContact:
     def test_soft_deletes_by_setting_deleted_flag(self) -> None:
-        existing = [
-            {
-                "contact_id": "abc-123",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "email": "jane.doe@example.nhs.uk",
-                "phone_number": "",
-                "organisation_type": "Team",
-                "organisation_name": "Hub Team",
-                "notes": "",
-                "flow_ids": [],
-                "deleted": False,
-                "created_at": "2024-01-01T00:00:00+00:00",
-                "updated_at": "2024-01-01T00:00:00+00:00",
-            }
-        ]
+        existing = {
+            "contact_id": "abc-123",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane.doe@example.nhs.uk",
+            "phone_number": "",
+            "organisation_type": "Team",
+            "organisation_name": "Hub Team",
+            "notes": "",
+            "flow_ids": [],
+            "deleted": False,
+            "created_at": "2024-01-01T00:00:00+00:00",
+            "updated_at": "2024-01-01T00:00:00+00:00",
+        }
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=existing),
             patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as upsert,
         ):
             contacts_store.delete_contact("abc-123")
@@ -243,7 +238,7 @@ class TestDeleteContact:
 
     def test_is_a_no_op_for_unknown_contact(self) -> None:
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=[]),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=None),
             patch.object(contacts_store.cosmos_store, "upsert_document") as upsert,
         ):
             contacts_store.delete_contact("missing-id")
@@ -252,15 +247,13 @@ class TestDeleteContact:
 
 class TestRestoreContact:
     def test_clears_deleted_flag_and_deleted_at(self) -> None:
-        existing = [
-            _stored_full(
-                "abc-123",
-                deleted=True,
-                deleted_at="2024-01-01T00:00:00+00:00",
-            )
-        ]
+        existing = _stored_full(
+            "abc-123",
+            deleted=True,
+            deleted_at="2024-01-01T00:00:00+00:00",
+        )
         with (
-            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing),
+            patch.object(contacts_store.cosmos_store, "get_document", return_value=existing),
             patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as upsert,
         ):
             restored = contacts_store.restore_contact("abc-123")
@@ -272,7 +265,7 @@ class TestRestoreContact:
         assert persisted_payload["deleted_at"] is None
 
     def test_returns_none_for_unknown_contact(self) -> None:
-        with patch.object(contacts_store.cosmos_store, "query_documents", return_value=[]):
+        with patch.object(contacts_store.cosmos_store, "get_document", return_value=None):
             assert contacts_store.restore_contact("missing-id") is None
 
 
@@ -600,3 +593,29 @@ class TestImportContacts:
         (only_contact,) = store.values()
         assert only_contact["last_name"] == "Smith"
         assert only_contact["notes"] == "Second notes"
+
+    def test_import_contacts_queries_partition_and_flows_once_for_multiple_rows(self) -> None:
+        existing = [
+            _stored("id-1", email="alice@example.nhs.uk"),
+            _stored("id-2", email="bob@example.nhs.uk"),
+        ]
+        csv_text = (
+            "first_name,last_name,email,phone_number,organisation_type,organisation_name,flow_ids,notes\n"
+            "Alice,Updated,alice@example.nhs.uk,,Team,Hub Team,phw-to-mpi,Note 1\n"
+            "Bob,Updated,bob@example.nhs.uk,,Team,Hub Team,paris-to-mpi,Note 2\n"
+            "Carol,New,carol@example.nhs.uk,,Team,Hub Team,phw-to-mpi,Note 3\n"
+        )
+        with (
+            patch.object(contacts_store, "get_flows", return_value=_FLOWS) as mock_flows,
+            patch.object(contacts_store.cosmos_store, "query_documents", return_value=existing) as mock_query,
+            patch.object(contacts_store.cosmos_store, "get_document") as mock_get,
+            patch.object(contacts_store.cosmos_store, "upsert_document", return_value=True) as mock_upsert,
+        ):
+            result = contacts_store.import_contacts(csv_text)
+
+        assert result["updated"] == 2
+        assert result["created"] == 1
+        assert mock_flows.call_count == 1
+        assert mock_query.call_count == 1
+        mock_get.assert_not_called()
+        assert mock_upsert.call_count == 3

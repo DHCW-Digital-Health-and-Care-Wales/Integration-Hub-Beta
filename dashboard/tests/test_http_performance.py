@@ -43,12 +43,26 @@ class TestStaticFingerprinting:
         body = client.get("/page").get_data(as_text=True)
         assert body.startswith("/static/js/app.js?v=")
 
-    def test_editing_a_file_changes_its_fingerprint(self, client: FlaskClient, static_dir: Path) -> None:
+    def test_editing_a_file_changes_its_fingerprint_in_debug_mode(
+        self, client: FlaskClient, static_dir: Path
+    ) -> None:
+        client.application.debug = True
         before = client.get("/page").get_data(as_text=True)
         asset = static_dir / "js" / "app.js"
         stat = asset.stat()
         os.utime(asset, (stat.st_atime, stat.st_mtime + 100))
         assert client.get("/page").get_data(as_text=True) != before
+
+    def test_non_debug_caches_asset_version_without_restatting(self, client: FlaskClient) -> None:
+        from unittest.mock import patch  # noqa: PLC0415
+
+        assert not client.application.debug
+        with patch("dashboard.http_performance.os.path.getmtime", wraps=os.path.getmtime) as mock_getmtime:
+            first = client.get("/page").get_data(as_text=True)
+            second = client.get("/page").get_data(as_text=True)
+
+        assert first == second
+        mock_getmtime.assert_called_once()
 
     def test_missing_file_is_not_fingerprinted(self, client: FlaskClient) -> None:
         with client.application.test_request_context():

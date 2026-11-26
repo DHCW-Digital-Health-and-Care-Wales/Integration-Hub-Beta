@@ -136,3 +136,40 @@ class TestMultiCachedNowait:
         results = cache.multi_cached_nowait([("m3", builder, 60)])
         assert results == ["hot-value"]
         assert not calls
+
+
+class TestSingleflightAndEviction:
+    def test_concurrent_cold_misses_coalesce_to_single_builder_call(self) -> None:
+        import threading  # noqa: PLC0415
+        from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
+
+        started = threading.Event()
+        release = threading.Event()
+        calls: list[int] = []
+
+        def slow_builder() -> str:
+            calls.append(1)
+            started.set()
+            release.wait(timeout=2.0)
+            return "built-once"
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            f1 = pool.submit(cache.cached, "sf-key", slow_builder, 60)
+            assert started.wait(timeout=2.0)
+            others = [pool.submit(cache.cached, "sf-key", slow_builder, 60) for _ in range(3)]
+            release.set()
+            results = [f1.result()] + [f.result() for f in others]
+
+        assert results == ["built-once"] * 4
+        assert len(calls) == 1
+
+    def test_dynamic_entries_evict_oldest_while_preserving_core_keys(self) -> None:
+        with patch.object(cache, "_MAX_CACHE_ENTRIES", len(cache._CORE_KEYS) + 2):
+            cache.set_cached("dyn-1", 1)
+            cache.set_cached("dyn-2", 2)
+            cache.set_cached("dyn-3", 3)
+
+        assert cache._CORE_KEYS.issubset(cache.cache_data.keys())
+        assert "dyn-1" not in cache.cache_data
+        assert "dyn-2" in cache.cache_data
+        assert "dyn-3" in cache.cache_data

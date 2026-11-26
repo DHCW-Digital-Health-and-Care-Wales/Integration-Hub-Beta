@@ -514,13 +514,14 @@ class TestApiRoutes:
 
     def test_api_flows_returns_json(self, client: FlaskClient) -> None:
         with (
-            patch("dashboard.routes.api.get_queues", return_value=EMPTY_QUEUES),
+            patch("dashboard.routes.api.get_cached_status", return_value={"flows": []}),
             patch("dashboard.routes.api.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
         ):
             response = client.get("/api/flows")
         assert response.status_code == 200
         data = response.get_json()
         assert "flows" in data
+        assert "container_metrics" in data
 
     def test_api_refresh_rebuilds_flow_definitions(self, client: FlaskClient) -> None:
         with (
@@ -624,6 +625,68 @@ class TestApiRoutes:
             response = client.get("/api/hl7-throughput?health_board=PHW&service=phw-to-mpi")
         assert response.status_code == 200
         mock_fn.assert_called_once_with(hours=24, health_board="PHW", service="phw-to-mpi")
+
+    def test_api_hl7_throughput_serves_cached_response_on_repeat_request(self, client: FlaskClient) -> None:
+        fake_metrics = {"incoming": [{"time": "2024-01-01T00:00:00+00:00", "value": 5}], "outgoing": []}
+        with patch("dashboard.routes.api.get_hl7_throughput_metrics", return_value=fake_metrics) as mock_fn:
+            r1 = client.get("/api/hl7-throughput?hours=24")
+            r2 = client.get("/api/hl7-throughput?hours=24")
+        assert r1.status_code == 200 and r2.status_code == 200
+        assert r2.get_json() == fake_metrics
+        mock_fn.assert_called_once()
+
+    def test_api_servicebus_metrics_serves_cached_response_on_repeat_request(self, client: FlaskClient) -> None:
+        fake_metrics = {"incoming": [], "outgoing": [], "timespan": "6h"}
+        with patch("dashboard.routes.api.get_message_metrics", return_value=fake_metrics) as mock_fn:
+            client.get("/api/servicebus-metrics?hours=6")
+            client.get("/api/servicebus-metrics?hours=6")
+        mock_fn.assert_called_once()
+
+    def test_api_container_app_history_serves_cached_response_on_repeat_request(self, client: FlaskClient) -> None:
+        fake_history = {"name": "my-app", "timestamps": [], "cpu": [], "memory_mb": []}
+        with patch("dashboard.routes.api.get_container_app_metric_history", return_value=fake_history) as mock_fn:
+            client.get("/api/container-app/my-app/history?hours=6")
+            client.get("/api/container-app/my-app/history?hours=6")
+        mock_fn.assert_called_once()
+
+    def test_messages_page_does_not_fetch_unused_namespace_snapshot(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.routes.pages.get_messages_today", return_value=EMPTY_MESSAGES),
+            patch("dashboard.routes.pages.get_namespace_snapshot") as mock_sb,
+        ):
+            response = client.get("/messages")
+        assert response.status_code == 200
+        mock_sb.assert_not_called()
+
+    def test_trace_page_caches_successful_traces_only(self, client: FlaskClient) -> None:
+        ok_trace = {
+            "spans": [
+                {
+                    "name": "op",
+                    "duration": 1.0,
+                    "success": True,
+                    "target": "",
+                    "app_name": "a",
+                    "start_time": "",
+                    "parent_id": "",
+                }
+            ],
+            "exceptions": [],
+            "logs": [],
+            "duration_ms": 1.0,
+            "start_time": "",
+            "ok": True,
+        }
+        miss_trace = {"spans": [], "exceptions": [], "logs": [], "duration_ms": 0, "start_time": "", "ok": False}
+        with patch("dashboard.routes.pages.get_trace", return_value=ok_trace) as mock_ok:
+            assert client.get("/trace/op-hit").status_code == 200
+            assert client.get("/trace/op-hit").status_code == 200
+        mock_ok.assert_called_once_with("op-hit")
+
+        with patch("dashboard.routes.pages.get_trace", return_value=miss_trace) as mock_miss:
+            assert client.get("/trace/op-miss").status_code == 404
+            assert client.get("/trace/op-miss").status_code == 404
+        assert mock_miss.call_count == 2
 
 
 class TestNetworkTestRoutes:

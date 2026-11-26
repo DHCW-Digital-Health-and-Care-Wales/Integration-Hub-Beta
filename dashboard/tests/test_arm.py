@@ -673,3 +673,19 @@ class TestDiscoverFlowsWithFlowTag:
         assert set(flows) == {"sww-to-chemo", "mpi-to-phw"}
         assert flows["sww-to-chemo"]["source_port"] == 2580
         assert [s["name"] for s in flows["mpi-to-phw"]["subscriptions"]] == ["sbs-phw"]
+
+
+def test_get_container_apps_client_caches_per_subscription() -> None:
+    with (
+        patch.object(arm, "get_azure_credential", return_value=object()),
+        patch.object(arm, "ContainerAppsAPIClient", side_effect=lambda _c, sub: SimpleNamespace(sub=sub)) as mock_cls,
+    ):
+        with patch.object(arm.config, "AZURE_SUBSCRIPTION_ID", "sub-1"):
+            c1 = arm._get_container_apps_client()
+            c2 = arm._get_container_apps_client()
+        with patch.object(arm.config, "AZURE_SUBSCRIPTION_ID", "sub-2"):
+            c3 = arm._get_container_apps_client()
+
+    assert c1 is c2
+    assert c3 is not c1
+    assert mock_cls.call_count == 2

@@ -10,6 +10,7 @@ changes.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
 from flask import Flask, Response, make_response, redirect, render_template, request, session, url_for
@@ -51,21 +52,31 @@ def set_language() -> Response:
 
 def index() -> str:
     """Render the dashboard overview page with system status and alarm summaries."""
-    status = get_cached_status()
-    alarm1_rows, alarm2_rows, alarm3_rows = cache.multi_cached_nowait(
-        [
-            ("alarms", get_alarm_status, config.API_CACHE_TTL),
-            ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
-            ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
-        ]
-    )
+    batch_items = [
+        ("alarms", get_alarm_status, config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+        # Filter options change rarely (30-day KQL scan), so cache them for an hour.
+        ("throughput_filters", get_throughput_filter_options, 3600),
+    ]
+    if cache.has_cached("status"):
+        status = get_cached_status()
+        alarm1_rows, alarm2_rows, alarm3_rows, throughput_filters_raw = cache.multi_cached_nowait(batch_items)
+    else:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_status = pool.submit(get_cached_status)
+            fut_rest = pool.submit(cache.multi_cached_nowait, batch_items)
+            status = fut_status.result()
+            alarm1_rows, alarm2_rows, alarm3_rows, throughput_filters_raw = fut_rest.result()
+
     cfg1 = load_alarm_config()
     cfg2 = load_alarm2_config()
     cfg3 = load_alarm3_config()
-    # Filter options change rarely, so cache them for longer than the live status.
-    throughput_filters = cache.cached_nowait(
-        "throughput_filters", get_throughput_filter_options, ttl=300
-    ) or {"health_boards": [], "services": []}
+    throughput_filters = (
+        throughput_filters_raw
+        if isinstance(throughput_filters_raw, dict)
+        else {"health_boards": [], "services": []}
+    )
     return render_template(
         "index.html",
         status=status,
@@ -87,22 +98,29 @@ def index() -> str:
 
 def flows_page() -> str:
     """Render the Flows page with per-container metrics and alarm status overlay."""
-    status = get_cached_status()
-    container_metrics = cache.cached_nowait(
-        "flows",
-        get_container_apps_metrics,
-        ttl=config.API_CACHE_TTL,
-    )
-    flow_contacts = cache.cached_nowait(
-        "flow_contacts",
-        contacts_store.contacts_by_flow,
-        ttl=config.API_CACHE_TTL,
-    )
+    batch_items = [
+        ("flows", get_container_apps_metrics, config.API_CACHE_TTL),
+        ("flow_contacts", contacts_store.contacts_by_flow, config.API_CACHE_TTL),
+        # Warm alarm status caches in the same parallel pass so build_alarm_map() hits hot cache.
+        ("alarms", get_alarm_status, config.API_CACHE_TTL),
+        ("alarm2", get_alarm2_status, config.API_CACHE_TTL),
+        ("alarm3", get_alarm3_status, config.API_CACHE_TTL),
+    ]
+    if cache.has_cached("status"):
+        status = get_cached_status()
+        container_metrics, flow_contacts, _, _, _ = cache.multi_cached_nowait(batch_items)
+    else:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_status = pool.submit(get_cached_status)
+            fut_rest = pool.submit(cache.multi_cached_nowait, batch_items)
+            status = fut_status.result()
+            container_metrics, flow_contacts, _, _, _ = fut_rest.result()
+
     return render_template(
         "flows.html",
         status=status,
-        container_metrics=container_metrics,
-        flow_contacts=flow_contacts or {},
+        container_metrics=container_metrics if isinstance(container_metrics, dict) else {},
+        flow_contacts=flow_contacts if isinstance(flow_contacts, dict) else {},
         alarm_map=build_alarm_map(),
         flow_pauses=alarm_pauses.current_flow_summary([f["id"] for f in status.get("flows", []) if f.get("id")]),
         refresh_interval=config.API_CACHE_TTL,
@@ -176,7 +194,6 @@ def messages_page() -> str:
         lambda: get_messages_today(microservice_ids=microservice_ids),
         ttl=config.API_CACHE_TTL,
     )
-    cached_sb = cache.cached_nowait("servicebus", get_namespace_snapshot, ttl=config.API_CACHE_TTL)
     return render_template(
         "messages.html",
         messages=messages,
@@ -184,14 +201,18 @@ def messages_page() -> str:
         entity_type=entity_type,
         entity_name=entity_name,
         flow_label=flow_label,
-        namespace_snapshot=cached_sb,
         data_is_stale=cache.is_cache_stale(cache_key),
     )
 
 
 def trace_page(operation_id: str) -> str | tuple[str, int]:
     """Render the distributed trace view for a given Application Insights operation ID."""
-    trace_data = get_trace(operation_id)
+    trace_key = f"trace_{operation_id}"
+    trace_data = cache.get_fresh(trace_key, ttl=300)
+    if trace_data is None:
+        trace_data = get_trace(operation_id)
+        if trace_data.get("ok"):
+            cache.set_cached(trace_key, trace_data)
     if not trace_data["ok"]:
         return render_template("trace.html", operation_id=operation_id, trace_data=trace_data), 404
     return render_template("trace.html", operation_id=operation_id, trace_data=trace_data)

@@ -8,12 +8,15 @@ import json
 import logging
 import math
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Any
 
 import requests
 from azure.mgmt.appcontainers import ContainerAppsAPIClient  # noqa: PLC0415
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+from requests.adapters import HTTPAdapter
 
 from dashboard import config
 from dashboard.services.credentials import get_azure_credential
@@ -24,10 +27,65 @@ log = logging.getLogger(__name__)
 # 1–32 characters; must start and end with a letter or digit.
 _CONTAINER_APP_NAME_RE = re.compile(r"[a-z0-9]([a-z0-9\-]{0,30}[a-z0-9])?$")
 
+_CONTAINER_METRICS_MAX_WORKERS = 8
+
+_http_session_lock = Lock()
+_http_session: requests.Session | None = None
+
+_logs_client_lock = Lock()
+_logs_client: LogsQueryClient | None = None
+
+_apps_client_lock = Lock()
+_apps_clients: dict[str, ContainerAppsAPIClient] = {}
+
+
+def _get_http_session() -> requests.Session:
+    """Return a shared requests.Session configured for concurrent Azure Monitor calls."""
+    global _http_session  # noqa: PLW0603
+    if _http_session is not None:
+        return _http_session
+    with _http_session_lock:
+        if _http_session is None:
+            session = requests.Session()
+            adapter = HTTPAdapter(pool_connections=16, pool_maxsize=16)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+            _http_session = session
+        return _http_session
+
 
 def _get_logs_client() -> Any:
-    cred = get_azure_credential()
-    return LogsQueryClient(cred)
+    """Return the process-wide singleton LogsQueryClient (reuses HTTP connection pool)."""
+    global _logs_client  # noqa: PLW0603
+    if _logs_client is not None:
+        return _logs_client
+    with _logs_client_lock:
+        if _logs_client is None:
+            _logs_client = LogsQueryClient(get_azure_credential())
+        return _logs_client
+
+
+def _get_container_apps_client() -> ContainerAppsAPIClient:
+    """Return a cached ContainerAppsAPIClient per subscription ID."""
+    sub_id = config.AZURE_SUBSCRIPTION_ID
+    cached = _apps_clients.get(sub_id)
+    if cached is not None:
+        return cached
+    with _apps_client_lock:
+        cached = _apps_clients.get(sub_id)
+        if cached is None:
+            cached = ContainerAppsAPIClient(get_azure_credential(), sub_id)
+            _apps_clients[sub_id] = cached
+        return cached
+
+
+def _reset_clients_for_tests() -> None:
+    """Clear cached Azure Monitor / Container Apps clients (used by unit tests)."""
+    global _logs_client  # noqa: PLW0603
+    with _logs_client_lock:
+        _logs_client = None
+    with _apps_client_lock:
+        _apps_clients.clear()
 
 
 def _credentials_configured() -> bool:
@@ -126,18 +184,19 @@ def get_messages_today(
         log.warning("Log Analytics credentials not configured — returning empty list")
         return []
 
-    # Build the optional filter clause
+    # Build the optional filter clause — use KQL `has` (term-indexed, case-insensitive)
+    # instead of `contains` (full substring scan) so Log Analytics uses its inverted index.
     wf_filter = ""
     if microservice_ids:
         # Sanitise each id — only allow alphanumeric, hyphens, underscores
         safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", mid) for mid in microservice_ids]
         safe_ids = [s for s in safe_ids if s]
         if safe_ids:
-            conditions = " or ".join(f'Properties contains "{sid}"' for sid in safe_ids)
+            conditions = " or ".join(f'Properties has "{sid}"' for sid in safe_ids)
             wf_filter = f"\n    | where {conditions}"
     elif workflow_id:
         safe_wf = re.sub(r"[^a-zA-Z0-9\-_]", "", workflow_id)
-        wf_filter = f'\n    | where Properties contains "{safe_wf}"'
+        wf_filter = f'\n    | where Properties has "{safe_wf}"'
 
     resource_filter = ""
     if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
@@ -501,11 +560,64 @@ def get_retry_delay_metrics_by_flow(hours: int = 1, min_delay_seconds: float = 6
         return []
 
 
+def _fetch_single_app_metrics(
+    session: requests.Session,
+    app: Any,
+    headers: dict[str, str],
+    start: str,
+    end: str,
+) -> dict:
+    """Fetch latest CPU, memory, and replica metrics for a single Container App."""
+    try:
+        # Build the query string manually — requests would percent-encode commas in
+        # metricnames and slashes in timespan, causing a 400 from Azure Monitor.
+        # Correct metric names per Microsoft.App/containerapps:
+        #   CpuPercentage, WorkingSetBytes, Replicas
+        query = (
+            "api-version=2018-01-01"
+            "&metricnames=CpuPercentage,WorkingSetBytes,Replicas"
+            f"&timespan={start}/{end}"
+            "&interval=PT5M"
+            "&aggregation=Average"
+            "&metricnamespace=microsoft.app/containerapps"
+        )
+        url = f"https://management.azure.com{app.id}/providers/microsoft.insights/metrics?{query}"
+        resp = session.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        metrics: dict[str, float] = {}
+        for m in data.get("value", []):
+            metric_name = m.get("name", {}).get("value", "")
+            for ts in m.get("timeseries", []):
+                for dp in reversed(ts.get("data", [])):
+                    val = dp.get("average")
+                    if val is not None:
+                        metrics[metric_name] = round(val, 2)
+                        break
+
+        return {
+            "name": app.name,
+            "location": app.location,
+            "cpu_usage": metrics.get("CpuPercentage", 0),
+            "memory_bytes": metrics.get("WorkingSetBytes", 0),
+            "replicas": int(metrics.get("Replicas", 0)),
+        }
+    except Exception as inner:
+        log.warning("Could not get metrics for %s: %s", app.name, inner)
+        return {"name": app.name, "cpu_usage": 0, "memory_bytes": 0, "replicas": 0}
+
+
 def get_container_app_metrics() -> list[dict]:
     """
     Query Azure Monitor metrics for Container Apps CPU and memory utilisation.
     Groups results by app name.  Falls back to [] on any error.
     """
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_CONTAINER_APPS  # noqa: PLC0415
+
+        return DEMO_CONTAINER_APPS
+
     if not all(
         [
             config.AZURE_SUBSCRIPTION_ID,
@@ -524,57 +636,19 @@ def get_container_app_metrics() -> list[dict]:
         token = cred.get_token("https://management.azure.com/.default").token
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
-        apps_client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
+        apps_client = _get_container_apps_client()
         apps = list(apps_client.container_apps.list_by_resource_group(config.AZURE_CONTAINER_APPS_RESOURCE_GROUP))
+        if not apps:
+            return []
 
         now = datetime.now(timezone.utc)
         start = (now - timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
         end = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        results = []
-        for app in apps:
-            try:
-                # Build the query string manually — requests would percent-encode commas in
-                # metricnames and slashes in timespan, causing a 400 from Azure Monitor.
-                # Correct metric names per Microsoft.App/containerapps:
-                #   CpuPercentage, WorkingSetBytes, Replicas
-                query = (
-                    "api-version=2018-01-01"
-                    "&metricnames=CpuPercentage,WorkingSetBytes,Replicas"
-                    f"&timespan={start}/{end}"
-                    "&interval=PT5M"
-                    "&aggregation=Average"
-                    "&metricnamespace=microsoft.app/containerapps"
-                )
-                url = f"https://management.azure.com{app.id}/providers/microsoft.insights/metrics?{query}"
-                resp = requests.get(url, headers=headers, timeout=10)
-                resp.raise_for_status()
-                data = resp.json()
-
-                metrics: dict = {}
-                for m in data.get("value", []):
-                    metric_name = m.get("name", {}).get("value", "")
-                    for ts in m.get("timeseries", []):
-                        for dp in reversed(ts.get("data", [])):
-                            val = dp.get("average")
-                            if val is not None:
-                                metrics[metric_name] = round(val, 2)
-                                break
-
-                results.append(
-                    {
-                        "name": app.name,
-                        "location": app.location,
-                        "cpu_usage": metrics.get("CpuPercentage", 0),
-                        "memory_bytes": metrics.get("WorkingSetBytes", 0),
-                        "replicas": int(metrics.get("Replicas", 0)),
-                    }
-                )
-            except Exception as inner:
-                log.warning("Could not get metrics for %s: %s", app.name, inner)
-                results.append({"name": app.name, "cpu_usage": 0, "memory_bytes": 0, "replicas": 0})
-
-        return results
+        session = _get_http_session()
+        max_workers = min(_CONTAINER_METRICS_MAX_WORKERS, len(apps))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            return list(pool.map(lambda app: _fetch_single_app_metrics(session, app, headers, start, end), apps))
     except Exception as exc:
         log.error("Failed to fetch Container App metrics: %s", exc)
         return []
@@ -597,6 +671,17 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
     """
     empty = {"name": app_name, "timestamps": [], "cpu": [], "memory_mb": []}
 
+    # Validate the app name to avoid URL injection — Container App names follow
+    # Azure naming rules (see _CONTAINER_APP_NAME_RE).
+    if not _CONTAINER_APP_NAME_RE.fullmatch(app_name):
+        log.warning("Invalid container app name: %r", app_name)
+        return empty
+
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import get_demo_container_app_history  # noqa: PLC0415
+
+        return get_demo_container_app_history(app_name, hours=hours)
+
     if not all(
         [
             config.AZURE_SUBSCRIPTION_ID,
@@ -604,12 +689,6 @@ def get_container_app_metric_history(app_name: str, hours: int = 1) -> dict:
         ]
     ):
         log.warning("Container Apps resource configuration missing")
-        return empty
-
-    # Validate the app name to avoid URL injection — Container App names follow
-    # Azure naming rules (see _CONTAINER_APP_NAME_RE).
-    if not _CONTAINER_APP_NAME_RE.fullmatch(app_name):
-        log.warning("Invalid container app name: %r", app_name)
         return empty
 
     # Choose an appropriate aggregation interval based on the requested window.

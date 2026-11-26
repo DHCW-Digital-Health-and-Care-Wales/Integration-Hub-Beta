@@ -431,7 +431,8 @@
   var POLL_INTERVAL = {{ refresh_interval }} * 1000;
   var pollTimer     = null;
   var countTimer    = null;
-  var lastUpdatedAt = null;
+  var lastUpdatedAt = Date.now();
+  var fetchInFlight = false;
 
   // ---- DOM helpers --------------------------------------------------------
 
@@ -526,14 +527,16 @@
   function startCountdown() {
     if (countTimer) clearInterval(countTimer);
     countTimer = setInterval(function () {
-      if (!lastUpdatedAt) return;
+      if (!lastUpdatedAt || document.hidden) return;
       var secs = Math.round((Date.now() - lastUpdatedAt) / 1000);
       var label = secs < 60 ? secs + 's ago' : Math.floor(secs / 60) + 'm ago';
       setIndicator('', '<i class="bi bi-clock me-1"></i>Updated ' + label);
     }, 5000);
   }
 
-  function fetchStatus() {
+  function fetchStatus(force) {
+    if ((!force && document.hidden) || fetchInFlight) return;
+    fetchInFlight = true;
     setIndicator('updating', '<i class="bi bi-arrow-repeat spin me-1"></i>Updating\u2026');
 
     fetch('/api/alarms/status')
@@ -553,17 +556,33 @@
       .catch(function(err) {
         console.warn('Alarm poll failed:', err);
         setIndicator('error', '<i class="bi bi-exclamation-triangle me-1"></i>Update failed');
+      })
+      .finally(function() {
+        fetchInFlight = false;
       });
   }
 
   // Start polling after one interval (page load already has fresh data).
-  pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+  pollTimer = setInterval(function () { fetchStatus(false); }, POLL_INTERVAL);
+
+  // Resume immediately when returning to a tab whose poll window elapsed.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && Date.now() - lastUpdatedAt >= POLL_INTERVAL) {
+      fetchStatus(true);
+    }
+  });
 
   // Expose manual trigger for the Refresh button (bust cache server-side).
   window.alarmsPollNow = function() {
+    if (fetchInFlight) return;
+    fetchInFlight = true;
     clearInterval(pollTimer);
+    setIndicator('updating', '<i class="bi bi-arrow-repeat spin me-1"></i>Updating\u2026');
     fetch('/api/alarms/status?refresh=1')
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(data) {
         updateCard(1, data.alarm1 || []);
         updateCard(2, data.alarm2 || []);
@@ -575,9 +594,11 @@
       })
       .catch(function(err) {
         console.warn('Manual refresh failed:', err);
+        setIndicator('error', '<i class="bi bi-exclamation-triangle me-1"></i>Update failed');
       })
       .finally(function() {
-        pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+        fetchInFlight = false;
+        pollTimer = setInterval(function () { fetchStatus(false); }, POLL_INTERVAL);
       });
   };
 })();

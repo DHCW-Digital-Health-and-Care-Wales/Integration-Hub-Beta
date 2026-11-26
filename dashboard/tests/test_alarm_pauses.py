@@ -372,6 +372,17 @@ class TestPersistence:
         with patch.object(alarm_pauses.cosmos_store, "query_documents", return_value=[_pause(), {"x": 1}]):
             assert [p["pause_id"] for p in alarm_pauses.list_pauses()] == ["p1"]
 
+    def test_list_pauses_caches_non_strict_reads_and_strict_reads_live(self) -> None:
+        with patch.object(alarm_pauses.cosmos_store, "query_documents", return_value=[_pause()]) as mock_query:
+            first = alarm_pauses.list_pauses()
+            first[0]["reason"] = "mutated"
+            second = alarm_pauses.list_pauses()
+            assert second[0]["reason"] == "Maintenance"
+            assert mock_query.call_count == 1
+
+            alarm_pauses.list_pauses(strict=True)
+            assert mock_query.call_count == 2
+
     def test_list_pauses_fails_open_when_cosmos_unavailable(self) -> None:
         # conftest disables Cosmos, so query_documents degrades to [] — no pause applies.
         assert alarm_pauses.list_pauses() == []

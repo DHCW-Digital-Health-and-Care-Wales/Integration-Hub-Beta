@@ -27,14 +27,16 @@ from __future__ import annotations
 
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+from azure.monitor.query import LogsQueryStatus
 
 from dashboard import config
 from dashboard.services import alarm_base, alarm_pauses
-from dashboard.services.credentials import get_azure_credential
-from dashboard.services.email_service import send_alert_email
+from dashboard.services.azure_monitor import _get_logs_client
+from dashboard.services.email_service import dispatch_email, send_alert_email
 
 log = logging.getLogger(__name__)
 
@@ -131,10 +133,65 @@ def _window_label(minutes: int) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _query_window_failures(window_minutes: int, window_rules: list[dict]) -> dict[str, int | None]:
+    """Query MESSAGE_FAILED counts for a group of rules sharing *window_minutes*."""
+    safe_ids = list(dict.fromkeys(re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"]) for r in window_rules))
+    safe_ids = [s for s in safe_ids if s]
+    if not safe_ids:
+        return {r["id"]: 0 for r in window_rules}
+
+    ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
+    resource_filter = ""
+    if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
+        resource_filter = f"\n        | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
+
+    # Pre-filter with KQL term-index `has` / `has_any` and parse JSON once per matching row
+    # so >99% of non-failure traces skip parse_json(Properties) completely.
+    query = f"""
+    AppTraces
+    | where TimeGenerated > ago({window_minutes}m){resource_filter}
+    | where Message has "Integration Hub Event"
+    | where Properties has "MESSAGE_FAILED"
+    | where Properties has_any ({ids_kql})
+    | extend props = parse_json(Properties)
+    | extend workflow_id = tostring(props["workflow_id"]),
+             event_type  = tostring(props["event_type"])
+    | where workflow_id in ({ids_kql})
+    | where event_type == "MESSAGE_FAILED"
+    | summarize Total = count() by workflow_id
+    """
+    try:
+        client = _get_logs_client()
+        response = client.query_workspace(
+            workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
+            query=query,
+            timespan=timedelta(minutes=window_minutes),
+        )
+        if response.status != LogsQueryStatus.SUCCESS:
+            log.warning("alarm3 query partial/failed for window=%dm", window_minutes)
+            return {r["id"]: None for r in window_rules}
+
+        found: dict[str, int] = {}
+        for table in response.tables:
+            for row in table.rows:
+                row_dict = dict(zip(table.columns, row))
+                wid = (row_dict.get("workflow_id") or "").strip()
+                val = row_dict.get("Total")
+                if wid:
+                    found[wid] = int(val) if val is not None else 0
+
+        # Missing key = no failures found in window → count is 0
+        return {r["id"]: found.get(r["workflow_id"].strip(), 0) for r in window_rules}
+    except Exception as exc:
+        log.error("alarm3 query failed for window=%dm: %s", window_minutes, exc)
+        return {r["id"]: None for r in window_rules}
+
+
 def get_failure_counts(rules: list[dict]) -> dict[str, int | None]:
     """Query MESSAGE_FAILED count per workflow_id over each rule's window.
 
-    Rules are grouped by window_duration_minutes to minimise round-trips.
+    Rules are grouped by window_duration_minutes to minimise round-trips, and
+    distinct window buckets are queried concurrently.
     Returns {rule_id: count | None}.
     """
     if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not rules:
@@ -145,56 +202,15 @@ def get_failure_counts(rules: list[dict]) -> dict[str, int | None]:
         w = int(rule.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES))
         by_window.setdefault(w, []).append(rule)
 
+    if len(by_window) == 1:
+        (window_minutes, window_rules), = by_window.items()
+        return _query_window_failures(window_minutes, window_rules)
+
     results: dict[str, int | None] = {}
-
-    for window_minutes, window_rules in by_window.items():
-        safe_ids = [re.sub(r"[^a-zA-Z0-9_\-]", "", r["workflow_id"]) for r in window_rules]
-        ids_kql = ", ".join(f'"{s}"' for s in safe_ids)
-        resource_filter = ""
-        if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
-            resource_filter = f"\n        | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
-
-        query = f"""
-        AppTraces
-        | where TimeGenerated > ago({window_minutes}m){resource_filter}
-        | where Message has "Integration Hub Event"
-        | extend workflow_id = tostring(parse_json(Properties)["workflow_id"]),
-                 event_type  = tostring(parse_json(Properties)["event_type"])
-        | where workflow_id in ({ids_kql})
-        | where event_type == "MESSAGE_FAILED"
-        | summarize Total = count() by workflow_id
-        """
-        try:
-            client = LogsQueryClient(get_azure_credential())
-            response = client.query_workspace(
-                workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
-                query=query,
-                timespan=timedelta(minutes=window_minutes),
-            )
-            if response.status != LogsQueryStatus.SUCCESS:
-                log.warning("alarm3 query partial/failed for window=%dm", window_minutes)
-                for r in window_rules:
-                    results[r["id"]] = None
-                continue
-
-            found: dict[str, int] = {}
-            for table in response.tables:
-                for row in table.rows:
-                    row_dict = dict(zip(table.columns, row))
-                    wid = (row_dict.get("workflow_id") or "").strip()
-                    val = row_dict.get("Total")
-                    if wid:
-                        found[wid] = int(val) if val is not None else 0
-
-            for r in window_rules:
-                # Missing key = no failures found in window → count is 0
-                results[r["id"]] = found.get(r["workflow_id"].strip(), 0)
-
-        except Exception as exc:
-            log.error("alarm3 query failed for window=%dm: %s", window_minutes, exc)
-            for r in window_rules:
-                results[r["id"]] = None
-
+    items = list(by_window.items())
+    with ThreadPoolExecutor(max_workers=min(4, len(items))) as pool:
+        for partial in pool.map(lambda pair: _query_window_failures(pair[0], pair[1]), items):
+            results.update(partial)
     return results
 
 
@@ -212,6 +228,8 @@ def _send_alarm3_email(
     workflow_id: str,
     now: datetime,
     email_alerts_enabled: bool = False,
+    *,
+    async_send: bool = False,
 ) -> None:
     """Send an HTML email via Azure Communication Services when Alarm 3 fires."""
     if not email_alerts_enabled:
@@ -259,11 +277,17 @@ def _send_alarm3_email(
 </p>
 </body></html>"""
 
-    if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
-        # send_alert_email() already logs a warning (missing config) or error (send
-        # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
-        # is False, a False return is expected/intentional, so avoid a noisy log here.
-        log.warning("Failed to send alarm 3 email for %s", rule_id)
+    def _deliver() -> None:
+        if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
+            # send_alert_email() already logs a warning (missing config) or error (send
+            # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
+            # is False, a False return is expected/intentional, so avoid a noisy log here.
+            log.warning("Failed to send alarm 3 email for %s", rule_id)
+
+    if async_send:
+        dispatch_email(_deliver)
+    else:
+        _deliver()
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +326,7 @@ def get_alarm3_status() -> list[dict]:
     pauses = alarm_pauses.list_pauses()
 
     results: list[dict] = []
+    pending_emails: list[dict[str, Any]] = []
 
     for rule in enabled_rules:
         rid = rule["id"]
@@ -353,15 +378,17 @@ def get_alarm3_status() -> list[dict]:
             state_rules.setdefault(rid, {})["last_alarm_at"] = now.isoformat()
             state_dirty = True
             cooldown_remaining = None
-            _send_alarm3_email(
-                rid,
-                rule_cfg.get("display_name") or rule.get("display_name", rid),
-                count,
-                threshold,
-                int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
-                now,
-                email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+            pending_emails.append(
+                {
+                    "rule_id": rid,
+                    "display_name": rule_cfg.get("display_name") or rule.get("display_name", rid),
+                    "failure_count": count,
+                    "threshold": threshold,
+                    "window_minutes": int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
+                    "workflow_id": rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
+                    "now": now,
+                    "email_alerts_enabled": rule_cfg.get("email_alerts_enabled", False),
+                }
             )
         else:
             mins_since = (now - last_alarm_at).total_seconds() / 60
@@ -370,15 +397,17 @@ def get_alarm3_status() -> list[dict]:
                 state_rules[rid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
-                _send_alarm3_email(
-                    rid,
-                    rule_cfg.get("display_name") or rule.get("display_name", rid),
-                    count,
-                    threshold,
-                    int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
-                    rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
-                    now,
-                    email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+                pending_emails.append(
+                    {
+                        "rule_id": rid,
+                        "display_name": rule_cfg.get("display_name") or rule.get("display_name", rid),
+                        "failure_count": count,
+                        "threshold": threshold,
+                        "window_minutes": int(rule_cfg.get("window_duration_minutes", DEFAULT_WINDOW_MINUTES)),
+                        "workflow_id": rule_cfg.get("workflow_id", rule.get("workflow_id", "")),
+                        "now": now,
+                        "email_alerts_enabled": rule_cfg.get("email_alerts_enabled", False),
+                    }
                 )
             else:
                 status = "suppressed"
@@ -390,6 +419,9 @@ def get_alarm3_status() -> list[dict]:
 
     if state_dirty:
         _save_alarm3_state({"rules": state_rules})
+
+    for email_kwargs in pending_emails:
+        _send_alarm3_email(**email_kwargs, async_send=True)
 
     alarm_pauses.annotate_scheduled(results, COSMOS_PK, pauses, now)
     _order = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}

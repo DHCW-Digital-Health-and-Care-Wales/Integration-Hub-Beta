@@ -24,14 +24,15 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+from azure.monitor.query import LogsQueryStatus
 
 from dashboard import config
 from dashboard.services import alarm_base, alarm_pauses
 from dashboard.services.alarm_time_utils import get_current_period
-from dashboard.services.credentials import get_azure_credential
-from dashboard.services.email_service import send_alert_email
+from dashboard.services.azure_monitor import _get_logs_client
+from dashboard.services.email_service import dispatch_email, send_alert_email
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +46,11 @@ DEFAULT_DAY_THRESHOLD = 60
 DEFAULT_EVENING_THRESHOLD = 120
 DEFAULT_WEEKEND_THRESHOLD = 240
 DEFAULT_ALERTING_GAP = 60
+
+# Two-stage lookback windows: check 2 days first (~15× less KQL data scanned
+# for active flows) and only fall back to 30 days for workflows silent > 48 h.
+_FAST_LOOKBACK_DAYS = 2
+_FULL_LOOKBACK_DAYS = 30
 
 
 # ---------------------------------------------------------------------------
@@ -139,39 +145,38 @@ def _parse_dt(raw: object) -> datetime | None:
 # ---------------------------------------------------------------------------
 
 
-def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
-    """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (30-day window)."""
-    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
-        return {wid: None for wid in workflow_ids}
+def _query_last_message_times(safe_ids: list[str], lookback_days: int) -> dict[str, datetime | None] | None:
+    """Run a single Log Analytics query for the most recent MESSAGE_RECEIVED over *lookback_days*.
 
-    safe_ids = [re.sub(r"[^a-zA-Z0-9\-_]", "", wid) for wid in workflow_ids if wid]
-    if not safe_ids:
-        return {wid: None for wid in workflow_ids}
-
+    Returns ``{workflow_id: last_message_dt}`` on success, or ``None`` if the query failed.
+    """
     ids_kql = ", ".join(f'"{w}"' for w in safe_ids)
     resource_filter = ""
     if config.AZURE_APP_INSIGHTS_RESOURCE_ID:
         resource_filter = f"\n    | where _ResourceId =~ '{config.AZURE_APP_INSIGHTS_RESOURCE_ID}'"
 
+    # Pre-filter with KQL `has` / `has_any` before parse_json(Properties) so
+    # Log Analytics uses its inverted term index instead of parsing every trace.
     query = f"""
     AppTraces
-    | where TimeGenerated > ago(30d){resource_filter}
+    | where TimeGenerated > ago({lookback_days}d){resource_filter}
     | where Message == "Integration Hub Event"
-    | where Properties contains "MESSAGE_RECEIVED"
+    | where Properties has "MESSAGE_RECEIVED"
+    | where Properties has_any ({ids_kql})
     | extend workflow_id = tostring(parse_json(Properties)["workflow_id"])
     | where workflow_id in ({ids_kql})
     | summarize last_message = max(TimeGenerated) by workflow_id
     """
     try:
-        client = LogsQueryClient(get_azure_credential())
+        client = _get_logs_client()
         response = client.query_workspace(
             workspace_id=config.AZURE_LOG_ANALYTICS_WORKSPACE_ID,
             query=query,
-            timespan=timedelta(days=30),
+            timespan=timedelta(days=lookback_days),
         )
         if response.status != LogsQueryStatus.SUCCESS:
-            log.warning("get_last_message_times_by_workflow: partial/failed query")
-            return {wid: None for wid in workflow_ids}
+            log.warning("get_last_message_times_by_workflow: partial/failed query (lookback=%dd)", lookback_days)
+            return None
 
         found: dict[str, datetime | None] = {}
         for table in response.tables:
@@ -181,12 +186,37 @@ def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, dat
                 ts = _parse_dt(row_dict.get("last_message"))
                 if wid:
                     found[wid] = ts
-
-        return {wid: found.get(wid) for wid in workflow_ids}
-
+        return found
     except Exception as exc:
-        log.error("Failed to fetch last message times: %s", exc)
+        log.error("Failed to fetch last message times (lookback=%dd): %s", lookback_days, exc)
+        return None
+
+
+def get_last_message_times_by_workflow(workflow_ids: list[str]) -> dict[str, datetime | None]:
+    """Query Log Analytics for the most recent MESSAGE_RECEIVED per workflow_id (30-day window).
+
+    Uses a fast 2-day query first so active workflows avoid scanning 30 days of
+    ``AppTraces``, falling back to a 30-day query only for workflows with no
+    recent activity.
+    """
+    if not config.AZURE_LOG_ANALYTICS_WORKSPACE_ID or not workflow_ids:
         return {wid: None for wid in workflow_ids}
+
+    safe_ids = list(dict.fromkeys(s for wid in workflow_ids if wid and (s := re.sub(r"[^a-zA-Z0-9\-_]", "", wid))))
+    if not safe_ids:
+        return {wid: None for wid in workflow_ids}
+
+    found = _query_last_message_times(safe_ids, _FAST_LOOKBACK_DAYS)
+    if found is None:
+        return {wid: None for wid in workflow_ids}
+
+    missing = [wid for wid in safe_ids if wid not in found]
+    if missing:
+        fallback = _query_last_message_times(missing, _FULL_LOOKBACK_DAYS)
+        if fallback:
+            found.update(fallback)
+
+    return {wid: found.get(wid) for wid in workflow_ids}
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +233,8 @@ def _send_alarm_email(
     last_msg: datetime | None,
     now: datetime,
     email_alerts_enabled: bool = False,
+    *,
+    async_send: bool = False,
 ) -> None:
     """Send an HTML email via Azure Communication Services when Alarm 1 fires."""
     if not email_alerts_enabled:
@@ -258,11 +290,17 @@ def _send_alarm_email(
 </p>
 </body></html>"""
 
-    if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
-        # send_alert_email() already logs a warning (missing config) or error (send
-        # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
-        # is False, a False return is expected/intentional, so avoid a noisy log here.
-        log.warning("Failed to send alarm 1 email for %s", rule_id)
+    def _deliver() -> None:
+        if not send_alert_email(subject, body) and config.ALERT_EMAIL_ENABLED:
+            # send_alert_email() already logs a warning (missing config) or error (send
+            # failure, e.g. ACS throttling) for real failure cases. When ALERT_EMAIL_ENABLED
+            # is False, a False return is expected/intentional, so avoid a noisy log here.
+            log.warning("Failed to send alarm 1 email for %s", rule_id)
+
+    if async_send:
+        dispatch_email(_deliver)
+    else:
+        _deliver()
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +372,7 @@ def get_alarm_status() -> list[dict]:
     pauses = alarm_pauses.list_pauses()
 
     results: list[dict] = []
+    pending_emails: list[dict[str, Any]] = []
 
     for rid, rule_cfg in enabled_rules:
         workflow_id = rule_cfg.get("workflow_id", "").strip()
@@ -406,15 +445,17 @@ def get_alarm_status() -> list[dict]:
             state_rules.setdefault(rid, {})["last_alarm_at"] = now.isoformat()
             state_dirty = True
             cooldown_remaining = None
-            _send_alarm_email(
-                rid,
-                workflow_id,
-                display_name,
-                minutes_since,
-                period_threshold,
-                last_msg,
-                now,
-                email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+            pending_emails.append(
+                {
+                    "rule_id": rid,
+                    "workflow_id": workflow_id,
+                    "display_name": display_name,
+                    "minutes_since": minutes_since,
+                    "period_threshold": period_threshold,
+                    "last_msg": last_msg,
+                    "now": now,
+                    "email_alerts_enabled": rule_cfg.get("email_alerts_enabled", False),
+                }
             )
         else:
             mins_since_alarm = (now - last_alarm_at).total_seconds() / 60
@@ -423,15 +464,17 @@ def get_alarm_status() -> list[dict]:
                 state_rules[rid]["last_alarm_at"] = now.isoformat()
                 state_dirty = True
                 cooldown_remaining = None
-                _send_alarm_email(
-                    rid,
-                    workflow_id,
-                    display_name,
-                    minutes_since,
-                    period_threshold,
-                    last_msg,
-                    now,
-                    email_alerts_enabled=rule_cfg.get("email_alerts_enabled", False),
+                pending_emails.append(
+                    {
+                        "rule_id": rid,
+                        "workflow_id": workflow_id,
+                        "display_name": display_name,
+                        "minutes_since": minutes_since,
+                        "period_threshold": period_threshold,
+                        "last_msg": last_msg,
+                        "now": now,
+                        "email_alerts_enabled": rule_cfg.get("email_alerts_enabled", False),
+                    }
                 )
             else:
                 status = "suppressed"
@@ -451,6 +494,9 @@ def get_alarm_status() -> list[dict]:
 
     if state_dirty:
         _save_alarm_state({"rules": state_rules})
+
+    for email_kwargs in pending_emails:
+        _send_alarm_email(**email_kwargs, async_send=True)
 
     alarm_pauses.annotate_scheduled(results, COSMOS_PK, pauses, now)
     _order = {"paused": 0, "critical": 1, "suppressed": 2, "unknown": 3, "healthy": 4}

@@ -452,7 +452,12 @@
   /* ------------------------------------------------------------------ */
   /* Poll /api/status                                                      */
   /* ------------------------------------------------------------------ */
+  let refreshInFlight = false;
+  let lastRefreshAt = Date.now();
+
   async function refreshData() {
+    if (refreshInFlight) return;
+    refreshInFlight = true;
     if (refreshIconEl) refreshIconEl.classList.add("spin-icon");
     try {
       const resp = await fetch("/api/status");
@@ -474,11 +479,13 @@
         lastRefreshedEl.textContent = d.toLocaleTimeString();
       }
 
+      lastRefreshAt = Date.now();
       flashLiveIndicator();
       document.dispatchEvent(new CustomEvent('dataupdated'));
     } catch (err) {
       console.warn("Dashboard refresh failed:", err);
     } finally {
+      refreshInFlight = false;
       if (refreshIconEl) refreshIconEl.classList.remove("spin-icon");
     }
   }
@@ -487,6 +494,7 @@
   /* Tick every second, refresh when countdown hits 0                     */
   /* ------------------------------------------------------------------ */
   function tick() {
+    if (document.hidden) return;
     secondsLeft--;
     if (secondsLeft <= 0) {
       secondsLeft = REFRESH_INTERVAL;
@@ -497,6 +505,14 @@
 
   updateCountdown();
   setInterval(tick, 1000);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && Date.now() - lastRefreshAt >= REFRESH_INTERVAL * 1000) {
+      secondsLeft = REFRESH_INTERVAL;
+      updateCountdown();
+      refreshData();
+    }
+  });
 
   /* ------------------------------------------------------------------ */
   /* Manual refresh button                                                 */

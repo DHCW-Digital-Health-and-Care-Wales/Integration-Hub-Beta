@@ -243,6 +243,29 @@ _cached_flows: dict[str, dict] = {}
 _cached_apps: list[dict] = []
 _cache_timestamp: float = 0.0
 
+_apps_client_lock = Lock()
+_apps_clients: dict[str, ContainerAppsAPIClient] = {}
+
+
+def _get_container_apps_client() -> ContainerAppsAPIClient:
+    """Return a cached ContainerAppsAPIClient per subscription ID."""
+    sub_id = config.AZURE_SUBSCRIPTION_ID
+    cached = _apps_clients.get(sub_id)
+    if cached is not None:
+        return cached
+    with _apps_client_lock:
+        cached = _apps_clients.get(sub_id)
+        if cached is None:
+            cached = ContainerAppsAPIClient(get_azure_credential(), sub_id)
+            _apps_clients[sub_id] = cached
+        return cached
+
+
+def _reset_client_for_tests() -> None:
+    """Clear cached ContainerAppsAPIClient instances (used by unit tests)."""
+    with _apps_client_lock:
+        _apps_clients.clear()
+
 
 # ---------------------------------------------------------------------------
 # Container App querying
@@ -315,8 +338,7 @@ def _list_container_apps() -> list[dict]:
     ``flow_tag`` (parsed flow IDs from the flow tag, see :func:`parse_flow_tag`).
     Only apps that have a ``WORKFLOW_ID`` env var are included.
     """
-    cred = get_azure_credential()
-    client = ContainerAppsAPIClient(cred, config.AZURE_SUBSCRIPTION_ID)
+    client = _get_container_apps_client()
     apps = client.container_apps.list_by_resource_group(
         config.AZURE_CONTAINER_APPS_RESOURCE_GROUP,
     )
@@ -738,6 +760,11 @@ def entity_to_microservice_ids(entity_type: str, entity_name: str) -> list[str]:
 
 def get_subscription_consumers_by_topic() -> dict[str, list[dict]]:
     """Return topic -> subscription consumer metadata built from cached Container App discovery."""
+    if config.DEMO_MODE:
+        from dashboard.services.demo_data import DEMO_SUBSCRIPTION_CONSUMERS  # noqa: PLC0415
+
+        return DEMO_SUBSCRIPTION_CONSUMERS
+
     discover_flows()
 
     consumers_by_topic: dict[str, list[dict]] = {}

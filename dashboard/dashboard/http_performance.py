@@ -18,17 +18,35 @@ from werkzeug.security import safe_join
 _FINGERPRINTED_CACHE_CONTROL = "public, max-age=31536000, immutable"
 # Un-fingerprinted static URLs (e.g. fonts referenced from CSS) keep a short cache.
 _DEFAULT_STATIC_CACHE_CONTROL = "public, max-age=3600"
+_VERSION_CACHE_KEY = "http_performance_asset_versions"
 
 
 def _asset_version(app: Flask, filename: str) -> str | None:
-    """Return a short fingerprint for a static file, or None if it cannot be resolved."""
+    """Return a short fingerprint for a static file, or None if it cannot be resolved.
+
+    In non-debug (production) mode, static files are immutable for the lifetime of
+    the container, so fingerprints are cached per-app to avoid repeated ``stat()``
+    syscalls on every ``url_for('static', ...)`` call. In debug mode, ``mtime`` is
+    re-read on each call so local edits immediately bust the browser cache.
+    """
     if not app.static_folder:
         return None
+    cache: dict[str, str | None] | None = None
+    if not app.debug:
+        cache = app.extensions.setdefault(_VERSION_CACHE_KEY, {})
+        if filename in cache:
+            return cache[filename]
+
     path = safe_join(app.static_folder, filename)
+    version: str | None
     if path is None or not os.path.isfile(path):
-        return None
-    # Re-read the mtime on every call so edits during local development yield a new URL.
-    return str(int(os.path.getmtime(path)))
+        version = None
+    else:
+        version = str(int(os.path.getmtime(path)))
+
+    if cache is not None:
+        cache[filename] = version
+    return version
 
 
 def register(app: Flask) -> None:

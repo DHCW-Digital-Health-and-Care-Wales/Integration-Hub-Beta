@@ -40,19 +40,25 @@ def get_cached_status(force: bool = False) -> dict:
 def build_status() -> dict:
     """Fetch live Azure data and build the full system-status payload.
 
-    Runs queue, active-flow, and exception queries concurrently to minimise
-    latency on a cold-cache rebuild.
+    Runs queue/topic snapshot, active-flow, exception, and retry-delay queries
+    concurrently to minimise latency on a cold-cache rebuild.
     """
-    # Run the three independent Azure API calls concurrently to cut cold-cache
-    # latency from ~3× to ~1× round-trip time.
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    # Run all four independent Azure API calls concurrently to cut cold-cache
+    # latency from ~4× to ~1× round-trip time.
+    with ThreadPoolExecutor(max_workers=4) as pool:
         fut_snapshot = pool.submit(get_namespace_snapshot)
         fut_flows = pool.submit(get_active_flows)
         fut_exc = pool.submit(get_exceptions, hours=1)
+        fut_retry = pool.submit(get_retry_delay_metrics_by_flow, hours=1, min_delay_seconds=60)
         namespace_snapshot = fut_snapshot.result()
         queues = namespace_snapshot["queues"]
         active_flows = fut_flows.result()
         exceptions_1h = fut_exc.result()
+        retry_metrics = fut_retry.result()
+
+    # Share the freshly fetched namespace snapshot with the Service Bus page
+    # cache so navigating to /service-bus avoids a duplicate ARM/SB crawl.
+    cache.set_cached("servicebus", namespace_snapshot)
 
     flows = build_flow_data(queues, active_flows, namespace_snapshot["topics"])
 
@@ -76,7 +82,6 @@ def build_status() -> dict:
     warning_count = flow_statuses.count("warning")
     critical_count = flow_statuses.count("critical")
 
-    retry_metrics = get_retry_delay_metrics_by_flow(hours=1, min_delay_seconds=60)
     flow_labels = {flow.get("id"): flow.get("label", flow.get("id")) for flow in flows}
     retry_rows: list[dict] = []
     flows_over_1m = 0
