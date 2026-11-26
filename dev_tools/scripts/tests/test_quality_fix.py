@@ -308,11 +308,12 @@ class TestPlanning(TempDirTestCase):
     def test_audit_pin_edits_shared_lib_and_relocks_dependents(self) -> None:
         report = self.report([self.audit_result("pkg", "1.0.0", "1.0.1")])
         plan = qf.plan_audit(report, qf.Options(audit=True, audit_pin=True), self.root, self.components)
+        lock_cmd = " ".join(["uv", *qf.qr.uv_tls_flags(self.root), "lock", "--upgrade-package", "pkg==1.0.1"])
         descriptions = [(a.phase, a.component, a.description) for a in plan.actions]
         self.assertEqual(descriptions, [
             (qf.PHASE_MANIFEST, "shared_libs/lib", "shared_libs/lib/pyproject.toml: 'pkg==1.0.0' -> 'pkg==1.0.1'"),
-            (qf.PHASE_LOCK, "shared_libs/lib", "`uv --native-tls lock --upgrade-package pkg==1.0.1`"),
-            (qf.PHASE_LOCK, "svc", "`uv --native-tls lock --upgrade-package pkg==1.0.1`"),
+            (qf.PHASE_LOCK, "shared_libs/lib", f"`{lock_cmd}`"),
+            (qf.PHASE_LOCK, "svc", f"`{lock_cmd}`"),
         ])
         self.assertEqual(len(plan.claimed), 1)
         plan.actions[0].run()
@@ -321,8 +322,10 @@ class TestPlanning(TempDirTestCase):
     def test_undeclared_package_is_lock_only_by_default(self) -> None:
         report = self.report([self.audit_result("transitive_pkg", "3.1.0", "3.1.2, 4.0.0")])
         plan = qf.plan_audit(report, qf.Options(audit=True), self.root, self.components)
-        self.assertEqual([a.description for a in plan.actions],
-                         ["`uv --native-tls lock --upgrade-package transitive-pkg==3.1.2`"])
+        lock_cmd = " ".join(
+            ["uv", *qf.qr.uv_tls_flags(self.root), "lock", "--upgrade-package", "transitive-pkg==3.1.2"]
+        )
+        self.assertEqual([a.description for a in plan.actions], [f"`{lock_cmd}`"])
 
     def test_transitive_and_override_add_a_requirement(self) -> None:
         report = self.report([self.audit_result("transitive-pkg", "3.1.0", "3.1.2")])
