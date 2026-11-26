@@ -1,4 +1,4 @@
-"""Modal Preferences dialog for themes, fonts, sizes, and editor behaviour."""
+"""Non-modal Preferences window for themes, fonts, sizes, and editor behaviour."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -50,12 +50,21 @@ _SAMPLE_HL7 = (
     "PID|1||9991234568^^^NHS^NH||DOE^JANE||19850615|F"
 )
 
+_CACHED_FONT_FAMILIES: set[str] | None = None
+
+
+def _installed_font_families() -> set[str]:
+    global _CACHED_FONT_FAMILIES  # noqa: PLW0603
+    if _CACHED_FONT_FAMILIES is None:
+        try:
+            _CACHED_FONT_FAMILIES = set(tkfont.families())
+        except tk.TclError:
+            _CACHED_FONT_FAMILIES = set()
+    return _CACHED_FONT_FAMILIES
+
 
 def _available_font_choices(preferred: tuple[str, ...], current: str) -> list[str]:
-    try:
-        installed = set(tkfont.families())
-    except tk.TclError:
-        installed = set()
+    installed = _installed_font_families()
     choices: list[str] = []
     for name in (current, *preferred):
         if name and name not in choices and (not installed or name in installed or name.startswith("Tk")):
@@ -66,7 +75,11 @@ def _available_font_choices(preferred: tuple[str, ...], current: str) -> list[st
 
 
 class PreferencesDialog(tk.Toplevel):
-    """Configures appearance (theme, swatches), fonts, sizes, and editor options."""
+    """Configures appearance (theme, swatches), fonts, sizes, and editor options.
+
+    Uses non-modal window lifecycle + ttk.Combobox (rather than grab_set + native
+    OptionMenu) to avoid macOS Aqua Tk grab/menu deadlocks.
+    """
 
     def __init__(
         self,
@@ -110,14 +123,15 @@ class PreferencesDialog(tk.Toplevel):
         row += 1
 
         ttk.Label(body, text="Colour Theme").grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
-        theme_names = [t.name for t in THEMES]
-        ttk.OptionMenu(
+        theme_combo = ttk.Combobox(
             body,
-            self._theme_var,
-            self._theme_var.get(),
-            *theme_names,
-            command=lambda _v: self._refresh_preview(),
-        ).grid(row=row, column=1, columnspan=2, sticky="ew", pady=4)
+            textvariable=self._theme_var,
+            values=[t.name for t in THEMES],
+            state="readonly",
+            width=22,
+        )
+        theme_combo.grid(row=row, column=1, columnspan=2, sticky="ew", pady=4)
+        theme_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_preview())
 
         self._swatch_frame = ttk.Frame(body)
         self._swatch_frame.grid(row=row, column=3, sticky="w", padx=(10, 0), pady=4)
@@ -139,13 +153,9 @@ class PreferencesDialog(tk.Toplevel):
 
         ui_fonts = _available_font_choices(_PREFERRED_UI_FONTS, preferences.ui_font_family)
         ttk.Label(body, text="UI Font").grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
-        ttk.OptionMenu(
-            body,
-            self._ui_font_var,
-            self._ui_font_var.get(),
-            *ui_fonts,
-            command=lambda _v: self._refresh_preview(),
-        ).grid(row=row, column=1, sticky="ew", pady=4)
+        ui_combo = ttk.Combobox(body, textvariable=self._ui_font_var, values=ui_fonts, state="readonly", width=18)
+        ui_combo.grid(row=row, column=1, sticky="ew", pady=4)
+        ui_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_preview())
         ttk.Label(body, text="Size").grid(row=row, column=2, sticky="e", padx=(12, 6), pady=4)
         ttk.Spinbox(
             body,
@@ -159,13 +169,9 @@ class PreferencesDialog(tk.Toplevel):
 
         mono_fonts = _available_font_choices(_PREFERRED_MONO_FONTS, preferences.editor_font_family)
         ttk.Label(body, text="Editor Font").grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
-        ttk.OptionMenu(
-            body,
-            self._ed_font_var,
-            self._ed_font_var.get(),
-            *mono_fonts,
-            command=lambda _v: self._refresh_preview(),
-        ).grid(row=row, column=1, sticky="ew", pady=4)
+        ed_combo = ttk.Combobox(body, textvariable=self._ed_font_var, values=mono_fonts, state="readonly", width=18)
+        ed_combo.grid(row=row, column=1, sticky="ew", pady=4)
+        ed_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_preview())
         ttk.Label(body, text="Size").grid(row=row, column=2, sticky="e", padx=(12, 6), pady=4)
         ed_spin = ttk.Spinbox(
             body,
@@ -214,12 +220,16 @@ class PreferencesDialog(tk.Toplevel):
         row += 1
 
         ttk.Label(body, text="Default Left Panel").grid(row=row, column=0, sticky="w", padx=(0, 10), pady=4)
-        ttk.OptionMenu(
-            body, self._left_view_var, self._left_view_var.get(), "messages", "structure"
+        ttk.Combobox(
+            body,
+            textvariable=self._left_view_var,
+            values=("messages", "structure"),
+            state="readonly",
+            width=18,
         ).grid(row=row, column=1, sticky="ew", pady=4)
         row += 1
 
-        # -- Live Preview -----------------------------------------------------
+        # -- Live Preview (fixed-pixel container so font-size changes never resize the window) --
         ttk.Separator(body, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=4, sticky="ew", pady=(10, 6))
         row += 1
         ttk.Label(body, text="LIVE PREVIEW", style="Section.TLabel").grid(
@@ -227,8 +237,12 @@ class PreferencesDialog(tk.Toplevel):
         )
         row += 1
 
-        self.preview = tk.Text(body, width=64, height=3, bd=0, padx=10, pady=8, highlightthickness=1)
-        self.preview.grid(row=row, column=0, columnspan=4, sticky="ew", pady=(0, 10))
+        preview_box = tk.Frame(body, width=540, height=84, bg=active_theme.bg)
+        preview_box.pack_propagate(False)
+        preview_box.grid(row=row, column=0, columnspan=4, sticky="ew", pady=(0, 10))
+        self._preview_box = preview_box
+        self.preview = tk.Text(preview_box, bd=0, padx=10, pady=8, highlightthickness=1)
+        self.preview.pack(fill=tk.BOTH, expand=True)
         row += 1
 
         # -- Action buttons ---------------------------------------------------
@@ -243,7 +257,6 @@ class PreferencesDialog(tk.Toplevel):
 
         self._refresh_preview()
         self.bind("<Escape>", lambda _e: self._cancel())
-        self.grab_set()
 
     def build_preferences(self) -> AppPreferences:
         return AppPreferences.from_dict(
@@ -277,6 +290,7 @@ class PreferencesDialog(tk.Toplevel):
         for swatch, color in zip(self._swatches, swatch_colors):
             swatch.configure(bg=color)
 
+        self._preview_box.configure(bg=theme.bg)
         self.preview.configure(
             state="normal",
             bg=theme.pane_bg,
@@ -315,7 +329,10 @@ class PreferencesDialog(tk.Toplevel):
         self.configure(bg=get_theme(prefs.theme).bg)
 
     def _save(self) -> None:
-        self.result = replace(self.build_preferences())
+        prefs = replace(self.build_preferences())
+        self.result = prefs
+        if self._on_apply is not None:
+            self._on_apply(prefs)
         self.destroy()
 
     def _cancel(self) -> None:
