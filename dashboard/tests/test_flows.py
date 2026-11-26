@@ -725,7 +725,12 @@ class TestTopicToTopicFlows:
             },
         ]
 
-        with patch.multiple("dashboard.services.flows.config", **_THRESHOLD_KWARGS):
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
             result = build_flow_data([], flows, topics)
 
         assert len(result) == 1
@@ -767,6 +772,11 @@ class TestTopicToTopicFlows:
             },
         }
 
-        with patch.multiple("dashboard.services.flows.config", **_THRESHOLD_KWARGS):
+        with patch.multiple(
+            "dashboard.services.flows.config",
+            QUEUE_WARNING_THRESHOLD=10,
+            QUEUE_CRITICAL_THRESHOLD=50,
+            DLQ_WARNING_THRESHOLD=1,
+        ):
             assert flow_health("phw-to-mpi", {}, flows, topics_warning) == "warning"
             assert flow_health("phw-to-mpi", {}, flows, topics_missing_post) == "unknown"
