@@ -167,6 +167,27 @@ class TestEditorPaneMultiSelect(unittest.TestCase):
         self.pane._move(1)
         self.assertEqual([m.name for m in self.pane.get_messages()], ["A01", "A02", "A03"])
 
+    def test_delete_removes_all_selected_messages(self) -> None:
+        self.pane.listbox.selection_set(0)
+        self.pane.listbox.selection_set(2)
+        self.pane._delete_message()
+        self.assertEqual([m.name for m in self.pane.get_messages()], ["A02"])
+
+    def test_rename_updates_listbox_without_reloading_editor(self) -> None:
+        self.pane._refresh_listbox(select=0)
+        self.pane._name_var.set("Renamed A01")
+        with patch.object(self.pane, "_load_into_editor") as mock_load:
+            self.pane._handle_name_change(None)  # type: ignore[arg-type]
+        mock_load.assert_not_called()
+        self.assertEqual(self.pane.listbox.get(0), "Renamed A01")
+        self.assertEqual(self.pane.get_messages()[0].name, "Renamed A01")
+
+    def test_get_messages_commits_pending_editor_edits(self) -> None:
+        self.pane._refresh_listbox(select=0)
+        self.pane.text.delete("1.0", tk.END)
+        self.pane.text.insert("1.0", "UPDATED_CONTENT")
+        self.assertEqual(self.pane.get_messages()[0].content, "UPDATED_CONTENT")
+
 
 @unittest.skipUnless(_tk_available(), "requires a Tk display")
 class TestEditorPaneLoadFromDisk(unittest.TestCase):
@@ -277,6 +298,112 @@ class TestEditorPaneNewMessage(unittest.TestCase):
         self.assertEqual([m.name for m in messages], [
             "Message 1", "Message 2", "Message 3", "Message 4", "Message 5"
         ])
+
+
+@unittest.skipUnless(_tk_available(), "requires a Tk display")
+class TestEditorPaneStructureTree(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.pane = EditorPane(self.root, on_change=lambda: None)
+
+    def tearDown(self) -> None:
+        self.root.destroy()
+        gc.collect()
+
+    def test_hl7_structure_two_way_sync(self) -> None:
+        hl7 = "MSH|^~\\&|PHW|SITE\nPID|1||12345||DOE^JOHN"
+        self.pane.set_messages([Message(name="A01", format="hl7", content=hl7)])
+        self.pane._refresh_listbox(select=0)
+        self.pane.set_left_view("structure")
+
+        # Tree -> Editor sync: select PID-5.2 ("JOHN")
+        root_items = self.pane.structure_tree.get_children()
+        self.assertEqual(
+            [self.pane.structure_tree.item(i, "text") for i in root_items],
+            ["MSH · Message Header", "PID · Patient Identification"],
+        )
+        pid_item = root_items[1]
+        pid_fields = {
+            self.pane.structure_tree.item(i, "text"): i
+            for i in self.pane.structure_tree.get_children(pid_item)
+        }
+        pid5_comps = {
+            self.pane.structure_tree.item(i, "text"): i
+            for i in self.pane.structure_tree.get_children(pid_fields["PID-5 · Patient Name"])
+        }
+        john_item = pid5_comps["PID-5.2 · Given Name"]
+
+        self.pane._ignore_tree_select_item = None
+        self.pane.structure_tree.selection_set(john_item)
+        self.pane._on_tree_select(None)  # type: ignore[arg-type]
+        self.assertEqual(self.pane.text.get("sel.first", "sel.last"), "JOHN")
+        self.assertIn("PID-5.2 · Given Name", self.pane._path_status_var.get())
+
+        # Inline edit from Structure tree updates exact span in editor
+        self.assertTrue(self.pane.apply_inline_edit(john_item, "GARETH"))
+        self.assertIn("DOE^GARETH", self.pane.get_messages()[0].content)
+
+        # Editor -> Tree sync: move cursor inside "PHW" (MSH-3)
+        phw_offset = hl7.index("PHW") + 1
+        self.pane.text.tag_remove("sel", "1.0", tk.END)
+        self.pane.text.mark_set(tk.INSERT, f"1.0+{phw_offset}c")
+        self.pane._sync_tree_from_editor()
+        selected = self.pane.structure_tree.selection()
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(self.pane.structure_tree.item(selected[0], "text"), "MSH-3 · Sending Application")
+
+    def test_xml_structure_two_way_sync_and_expand_collapse(self) -> None:
+        xml = '<Patient id="7"><Name>Jane</Name></Patient>'
+        self.pane.set_messages([Message(name="P1", format="xml", content=xml)])
+        self.pane._refresh_listbox(select=0)
+        self.pane.set_left_view("structure")
+
+        # Expand / collapse all
+        self.pane.collapse_all_structure()
+        root_id = self.pane.structure_tree.get_children()[0]
+        self.assertFalse(bool(self.pane.structure_tree.item(root_id, "open")))
+
+        self.pane.expand_all_structure()
+        self.assertTrue(bool(self.pane.structure_tree.item(root_id, "open")))
+
+        # Editor -> Tree sync on "Jane" selects <Name> and opens ancestors
+        self.pane.collapse_all_structure()
+        self.pane.text.mark_set(tk.INSERT, f"1.0+{xml.index('Jane') + 1}c")
+        self.pane._sync_tree_from_editor()
+        selected = self.pane.structure_tree.selection()
+        self.assertEqual(self.pane.structure_tree.item(selected[0], "text"), "<Name>")
+        self.assertTrue(bool(self.pane.structure_tree.item(root_id, "open")))
+
+        # Tree -> Editor sync selects <Name>Jane</Name>
+        self.pane._ignore_tree_select_item = None
+        self.pane._on_tree_select(None)  # type: ignore[arg-type]
+        self.assertEqual(self.pane.text.get("sel.first", "sel.last"), "<Name>Jane</Name>")
+
+        # Inline edit updates <Name> text while keeping XML tags intact
+        self.assertTrue(self.pane.apply_inline_edit(selected[0], "Megan"))
+        self.assertEqual(self.pane.get_messages()[0].content, '<Patient id="7"><Name>Megan</Name></Patient>')
+
+    def test_find_and_replace_all(self) -> None:
+        self.pane.set_messages([Message(name="A01", format="hl7", content="MSH|FOO|BAR|FOO")])
+        self.pane._refresh_listbox(select=0)
+        self.pane._find_var.set("foo")
+        self.pane._replace_var.set("BAZ")
+        self.pane._run_find()
+        self.assertEqual(self.pane._find_count_var.get(), "1/2")
+        replaced = self.pane.replace_all()
+        self.assertEqual(replaced, 2)
+        self.assertEqual(self.pane.get_messages()[0].content, "MSH|BAZ|BAR|BAZ")
+
+    def test_tree_filter_narrows_nodes(self) -> None:
+        self.pane.set_messages([Message(name="A01", format="hl7", content="MSH|^~\\&|PHW\nPID|1||999||DOE^JANE")])
+        self.pane._refresh_listbox(select=0)
+        self.pane.set_left_view("structure")
+        self.pane._tree_filter_var.set("JANE")
+        self.pane._populate_structure_tree()
+        roots = self.pane.structure_tree.get_children()
+        self.assertEqual(len(roots), 1)
+        self.assertIn("PID", self.pane.structure_tree.item(roots[0], "text"))
 
 
 if __name__ == "__main__":

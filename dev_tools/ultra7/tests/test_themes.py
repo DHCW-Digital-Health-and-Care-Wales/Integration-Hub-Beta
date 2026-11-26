@@ -1,11 +1,11 @@
 import unittest
 
-from ultra7.ui.themes import DEFAULT_THEME_NAME, THEMES, get_theme
+from ultra7.ui.themes import DEFAULT_THEME_NAME, THEMES, _contrast_ratio, get_accent_fg, get_theme
 
 
 class TestThemes(unittest.TestCase):
-    def test_has_ten_themes(self) -> None:
-        self.assertEqual(len(THEMES), 10)
+    def test_has_fifteen_themes(self) -> None:
+        self.assertEqual(len(THEMES), 15)
 
     def test_names_are_unique(self) -> None:
         names = [theme.name for theme in THEMES]
@@ -33,6 +33,14 @@ class TestThemes(unittest.TestCase):
         for theme in THEMES:
             for value in (theme.syntax_keyword, theme.syntax_punct, theme.syntax_string, theme.syntax_accent):
                 self.assertNotEqual(value, theme.pane_bg, f"{theme.name}: syntax colour matches pane_bg")
+
+    def test_accent_foreground_meets_wcag_aa_contrast(self) -> None:
+        for theme in THEMES:
+            fg = get_accent_fg(theme)
+            ratio = _contrast_ratio(theme.accent, fg)
+            self.assertGreaterEqual(
+                ratio, 4.5, f"{theme.name}: contrast {ratio:.2f} too low for {fg} on {theme.accent}"
+            )
 
 
 if __name__ == "__main__":

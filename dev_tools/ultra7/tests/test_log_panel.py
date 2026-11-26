@@ -87,6 +87,20 @@ class TestLogPanel(unittest.TestCase):
         with patch.object(filedialog, "asksaveasfilename", return_value=""):
             self.panel.save_to_disk()  # should not raise
 
+    def test_batch_stats_update_and_clear(self) -> None:
+        self.panel.append("A01", SendResult(ok=True, latency_ms=10.0, response_summary="ack"))
+        self.panel.append("A02", SendResult(ok=False, latency_ms=30.0, response_summary="", error="timeout"))
+        stats = self.panel._stats_var.get()
+        self.assertIn("2 sent", stats)
+        self.assertIn("1 OK", stats)
+        self.assertIn("1 ERR", stats)
+        self.assertIn("avg 20.0 ms", stats)
+        self.assertEqual(len(self.panel._entries_by_line), 2)
+
+        self.panel.clear()
+        self.assertEqual(self.panel._stats_var.get(), "")
+        self.assertEqual(len(self.panel._entries_by_line), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

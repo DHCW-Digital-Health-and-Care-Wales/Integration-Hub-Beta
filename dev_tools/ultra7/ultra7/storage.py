@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-from .models import Project
+from ultra7.models import Project
 
 DEFAULT_PROJECTS_DIR = Path.home() / ".ultra7" / "projects"
 

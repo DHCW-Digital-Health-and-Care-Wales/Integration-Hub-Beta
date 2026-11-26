@@ -5,8 +5,9 @@ import tkinter as tk
 from tkinter import ttk
 
 from ultra7.models import IterationMode, IterationSpec
+from ultra7.ui.themes import Theme, get_border_color
 
-_MODES: tuple[IterationMode, ...] = ("increment", "list", "timestamp")
+_MODES: tuple[IterationMode, ...] = ("increment", "list", "timestamp", "nhs_number")
 
 
 class IterationDialog(tk.Toplevel):
@@ -23,6 +24,7 @@ class IterationDialog(tk.Toplevel):
         end: int,
         selected_text: str,
         existing: IterationSpec | None,
+        theme: Theme | None = None,
     ) -> None:
         super().__init__(parent)
         self.title("Iteration Field")
@@ -30,6 +32,8 @@ class IterationDialog(tk.Toplevel):
         self.transient(parent)  # type: ignore[call-overload]
         self.result: IterationSpec | None = None
         self.removed = False
+        if theme is not None:
+            self.configure(bg=theme.bg)
 
         self._start = start
         self._end = end
@@ -63,7 +67,19 @@ class IterationDialog(tk.Toplevel):
 
         self._values_label = ttk.Label(self, text="Values (one per line, cycled in order)")
         self._values_label.grid(row=5, column=0, columnspan=2, sticky="w", padx=12, pady=(8, 0))
-        self._values_box = tk.Text(self, width=36, height=5, font=("Menlo", 10), bd=1, relief="solid")
+        self._values_box = tk.Text(
+            self, width=36, height=5, font=("Menlo", 10), bd=0, padx=6, pady=6, highlightthickness=1
+        )
+        if theme is not None:
+            self._values_box.configure(
+                bg=theme.pane_bg,
+                fg=theme.pane_fg,
+                insertbackground=theme.pane_fg,
+                selectbackground=theme.select_bg,
+                selectforeground=theme.select_fg,
+                highlightbackground=get_border_color(theme),
+                highlightcolor=theme.accent,
+            )
         if existing and existing.mode == "list":
             self._values_box.insert("1.0", "\n".join(existing.values))
         self._values_box.grid(row=6, column=0, columnspan=2, sticky="ew", padx=12, pady=4)
@@ -76,15 +92,24 @@ class IterationDialog(tk.Toplevel):
         self._timestamp_entry = ttk.Entry(self, textvariable=self._timestamp_format)
         self._timestamp_entry.grid(row=7, column=1, sticky="ew", padx=12, pady=4)
 
+        self._nhs_hint = ttk.Label(
+            self,
+            text="NHS Number mode generates valid Mod-11 synthetic 999… numbers.",
+            style="Muted.TLabel",
+        )
+        self._nhs_hint.grid(row=8, column=0, columnspan=2, sticky="w", padx=12, pady=(2, 4))
+
         ttk.Separator(self, orient=tk.HORIZONTAL).grid(
-            row=8, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 0)
+            row=9, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 0)
         )
         button_row = ttk.Frame(self)
-        button_row.grid(row=9, column=0, columnspan=2, pady=12)
+        button_row.grid(row=10, column=0, columnspan=2, pady=12)
         if existing is not None:
-            ttk.Button(button_row, text="Remove", command=self._remove).pack(side=tk.LEFT, padx=4)
+            ttk.Button(button_row, text="Remove", style="Danger.TButton", command=self._remove).pack(
+                side=tk.LEFT, padx=4
+            )
         ttk.Button(button_row, text="Cancel", command=self._cancel).pack(side=tk.LEFT, padx=4)
-        ttk.Button(button_row, text="Save", command=self._save).pack(side=tk.LEFT, padx=4)
+        ttk.Button(button_row, text="Save", style="Accent.TButton", command=self._save).pack(side=tk.LEFT, padx=4)
 
         self._on_mode_change(self._mode.get())
         self.grab_set()
