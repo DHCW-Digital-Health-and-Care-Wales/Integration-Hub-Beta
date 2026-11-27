@@ -89,14 +89,21 @@ uv run python app.py
 
 ### Endpoint configuration
 
-Click **Configure Endpoint…** in the header to set:
+Click **Configure Endpoint…** in the header (highlighted automatically for projects
+without an endpoint yet, and also opened if you click **▶ Send** before configuring one)
+to choose a built-in Integration Hub preset (MLLP `:2575`–`:2583`, RISP REST `:8085`
+accepting JSON `{"messageContent": "..."}`, WPAS REST `:8084` accepting raw XML at
+`/ingest`, or local Mock Receiver `:2599`/`:8090`) or configure manually:
 
-- **Kind** — `mllp`, `rest`, or `soap`.
-- **Host** / **Port** — for MLLP (plain TCP + MLLP framing).
+- **Protocol** — MLLP, REST, or SOAP (only fields relevant to the chosen protocol are shown,
+  with inline validation before saving or testing).
+- **Host** / **Port** / **MLLP Mode** — for MLLP (`per_message`, `stream`, or `pipelined`
+  burst over one TCP connection, compatible with `servers/hl7_server`).
 - **URL** — for REST/SOAP (must be `http://` or `https://`).
 - **SOAPAction** — for SOAP requests (sent as the `SOAPAction` header).
 - **Timeout (s)** — socket/request timeout.
 - **Headers** — one `Name: Value` pair per line (REST/SOAP).
+- **Test Connection** — checks TCP or HTTP reachability with live latency before sending.
 
 ### Messages (message list, left of the editor)
 
@@ -125,13 +132,12 @@ Click **Configure Endpoint…** in the header to set:
 - Segments are normalized to `\r` automatically when sent over MLLP, so pasted or
   loaded files with `\n`/`\r\n` line endings still work correctly.
 
-### Iteration field (changing part of a message on each repeat send)
+### Iteration fields (changing parts of a message on each repeat send)
 
-Highlight a portion of the message text (e.g. a control ID or patient identifier)
-and click **Mark Iterate Field** to set it as the part that changes on every repeat
-send. This is saved per message and persisted with the project. Use **Edit Iterate
-Field…** to change the mode/parameters (or remove it) without needing to re-select
-the text — it's enabled whenever the current message has one set. Supported modes:
+Highlight a portion of the message text (e.g. an `MSH-10` control ID or NHS number) — or
+select a leaf node in the **Structure** tree — and click **+ Mark Field** to recompute
+that span on each repeat when **Repeat > 1**. Multiple non-overlapping fields can be
+marked on the same message and are saved per message with the project. Supported modes:
 
 - **increment** — parses the highlighted text as an integer and adds `step × send
   number` each time; **Pad width** controls zero-padding (`0` keeps the original
@@ -139,30 +145,35 @@ the text — it's enabled whenever the current message has one set. Supported mo
 - **list** — cycles through a set of values (one per line), wrapping around once
   exhausted.
 - **timestamp** — replaces the highlighted text with the current time, formatted
-  using the given `strftime` format string.
+  using the given `strftime` format string (with HL7, ISO, and Date presets).
+- **nhs_number** — generates a valid 10-digit synthetic UK NHS Number (`999…`) passing
+  the Modulus 11 check-digit algorithm.
 
-The marked region is shown with a highlighted background in the editor and tracks
-further edits to the message (it moves correctly if you type before/after it).
-Re-open **Iterate Field…** with the same (or a new) selection to change the mode,
-or use **Remove** in that dialog to clear it. If the highlighted text is deleted,
-the iteration field is cleared automatically.
+Use **Edit Field…** to update the field at your cursor, **Manage All…** to view/edit/jump
+to/remove every marked field in a table, **Clear All** to remove all fields at once, and
+**Preview Sends…** to inspect generated values across Sends `#1..N` before sending. The
+dialog also displays live `#1 | #2 | #3` examples and inline validation warnings.
 
 ### Sending
 
-- **Repeat count** / **Delay (ms)** — how many times to send all *enabled*
-  messages in order, and the pause between each send.
-- **Send** — sends every enabled message in the project that many times; if none
-  are enabled, the status shows "No enabled messages to send" and nothing is sent.
+- **Repeat** / **Delay (ms)** — how many times to send all *enabled* messages in order,
+  and the pause between each send.
+- **MLLP** — inline delivery mode selector for MLLP endpoints (**Per message**,
+  **Stream (1 TCP)**, or **Pipelined burst**), kept in sync with **Configure Endpoint…**
+  and automatically disabled for REST/SOAP endpoints.
+- **▶ Send** — sends every enabled message in the project that many times; prompts to
+  configure an endpoint first if none is configured yet.
 - **Send Selected Once** — sends every currently *selected* message (see
   Multi-select above) exactly once each, ignoring the repeat count, the delay, and
-  the enabled/disabled toggle. If nothing is selected, the status shows
-  "No message selected".
-- **Cancel** — stops an in-progress send (either button).
-- Messages with an iteration field get their highlighted portion recomputed for
-  each send (using the current repeat index; **Send Selected Once** always uses
-  the first/base value).
-- MLLP sends validate the ACK's `MSA-1` code (`AA`/`CA` = success); anything else,
-  or no ACK at all, is reported as a failure.
+  the enabled/disabled toggle.
+- **■ Cancel** — stops an in-progress send or multi-project batch immediately.
+- Messages with iteration fields get their marked spans recomputed for each send (using
+  the current repeat index; **Send Selected Once** always uses Send `#1`).
+- MLLP sends strip leading/trailing blank lines, normalise `\n`/`\r\n` to `\r`, and
+  validate the ACK's `MSA-1` code (`AA`/`CA` = success); anything else, or no ACK at all,
+  is reported as a failure.
+- Press **`F1`** (or **Help > Ultra7 Guide…**) at any time to open the searchable
+  built-in Help browser.
 
 ### Exporting messages
 

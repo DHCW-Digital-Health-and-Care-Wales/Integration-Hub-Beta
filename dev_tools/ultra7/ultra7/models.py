@@ -141,6 +141,15 @@ class Endpoint:
     timeout_seconds: float = 5.0
     mllp_mode: MllpMode = "per_message"
 
+    @property
+    def is_configured(self) -> bool:
+        """Return True if this endpoint has the minimum connection details required to send."""
+        if self.kind == "mllp":
+            return bool(self.host.strip() and self.port is not None and 1 <= self.port <= 65535)
+        url = self.url.strip()
+        scheme, sep, rest = url.partition("://")
+        return bool(sep and scheme.lower() in ("http", "https") and rest.strip())
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "kind": self.kind,

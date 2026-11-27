@@ -72,6 +72,26 @@ class TestMllpSender(unittest.TestCase):
         finally:
             server.close()
 
+    def test_send_strips_leading_and_trailing_blank_lines_for_hl7_server_compat(self) -> None:
+        received: list[bytes] = []
+        ack = MLLP_START_BLOCK + b"MSA|AA|1" + MLLP_END_BLOCK + b"\r"
+        server, port = _start_mllp_server(ack=ack, received=received)
+        try:
+            endpoint = Endpoint(kind="mllp", host="127.0.0.1", port=port, timeout_seconds=2.0)
+            message = Message(
+                name="A01",
+                format="hl7",
+                content="\nMSH|^~\\&|A|B|C|D|20250101||ADT^A01|1|P|2.5\r\nPID|1\n\n",
+            )
+            result = MllpSender().send(endpoint, message)
+            self.assertTrue(result.ok)
+            self.assertEqual(
+                received[0],
+                MLLP_START_BLOCK + b"MSH|^~\\&|A|B|C|D|20250101||ADT^A01|1|P|2.5\rPID|1" + MLLP_END_BLOCK + b"\r",
+            )
+        finally:
+            server.close()
+
     def test_nak_response_is_reported_as_failure(self) -> None:
         server, port = _start_mllp_server(ack=MLLP_START_BLOCK + b"MSA|AE|1" + MLLP_END_BLOCK + b"\r")
         try:

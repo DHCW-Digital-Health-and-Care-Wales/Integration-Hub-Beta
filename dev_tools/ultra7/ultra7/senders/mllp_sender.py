@@ -17,11 +17,11 @@ _READ_CHUNK_SIZE = 4096
 
 
 # HL7 segments must be separated by CR (\r), not LF. Messages typed/pasted/loaded
-# from disk in this tool commonly use \n or \r\n line endings, which most HL7
-# receivers (including hl7apy-based servers) will fail to parse — normalize
-# before sending, the same way `mllp_send --loose` does.
+# from disk in this tool commonly use \n or \r\n line endings and trailing newlines,
+# which hl7_server rejects as empty segments — normalize and strip leading/trailing
+# terminators before framing.
 def _to_er7(content: str) -> str:
-    return content.replace("\r\n", "\r").replace("\n", "\r")
+    return content.replace("\r\n", "\r").replace("\n", "\r").strip("\r")
 
 
 def frame_mllp(content: str) -> bytes:

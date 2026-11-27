@@ -10,7 +10,7 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from ultra7.iteration import apply_iterations
-from ultra7.models import Endpoint, Message, Project
+from ultra7.models import Endpoint, Message, MllpMode, Project
 from ultra7.senders import get_sender
 from ultra7.senders.base import SendResult
 from ultra7.senders.mllp_sender import MllpSender, MllpStreamSession
@@ -18,6 +18,13 @@ from ultra7.senders.mllp_sender import MllpSender, MllpStreamSession
 # Queue item: (message_name, SendResult) for a completed send, (info_text, None) for a
 # plain informational line, or (None, None) as a sentinel for "job finished".
 _ResultItem = tuple[str | None, SendResult | None]
+
+_SEND_MODE_LABELS: dict[MllpMode, str] = {
+    "per_message": "Per message",
+    "stream": "Stream (1 TCP)",
+    "pipelined": "Pipelined burst",
+}
+_LABEL_TO_SEND_MODE: dict[str, MllpMode] = {label: mode for mode, label in _SEND_MODE_LABELS.items()}
 
 
 def _describe_destination(endpoint: Endpoint) -> str:
@@ -42,6 +49,8 @@ class SendControls(ttk.Frame):
         on_result: Callable[[str, SendResult], None],
         on_info: Callable[[str], None],
         on_change: Callable[[], None] | None = None,
+        on_mllp_mode_change: Callable[[MllpMode], None] | None = None,
+        on_unconfigured_endpoint: Callable[[], bool] | None = None,
     ) -> None:
         super().__init__(parent)
         self._get_endpoint = get_endpoint
@@ -50,10 +59,13 @@ class SendControls(ttk.Frame):
         self._on_result = on_result
         self._on_info = on_info
         self._on_change = on_change
+        self._on_mllp_mode_change = on_mllp_mode_change
+        self._on_unconfigured_endpoint = on_unconfigured_endpoint
         self._queue: queue.Queue[_ResultItem] = queue.Queue()
         self._cancel_event = threading.Event()
         self._worker: threading.Thread | None = None
         self._project_enabled = True
+        self._is_mllp_endpoint = True
 
         # Visual grouping frame with clean padding.
         container = ttk.Frame(self)
@@ -65,14 +77,27 @@ class SendControls(ttk.Frame):
         ttk.Label(controls_row, text="Repeat", style="Muted.TLabel").pack(side=tk.LEFT, padx=(0, 6))
         self._repeat_var = tk.StringVar(value="1")
         self._repeat_entry = ttk.Entry(controls_row, textvariable=self._repeat_var, width=6)
-        self._repeat_entry.pack(side=tk.LEFT, padx=(0, 14))
+        self._repeat_entry.pack(side=tk.LEFT, padx=(0, 12))
         self._repeat_entry.bind("<KeyRelease>", self._handle_setting_change)
 
         ttk.Label(controls_row, text="Delay (ms)", style="Muted.TLabel").pack(side=tk.LEFT, padx=(0, 6))
         self._delay_var = tk.StringVar(value="0")
-        self._delay_entry = ttk.Entry(controls_row, textvariable=self._delay_var, width=8)
-        self._delay_entry.pack(side=tk.LEFT, padx=(0, 18))
+        self._delay_entry = ttk.Entry(controls_row, textvariable=self._delay_var, width=7)
+        self._delay_entry.pack(side=tk.LEFT, padx=(0, 14))
         self._delay_entry.bind("<KeyRelease>", self._handle_setting_change)
+
+        self._mllp_mode_label = ttk.Label(controls_row, text="MLLP", style="Muted.TLabel")
+        self._mllp_mode_label.pack(side=tk.LEFT, padx=(0, 6))
+        self._mllp_mode_var = tk.StringVar(value=_SEND_MODE_LABELS["per_message"])
+        self._mllp_mode_combo = ttk.Combobox(
+            controls_row,
+            textvariable=self._mllp_mode_var,
+            values=tuple(_SEND_MODE_LABELS.values()),
+            state="readonly",
+            width=15,
+        )
+        self._mllp_mode_combo.pack(side=tk.LEFT, padx=(0, 14))
+        self._mllp_mode_combo.bind("<<ComboboxSelected>>", self._handle_mllp_mode_change)
 
         self._send_btn = ttk.Button(controls_row, text="▶ Send", style="Accent.TButton", command=self._start_send)
         self._send_btn.pack(side=tk.LEFT, padx=(0, 6))
@@ -89,6 +114,20 @@ class SendControls(ttk.Frame):
     def _handle_setting_change(self, _event: tk.Event) -> None:
         if self._on_change is not None:
             self._on_change()
+
+    def _handle_mllp_mode_change(self, _event: tk.Event | None = None) -> None:
+        mode = _LABEL_TO_SEND_MODE.get(self._mllp_mode_var.get(), "per_message")
+        if self._on_mllp_mode_change is not None:
+            self._on_mllp_mode_change(mode)
+        if self._on_change is not None:
+            self._on_change()
+
+    def sync_endpoint(self, endpoint: Endpoint) -> None:
+        """Sync the inline MLLP stream mode selector with the active project's endpoint."""
+        self._is_mllp_endpoint = endpoint.kind == "mllp"
+        self._mllp_mode_var.set(_SEND_MODE_LABELS.get(endpoint.mllp_mode, _SEND_MODE_LABELS["per_message"]))
+        if self._project_enabled and self._worker is None:
+            self._mllp_mode_combo.configure(state="readonly" if self._is_mllp_endpoint else "disabled")
 
     def set_repeat_and_delay(self, repeat_count: int, delay_ms: int) -> None:
         self._repeat_var.set(str(repeat_count))
@@ -107,6 +146,7 @@ class SendControls(ttk.Frame):
             self._send_once_btn,
         ):
             widget.configure(state=state)
+        self._mllp_mode_combo.configure(state="readonly" if (enabled and self._is_mllp_endpoint) else "disabled")
         self._cancel_btn.configure(state="disabled")
 
     def get_repeat_count(self) -> int:
@@ -123,6 +163,17 @@ class SendControls(ttk.Frame):
 
     # -- manual send ---------------------------------------------------------
 
+    def _ensure_configured_endpoint(self) -> Endpoint | None:
+        endpoint = self._get_endpoint()
+        if endpoint.is_configured:
+            return endpoint
+        if self._on_unconfigured_endpoint is not None and self._on_unconfigured_endpoint():
+            endpoint = self._get_endpoint()
+            if endpoint.is_configured:
+                return endpoint
+        self._status_var.set("Configure an endpoint first")
+        return None
+
     def _start_send(self) -> None:
         if self._worker is not None:
             return
@@ -130,7 +181,9 @@ class SendControls(ttk.Frame):
         if not messages:
             self._status_var.set("No enabled messages to send")
             return
-        endpoint = self._get_endpoint()
+        endpoint = self._ensure_configured_endpoint()
+        if endpoint is None:
+            return
         repeat_count = self.get_repeat_count()
         delay_ms = self.get_delay_ms()
 
@@ -149,7 +202,9 @@ class SendControls(ttk.Frame):
         if not messages:
             self._status_var.set("No message selected")
             return
-        endpoint = self._get_endpoint()
+        endpoint = self._ensure_configured_endpoint()
+        if endpoint is None:
+            return
 
         self._cancel_event = threading.Event()
         self._set_running(True, "Sending…")
@@ -353,6 +408,9 @@ class SendControls(ttk.Frame):
         entry_state = "normal" if self._project_enabled else "disabled"
         self._repeat_entry.configure(state=entry_state)
         self._delay_entry.configure(state=entry_state)
+        self._mllp_mode_combo.configure(
+            state="disabled" if (running or not self._project_enabled or not self._is_mllp_endpoint) else "readonly"
+        )
         self._send_btn.configure(state=send_state)
         self._send_once_btn.configure(state=send_state)
         self._cancel_btn.configure(state="normal" if running else "disabled")

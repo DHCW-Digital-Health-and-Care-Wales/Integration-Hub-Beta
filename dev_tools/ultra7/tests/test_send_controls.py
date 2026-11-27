@@ -376,6 +376,84 @@ class TestSendWorkerLabels(unittest.TestCase):
         finally:
             server.stop()
 
+    def test_inline_mllp_mode_selector_syncs_and_notifies(self) -> None:
+        changed_modes: list[str] = []
+        dirty = False
+
+        def _on_dirty() -> None:
+            nonlocal dirty
+            dirty = True
+
+        controls = SendControls(
+            self.root,
+            get_endpoint=lambda: Endpoint(kind="mllp", host="127.0.0.1", port=2575),
+            get_messages=lambda: [],
+            get_selected_messages=lambda: [],
+            on_result=lambda *_a: None,
+            on_info=lambda *_a: None,
+            on_change=_on_dirty,
+            on_mllp_mode_change=changed_modes.append,
+        )
+        controls.sync_endpoint(Endpoint(kind="mllp", host="127.0.0.1", port=2575, mllp_mode="stream"))
+        self.assertEqual(controls._mllp_mode_var.get(), "Stream (1 TCP)")
+        self.assertEqual(str(controls._mllp_mode_combo.cget("state")), "readonly")
+
+        controls._mllp_mode_var.set("Pipelined burst")
+        controls._handle_mllp_mode_change()
+        self.assertEqual(changed_modes, ["pipelined"])
+        self.assertTrue(dirty)
+
+        # Disabled automatically for REST / SOAP endpoints
+        controls.sync_endpoint(Endpoint(kind="rest", url="http://127.0.0.1:8080/ingest"))
+        self.assertEqual(str(controls._mllp_mode_combo.cget("state")), "disabled")
+
+    def test_unconfigured_endpoint_prompts_and_blocks_if_cancelled(self) -> None:
+        prompt_calls = 0
+        endpoint = Endpoint(kind="mllp", host="", port=None)
+
+        def _prompt() -> bool:
+            nonlocal prompt_calls
+            prompt_calls += 1
+            return False
+
+        controls = SendControls(
+            self.root,
+            get_endpoint=lambda: endpoint,
+            get_messages=lambda: [Message(name="A01", format="hl7", content="MSH|...")],
+            get_selected_messages=lambda: [Message(name="A01", format="hl7", content="MSH|...")],
+            on_result=lambda *_a: None,
+            on_info=lambda *_a: None,
+            on_unconfigured_endpoint=_prompt,
+        )
+        controls._start_send()
+        self.assertEqual(prompt_calls, 1)
+        self.assertIsNone(controls._worker)
+        self.assertEqual(controls._status_var.get(), "Configure an endpoint first")
+
+    def test_unconfigured_endpoint_sends_after_prompt_configures_it(self) -> None:
+        fake_sender = type("FakeSender", (), {"send": lambda self, endpoint, message: SendResult(
+            ok=True, latency_ms=1.0, response_summary="ack"
+        )})()
+        endpoint_box = [Endpoint(kind="mllp", host="", port=None)]
+
+        def _configure() -> bool:
+            endpoint_box[0] = Endpoint(kind="mllp", host="127.0.0.1", port=2575)
+            return True
+
+        controls = SendControls(
+            self.root,
+            get_endpoint=lambda: endpoint_box[0],
+            get_messages=lambda: [Message(name="A01", format="hl7", content="MSH|...")],
+            get_selected_messages=lambda: [Message(name="A01", format="hl7", content="MSH|...")],
+            on_result=lambda *_a: None,
+            on_info=lambda *_a: None,
+            on_unconfigured_endpoint=_configure,
+        )
+        with patch("ultra7.ui.send_controls.get_sender", return_value=fake_sender):
+            controls._start_send_once()
+            assert controls._worker is not None
+            controls._worker.join(timeout=2)
+
 
 if __name__ == "__main__":
     unittest.main()

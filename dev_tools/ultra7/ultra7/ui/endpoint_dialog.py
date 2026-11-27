@@ -1,13 +1,20 @@
-"""Modal dialog for configuring a project's endpoint (MLLP / REST / SOAP)."""
+"""Dialog for configuring a project's endpoint (MLLP / REST / SOAP)."""
 from __future__ import annotations
 
 import threading
 import tkinter as tk
 from tkinter import ttk
 
-from ultra7.models import Endpoint, MllpMode
+from ultra7.models import Endpoint, EndpointKind, MllpMode
 from ultra7.senders.connectivity import INTEGRATION_HUB_PRESETS, test_endpoint_connection
 from ultra7.ui.themes import DEFAULT_THEME_NAME, Theme, get_border_color, get_semantic_colors, get_theme
+
+_KIND_LABELS: dict[EndpointKind, str] = {
+    "mllp": "MLLP (HL7 over TCP)",
+    "rest": "REST (HTTP / HTTPS POST)",
+    "soap": "SOAP (XML over HTTP / HTTPS)",
+}
+_LABEL_TO_KIND: dict[str, EndpointKind] = {label: kind for kind, label in _KIND_LABELS.items()}
 
 _MLLP_MODE_LABELS: dict[MllpMode, str] = {
     "per_message": "Per message (new TCP connection)",
@@ -18,7 +25,10 @@ _MLLP_LABEL_TO_MODE: dict[str, MllpMode] = {label: mode for mode, label in _MLLP
 
 
 class EndpointDialog(tk.Toplevel):
-    """Blocking dialog that edits a copy of an Endpoint. Result in `self.result`."""
+    """Configures a copy of an Endpoint with protocol-specific fields and validation.
+
+    Result is stored in ``self.result`` when saved, or ``None`` if cancelled.
+    """
 
     def __init__(self, parent: tk.Misc, endpoint: Endpoint, theme: Theme | None = None) -> None:
         super().__init__(parent)
@@ -27,10 +37,9 @@ class EndpointDialog(tk.Toplevel):
         self.transient(parent)  # type: ignore[call-overload]
         self.result: Endpoint | None = None
         self._theme = theme or get_theme(DEFAULT_THEME_NAME)
-        if theme is not None:
-            self.configure(bg=theme.bg)
+        self.configure(bg=self._theme.bg)
 
-        self._kind = tk.StringVar(value=endpoint.kind)
+        self._kind_label = tk.StringVar(value=_KIND_LABELS.get(endpoint.kind, _KIND_LABELS["mllp"]))
         default_mode_label = _MLLP_MODE_LABELS.get(endpoint.mllp_mode, _MLLP_MODE_LABELS["per_message"])
         self._mllp_mode_label = tk.StringVar(value=default_mode_label)
         self._host = tk.StringVar(value=endpoint.host)
@@ -41,156 +50,198 @@ class EndpointDialog(tk.Toplevel):
         self._headers_text = "\n".join(f"{k}: {v}" for k, v in endpoint.headers.items())
         self._preset_map = {name: ep for name, ep in INTEGRATION_HUB_PRESETS}
 
-        # Title area.
-        ttk.Label(self, text="Configure Endpoint", font=("Rubik", 12, "bold")).grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 8)
+        body = ttk.Frame(self, padding=14)
+        body.pack(fill=tk.BOTH, expand=True)
+        body.columnconfigure(1, weight=1)
+
+        ttk.Label(body, text="Configure Endpoint", font=("Rubik", 12, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 4)
+        )
+        subtitle = (
+            "Choose a preset below or enter connection details for this flow."
+            if not endpoint.is_configured
+            else "Edit connection details or switch protocol / MLLP streaming mode."
+        )
+        ttk.Label(body, text=subtitle, style="Muted.TLabel").grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=(0, 8)
         )
 
-        row = 1
-        ttk.Label(self, text="Preset", style="Muted.TLabel").grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._preset_var = tk.StringVar(value="— Choose Integration Hub preset —")
-        preset_menu = ttk.OptionMenu(
-            self,
-            self._preset_var,
-            self._preset_var.get(),
-            *self._preset_map.keys(),
-            command=self._apply_preset,  # type: ignore[arg-type]
+        # -- Preset & Protocol selectors (readonly Combobox avoids macOS OptionMenu freezes) --
+        ttk.Label(body, text="Preset", style="Muted.TLabel").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=4)
+        self._preset_var = tk.StringVar(value="")
+        preset_combo = ttk.Combobox(
+            body,
+            textvariable=self._preset_var,
+            values=tuple(self._preset_map.keys()),
+            state="readonly",
+            width=36,
         )
-        preset_menu.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        preset_combo.grid(row=2, column=1, sticky="ew", pady=4)
+        preset_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_preset(self._preset_var.get()))
 
-        ttk.Label(self, text="Kind").grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        kind_menu = ttk.OptionMenu(
-            self, self._kind, endpoint.kind, "mllp", "rest", "soap", command=self._on_kind_change  # type: ignore[arg-type]
+        ttk.Label(body, text="Protocol").grid(row=3, column=0, sticky="w", padx=(0, 10), pady=4)
+        kind_combo = ttk.Combobox(
+            body,
+            textvariable=self._kind_label,
+            values=tuple(_KIND_LABELS.values()),
+            state="readonly",
+            width=36,
         )
-        kind_menu.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        kind_combo.grid(row=3, column=1, sticky="ew", pady=4)
+        kind_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_kind_change())
 
-        self._host_label = ttk.Label(self, text="Host")
-        self._host_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._host_entry = ttk.Entry(self, textvariable=self._host)
-        self._host_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        # -- MLLP fields ------------------------------------------------------
+        self._host_label = ttk.Label(body, text="Host")
+        self._host_entry = ttk.Entry(body, textvariable=self._host)
 
-        self._port_label = ttk.Label(self, text="Port")
-        self._port_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._port_entry = ttk.Entry(self, textvariable=self._port)
-        self._port_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        self._port_label = ttk.Label(body, text="Port")
+        self._port_entry = ttk.Entry(body, textvariable=self._port)
 
-        self._mllp_mode_lbl = ttk.Label(self, text="MLLP Mode")
-        self._mllp_mode_lbl.grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._mllp_mode_menu = ttk.OptionMenu(
-            self,
-            self._mllp_mode_label,
-            self._mllp_mode_label.get(),
-            *_MLLP_MODE_LABELS.values(),
+        self._mllp_mode_lbl = ttk.Label(body, text="MLLP Mode")
+        self._mllp_mode_combo = ttk.Combobox(
+            body,
+            textvariable=self._mllp_mode_label,
+            values=tuple(_MLLP_MODE_LABELS.values()),
+            state="readonly",
+            width=36,
         )
-        self._mllp_mode_menu.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
 
-        self._url_label = ttk.Label(self, text="URL")
-        self._url_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._url_entry = ttk.Entry(self, textvariable=self._url, width=40)
-        self._url_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        # -- REST / SOAP fields -----------------------------------------------
+        self._url_label = ttk.Label(body, text="URL")
+        self._url_entry = ttk.Entry(body, textvariable=self._url, width=40)
 
-        self._soap_label = ttk.Label(self, text="SOAPAction")
-        self._soap_label.grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        self._soap_entry = ttk.Entry(self, textvariable=self._soap_action)
-        self._soap_entry.grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        self._soap_label = ttk.Label(body, text="SOAPAction")
+        self._soap_entry = ttk.Entry(body, textvariable=self._soap_action)
 
-        ttk.Label(self, text="Timeout (s)").grid(row=row, column=0, sticky="w", padx=12, pady=4)
-        ttk.Entry(self, textvariable=self._timeout).grid(row=row, column=1, sticky="ew", padx=12, pady=4)
-        row += 1
+        # -- Common timeout ---------------------------------------------------
+        ttk.Label(body, text="Timeout (s)").grid(row=9, column=0, sticky="w", padx=(0, 10), pady=4)
+        ttk.Entry(body, textvariable=self._timeout).grid(row=9, column=1, sticky="ew", pady=4)
 
-        ttk.Separator(self, orient=tk.HORIZONTAL).grid(
-            row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 4)
-        )
-        row += 1
-        ttk.Label(self, text="Headers (one 'Name: Value' per line)").grid(
-            row=row, column=0, columnspan=2, sticky="w", padx=12, pady=(4, 0)
-        )
-        row += 1
+        # -- HTTP headers (only shown for REST / SOAP) ------------------------
+        self._headers_sep = ttk.Separator(body, orient=tk.HORIZONTAL)
+        self._headers_label = ttk.Label(body, text="Headers (one 'Name: Value' per line)", style="Muted.TLabel")
         self._headers_box = tk.Text(
-            self, width=40, height=4, font=("Menlo", 10), bd=0, padx=6, pady=6, highlightthickness=1
+            body,
+            width=40,
+            height=4,
+            font=("Menlo", 10),
+            bd=0,
+            padx=8,
+            pady=6,
+            highlightthickness=1,
+            bg=self._theme.pane_bg,
+            fg=self._theme.pane_fg,
+            insertbackground=self._theme.pane_fg,
+            selectbackground=self._theme.select_bg,
+            selectforeground=self._theme.select_fg,
+            highlightbackground=get_border_color(self._theme),
+            highlightcolor=self._theme.accent,
         )
-        if theme is not None:
-            self._headers_box.configure(
-                bg=theme.pane_bg,
-                fg=theme.pane_fg,
-                insertbackground=theme.pane_fg,
-                selectbackground=theme.select_bg,
-                selectforeground=theme.select_fg,
-                highlightbackground=get_border_color(theme),
-                highlightcolor=theme.accent,
-            )
         self._headers_box.insert("1.0", self._headers_text)
-        self._headers_box.grid(row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=4)
-        row += 1
 
-        ttk.Separator(self, orient=tk.HORIZONTAL).grid(
-            row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=(4, 0)
-        )
-        row += 1
-        test_row = ttk.Frame(self)
-        test_row.grid(row=row, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 0))
+        # -- Validation + Test Connection + Action buttons --------------------
+        ttk.Separator(body, orient=tk.HORIZONTAL).grid(row=13, column=0, columnspan=2, sticky="ew", pady=(8, 6))
+
+        self._error_var = tk.StringVar(value="")
+        self._error_label = ttk.Label(body, textvariable=self._error_var, wraplength=420)
+        self._error_label.grid(row=14, column=0, columnspan=2, sticky="w", pady=(0, 4))
+
+        test_row = ttk.Frame(body)
+        test_row.grid(row=15, column=0, columnspan=2, sticky="ew", pady=(2, 4))
         self._test_btn = ttk.Button(test_row, text="Test Connection", command=self._run_connection_test)
         self._test_btn.pack(side=tk.LEFT)
         self._test_status_var = tk.StringVar(value="")
         self._test_status_label = ttk.Label(test_row, textvariable=self._test_status_var, style="Muted.TLabel")
         self._test_status_label.pack(side=tk.LEFT, padx=(10, 0))
-        row += 1
 
-        button_row = ttk.Frame(self)
-        button_row.grid(row=row, column=0, columnspan=2, pady=12)
+        button_row = ttk.Frame(body)
+        button_row.grid(row=16, column=0, columnspan=2, pady=(10, 0))
         ttk.Button(button_row, text="Cancel", command=self._cancel).pack(side=tk.LEFT, padx=4)
         ttk.Button(button_row, text="Save", style="Accent.TButton", command=self._save).pack(side=tk.LEFT, padx=4)
 
-        self._on_kind_change(endpoint.kind)
-        self.grab_set()
+        self._on_kind_change()
+        self.bind("<Escape>", lambda _e: self._cancel())
+        self.lift()
+        self.focus_set()
+
+    def _current_kind(self) -> EndpointKind:
+        return _LABEL_TO_KIND.get(self._kind_label.get(), "mllp")
 
     def _apply_preset(self, name: str) -> None:
         preset = self._preset_map.get(name)
         if preset is None:
             return
-        self._kind.set(preset.kind)
+        self._kind_label.set(_KIND_LABELS.get(preset.kind, _KIND_LABELS["mllp"]))
         self._mllp_mode_label.set(_MLLP_MODE_LABELS.get(preset.mllp_mode, _MLLP_MODE_LABELS["per_message"]))
         self._host.set(preset.host)
         self._port.set(str(preset.port) if preset.port else "")
         self._url.set(preset.url)
         self._soap_action.set(preset.soap_action)
         self._timeout.set(str(preset.timeout_seconds))
-        self._on_kind_change(preset.kind)
+        self._error_var.set("")
+        self._on_kind_change()
 
-    def _build_endpoint(self) -> Endpoint:
-        kind = self._kind.get()
-        port_text = self._port.get().strip()
-        port: int | None = None
-        if kind == "mllp" and port_text:
+    def _validate_and_build(self) -> tuple[Endpoint | None, str | None]:
+        kind = self._current_kind()
+        try:
+            timeout_seconds = float(self._timeout.get().strip())
+        except ValueError:
+            return None, "Timeout must be a positive number (e.g. 5.0)."
+        if timeout_seconds <= 0:
+            return None, "Timeout must be greater than 0."
+
+        if kind == "mllp":
+            host = self._host.get().strip()
+            port_text = self._port.get().strip()
+            if not host:
+                return None, "Host is required for MLLP (e.g. 127.0.0.1)."
             try:
                 port = int(port_text)
             except ValueError:
-                port = None
-        try:
-            timeout_seconds = float(self._timeout.get())
-        except ValueError:
-            timeout_seconds = 5.0
+                return None, "Port must be an integer between 1 and 65535 (e.g. 2575)."
+            if not (1 <= port <= 65535):
+                return None, "Port must be between 1 and 65535."
+            return (
+                Endpoint(
+                    kind="mllp",
+                    host=host,
+                    port=port,
+                    url="",
+                    headers={},
+                    soap_action="",
+                    timeout_seconds=timeout_seconds,
+                    mllp_mode=_MLLP_LABEL_TO_MODE.get(self._mllp_mode_label.get(), "per_message"),
+                ),
+                None,
+            )
 
-        return Endpoint(
-            kind=kind,  # type: ignore[arg-type]
-            host=self._host.get().strip(),
-            port=port,
-            url=self._url.get().strip(),
-            headers=self._parse_headers(),
-            soap_action=self._soap_action.get().strip(),
-            timeout_seconds=timeout_seconds,
-            mllp_mode=_MLLP_LABEL_TO_MODE.get(self._mllp_mode_label.get(), "per_message"),
+        url = self._url.get().strip()
+        scheme, sep, rest = url.partition("://")
+        if not (sep and scheme.lower() in ("http", "https") and rest.strip()):
+            return None, "URL must start with http:// or https:// (e.g. http://127.0.0.1:8084/ingest)."
+
+        return (
+            Endpoint(
+                kind=kind,
+                host="",
+                port=None,
+                url=url,
+                headers=self._parse_headers(),
+                soap_action=self._soap_action.get().strip() if kind == "soap" else "",
+                timeout_seconds=timeout_seconds,
+                mllp_mode="per_message",
+            ),
+            None,
         )
 
     def _run_connection_test(self) -> None:
-        endpoint = self._build_endpoint()
+        endpoint, error = self._validate_and_build()
+        if error or endpoint is None:
+            colors = get_semantic_colors(self._theme)
+            self._error_label.configure(foreground=colors["error"])
+            self._error_var.set(f"⚠ {error}")
+            return
+        self._error_var.set("")
         self._test_btn.configure(state="disabled")
         self._test_status_var.set("Testing…")
 
@@ -213,22 +264,43 @@ class EndpointDialog(tk.Toplevel):
         prefix = "✓" if ok else "✗"
         self._test_status_var.set(f"{prefix} {detail} ({latency_ms:.1f} ms)")
 
-    def _on_kind_change(self, kind: str) -> None:
-        is_mllp = kind == "mllp"
+    def _on_kind_change(self) -> None:
+        kind = self._current_kind()
         for widget in (
             self._host_label,
             self._host_entry,
             self._port_label,
             self._port_entry,
             self._mllp_mode_lbl,
-            self._mllp_mode_menu,
+            self._mllp_mode_combo,
+            self._url_label,
+            self._url_entry,
+            self._soap_label,
+            self._soap_entry,
+            self._headers_sep,
+            self._headers_label,
+            self._headers_box,
         ):
-            widget.configure(state="normal" if is_mllp else "disabled")
-        for widget in (self._url_label, self._url_entry):
-            widget.configure(state="disabled" if is_mllp else "normal")
-        soap_state = "normal" if kind == "soap" else "disabled"
-        self._soap_label.configure(state=soap_state)
-        self._soap_entry.configure(state=soap_state)
+            widget.grid_remove()
+
+        if kind == "mllp":
+            self._host_label.grid(row=4, column=0, sticky="w", padx=(0, 10), pady=4)
+            self._host_entry.grid(row=4, column=1, sticky="ew", pady=4)
+            self._port_label.grid(row=5, column=0, sticky="w", padx=(0, 10), pady=4)
+            self._port_entry.grid(row=5, column=1, sticky="ew", pady=4)
+            self._mllp_mode_lbl.grid(row=6, column=0, sticky="w", padx=(0, 10), pady=4)
+            self._mllp_mode_combo.grid(row=6, column=1, sticky="ew", pady=4)
+        else:
+            self._url_label.grid(row=4, column=0, sticky="w", padx=(0, 10), pady=4)
+            self._url_entry.grid(row=4, column=1, sticky="ew", pady=4)
+            if kind == "soap":
+                self._soap_label.grid(row=5, column=0, sticky="w", padx=(0, 10), pady=4)
+                self._soap_entry.grid(row=5, column=1, sticky="ew", pady=4)
+            self._headers_sep.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+            self._headers_label.grid(row=11, column=0, columnspan=2, sticky="w", pady=(2, 2))
+            self._headers_box.grid(row=12, column=0, columnspan=2, sticky="ew", pady=4)
+
+        self._error_var.set("")
 
     def _parse_headers(self) -> dict[str, str]:
         headers: dict[str, str] = {}
@@ -240,7 +312,13 @@ class EndpointDialog(tk.Toplevel):
         return headers
 
     def _save(self) -> None:
-        self.result = self._build_endpoint()
+        endpoint, error = self._validate_and_build()
+        if error or endpoint is None:
+            colors = get_semantic_colors(self._theme)
+            self._error_label.configure(foreground=colors["error"])
+            self._error_var.set(f"⚠ {error}")
+            return
+        self.result = endpoint
         self.destroy()
 
     def _cancel(self) -> None:
