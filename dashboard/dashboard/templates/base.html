@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang or 'en' }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,85 +20,6 @@
   <!-- Dashboard CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 
-  <style>
-    /* ── Lego panel ── */
-    #lego-panel {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
-      width: 280px;
-      flex-direction: column;
-      align-items: stretch;
-      background: #1b294a;
-      border: 1px solid #12a3c9;
-      border-radius: 14px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(18,163,201,0.2);
-      overflow: hidden;
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.35s ease, transform 0.35s ease;
-    }
-    #lego-panel.lego-panel--visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    #lego-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px 8px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #FFD700;
-      letter-spacing: 0.02em;
-      border-bottom: 1px solid rgba(18,163,201,0.25);
-    }
-    #lego-close-btn {
-      background: none;
-      border: none;
-      color: rgba(255,255,255,0.5);
-      font-size: 1.1rem;
-      line-height: 1;
-      cursor: pointer;
-      padding: 0 2px;
-      transition: color 0.15s;
-    }
-    #lego-close-btn:hover { color: #fff; }
-    #lego-canvas { display: block; width: 260px !important; height: 295px !important; }
-    #lego-lyrics {
-      padding: 8px 12px 4px;
-      min-height: 2.4em;
-      font-size: 0.7rem;
-      color: #12a3c9;
-      text-align: center;
-      font-style: italic;
-      transition: opacity 0.3s ease;
-    }
-    #lego-hint {
-      padding: 4px 12px 10px;
-      font-size: 0.6rem;
-      color: rgba(255,255,255,0.25);
-      text-align: center;
-      letter-spacing: 0.03em;
-    }
-    /* ── Floating musical notes ── */
-    .lego-note {
-      position: absolute;
-      font-size: 1.3rem;
-      pointer-events: none;
-      animation: legoNoteFloat 2.2s ease-out forwards;
-      bottom: 120px;
-    }
-    @keyframes legoNoteFloat {
-      0%   { transform: translateY(0)     rotate(-12deg); opacity: 1;   }
-      60%  { opacity: 1; }
-      100% { transform: translateY(-105px) rotate(18deg);  opacity: 0;  }
-    }
-  </style>
-
-
-
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -107,13 +28,13 @@
 <div id="page-load-bar"></div>
 
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg">
-  <div class="container-fluid gap-3">
+<nav class="navbar navbar-expand-xl">
+  <div class="container-fluid px-0 gap-2">
 
     <!-- Brand -->
     <a class="navbar-brand" href="{{ url_for('index') }}">
       <img src="{{ url_for('static', filename='DHCW-logo-RGB-White.png') }}"
-           alt="DHCW" style="height:44px;width:auto;display:block;" />
+           alt="DHCW" class="brand-logo" />
       <span class="brand-title">Integration Hub</span>
     </a>
 
@@ -163,7 +84,7 @@
         </li>
 
         <li class="nav-item">
-          <a class="nav-link {% if request.endpoint == 'network_test_page' %}active{% endif %}"
+          <a class="nav-link {% if request.endpoint in ['network_test_page', 'network_test_config_page'] %}active{% endif %}"
              href="{{ url_for('network_test_page') }}">
             <i class="bi bi-ethernet"></i> {{ _("Network Test") }}
           </a>
@@ -177,7 +98,7 @@
         </li>
 
         <li class="nav-item">
-          <a class="nav-link {% if request.endpoint in ['alarms_overview_page', 'alarms_by_flow_page', 'alarm_flow_config_page', 'alarm_page', 'alarm2_page', 'alarm3_page'] %}active{% endif %}"
+          <a class="nav-link {% if request.endpoint in ['alarms_overview_page', 'alarms_by_flow_page', 'alarm_flow_config_page', 'alarm_pauses_page', 'alarm_page', 'alarm2_page', 'alarm3_page'] %}active{% endif %}"
              href="{{ url_for('alarms_overview_page') }}" role="link">
             <i class="bi bi-bell-fill"></i> {{ _("Alarms") }}
           </a>
@@ -185,12 +106,8 @@
 
       </ul>
 
-      <!-- System health in nav -->
-      <div class="d-flex align-items-center gap-2">
-        <!-- Live update indicator — sits left of the health badge -->
-        <div id="live-indicator">
-          <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
-        </div>
+      <!-- System health & utility controls in nav -->
+      <div class="d-flex align-items-center gap-2 nav-utilities">
         {% if status is defined and status %}
           <span id="nav-health-badge"
                 class="nav-health-badge {{ status.system_health }}"
@@ -209,16 +126,15 @@
         </span>
         {% endif %}
         <!-- Theme toggle -->
-        <button id="theme-toggle" title="{{ _('Toggle light/dark theme') }}"
-                style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:1rem;transition:background 0.15s;">
+        <button id="theme-toggle" class="nav-util-btn" title="{{ _('Toggle light/dark theme') }}">
           <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
         </button>
         <!-- Language toggle -->
         <form method="post" action="{{ url_for('set_language') }}" style="margin:0;">
           <input type="hidden" name="lang" value="{{ 'en' if current_lang == 'cy' else 'cy' }}">
           <button type="submit"
-                  title="{{ _('Switch to English') if current_lang == 'cy' else _('Switch to Welsh') }}"
-                  style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.8);font-size:0.72rem;font-weight:600;letter-spacing:0.04em;transition:background 0.15s;white-space:nowrap;">
+                  class="nav-util-btn nav-lang-btn"
+                  title="{{ _('Switch to English') if current_lang == 'cy' else _('Switch to Welsh') }}">
             {{ 'EN' if current_lang == 'cy' else 'CY' }}
           </button>
         </form>
@@ -226,6 +142,11 @@
     </div>
   </div>
 </nav>
+
+<!-- Live update toast (fixed so it never consumes horizontal navbar space) -->
+<div id="live-indicator" role="status" aria-live="polite">
+  <i class="bi bi-arrow-repeat"></i> {{ _("Updated") }}
+</div>
 
 <!-- Page content -->
 <main>
@@ -238,26 +159,33 @@
   <span id="footer-time"></span>
 </footer>
 
-<!-- Easter egg: LEGO man singing "Everything is Awesome" (Konami: ↑↑↓↓←→←→BA) -->
-<div id="lego-panel" style="display:none;">
-  <div id="lego-panel-header">
-    <span>🧱 Everything is Awesome!</span>
-    <button id="lego-close-btn" title="Close">&#x2715;</button>
-  </div>
-  <canvas id="lego-canvas" width="260" height="295"></canvas>
-  <div id="lego-lyrics"></div>
-  <div id="lego-hint">↑↑↓↓←→←→BA &nbsp;·&nbsp; ESC to close</div>
-</div>
-
 <!-- Bootstrap JS (vendored — no CDN dependency, no Zscaler interference) -->
 <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 <script>
+  window.DASHBOARD_I18N = {
+    allHealthy: {{ _("ALL HEALTHY") | tojson }},
+    warnings: {{ _("WARNINGS") | tojson }},
+    critical: {{ _("CRITICAL") | tojson }},
+    unknown: {{ _("UNKNOWN") | tojson }},
+    inAlarm: {{ _("In Alarm") | tojson }},
+    suppressed: {{ _("Suppressed") | tojson }},
+    allOk: {{ _("All OK") | tojson }},
+    notConfigured: {{ _("Not Configured") | tojson }},
+    allQueuesHealthy: {{ _("All queues healthy") | tojson }},
+    noRetryDelays: {{ _("No retry delays over 60 seconds were observed in the last hour.") | tojson }},
+    retryOver1m: {{ _("1 min +") | tojson }},
+    retryObserved: {{ _("Observed") | tojson }},
+    retryUnavailable: {{ _("Unavailable") | tojson }},
+    metricUnavailable: {{ _("Metric unavailable") | tojson }},
+  };
+
   // Footer clock (skip DOM writes while tab is hidden)
   (function () {
     const el = document.getElementById("footer-time");
+    const locale = document.documentElement.lang === "cy" ? "cy-GB" : "en-GB";
     function tick() {
-      if (el && !document.hidden) el.textContent = new Date().toLocaleString("en-GB", {
+      if (el && !document.hidden) el.textContent = new Date().toLocaleString(locale, {
         dateStyle: "medium", timeStyle: "medium"
       });
     }
@@ -277,6 +205,7 @@
       html.setAttribute('data-theme', t);
       try { localStorage.setItem('ih-theme', t); } catch(e) {}
       if (icon) icon.className = t === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+      window.dispatchEvent(new CustomEvent('ih-theme-change', { detail: { theme: t } }));
     }
     apply(html.getAttribute('data-theme') || 'dark');
     if (btn) btn.addEventListener('click', function() {
@@ -316,9 +245,6 @@
 </script>
 
 {% block scripts %}{% endblock %}
-
-  <script defer src="{{ url_for('static', filename='js/enhanced-ui.js') }}"></script>
-  <script defer src="{{ url_for('static', filename='js/alternate_ui.js') }}"></script>
 
   <!-- ── Unsaved-changes modal (shared, used by config pages) ─────────── -->
   <div id="unsaved-modal-backdrop" aria-hidden="true" style="
@@ -401,18 +327,30 @@
   <script>
     (function () {
       var backdrop = document.getElementById('unsaved-modal-backdrop');
+      var modal    = document.getElementById('unsaved-modal');
       var stayBtn  = document.getElementById('unsaved-modal-stay');
       var leaveBtn = document.getElementById('unsaved-modal-leave');
       var _dest    = null;
+      var _prevFocus = null;
 
+      function isOpen() {
+        return backdrop && backdrop.style.display === 'flex';
+      }
       function openModal(dest) {
         _dest = dest;
+        _prevFocus = document.activeElement;
         backdrop.style.display = 'flex';
-        stayBtn.focus();
+        backdrop.setAttribute('aria-hidden', 'false');
+        if (stayBtn) stayBtn.focus();
       }
       function closeModal() {
         backdrop.style.display = 'none';
+        backdrop.setAttribute('aria-hidden', 'true');
         _dest = null;
+        if (_prevFocus && typeof _prevFocus.focus === 'function') {
+          _prevFocus.focus();
+        }
+        _prevFocus = null;
       }
 
       if (stayBtn)  stayBtn.addEventListener('click',  closeModal);
@@ -425,6 +363,28 @@
       // Close on backdrop click
       if (backdrop) backdrop.addEventListener('click', function (e) {
         if (e.target === backdrop) closeModal();
+      });
+      // Escape to close + focus trap while modal is open
+      document.addEventListener('keydown', function (e) {
+        if (!isOpen()) return;
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeModal();
+          return;
+        }
+        if (e.key === 'Tab' && modal) {
+          var focusables = modal.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+          if (!focusables.length) return;
+          var first = focusables[0];
+          var last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       });
       // Expose globally for config pages
       window.showUnsavedDialog = openModal;

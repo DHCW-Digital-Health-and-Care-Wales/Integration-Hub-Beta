@@ -106,7 +106,7 @@
       <div style="display:flex; align-items:center; gap:0.75rem;">
         <div class="flow-search-wrap" style="min-width:220px;">
           <i class="bi bi-search flow-search-icon"></i>
-          <input id="msg-search" type="search" placeholder="{{ _('Filter by application\u2026') }}" autocomplete="off" oninput="filterMessages()">
+          <input id="msg-search" type="search" placeholder="{{ _('Filter by app, event, or details\u2026') }}" autocomplete="off" oninput="filterMessages()">
         </div>
         <span id="msg-count" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap;">{{ messages | length }} {{ _("messages") }}</span>
       </div>
@@ -173,7 +173,8 @@
     const rows = document.querySelectorAll('#msg-tbody tr');
     let visible = 0;
     rows.forEach(function(row) {
-      const show = !q || (row.dataset.app || '').includes(q);
+      const haystack = ((row.dataset.app || '') + ' ' + (row.textContent || '')).toLowerCase();
+      const show = !q || haystack.includes(q);
       row.style.display = show ? '' : 'none';
       if (show) visible++;
     });

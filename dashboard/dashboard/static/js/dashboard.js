@@ -8,15 +8,33 @@
   const REFRESH_INTERVAL   = window.REFRESH_INTERVAL   || 30; // seconds
   const WARN_THRESHOLD     = window.QUEUE_WARN_THRESHOLD || 10;
   const CRIT_THRESHOLD     = window.QUEUE_CRIT_THRESHOLD || 50;
+  const I18N               = window.DASHBOARD_I18N || {};
+
+  function t(key, fallback) {
+    return (typeof I18N[key] === "string" && I18N[key]) ? I18N[key] : fallback;
+  }
 
   /* ------------------------------------------------------------------ */
   /* Countdown timer                                                      */
   /* ------------------------------------------------------------------ */
   let secondsLeft = REFRESH_INTERVAL;
+  let autoRefreshPaused = false;
   const countdownEl = document.getElementById("countdown-num");
+  const countdownWrapEl = document.getElementById("refresh-countdown");
   const refreshIconEl = document.getElementById("refresh-icon");
   const lastRefreshedEl = document.getElementById("last-refreshed");
   const liveIndicator = document.getElementById("live-indicator");
+  const refreshErrorPill = document.getElementById("refresh-error-pill");
+  const togglePauseBtn = document.getElementById("toggle-auto-refresh");
+
+  function setRefreshError(visible) {
+    if (refreshErrorPill) refreshErrorPill.style.display = visible ? "inline-flex" : "none";
+  }
+
+  function formatRefreshedAt(isoStr) {
+    if (!isoStr) return "—";
+    return String(isoStr).replace("T", " ").slice(0, 19);
+  }
 
   function updateCountdown() {
     if (countdownEl) countdownEl.textContent = secondsLeft;
@@ -31,9 +49,18 @@
   /* ------------------------------------------------------------------ */
   /* Number transitions                                                    */
   /* ------------------------------------------------------------------ */
+  function prefersReducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
   function animateCounter(el, newVal) {
     const oldVal = parseInt(el.textContent, 10);
     if (isNaN(oldVal) || oldVal === newVal) {
+      el.textContent = newVal;
+      return;
+    }
+    if (prefersReducedMotion()) {
+      el.classList.remove("counter-pop");
       el.textContent = newVal;
       return;
     }
@@ -92,11 +119,20 @@
         dot.classList.add(healthClass(flow.health));
       }
 
-      // Status badge
+      // Status badge (preserve .flow-health-badge, .large, and any inner status dot)
       const badge = card.querySelector(".flow-health-badge");
       if (badge) {
-        badge.className = `status-badge ${healthClass(flow.health)}`;
-        badge.textContent = flow.health.toUpperCase();
+        const health = healthClass(flow.health);
+        badge.classList.remove("healthy", "warning", "critical", "unknown");
+        badge.classList.add(health);
+        const badgeDot = badge.querySelector(".flow-status-dot");
+        if (badgeDot) {
+          badgeDot.classList.remove("healthy", "warning", "critical", "unknown");
+          badgeDot.classList.add(health);
+          badge.replaceChildren(badgeDot, document.createTextNode(" " + health.toUpperCase()));
+        } else {
+          badge.textContent = health.toUpperCase();
+        }
       }
 
       // Compact table — update active/dlq totals
@@ -264,10 +300,10 @@
     for (const el of els) {
       el.className = el.className.replace(/\b(healthy|warning|critical|unknown)\b/g, "");
       el.classList.add(health);
-      el.textContent = health === "healthy" ? "ALL HEALTHY"
-                     : health === "warning"  ? "WARNINGS"
-                     : health === "critical" ? "CRITICAL"
-                     : "UNKNOWN";
+      el.textContent = health === "healthy" ? t("allHealthy", "ALL HEALTHY")
+                     : health === "warning"  ? t("warnings", "WARNINGS")
+                     : health === "critical" ? t("critical", "CRITICAL")
+                     : t("unknown", "UNKNOWN");
     }
   }
 
@@ -324,7 +360,7 @@
     // All-clear row when every queue is healthy
     if (rows.length === 0) {
       const tr = document.createElement("tr");
-      const label = window.I18N_ALL_QUEUES_HEALTHY || "All queues healthy";
+      const label = window.I18N_ALL_QUEUES_HEALTHY || t("allQueuesHealthy", "All queues healthy");
       tr.innerHTML =
         `<td colspan="5" class="text-center" style="padding:1rem;color:var(--accent-green);">` +
         `<i class="bi bi-check-circle me-1"></i> ${escapeHtml(label)}</td>`;
@@ -357,12 +393,12 @@
       badge.className = "status-badge " +
         (critical > 0 ? "critical" : suppressed > 0 ? "suppressed" : total > 0 ? "healthy" : "unknown");
       badge.innerHTML = critical > 0
-        ? '<i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm'
+        ? `<i class="bi bi-exclamation-octagon-fill me-1"></i>${escapeHtml(t("inAlarm", "In Alarm"))}`
         : suppressed > 0
-        ? '<i class="bi bi-bell-slash-fill me-1"></i>Suppressed'
+        ? `<i class="bi bi-bell-slash-fill me-1"></i>${escapeHtml(t("suppressed", "Suppressed"))}`
         : total > 0
-        ? '<i class="bi bi-check-circle-fill me-1"></i>All OK'
-        : '<i class="bi bi-question-circle me-1"></i>Not Configured';
+        ? `<i class="bi bi-check-circle-fill me-1"></i>${escapeHtml(t("allOk", "All OK"))}`
+        : `<i class="bi bi-question-circle me-1"></i>${escapeHtml(t("notConfigured", "Not Configured"))}`;
     }
 
     if (critEl) {
@@ -414,7 +450,7 @@
       tbody.innerHTML = `
         <tr>
           <td colspan="6" class="text-center" style="padding:1rem; color:var(--text-muted);">
-            No retry delays over 60 seconds were observed in the last hour.
+            ${escapeHtml(t("noRetryDelays", "No retry delays over 60 seconds were observed in the last hour."))}
           </td>
         </tr>
       `;
@@ -426,12 +462,14 @@
       .map((row) => {
         const wid = row.workflow_id;
         const delayClass = row.over_1m ? "critical" : (row.delay_seconds != null ? "warning" : "zero");
-        const delayDisplay = row.delay_display || "Metric unavailable";
+        const delayDisplay = row.delay_display || t("metricUnavailable", "Metric unavailable");
         const attemptDisplay = row.attempt != null ? String(row.attempt) : "—";
         const queueDisplay = row.queue || "—";
         const seenDisplay = row.timestamp ? String(row.timestamp).replace("T", " ").slice(0, 19) : "—";
         const statusClass = row.status || "unknown";
-        const statusText = row.over_1m ? "1 min +" : (row.delay_seconds != null ? "Observed" : "Unavailable");
+        const statusText = row.over_1m
+          ? t("retryOver1m", "1 min +")
+          : (row.delay_seconds != null ? t("retryObserved", "Observed") : t("retryUnavailable", "Unavailable"));
 
         return `
           <tr data-retry-workflow-id="${wid}">
@@ -475,15 +513,16 @@
       updateRetryDelays(data.retry_delays, data.retry_delay_kpis);
 
       if (lastRefreshedEl) {
-        const d = new Date(data.refreshed_at);
-        lastRefreshedEl.textContent = d.toLocaleTimeString();
+        lastRefreshedEl.textContent = formatRefreshedAt(data.refreshed_at);
       }
 
+      setRefreshError(false);
       lastRefreshAt = Date.now();
       flashLiveIndicator();
       document.dispatchEvent(new CustomEvent('dataupdated'));
     } catch (err) {
       console.warn("Dashboard refresh failed:", err);
+      setRefreshError(true);
     } finally {
       refreshInFlight = false;
       if (refreshIconEl) refreshIconEl.classList.remove("spin-icon");
@@ -494,7 +533,7 @@
   /* Tick every second, refresh when countdown hits 0                     */
   /* ------------------------------------------------------------------ */
   function tick() {
-    if (document.hidden) return;
+    if (document.hidden || autoRefreshPaused) return;
     secondsLeft--;
     if (secondsLeft <= 0) {
       secondsLeft = REFRESH_INTERVAL;
@@ -507,12 +546,32 @@
   setInterval(tick, 1000);
 
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && Date.now() - lastRefreshAt >= REFRESH_INTERVAL * 1000) {
+    if (!document.hidden && !autoRefreshPaused && Date.now() - lastRefreshAt >= REFRESH_INTERVAL * 1000) {
       secondsLeft = REFRESH_INTERVAL;
       updateCountdown();
       refreshData();
     }
   });
+
+  /* ------------------------------------------------------------------ */
+  /* Pause / Resume auto-refresh toggle                                   */
+  /* ------------------------------------------------------------------ */
+  if (togglePauseBtn) {
+    togglePauseBtn.addEventListener("click", () => {
+      autoRefreshPaused = !autoRefreshPaused;
+      togglePauseBtn.setAttribute("aria-pressed", String(autoRefreshPaused));
+      togglePauseBtn.classList.toggle("is-paused", autoRefreshPaused);
+      if (countdownWrapEl) countdownWrapEl.classList.toggle("is-paused", autoRefreshPaused);
+      const icon = togglePauseBtn.querySelector("i");
+      const label = togglePauseBtn.querySelector("span");
+      if (icon) icon.className = autoRefreshPaused ? "bi bi-play-fill" : "bi bi-pause-fill";
+      if (label) {
+        label.textContent = autoRefreshPaused
+          ? (togglePauseBtn.dataset.resumeLabel || "Resume")
+          : (togglePauseBtn.dataset.pauseLabel || "Pause");
+      }
+    });
+  }
 
   /* ------------------------------------------------------------------ */
   /* Manual refresh button                                                 */
@@ -609,9 +668,9 @@
     if (rows.length) {
       let visible = 0;
       rows.forEach((row) => {
-        const label = (row.dataset.label || "").toLowerCase();
+        const searchable = (row.dataset.search || row.dataset.label || "").toLowerCase();
         const health = row.dataset.health || "unknown";
-        const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
+        const show = (!q || searchable.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
         row.style.display = show ? "" : "none";
         if (show) visible++;
       });
@@ -627,9 +686,9 @@
         const cards = group.querySelectorAll(".flow-detail-card");
         let groupVisible = 0;
         cards.forEach((card) => {
-          const label = (card.dataset.label || "").toLowerCase();
+          const searchable = (card.dataset.search || card.dataset.label || "").toLowerCase();
           const health = card.dataset.health || "unknown";
-          const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
+          const show = (!q || searchable.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
           card.style.display = show ? "" : "none";
           if (show) groupVisible++;
         });
@@ -649,9 +708,9 @@
     const cards = document.querySelectorAll(".flow-card, .flow-detail-card");
     let visible = 0;
     cards.forEach((card) => {
-      const label = (card.dataset.label || "").toLowerCase();
+      const searchable = (card.dataset.search || card.dataset.label || "").toLowerCase();
       const health = card.dataset.health || "unknown";
-      const show = (!q || label.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
+      const show = (!q || searchable.includes(q)) && (_flowFilter === "all" || health === _flowFilter);
       card.style.display = show ? "" : "none";
       if (show) visible++;
     });
@@ -664,6 +723,7 @@
   /* ------------------------------------------------------------------ */
   function setGroupExpanded(groupEl, expanded) {
     const body = groupEl.querySelector(".flow-group-body");
+    const header = groupEl.querySelector(".flow-group-header");
     const chevron = groupEl.querySelector(".flow-group-chevron");
     if (!body) return;
     if (expanded) {
@@ -673,6 +733,7 @@
       body.classList.remove("expanded");
       if (chevron) chevron.style.transform = "rotate(-90deg)";
     }
+    if (header) header.setAttribute("aria-expanded", String(Boolean(expanded)));
     // Persist to sessionStorage
     try {
       const states = JSON.parse(sessionStorage.getItem("flowGroupStates") || "{}");
@@ -688,6 +749,13 @@
     setGroupExpanded(group, !body.classList.contains("expanded"));
   };
 
+  window.setAllFlowGroups = function (expanded) {
+    document.querySelectorAll(".flow-group").forEach((group) => {
+      if (group.style.display === "none") return;
+      setGroupExpanded(group, expanded);
+    });
+  };
+
   // Restore group states from sessionStorage on load
   (function restoreGroupStates() {
     try {
@@ -699,6 +767,45 @@
     } catch (_) { /* ignore */ }
   })();
 
+  // Ensure direct fragment navigation (e.g. /flows#flow-phw-to-mpi) expands its parent group
+  function expandHashTarget() {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return;
+    let targetId;
+    try {
+      targetId = decodeURIComponent(hash.slice(1));
+    } catch (_) {
+      return;
+    }
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    const group = target.closest(".flow-group");
+    if (group) {
+      setGroupExpanded(group, true);
+    }
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  }
+  expandHashTarget();
+  window.addEventListener("hashchange", expandHashTarget);
+
   initSortableTable("queue-table");
+
+  /* ------------------------------------------------------------------ */
+  /* Clickable overview flow rows                                       */
+  /* ------------------------------------------------------------------ */
+  document.addEventListener("click", (e) => {
+    const row = e.target.closest("tr.flow-row[data-href]");
+    if (!row) return;
+    if (e.target.closest("a, button, input, select, textarea")) return;
+    const selection = window.getSelection ? window.getSelection().toString() : "";
+    if (selection) return;
+    const href = row.dataset.href;
+    if (!href) return;
+    if (e.ctrlKey || e.metaKey) {
+      window.open(href, "_blank", "noopener");
+    } else {
+      window.location.href = href;
+    }
+  });
 
 })();

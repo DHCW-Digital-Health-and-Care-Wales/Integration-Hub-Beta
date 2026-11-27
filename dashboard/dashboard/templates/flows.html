@@ -18,12 +18,22 @@
       <p class="page-subtitle">{{ _("Per-flow queue depths, health status and container metrics") }}</p>
     </div>
     <div class="refresh-bar">
+      <span id="refresh-error-pill" class="refresh-error-pill" style="display:none;" role="status" aria-live="polite">
+        <i class="bi bi-wifi-off"></i> {{ _("Refresh failed — data may be stale") }}
+      </span>
       <span>{{ _("Last updated:") }} <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
-      <div class="refresh-countdown">
+      <div class="refresh-countdown" id="refresh-countdown">
         <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
         <span id="countdown-num" class="countdown-num">{{ refresh_interval }}</span>{{ _("s") }}
       </div>
-      <button class="btn-dash" id="manual-refresh">
+      <button type="button" class="btn-dash" id="toggle-auto-refresh"
+              aria-pressed="false"
+              data-pause-label="{{ _('Pause') }}"
+              data-resume-label="{{ _('Resume') }}"
+              title="{{ _('Pause or resume automatic refresh') }}">
+        <i class="bi bi-pause-fill"></i> <span>{{ _("Pause") }}</span>
+      </button>
+      <button type="button" class="btn-dash" id="manual-refresh">
         <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </button>
     </div>
@@ -74,7 +84,7 @@
   <div class="flow-filter-bar mb-3">
     <div class="flow-search-wrap">
       <i class="bi bi-search flow-search-icon"></i>
-      <input id="flow-search" type="search" placeholder="{{ _('Search flows\u2026') }}" autocomplete="off" oninput="filterFlows()">
+      <input id="flow-search" type="search" placeholder="{{ _('Search flows, systems, or ports\u2026') }}" autocomplete="off" oninput="filterFlows()">
     </div>
     <div class="flow-filter-btns">
       <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">{{ _("All") }}</button>
@@ -82,9 +92,15 @@
       <button class="flow-filter-btn warning"           data-filter="warning"  onclick="setFlowFilter(this,'warning')">{{ _("Warning") }}</button>
       <button class="flow-filter-btn critical"          data-filter="critical" onclick="setFlowFilter(this,'critical')">{{ _("Critical") }}</button>
     </div>
+    <div class="flow-group-actions">
+      <button type="button" class="btn-dash btn-dash--sm" id="expand-all-groups" onclick="setAllFlowGroups(true)">
+        <i class="bi bi-arrows-expand"></i> {{ _("Expand all") }}
+      </button>
+      <button type="button" class="btn-dash btn-dash--sm" id="collapse-all-groups" onclick="setAllFlowGroups(false)">
+        <i class="bi bi-arrows-collapse"></i> {{ _("Collapse all") }}
+      </button>
+    </div>
   </div>
-  <p class="flow-no-results" id="flow-no-results" style="display:none">{{ _("No flows match your search.") }}</p>
-
   <p class="flow-no-results" id="flow-no-results" style="display:none">{{ _("No flows match your search.") }}</p>
 
   <!-- Grouped flow cards, one section per source system -->
@@ -104,7 +120,8 @@
   <div class="flow-group animate-in" data-source="{{ source }}" id="group-{{ source | lower | replace(' ', '-') }}">
 
     <div class="flow-group-header" onclick="toggleFlowGroup(this)" role="button" tabindex="0"
-         onkeydown="if(event.key==='Enter'||event.key===' ')toggleFlowGroup(this)">
+         aria-expanded="{{ 'true' if auto_open else 'false' }}"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlowGroup(this);}">
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-chevron-down flow-group-chevron" style="font-size:0.72rem; transition:transform 0.2s; {{ 'transform:rotate(-90deg)' if not auto_open else '' }}"></i>
         <span class="flow-status-dot {{ ns.group_health }}"></span>
@@ -127,6 +144,7 @@
       <div class="flow-detail-card animate-in"
            data-flow-id="{{ flow.id }}"
            data-label="{{ flow.label | lower }}"
+           data-search="{{ (flow.label ~ ' ' ~ (flow.source or '') ~ ' ' ~ (flow.destination or '') ~ (' :' ~ flow.source_port ~ ' ' ~ flow.source_port if flow.source_port else '')) | lower }}"
            data-health="{{ flow.health }}"
            id="flow-{{ flow.id }}"
            style="--flow-colour: {{ flow.colour }}">
@@ -693,7 +711,7 @@
       {% if flow_alarms %}
       <div style="padding:0 1.25rem 1.25rem; border-top:1px solid var(--border-color); margin-top:-1px;">
         <div class="section-title mt-3 mb-2">
-          <i class="bi bi-bell-fill" style="color:var(--accent-amber)"></i> Alarms
+          <i class="bi bi-bell-fill" style="color:var(--accent-amber)"></i> {{ _("Alarms") }}
         </div>
         <div class="flow-alarm-grid">
 
@@ -706,35 +724,35 @@
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
                      style="color:{% if a.alarm_enabled %}var(--accent-amber){% else %}var(--text-muted){% endif %}"></i>
-                  Inactivity
+                  {{ _("Inactivity") }}
                 </span>
                 <div style="display:flex;align-items:center;gap:0.35rem;">
                   {% if a.alarm_enabled %}
-                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
-                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}</span>
                     {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
-                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
-                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}</span>
                     {% endif %}
                   {% else %}
                     <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
-                  <a href="{{ url_for('alarm_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                  <a href="{{ url_for('alarm_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> {{ _("View") }}</a>
                 </div>
               </div>
               <div class="fac-values">
-                <div class="fac-kv"><span class="fac-key">Day</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Evening</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Weekend</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Day") }}</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Evening") }}</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Weekend") }}</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Cooldown") }}</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Email") }}</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
               </div>
             </div>
           {% else %}
             <div class="flow-alarm-chip fac--unconfigured">
               <div class="fac-header">
-                <span class="fac-name"><i class="bi bi-bell-slash"></i> Inactivity</span>
-                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> {{ _("Inactivity") }}</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Not configured") }}</span>
               </div>
             </div>
           {% endif %}
@@ -748,35 +766,35 @@
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
                      style="color:{% if a.alarm_enabled %}var(--accent-cyan){% else %}var(--text-muted){% endif %}"></i>
-                  Volume
+                  {{ _("Volume") }}
                 </span>
                 <div style="display:flex;align-items:center;gap:0.35rem;">
                   {% if a.alarm_enabled %}
-                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
-                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}</span>
                     {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
-                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
-                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}</span>
                     {% endif %}
                   {% else %}
                     <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
-                  <a href="{{ url_for('alarm2_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                  <a href="{{ url_for('alarm2_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> {{ _("View") }}</a>
                 </div>
               </div>
               <div class="fac-values">
-                <div class="fac-kv"><span class="fac-key">Day</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Evening</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Weekend</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Day") }}</span><span class="fac-val">{{ a.day_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Evening") }}</span><span class="fac-val">{{ a.evening_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Weekend") }}</span><span class="fac-val">{{ a.weekend_threshold_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Cooldown") }}</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Email") }}</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
               </div>
             </div>
           {% else %}
             <div class="flow-alarm-chip fac--unconfigured">
               <div class="fac-header">
-                <span class="fac-name"><i class="bi bi-bell-slash"></i> Volume</span>
-                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> {{ _("Volume") }}</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Not configured") }}</span>
               </div>
             </div>
           {% endif %}
@@ -790,34 +808,34 @@
                 <span class="fac-name">
                   <i class="bi {% if a.alarm_enabled %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"
                      style="color:{% if a.alarm_enabled %}var(--accent-red){% else %}var(--text-muted){% endif %}"></i>
-                  Failures
+                  {{ _("Failures") }}
                 </span>
                 <div style="display:flex;align-items:center;gap:0.35rem;">
                   {% if a.alarm_enabled %}
-                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>In Alarm</span>
-                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>Suppressed</span>
+                    {% if st == 'critical' %}<span class="status-badge critical" style="font-size:0.6rem;"><i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _("In Alarm") }}</span>
+                    {% elif st == 'suppressed' %}<span class="status-badge suppressed" style="font-size:0.6rem;"><i class="bi bi-bell-slash-fill me-1"></i>{{ _("Suppressed") }}</span>
                     {% elif st == 'paused' %}<span class="status-badge paused" style="font-size:0.6rem;"><i class="bi bi-pause-circle-fill me-1"></i>{{ _("Paused") }}</span>
-                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
-                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>Unknown</span>
+                    {% elif st == 'healthy' %}<span class="status-badge healthy" style="font-size:0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>{{ _("OK") }}</span>
+                    {% else %}<span class="status-badge unknown" style="font-size:0.6rem;"><i class="bi bi-question-circle me-1"></i>{{ _("Unknown") }}</span>
                     {% endif %}
                   {% else %}
                     <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Disabled") }}</span>
                   {% endif %}
-                  <a href="{{ url_for('alarm3_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> View</a>
+                  <a href="{{ url_for('alarm3_page') }}" class="fac-link"><i class="bi bi-eye-fill"></i> {{ _("View") }}</a>
                 </div>
               </div>
               <div class="fac-values">
-                <div class="fac-kv"><span class="fac-key">Window</span><span class="fac-val">{{ a.window_duration_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Threshold</span><span class="fac-val">≥ {{ a.threshold }} failures</span></div>
-                <div class="fac-kv"><span class="fac-key">Cooldown</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
-                <div class="fac-kv"><span class="fac-key">Email</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Window") }}</span><span class="fac-val">{{ a.window_duration_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Threshold") }}</span><span class="fac-val">≥ {{ a.threshold }} {{ _("failures") }}</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Cooldown") }}</span><span class="fac-val">{{ a.alerting_gap_minutes }}m</span></div>
+                <div class="fac-kv"><span class="fac-key">{{ _("Email") }}</span><span class="fac-val">{% if a.email_alerts_enabled %}<i class="bi bi-check-circle-fill" style="color:var(--accent-green)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--text-muted)"></i>{% endif %}</span></div>
               </div>
             </div>
           {% else %}
             <div class="flow-alarm-chip fac--unconfigured">
               <div class="fac-header">
-                <span class="fac-name"><i class="bi bi-bell-slash"></i> Failures</span>
-                <span style="font-size:0.65rem; color:var(--text-muted);">Not configured</span>
+                <span class="fac-name"><i class="bi bi-bell-slash"></i> {{ _("Failures") }}</span>
+                <span style="font-size:0.65rem; color:var(--text-muted);">{{ _("Not configured") }}</span>
               </div>
             </div>
           {% endif %}
@@ -856,7 +874,4 @@
     if (_btn) setFlowFilter(_btn, _urlFilter);
   }
 </script>
-
-{% include 'flows_config.html' %}
-
 {% endblock %}

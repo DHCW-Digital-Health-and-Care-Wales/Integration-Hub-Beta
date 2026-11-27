@@ -44,12 +44,22 @@
     </div>
     <div class="refresh-bar">
       {{ pause_indicator(pause_summary) }}
+      <span id="refresh-error-pill" class="refresh-error-pill" style="display:none;" role="status" aria-live="polite">
+        <i class="bi bi-wifi-off"></i> {{ _("Refresh failed — data may be stale") }}
+      </span>
       <span>{{ _("Last updated:") }} <strong id="last-refreshed">{{ status.refreshed_at | replace('T',' ') | truncate(19, True, '') }}</strong></span>
-      <div class="refresh-countdown">
+      <div class="refresh-countdown" id="refresh-countdown">
         <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
         <span id="countdown-num" class="countdown-num">{{ refresh_interval }}</span>{{ _("s") }}
       </div>
-      <button class="btn-dash" id="manual-refresh" title="{{ _('Refresh now') }}">
+      <button type="button" class="btn-dash" id="toggle-auto-refresh"
+              aria-pressed="false"
+              data-pause-label="{{ _('Pause') }}"
+              data-resume-label="{{ _('Resume') }}"
+              title="{{ _('Pause or resume automatic refresh') }}">
+        <i class="bi bi-pause-fill"></i> <span>{{ _("Pause") }}</span>
+      </button>
+      <button type="button" class="btn-dash" id="manual-refresh" title="{{ _('Refresh now') }}">
         <i class="bi bi-arrow-repeat"></i> {{ _("Refresh") }}
       </button>
     </div>
@@ -126,7 +136,7 @@
   <div class="flow-filter-bar">
     <div class="flow-search-wrap">
       <i class="bi bi-search flow-search-icon"></i>
-      <input id="flow-search" type="search" placeholder="{{ _('Search flows\u2026') }}" autocomplete="off" oninput="filterFlows()">
+      <input id="flow-search" type="search" placeholder="{{ _('Search flows, systems, or ports\u2026') }}" autocomplete="off" oninput="filterFlows()">
     </div>
     <div class="flow-filter-btns">
       <button class="flow-filter-btn active"           data-filter="all"      onclick="setFlowFilter(this,'all')">{{ _("All") }}</button>
@@ -146,6 +156,7 @@
           <th class="text-end">{{ _("Active") }}</th>
           <th class="text-end">{{ _("DLQ") }}</th>
           <th>{{ _("Status") }}</th>
+          <th style="width:20px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -158,12 +169,15 @@
         {% set flow_dlq    = (pre.dlq   or 0) + (post.dlq   or 0) + (topic.dlq   or 0) + (post_topic.dlq   or 0) + (flow.subscriptions | sum(attribute='dlq')    if flow.subscriptions else 0) %}
         <tr class="flow-row"
             data-flow-id="{{ flow.id }}"
+            data-href="{{ url_for('flows_page') }}#flow-{{ flow.id }}"
             data-label="{{ flow.label | lower }}"
+            data-search="{{ (flow.label ~ ' ' ~ (flow.source or '') ~ ' ' ~ (flow.destination or '') ~ (' :' ~ flow.source_port ~ ' ' ~ flow.source_port if flow.source_port else '')) | lower }}"
             data-health="{{ flow.health }}">
           <td><span class="flow-status-dot {{ flow.health }}"></span></td>
           <td>
             <span style="color:{{ flow.colour }}; margin-right:0.4rem;"><i class="{{ flow.icon }}"></i></span>
             <a href="{{ url_for('flows_page') }}#flow-{{ flow.id }}"
+               class="flow-row-link"
                style="color:var(--text-primary); text-decoration:none; font-weight:600;">{{ flow.label }}</a>
           </td>
           <td style="font-size:0.75rem; color:var(--text-muted);">
@@ -175,9 +189,10 @@
           <td class="text-end count-cell {{ 'dlq-warn' if flow_dlq > 0 else 'zero' }}"
               data-flow-dlq="{{ flow.id }}">{{ flow_dlq }}</td>
           <td><span class="status-badge {{ flow.health }} flow-health-badge">{{ flow.health | upper }}</span></td>
+          <td class="text-end"><i class="bi bi-chevron-right flow-row-chevron" aria-hidden="true"></i></td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="text-center" style="color:var(--text-dim); padding:2rem;">
+        <tr><td colspan="7" class="text-center" style="color:var(--text-dim); padding:2rem;">
           {{ _("No flow data available \u2014 check Azure credentials") }}
         </td></tr>
         {% endfor %}
@@ -721,12 +736,12 @@
     gap: 0.5rem;
   }
 
-  /* ── Splash screen ── */
+  /* ── Splash screen (pinned to DHCW Navy so the white DHCW logo stays legible in both themes) ── */
   #splash-screen {
     position: fixed;
     inset: 0;
     z-index: 10000;
-    background: var(--bg-primary, #0f1623);
+    background: #1B294A;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -744,12 +759,12 @@
   #splash-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-primary, #f1f5f9);
+    color: #f1f5f9;
     letter-spacing: 0.02em;
   }
   #splash-subtitle {
     font-size: 0.75rem;
-    color: var(--text-muted, #64748b);
+    color: rgba(241, 245, 249, 0.72);
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
@@ -757,7 +772,7 @@
   #splash-dots span {
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: var(--accent-cyan, #12a3c9);
+    background: #12A3C9;
     animation: splashDot 1.1s ease-in-out infinite;
   }
   #splash-dots span:nth-child(2) { animation-delay: 0.18s; }

@@ -22,7 +22,10 @@
     opts = opts || {};
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth || canvas.parentElement.clientWidth || 300;
-    var cssH = parseInt(canvas.getAttribute('height'), 10) || 90;
+    var cssH = parseInt(canvas.dataset.cssHeight || canvas.style.height || canvas.getAttribute('height'), 10) || 90;
+    if (!canvas.dataset.cssHeight) {
+      canvas.dataset.cssHeight = String(cssH);
+    }
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.height = cssH + 'px';
@@ -218,20 +221,23 @@
     loadHistory(card, hours || 1);
   };
 
-  // Redraw open charts on resize so they stay crisp.
+  // Redraw open charts on resize or theme change so they stay crisp.
+  function redrawOpenCharts() {
+    document.querySelectorAll('.app-metric-card--open').forEach(function (card) {
+      var panel = card.querySelector('.app-metric-history');
+      if (!panel || panel.hasAttribute('hidden')) return;
+      var activeBtn = panel.querySelector('.btn-range.active');
+      var hours = activeBtn ? parseInt(activeBtn.getAttribute('data-hours'), 10) : 1;
+      var name = card.getAttribute('data-app-name');
+      var cached = card._historyCache && card._historyCache[name + '|' + hours];
+      if (cached) renderCharts(panel, hours, cached);
+    });
+  }
+
   var resizeTimer = null;
   window.addEventListener('resize', function () {
     if (resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () {
-      document.querySelectorAll('.app-metric-card--open').forEach(function (card) {
-        var panel = card.querySelector('.app-metric-history');
-        if (!panel || panel.hasAttribute('hidden')) return;
-        var activeBtn = panel.querySelector('.btn-range.active');
-        var hours = activeBtn ? parseInt(activeBtn.getAttribute('data-hours'), 10) : 1;
-        var name = card.getAttribute('data-app-name');
-        var cached = card._historyCache && card._historyCache[name + '|' + hours];
-        if (cached) renderCharts(panel, hours, cached);
-      });
-    }, 150);
+    resizeTimer = setTimeout(redrawOpenCharts, 150);
   });
+  window.addEventListener('ih-theme-change', redrawOpenCharts);
 })();

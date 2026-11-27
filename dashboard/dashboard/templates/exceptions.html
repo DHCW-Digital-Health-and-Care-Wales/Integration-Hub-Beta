@@ -30,28 +30,28 @@
     {% set sev1 = exceptions | selectattr('severity', 'equalto', 1) | list | length %}
     {% set sev2 = exceptions | selectattr('severity', 'equalto', 2) | list | length %}
     {% set sev3 = exceptions | selectattr('severity', 'equalto', 3) | list | length %}
-    <a href="#exception-log" class="kpi-card kpi-card--link">
+    <a href="#exception-log" onclick="clearSeverityFilter();return false;" class="kpi-card kpi-card--link kpi-card--active" data-sev-kpi="all">
       <div class="kpi-icon red"><i class="bi bi-x-octagon-fill"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ exceptions | length }}</div>
         <div class="kpi-label">{{ _("Total Exceptions") }}</div>
       </div>
     </a>
-    <a href="#exception-log" onclick="setSeverityFilter(1)" class="kpi-card kpi-card--link">
+    <a href="#exception-log" onclick="setSeverityFilter(1);return false;" class="kpi-card kpi-card--link" data-sev-kpi="1">
       <div class="kpi-icon red"><i class="bi bi-exclamation-octagon"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev1 }}</div>
         <div class="kpi-label">{{ _("Critical (Sev 1)") }}</div>
       </div>
     </a>
-    <a href="#exception-log" onclick="setSeverityFilter(2)" class="kpi-card kpi-card--link">
+    <a href="#exception-log" onclick="setSeverityFilter(2);return false;" class="kpi-card kpi-card--link" data-sev-kpi="2">
       <div class="kpi-icon amber"><i class="bi bi-exclamation-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev2 }}</div>
         <div class="kpi-label">{{ _("Error (Sev 2)") }}</div>
       </div>
     </a>
-    <a href="#exception-log" onclick="setSeverityFilter(3)" class="kpi-card kpi-card--link">
+    <a href="#exception-log" onclick="setSeverityFilter(3);return false;" class="kpi-card kpi-card--link" data-sev-kpi="3">
       <div class="kpi-icon blue"><i class="bi bi-info-circle"></i></div>
       <div class="kpi-body">
         <div class="kpi-number">{{ sev3 }}</div>
@@ -62,14 +62,22 @@
 
   <!-- Exceptions list -->
   <div class="queue-table-wrapper" id="exception-log">
-    <div class="queue-table-header">
+    <div class="queue-table-header" style="flex-wrap:wrap; gap:0.75rem;">
       <h6><i class="bi bi-list-ul me-1"></i> {{ _("Exception Log") }}</h6>
-      <span class="text-muted" style="font-size:0.72rem;">{{ _("Sorted by most recent") }}</span>
+      <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <div class="flow-search-wrap" style="min-width:220px;">
+          <i class="bi bi-search flow-search-icon"></i>
+          <input id="exc-search" type="search" placeholder="{{ _('Filter by app, type, or message\u2026') }}" autocomplete="off" oninput="applyExceptionFilters()">
+        </div>
+        <span id="exc-filter-status" class="text-muted" style="font-size:0.72rem; white-space:nowrap;">{{ _("Sorted by most recent") }}</span>
+      </div>
     </div>
     <div class="scroll-panel" style="max-height:none;">
       <div class="exceptions-list p-3 stagger-children" id="exception-items">
         {% for exc in exceptions %}
-        <div class="exception-item exc-severity-{{ exc.severity }}" data-severity="{{ exc.severity }}">
+        <div class="exception-item exc-severity-{{ exc.severity }}"
+             data-severity="{{ exc.severity }}"
+             data-search="{{ ((exc.app or '') ~ ' ' ~ (exc.type or '') ~ ' ' ~ (exc.message or '') ~ ' ' ~ (exc.operation_id or '')) | lower }}">
           <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
             <div class="exception-type">{{ exc.type or 'UnknownException' }}</div>
             <div class="exception-meta">
@@ -107,6 +115,9 @@
         </div>
         {% endfor %}
       </div>
+      <p class="flow-no-results" id="exc-no-results" style="display:none; padding:1.25rem; margin:0;">
+        {{ _("No exceptions match your filters.") }}
+      </p>
     </div>
   </div>
 
@@ -136,6 +147,8 @@
   var i18nSortedByRecent  = {{ _("Sorted by most recent") | tojson }};
   var i18nShowFullMessage = {{ _("Show full message") | tojson }};
   var i18nShowLess        = {{ _("Show less") | tojson }};
+  var i18nXofYExceptions  = {{ _("{visible} of {total} exceptions") | tojson }};
+  var activeSeverity      = null;
 
   function toggleExceptionDetail(btn) {
     var target = document.getElementById(btn.dataset.target);
@@ -149,24 +162,54 @@
     if (label) label.textContent = expanded ? i18nShowLess : i18nShowFullMessage;
   }
 
-  function setSeverityFilter(sev) {
-    var items = document.querySelectorAll('#exception-items .exception-item');
-    items.forEach(function(el) {
-      el.style.display = (parseInt(el.dataset.severity) === sev) ? '' : 'none';
+  function updateSeverityKpiHighlight() {
+    var targetKey = activeSeverity === null ? 'all' : String(activeSeverity);
+    document.querySelectorAll('[data-sev-kpi]').forEach(function (card) {
+      card.classList.toggle('kpi-card--active', card.dataset.sevKpi === targetKey);
     });
-    var header = document.querySelector('#exception-log .queue-table-header span');
+  }
+
+  function applyExceptionFilters() {
+    var q = (document.getElementById('exc-search')?.value || '').toLowerCase().trim();
+    var items = document.querySelectorAll('#exception-items .exception-item');
+    var visible = 0;
+    items.forEach(function (el) {
+      var sevOk = activeSeverity === null || parseInt(el.dataset.severity, 10) === activeSeverity;
+      var textOk = !q || (el.dataset.search || '').includes(q);
+      var show = sevOk && textOk;
+      el.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    var noResults = document.getElementById('exc-no-results');
+    if (noResults) noResults.style.display = (visible === 0 && items.length > 0) ? '' : 'none';
+
+    var header = document.getElementById('exc-filter-status');
     if (header) {
-      var label = i18nSeverityOnly.replace('{sev}', sev);
-      header.innerHTML = label + ' &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">' + i18nShowAll + '</a>';
+      if (activeSeverity === null && !q) {
+        header.textContent = i18nSortedByRecent;
+      } else {
+        var parts = [];
+        if (activeSeverity !== null) parts.push(i18nSeverityOnly.replace('{sev}', activeSeverity));
+        parts.push(i18nXofYExceptions.replace('{visible}', visible).replace('{total}', items.length));
+        header.innerHTML = parts.join(' &nbsp;·&nbsp; ') +
+          ' &nbsp;·&nbsp; <a href="#" onclick="clearSeverityFilter();return false;" style="color:var(--accent-cyan);">' + i18nShowAll + '</a>';
+      }
     }
   }
 
+  function setSeverityFilter(sev) {
+    activeSeverity = (activeSeverity === sev) ? null : sev;
+    updateSeverityKpiHighlight();
+    applyExceptionFilters();
+  }
+
   function clearSeverityFilter() {
-    document.querySelectorAll('#exception-items .exception-item').forEach(function(el) {
-      el.style.display = '';
-    });
-    var header = document.querySelector('#exception-log .queue-table-header span');
-    if (header) header.textContent = i18nSortedByRecent;
+    activeSeverity = null;
+    var search = document.getElementById('exc-search');
+    if (search) search.value = '';
+    updateSeverityKpiHighlight();
+    applyExceptionFilters();
   }
 </script>
 {% endblock %}
