@@ -298,19 +298,18 @@ Each profile starts a complete integration flow with all required services:
 | **cav-pms-to-wcrs** | pms-hl7-server, wcrs-idupd-dbsender, mock-db-receiver, sb-emulator | CAV PMS ADT^A40 merges (assigning authority 140) to WCRS: subscription `local-inthub-pms-wcrs-sender-sub` on the PMS topic (filter `MessageType = 'A40' AND SourceSystem = '140'`) calls `dbo.spUpdateIdentifier` in the mock `NDR` database; results land in `NDR.dbo.IdentifierUpdate`. Send `just send ./sample_messages/cav-pms-to-wcrs.sample.hl7 2585` |
 | **paris-to-mpi** | cav-paris-hl7-server, paris-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Paris healthcare system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (paris-mpi-hl7-sender), mirroring Mosaiq/LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **chemo-to-mpi** | chemo-hl7-server, chemo-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | Chemocare system to MPI integration flow                                                          |
-| **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | PIMS (Patient Information Management System) to MPI integration flow                              |
+| **pims-to-mpi**  | pims-hl7-server, pims-hl7-transformer, pims-hl7-sender, lookup-service, cosmos-emulator, mpi-hl7-topic-mock-receiver, bus-watch, sb-emulator | PIMS (Patient Information Management System) to MPI integration flow                              |
 | **mosaiq-to-mpi** | mosaiq-hl7-server, mosaiq-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator          | Mosaiq oncology system to MPI integration flow (no transformation); uses a dedicated topic/subscription-based sender (mosaiq-mpi-hl7-sender), mirroring LIMS/PHW's pattern, not the shared queue-based mpi-hl7-sender |
 | **wds-to-mpi**   | wds-hl7-server, mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator                    | WDS to MPI integration flow (no transformation)                                                   |
 | **hl7-rest**     | risp-hl7-rest-server, rest-hl7-server, sb-emulator                                          | Starts the standalone REST-based HL7 servers on their own (no transformer/sender/receiver) for ad-hoc REST ingress testing; **not** a complete integration flow |
 | **risp-to-mpi**  | risp-hl7-rest-server, core-reference-hl7-transformer, risp-mpi-hl7-sender, mpi-hl7-topic-mock-receiver, sb-emulator | RISP HL7-over-REST ingress to MPI integration flow (WRDS-based PID field translation via core-reference-hl7-transformer, also fans out to WRRS) |
 | **risp-to-wrrs** | risp-hl7-rest-server, wrrs-stmsg-dbsender, mock-db-receiver, sqledge, sb-emulator | RISP HL7-over-REST ingress to WRRS SQL database delivery (stored procedure `dbo.prQueueMessage` in `DRS`); the database is the `mock_receivers/db_mock_receiver` SQL Server mock (see its README for scenarios) |
-| **wpas-to-proms** | wpas-rest-server, proms-fhir-transformer, fhir-sender, promptly-mock-receiver, bus-watch, sb-emulator | WPAS XML (`POST /ingest` on port 8084) → FHIR message Bundle → Promptly. `promptly-mock-receiver` (host port 8085) mocks Promptly's async `$process-message` API; set `Bundle.id` to `mock-…` to trigger failure scenarios (see `mock_receivers/http_mock_receiver/README.md`) |
-| **replay**       | message-replay-job                                                                          | The message replay job moving messages from the SQL Server to an Azure Service Bus priority queue |
+| **wpas-to-proms** | wpas-rest-server, proms-fhir-transformer, fhir-sender, promptly-mock-receiver, bus-watch, sb-emulator | WPAS XML (`POST /ingest` on port 8084) → FHIR message Bundle → Promptly. `promptly-mock-receiver` (host port 8086) mocks Promptly's async `$process-message` API; set `Bundle.id` to `mock-…` to trigger failure scenarios (see `mock_receivers/http_mock_receiver/README.md`) |
 | **mpi-to-topic** | mpi-hl7-server, mpi-hl7-chemo-sender                                                        | MPI to outbound SWW Chemocare integration flow                                                    |
 | **topic-mock-receiver** | mpi-hl7-topic-mock-receiver, sb-emulator                                             | Standalone topic-publishing HL7 mock receiver (hl7_topic_mock_receiver); not wired into any flow yet, runs independently for verification |
 | **dashboard**    | cosmos-emulator                                                                              | Azure Cosmos DB emulator backing the NOC dashboard, which is run on the host via `uv run flask`   |
 
-Note that all the listed profiles will start the **message-store-service** as well as it is not tagged with a profile. Most profiles (all except **hl7-rest**, **risp-to-mpi**, **topic-mock-receiver**, **replay**, and **dashboard**) also start the **bus-watch** (BusWatch) service for inspecting queue contents.
+Note that `sb-emulator` and `sqledge` have no profile and always start with any profile. Most integration flows (excluding DB/TRRR profiles that stay within the Service Bus emulator's 10-connection limit, `hl7-rest`, `topic-mock-receiver`, `lookup`, and `dashboard`) also start `bus-watch` (`http://localhost:8080`) for inspecting queue contents.
 
 #### Environment Files Reference
 
@@ -354,19 +353,14 @@ status) by resolving each source code against the `pims_to_mpi_codes` table of t
 (composite key `code_type` + `pims_code`, seeded from `local/lookup-seed`). The `pims-to-mpi` flow
 needs it reachable before PIMS messages can be transformed.
 
-1. Start the `lookup` profile alongside the flow:
-   `docker compose --profile pims-to-mpi --profile lookup up -d`.
+1. `lookup-service` and `cosmos-emulator` are included in the `pims-to-mpi` profile (and can also be
+   started on their own with `docker compose --profile lookup up -d`).
 2. The PIMS transformer reaches it via `REFERENCE_DATA_API_BASE_URL` in
    `env/transformers/pims-hl7-transformer.env`, which defaults to `http://lookup-service:8080`.
 3. To use a lookup service running elsewhere (for example on your host via `host.docker.internal`, which
    the Compose file maps on Linux), create an untracked
-   `env/transformers/pims-hl7-transformer.local.env` to override the URL without changing the shared
-   config. It is loaded automatically when present and ignored by git:
-
-   ```bash
-   echo 'REFERENCE_DATA_API_BASE_URL="http://192.168.127.254:8085"' \
-     > env/transformers/pims-hl7-transformer.local.env
-   ```
+   `env/transformers/pims-hl7-transformer.local.env` to override `REFERENCE_DATA_API_BASE_URL` without
+   changing the shared config. It is loaded automatically when present and ignored by git.
 
 
 The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "\*"
