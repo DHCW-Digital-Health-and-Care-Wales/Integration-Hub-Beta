@@ -43,9 +43,6 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets
-    volumes:
-      - ./sql-scripts:/var/opt/mssql/scripts:ro
-    entrypoint: ["/bin/sh", "/var/opt/mssql/scripts/entrypoint.sh"]
 
 
   phw-hl7-server:
@@ -66,6 +63,7 @@ services:
       - sb-emulator
     profiles:
       - phw-to-mpi
+      - everything
     networks:
       integration-hub:
         aliases:
@@ -203,7 +201,7 @@ services:
         aliases:
           - "pms-hl7-server"
 
-  # Built from servers/rest_server (PIPELINE=hl7, HL7_VALIDATION_FLOW=proms).
+  # Built from servers/rest_server (PIPELINE=generic, CONTENT_ADAPTER=xml-raw, ENDPOINT_PATH=/ingest).
   wpas-rest-server:
     container_name: wpas-rest-server
     build:
@@ -269,8 +267,10 @@ services:
     <<: *default-healthcheck
     restart: on-failure
     depends_on:
-      - sb-emulator
-      - promptly-mock-receiver
+      sb-emulator:
+        condition: service_started
+      promptly-mock-receiver:
+        condition: service_healthy
     profiles:
       - wpas-to-proms
       - everything
@@ -281,15 +281,23 @@ services:
 
   # Mock of the Promptly $process-message async API (http_mock_receiver). Bundle.id selects a scenario
   # (mock-400, mock-429-once, ...) - see mock_receivers/http_mock_receiver/README.md.
+  # Host port 8086 (not 8085) to avoid clashing with risp-hl7-rest-server's 8085.
   promptly-mock-receiver:
     container_name: promptly-mock-receiver
     build:
       context: ../mock_receivers/http_mock_receiver
       additional_contexts:
-        - ca-certs=../ca-certs
         - shared_libs=../shared_libs
+    env_file:
+      - ./env/mock_receivers/http-mock-receiver.env
     ports:
-      - "127.0.0.1:8085:8080"
+      - "127.0.0.1:8086:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8080/health', timeout=2).status == 200 else sys.exit(1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: on-failure
     profiles:
       - wpas-to-proms
@@ -894,6 +902,7 @@ services:
       - mosaiq-to-mpi
       - wds-to-mpi
       - risp-to-mpi
+      - rest-to-mpi
       - lims-to-mpi
       - lims-to-trrr-mllp
       - topic-mock-receiver
@@ -1048,6 +1057,7 @@ services:
       - sb-emulator
     profiles:
       - chemo-to-mpi
+      - everything
     restart: on-failure
     networks:
       integration-hub:
@@ -1097,7 +1107,10 @@ services:
       - "host.docker.internal:host-gateway"
     <<: *default-healthcheck
     depends_on:
-      - sb-emulator
+      sb-emulator:
+        condition: service_started
+      lookup-service:
+        condition: service_healthy
     profiles:
       - pims-to-mpi
       - everything
@@ -1183,11 +1196,17 @@ services:
       context: ../dev_tools/buswatch
       dockerfile: ./Dockerfile
     volumes:
-      - ./ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro
+      - "${HOST_WORKSPACE_PATH:-..}/local/ServiceBusEmulatorConfig.json:/app/ServiceBusEmulatorConfig.json:ro"
     env_file:
       - ./env/dev_tools/buswatch.env
     ports:
       - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 8080)); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: on-failure
     depends_on:
       - sb-emulator
@@ -1201,6 +1220,7 @@ services:
       - mosaiq-to-mpi
       - wds-to-mpi
       - risp-to-mpi
+      - rest-to-mpi
       - wpas-to-proms
       - everything
       - mpi-to-topic
@@ -1234,7 +1254,8 @@ services:
       start_period: 5s
     restart: on-failure
     depends_on:
-      - cosmos-emulator
+      cosmos-emulator:
+        condition: service_healthy
     profiles:
       - lookup
       - everything
@@ -1264,6 +1285,12 @@ services:
       # cert, so HTTPS must be explicitly enabled here or the SDK fails with
       # "[SSL: WRONG_VERSION_NUMBER]" (TLS handshake against a plain HTTP server).
       PROTOCOL: "https"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
     volumes:
       - cosmos-data:/tmp/cosmos/appdata
     restart: unless-stopped

@@ -5,14 +5,14 @@
 #
 # Quick Start Guide:
 # -----------------
-# 1. List all available commands:     just --list --file docker.justfile
-# 2. Install dependencies:            just --file docker.justfile install
-# 3. Generate secrets:                just --file docker.justfile secrets
-# 4. Build a profile:                 just --file docker.justfile build phw-to-mpi
-# 5. Start services:                  just --file docker.justfile start phw-to-mpi
-# 6. Send a test message:             just --file docker.justfile send test_message.hl7
-# 7. View logs:                       just --file docker.justfile logs mpi-hl7-mock-receiver
-# 8. Stop all services:               just --file docker.justfile stop
+# 1. List all available commands:     just --list --file justfile.docker
+# 2. Install dependencies:            just --file justfile.docker install
+# 3. Generate secrets:                just --file justfile.docker secrets
+# 4. Build a profile:                 just --file justfile.docker build phw-to-mpi
+# 5. Start services:                  just --file justfile.docker start phw-to-mpi
+# 6. Send a test message:             just --file justfile.docker send test_message.hl7
+# 7. View logs:                       just --file justfile.docker logs mpi-hl7-mock-receiver
+# 8. Stop all services:               just --file justfile.docker stop
 #
 # Available Profiles:
 # ------------------
@@ -47,7 +47,7 @@ set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile pms-to-mpi --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile lims-to-trrr-update --profile lims-to-trrr-merge --profile lims-to-trrr-mllp --profile pms-to-mpi --profile cav-pms-to-wcrs --profile cav-pms-to-wrrs --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -64,7 +64,7 @@ python := "python3"
 
 # Show this help message with all available commands
 @default:
-    just --list --unsorted --file docker.justfile
+    just --list --unsorted --file justfile.docker
 
 # ============================================
 # Profiles
@@ -86,7 +86,7 @@ python := "python3"
     echo "  - mpi-to-topic   : MPI Outbound integration"
     echo "  - replay         : Message Replay Job"
     echo ""
-    echo "💡 Run 'just --file docker.justfile start <profile>' to start services"
+    echo "💡 Run 'just --file justfile.docker start <profile>' to start services"
 
 # ============================================
 # Setup & Installation
@@ -100,8 +100,8 @@ python := "python3"
     echo ""
     echo "✅ Installation complete!"
     echo "💡 Next steps:"
-    echo "   - Run 'just --file docker.justfile secrets' to generate required secrets"
-    echo "   - Run 'just --file docker.justfile start <profile>' to start services"
+    echo "   - Run 'just --file justfile.docker secrets' to generate required secrets"
+    echo "   - Run 'just --file justfile.docker start <profile>' to start services"
 
 # Generate the .secrets file with random values (required for containers)
 @secrets:
@@ -110,7 +110,7 @@ python := "python3"
     {{python}} generate_secrets.py > {{secrets_file}}
     echo "✅ Secrets file created at: ./{{secrets_file}}"
     echo "💡 This file contains randomly generated secrets for local development"
-    echo "💡 Next step: Run 'just --file docker.justfile start <profile>' to launch services"
+    echo "💡 Next step: Run 'just --file justfile.docker start <profile>' to launch services"
 
 # ============================================
 # Docker Compose Container Management
@@ -126,7 +126,7 @@ python := "python3"
     docker compose --profile {{profile}} build
     echo ""
     echo "✅ Build complete for profile: {{profile}}"
-    echo "💡 Next step: Run 'just --file docker.justfile start {{profile}}' to start the services"
+    echo "💡 Next step: Run 'just --file justfile.docker start {{profile}}' to start the services"
 
 # Start Docker containers for a specific profile (auto-generates secrets if needed)
 @start profile: (_ensure-secrets)
@@ -142,9 +142,9 @@ python := "python3"
     echo ""
     echo "💡 Next steps examples:"
     echo "   - Check status: docker ps"
-    echo "   - View logs: just --file docker.justfile logs phw-hl7-server"
-    echo "   - Send test message: just --file docker.justfile send ./sample_messages/phw-to-mpi.sample.hl7"
-    echo "   - Stop services: just --file docker.justfile stop"
+    echo "   - View logs: just --file justfile.docker logs phw-hl7-server"
+    echo "   - Send test message: just --file justfile.docker send ./sample_messages/phw-to-mpi.sample.hl7"
+    echo "   - Stop services: just --file justfile.docker stop"
 
 # Stop all Docker containers across all profiles
 @stop:
@@ -153,7 +153,7 @@ python := "python3"
     docker compose {{all_profiles_flags}} down
     echo ""
     echo "✅ All services stopped"
-    echo "💡 To restart: just --file docker.justfile start <profile>"
+    echo "💡 To restart: just --file justfile.docker start <profile>"
 
 # ============================================
 # Testing & Debugging
@@ -172,7 +172,7 @@ python := "python3"
     mllp_send --loose --file {{file}} --port {{port}} 127.0.0.1 | {{python}} -c "import sys; sys.stdout.write(sys.stdin.read().replace('\r','\n'))"
     echo ""
     echo "✅ Message sent!"
-    echo "💡 Check logs with: just --file docker.justfile logs <service-name>"
+    echo "💡 Check logs with: just --file justfile.docker logs <service-name>"
     echo "💡 Profile specific ports:"
     echo "   - 2575 (PHW)"
     echo "   - 2577 (PARIS)"
@@ -192,21 +192,21 @@ python := "python3"
     {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'text/xml; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}/soap"
     echo ""
     echo "✅ Message sent!"
-    echo "💡 Check logs with: just --file docker.justfile logs hl7-soap-server"
+    echo "💡 Check logs with: just --file justfile.docker logs hl7-soap-server"
 
-# Send an HTTP/REST HL7 message to a REST server (default: proms sample, port 8084)
-@send-rest file="./sample_messages/wpas-to-proms.sample.hl7" port="8084":
-    echo "🧪 Sending REST HL7 message..."
+# Send an HTTP/REST payload to a REST server (default: WPAS -> PROMS sample, port 8084, /ingest)
+@send-rest file="./sample_messages/wpas-to-proms.xml" port="8084" path="/ingest":
+    echo "🧪 Sending REST message..."
     echo ""
     echo "📄 File: {{file}}"
-    echo "🎯 Target: http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    echo "🎯 Target: http://127.0.0.1:{{port}}{{path}}"
     echo ""
-    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'text/plain; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'application/xml; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}{{path}}"
     echo ""
     echo "✅ Message sent!"
-    echo "💡 Check logs with: just --file docker.justfile logs <service-name>"
+    echo "💡 Check logs with: just --file justfile.docker logs <service-name>"
 
-# Follow logs from Docker containers (optionally filter by service name, e.g. `just --file docker.justfile logs hl7-soap-server`)
+# Follow logs from Docker containers (optionally filter by service name, e.g. `just --file justfile.docker logs hl7-soap-server`)
 @logs *services:
     echo "📖 Following container logs..."
     echo ""
@@ -223,19 +223,19 @@ python := "python3"
 @run *profile: (_ensure-secrets)
     echo "🚀 Running complete setup..."
     echo ""
-    just --file docker.justfile install
+    just --file justfile.docker install
     echo ""
-    {{ if profile != "" { "echo ''\njust --file docker.justfile start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just --file docker.justfile start <profile>' to launch a specific profile\"" } }}
+    {{ if profile != "" { "echo ''\njust --file justfile.docker start " + profile } else { "echo ''\necho \"✅ Setup complete! Ready to start services.\"\necho \"💡 Run 'just --file justfile.docker start <profile>' to launch a specific profile\"" } }}
 
 # Rebuild containers and restart services for a profile (useful after code changes)
 @restart profile:
     echo "🔄 Rebuilding and restarting services..."
     echo ""
-    just --file docker.justfile build {{profile}}
+    just --file justfile.docker build {{profile}}
     echo ""
-    just --file docker.justfile stop
+    just --file justfile.docker stop
     echo ""
-    just --file docker.justfile start {{profile}}
+    just --file justfile.docker start {{profile}}
     echo ""
     echo "✅ Services rebuilt and restarted!"
 
@@ -243,13 +243,13 @@ python := "python3"
 @clean:
     echo "🧹 Cleaning up local environment..."
     echo ""
-    just --file docker.justfile stop
+    just --file justfile.docker stop
     echo ""
     echo "🗑️  Removing secrets file..."
     rm -f {{secrets_file}}
     echo ""
     echo "✅ Cleanup complete!"
-    echo "💡 Run 'just --file docker.justfile run' to set up the environment again"
+    echo "💡 Run 'just --file justfile.docker run' to set up the environment again"
 
 # ============================================
 # Internal Helper Recipes (prefixed with _)
@@ -257,4 +257,4 @@ python := "python3"
 
 # Internal: Ensure secrets file exists, generate if missing
 @_ensure-secrets:
-    {{ if path_exists(secrets_file) == "false" { "echo '🔒 Secrets file not found, generating...'\necho ''\njust --file docker.justfile secrets\necho ''" } else { "" } }}
+    {{ if path_exists(secrets_file) == "false" { "echo '🔒 Secrets file not found, generating...'\necho ''\njust --file justfile.docker secrets\necho ''" } else { "" } }}

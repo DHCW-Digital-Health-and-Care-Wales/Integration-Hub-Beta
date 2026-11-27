@@ -64,7 +64,7 @@ export COMPOSE_DOCKER_CLI_BUILD := "1"
 # wildcard (it's treated as a literal, nonexistent profile name). To operate on
 # containers across every profile (e.g. `logs`, `stop`), every real profile must
 # be passed explicitly.
-all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile lims-to-trrr-update --profile lims-to-trrr-merge --profile lims-to-trrr-mllp --profile pms-to-mpi --profile cav-pms-to-wcrs --profile cav-pms-to-wrrs --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything --profile replay"
+all_profiles_flags := "--profile phw-to-mpi --profile lims-to-mpi --profile lims-to-wrrs --profile lims-to-trrr --profile lims-to-trrr-update --profile lims-to-trrr-merge --profile lims-to-trrr-mllp --profile pms-to-mpi --profile cav-pms-to-wcrs --profile cav-pms-to-wrrs --profile paris-to-mpi --profile chemo-to-mpi --profile pims-to-mpi --profile mosaiq-to-mpi --profile wds-to-mpi --profile wpas-to-proms --profile rest-to-mpi --profile risp-to-mpi --profile risp-to-wrrs --profile hl7-rest --profile mpi-to-topic --profile topic-mock-receiver --profile lookup --profile dashboard --profile everything"
 
 # Default MLLP port for sending HL7 messages
 default_port := "2575"
@@ -221,14 +221,14 @@ python := "python3"
     echo "✅ Message sent!"
     echo "💡 Check logs with: just logs hl7-soap-server"
 
-# Send an HTTP/REST HL7 message to a REST server (default: proms sample, port 8084)
-@send-rest file="./sample_messages/wpas-to-proms.sample.hl7" port="8084":
-    echo "🧪 Sending REST HL7 message..."
+# Send an HTTP/REST payload to a REST server (default: WPAS -> PROMS sample, port 8084, /ingest)
+@send-rest file="./sample_messages/wpas-to-proms.xml" port="8084" path="/ingest":
+    echo "🧪 Sending REST message..."
     echo ""
     echo "📄 File: {{file}}"
-    echo "🎯 Target: http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    echo "🎯 Target: http://127.0.0.1:{{port}}{{path}}"
     echo ""
-    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'text/plain; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}/hl7MessageReceiver"
+    {{python}} -c "import urllib.request, sys; body = open(sys.argv[1], 'rb').read(); req = urllib.request.Request(sys.argv[2], data=body, headers={'Content-Type': 'application/xml; charset=utf-8'}, method='POST'); resp = urllib.request.urlopen(req); print(f'Status: {resp.status}'); print(resp.read().decode())" "{{file}}" "http://127.0.0.1:{{port}}{{path}}"
     echo ""
     echo "✅ Message sent!"
     echo "💡 Check logs with: just logs <service-name>"
