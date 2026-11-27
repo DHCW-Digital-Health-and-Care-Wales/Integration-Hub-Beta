@@ -359,13 +359,8 @@ needs it reachable before PIMS messages can be transformed.
    `env/transformers/pims-hl7-transformer.env`, which defaults to `http://lookup-service:8080`.
 3. To use a lookup service running elsewhere (for example on your host via `host.docker.internal`, which
    the Compose file maps on Linux), create an untracked
-   `env/transformers/pims-hl7-transformer.local.env` to override the URL without changing the shared
-   config. It is loaded automatically when present and ignored by git:
-
-   ```bash
-   echo 'REFERENCE_DATA_API_BASE_URL="http://192.168.127.254:8090"' \
-     > env/transformers/pims-hl7-transformer.local.env
-   ```
+   `env/transformers/pims-hl7-transformer.local.env` to override `REFERENCE_DATA_API_BASE_URL` without
+   changing the shared config. It is loaded automatically when present and ignored by git.
 
 
 The profile flag can be repeated to start multiple profiles or if you want to enable all profiles at the same time, you can use the flag --profile "\*"
