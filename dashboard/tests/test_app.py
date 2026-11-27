@@ -1426,3 +1426,29 @@ class TestUIQuickWins:
             chart_js = (js_dir / filename).read_text(encoding="utf-8")
             assert "fetchState = 'error'" in chart_js
             assert "if (fetchState === 'error')" in chart_js
+
+    def test_no_easter_eggs_rendered_or_bundled(self, client: FlaskClient) -> None:
+        pkg_dir = Path(app_module.__file__).resolve().parent
+        for removed in (
+            pkg_dir / "static" / "js" / "enhanced-ui.js",
+            pkg_dir / "static" / "js" / "alternate_ui.js",
+            pkg_dir / "static" / "vendor" / "threejs",
+            pkg_dir / "templates" / "flows_config.html",
+            pkg_dir / "templates" / "SB_Emulator_MC.html",
+        ):
+            assert not removed.exists(), f"Expected easter egg asset {removed} to be removed"
+
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
+            pages = [("/", client.get("/")), ("/flows", client.get("/flows"))]
+        with patch("dashboard.routes.pages.cache.cached_nowait", return_value=EMPTY_NAMESPACE_SNAPSHOT):
+            pages.append(("/service-bus", client.get("/service-bus")))
+
+        for route, resp in pages:
+            assert resp.status_code == 200
+            html = resp.get_data(as_text=True)
+            for marker in ("lego-panel", "enhanced-ui.js", "alternate_ui.js", "lamp-modal", "mc-modal"):
+                assert marker not in html, f"Unexpected easter egg marker {marker!r} on {route}"
