@@ -1,7 +1,9 @@
+import gc
 import json
 import random
 import socket
 import time
+import tkinter as tk
 import unittest
 
 from ultra7.anonymise import anonymise_message
@@ -14,6 +16,17 @@ from ultra7.senders.connectivity import INTEGRATION_HUB_PRESETS, test_endpoint_c
 from ultra7.senders.mllp_sender import MllpSender
 from ultra7.senders.rest_sender import RestSender
 from ultra7.ui.diff_dialog import compute_side_by_side_diff
+from ultra7.ui.endpoint_dialog import EndpointDialog
+from ultra7.ui.iteration_dialog import IterationDialog
+
+
+def _tk_available() -> bool:
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        return False
+    root.destroy()
+    return True
 
 
 class TestHl7Dictionary(unittest.TestCase):
@@ -287,6 +300,87 @@ class TestMockReceiversAndConnectivity(unittest.TestCase):
             self.assertEqual(len({m.remote for m in captured}), 1)
         finally:
             server.stop()
+
+
+class TestEndpointIsConfigured(unittest.TestCase):
+    def test_mllp_rest_and_soap_configured_checks(self) -> None:
+        self.assertFalse(Endpoint(kind="mllp").is_configured)
+        self.assertFalse(Endpoint(kind="mllp", host="127.0.0.1", port=None).is_configured)
+        self.assertFalse(Endpoint(kind="mllp", host="", port=2575).is_configured)
+        self.assertFalse(Endpoint(kind="mllp", host="127.0.0.1", port=0).is_configured)
+        self.assertFalse(Endpoint(kind="mllp", host="127.0.0.1", port=70000).is_configured)
+        self.assertTrue(Endpoint(kind="mllp", host="127.0.0.1", port=2575).is_configured)
+
+        self.assertFalse(Endpoint(kind="rest", url="").is_configured)
+        self.assertFalse(Endpoint(kind="rest", url="http://").is_configured)
+        self.assertFalse(Endpoint(kind="rest", url="ftp://example.test/api").is_configured)
+        self.assertTrue(Endpoint(kind="rest", url="http://127.0.0.1:8080/ingest").is_configured)
+        self.assertTrue(Endpoint(kind="soap", url="https://example.test/soap").is_configured)
+
+        # Every built-in Integration Hub preset must be configured and include MLLP, REST, and SOAP.
+        kinds = {ep.kind for _label, ep in INTEGRATION_HUB_PRESETS}
+        self.assertTrue({"mllp", "rest", "soap"}.issubset(kinds))
+        for label, ep in INTEGRATION_HUB_PRESETS:
+            self.assertTrue(ep.is_configured, f"Preset {label!r} should be configured")
+
+
+@unittest.skipUnless(_tk_available(), "requires a Tk display")
+class TestIterationAndEndpointDialogs(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = tk.Tk()
+        self.root.withdraw()
+
+    def tearDown(self) -> None:
+        self.root.destroy()
+        gc.collect()
+
+    def test_iteration_dialog_live_preview_and_validation(self) -> None:
+        # Numeric text defaults to increment and renders live #1..#3 preview
+        dlg_num = IterationDialog(self.root, 0, 4, "0001")
+        self.assertEqual(dlg_num._current_mode(), "increment")
+        self.assertIn("#1: 0001", dlg_num._preview_var.get())
+        self.assertIn("#2: 0002", dlg_num._preview_var.get())
+        self.assertIn("#3: 0003", dlg_num._preview_var.get())
+        dlg_num._save()
+        self.assertIsNotNone(dlg_num.result)
+        assert dlg_num.result is not None
+        self.assertEqual(dlg_num.result.mode, "increment")
+
+        # Non-numeric text defaults to list; switching to increment shows warning and blocks Save
+        dlg_txt = IterationDialog(self.root, 0, 4, "JANE")
+        self.assertEqual(dlg_txt._current_mode(), "list")
+        dlg_txt._mode_label.set("Increment integer (add step each repeat)")
+        dlg_txt._on_mode_change()
+        self.assertIn("not an integer", dlg_txt._warning_var.get())
+        dlg_txt._save()
+        self.assertIsNone(dlg_txt.result)
+        self.assertTrue(dlg_txt.winfo_exists())
+        dlg_txt.destroy()
+
+    def test_endpoint_dialog_validates_and_applies_presets(self) -> None:
+        dlg = EndpointDialog(self.root, Endpoint(kind="mllp"))
+        # Saving an unconfigured MLLP endpoint should display an error and stay open
+        dlg._save()
+        self.assertIsNone(dlg.result)
+        self.assertIn("Host is required", dlg._error_var.get())
+        self.assertTrue(dlg.winfo_exists())
+
+        # Invalid REST URL rejected
+        dlg._kind_label.set("REST (HTTP / HTTPS POST)")
+        dlg._on_kind_change()
+        dlg._url.set("not-a-url")
+        dlg._save()
+        self.assertIsNone(dlg.result)
+        self.assertIn("http://", dlg._error_var.get())
+
+        # Applying a REST preset populates valid fields and saves cleanly
+        rest_preset_name = next(label for label, ep in INTEGRATION_HUB_PRESETS if ep.kind == "rest")
+        dlg._apply_preset(rest_preset_name)
+        dlg._save()
+        self.assertIsNotNone(dlg.result)
+        assert dlg.result is not None
+        self.assertEqual(dlg.result.kind, "rest")
+        self.assertTrue(dlg.result.is_configured)
 
 
 if __name__ == "__main__":

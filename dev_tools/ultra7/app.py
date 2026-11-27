@@ -12,7 +12,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from ultra7.export import extension_for, sanitize_filename, unique_filename
-from ultra7.models import Endpoint, Message, Project
+from ultra7.models import Endpoint, Message, MllpMode, Project
 from ultra7.senders.base import SendResult
 from ultra7.settings import (
     MAX_EDITOR_FONT_SIZE,
@@ -55,14 +55,12 @@ _EDITOR_LOG_SASH_HEIGHT = 500
 
 
 def _format_endpoint_summary(endpoint: Endpoint) -> str:
+    if not endpoint.is_configured:
+        return "No endpoint configured — click Configure Endpoint…"
     if endpoint.kind == "mllp":
         mode_tag = {"stream": " (Stream)", "pipelined": " (Pipelined)"}.get(endpoint.mllp_mode, "")
-        if endpoint.host and endpoint.port:
-            return f"MLLP{mode_tag} · {endpoint.host}:{endpoint.port}"
-        return f"MLLP{mode_tag} · not configured"
-    if endpoint.url:
-        return f"{endpoint.kind.upper()} · {endpoint.url}"
-    return f"{endpoint.kind.upper()} · not configured"
+        return f"MLLP{mode_tag} · {endpoint.host}:{endpoint.port}"
+    return f"{endpoint.kind.upper()} · {endpoint.url}"
 
 
 class Ultra7App(tk.Tk):
@@ -214,10 +212,12 @@ class Ultra7App(tk.Tk):
         ttk.Button(header, text="?", width=3, style="Subtle.TButton", command=self._open_help).pack(
             side=tk.RIGHT, padx=(6, 0)
         )
-        ttk.Button(header, text="Save", style="Accent.TButton", command=self._save_current_project).pack(
-            side=tk.RIGHT, padx=(6, 0)
+        self._save_btn = ttk.Button(header, text="Save", style="Accent.TButton", command=self._save_current_project)
+        self._save_btn.pack(side=tk.RIGHT, padx=(6, 0))
+        self._configure_endpoint_btn = ttk.Button(
+            header, text="Configure Endpoint…", command=self._configure_endpoint
         )
-        ttk.Button(header, text="Configure Endpoint…", command=self._configure_endpoint).pack(side=tk.RIGHT)
+        self._configure_endpoint_btn.pack(side=tk.RIGHT)
 
         ttk.Separator(right, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=10, pady=(0, 2))
 
@@ -237,6 +237,8 @@ class Ultra7App(tk.Tk):
             on_result=self._log_result,
             on_info=self._log_info,
             on_change=self._mark_dirty,
+            on_mllp_mode_change=self._handle_inline_mllp_mode_change,
+            on_unconfigured_endpoint=self._prompt_configure_endpoint,
         )
         self.send_controls.pack(fill=tk.X, padx=4, pady=4)
 
@@ -566,10 +568,36 @@ class Ultra7App(tk.Tk):
         self.current_project = project
         self._dirty = False
         self._project_label_var.set(project.name)
-        self._endpoint_summary_var.set(_format_endpoint_summary(project.endpoint))
         self.editor_pane.set_messages(project.messages)
         self.send_controls.set_repeat_and_delay(project.repeat_count, project.delay_ms)
         self._set_project_controls_enabled(True)
+        self._refresh_endpoint_ui()
+
+    def _refresh_endpoint_ui(self) -> None:
+        if self.current_project is None:
+            self._endpoint_summary_var.set("Select or create a project in the sidebar")
+            self._configure_endpoint_btn.configure(style="TButton")
+            return
+        endpoint = self.current_project.endpoint
+        self._endpoint_summary_var.set(_format_endpoint_summary(endpoint))
+        self._configure_endpoint_btn.configure(
+            style="TButton" if endpoint.is_configured else "Accent.TButton"
+        )
+        self.send_controls.sync_endpoint(endpoint)
+
+    def _handle_inline_mllp_mode_change(self, mode: MllpMode) -> None:
+        if self.current_project is None or self.current_project.endpoint.kind != "mllp":
+            return
+        self.current_project.endpoint.mllp_mode = mode
+        self._endpoint_summary_var.set(_format_endpoint_summary(self.current_project.endpoint))
+        self._mark_dirty()
+
+    def _prompt_configure_endpoint(self) -> bool:
+        """Open Configure Endpoint when sending on an unconfigured flow; returns True if configured."""
+        if self.current_project is None:
+            return False
+        self._configure_endpoint()
+        return self.current_project.endpoint.is_configured
 
     def _save_current_project(self) -> None:
         if self.current_project is None:
@@ -653,7 +681,7 @@ class Ultra7App(tk.Tk):
         self.wait_window(dialog)
         if dialog.result is not None:
             self.current_project.endpoint = dialog.result
-            self._endpoint_summary_var.set(_format_endpoint_summary(dialog.result))
+            self._refresh_endpoint_ui()
             self._mark_dirty()
             self._save_current_project()
 
@@ -687,6 +715,11 @@ class Ultra7App(tk.Tk):
 
     def _set_project_controls_enabled(self, enabled: bool) -> None:
         self.send_controls.set_enabled(enabled)
+        state = "normal" if enabled else "disabled"
+        self._save_btn.configure(state=state)
+        self._configure_endpoint_btn.configure(state=state)
+        if not enabled:
+            self._configure_endpoint_btn.configure(style="TButton")
 
     # -- logging / exit -------------------------------------------------------
 

@@ -18,7 +18,7 @@ from ultra7.formats.structure import (
 )
 from ultra7.models import IterationSpec, Message, MessageFormat
 from ultra7.settings import AppPreferences
-from ultra7.ui.iteration_dialog import IterationDialog
+from ultra7.ui.iteration_dialog import IterationDialog, ManageIterationsDialog
 from ultra7.ui.preview_dialog import IterationPreviewDialog
 from ultra7.ui.themes import (
     DEFAULT_THEME_NAME,
@@ -219,18 +219,28 @@ class EditorPane(ttk.Frame):
 
         iter_row = ttk.Frame(right_inner)
         iter_row.pack(fill=tk.X, pady=(0, 6))
-        ttk.Button(iter_row, text="Mark Iterate Field", command=self._mark_iteration_field).pack(side=tk.LEFT)
+        ttk.Button(iter_row, text="+ Mark Field", command=self._mark_iteration_field).pack(side=tk.LEFT)
         self._edit_iter_btn = ttk.Button(
-            iter_row, text="Edit Iterate Field…", command=self._edit_iteration_field, state="disabled"
+            iter_row, text="Edit Field…", command=self._edit_iteration_field, state="disabled"
         )
         self._edit_iter_btn.pack(side=tk.LEFT, padx=(6, 0))
+        self._manage_iter_btn = ttk.Button(
+            iter_row, text="Manage All…", command=self._manage_iteration_fields, state="disabled"
+        )
+        self._manage_iter_btn.pack(side=tk.LEFT, padx=(6, 0))
+        self._clear_iter_btn = ttk.Button(
+            iter_row, text="Clear All", style="Danger.TButton", command=self.clear_all_iterations, state="disabled"
+        )
+        self._clear_iter_btn.pack(side=tk.LEFT, padx=(6, 0))
         self._preview_iter_btn = ttk.Button(
             iter_row, text="Preview Sends…", command=self.preview_iterations, state="disabled"
         )
         self._preview_iter_btn.pack(side=tk.LEFT, padx=(6, 0))
-        self._iteration_status_var = tk.StringVar(value="No iteration field set")
+        self._iteration_status_var = tk.StringVar(
+            value="Highlight text (or select a tree node) → + Mark Field to vary values on Repeat > 1"
+        )
         ttk.Label(iter_row, textvariable=self._iteration_status_var, style="Muted.TLabel").pack(
-            side=tk.LEFT, padx=(12, 0)
+            side=tk.LEFT, padx=(10, 0)
         )
 
         # Collapsible Find & Replace bar (hidden until Cmd/Ctrl+F or Find button).
@@ -275,6 +285,7 @@ class EditorPane(ttk.Frame):
             self._text_frame,
             wrap="none",
             undo=True,
+            exportselection=False,
             font=("Menlo", 11),
             bd=0,
             padx=10,
@@ -941,8 +952,12 @@ class EditorPane(ttk.Frame):
         self.text.delete("1.0", tk.END)
         self.text.edit_modified(False)
         self._set_editor_enabled(False)
-        self._iteration_status_var.set("No iteration field set")
+        self._iteration_status_var.set(
+            "Highlight text (or select a tree node) → + Mark Field to vary values on Repeat > 1"
+        )
         self._edit_iter_btn.configure(state="disabled")
+        self._manage_iter_btn.configure(state="disabled")
+        self._clear_iter_btn.configure(state="disabled")
         self._preview_iter_btn.configure(state="disabled")
         self._toggle_enabled_btn.configure(text="Disable", state="disabled")
         self._rebuild_structure_tree()
@@ -972,6 +987,8 @@ class EditorPane(ttk.Frame):
                     if spec.end > spec.start:
                         surviving.append(spec)
             message.set_iterations(surviving)
+            if len(surviving) != len(specs):
+                self._apply_iteration_tags(message)
             self._update_iteration_label(message)
 
     # -- field change handlers ----------------------------------------------
@@ -1076,21 +1093,33 @@ class EditorPane(ttk.Frame):
     # -- iteration fields (multi-field supported) -----------------------------
 
     def _mark_iteration_field(self) -> None:
-        """Mark the current text selection as an iteration field (supports multiple fields)."""
+        """Mark the current text selection (or selected Structure tree leaf) as an iteration field."""
         if self._selected_index is None:
             return
+        start_off: int
+        end_off: int
         ranges = self.text.tag_ranges("sel")
-        if not ranges:
-            messagebox.showinfo("Ultra7", "Highlight part of the message text first.")
-            return
-        start_idx, end_idx = ranges[0], ranges[1]
-        start_off = self._char_offset(start_idx)
-        end_off = self._char_offset(end_idx)
-        if start_off == end_off:
+        if ranges:
+            start_off = self._char_offset(ranges[0])
+            end_off = self._char_offset(ranges[1])
+        else:
+            # Fallback: if a leaf node is selected in the Structure tree, use its value span.
+            tree_sel = self.structure_tree.selection()
+            node = self._tree_nodes_by_item.get(tree_sel[0]) if tree_sel else None
+            if node is not None and node.value_start is not None and node.value_end is not None:
+                start_off, end_off = node.value_start, node.value_end
+            else:
+                messagebox.showinfo(
+                    "Ultra7",
+                    "Highlight the part of the message you want to vary on each repeat "
+                    "(e.g. MSH-10 control ID or NHS number), or select a leaf node in the Structure tree first.",
+                )
+                return
+        if start_off >= end_off:
             return
 
         message = self._messages[self._selected_index]
-        selected_text = self.text.get(start_idx, end_idx)
+        selected_text = self.text.get(f"1.0+{start_off}c", f"1.0+{end_off}c")
         existing = next(
             (s for s in message.all_iterations() if s.start == start_off and s.end == end_off),
             None,
@@ -1098,7 +1127,7 @@ class EditorPane(ttk.Frame):
         self._run_iteration_dialog(message, start_off, end_off, selected_text, existing)
 
     def _edit_iteration_field(self) -> None:
-        """Edit (or remove) the iteration field at cursor, or the first configured field."""
+        """Edit (or remove) the iteration field at cursor, or open Manage if multiple exist."""
         if self._selected_index is None:
             return
         message = self._messages[self._selected_index]
@@ -1107,9 +1136,67 @@ class EditorPane(ttk.Frame):
             messagebox.showinfo("Ultra7", "No iteration field set for this message.")
             return
         cursor = self._char_offset(tk.INSERT)
-        target = next((s for s in specs if s.start <= cursor <= s.end), specs[0])
+        at_cursor = next((s for s in specs if s.start <= cursor <= s.end), None)
+        if at_cursor is None and len(specs) > 1:
+            self._manage_iteration_fields()
+            return
+        target = at_cursor or specs[0]
         selected_text = self.text.get(f"1.0+{target.start}c", f"1.0+{target.end}c")
         self._run_iteration_dialog(message, target.start, target.end, selected_text, target)
+
+    def _manage_iteration_fields(self) -> None:
+        """Open a table dialog listing all iteration fields on the active message."""
+        if self._selected_index is None:
+            return
+        self._commit_current_edits()
+        message = self._messages[self._selected_index]
+        specs = message.all_iterations()
+        if not specs:
+            messagebox.showinfo("Ultra7", "No iteration fields set for this message.")
+            return
+
+        def _edit(spec: IterationSpec) -> None:
+            snippet = self.text.get(f"1.0+{spec.start}c", f"1.0+{spec.end}c")
+            self._run_iteration_dialog(message, spec.start, spec.end, snippet, spec)
+
+        def _jump(spec: IterationSpec) -> None:
+            start_idx = f"1.0+{spec.start}c"
+            end_idx = f"1.0+{spec.end}c"
+            self.text.tag_remove("sel", "1.0", tk.END)
+            self.text.tag_add("sel", start_idx, end_idx)
+            self.text.mark_set(tk.INSERT, start_idx)
+            self.text.see(start_idx)
+            self.text.focus_set()
+
+        def _remove(spec: IterationSpec) -> None:
+            updated = [s for s in message.all_iterations() if not (s.start == spec.start and s.end == spec.end)]
+            message.set_iterations(updated)
+            self._apply_iteration_tags(message)
+            self._update_iteration_label(message)
+            self._on_change()
+
+        ManageIterationsDialog(
+            self,
+            message.content,
+            specs,
+            on_edit=_edit,
+            on_jump=_jump,
+            on_remove=_remove,
+            on_clear_all=self.clear_all_iterations,
+            theme=self._theme,
+        )
+
+    def clear_all_iterations(self) -> None:
+        """Remove every iteration field from the currently active message."""
+        if self._selected_index is None:
+            return
+        message = self._messages[self._selected_index]
+        if not message.all_iterations():
+            return
+        message.set_iterations([])
+        self._apply_iteration_tags(message)
+        self._update_iteration_label(message)
+        self._on_change()
 
     def _run_iteration_dialog(
         self, message: Message, start_off: int, end_off: int, selected_text: str, existing: IterationSpec | None
@@ -1146,22 +1233,28 @@ class EditorPane(ttk.Frame):
     def _update_iteration_label(self, message: Message) -> None:
         specs = message.all_iterations()
         if not specs:
-            self._iteration_status_var.set("No iteration field set")
+            self._iteration_status_var.set(
+                "Highlight text (or select a tree node) → + Mark Field to vary values on Repeat > 1"
+            )
             self._edit_iter_btn.configure(state="disabled")
+            self._manage_iter_btn.configure(state="disabled")
+            self._clear_iter_btn.configure(state="disabled")
             self._preview_iter_btn.configure(state="disabled")
             return
         self._edit_iter_btn.configure(state="normal")
+        self._manage_iter_btn.configure(state="normal")
+        self._clear_iter_btn.configure(state="normal")
         self._preview_iter_btn.configure(state="normal")
         if len(specs) > 1:
             modes = ", ".join(s.mode for s in specs)
-            self._iteration_status_var.set(f"{len(specs)} iteration fields ({modes})")
+            self._iteration_status_var.set(f"{len(specs)} fields ({modes}) — varies on Repeat > 1")
             return
         spec = specs[0]
         if spec.mode == "increment":
-            self._iteration_status_var.set(f"Iterates: increment (step {spec.step})")
+            self._iteration_status_var.set(f"Iterates: increment (step {spec.step}) — varies on Repeat > 1")
         elif spec.mode == "list":
-            self._iteration_status_var.set(f"Iterates: list ({len(spec.values)} values)")
+            self._iteration_status_var.set(f"Iterates: list ({len(spec.values)} values) — varies on Repeat > 1")
         elif spec.mode == "nhs_number":
-            self._iteration_status_var.set("Iterates: valid NHS Number (Mod-11)")
+            self._iteration_status_var.set("Iterates: Mod-11 NHS Number — varies on Repeat > 1")
         else:
-            self._iteration_status_var.set(f"Iterates: timestamp ({spec.timestamp_format})")
+            self._iteration_status_var.set(f"Iterates: timestamp ({spec.timestamp_format}) — varies on Repeat > 1")

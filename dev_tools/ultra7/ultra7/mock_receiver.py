@@ -118,11 +118,6 @@ class MockMllpServer:
                         time.sleep(parent.delay_ms / 1000)
                     ack = build_hl7_ack(raw, parent.ack_code)
                     reply_frame = MLLP_START_BLOCK + ack.encode("utf-8") + MLLP_END_SEQ
-                    send_ok = True
-                    try:
-                        sock.sendall(reply_frame)
-                    except OSError:
-                        send_ok = False
                     if parent._on_message is not None:
                         ts = datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3]
                         parent._on_message(
@@ -135,7 +130,9 @@ class MockMllpServer:
                                 response_sent=ack,
                             )
                         )
-                    if not send_ok:
+                    try:
+                        sock.sendall(reply_frame)
+                    except OSError:
                         return
 
         self._server = _ReusableTCPServer((self.host, self.port), _Handler)

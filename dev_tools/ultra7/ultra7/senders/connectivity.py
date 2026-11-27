@@ -16,6 +16,14 @@ INTEGRATION_HUB_PRESETS: tuple[tuple[str, Endpoint], ...] = (
     ("ChemoCare → MPI (MLLP :2578)", Endpoint(kind="mllp", host="127.0.0.1", port=2578, timeout_seconds=5.0)),
     ("PIMS → MPI (MLLP :2579)", Endpoint(kind="mllp", host="127.0.0.1", port=2579, timeout_seconds=5.0)),
     ("Mosaiq → MPI (MLLP :2583)", Endpoint(kind="mllp", host="127.0.0.1", port=2583, timeout_seconds=5.0)),
+    (
+        "RISP → WRRS (REST :8080)",
+        Endpoint(kind="rest", url="http://127.0.0.1:8080/hl7", timeout_seconds=5.0),
+    ),
+    (
+        "WPAS → PROMS (SOAP :8081)",
+        Endpoint(kind="soap", url="http://127.0.0.1:8081/soap", timeout_seconds=5.0),
+    ),
     ("Ultra7 Mock MLLP (:2599)", Endpoint(kind="mllp", host="127.0.0.1", port=2599, timeout_seconds=5.0)),
     (
         "Ultra7 Mock HTTP (:8090)",
