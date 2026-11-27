@@ -91,8 +91,9 @@ uv run python app.py
 
 Click **Configure Endpoint…** in the header (highlighted automatically for projects
 without an endpoint yet, and also opened if you click **▶ Send** before configuring one)
-to choose a built-in Integration Hub preset (MLLP `:2575`–`:2583`, REST `:8080`, SOAP
-`:8081`, or local Mock Receiver `:2599`/`:8090`) or configure manually:
+to choose a built-in Integration Hub preset (MLLP `:2575`–`:2583`, RISP REST `:8085`
+accepting JSON `{"messageContent": "..."}`, WPAS REST `:8084` accepting raw XML at
+`/ingest`, or local Mock Receiver `:2599`/`:8090`) or configure manually:
 
 - **Protocol** — MLLP, REST, or SOAP (only fields relevant to the chosen protocol are shown,
   with inline validation before saving or testing).

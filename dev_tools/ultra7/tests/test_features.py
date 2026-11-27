@@ -314,12 +314,16 @@ class TestEndpointIsConfigured(unittest.TestCase):
         self.assertFalse(Endpoint(kind="rest", url="").is_configured)
         self.assertFalse(Endpoint(kind="rest", url="http://").is_configured)
         self.assertFalse(Endpoint(kind="rest", url="ftp://example.test/api").is_configured)
-        self.assertTrue(Endpoint(kind="rest", url="http://127.0.0.1:8080/ingest").is_configured)
+        self.assertTrue(Endpoint(kind="rest", url="http://127.0.0.1:8085/hl7MessageReceiver").is_configured)
+        self.assertTrue(Endpoint(kind="rest", url="HTTPS://example.test/Ingest?Case=Kept").is_configured)
         self.assertTrue(Endpoint(kind="soap", url="https://example.test/soap").is_configured)
 
-        # Every built-in Integration Hub preset must be configured and include MLLP, REST, and SOAP.
-        kinds = {ep.kind for _label, ep in INTEGRATION_HUB_PRESETS}
-        self.assertTrue({"mllp", "rest", "soap"}.issubset(kinds))
+        # Every built-in Integration Hub preset must be configured and include local MLLP and REST flows.
+        presets = dict(INTEGRATION_HUB_PRESETS)
+        kinds = {ep.kind for ep in presets.values()}
+        self.assertTrue({"mllp", "rest"}.issubset(kinds))
+        self.assertEqual(presets["RISP → WRRS (REST :8085)"].url, "http://127.0.0.1:8085/hl7MessageReceiver")
+        self.assertEqual(presets["WPAS → PROMS (REST :8084)"].url, "http://127.0.0.1:8084/ingest")
         for label, ep in INTEGRATION_HUB_PRESETS:
             self.assertTrue(ep.is_configured, f"Preset {label!r} should be configured")
 
@@ -372,6 +376,13 @@ class TestIterationAndEndpointDialogs(unittest.TestCase):
         dlg._save()
         self.assertIsNone(dlg.result)
         self.assertIn("http://", dlg._error_var.get())
+
+        # Mixed-case HTTPS scheme is accepted while preserving URL path/query casing
+        dlg._url.set("HTTPS://example.test/Hl7Receiver?Flow=RISP")
+        ep_case, err_case = dlg._validate_and_build()
+        self.assertIsNone(err_case)
+        assert ep_case is not None
+        self.assertEqual(ep_case.url, "HTTPS://example.test/Hl7Receiver?Flow=RISP")
 
         # Applying a REST preset populates valid fields and saves cleanly
         rest_preset_name = next(label for label, ep in INTEGRATION_HUB_PRESETS if ep.kind == "rest")

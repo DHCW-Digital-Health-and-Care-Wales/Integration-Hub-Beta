@@ -60,6 +60,8 @@ class EditorPane(ttk.Frame):
         self._find_matches: list[tuple[int, int]] = []
         self._find_index: int = -1
         self._iter_tag_count: int = 0
+        self._iter_dialog: IterationDialog | None = None
+        self._manage_iter_dialog: ManageIterationsDialog | None = None
         self._current_path: str = ""
         self._auto_expand_structure: bool = False
         self._theme: Theme = get_theme(DEFAULT_THEME_NAME)
@@ -565,7 +567,7 @@ class EditorPane(ttk.Frame):
 
     def apply_inline_edit(self, item_id: str, new_value: str) -> bool:
         """Replace the editable value span of *item_id* in the editor and rebuild the tree."""
-        if self._selected_index is None:
+        if self._selected_index is None or self._is_iter_dialog_open():
             return False
         node = self._tree_nodes_by_item.get(item_id)
         if node is None or node.value_start is None or node.value_end is None:
@@ -809,7 +811,20 @@ class EditorPane(ttk.Frame):
 
     # -- project wiring ----------------------------------------------------
 
+    def _close_manage_dialog(self) -> None:
+        if self._manage_iter_dialog is not None and self._manage_iter_dialog.winfo_exists():
+            self._manage_iter_dialog.destroy()
+        self._manage_iter_dialog = None
+
+    def _is_iter_dialog_open(self) -> bool:
+        if self._iter_dialog is not None and self._iter_dialog.winfo_exists():
+            self._iter_dialog.lift()
+            self._iter_dialog.focus_set()
+            return True
+        return False
+
     def set_messages(self, messages: list[Message]) -> None:
+        self._close_manage_dialog()
         self._messages = list(messages)
         self._selected_index = None
         self._refresh_listbox()
@@ -842,6 +857,8 @@ class EditorPane(ttk.Frame):
                 self.listbox.itemconfig(index, foreground=_DISABLED_FG)
 
     def _new_message(self) -> None:
+        if self._is_iter_dialog_open():
+            return
         self._commit_current_edits()
         message = Message(name=f"Message {len(self._messages) + 1}", format="hl7", content="")
         self._messages.append(message)
@@ -849,6 +866,9 @@ class EditorPane(ttk.Frame):
         self._on_change()
 
     def _delete_message(self) -> None:
+        if self._is_iter_dialog_open():
+            return
+        self._close_manage_dialog()
         indices = self.listbox.curselection()
         if not indices:
             if self._selected_index is None:
@@ -862,6 +882,8 @@ class EditorPane(ttk.Frame):
         self._on_change()
 
     def _move(self, offset: int) -> None:
+        if self._is_iter_dialog_open():
+            return
         indices = self.listbox.curselection()
         if not indices:
             return
@@ -892,6 +914,8 @@ class EditorPane(ttk.Frame):
         self._on_change()
 
     def _load_from_disk(self) -> None:
+        if self._is_iter_dialog_open():
+            return
         paths = filedialog.askopenfilenames(title="Load message(s)")
         if not paths:
             return
@@ -917,6 +941,11 @@ class EditorPane(ttk.Frame):
     # -- selection / editor sync --------------------------------------------
 
     def _handle_select(self, _event: tk.Event) -> None:
+        if self._is_iter_dialog_open():
+            if self._selected_index is not None:
+                self.listbox.selection_clear(0, tk.END)
+                self.listbox.selection_set(self._selected_index)
+            return
         selection = self.listbox.curselection()
         if not selection:
             return
@@ -927,6 +956,7 @@ class EditorPane(ttk.Frame):
         self._update_toggle_enabled_button_for_selection()
 
     def _load_into_editor(self, index: int) -> None:
+        self._close_manage_dialog()
         self._suspend_events = True
         message = self._messages[index]
         self._selected_index = index
@@ -947,6 +977,7 @@ class EditorPane(ttk.Frame):
         self._suspend_events = False
 
     def _clear_editor(self) -> None:
+        self._close_manage_dialog()
         self._suspend_events = True
         self._name_var.set("")
         self.text.delete("1.0", tk.END)
@@ -1094,16 +1125,24 @@ class EditorPane(ttk.Frame):
 
     def _mark_iteration_field(self) -> None:
         """Mark the current text selection (or selected Structure tree leaf) as an iteration field."""
-        if self._selected_index is None:
+        if self._selected_index is None or self._is_iter_dialog_open():
             return
         start_off: int
         end_off: int
-        ranges = self.text.tag_ranges("sel")
-        if ranges:
-            start_off = self._char_offset(ranges[0])
-            end_off = self._char_offset(ranges[1])
+        sel_ranges = self.text.tag_ranges("sel")
+        sync_ranges = self.text.tag_ranges(_STRUCTURE_SYNC_TAG)
+        is_tree_sync_sel = (
+            bool(sel_ranges)
+            and bool(sync_ranges)
+            and str(sel_ranges[0]) == str(sync_ranges[0])
+            and str(sel_ranges[1]) == str(sync_ranges[1])
+        )
+        if sel_ranges and not is_tree_sync_sel:
+            start_off = self._char_offset(sel_ranges[0])
+            end_off = self._char_offset(sel_ranges[1])
         else:
-            # Fallback: if a leaf node is selected in the Structure tree, use its value span.
+            # Tree-generated selection (or no editor selection): use the selected leaf node's value span
+            # so XML tags and JSON keys are never overwritten by iteration values.
             tree_sel = self.structure_tree.selection()
             node = self._tree_nodes_by_item.get(tree_sel[0]) if tree_sel else None
             if node is not None and node.value_start is not None and node.value_end is not None:
@@ -1112,7 +1151,7 @@ class EditorPane(ttk.Frame):
                 messagebox.showinfo(
                     "Ultra7",
                     "Highlight the part of the message you want to vary on each repeat "
-                    "(e.g. MSH-10 control ID or NHS number), or select a leaf node in the Structure tree first.",
+                    "(e.g. MSH-10 control ID or NHS number), or select a leaf value in the Structure tree first.",
                 )
                 return
         if start_off >= end_off:
@@ -1128,7 +1167,7 @@ class EditorPane(ttk.Frame):
 
     def _edit_iteration_field(self) -> None:
         """Edit (or remove) the iteration field at cursor, or open Manage if multiple exist."""
-        if self._selected_index is None:
+        if self._selected_index is None or self._is_iter_dialog_open():
             return
         message = self._messages[self._selected_index]
         specs = message.all_iterations()
@@ -1146,20 +1185,32 @@ class EditorPane(ttk.Frame):
 
     def _manage_iteration_fields(self) -> None:
         """Open a table dialog listing all iteration fields on the active message."""
-        if self._selected_index is None:
+        if self._selected_index is None or self._is_iter_dialog_open():
             return
         self._commit_current_edits()
-        message = self._messages[self._selected_index]
-        specs = message.all_iterations()
+        target_message = self._messages[self._selected_index]
+        specs = target_message.all_iterations()
         if not specs:
             messagebox.showinfo("Ultra7", "No iteration fields set for this message.")
             return
 
+        self._close_manage_dialog()
+
+        def _is_still_active() -> bool:
+            if self._selected_index is None or self._messages[self._selected_index] is not target_message:
+                self._close_manage_dialog()
+                return False
+            return True
+
         def _edit(spec: IterationSpec) -> None:
+            if not _is_still_active():
+                return
             snippet = self.text.get(f"1.0+{spec.start}c", f"1.0+{spec.end}c")
-            self._run_iteration_dialog(message, spec.start, spec.end, snippet, spec)
+            self._run_iteration_dialog(target_message, spec.start, spec.end, snippet, spec)
 
         def _jump(spec: IterationSpec) -> None:
+            if not _is_still_active():
+                return
             start_idx = f"1.0+{spec.start}c"
             end_idx = f"1.0+{spec.end}c"
             self.text.tag_remove("sel", "1.0", tk.END)
@@ -1169,27 +1220,40 @@ class EditorPane(ttk.Frame):
             self.text.focus_set()
 
         def _remove(spec: IterationSpec) -> None:
-            updated = [s for s in message.all_iterations() if not (s.start == spec.start and s.end == spec.end)]
-            message.set_iterations(updated)
-            self._apply_iteration_tags(message)
-            self._update_iteration_label(message)
+            if not _is_still_active():
+                return
+            updated = [
+                s for s in target_message.all_iterations() if not (s.start == spec.start and s.end == spec.end)
+            ]
+            target_message.set_iterations(updated)
+            self._apply_iteration_tags(target_message)
+            self._update_iteration_label(target_message)
             self._on_change()
 
-        ManageIterationsDialog(
+        def _clear_all() -> None:
+            if not _is_still_active():
+                return
+            target_message.set_iterations([])
+            self._apply_iteration_tags(target_message)
+            self._update_iteration_label(target_message)
+            self._on_change()
+
+        self._manage_iter_dialog = ManageIterationsDialog(
             self,
-            message.content,
+            target_message.content,
             specs,
             on_edit=_edit,
             on_jump=_jump,
             on_remove=_remove,
-            on_clear_all=self.clear_all_iterations,
+            on_clear_all=_clear_all,
             theme=self._theme,
         )
 
     def clear_all_iterations(self) -> None:
         """Remove every iteration field from the currently active message."""
-        if self._selected_index is None:
+        if self._selected_index is None or self._is_iter_dialog_open():
             return
+        self._close_manage_dialog()
         message = self._messages[self._selected_index]
         if not message.all_iterations():
             return
@@ -1201,8 +1265,27 @@ class EditorPane(ttk.Frame):
     def _run_iteration_dialog(
         self, message: Message, start_off: int, end_off: int, selected_text: str, existing: IterationSpec | None
     ) -> None:
+        if self._is_iter_dialog_open():
+            return
+        self._close_manage_dialog()
+        original_content = self.text.get("1.0", "end-1c")
         dialog = IterationDialog(self, start_off, end_off, selected_text, existing, theme=self._theme)
-        self.wait_window(dialog)
+        self._iter_dialog = dialog
+        self._set_editor_enabled(False)
+        try:
+            self.wait_window(dialog)
+        finally:
+            self._iter_dialog = None
+            if self._selected_index is not None:
+                self._set_editor_enabled(True)
+
+        # Ensure neither the active message nor its text changed while the dialog was open.
+        if (
+            self._selected_index is None
+            or self._messages[self._selected_index] is not message
+            or self.text.get("1.0", "end-1c") != original_content
+        ):
+            return
 
         current = message.all_iterations()
         if dialog.removed:

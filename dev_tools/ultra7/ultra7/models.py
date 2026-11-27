@@ -147,7 +147,8 @@ class Endpoint:
         if self.kind == "mllp":
             return bool(self.host.strip() and self.port is not None and 1 <= self.port <= 65535)
         url = self.url.strip()
-        return url.startswith(("http://", "https://")) and len(url.split("://", 1)[1]) > 0
+        scheme, sep, rest = url.partition("://")
+        return bool(sep and scheme.lower() in ("http", "https") and rest.strip())
 
     def to_dict(self) -> dict[str, Any]:
         return {

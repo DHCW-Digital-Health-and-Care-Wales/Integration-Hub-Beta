@@ -80,6 +80,7 @@ class Ultra7App(tk.Tk):
         self._mock_receiver_win: MockReceiverDialog | None = None
         self._help_win: HelpDialog | None = None
         self._prefs_win: PreferencesDialog | None = None
+        self._endpoint_dialog: EndpointDialog | None = None
 
         self._build_menu()
         self._build_layout()
@@ -529,7 +530,16 @@ class Ultra7App(tk.Tk):
         names = self.store.list_projects()
         self.sidebar.set_projects(names, select=select)
 
+    def _is_endpoint_dialog_open(self) -> bool:
+        if self._endpoint_dialog is not None and self._endpoint_dialog.winfo_exists():
+            self._endpoint_dialog.lift()
+            self._endpoint_dialog.focus_set()
+            return True
+        return False
+
     def _new_project(self) -> None:
+        if self._is_endpoint_dialog_open():
+            return
         name = simpledialog.askstring("New Project", "Project name:", parent=self)
         if not name:
             return
@@ -542,6 +552,10 @@ class Ultra7App(tk.Tk):
         self._load_project(project)
 
     def _select_project(self, name: str) -> None:
+        if self._is_endpoint_dialog_open():
+            if self.current_project is not None:
+                self._refresh_sidebar(select=self.current_project.name)
+            return
         if self.current_project and self.current_project.name == name:
             return
         self._save_if_dirty()
@@ -553,6 +567,8 @@ class Ultra7App(tk.Tk):
         self._load_project(project)
 
     def _remove_project(self, name: str) -> None:
+        if self._is_endpoint_dialog_open():
+            return
         if not messagebox.askyesno("Ultra7", f"Remove project '{name}'? This cannot be undone."):
             return
         self.store.delete(name)
@@ -596,8 +612,9 @@ class Ultra7App(tk.Tk):
         """Open Configure Endpoint when sending on an unconfigured flow; returns True if configured."""
         if self.current_project is None:
             return False
+        target_project = self.current_project
         self._configure_endpoint()
-        return self.current_project.endpoint.is_configured
+        return self.current_project is target_project and target_project.endpoint.is_configured
 
     def _save_current_project(self) -> None:
         if self.current_project is None:
@@ -674,19 +691,30 @@ class Ultra7App(tk.Tk):
         return self.current_project.endpoint
 
     def _configure_endpoint(self) -> None:
+        if self._is_endpoint_dialog_open():
+            return
         if self.current_project is None:
             messagebox.showinfo("Ultra7", "Select or create a project first.")
             return
-        dialog = EndpointDialog(self, self.current_project.endpoint, theme=self._theme)
-        self.wait_window(dialog)
-        if dialog.result is not None:
-            self.current_project.endpoint = dialog.result
+        target_project = self.current_project
+        dialog = EndpointDialog(self, target_project.endpoint, theme=self._theme)
+        self._endpoint_dialog = dialog
+        self.send_controls.set_enabled(False)
+        try:
+            self.wait_window(dialog)
+        finally:
+            self._endpoint_dialog = None
+            self.send_controls.set_enabled(self.current_project is not None)
+        if dialog.result is not None and self.current_project is target_project:
+            target_project.endpoint = dialog.result
             self._refresh_endpoint_ui()
             self._mark_dirty()
             self._save_current_project()
 
     def _run_selected_projects(self, selected_names: list[str]) -> None:
         """Run all selected projects in batch mode."""
+        if self._is_endpoint_dialog_open():
+            return
         if not selected_names:
             messagebox.showinfo("Ultra7", "No projects selected. Check projects to run them.")
             return

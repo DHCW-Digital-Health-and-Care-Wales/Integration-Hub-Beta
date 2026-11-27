@@ -216,8 +216,9 @@ class EndpointDialog(tk.Toplevel):
             )
 
         url = self._url.get().strip()
-        if not url.startswith(("http://", "https://")) or not url.split("://", 1)[1]:
-            return None, "URL must start with http:// or https:// (e.g. http://127.0.0.1:8080/hl7)."
+        scheme, sep, rest = url.partition("://")
+        if not (sep and scheme.lower() in ("http", "https") and rest.strip()):
+            return None, "URL must start with http:// or https:// (e.g. http://127.0.0.1:8084/ingest)."
 
         return (
             Endpoint(

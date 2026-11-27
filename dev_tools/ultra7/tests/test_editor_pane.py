@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from ultra7.models import IterationSpec, Message
 from ultra7.ui.editor_pane import EditorPane
+from ultra7.ui.iteration_dialog import IterationDialog
 
 
 def _tk_available() -> bool:
@@ -488,6 +489,73 @@ class TestEditorPaneIterationControls(unittest.TestCase):
         specs_after_second = self.pane._messages[0].all_iterations()
         self.assertEqual(len(specs_after_second), 1)
         self.assertEqual(updated[specs_after_second[0].start : specs_after_second[0].end], "JANE")
+
+    def test_mark_iteration_uses_value_span_for_xml_structure_tree_selection(self) -> None:
+        xml = "<Patient><Name>Jane</Name></Patient>"
+        self.pane.set_messages([Message(name="P1", format="xml", content=xml)])
+        self.pane._refresh_listbox(select=0)
+        self.pane.set_left_view("structure")
+
+        root_item = self.pane.structure_tree.get_children()[0]
+        name_item = self.pane.structure_tree.get_children(root_item)[0]
+        self.pane._ignore_tree_select_item = None
+        self.pane.structure_tree.selection_set(name_item)
+        self.pane._on_tree_select(None)  # type: ignore[arg-type]
+        # Tree sync highlights the full XML element in the editor, but + Mark Field must mark only "Jane".
+        self.assertEqual(self.pane.text.get("sel.first", "sel.last"), "<Name>Jane</Name>")
+
+        captured: list[tuple[int, int, str]] = []
+
+        def _fake_dialog(
+            _msg: Message, start: int, end: int, selected: str, _existing: IterationSpec | None
+        ) -> None:
+            captured.append((start, end, selected))
+
+        with patch.object(self.pane, "_run_iteration_dialog", side_effect=_fake_dialog):
+            self.pane._mark_iteration_field()
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0][2], "Jane")
+
+    def test_manage_iterations_dialog_closes_when_switching_messages(self) -> None:
+        s1 = IterationSpec(start=0, end=4, mode="increment", step=1)
+        s2 = IterationSpec(start=0, end=4, mode="increment", step=2)
+        self.pane.set_messages([
+            Message(name="A", format="hl7", content="0001|A", iterations=[s1]),
+            Message(name="B", format="hl7", content="0002|B", iterations=[s2]),
+        ])
+        self.pane._refresh_listbox(select=0)
+        self.pane._manage_iteration_fields()
+        dlg = self.pane._manage_iter_dialog
+        self.assertIsNotNone(dlg)
+        assert dlg is not None
+        self.assertTrue(dlg.winfo_exists())
+
+        # Switching to message B must close A's manager dialog and leave B's specs intact.
+        self.pane._load_into_editor(1)
+        self.assertIsNone(self.pane._manage_iter_dialog)
+        self.assertFalse(dlg.winfo_exists())
+        self.assertEqual(len(self.pane._messages[1].all_iterations()), 1)
+
+    def test_open_iteration_dialog_blocks_message_switch(self) -> None:
+        self.pane.set_messages([
+            Message(name="A", format="hl7", content="0001|A"),
+            Message(name="B", format="hl7", content="0002|B"),
+        ])
+        self.pane._refresh_listbox(select=0)
+        dlg = IterationDialog(self.root, 0, 4, "0001")
+        self.pane._iter_dialog = dlg
+        try:
+            self.pane.listbox.selection_clear(0, tk.END)
+            self.pane.listbox.selection_set(1)
+            self.pane.listbox.activate(1)
+            self.pane._handle_select(None)  # type: ignore[arg-type]
+            # Must stay on message 0 while the iteration dialog is open.
+            self.assertEqual(self.pane._selected_index, 0)
+            self.assertEqual(self.pane.listbox.curselection(), (0,))
+        finally:
+            self.pane._iter_dialog = None
+            dlg.destroy()
 
 
 if __name__ == "__main__":
