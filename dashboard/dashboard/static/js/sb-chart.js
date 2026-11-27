@@ -19,27 +19,58 @@
   // CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════════
 
-  var COLORS = {
-    // Background gradient
-    bgGradientStart: 'rgba(30,41,59,0.55)',
-    bgGradientEnd:   'rgba(15,23,42,0.25)',
-    // Grid & Axes
-    gridLine:        'rgba(51,65,85,0.45)',
-    axisText:        '#94a3b8',
-    // Series
-    incoming:        '#3b82f6',
-    incomingFill:    'rgba(59,130,246,0.18)',
-    outgoing:        '#d946ef',
-    outgoingFill:    'rgba(217,70,239,0.12)',
-    // Tooltip
-    tooltipBg:       'rgba(15,23,42,0.96)',
-    tooltipBorder:   'rgba(59,130,246,0.45)',
-    tooltipText:     '#f1f5f9',
-    // Interaction
-    crosshair:       'rgba(148,163,184,0.35)',
-    zoomBoxFill:     'rgba(59,130,246,0.12)',
-    zoomBoxBorder:   'rgba(59,130,246,0.65)'
-  };
+  function isLightTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  }
+
+  function getThemeColors() {
+    if (isLightTheme()) {
+      return {
+        bgGradientStart: 'rgba(241,245,249,0.85)',
+        bgGradientEnd:   'rgba(255,255,255,0.45)',
+        gridLine:        'rgba(148,163,184,0.35)',
+        axisText:        '#475569',
+        hintText:        'rgba(71,85,105,0.55)',
+        incoming:        '#2563eb',
+        incomingFill:    'rgba(37,99,235,0.14)',
+        outgoing:        '#c026d3',
+        outgoingFill:    'rgba(192,38,211,0.10)',
+        tooltipBg:       'rgba(255,255,255,0.97)',
+        tooltipBorder:   '#cbd5e1',
+        tooltipText:     '#0f172a',
+        tooltipMuted:    '#64748b',
+        tooltipShadow:   'rgba(15,23,42,0.16)',
+        zoomedHint:      '#0891b2',
+        crosshair:       'rgba(71,85,105,0.35)',
+        zoomBoxFill:     'rgba(37,99,235,0.12)',
+        zoomBoxBorder:   'rgba(37,99,235,0.65)',
+        zoomLabel:       '#2563eb'
+      };
+    }
+    return {
+      bgGradientStart: 'rgba(30,41,59,0.55)',
+      bgGradientEnd:   'rgba(15,23,42,0.25)',
+      gridLine:        'rgba(51,65,85,0.45)',
+      axisText:        '#94a3b8',
+      hintText:        'rgba(148,163,184,0.28)',
+      incoming:        '#3b82f6',
+      incomingFill:    'rgba(59,130,246,0.18)',
+      outgoing:        '#d946ef',
+      outgoingFill:    'rgba(217,70,239,0.12)',
+      tooltipBg:       'rgba(15,23,42,0.96)',
+      tooltipBorder:   'rgba(59,130,246,0.45)',
+      tooltipText:     '#f1f5f9',
+      tooltipMuted:    'rgba(148,163,184,0.7)',
+      tooltipShadow:   'rgba(0,0,0,0.55)',
+      zoomedHint:      '#22d3ee',
+      crosshair:       'rgba(148,163,184,0.35)',
+      zoomBoxFill:     'rgba(59,130,246,0.12)',
+      zoomBoxBorder:   'rgba(59,130,246,0.65)',
+      zoomLabel:       'rgba(59,130,246,0.9)'
+    };
+  }
+
+  var COLORS = getThemeColors();
 
   var PAD = { top: 22, right: 24, bottom: 44, left: 56 };
 
@@ -90,8 +121,15 @@
     baseCtx = baseCanvas.getContext('2d');
     dpr = window.devicePixelRatio || 1;
 
+    COLORS = getThemeColors();
     sizeCanvas();
     window.addEventListener('resize', onResize);
+    window.addEventListener('ih-theme-change', function () {
+      COLORS = getThemeColors();
+      baseDirty = true;
+      updateLegend();
+      if (chartData) { draw(); }
+    });
 
     // Canvas event listeners
     canvas.addEventListener('mousemove', onCanvasMouseMove);
@@ -231,7 +269,7 @@
       'Incoming&ensp;<strong style="color:' + COLORS.incoming + '">' + formatNumber(inTotal) + '</strong>&emsp;' +
       legendDot(COLORS.outgoing) +
       'Outgoing&ensp;<strong style="color:' + COLORS.outgoing + '">' + formatNumber(outTotal) + '</strong>' +
-      (zoomedRange ? '&emsp;<span style="color:#22d3ee;font-size:0.7rem;">zoomed — double-click to reset</span>' : '');
+      (zoomedRange ? '&emsp;<span style="color:' + COLORS.zoomedHint + ';font-size:0.7rem;">zoomed — double-click to reset</span>' : '');
   }
 
   function legendDot(color) {
@@ -354,7 +392,7 @@
 
     // Hint text when not zoomed or interacting
     if (!zoomedRange && !isDragging && !hoverPos) {
-      ctx.fillStyle = 'rgba(148,163,184,0.28)';
+      ctx.fillStyle = COLORS.hintText;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
@@ -603,7 +641,7 @@
 
     // Draw tooltip box with shadow
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowColor = COLORS.tooltipShadow;
     ctx.shadowBlur = 16;
     ctx.shadowOffsetY = 4;
     ctx.fillStyle = COLORS.tooltipBg;
@@ -633,11 +671,11 @@
         ctx.textAlign = 'left';
         ctx.fillText(line.label + ':', lx + 12, ly);
 
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = COLORS.tooltipText;
         ctx.textAlign = 'right';
         ctx.fillText(formatNumber(line.value), tx + boxWidth - padding, ly);
       } else {
-        ctx.fillStyle = 'rgba(148,163,184,0.7)';
+        ctx.fillStyle = COLORS.tooltipMuted;
         ctx.textAlign = 'left';
         ctx.fillText(line.text, lx, ly);
       }
@@ -666,7 +704,7 @@
 
     // Label
     if (x2 - x1 > 50) {
-      ctx.fillStyle = 'rgba(59,130,246,0.9)';
+      ctx.fillStyle = COLORS.zoomLabel;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';

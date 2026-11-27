@@ -30,6 +30,7 @@
   --navbar-height:   60px;
   --navbar-bg:       rgba(15,23,42,0.92);
   --card-bg-solid:   #1b2a3b;
+  --font-main:       'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-mono:       'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
 }
 
@@ -58,6 +59,7 @@
   --navbar-height:   60px;
   --navbar-bg:       #325083;
   --card-bg-solid:   #ffffff;
+  --font-main:       'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-mono:       'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
 }
 
@@ -156,8 +158,8 @@ a:hover { color: #60a5fa; }
   color: rgba(255, 255, 255, 0.55) !important;
 }
 
-/* Mobile: expanded collapse menu sits below the bar */
-@media (max-width: 991.98px) {
+/* Mobile / tablet: expanded collapse menu sits below the bar */
+@media (max-width: 1199.98px) {
   .navbar {
     padding: 0 1rem;
     align-items: flex-start;
@@ -198,6 +200,48 @@ a:hover { color: #60a5fa; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+}
+
+.navbar-brand .brand-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+.nav-utilities {
+  flex-shrink: 0;
+}
+
+.nav-util-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255,255,255,0.85);
+  font-size: 1rem;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.nav-util-btn:hover {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+
+.nav-lang-btn {
+  width: auto;
+  padding: 0 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .navbar-brand .brand-icon {
@@ -238,10 +282,56 @@ a:hover { color: #60a5fa; }
   white-space: nowrap;
 }
 
-/* Prevent the nav item row itself from wrapping on mid-width windows */
-@media (min-width: 992px) {
+/* Prevent the nav item row itself from wrapping on desktop widths */
+@media (min-width: 1200px) {
+  .navbar-collapse {
+    min-width: 0;
+  }
   .navbar-nav {
     flex-wrap: nowrap;
+    min-width: 0;
+  }
+}
+
+/* Keep all 8 nav links + right-side controls visible without clipping on 1200px–1439px viewports */
+@media (min-width: 1200px) and (max-width: 1439.98px) {
+  .navbar {
+    padding: 0 0.75rem;
+  }
+  .navbar-brand {
+    gap: 0.4rem;
+    margin-right: 0;
+  }
+  .navbar-brand .brand-logo {
+    height: 32px;
+  }
+  .navbar-brand .brand-title {
+    font-size: 0.8rem;
+  }
+  .navbar .navbar-nav {
+    gap: 0.125rem !important;
+  }
+  .navbar .nav-link {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.48rem !important;
+    gap: 0.25rem;
+  }
+  .nav-utilities {
+    gap: 0.4rem !important;
+  }
+  .nav-health-badge {
+    font-size: 0.65rem;
+    padding: 0.18rem 0.5rem;
+  }
+  .nav-env-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* On narrow desktop windows (1200px–1339px), hide decorative nav icons so even Welsh labels fit with room to spare */
+@media (min-width: 1200px) and (max-width: 1339.98px) {
+  .navbar .navbar-nav .nav-link i {
+    display: none;
   }
 }
 
@@ -678,7 +768,8 @@ table.dash-table thead th {
 }
 
 [data-theme="light"] table.dash-table thead th {
-  background: rgba(100,116,139,0.4);
+  background: #e2e8f0;
+  color: #334155;
 }
 
 table.dash-table thead th:hover { color: var(--text-primary); }
@@ -692,6 +783,16 @@ table.dash-table tbody tr {
 
 table.dash-table tbody tr:hover { background: var(--bg-card-hover); }
 table.dash-table tbody tr:last-child { border-bottom: none; }
+
+table.dash-table tbody tr.table-danger-row {
+  background: rgba(239, 68, 68, 0.10);
+}
+table.dash-table tbody tr.table-danger-row td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent-red);
+}
+table.dash-table tbody tr.table-danger-row:hover {
+  background: rgba(239, 68, 68, 0.16);
+}
 
 /* A .dash-card wrapping a table normally tints its whole background on hover
    (see .dash-card:hover above), which swallows the per-row highlight since both
@@ -790,7 +891,7 @@ table.dash-table td {
   transition: background 0.15s;
 }
 
-.exception-item:hover { background: rgba(51,65,85,0.4); }
+.exception-item:hover { background: var(--bg-card-hover); }
 
 .exception-type {
   font-family: var(--font-mono);
@@ -819,7 +920,8 @@ table.dash-table td {
 .refresh-bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   font-size: 0.75rem;
   color: var(--text-muted);
 }
@@ -834,6 +936,11 @@ table.dash-table td {
   padding: 0.2rem 0.55rem;
   font-family: var(--font-mono);
   font-size: 0.72rem;
+  transition: opacity 0.2s;
+}
+
+.refresh-countdown.is-paused {
+  opacity: 0.5;
 }
 
 .refresh-countdown .countdown-num {
@@ -841,6 +948,26 @@ table.dash-table td {
   font-weight: 700;
   min-width: 18px;
   text-align: right;
+}
+
+.refresh-error-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: var(--accent-amber);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.btn-dash.is-paused {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.12);
 }
 
 .spin-icon { animation: spin 1s linear infinite; display: inline-block; }
@@ -1044,10 +1171,43 @@ table.dash-table td {
   color: var(--accent-blue);
 }
 
-.btn-dash--sm {
+.btn-dash--sm,
+.btn-dash-sm {
   font-size: 0.68rem;
   padding: 0.22rem 0.55rem;
   border-radius: 5px;
+}
+
+.btn-dash--primary {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-dash--primary:hover {
+  background: color-mix(in srgb, var(--accent-cyan) 82%, white);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.28);
+}
+
+/* Shared form labels & hints (used by config, contacts, network test, pause modal) */
+.cfg-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.cfg-hint {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  opacity: 0.72;
 }
 
 /* ---------- Forms (for hours filter) ---------- */
@@ -1121,7 +1281,7 @@ input[type=number].cfg-num::-webkit-inner-spin-button:hover {
 }
 
 .dash-select option {
-  background: var(--bg-panel);
+  background: var(--bg-secondary);
   color: var(--text-primary);
 }
 
@@ -1176,22 +1336,32 @@ input[type=number].cfg-num::-webkit-inner-spin-button:hover {
 
 /* ---------- Toasts / live update indicator ---------- */
 #live-indicator {
-  background: rgba(34,197,94,0.15);
-  border: 1px solid rgba(34,197,94,0.4);
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 1040;
+  pointer-events: none;
+  background: var(--bg-card);
+  border: 1px solid rgba(34,197,94,0.45);
   color: var(--accent-green);
-  font-size: 0.7rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.25rem 0.65rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 20px;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.5s;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
-#live-indicator.show { opacity: 1; }
+#live-indicator.show {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 /* ---------- Animations ---------- */
 @keyframes pulse-red {
@@ -1259,6 +1429,11 @@ a.kpi-card--link:hover {
   border-color: var(--accent-cyan);
 }
 
+a.kpi-card--active {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.22);
+}
+
 /* ---------- Flow search / filter bar ---------- */
 .flow-filter-bar {
   display: flex;
@@ -1284,7 +1459,7 @@ a.kpi-card--link:hover {
   pointer-events: none;
 }
 
-#flow-search, #msg-search {
+#flow-search, #msg-search, #exc-search {
   width: 100%;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -1297,9 +1472,15 @@ a.kpi-card--link:hover {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-#flow-search:focus, #msg-search:focus {
+#flow-search:focus, #msg-search:focus, #exc-search:focus {
   border-color: var(--accent-cyan);
   box-shadow: 0 0 0 3px rgba(18, 163, 201, 0.12);
+}
+
+.flow-group-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .flow-filter-btns {
@@ -1322,7 +1503,7 @@ a.kpi-card--link:hover {
 }
 
 .flow-filter-btn:hover {
-  background: var(--bg-hover);
+  background: var(--bg-card-hover);
   border-color: var(--accent-cyan);
   color: var(--text-primary);
 }
@@ -1386,7 +1567,14 @@ a.kpi-card--link:hover {
 
 /* ---------- Flow compact table (Overview page) ---------- */
 .flow-row td { font-size: 0.8rem; padding: 0.55rem 0.75rem; }
-.flow-row:hover { background: rgba(51,65,85,0.4); cursor: pointer; }
+.flow-row:hover { background: var(--bg-card-hover); cursor: pointer; }
+.flow-row .flow-row-chevron {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  transition: color 0.15s, transform 0.15s;
+}
+.flow-row:hover .flow-row-link { color: var(--accent-cyan) !important; }
+.flow-row:hover .flow-row-chevron { color: var(--accent-cyan); transform: translateX(2px); }
 
 /* ---------- Flow detail page ---------- */
 .flow-detail-card {
@@ -1513,6 +1701,18 @@ a.kpi-card--link:hover {
   --bs-table-striped-bg: rgba(51,65,85,0.2);
 }
 
+[data-theme="light"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-striped-bg: rgba(148,163,184,0.12);
+}
+
+[data-theme="light"] table.dash-table tbody tr.table-danger-row {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+[data-theme="light"] table.dash-table tbody tr.table-danger-row:hover {
+  background: rgba(220, 38, 38, 0.14);
+}
+
 .badge.bg-success { background-color: rgba(34,197,94,0.2)  !important; color: var(--accent-green)  !important; border: 1px solid rgba(34,197,94,0.4); }
 .badge.bg-warning { background-color: rgba(245,158,11,0.2) !important; color: var(--accent-amber)  !important; border: 1px solid rgba(245,158,11,0.4); }
 .badge.bg-danger  { background-color: rgba(239,68,68,0.2)  !important; color: var(--accent-red)    !important; border: 1px solid rgba(239,68,68,0.4); }
@@ -1630,4 +1830,24 @@ a.kpi-card--link:hover {
   color: var(--text-dim);
   font-family: var(--font-mono);
   margin-top: 1px;
+}
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+  }
+  .nav-health-badge.critical,
+  .flow-card.critical,
+  .flow-status-dot.critical,
+  .pipeline-node-box.critical,
+  .flow-card.healthy .pipeline-arrow-line::before,
+  .animate-in,
+  .stagger-children > *,
+  .counter-pop,
+  .spin-icon,
+  #page-load-bar.loading::after {
+    animation: none !important;
+  }
 }

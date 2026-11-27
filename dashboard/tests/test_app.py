@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -1223,3 +1224,191 @@ class TestEnvLoading:
 
         assert os.environ["AZURE_RESOURCE_GROUP"] == "from-file"
         assert os.environ["AZURE_SERVICE_BUS_NAMESPACE"] == "pre-set"
+
+
+class TestUIQuickWins:
+    """Regression checks for shared CSS classes, navbar active states, and live-refresh markup."""
+
+    def test_flows_page_has_single_flow_no_results_id(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
+            response = client.get("/flows")
+        assert response.status_code == 200
+        assert response.data.count(b'id="flow-no-results"') == 1
+
+    def test_alarm_pauses_page_highlights_alarms_nav_link(self, client: FlaskClient) -> None:
+        response = client.get("/alarms/pauses")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert 'class="nav-link active"' in html
+        assert 'href="/alarms"' in html
+
+    def test_network_test_config_page_highlights_network_test_nav_link(self, client: FlaskClient) -> None:
+        response = client.get("/network-test/config")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert 'class="nav-link active"\n             href="/network-test"' in html
+
+    def test_overview_flow_rows_carry_data_href(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+        ):
+            response = client.get("/")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert 'class="flow-row"' in html
+        assert 'data-href="/flows#flow-' in html
+
+    def test_shared_css_defines_used_classes_and_variables(self) -> None:
+        css_path = Path(app_module.__file__).resolve().parent / "static" / "css" / "style.css"
+        css = css_path.read_text(encoding="utf-8")
+
+        for selector in (
+            ".btn-dash--primary",
+            ".btn-dash-sm",
+            ".cfg-label",
+            ".cfg-hint",
+            ".table-danger-row",
+        ):
+            assert selector in css, f"Expected {selector} to be defined in style.css"
+
+        defined_vars = set(re.findall(r"(--[a-zA-Z0-9-]+)\s*:", css))
+        used_vars = set(re.findall(r"var\((--[a-zA-Z0-9-]+)\)", css))
+        assert used_vars - defined_vars == set()
+
+    def test_dashboard_js_preserves_flow_health_badge_class_on_refresh(self) -> None:
+        js_path = Path(app_module.__file__).resolve().parent / "static" / "js" / "dashboard.js"
+        js = js_path.read_text(encoding="utf-8")
+        badge_block = js.split('card.querySelector(".flow-health-badge")', 1)[1][:500]
+        assert "badge.className =" not in badge_block
+        assert 'badge.classList.remove("healthy", "warning", "critical", "unknown")' in badge_block
+        assert 'badge.querySelector(".flow-status-dot")' in badge_block
+
+    def test_theme_toggle_dispatches_event_and_charts_listen(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+        ):
+            response = client.get("/")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "ih-theme-change" in html
+        assert "background: #1B294A;" in html
+
+        js_dir = Path(app_module.__file__).resolve().parent / "static" / "js"
+        for filename in (
+            "hl7-throughput-chart.js",
+            "sb-chart.js",
+            "network-test-chart.js",
+            "app-history.js",
+        ):
+            content = (js_dir / filename).read_text(encoding="utf-8")
+            assert "ih-theme-change" in content, f"Expected {filename} to redraw on theme change"
+
+    def test_light_mode_table_and_exception_hover_styles(self) -> None:
+        css_path = Path(app_module.__file__).resolve().parent / "static" / "css" / "style.css"
+        css = css_path.read_text(encoding="utf-8")
+        assert ".exception-item:hover { background: var(--bg-card-hover); }" in css
+        assert "rgba(100,116,139,0.4)" not in css
+
+    def test_noc_usability_controls_and_responsive_navbar(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
+            index_html = client.get("/").get_data(as_text=True)
+            flows_html = client.get("/flows").get_data(as_text=True)
+
+        assert "navbar-expand-xl" in index_html
+        for html in (index_html, flows_html):
+            assert 'id="refresh-error-pill"' in html
+            assert 'id="toggle-auto-refresh"' in html
+            assert 'data-search="' in html
+
+        assert 'id="expand-all-groups"' in flows_html
+        assert 'id="collapse-all-groups"' in flows_html
+
+    def test_exceptions_and_messages_enhanced_filtering(self, client: FlaskClient) -> None:
+        sample_exceptions = [
+            {
+                "timestamp": "2026-11-27T09:00:00Z",
+                "app": "phw-hl7-server",
+                "type": "TimeoutError",
+                "message": "Socket timed out",
+                "severity": 2,
+                "operation_id": "abc123",
+            }
+        ]
+        with (
+            patch("dashboard.services.azure_monitor.get_exceptions", return_value=sample_exceptions),
+            patch("dashboard.routes.pages.get_exceptions", return_value=sample_exceptions),
+        ):
+            exc_html = client.get("/exceptions").get_data(as_text=True)
+
+        assert 'id="exc-search"' in exc_html
+        assert 'data-sev-kpi="all"' in exc_html
+        assert "kpi-card--active" in exc_html
+        assert 'data-search="phw-hl7-server timeouterror socket timed out abc123"' in exc_html
+
+        sample_messages = [
+            {
+                "timestamp": "2026-11-27T09:00:00Z",
+                "event": "MESSAGE_SENT",
+                "app": "phw-sender",
+                "dimensions": {"queue": "post-phw-transform"},
+            }
+        ]
+        with patch("dashboard.routes.pages.cache.cached_nowait", return_value=sample_messages):
+            msg_html = client.get("/messages").get_data(as_text=True)
+        assert "row.textContent" in msg_html
+        assert "post-phw-transform" in msg_html
+
+    def test_dashboard_js_formats_timestamp_consistently_and_tracks_pause(self) -> None:
+        js_path = Path(app_module.__file__).resolve().parent / "static" / "js" / "dashboard.js"
+        js = js_path.read_text(encoding="utf-8")
+        assert "toLocaleTimeString()" not in js
+        assert "formatRefreshedAt(data.refreshed_at)" in js
+        assert "setRefreshError(true)" in js
+        assert "window.setAllFlowGroups" in js
+
+    def test_html_lang_and_i18n_reflect_session_language(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+        ):
+            en_html = client.get("/").get_data(as_text=True)
+            with client.session_transaction() as sess:
+                sess["lang"] = "cy"
+            cy_html = client.get("/").get_data(as_text=True)
+
+        assert '<html lang="en">' in en_html
+        assert '<html lang="cy">' in cy_html
+        assert "window.DASHBOARD_I18N" in cy_html
+
+    def test_accessibility_modal_flow_groups_and_reduced_motion(self, client: FlaskClient) -> None:
+        with (
+            patch("dashboard.services.status_builder.get_namespace_snapshot", return_value=EMPTY_NAMESPACE_SNAPSHOT),
+            patch("dashboard.services.status_builder.get_exceptions", return_value=EMPTY_EXCEPTIONS),
+            patch("dashboard.routes.pages.get_container_apps_metrics", return_value=EMPTY_CONTAINER_METRICS),
+        ):
+            flows_html = client.get("/flows").get_data(as_text=True)
+
+        assert "backdrop.setAttribute('aria-hidden', 'false')" in flows_html
+        assert "e.key === 'Escape'" in flows_html
+        assert "e.key === 'Tab'" in flows_html
+        assert "aria-expanded=" in flows_html
+        assert "event.preventDefault();toggleFlowGroup(this);" in flows_html
+
+        css_path = Path(app_module.__file__).resolve().parent / "static" / "css" / "style.css"
+        css = css_path.read_text(encoding="utf-8")
+        assert "@media (prefers-reduced-motion: reduce)" in css
+
+        js_path = Path(app_module.__file__).resolve().parent / "static" / "js" / "dashboard.js"
+        js = js_path.read_text(encoding="utf-8")
+        assert "window.DASHBOARD_I18N" in js
+        assert 'header.setAttribute("aria-expanded"' in js

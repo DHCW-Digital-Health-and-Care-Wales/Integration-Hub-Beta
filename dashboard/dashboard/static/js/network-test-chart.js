@@ -12,20 +12,40 @@
 (function () {
   'use strict';
 
-  var COLORS = {
-    gridLine: 'rgba(51,65,85,0.45)',
-    axisText: '#94a3b8',
-    line: '#12A3C9',
-    fill: 'rgba(18,163,201,0.16)',
-    band: 'rgba(18,163,201,0.14)',
-    loss: '#f59e0b',
-    lossFill: 'rgba(245,158,11,0.16)',
-    fail: '#ef4444',
-    crosshair: 'rgba(148,163,184,0.5)',
-    tooltipBg: 'rgba(15,23,42,0.96)',
-    tooltipBorder: 'rgba(59,130,246,0.45)',
-    tooltipText: '#f1f5f9',
-  };
+  function getThemeColors() {
+    if (document.documentElement.getAttribute('data-theme') === 'light') {
+      return {
+        gridLine: 'rgba(148,163,184,0.35)',
+        axisText: '#475569',
+        line: '#0891b2',
+        fill: 'rgba(8,145,178,0.14)',
+        band: 'rgba(8,145,178,0.12)',
+        loss: '#d97706',
+        lossFill: 'rgba(217,119,6,0.14)',
+        fail: '#dc2626',
+        crosshair: 'rgba(71,85,105,0.45)',
+        tooltipBg: 'rgba(255,255,255,0.97)',
+        tooltipBorder: '#cbd5e1',
+        tooltipText: '#0f172a',
+      };
+    }
+    return {
+      gridLine: 'rgba(51,65,85,0.45)',
+      axisText: '#94a3b8',
+      line: '#12A3C9',
+      fill: 'rgba(18,163,201,0.16)',
+      band: 'rgba(18,163,201,0.14)',
+      loss: '#f59e0b',
+      lossFill: 'rgba(245,158,11,0.16)',
+      fail: '#ef4444',
+      crosshair: 'rgba(148,163,184,0.5)',
+      tooltipBg: 'rgba(15,23,42,0.96)',
+      tooltipBorder: 'rgba(59,130,246,0.45)',
+      tooltipText: '#f1f5f9',
+    };
+  }
+
+  var COLORS = getThemeColors();
 
   var PAD = { top: 16, right: 16, bottom: 26, left: 48 };
 
@@ -254,6 +274,7 @@
     }
 
     function draw() {
+      COLORS = getThemeColors();
       var w = cssWidth();
       var h = cssHeight();
       ctx.clearRect(0, 0, w, h);
@@ -298,8 +319,14 @@
       draw();
     }
 
+    function onThemeChange() {
+      COLORS = getThemeColors();
+      draw();
+    }
+
     sizeCanvas();
     window.addEventListener('resize', onResize);
+    window.addEventListener('ih-theme-change', onThemeChange);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseleave', onMouseLeave);
 
@@ -315,6 +342,7 @@
       },
       destroy: function () {
         window.removeEventListener('resize', onResize);
+        window.removeEventListener('ih-theme-change', onThemeChange);
         canvas.removeEventListener('mousemove', onMouseMove);
         canvas.removeEventListener('mouseleave', onMouseLeave);
       },

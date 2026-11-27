@@ -17,25 +17,48 @@
   // CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════════
 
-  var COLORS = {
-    // Background gradient
-    bgGradientStart: 'rgba(30,41,59,0.55)',
-    bgGradientEnd:   'rgba(15,23,42,0.25)',
-    // Grid & Axes
-    gridLine:        'rgba(51,65,85,0.45)',
-    axisText:        '#94a3b8',
-    // Series
-    incomingLine:    '#12A3C9',
-    incomingFill:    'rgba(18,163,201,0.18)',
-    outgoingLine:    '#F8CA4D',
-    outgoingFill:    'rgba(248,202,77,0.16)',
-    // Tooltip
-    tooltipBg:       'rgba(15,23,42,0.96)',
-    tooltipBorder:   'rgba(59,130,246,0.45)',
-    tooltipText:     '#f1f5f9',
-    // Interaction
-    crosshair:       'rgba(148,163,184,0.35)',
-  };
+  function isLightTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  }
+
+  function getThemeColors() {
+    if (isLightTheme()) {
+      return {
+        canvasBg:        '#ffffff',
+        bgGradientStart: 'rgba(241,245,249,0.85)',
+        bgGradientEnd:   'rgba(255,255,255,0.45)',
+        gridLine:        'rgba(148,163,184,0.35)',
+        axisText:        '#475569',
+        incomingLine:    '#0891b2',
+        incomingFill:    'rgba(8,145,178,0.14)',
+        outgoingLine:    '#d97706',
+        outgoingFill:    'rgba(217,119,6,0.14)',
+        tooltipBg:       'rgba(255,255,255,0.97)',
+        tooltipBorder:   '#cbd5e1',
+        tooltipText:     '#0f172a',
+        tooltipShadow:   'rgba(15,23,42,0.14)',
+        crosshair:       'rgba(71,85,105,0.35)',
+      };
+    }
+    return {
+      canvasBg:        'rgba(15,23,42,1)',
+      bgGradientStart: 'rgba(30,41,59,0.55)',
+      bgGradientEnd:   'rgba(15,23,42,0.25)',
+      gridLine:        'rgba(51,65,85,0.45)',
+      axisText:        '#94a3b8',
+      incomingLine:    '#12A3C9',
+      incomingFill:    'rgba(18,163,201,0.18)',
+      outgoingLine:    '#F8CA4D',
+      outgoingFill:    'rgba(248,202,77,0.16)',
+      tooltipBg:       'rgba(15,23,42,0.96)',
+      tooltipBorder:   'rgba(59,130,246,0.45)',
+      tooltipText:     '#f1f5f9',
+      tooltipShadow:   'rgba(0,0,0,0.4)',
+      crosshair:       'rgba(148,163,184,0.35)',
+    };
+  }
+
+  var COLORS = getThemeColors();
 
   var PAD = { top: 22, right: 24, bottom: 44, left: 56 };
 
@@ -81,8 +104,15 @@
     baseCtx = baseCanvas.getContext('2d');
     dpr = window.devicePixelRatio || 1;
 
+    COLORS = getThemeColors();
     sizeCanvas();
     window.addEventListener('resize', onResize);
+    window.addEventListener('ih-theme-change', function () {
+      COLORS = getThemeColors();
+      baseDirty = true;
+      updateLegend();
+      draw();
+    });
 
     // Canvas event listeners
     canvas.addEventListener('mousemove', onCanvasMouseMove);
@@ -224,7 +254,7 @@
     var w = cssWidth();
     var h = cssHeight();
 
-    baseCtx.fillStyle = 'rgba(15, 23, 42, 1)';
+    baseCtx.fillStyle = COLORS.canvasBg;
     baseCtx.fillRect(0, 0, w, h);
 
     var incoming = (preparedData && preparedData.incoming) || [];
@@ -288,7 +318,7 @@
     var incoming = (preparedData && preparedData.incoming) || [];
     var outgoing = (preparedData && preparedData.outgoing) || [];
     if (incoming.length === 0 && outgoing.length === 0) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 1)';
+      ctx.fillStyle = COLORS.canvasBg;
       ctx.fillRect(0, 0, w, h);
       drawEmpty('No data available');
       return;
@@ -507,7 +537,7 @@
     var ty = PAD.top + 8;
 
     // Draw tooltip box with shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+    ctx.shadowColor = COLORS.tooltipShadow;
     ctx.shadowBlur = 8;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 2;
