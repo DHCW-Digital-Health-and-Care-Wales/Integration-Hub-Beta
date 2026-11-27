@@ -40,7 +40,6 @@ parameters:
       - PMS WRRS IDUPD DB Sender
       - PROMS FHIR Transformer
       - PROMS FHIR Sender
-      - HL7 Sender
       - SWW Chemo HL7 Subscription Sender
       - PHW HL7 Subscription Sender
       - PHW TO MPI HL7 Sender
@@ -371,11 +370,6 @@ stages:
           buildPipeline: 'HL7 WDS Transformer - Build'
 
         # HL7 Sender Variants
-        - name: 'HL7 Sender'
-          appImageName: 'hl7sender'
-          appFunctionMidfix: ''
-          buildPipeline: 'HL7 Sender - Build'
-
         - name: 'SWW Chemo HL7 Subscription Sender'
           appImageName: 'hl7subsndr'
           appFunctionMidfix: 'sww-chemo'
