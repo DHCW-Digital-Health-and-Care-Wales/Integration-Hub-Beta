@@ -84,6 +84,8 @@
   var rafId = null;
   var chartData = null;
   var cachedLayer = null;
+  var fetchState = 'idle'; // 'idle' | 'loading' | 'loaded' | 'error'
+  var errorMessage = '';
   var currentHours = 1;
 
   // Hover state
@@ -128,7 +130,7 @@
       COLORS = getThemeColors();
       baseDirty = true;
       updateLegend();
-      if (chartData) { draw(); }
+      if (chartData || fetchState === 'error') { draw(); }
     });
 
     // Canvas event listeners
@@ -223,6 +225,8 @@
   function fetchData(hours) {
     var loader = document.getElementById('messages-chart-loading');
     if (loader) loader.style.display = 'block';
+    fetchState = 'loading';
+    errorMessage = '';
 
     var url = '/api/servicebus-metrics?hours=' + hours;
     if (window.__chartEntityType && window.__chartEntityName) {
@@ -231,13 +235,18 @@
     }
 
     fetch(url)
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
       .then(function (data) {
         chartData = {
           incoming: attachTimestamps(data && data.incoming),
           outgoing: attachTimestamps(data && data.outgoing),
           timespan: data && data.timespan
         };
+        fetchState = 'loaded';
+        errorMessage = '';
         baseDirty = true;
         if (loader) loader.style.display = 'none';
         updateLegend();
@@ -247,9 +256,11 @@
         console.error('Chart data fetch failed:', err);
         chartData = null;
         cachedLayer = null;
+        fetchState = 'error';
+        errorMessage = 'Failed to load metrics';
         baseDirty = true;
         if (loader) loader.style.display = 'none';
-        drawEmpty('Failed to load metrics');
+        draw();
       });
   }
 
@@ -363,6 +374,10 @@
   }
 
   function draw() {
+    if (fetchState === 'error') {
+      drawEmpty(errorMessage || 'Failed to load metrics');
+      return;
+    }
     if (!chartData) return;
 
     if (baseDirty) {

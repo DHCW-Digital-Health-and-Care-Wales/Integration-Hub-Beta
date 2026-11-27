@@ -1412,3 +1412,17 @@ class TestUIQuickWins:
         js = js_path.read_text(encoding="utf-8")
         assert "window.DASHBOARD_I18N" in js
         assert 'header.setAttribute("aria-expanded"' in js
+        assert "prefersReducedMotion()" in js
+        assert "expandHashTarget" in js
+        assert 'window.addEventListener("hashchange", expandHashTarget)' in js
+
+    def test_chart_redraw_edge_cases(self) -> None:
+        js_dir = Path(app_module.__file__).resolve().parent / "static" / "js"
+
+        app_history_js = (js_dir / "app-history.js").read_text(encoding="utf-8")
+        assert "canvas.dataset.cssHeight" in app_history_js
+
+        for filename in ("hl7-throughput-chart.js", "sb-chart.js"):
+            chart_js = (js_dir / filename).read_text(encoding="utf-8")
+            assert "fetchState = 'error'" in chart_js
+            assert "if (fetchState === 'error')" in chart_js

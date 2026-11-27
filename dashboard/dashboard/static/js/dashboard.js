@@ -49,9 +49,18 @@
   /* ------------------------------------------------------------------ */
   /* Number transitions                                                    */
   /* ------------------------------------------------------------------ */
+  function prefersReducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
   function animateCounter(el, newVal) {
     const oldVal = parseInt(el.textContent, 10);
     if (isNaN(oldVal) || oldVal === newVal) {
+      el.textContent = newVal;
+      return;
+    }
+    if (prefersReducedMotion()) {
+      el.classList.remove("counter-pop");
       el.textContent = newVal;
       return;
     }
@@ -757,6 +766,27 @@
       });
     } catch (_) { /* ignore */ }
   })();
+
+  // Ensure direct fragment navigation (e.g. /flows#flow-phw-to-mpi) expands its parent group
+  function expandHashTarget() {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return;
+    let targetId;
+    try {
+      targetId = decodeURIComponent(hash.slice(1));
+    } catch (_) {
+      return;
+    }
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    const group = target.closest(".flow-group");
+    if (group) {
+      setGroupExpanded(group, true);
+    }
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  }
+  expandHashTarget();
+  window.addEventListener("hashchange", expandHashTarget);
 
   initSortableTable("queue-table");
 

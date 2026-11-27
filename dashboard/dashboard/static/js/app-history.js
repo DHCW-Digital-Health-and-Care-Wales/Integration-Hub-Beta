@@ -22,7 +22,10 @@
     opts = opts || {};
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth || canvas.parentElement.clientWidth || 300;
-    var cssH = parseInt(canvas.getAttribute('height'), 10) || 90;
+    var cssH = parseInt(canvas.dataset.cssHeight || canvas.style.height || canvas.getAttribute('height'), 10) || 90;
+    if (!canvas.dataset.cssHeight) {
+      canvas.dataset.cssHeight = String(cssH);
+    }
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.height = cssH + 'px';

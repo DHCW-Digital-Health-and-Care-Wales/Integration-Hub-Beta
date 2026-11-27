@@ -73,6 +73,8 @@
   var chartData = null;
   var preparedData = null;
   var cachedRefBins = [];
+  var fetchState = 'idle'; // 'idle' | 'loading' | 'loaded' | 'error'
+  var errorMessage = '';
   var currentHours = 24; // Default to last 24 hours
   var currentHealthBoard = null;
   var currentService = null;
@@ -197,6 +199,8 @@
   function fetchData(hours) {
     var loader = document.getElementById('hl7-chart-loading');
     if (loader) loader.style.display = 'block';
+    fetchState = 'loading';
+    errorMessage = '';
 
     var url = '/api/hl7-throughput?hours=' + hours;
     if (currentHealthBoard) {
@@ -207,10 +211,15 @@
     }
 
     fetch(url)
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
       .then(function (data) {
         chartData = data;
         preparedData = prepareData(data);
+        fetchState = 'loaded';
+        errorMessage = '';
         baseDirty = true;
         if (loader) loader.style.display = 'none';
         updateLegend();
@@ -221,9 +230,11 @@
         chartData = null;
         preparedData = null;
         cachedRefBins = [];
+        fetchState = 'error';
+        errorMessage = 'Failed to load metrics';
         baseDirty = true;
         if (loader) loader.style.display = 'none';
-        drawEmpty('Failed to load metrics');
+        draw();
       });
   }
 
@@ -314,6 +325,17 @@
   function draw() {
     var w = cssWidth();
     var h = cssHeight();
+
+    if (fetchState === 'idle' || fetchState === 'loading') {
+      return;
+    }
+
+    if (fetchState === 'error') {
+      ctx.fillStyle = COLORS.canvasBg;
+      ctx.fillRect(0, 0, w, h);
+      drawEmpty(errorMessage || 'Failed to load metrics');
+      return;
+    }
 
     var incoming = (preparedData && preparedData.incoming) || [];
     var outgoing = (preparedData && preparedData.outgoing) || [];
